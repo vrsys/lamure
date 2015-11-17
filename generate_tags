@@ -1,0 +1,8 @@
+#!/bin/bash
+
+ctags --langmap=c++:.inl.cpp.h -R -n \
+    common/include/ common/src/ \
+    preprocessing/include/ preprocessing/src/ \
+    rendering/include/ rendering/src/ \
+    /opt/schism/current/scm_core/src
+

@@ -1,0 +1,420 @@
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#include "Sampler.h"
+#include <vcg/space/triangle3.h>
+
+#include <unordered_map>
+
+
+static unsigned OUTPUT_FREQ = 14000;
+
+void Sampler::
+ComputeNormals()
+{
+#ifndef USE_WEDGE_NORMALS
+    //PerVertexClear(m);
+    for (auto& f : m.face)
+        if (!f.IsD() && f.IsR()) {
+            //typename FaceType::NormalType t = (*f).Normal();
+
+            auto t = vcg::Normal(f);
+
+            for (int j = 0; j < 3; ++j) {
+              if (!f.V(j)->IsD() && f.V(j)->IsRW())
+              {
+                f.V(j)->N() += vcg::Point3f(t.X(), t.Y(), t.Z());
+              }
+            }
+        }
+#endif
+}
+
+bool Sampler::
+Load(const std::string& filename)
+{
+    typedef vcg::tri::io::Importer<MyMesh> Importer;
+
+    vcg::tri::RequirePerFaceWedgeTexCoord(m);
+
+    int mask = -1;
+
+    std::cout << "Loading... " << std::flush;
+    int result = Importer::Open(m, filename.c_str(), mask);
+
+    if (Importer::ErrorCritical(result)) {
+        std::cerr << std::endl << "Unable to load file: \"" << filename 
+                  << "\". " << Importer::ErrorMsg(result) << std::endl;
+        return false;
+    }
+    std::cout << "DONE" << std::endl;
+
+    if (result != 0)
+        std::cout << "Warning: " << Importer::ErrorMsg(result) << std::endl;
+    
+    //if (!(mask & vcg::tri::io::Mask::IOM_VERTTEXCOORD))
+    //    std::cerr << "Vertex texture coords are not available" << std::endl;
+    
+    if (!(mask & vcg::tri::io::Mask::IOM_WEDGTEXCOORD))
+        std::cerr << "Wedge texture coords are not available. Sampling will fail!" << std::endl;
+
+#ifdef USE_WEDGE_NORMALS
+    if (!(mask & vcg::tri::io::Mask::IOM_WEDGNORMAL))
+        std::cerr << "Wedge normals are not available. Sampling will fail!" << std::endl;
+#else
+    if (!(mask & vcg::tri::io::Mask::IOM_VERTNORMAL)) {
+        std::cerr << "Vertex normals are not available. Recompute... " << std::flush;
+        vcg::tri::UpdateNormal<MyMesh>::PerVertexClear(m);
+        ComputeNormals();
+        vcg::tri::UpdateNormal<MyMesh>::NormalizePerVertex(m);
+        std::cout << "DONE" << std::endl;
+    }
+#endif
+
+    std::cout << "Topology update... " << std::flush;
+    vcg::tri::UpdateTopology<MyMesh>::VertexFace(m);
+    std::cout << "DONE" << std::endl;
+
+    //vcg::tri::RequirePerVertexNormal(m);
+    std::cout << "Mesh: " << m.VN() << " vertices, " << m.FN() << " faces." << std::endl;
+
+    textures = std::vector<Texture>(m.textures.size());
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < m.textures.size(); ++i) {
+        unsigned slashPos = std::string(filename).find_last_of("/\\");
+        std::string textureFileName = std::string(filename).substr(0, slashPos+1) + m.textures[i];
+        textures[i].Load(textureFileName);
+    }
+
+    return true;
+}
+
+bool Sampler::
+SampleMesh(const std::string& outputFilename)
+{
+    std::ofstream out(outputFilename, std::ios::out);
+    if (out.fail()) {
+        std::cerr << "Unable to create file: \"" << outputFilename << "\". " 
+                  << strerror(errno) << std::endl;
+        out.close();
+        return false;
+    }   
+
+    unsigned processedFaces = 0,
+             processedPoints = 0,
+             discardedFaces = 0;
+
+    std::cout.setf(ios::fixed, ios::floatfield);
+    std::cout.precision(1);
+
+    std::cout << "Sampling mesh... " << std::endl;
+
+    SplatVector points;
+
+    #pragma omp parallel for private(points) schedule(dynamic, 35)
+    for (size_t i = 0; i < m.face.size(); ++i) {
+        bool discard = false;
+        if (SampleFace(i, points/*, false*/)) {
+            /*
+            auto& face = m.face[i];
+            FaceSet faceList;
+
+            AddAdjacent(faceList, face.V(0));
+            AddAdjacent(faceList, face.V(1));
+            AddAdjacent(faceList, face.V(2));
+
+            for (auto& p: points) {
+                typedef std::pair<Splat, double> FL;
+
+                auto comp = [](const FL& a, const FL& b ) { return a.second < b.second; };
+                std::priority_queue<FL, std::vector<FL>, decltype(comp)> nq(comp);
+
+                auto AddToQueue = [&](const Splat& afp) {
+                    double dist = std::pow(afp.x - p.x, 2) + std::pow(afp.y - p.y, 2) + std::pow(afp.z - p.z, 2);
+                    if (dist < 0.000000001) return;
+                    //std::cout << "for p " << p.x <<" "<< p.y<< " " << p.z<< " d " << sqrt(dist) << std::endl;
+                    FL candidate(afp, dist);
+
+                    if (nq.size() < MAX_NEIGHBORS)
+                        nq.push(candidate);
+                    else
+                        if (nq.top().second > dist) {
+                            nq.pop();
+                            nq.push(candidate);
+                        }
+                };
+
+                // fill queue
+                for (auto& af: faceList) {
+
+                    if (&face == af) {
+                        for (auto& afp: points) {
+                            AddToQueue(afp);
+                        }
+                        //std::cout << "add 1 for p " << p.x << p.y << " ptr " << size_t(af) << std::endl;
+
+                    } 
+                    else {
+                        SplatVector pointsF;
+                        SampleFace(af, pointsF, true);
+                        for (auto& afp: pointsF) {
+                            AddToQueue(afp);
+                        }
+                        //std::cout << "add 2 for p " << p.x << p.y  << " ptr " << size_t(af)<< std::endl;
+                    }
+                }
+
+                double actualSize = nq.size();
+                // compute radius
+                double avg_distance = 0.0;
+                while (!nq.empty()) {
+                    avg_distance += sqrt(nq.top().second);
+                    //std::cout << "dst " << sqrt(nq.top().second) << std::endl;
+                    nq.pop();
+                }
+                avg_distance /= actualSize;
+
+                p.d = avg_distance * 1.6;
+            } //*/
+        } else
+            discard = true;
+
+        #pragma omp critical(save)
+        {
+            char buffer[256];
+            for (auto& p: points) {
+                if (p.d <= 0.0) continue;
+                int sz = sprintf(buffer, "%f %f %f %f %f %f %u %u %u %f\n", p.x,p.y,p.z,p.nx,p.ny,p.nz,p.r,p.g,p.b,p.d);
+                out.write(buffer, sz);
+                ++processedPoints;
+            }
+            ++processedFaces;
+            if (discard)
+                ++discardedFaces;
+
+            if (processedFaces % OUTPUT_FREQ == 0 || processedFaces == m.face.size())
+                std::cout << float(processedFaces*100)/m.face.size()
+                          <<"%. Faces processed: " << processedFaces<< " / " 
+                          << m.face.size() << std::endl;
+        }
+
+    }
+    out.close();
+
+    std::cout << "DONE" << std::endl;
+    std::cout <<"Faces processed: " << processedFaces
+              << ". Discarded: " << discardedFaces << std::endl
+              << "Points generated: " << processedPoints << std::endl;
+    return true;
+}
+
+bool Sampler::
+SampleFace(int faceId, SplatVector& out/*, bool onlyCoords*/) 
+{
+    return SampleFace(&m.face[faceId], out/*, onlyCoords*/);
+}
+
+bool Sampler::
+SampleFace(FacePointer facePtr, 
+           SplatVector& out/*, bool onlyCoords*/)
+{
+    out.clear();
+
+    auto& face = *facePtr;
+
+    if (face.IsD() || !face.IsR()) {
+        return false;
+    }
+
+    short texId = face.WT(0).N();
+    if (texId < 0 || size_t(texId) >= textures.size()) {
+        return false;
+    }
+
+    Texture& tex = textures[texId];
+    if (!tex.IsLoaded()) {
+        return false;
+    }
+
+    // calculate 2D vertex positions [0, tex_width-1][0, tex_height-1] in ints
+    float tax = face.WT(0).U() * (tex.Width() - 1) + 0.5f;
+    float tay = (1.0 - face.WT(0).V()) * (tex.Height() - 1) + 0.5f;
+
+    float tbx = face.WT(1).U() * (tex.Width() - 1) + 0.5f;
+    float tby = (1.0 - face.WT(1).V()) * (tex.Height() - 1) + 0.5f;
+
+    float tcx = face.WT(2).U() * (tex.Width() - 1) + 0.5f;
+    float tcy = (1.0 - face.WT(2).V()) * (tex.Height() - 1) + 0.5f;
+
+    vcg::Triangle2<double> T(vcg::Point2d(tax,tay), vcg::Point2d(tbx, tby), vcg::Point2d(tcx, tcy));
+
+    int minXTri = std::min(tax, std::min(tbx, tcx));
+    int maxXTri = std::max(tax, std::max(tbx, tcx));
+    int minYTri = std::min(tay, std::min(tby, tcy));
+    int maxYTri = std::max(tay, std::max(tby, tcy));
+
+    const vcg::Point3d A = face.V(0)->P();
+    const vcg::Point3d B = face.V(1)->P();
+    const vcg::Point3d C = face.V(2)->P();
+
+    vcg::Point3d CA = C-A;
+    vcg::Point3d BA = B-A;
+
+    double areaABC = Area(A,B,C); //whole triangle
+
+    /*
+    for (int x = minXTri; x <= maxXTri; ++x) {
+        for (int y = minYTri; y <= maxYTri; ++y) {
+
+            double u, v; //barycentric parameter to reconstruct 3D pos
+
+            if (!IsPointInTriangle(T, vcg::Point2d(x, y), u, v))
+                continue;
+
+            vcg::Point3d P = A + CA*u + BA*v;
+
+            if (onlyCoords) {
+                out.push_back({P.X(), P.Y(), P.Z(), 0.0, 0.0, 0.0, 0, 0, 0, 0.0});
+            }
+            else {
+                //barycentric interpolation of normal values	
+                //sub triangles defined trough two vertices of whole triangle and point in triangle
+                double areaABP = Area(A,B,P); 
+                double areaACP = Area(A,C,P); 
+                double areaBCP = Area(B,C,P);
+                vcg::Point3f NP = (face.V(0)->N() * areaBCP +  
+                        face.V(1)->N() * areaACP +
+                        face.V(2)->N() * areaABP) / areaABC;
+                NP.Normalize();
+                //fetch color from texture
+                Texture::Pixel texel = tex.GetPixel(x, y);
+                out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, 0.0});
+            }
+        }
+    }*/
+
+
+
+/*
+    typedef struct {double u; double v; bool in;} TrianglePoint;
+    std::vector<TrianglePoint> sampleMap;
+    sampleMap.reserve((maxXTri - minXTri + 1)*(maxYTri - minYTri + 1));
+
+    for (int x = minXTri; x <= maxXTri; ++x) {
+        for (int y = minYTri; y <= maxYTri; ++y) {
+            double u, v;
+            bool inTr = IsPointInTriangle(T, vcg::Point2d(x, y), u, v);
+            sampleMap.push_back(TrianglePoint({u, v, inTr}));
+        }
+    }
+
+    vcg::Box3d trBox;
+    trBox.Add(A);
+    trBox.Add(B);
+    trBox.Add(C);
+    double maxRadius = trBox.Diag() / 2.0;
+    const int sz = maxYTri - minYTri + 1;
+
+    auto GetTrianglePoint = [&](int x, int y, bool& is_in) {
+        auto t = sampleMap[(x - minXTri) * sz + (y - minYTri)];
+        is_in = t.in;
+        return A + CA*t.u + BA*t.v;
+    };
+   
+    for (int x = minXTri; x <= maxXTri; ++x) {
+        for (int y = minYTri; y <= maxYTri; ++y) {
+
+            bool inTr;
+            vcg::Point3d P = GetTrianglePoint(x, y, inTr);
+            if (!inTr) continue;
+
+            //barycentric interpolation of normal values	
+            //sub triangles defined trough two vertices of whole triangle and point in triangle
+            double areaABP = Area(A,B,P); 
+            double areaACP = Area(A,C,P); 
+            double areaBCP = Area(B,C,P);
+            
+#ifdef USE_WEDGE_NORMALS
+            vcg::Point3f norm[3] = {face.WN(0), face.WN(1), face.WN(2)};
+#else
+            vcg::Point3f norm[3] = {face.V(0)->N(), face.V(1)->N(), face.V(2)->N()};
+#endif
+
+            vcg::Point3f NP = (norm[0]*areaBCP + norm[1]*areaACP + norm[2]*areaABP) / areaABC;
+            
+            NP.Normalize();
+
+            double rads[4] = {0.0, 0.0, 0.0, 0.0};
+
+            if (y != minYTri) rads[0] = vcg::Distance(P, GetTrianglePoint(x, y-1, inTr));
+            if (y != maxYTri) rads[1] = vcg::Distance(P, GetTrianglePoint(x, y+1, inTr));
+            if (x != minXTri) rads[2] = vcg::Distance(P, GetTrianglePoint(x-1, y, inTr));
+            if (x != maxXTri) rads[3] = vcg::Distance(P, GetTrianglePoint(x+1, y, inTr));
+
+            double diam = std::max(rads[0], std::max(rads[1], std::max(rads[2], rads[3])));
+            diam = std::min(diam, maxRadius)*2.1;
+
+            //fetch color from texture
+            Texture::Pixel texel = tex.GetPixel(x, y);
+            out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, diam});
+        }
+    }
+*/
+
+
+// new
+
+    vcg::Box3d trBox;
+    trBox.Add(A);
+    trBox.Add(B);
+    trBox.Add(C);
+    double maxRadius = trBox.Diag() / 2.0;
+   
+    // compute diameter
+    auto MapPoint = [&](int x, int y) {
+        double u, v;
+        IsPointInTriangle(T, vcg::Point2d(x, y), u, v);
+        return A + CA*u + BA*v;
+    };
+    vcg::Point3d mapped[3] = {MapPoint(0, 0), MapPoint(1, 0), MapPoint(0, 1)};
+    double diam = std::max(vcg::Distance(mapped[0], mapped[1]), vcg::Distance(mapped[0], mapped[2]));
+    diam = std::min(diam, maxRadius)*2.1;
+
+    for (int x = minXTri; x <= maxXTri; ++x) {
+        for (int y = minYTri; y <= maxYTri; ++y) {
+
+            double u, v; //barycentric parameter to reconstruct 3D pos
+
+            if (!IsPointInTriangle(T, vcg::Point2d(x, y), u, v))
+                continue;
+
+            vcg::Point3d P = A + CA*u + BA*v;
+
+            //barycentric interpolation of normal values	
+            //sub triangles defined trough two vertices of whole triangle and point in triangle
+            double areaABP = Area(A,B,P); 
+            double areaACP = Area(A,C,P); 
+            double areaBCP = Area(B,C,P);
+            
+#ifdef USE_WEDGE_NORMALS
+            vcg::Point3f norm[3] = {face.WN(0), face.WN(1), face.WN(2)};
+#else
+            vcg::Point3f norm[3] = {face.V(0)->N(), face.V(1)->N(), face.V(2)->N()};
+#endif
+
+            vcg::Point3f NP = (norm[0]*areaBCP + norm[1]*areaACP + norm[2]*areaABP) / areaABC;
+            NP.Normalize();
+
+            //fetch color from texture
+            Texture::Pixel texel = tex.GetPixel(x, y);
+            out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, diam});
+        }
+    }
+    return true;
+}
+

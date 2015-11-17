@@ -1,0 +1,102 @@
+############################################################
+# CMake Build Script for the rendering library
+
+cmake_minimum_required(VERSION 2.8.7)
+project(${CMAKE_PROJECT_NAME}_rendering)
+
+set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+file(GLOB PROJECT_SOURCES ${PROJECT_SOURCE_DIR}/*.cpp)
+file(GLOB PROJECT_INCLUDES ${PROJECT_INCLUDE_DIR}/lamure/ren/*.h)
+
+############################################################
+# Shaders
+
+file(GLOB SHADERS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.glslv
+                  ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.glslf)
+#add_custom_target(copy_shaders)
+#foreach(SHADER ${SHADERS})
+#    get_filename_component(SHADER_FN ${SHADER} NAME)
+#    add_custom_command(TARGET copy_shaders POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders
+#                     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SHADER} ${CMAKE_CURRENT_BINARY_DIR}/shaders
+#                     DEPENDS ${SHADER}
+                     #COMMENT "Copy shader: ${SHADER_FN}"
+#                     )
+#endforeach()
+
+############################################################
+# Build library
+
+include_directories(${PROJECT_INCLUDE_DIR} 
+                    ${COMMON_INCLUDE_DIR} 
+                    ${HIDAPI_INCLUDE_DIR}
+                    ${LAMURE_CONFIG_DIR})
+
+add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES} ${SHADERS})
+
+add_dependencies(${PROJECT_NAME} lamure_common lamure_preprocessing)
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_RENDERING_LIBRARY")
+ENDIF(MSVC)
+
+set(REND_INCLUDE_DIR ${PROJECT_INCLUDE_DIR} PARENT_SCOPE)
+set(REND_LIBRARY ${PROJECT_NAME} PARENT_SCOPE)
+set(REND_LIBRARY ${PROJECT_NAME})
+
+
+############################################################
+# Libraries
+
+target_link_libraries(${PROJECT_NAME}
+    ${PROJECT_LIBS}
+    ${COMMON_LIBRARY}
+    ${SCHISM_LIBRARIES}
+    ${BOOST_LIBRARIES}
+    ${FREEIMAGE_LIBRARY}
+    )
+
+if (MSVC)
+  target_link_libraries(${PROJECT_NAME} optimized ${HIDAPI_LIBRARY} debug ${HIDAPI_LIBRARY_DEBUG} )
+endif(MSVC)
+
+###############################################################################
+# install 
+###############################################################################
+
+IF (MSVC)
+  install (TARGETS ${PROJECT_NAME}
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+  )
+
+  install (TARGETS ${PROJECT_NAME}
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+  )
+ELSEIF (UNIX)
+  install (TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION lib
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+ENDIF (MSVC)
+
+# header files 
+install(DIRECTORY ${PROJECT_INCLUDE_DIR}/lamure/ren DESTINATION include/lamure FILES_MATCHING PATTERN "*.h")
+
+# shader and material resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure
+        FILES_MATCHING 
+        PATTERN "*.glslv"
+        PATTERN "*.glslf"
+        PATTERN "*.glslg"
+        )
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/fonts/Ubuntu.ttf DESTINATION share/lamure/fonts)
+

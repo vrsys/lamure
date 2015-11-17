@@ -1,0 +1,359 @@
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#include <lamure/pre/basic_algorithms.h>
+
+#include <lamure/pre/io/file.h>
+#include <lamure/pre/external_sort.h>
+
+#if WIN32
+  #include <ppl.h>
+#else
+  #include <parallel/algorithm>
+#endif
+
+#include <cstring>
+
+namespace lamure {
+namespace pre 
+{
+
+BoundingBox BasicAlgorithms::
+ComputeAABB(const SurfelMemArray& sa,
+            const bool parallelize)
+{
+    assert(!sa.is_empty());
+    assert(sa.length() > 0);
+
+    vec3r min = sa.ReadSurfel(0).pos();
+    vec3r max = min;
+
+    const auto begin = sa.mem_data()->begin() + sa.offset();
+    const auto end = sa.mem_data()->begin() + sa.offset() + sa.length();
+
+    if (!parallelize) {
+        for (auto s = begin; s != end; ++s) {
+            if (s->pos()[0] < min[0]) min[0] = s->pos()[0];
+            if (s->pos()[1] < min[1]) min[1] = s->pos()[1];
+            if (s->pos()[2] < min[2]) min[2] = s->pos()[2];
+            if (s->pos()[0] > max[0]) max[0] = s->pos()[0];
+            if (s->pos()[1] > max[1]) max[1] = s->pos()[1];
+            if (s->pos()[2] > max[2]) max[2] = s->pos()[2];
+        }
+    }
+    else {
+        // INFO: OpenMP 3.1 supports min/max reduction. Available in GCC 4.7
+        //       or above. The code below doesn't require OpenMP 3.1.
+        #pragma omp parallel sections
+        {
+            {
+                for (auto s = begin; s != end; ++s)
+                    if (s->pos()[0] < min[0])
+                        min[0] = s->pos()[0]; }
+            #pragma omp section
+            {
+                for (auto s = begin; s != end; ++s)
+                    if (s->pos()[1] < min[1])
+                        min[1] = s->pos()[1]; }
+            #pragma omp section
+            {
+                for (auto s = begin; s != end; ++s)
+                    if (s->pos()[2] < min[2])
+                        min[2] = s->pos()[2]; }
+            #pragma omp section
+            {
+                for (auto s = begin; s != end; ++s)
+                    if (s->pos()[0] > max[0])
+                        max[0] = s->pos()[0]; }
+            #pragma omp section
+            {
+                for (auto s = begin; s != end; ++s)
+                    if (s->pos()[1] > max[1])
+                        max[1] = s->pos()[1]; }
+            #pragma omp section
+            {
+                for (auto s = begin; s != end; ++s)
+                    if (s->pos()[2] > max[2])
+                        max[2] = s->pos()[2]; }
+        }
+    }
+    return BoundingBox(min, max);
+}
+
+BoundingBox BasicAlgorithms::
+ComputeAABB(const SurfelDiskArray& sa,
+            const size_t buffer_size,
+            const bool parallelize)
+{
+    assert(!sa.is_empty());
+    assert(sa.length() > 0);
+
+    vec3r min = vec3r(std::numeric_limits<real>::max(),
+                      std::numeric_limits<real>::max(),
+                      std::numeric_limits<real>::max());
+    vec3r max = vec3r(std::numeric_limits<real>::lowest(),
+                      std::numeric_limits<real>::lowest(),
+                      std::numeric_limits<real>::lowest());
+
+    const size_t surfels_in_buffer = buffer_size / sizeof(Surfel);
+
+    for (size_t i = 0; i < sa.length(); i += surfels_in_buffer) {
+
+        const size_t offset = sa.offset() + i;
+        const size_t len = (i + surfels_in_buffer > sa.length()) ?
+            sa.length() - i :
+            surfels_in_buffer;
+
+        SurfelVector data(len);
+        sa.file()->Read(&data, 0, offset, len);
+
+        if (!parallelize) {
+
+            for (size_t s = 0; s < len; ++s) {
+                if (data[s].pos()[0] < min[0]) min[0] = data[s].pos()[0];
+                if (data[s].pos()[1] < min[1]) min[1] = data[s].pos()[1];
+                if (data[s].pos()[2] < min[2]) min[2] = data[s].pos()[2];
+                if (data[s].pos()[0] > max[0]) max[0] = data[s].pos()[0];
+                if (data[s].pos()[1] > max[1]) max[1] = data[s].pos()[1];
+                if (data[s].pos()[2] > max[2]) max[2] = data[s].pos()[2];
+            }
+        }
+        else {
+            #pragma omp parallel sections
+            {
+                {
+                    for (size_t s = 0; s < len; ++s)
+                        if (data[s].pos()[0] < min[0])
+                            min[0] = data[s].pos()[0]; }
+                #pragma omp section
+                {
+                    for (size_t s = 0; s < len; ++s)
+                        if (data[s].pos()[1] < min[1])
+                            min[1] = data[s].pos()[1]; }
+                #pragma omp section
+                {
+                    for (size_t s = 0; s < len; ++s)
+                        if (data[s].pos()[2] < min[2])
+                            min[2] = data[s].pos()[2]; }
+                #pragma omp section
+                {
+                    for (size_t s = 0; s < len; ++s)
+                        if (data[s].pos()[0] > max[0])
+                            max[0] = data[s].pos()[0]; }
+                #pragma omp section
+                {
+                    for (size_t s = 0; s < len; ++s)
+                        if (data[s].pos()[1] > max[1])
+                            max[1] = data[s].pos()[1]; }
+                #pragma omp section
+                {
+                    for (size_t s = 0; s < len; ++s)
+                        if (data[s].pos()[2] > max[2])
+                            max[2] = data[s].pos()[2]; }
+            }
+        }
+    }
+    return BoundingBox(min, max);
+}
+
+void BasicAlgorithms::
+TranslateSurfels(SurfelMemArray& sa,
+                 const vec3r& translation)
+{
+    assert(!sa.is_empty());
+    assert(sa.length() > 0);
+
+    const auto begin = sa.mem_data()->begin() + sa.offset();
+    const auto end = sa.mem_data()->begin() + sa.offset() + sa.length();
+
+    for (auto s = begin; s != end; ++s) {
+        s->pos() += translation;
+    }
+}
+
+void BasicAlgorithms::
+TranslateSurfels(SurfelDiskArray& sa,
+                 const vec3r& translation,
+                 const size_t buffer_size)
+{
+    assert(!sa.is_empty());
+    assert(sa.length() > 0);
+
+    const size_t surfels_in_buffer = buffer_size / sizeof(Surfel);
+
+    for (size_t i = 0; i < sa.length(); i += surfels_in_buffer) {
+        const size_t offset = sa.offset() + i;
+        const size_t len = (i + surfels_in_buffer > sa.length()) ?
+            sa.length() - i :
+            surfels_in_buffer;
+
+        SurfelVector data(len);
+        sa.file()->Read(&data, 0, offset, len);
+
+        for (size_t s = 0; s < len; ++s) {
+            data[s].pos() += translation;
+        }
+        sa.file()->Write(&data, 0, offset, len);
+    }
+}
+
+void BasicAlgorithms::
+SortAndSplit(SurfelMemArray& sa,
+             SplittedArray<SurfelMemArray>& out,
+             const BoundingBox& box,
+             const uint8_t split_axis,
+             const uint8_t fan_factor,
+             const bool parallelize)
+{
+    assert(!sa.is_empty());
+    assert(sa.length() > 0);
+
+    if (parallelize) {
+#if WIN32
+      // todo: find platform independent sort
+      Concurrency::parallel_sort(sa.mem_data()->begin() + sa.offset(),
+        sa.mem_data()->begin() + sa.offset() + sa.length(),
+        Surfel::Compare(split_axis));
+#else
+      __gnu_parallel::sort(sa.mem_data()->begin() + sa.offset(),
+        sa.mem_data()->begin() + sa.offset() + sa.length(),
+        Surfel::Compare(split_axis));
+#endif
+    } else {
+      std::sort(sa.mem_data()->begin() + sa.offset(),
+        sa.mem_data()->begin() + sa.offset() + sa.length(),
+        Surfel::Compare(split_axis));
+    }
+
+    SplitSurfelArray<SurfelMemArray>(sa, out, box, split_axis, fan_factor);
+}
+
+void BasicAlgorithms::
+SortAndSplit(SurfelDiskArray& sa,
+             SplittedArray<SurfelDiskArray>& out,
+             const BoundingBox& box,
+             const uint8_t split_axis,
+             const uint8_t fan_factor,
+             const size_t memory_limit)
+{
+    ExternalSort::Sort(sa, memory_limit, Surfel::Compare(split_axis));
+    SplitSurfelArray<SurfelDiskArray>(sa, out, box, split_axis, fan_factor);
+}
+
+template <class T>
+void BasicAlgorithms::
+SplitSurfelArray(T& sa,
+                 SplittedArray<T>& out,
+                 const BoundingBox& box,
+                 const uint8_t split_axis,
+                 const uint8_t fan_factor)
+{
+    using Traits = SurfelArrayTraits<T>;
+    static_assert(Traits::IsIC || Traits::IsOOC, "Wrong type");
+
+    const uint32_t child_size = (int)sa.length() / fan_factor;
+    uint32_t remainder = sa.length() % fan_factor;
+
+    for (uint32_t i = 0; i < fan_factor; ++i) {
+        uint32_t child_first;
+        if (i == 0)
+            child_first = sa.offset();
+        else
+            child_first = out[i-1].first.length()+out[i-1].first.offset();
+
+        uint32_t child_last = child_first+child_size;
+        if (remainder > 0) {
+            ++child_last;
+            --remainder;
+        }
+
+        auto child_array = T(sa, child_first, child_last - child_first);
+        out.push_back(std::make_pair(child_array, BoundingBox()));
+    }
+
+    // compute bounding boxes
+
+    std::vector<real> splits;
+
+    for (size_t i = 0; i < out.size() - 1; ++i) {
+        real p0 = out[i].first.ReadSurfel(out[i].first.length() - 1).pos()[split_axis];
+        real p1 = out[i + 1].first.ReadSurfel(0).pos()[split_axis];
+
+        splits.push_back((p1 - p0) / 2.0 + p0);
+    }
+
+    for (size_t i = 0; i < out.size(); ++i) {
+        vec3r child_max = box.max();
+        vec3r child_min = box.min();
+
+        if (i == 0) {
+            child_max[split_axis] = splits[0];
+        }
+        else if (i == out.size() - 1) {
+            child_min[split_axis] = splits[splits.size() - 1];
+        }
+        else {
+            child_min[split_axis] = splits[i - 1];
+            child_max[split_axis] = splits[i];
+        }
+
+        out[i].second = BoundingBox(child_min, child_max);
+    }
+}
+
+BasicAlgorithms::SurfelGroupProperties BasicAlgorithms::
+ComputeProperties(const SurfelMemArray& sa,
+                  const RepRadiusAlgorithm rep_radius_algo)
+{
+    assert(!sa.is_empty());
+    assert(rep_radius_algo == RepRadiusAlgorithm::ArithmeticMean ||
+           rep_radius_algo == RepRadiusAlgorithm::GeometricMean ||
+           rep_radius_algo == RepRadiusAlgorithm::HarmonicMean);
+
+    SurfelGroupProperties props = {0.0, vec3r(0.0), BoundingBox()};
+
+//    if (rep_radius_algo == RepRadiusAlgorithm::GeometricMean)
+//        props.rep_radius = 1.0;
+
+    size_t counter = 0;
+
+    for (size_t i = 0; i < sa.length(); ++i) {
+        Surfel s = sa.ReadSurfel(i);
+        
+        // TODO: moved here to fix normal-radii computation
+        props.bounding_box.Expand(s.pos(), s.radius());
+
+        if (s.radius() <= 0.0)
+            continue;
+
+        switch (rep_radius_algo) {
+            case RepRadiusAlgorithm::ArithmeticMean: props.rep_radius += s.radius(); break;
+            case RepRadiusAlgorithm::GeometricMean:  props.rep_radius += log(s.radius()); break;
+            case RepRadiusAlgorithm::HarmonicMean:   props.rep_radius += 1.0 / s.radius(); break;
+        }
+
+        props.centroid += s.pos();
+        ++counter;
+    }
+
+    if (counter > 0) {
+
+        switch (rep_radius_algo) {
+            case RepRadiusAlgorithm::ArithmeticMean: props.rep_radius /= static_cast<real>(counter); break;
+            case RepRadiusAlgorithm::GeometricMean:  props.rep_radius = exp(props.rep_radius / static_cast<real>(counter)); break;
+            case RepRadiusAlgorithm::HarmonicMean:   props.rep_radius = static_cast<real>(counter) / props.rep_radius; break;
+        }
+
+        props.centroid /= static_cast<real>(counter);
+
+    }
+
+    return props;
+}
+
+}} // namespace lamure
+

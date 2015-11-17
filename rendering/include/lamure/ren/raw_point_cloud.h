@@ -1,0 +1,68 @@
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#ifndef REN_RAW_POINT_CLOUD_H_
+#define REN_RAW_POINT_CLOUD_H_
+
+#include <vector>
+#include <fstream>
+#include <sstream>
+
+#include <lamure/ren/platform.h>
+#include <lamure/utils.h>
+#include <lamure/types.h>
+
+#include <scm/gl_core/primitives/box.h>
+
+namespace lamure {
+namespace ren {
+
+class RENDERING_DLL RawPointCloud
+{
+
+public:
+
+    struct SerializedSurfel
+    {
+        float x, y, z;
+        uint8_t r, g, b, fake;
+        float size;
+        float nx, ny, nz;
+    };
+
+                        RawPointCloud(const model_t model_id);
+                        RawPointCloud(const RawPointCloud&) = delete;
+                        RawPointCloud& operator=(const RawPointCloud&) = delete;
+    virtual             ~RawPointCloud();
+
+
+    const model_t       model_id() const { return model_id_; };
+    const scm::gl::boxf& aabb() const { return aabb_; };
+    const bool          is_loaded() const { return is_loaded_; };
+    const size_t        num_surfels() const { return data_.size(); };
+
+    const std::vector<SerializedSurfel>& data() const { return data_; };
+
+    const bool          Load(const std::string& filename);
+
+protected:
+
+private:
+    /* data */
+    model_t             model_id_;
+    scm::gl::boxf       aabb_;
+    bool                is_loaded_;
+    std::vector<SerializedSurfel> data_;
+
+
+};
+
+
+} } // namespace lamure
+
+
+#endif // REN_RAW_POINT_CLOUD_H_

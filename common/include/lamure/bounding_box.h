@@ -1,0 +1,113 @@
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#ifndef COMMON_BOUNDING_BOX_H_
+#define COMMON_BOUNDING_BOX_H_
+
+#include <lamure/platform.h>
+#include <lamure/types.h>
+#include <lamure/sphere.h>
+
+namespace lamure
+{
+
+class COMMON_DLL BoundingBox
+{
+public:
+
+    explicit            BoundingBox() : min_(vec3r(1.0)), max_(vec3r(-1.0)) {}
+
+    explicit            BoundingBox(const vec3r& min,
+                                    const vec3r& max)
+                            : min_(min), max_(max) {
+
+                                assert((min_[0] <= max_[0]) && 
+                                       (min_[1] <= max_[1]) && 
+                                       (min_[2] <= max_[2]));
+                            }
+
+    const vec3r         min() const { return min_; }
+    vec3r&              min() { return min_; }
+
+    const vec3r         max() const { return max_; }
+    vec3r&              max() { return max_; }
+
+    const bool          IsInvalid() const { 
+                            return min_.x > max_.x || 
+                                   min_.y > max_.y || 
+                                   min_.z > max_.z; 
+                        }
+
+    const bool          IsValid() const { return !IsInvalid(); }
+
+    const vec3r         GetDimensions() const { 
+                            assert(IsValid());
+                            return max_ - min_;
+                        }
+
+    const vec3r         GetCenter() const { 
+                            assert(IsValid());
+                            return (max_ + min_) / 2.0;
+                        }
+
+    const uint8_t       GetLongestAxis() const;
+    const uint8_t       GetShortestAxis() const;
+
+    const bool          Contains(const vec3r& point) const {
+                            assert(IsValid());
+                            return min_.x <= point.x && point.x <= max_.x &&
+                                   min_.y <= point.y && point.y <= max_.y &&
+                                   min_.z <= point.z && point.z <= max_.z;
+                        }
+
+    const bool          Contains(const BoundingBox& bounding_box) const {
+                            assert(IsValid());
+                            assert(bounding_box.IsValid());
+                            return Contains(bounding_box.min()) &&
+                                   Contains(bounding_box.max());
+                        }
+
+    const bool          Contains(const Sphere& sphere) const {
+                            assert(IsValid());
+                            return Contains(sphere.GetBoundingBox());
+                        }
+
+    const bool          Intersects(const BoundingBox& bounding_box) const {
+                            assert(IsValid());
+                            assert(bounding_box.IsValid());
+                            return !(max_.x < bounding_box.min().x || 
+                                     max_.y < bounding_box.min().y || 
+                                     max_.z < bounding_box.min().z || 
+                                     min_.x > bounding_box.max().x || 
+                                     min_.y > bounding_box.max().y ||
+                                     min_.z > bounding_box.max().z);
+                        }
+
+    void                Expand(const vec3r& point);
+
+    void                Expand(const vec3r& point, const real radius);
+
+    void                Expand(const BoundingBox& bounding_box);
+
+    void                Shrink(const BoundingBox& bounding_box);
+
+    inline bool         operator==(const BoundingBox& rhs) const
+                            { return min_ == rhs.min_ && max_ == rhs.max_; }
+    inline bool         operator!=(const BoundingBox& rhs) const
+                            { return !(operator==(rhs)); }
+
+private:
+
+    vec3r               min_;
+    vec3r               max_;
+
+};
+
+}
+
+#endif // COMMON_BOUNDING_BOX_H_
+
