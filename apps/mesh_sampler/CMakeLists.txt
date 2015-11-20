@@ -11,6 +11,7 @@ project(mesh_sampler)
 
 file(GLOB PROJECT_INCLUDES ${PROJECT_SOURCE_DIR}/*.h)
 file(GLOB PROJECT_SOURCES ${PROJECT_SOURCE_DIR}/*.cpp) 
+
 include_directories(${PROJECT_SOURCE_DIR})
 
 option(LAMURE_ENABLE_MESH_SAMPLER "Enable mesh sampler application."                OFF)

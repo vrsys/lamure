@@ -3,6 +3,8 @@
 
 InitApp(${CMAKE_PROJECT_NAME}_bvh_post_normals_adaptive_per_surfel)
 
+include(find_cgal)
+
 #plod essentials and cgal essentials
 include_directories(${REND_INCLUDE_DIR} ${COMMON_INCLUDE_DIR} ${CGAL_INCLUDE_DIRS} ${GMP_INCLUDE_DIR} ${MPFR_INCLUDE_DIR})
 
