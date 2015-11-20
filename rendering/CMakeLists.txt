@@ -4,17 +4,27 @@
 cmake_minimum_required(VERSION 2.8.7)
 project(${CMAKE_PROJECT_NAME}_rendering)
 
-set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
-set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(PROJECT_INCLUDE_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(PROJECT_SOURCE_DIR RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-file(GLOB PROJECT_SOURCES ${PROJECT_SOURCE_DIR}/*.cpp)
-file(GLOB PROJECT_INCLUDES ${PROJECT_INCLUDE_DIR}/lamure/ren/*.h)
+file(GLOB_RECURSE PROJECT_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE PROJECT_INCLUDES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_INCLUDE_DIR}/*.h)
+
+file(GLOB_RECURSE PROJECT_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE PROJECT_INCLUDES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_INCLUDE_DIR}/lamure/ren/*.h)
+
+SOURCE_GROUP("rendering" FILES ${PROJECT_SOURCES})
+SOURCE_GROUP("rendering" FILES ${PROJECT_INCLUDES})
 
 ############################################################
 # Shaders
 
 file(GLOB SHADERS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.glslv
                   ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.glslf)
+
+SOURCE_GROUP("shaders" FILES ${SHADERS})
+
+
 #add_custom_target(copy_shaders)
 #foreach(SHADER ${SHADERS})
 #    get_filename_component(SHADER_FN ${SHADER} NAME)
@@ -57,10 +67,6 @@ target_link_libraries(${PROJECT_NAME}
     ${BOOST_LIBRARIES}
     ${FREEIMAGE_LIBRARY}
     )
-
-if (MSVC)
-  target_link_libraries(${PROJECT_NAME} optimized ${HIDAPI_LIBRARY} debug ${HIDAPI_LIBRARY_DEBUG} )
-endif(MSVC)
 
 ###############################################################################
 # install 

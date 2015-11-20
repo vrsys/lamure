@@ -8,7 +8,6 @@
 #ifndef COMMON_CONFIG_IN_HPP
 #define COMMON_CONFIG_IN_HPP
 
-//#define LAMURE_INSTALL_DIR "@CMAKE_INSTALL_PREFIX@"
 #define LAMURE_SHADERS_DIR "@CMAKE_INSTALL_PREFIX@/share/lamure/shaders"
 #define LAMURE_FONTS_DIR "@CMAKE_INSTALL_PREFIX@/share/lamure/fonts"
 

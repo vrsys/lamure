@@ -4,8 +4,8 @@
 cmake_minimum_required(VERSION 2.8.7)
 project(${CMAKE_PROJECT_NAME}_preprocessing)
 
-set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
-set(PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
+set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
@@ -14,6 +14,12 @@ file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/*.h)
 # IO
 file(GLOB IO_SRC ${PROJECT_SOURCE_DIR}/io/*.cpp)
 file(GLOB IO_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/io/*.h)
+
+SOURCE_GROUP("preprocessing" FILES ${MAIN_SRC})
+SOURCE_GROUP("preprocessing" FILES ${MAIN_INC})
+
+SOURCE_GROUP("io" FILES ${IO_SRC})
+SOURCE_GROUP("io" FILES ${IO_INC})
 
 set(PROJECT_SOURCES ${MAIN_SRC} ${IO_SRC})
 set(PROJECT_INCLUDES ${MAIN_INC} ${IO_INC})

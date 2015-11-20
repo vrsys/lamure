@@ -6,6 +6,8 @@
 cmake_minimum_required(VERSION 2.8.7)
 project(lamure)
 
+set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE )
+
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING
         "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
@@ -26,6 +28,10 @@ set(GLOBAL_EXT_DIR ${CMAKE_SOURCE_DIR}/externals)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(LAMURE_CONFIG_DIR ${CMAKE_BINARY_DIR})
+
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set (CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/install" CACHE PATH "default install path" FORCE )
+endif()
 
 
 file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
@@ -59,12 +65,9 @@ include(find_boost)
 include_directories(SYSTEM ${BOOST_INCLUDE_DIRS})
 link_directories(${BOOST_LIBRARY_DIRS})
 
-include(find_cgal)
-
 # GLUT
 if (MSVC)
   include(find_freeglut)
-  include(find_hidapi)
   
 elseif (UNIX)
   find_package(GLUT REQUIRED)

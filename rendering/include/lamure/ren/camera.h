@@ -8,9 +8,6 @@
 #ifndef REN_CAMERA_H_
 #define REN_CAMERA_H_
 
-#include <lamure/types.h>
-#include <lamure/ren/space_mouse.h>
-
 #include <scm/gl_util/viewer/camera.h>
 #include <scm/gl_core.h>
 #include <scm/gl_core/primitives/frustum.h>
@@ -20,8 +17,10 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-
 #include <mutex>
+
+#include <lamure/ren/platform.h>
+#include <lamure/types.h>
 #include <lamure/ren/trackball.h>
 
 
@@ -133,8 +132,6 @@ private:
 
     control_type                controlType_;
 
-
-    static SpaceMouse*          sm_;
     static std::mutex           transform_update_mutex_;
 
     bool                        is_in_touch_screen_mode_;

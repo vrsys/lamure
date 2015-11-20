@@ -14,7 +14,6 @@ namespace lamure
 namespace ren
 {
 
-SpaceMouse* Camera::sm_ = nullptr;
 std::mutex  Camera::transform_update_mutex_;
 
 Camera::
