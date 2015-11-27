@@ -594,6 +594,30 @@ void Bvh::GetDescendantLeaves(
     }
 }
 
+void Bvh::GetDescendantNodes(
+     const size_t node,
+     std::vector<size_t>& result,
+     const size_t desired_depth,
+     const std::unordered_set<size_t>& excluded_nodes) const
+{
+    size_t node_depth = std::log((node + 1) * (fan_factor_ - 1)) / std::log(fan_factor_);
+    if (node_depth == desired_depth)
+    {
+        if (excluded_nodes.find(node) == excluded_nodes.end())
+        {
+            result.push_back(node);
+        }
+    }
+    //node is above desired depth
+    else
+    {
+        for (uint16_t i = 0; i < fan_factor_; ++i)
+        {
+            GetDescendantNodes(GetChildId(node, i), result, desired_depth, excluded_nodes);
+        }
+    }
+}
+
 std::vector<std::pair<Surfel, real>> Bvh::
 GetNearestNeighbours(
     const size_t node,
@@ -617,7 +641,7 @@ GetNearestNeighbours(
     {
         if (i != surfel)
         {
-            Surfel current_surfel = nodes_[current_node].mem_array().ReadSurfel(i);
+            Surfel const& current_surfel = nodes_[current_node].mem_array().ReadSurfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -658,7 +682,7 @@ GetNearestNeighbours(
 
         std::vector<size_t> unvisited_descendant_leaves;
 
-        GetDescendantLeaves(current_node, unvisited_descendant_leaves, first_leaf, processed_leaves);
+        GetDescendantNodes(current_node, unvisited_descendant_leaves, depth_, processed_leaves);
 
         for (auto leaf : unvisited_descendant_leaves)
         {

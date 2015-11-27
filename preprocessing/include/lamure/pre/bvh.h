@@ -157,6 +157,11 @@ private:
                             std::vector<size_t>& result,
                             const size_t first_leaf,
                             const std::unordered_set<size_t>& excluded_leaves) const;
+    void                GetDescendantNodes(
+                            const size_t node,
+                            std::vector<size_t>& result,
+                            const size_t desired_depth,
+                            const std::unordered_set<size_t>& excluded_nodes) const;
 
     void                UpsweepR(
                             BvhNode& node,
