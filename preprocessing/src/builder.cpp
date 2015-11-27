@@ -20,6 +20,7 @@
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
+#include <lamure/pre/reduction_random.h>
 
 #include <cstdio>
 
@@ -100,6 +101,9 @@ Construct()
         case ReductionAlgorithm::EverySecond:
             reduction_strategy = new ReductionEverySecond();
             break;
+         case ReductionAlgorithm::Random:
+            reduction_strategy = new ReductionRandom();
+            break;          
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return false;
