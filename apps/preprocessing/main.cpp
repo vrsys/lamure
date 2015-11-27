@@ -104,7 +104,8 @@ int main(int argc, const char *argv[])
          "Reduction strategy for the LOD construction. Possible values:\n"
          "  ndc - normal deviation clustering (NDC)\n"
          "  const - NDC with constant radius\n"
-         "  everysecond - take every fanout-factor's surfel")
+         "  everysecond - take every fanout-factor's surfel\n"
+         "  random - randomly select points with possible duplicates")
  
         ("rep-radius-algo",
          po::value<std::string>()->default_value("gmean"),
@@ -238,6 +239,8 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::ReductionAlgorithm::Constant;
         else if (reduction_algo == "everysecond")
             desc.reduction_algo        = lamure::pre::ReductionAlgorithm::EverySecond;
+        else if (reduction_algo == "random") 
+            desc.reduction_algo        = lamure::pre::ReductionAlgorithm::Random;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;

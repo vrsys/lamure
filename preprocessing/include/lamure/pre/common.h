@@ -21,7 +21,8 @@ enum class RepRadiusAlgorithm {
 enum class ReductionAlgorithm {
     NDC            = 0,
     Constant       = 1,
-    EverySecond    = 2
+    EverySecond    = 2,
+    Random         = 3
 };
 
 }}
