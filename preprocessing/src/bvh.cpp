@@ -768,6 +768,42 @@ Upsweep(const ReductionStrategy& reduction_strategy)
 }
 
 void Bvh::
+UpsweepR(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy)
+{
+    // Start at bottom level and move up towards root.
+    for (uint32_t level = depth_; level >= 0; --level)
+    {
+        // Iterate over nodes of current tree level.
+        for (std::vector<BvhNode>::iterator node_iter = nodes_.begin(); node_iter != nodes_.end(); ++node_iter)
+        {
+            if (node_iter->depth() == level)
+            {
+                // If a node has no data yet, calculate it based on child nodes.
+                if (!node_iter->IsIC() && !node_iter->IsOOC())
+                {
+                    std::vector<SurfelMemArray*> child_mem_data;
+                    for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
+                    {
+                        child_id = this->GetChildId(node_iter->node_id(), child_index);
+                        
+                        for (std::vector<BvhNode>::iterator child_iter = nodes_.begin(); child_iter != nodes_.end(); ++child_iter)
+                        {
+                            if (child_iter->node_id() == child_id)
+                            {
+                                child_mem_data.push_back(&child_iter->mem_array());
+                                child_iter = nodes_end();
+                            }
+                        }
+                    }
+                
+                    node_iter->Reset(reduction_strategy.CreateLod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
+                }
+            }
+        }
+    }
+}
+
+void Bvh::
 UpsweepR(BvhNode& node,
          const ReductionStrategy& reduction_strategy,
          std::vector<SharedFile>& level_temp_files,

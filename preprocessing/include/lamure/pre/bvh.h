@@ -85,7 +85,7 @@ public:
                                   bool bin_all_file_extension = false);
     void                ComputeNormalsAndRadii(const uint16_t number_of_neighbours);
     void                Upsweep(const ReductionStrategy& reduction_strategy);
-
+    void                UpsweepR(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy);
 
     void                SerializeTreeToFile(const std::string& output_file,
                                             bool write_intermediate_data);
