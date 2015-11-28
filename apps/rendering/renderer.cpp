@@ -77,7 +77,6 @@ Renderer::
     pass2_accumulation_shader_program_.reset();
     pass3_pass_trough_shader_program_.reset();
 
-
     bounding_box_vis_shader_program_.reset();
 
     pass1_depth_buffer_.reset();
@@ -148,8 +147,6 @@ void Renderer::UploadUniforms(lamure::ren::Camera const& camera) const
     pass_filling_program_->uniform("renderMode", render_mode_);
 
 
-
-
     context_->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, .0f, 1.0f)); // how does the image look, if nothing is drawn
     context_->clear_default_depth_stencil_buffer();
 
@@ -157,7 +154,7 @@ void Renderer::UploadUniforms(lamure::ren::Camera const& camera) const
 }
 
 void Renderer::
-UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const
+UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t const model_id, RenderPass const pass) const
 {
     using namespace lamure::ren;
 
@@ -184,46 +181,40 @@ UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t 
 
     float rad_scale_fac = radius_scale_ * rad_scale_fac_[model_id];
 
-    if(pass_id == 1)
-    {
-        pass1_visibility_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd) );
-        pass1_visibility_shader_program_->uniform("model_view_matrix", model_view_matrix);
-        pass1_visibility_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
-        pass1_visibility_shader_program_->uniform("rad_scale_fac", rad_scale_fac);
-    }
-    else if(pass_id == 2)
-    {
-        pass2_accumulation_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
-        pass2_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
-        pass2_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
-        pass2_accumulation_shader_program_->uniform("rad_scale_fac", rad_scale_fac);
-    }
-    else if(pass_id == 5)
-    {
-        bounding_box_vis_shader_program_->uniform("projection_matrix", projection_matrix);
-        bounding_box_vis_shader_program_->uniform("model_view_matrix", model_view_matrix );
-    }
-    else if(pass_id == 99)
-    {
-        alt_pass1_accumulation_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
-        alt_pass1_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
-        alt_pass1_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
-        alt_pass1_accumulation_shader_program_->uniform("rad_scale_fac", rad_scale_fac);
-    }
-#ifdef LAMURE_ENABLE_LINE_VISUALIZATION
-    else if (pass_id == 1111) {
-        line_shader_program_->uniform("projection_matrix", projection_matrix);
-        line_shader_program_->uniform("view_matrix", view_matrix );
-    }
-#endif
-    else
-    {
-        std::cout<<"Shader does not need model_view_transformation\n\n";
-    }
+    switch(pass) {
+        case RenderPass::DEPTH:
+            pass1_visibility_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd) );
+            pass1_visibility_shader_program_->uniform("model_view_matrix", model_view_matrix);
+            pass1_visibility_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
+            pass1_visibility_shader_program_->uniform("rad_scale_fac", rad_scale_fac);
+            break;
 
+        case RenderPass::ACCUMULATION:
+            pass2_accumulation_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
+            pass2_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
+            pass2_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
+            pass2_accumulation_shader_program_->uniform("rad_scale_fac", rad_scale_fac);
+            break;            
+
+        case RenderPass::BOUNDING_BOX:
+            bounding_box_vis_shader_program_->uniform("projection_matrix", projection_matrix);
+            bounding_box_vis_shader_program_->uniform("model_view_matrix", model_view_matrix );
+            break;
+
+#ifdef LAMURE_ENABLE_LINE_VISUALIZATION
+        case RenderPass::LINE:
+            line_shader_program_->uniform("projection_matrix", projection_matrix);
+            line_shader_program_->uniform("view_matrix", view_matrix );
+            break;
+#endif
+        default:
+            //LOGGER_ERROR("Unknown Pass ID used in function 'UploadTransformationMatrices'");
+            std::cout << "Unknown Pass ID used in function 'UploadTransformationMatrices'\n";
+            break;
+
+    }
 
     context_->apply();
-
 }
 
 
@@ -340,7 +331,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
 
 
-                        UploadTransformationMatrices(camera, model_id, 1);
+                        UploadTransformationMatrices(camera, model_id, RenderPass::DEPTH);
 
                         scm::gl::frustum frustum_by_model = camera.GetFrustumByModel(model_transformations_[model_id]);
 
@@ -440,7 +431,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         //store culling result and push it back for second pass#
 
 
-                        UploadTransformationMatrices(camera, model_id, 2);
+                        UploadTransformationMatrices(camera, model_id, RenderPass::ACCUMULATION);
 
                         unsigned int leaf_level_start_index = bvh->GetFirstNodeIdOfDepth(bvh->depth());
 
@@ -562,7 +553,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
 
 
-                        UploadTransformationMatrices(camera, model_id, 5);
+                        UploadTransformationMatrices(camera, model_id, RenderPass::BOUNDING_BOX);
 
                         for(std::vector<Cut::NodeSlotAggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
                         {
@@ -628,7 +619,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
     device_->main_context()->unmap_buffer(line_buffer_);
 
-    UploadTransformationMatrices(camera, 0, 1111);
+    UploadTransformationMatrices(camera, 0, LINE);
     device_->opengl_api().glDisable(GL_DEPTH_TEST);
 
     context_->set_default_frame_buffer();
@@ -786,12 +777,14 @@ InitializeSchismDeviceAndShaders(int resX, int resY)
     std::string root_path = LAMURE_SHADERS_DIR;
 
     std::string visibility_vs_source;
+    std::string visibility_gs_source;
     std::string visibility_fs_source;
 
     std::string pass_trough_vs_source;
     std::string pass_trough_fs_source;
 
     std::string accumulation_vs_source;
+    std::string accumulation_gs_source;
     std::string accumulation_fs_source;
 
     std::string filling_vs_source;
@@ -809,8 +802,10 @@ InitializeSchismDeviceAndShaders(int resX, int resY)
         using scm::io::read_text_file;
 
         if (!read_text_file(root_path +  "/pass1_visibility_pass.glslv", visibility_vs_source)
+            || !read_text_file(root_path + "/pass1_visibility_pass.glslg", visibility_gs_source)
             || !read_text_file(root_path + "/pass1_visibility_pass.glslf", visibility_fs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslv", accumulation_vs_source)
+            || !read_text_file(root_path + "/pass2_accumulation_pass.glslg", accumulation_gs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslf", accumulation_fs_source)
             || !read_text_file(root_path + "/pass3_pass_trough.glslv", pass_trough_vs_source)
             || !read_text_file(root_path + "/pass3_pass_trough.glslf", pass_trough_fs_source)
@@ -841,11 +836,18 @@ InitializeSchismDeviceAndShaders(int resX, int resY)
 
     scm::out() << *device_ << scm::log::end;
 
-    pass1_visibility_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
-                                                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+    //using namespace boost::assign;
+    pass1_visibility_shader_program_ = device_->create_program(
+                                                  boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
+                                                                        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))
+                                                                        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
+                                                              );
 
-    pass2_accumulation_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, accumulation_vs_source))
-                                                                 (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source)));
+    pass2_accumulation_shader_program_ = device_->create_program(
+                                                    boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, accumulation_vs_source))
+                                                                          (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
+                                                                          (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
+                                                                );
 
     pass3_pass_trough_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pass_trough_vs_source))
                                                                 (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pass_trough_fs_source)));

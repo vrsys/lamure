@@ -58,6 +58,13 @@
 //#define LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
 
 
+enum class RenderPass {
+    DEPTH              = 0,
+    ACCUMULATION       = 1,
+    NORMALIZATION      = 2,
+    BOUNDING_BOX       = 99,
+    LINE               = 1111  
+};
 
 class Renderer
 {
@@ -88,7 +95,7 @@ protected:
     void                UpdateFrustumDependentParameters(lamure::ren::Camera const& camera);
 
     void                UploadUniforms(lamure::ren::Camera const& camera) const;
-    void                UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const;
+    void                UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
     void                SwapTempBuffers();
     void                DisplayStatus();
 

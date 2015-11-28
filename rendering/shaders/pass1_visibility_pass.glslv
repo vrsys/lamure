@@ -23,7 +23,6 @@ uniform float point_size_factor;
 
 uniform float rad_scale_fac;
 
-uniform bool is_leaf;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 5) in float in_radius;
@@ -38,7 +37,6 @@ out VertexData {
 
 
 void main() {
-
   vec3 ms_n = normalize(in_normal.xyz);
   vec3 ms_u;
 
@@ -48,59 +46,15 @@ void main() {
   } else if (ms_n.y != 0.0) {
     ms_u = vec3( 1, (-ms_n.x -ms_n.z)/ms_n.y, 1);
   } else {
-    ms_u = vec3( (-ms_n.y -my_n.z)/ms_n.x, 1, 1);
+    ms_u = vec3( (-ms_n.y -ms_n.z)/ms_n.x, 1, 1);
   }
 
 
   //**assign tangent vectors**//
-  VertexOut.pass_ms_u = normalize(ms_u) * radius_scaling * in_radius;
-  VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * radius_scaling * in_radius;
+  VertexOut.pass_ms_u = normalize(ms_u) * rad_scale_fac * in_radius;
+  VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * rad_scale_fac * in_radius;
 
-  VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0).xyz);
+  VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz);
 
   gl_Position = vec4(in_position, 1.0);
 }
-
-
-/*
-void main()
-{
-
-  if(in_radius == 0.0)
-  {
-   gl_Position = vec4(2.0,2.0,2.0,1.0);
-  }
-	else
-  {
-
-    float scaled_radius = rad_scale_fac * in_radius;
-
-	  {
-
-		vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
-
-		float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z) * height_divided_by_top_minus_bottom;
-
-
-		if(false)
-		{
-			gl_Position = vec4(2.0,2.0,2.0,1.0);
-		}
-		else
-		{
-	      		gl_Position = mvp_matrix * vec4(in_position, 1.0);
-		}
-
-
-
-		  VertexOut.nor = (inv_mv_matrix * vec4(in_normal,0.0f)) .xyz;
-
-		  gl_PointSize = ps;
-
-		  VertexOut.rad = (scaled_radius) * point_size_factor;
-
-		  VertexOut.mv_vertex_depth = pos_es.z;
-	  }
-	 }
-
-}*/

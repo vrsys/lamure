@@ -7,168 +7,33 @@
 
 #version 420 core
 
+layout(early_fragment_tests) in;
+
+const float gaussian[32] = float[](
+  1.000000, 1.000000, 0.988235, 0.968627, 0.956862, 0.917647, 0.894117, 0.870588, 0.915686, 0.788235,
+  0.749020, 0.690196, 0.654902, 0.619608, 0.552941, 0.513725, 0.490196, 0.458824, 0.392157, 0.356863,
+  0.341176, 0.278431, 0.254902, 0.227451, 0.188235, 0.164706, 0.152941, 0.125490, 0.109804, 0.098039,
+  0.074510, 0.062745
+);
+
 in VertexData {
-	vec3 color;
-	vec4 nor;
-  	float rad;
-	float pointSize;
-	float mv_vertex_depth;
+  //output to fragment shader
+  vec3 pass_point_color;
+  vec3 pass_normal;
+  vec2 pass_uv_coords;
 } VertexIn;
-
-layout(binding  = 0) uniform sampler2D depth_texture_pass1;
-layout(binding  = 1) uniform sampler2D pointsprite_texture;
-
-uniform vec2 win_size;
-uniform float max_deform_ratio;
-
-
-uniform bool ellipsify;
-uniform bool clamped_normal_mode;
-
-
-uniform float near_plane;
-uniform float far_minus_near_plane;
-
-uniform float rad_scale_fac;
-
-//uniform bool is_leaf;
 
 layout(location = 0) out vec4 accumulated_colors;
 
+void main() {
+  vec2 uv_coords = VertexIn.pass_uv_coords;
 
+  if ( dot(uv_coords, uv_coords)> 1 )
+    discard;
 
-#define NORMAL_Z_OFFSET 0.00000001f
+  float weight = gaussian[int(round(length(uv_coords) * 31.0 ))];
 
-
-float calc_depth_offset(vec2 mappedPointCoord, vec3 adjustedNormal)
-{
-
-
-
-
-
-    float xzRatio = (adjustedNormal.x/adjustedNormal.z);
-    float yzRatio = (adjustedNormal.y/adjustedNormal.z);
-
-if(clamped_normal_mode)
-{
-	float zBound = max_deform_ratio;
-	float normalZ = adjustedNormal.z;
-
-	if(normalZ > 0.0)
-		normalZ = max(zBound, normalZ);
-	else
-		normalZ = -max(zBound, -normalZ);
-
-	xzRatio = (adjustedNormal.x/normalZ);
-	yzRatio = (adjustedNormal.y/normalZ);
+  accumulated_colors = vec4(VertexIn.pass_point_color * weight, weight);
 }
 
-
-	return -(xzRatio)* mappedPointCoord.x   - (yzRatio * mappedPointCoord.y);
-}
-
-
-float get_gaussianValue(float depth_offset, vec2 mappedPointCoord, vec3 newNormalVec)
-{
-    float radius;
-    if(ellipsify)
-    	radius = sqrt(mappedPointCoord.x*mappedPointCoord.x + mappedPointCoord.y*mappedPointCoord.y + depth_offset*depth_offset);
-    else
-    	radius = sqrt(mappedPointCoord.x*mappedPointCoord.x + mappedPointCoord.y*mappedPointCoord.y) ;
-
-    vec3 gauss = texture(pointsprite_texture, vec2(radius,1.0f)).rgb;
-
-
-    if(radius >= 1.0f )
-	discard;
-    else
-	return gauss.r;
-
-}
-
-
-void main()
-{
-
-   vec3 adjustedNormal = vec3(0.0,0.0,0.0);
-   if(VertexIn.nor.z < 0)
-   {
-	//discard;
-	adjustedNormal = VertexIn.nor.xyz * -1;
-   }
-   else
-   {
-        adjustedNormal = VertexIn.nor.xyz;
-   }
-
-   vec2 mappedPointCoord = gl_PointCoord*2 + vec2(-1.0f, -1.0f);
-
-   float depth_offset = calc_depth_offset(mappedPointCoord, adjustedNormal);
-
-   float weight = get_gaussianValue(depth_offset, mappedPointCoord, adjustedNormal) / (VertexIn.rad*VertexIn.rad) ;
-
-
-   float depthValue =  texture2D(depth_texture_pass1, gl_FragCoord.xy/win_size.xy).r;
-
-
-   float depth_to_compare;
-
-
-if(ellipsify)
-   depth_to_compare = VertexIn.mv_vertex_depth + depth_offset*VertexIn.rad;
-else
-   depth_to_compare = VertexIn.mv_vertex_depth;
-
-
- depthValue = (-depthValue * 1.0 * far_minus_near_plane) + near_plane;
-
-
-   if( depthValue  - (depth_to_compare)    < 0.00031  + 3.0*(VertexIn.rad * (1/rad_scale_fac) ) )
-   {
-
-	/*
-	float colorCoding = 1.0f;
-
-
-	if(depthValue != 0.0)
-	{
-		colorCoding = -depthValue /50.0f;
-		colorCoding = 1.0 - colorCoding;
-	}
-
-	colorCoding *= 0.3;
-	accumulated_colors = vec4(colorCoding * weight, colorCoding * weight, colorCoding * weight, weight);
-*/
-	accumulated_colors = vec4(VertexIn.color * weight, weight);
-        //accumulated_colors = vec4((adjustedNormal + vec3(1.0))*0.5*weight, weight);
-
-   }
-   else
-  	discard;
-
-
-//comment this in and the above line out for depth buffer visualization (first pass)
-
-
-/*
-if(depthValue == 0.0)
-	accumulated_colors = vec4(1.0f,0.0,0.0,1.0f);
-else
-	accumulated_colors = vec4(depthValue,depthValue,depthValue,1.0f);
-
-*/
-/*
-
-	if(is_leaf)
-	{
-		accumulated_colors = vec4(0.0,1.0 * weight,0.0, weight);
-	}
-	else
-	{
-		accumulated_colors = vec4(1.0 * weight,0.0,0.0, weight);
-	}
-*/
-
-}
 
