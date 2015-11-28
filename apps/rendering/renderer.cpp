@@ -8,6 +8,7 @@
 #include "renderer.h"
 
 #include <ctime>
+#include <chrono>
 
 #include <lamure/config.h>
 
@@ -26,15 +27,13 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
          const std::set<lamure::model_t>& invisible_set)
     : near_plane_(0.f),
       far_plane_(1000.0f),
+      elapsed_ms_since_cut_update_(0),
       visible_set_(visible_set),
       invisible_set_(invisible_set),
       render_visible_set_(true),
       point_size_factor_(1.0f),
       render_mode_(0),
-      ellipsify_(true),
       render_bounding_boxes_(false),
-      clamped_normal_mode_(true),
-      max_deform_ratio_(0.35f),
       fps_(0.0),
       rendered_splats_(0),
       uploaded_nodes_(0),
@@ -187,7 +186,7 @@ upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_
 
 
 void Renderer::
-render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO)
+render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO, const unsigned current_camera_session)
 {
     using namespace lamure;
     using namespace lamure::ren;
@@ -276,11 +275,6 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                     context_->bind_vertex_array(render_VAO);
                     context_->apply();
 
-
-                    pass1_visibility_shader_program_->uniform("minSurfelSize", 1.0f);
-                    pass1_visibility_shader_program_->uniform("QuantFactor", 1.0f);
-                    context_->apply();
-
                     node_t node_counter = 0;
 
                     for (auto& model_id : current_set) {
@@ -360,16 +354,9 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                     context_->bind_vertex_array(render_VAO);
                     context_->apply();
 
-
-                    pass2_accumulation_shader_program_->uniform("minSurfelSize", 1.0f);
-                    pass2_accumulation_shader_program_->uniform("QuantFactor", 1.0f);
-                    context_->apply();
-
-
                    node_t node_counter = 0;
 
                    node_t actually_rendered_nodes = 0;
-
 
 
                     for (auto& model_id : current_set) {
@@ -579,7 +566,7 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 #endif
 
     if(display_info_)
-      display_status();
+      display_status(current_camera_session);
 
       context_->reset();
 
@@ -606,7 +593,7 @@ void Renderer::send_model_transform(const lamure::model_t model_id, const scm::m
     model_transformations_[model_id] = transform;
 }
 
-void Renderer::display_status()
+void Renderer::display_status(unsigned const current_camera_session)
 {
 
 
@@ -615,6 +602,9 @@ void Renderer::display_status()
     os
       <<"FPS:   "<<std::setprecision(4)<<fps_<<"\n"
       <<"# Points:   "<< (rendered_splats_ / 100000) / 10.0f<< " Mio. \n";
+      
+    os << "Recording Camera Session\n";
+    
     renderable_text_->text_string(os.str());
     text_renderer_->draw_shadowed(context_, scm::math::vec2i(20, win_y_- 40), renderable_text_);
 
@@ -977,14 +967,10 @@ take_screenshot() {
     {
 
         {
-
-
             if(! boost::filesystem::exists("./"+scenename_+"/")) {
                std::cout<<"Creating Folder.\n\n";
                boost::filesystem::create_directories("./"+scenename_+"/");
             }
-
-
         }
 
         std::string filename;
@@ -1012,5 +998,4 @@ take_screenshot() {
         ++Renderer::current_screenshot_num_;
 
     }
-
 }

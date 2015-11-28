@@ -32,7 +32,8 @@ public:
                         Management(std::vector<std::string> const& model_filenames,
                             std::vector<scm::math::mat4f> const& model_transformations,
                             const std::set<lamure::model_t>& visible_set,
-                            const std::set<lamure::model_t>& invisible_set);
+                            const std::set<lamure::model_t>& invisible_set,
+                            const bool allow_user_input = true);
     virtual             ~Management();
 
                         Management(const Management&) = delete;
@@ -54,8 +55,16 @@ public:
 protected:
 
     void                ToggleDispatching();
+    void                toggle_camera_session();
+    void                record_next_camera_position();
+    void                create_quality_measurement_resources();
 
 private:
+
+    bool const          allow_user_input_;
+    bool                camera_recording_enabled_;
+    std::string         current_session_file_path_;
+    unsigned            num_recorded_camera_positions_;
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
     SplitScreenRenderer* renderer_;
@@ -90,7 +99,7 @@ private:
     scm::math::mat4f    reset_matrix_;
     float               reset_diameter_;
 
-    lamure::model_t        num_models_;
+    lamure::model_t     num_models_;
 
     scm::math::vec3f    detail_translation_;
     float               detail_angle_;

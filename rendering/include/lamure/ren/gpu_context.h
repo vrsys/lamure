@@ -47,7 +47,7 @@ public:
 
     void MapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::render_device_ptr device);
     void UnmapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::render_device_ptr device);
-    void UpdatePrimaryBuffer(const CutDatabaseRecord::TemporaryBuffer& from_buffer, scm::gl::render_device_ptr device);
+    bool UpdatePrimaryBuffer(const CutDatabaseRecord::TemporaryBuffer& from_buffer, scm::gl::render_device_ptr device);
 
     void Create(scm::gl::render_device_ptr device);
 

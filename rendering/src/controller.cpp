@@ -7,6 +7,8 @@
 
 #include <lamure/ren/controller.h>
 
+#include <chrono>
+
 namespace lamure
 {
 
@@ -20,8 +22,9 @@ Controller* Controller::single_ = nullptr;
 Controller::
 Controller()
 : num_contexts_registered_(0),
-  num_models_registered_(0) {
-
+  num_models_registered_(0),
+  ms_since_last_node_upload_(0),
+  latest_timestamp_(std::chrono::system_clock::now()) {
 }
 
 Controller::
@@ -286,7 +289,12 @@ Dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
 
             GpuContext* ctx = gpu_context_it->second;
             ctx->UnmapTempStorage(current, device);
-            ctx->UpdatePrimaryBuffer(current, device);
+
+
+            if( ctx->UpdatePrimaryBuffer(current, device) ) {
+                ms_since_last_node_upload_ = 0;
+            }
+
             cuts->SignalUploadComplete(context_id);
             ctx->MapTempStorage(current, device);
 
@@ -304,6 +312,13 @@ Dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
 
         cut_update_pools_[context_id] = new CutUpdatePool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
         Dispatch(context_id, device);
+    }
+
+    {
+        auto const& current_time_stamp = std::chrono::system_clock::now();
+        ms_since_last_node_upload_ +=
+        ( std::chrono::duration_cast<std::chrono::duration<int,std::milli>>(current_time_stamp-latest_timestamp_).count() );
+          latest_timestamp_ = current_time_stamp;
     }
 
 }

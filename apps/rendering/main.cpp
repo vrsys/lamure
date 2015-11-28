@@ -11,6 +11,7 @@
 #include <memory>
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <algorithm>
 
@@ -42,6 +43,29 @@ void glut_keyboard_release(unsigned char key, int x, int y);
 void glut_timer(int value);
 void glut_close();
 
+std::vector<scm::math::mat4d> const parse_camera_session_file( std::string const& session_file_path ) {
+
+    std::ifstream camera_session_file(session_file_path);
+
+    std::string view_matrix_as_string;
+
+    std::vector<scm::math::mat4d> read_view_matrices;
+
+    while( std::getline(camera_session_file, view_matrix_as_string) ) {
+        scm::math::mat4d curr_view_matrix;
+        std::istringstream view_matrix_as_strstream(view_matrix_as_string);
+
+        for(int matrix_element_idx = 0; 
+                matrix_element_idx < 16; 
+                ++matrix_element_idx) {
+            view_matrix_as_strstream >> curr_view_matrix[matrix_element_idx];
+        }
+
+        read_view_matrices.push_back(curr_view_matrix);
+    }
+
+    return read_view_matrices;
+}
 
 void InitializeGlut(int argc, char** argv, uint32_t width, uint32_t height)
 {
@@ -104,6 +128,7 @@ int main(int argc, char** argv)
     unsigned int max_upload_budget;
     float error_threshold;
     std::string resource_file = "auto_generated.rsc";
+    std::string measurement_file = "";
 
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
@@ -111,10 +136,11 @@ int main(int argc, char** argv)
       ("help", "print help message")
       ("width,w", po::value<int>(&window_width)->default_value(1920), "specify window width (default=1920)")
       ("height,h", po::value<int>(&window_height)->default_value(1080), "specify window height (default=1080)")
-      ("input,f", po::value<std::string>(&resource_file), "specify input file")
+      ("resource-file,f", po::value<std::string>(&resource_file), "specify resource input-file")
       ("vram,v", po::value<unsigned>(&video_memory_budget)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(258), "specify maximum video memory upload budget per frame in MB (default=258)")
+      ("measurement-file", po::value<std::string>(&measurement_file)->default_value(""), "specify camera session for quality measurement_file (default = \"\")");
       ;
 
     po::positional_options_description p;
@@ -181,7 +207,9 @@ int main(int argc, char** argv)
     lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
     database->set_window_width(window_width);
     database->set_window_height(window_height);
-    management_ = new Management(model_filenames, model_transformations, visible_set, invisible_set);
+
+
+    management_ = new Management(model_filenames, model_transformations, visible_set, invisible_set, measurement_file.empty() );
 
     glutMainLoop();
 
@@ -212,8 +240,6 @@ int main(int argc, char** argv)
         std::cout << "deleted ooc cache" << std::endl;
 #endif
     }
-
-
 
     return 0;
 }

@@ -9,13 +9,20 @@
 #include "management.h"
 #include <set>
 #include <ctime>
+#include <algorithm>
+#include <fstream>
 
 Management::
 Management(std::vector<std::string> const& model_filenames,
     std::vector<scm::math::mat4f> const& model_transformations,
     const std::set<lamure::model_t>& visible_set,
-    const std::set<lamure::model_t>& invisible_set)
-    :   renderer_(nullptr),
+    const std::set<lamure::model_t>& invisible_set,
+    const bool allow_user_input)
+    :   allow_user_input_(allow_user_input),
+        camera_recording_enabled_(false),
+        current_session_file_path_(""),
+        num_recorded_camera_positions_(0),
+        renderer_(nullptr),
         model_filenames_(model_filenames),
         model_transformations_(model_transformations),
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
@@ -151,13 +158,17 @@ MainLoop()
     
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()));
-    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
+    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
 #else
     renderer_->set_radius_scale(importance_);
-    renderer_->render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
  
 #endif
+
+    if ( controller->ms_since_last_node_upload ) {
+        //
+    }
 
     if (dispatch_ || trigger_one_update_)
     {
@@ -238,6 +249,10 @@ UpdateTrackball(int x, int y)
 void Management::
 RegisterMousePresses(int button, int state, int x, int y)
 {
+    if(! allow_user_input_) {
+        return;
+    }
+
     switch (button) {
         case GLUT_LEFT_BUTTON:
             {
@@ -266,6 +281,10 @@ RegisterMousePresses(int button, int state, int x, int y)
 void Management::
 DispatchKeyboardInput(unsigned char key)
 {
+
+    if(! allow_user_input_) {
+        return;
+    }
 
     bool override_center_of_rotation = false;
 
@@ -560,6 +579,14 @@ DispatchKeyboardInput(unsigned char key)
 
 #endif
 
+    case 'r':
+    case 'R':
+        toggle_camera_session();
+        break;
+
+    case 'a':
+        record_next_camera_position();
+        break;
 
     case '0':
         active_camera_->SetTrackballMatrix(scm::math::mat4d(reset_matrix_));
@@ -577,7 +604,6 @@ DispatchKeyboardInput(unsigned char key)
         IncreaseErrorThreshold();
         std::cout << "error threshold: " << error_threshold_ << std::endl;
         break;
-
     }
 }
 
@@ -674,7 +700,46 @@ PrintInfo()
 
 }
 
+void Management::
+toggle_camera_session() {
+    camera_recording_enabled_ = !camera_recording_enabled_;
+}
+
+void Management::
+record_next_camera_position() {
+    if (camera_recording_enabled_) {
+        create_quality_measurement_resources();
+    }
+}
+
+void Management::
+create_quality_measurement_resources() {
+
+    std::string base_quality_measurement_path = "../quality_measurement/";
+    std::string session_file_prefix = "session_";
+
+    if(! boost::filesystem::exists(base_quality_measurement_path)) {
+        std::cout<<"Creating Folder.\n\n";
+        boost::filesystem::create_directories(base_quality_measurement_path);
+    }
+
+    if( current_session_file_path_.empty() ) {
+
+        boost::filesystem::directory_iterator begin(base_quality_measurement_path), end;
+        
+        int num_existing_sessions = std::count_if(begin, end,
+            [](const boost::filesystem::directory_entry & d) {
+                return !boost::filesystem::is_directory(d.path());
+            });
+
+        current_session_file_path_ = base_quality_measurement_path+session_file_prefix+std::to_string(num_existing_sessions+1)+".csn";
+        
+
+    }
+
+    std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);
+    active_camera_->WriteViewMatrix(camera_session_file);
+    camera_session_file.close();
 
 
-
-
+}

@@ -78,7 +78,7 @@ public:
     //void                UnmapTempBuffer(CutDatabaseRecord::TemporaryBuffer const&  buffer);
     //void                CopyTempToMainMemory(context_t context_id, CutDatabaseRecord::TemporaryBuffer const& buffer);
 
-    void                render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO);
+    void                render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO, const unsigned current_camera_session);
 
     void                reset_viewport(int const x, int const y);
 
@@ -97,7 +97,7 @@ protected:
     void                upload_uniforms(lamure::ren::Camera const& camera) const;
     void                upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
     void                swap_temp_buffers();
-    void                display_status();
+    void                display_status(unsigned const current_camera_session);
 
     void                calc_rad_scale_factors();
 private:
@@ -145,20 +145,13 @@ private:
         float                                       height_divided_by_top_minus_bottom_;  //frustum dependent
         float                                       near_plane_;                          //frustum dependent
         float                                       far_plane_;   
-        float                                       far_minus_near_plane_;
         float                                       point_size_factor_;
 
 
         //render setting state variables
 
-        int                                         render_mode_;           //enable/disable filled holes visualization
-        bool                                        ellipsify_;             //true = elliptical, false = round
-
+        int                                         render_mode_;           //enable/disable filled holes Visualization
         bool                                        render_bounding_boxes_;
-
-        bool                                        clamped_normal_mode_;   //true = clamp max ratio for of normals to max_deform_ratio_
-        float                                       max_deform_ratio_;
-
 
         //variables related to text rendering
         scm::gl::text_renderer_ptr                              text_renderer_;
@@ -168,16 +161,18 @@ private:
         unsigned long long                                      rendered_splats_;
         unsigned long long                                      uploaded_nodes_;
         bool                                                    is_cut_update_active_;
-        lamure::view_t                                                  current_cam_id_;
+        lamure::view_t                                          current_cam_id_;
 
 
-         bool                                                    display_info_;
+        bool                                                    display_info_;
 
-         std::vector<scm::math::mat4f>                           model_transformations_;
-         std::vector<float>                                      rad_scale_fac_;
-         float                                      radius_scale_;
+        std::vector<scm::math::mat4f>                           model_transformations_;
+        std::vector<float>                                      rad_scale_fac_;
+        float                                                   radius_scale_;
 
-        static uint64_t                                          current_screenshot_num_;
+        static uint64_t                                         current_screenshot_num_;
+
+        size_t                                                  elapsed_ms_since_cut_update_;
 
         std::set<lamure::model_t> visible_set_;
         std::set<lamure::model_t> invisible_set_;
