@@ -127,7 +127,7 @@ MainLoop()
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
        model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(28.f, -389.f, -58.f);
-       renderer_->SendModelTransform(model_id, model_transformations_[model_id]);
+       renderer_->send_model_transform(model_id, model_transformations_[model_id]);
     }
 
 #endif
@@ -151,11 +151,11 @@ MainLoop()
     
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_->Render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()));
-    renderer_->Render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()));
 #else
     renderer_->set_radius_scale(importance_);
-    renderer_->Render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()));
  
 #endif
 
@@ -288,44 +288,26 @@ DispatchKeyboardInput(unsigned char key)
         std::cout << "send rendered: " << test_send_rendered_ << std::endl;
         break;
     case 'w':
-        renderer_->SwitchBoundingBoxRendering();
+        renderer_->switch_bounding_box_rendering();
         break;
     case 'U':
-        renderer_->ChangePointSize(1.0f);
+        renderer_->change_point_size(1.0f);
         break;
     case 'u':
-        renderer_->ChangePointSize(0.1f);
+        renderer_->change_point_size(0.1f);
         break;
     case 'J':
-        renderer_->ChangePointSize(-1.0f);
+        renderer_->change_point_size(-1.0f);
         break;
     case 'j':
-        renderer_->ChangePointSize(-0.1f);
+        renderer_->change_point_size(-0.1f);
         break;
     case 'n':
-        renderer_->SwitchRenderMode();
-        break;
-    case 'o':
-        renderer_->SwitchEllipseMode();
-        break;
-    case 'c':
-        renderer_->SwitchClampedNormalMode();
-        break;
-    case 'A':
-        renderer_->ChangeDeformRatio(0.1f);
-        break;
-    case 'a':
-        renderer_->ChangeDeformRatio(0.01f);
-        break;
-    case 'S':
-        renderer_->ChangeDeformRatio(-0.1f);
-        break;
-    case 's':
-        renderer_->ChangeDeformRatio(-0.01f);
+        renderer_->switch_render_mode();
         break;
     case 't':
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
-        renderer_->ToggleVisibleSet();
+        renderer_->toggle_visible_set();
 #endif
         break;
 
@@ -366,13 +348,13 @@ DispatchKeyboardInput(unsigned char key)
                 active_camera_ = active_camera_right_;
             }
 
-            renderer_->ToggleCameraInfo(active_camera_left_->view_id(), active_camera_right_->view_id());
+            renderer_->toggle_camera_info(active_camera_left_->view_id(), active_camera_right_->view_id());
         }
 #else
         {
             lamure::view_t current_camera_id = active_camera_->view_id();
             active_camera_ = cameras_[(++current_camera_id) % num_cameras_];
-            renderer_->ToggleCameraInfo(active_camera_->view_id());
+            renderer_->toggle_camera_info(active_camera_->view_id());
         }
 #endif
 #endif
@@ -380,7 +362,7 @@ DispatchKeyboardInput(unsigned char key)
 
     case 'd':
         this->ToggleDispatching();
-        renderer_->ToggleCutUpdateInfo();
+        renderer_->toggle_cut_update_info();
         break;
 
     case 'z':
@@ -584,7 +566,7 @@ DispatchKeyboardInput(unsigned char key)
         break;
 
     case '9':
-        renderer_->ToggleDisplayInfo();
+        renderer_->toggle_display_info();
         break;
 
     case 'k':
@@ -609,7 +591,7 @@ DispatchResize(int w, int h)
     w/=2;
 #endif
 
-    renderer_->ResetViewport(w,h);
+    renderer_->reset_viewport(w,h);
     lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
     database->set_window_width(w);
     database->set_window_height(h);

@@ -78,11 +78,11 @@ public:
     //void                UnmapTempBuffer(CutDatabaseRecord::TemporaryBuffer const&  buffer);
     //void                CopyTempToMainMemory(context_t context_id, CutDatabaseRecord::TemporaryBuffer const& buffer);
 
-    void                Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO);
+    void                render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO);
 
-    void                ResetViewport(int const x, int const y);
+    void                reset_viewport(int const x, int const y);
 
-    void                SendModelTransform(const lamure::model_t model_id, const scm::math::mat4f& transform);
+    void                send_model_transform(const lamure::model_t model_id, const scm::math::mat4f& transform);
 
     void                set_radius_scale(const float radius_scale) { radius_scale_ = radius_scale; };
 
@@ -90,16 +90,16 @@ public:
     scm::gl::render_device_ptr device() const { return device_; }
 
 protected:
-    bool                InitializeSchismDeviceAndShaders(int resX, int resY);
-    void                InitializeVBOs();
-    void                UpdateFrustumDependentParameters(lamure::ren::Camera const& camera);
+    bool                initialize_schism_device_and_shaders(int resX, int resY);
+    void                initialize_VBOs();
+    void                update_frustum_dependent_parameters(lamure::ren::Camera const& camera);
 
-    void                UploadUniforms(lamure::ren::Camera const& camera) const;
-    void                UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
-    void                SwapTempBuffers();
-    void                DisplayStatus();
+    void                upload_uniforms(lamure::ren::Camera const& camera) const;
+    void                upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
+    void                swap_temp_buffers();
+    void                display_status();
 
-    void                CalcRadScaleFactors();
+    void                calc_rad_scale_factors();
 private:
 
         int                                         win_x_;
@@ -115,6 +115,7 @@ private:
 
         scm::gl::depth_stencil_state_ptr            depth_state_less_;
         scm::gl::depth_stencil_state_ptr            depth_state_disable_;
+        scm::gl::depth_stencil_state_ptr            depth_state_test_without_writing_;
 
         //shader programs
         scm::gl::program_ptr                        pass1_visibility_shader_program_;
@@ -122,11 +123,6 @@ private:
         scm::gl::program_ptr                        pass3_pass_trough_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
-
-        //2-pass shader programs
-        scm::gl::program_ptr                        alt_pass1_accumulation_shader_program_;
-        scm::gl::program_ptr                        alt_pass2_normalization_shader_program_;
-
 
         //gaussian weight for smooth blending
         scm::gl::texture_2d_ptr                     gaussian_texture_;
@@ -148,6 +144,7 @@ private:
 
         float                                       height_divided_by_top_minus_bottom_;  //frustum dependent
         float                                       near_plane_;                          //frustum dependent
+        float                                       far_plane_;   
         float                                       far_minus_near_plane_;
         float                                       point_size_factor_;
 
@@ -200,24 +197,14 @@ public:
     void clear_line_begin() { line_begin_.clear(); };
     void clear_line_end() { line_end_.clear(); };
 
-    void SwitchBoundingBoxRendering();
-    void ChangePointSize(float amount);
-    void SwitchRenderMode();
-    void SwitchEllipseMode();
-    void SwitchClampedNormalMode();
-    void ChangeDeformRatio(float amount);
-    void ToggleCutUpdateInfo();
-    void ToggleCameraInfo(const lamure::view_t current_cam_id);
-    void TakeScreenshot();
-    void ToggleVisibleSet();
-    void ToggleDisplayInfo();
-
-
-
-
-
+    void switch_bounding_box_rendering();
+    void change_point_size(float amount);
+    void switch_render_mode();
+    void toggle_cut_update_info();
+    void toggle_camera_info(const lamure::view_t current_cam_id);
+    void take_screenshot();
+    void toggle_visible_set();
+    void toggle_display_info();
 };
-
-
 
 #endif // REN_OLD_RENDERER_H_

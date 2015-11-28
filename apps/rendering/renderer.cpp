@@ -24,12 +24,11 @@ Renderer::
 Renderer(std::vector<scm::math::mat4f> const& model_transformations,
          const std::set<lamure::model_t>& visible_set,
          const std::set<lamure::model_t>& invisible_set)
-    : height_divided_by_top_minus_bottom_(1000.f),
-      near_plane_(0.f),
+    : near_plane_(0.f),
+      far_plane_(1000.0f),
       visible_set_(visible_set),
       invisible_set_(invisible_set),
       render_visible_set_(true),
-      far_minus_near_plane_(0.f),
       point_size_factor_(1.0f),
       render_mode_(0),
       ellipsify_(true),
@@ -53,17 +52,16 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
     win_x_ = database->window_width();
     win_y_ = database->window_height();
 
-    InitializeSchismDeviceAndShaders(win_x_, win_y_);
-    InitializeVBOs();
-    ResetViewport(win_x_, win_y_);
+    initialize_schism_device_and_shaders(win_x_, win_y_);
+    initialize_VBOs();
+    reset_viewport(win_x_, win_y_);
 
-    CalcRadScaleFactors();
+    calc_rad_scale_factors();
 }
 
 Renderer::
 ~Renderer()
 {
-
     filter_nearest_.reset();
     color_blending_state_.reset();
     not_blended_state_.reset();
@@ -94,47 +92,22 @@ Renderer::
 
     context_.reset();
     device_.reset();
-
-
-
-
 }
 
-void Renderer::UploadUniforms(lamure::ren::Camera const& camera) const
+void Renderer::
+upload_uniforms(lamure::ren::Camera const& camera) const
 {
     using namespace lamure::ren;
     using namespace scm::gl;
     using namespace scm::math;
 
-     
-
-    pass1_visibility_shader_program_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
     pass1_visibility_shader_program_->uniform("near_plane", near_plane_);
-    pass1_visibility_shader_program_->uniform("far_minus_near_plane", far_minus_near_plane_);
+    pass1_visibility_shader_program_->uniform("far_plane", far_plane_);
     pass1_visibility_shader_program_->uniform("point_size_factor", point_size_factor_);
 
-    
-
-    pass1_visibility_shader_program_->uniform("ellipsify", ellipsify_);
-    pass1_visibility_shader_program_->uniform("clamped_normal_mode", clamped_normal_mode_);
-    pass1_visibility_shader_program_->uniform("max_deform_ratio", max_deform_ratio_);
-
-
-    pass2_accumulation_shader_program_->uniform("depth_texture_pass1", 0);
-    pass2_accumulation_shader_program_->uniform("pointsprite_texture", 1);
-    pass2_accumulation_shader_program_->uniform("win_size", scm::math::vec2f(win_x_, win_y_) );
-
-    pass2_accumulation_shader_program_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
     pass2_accumulation_shader_program_->uniform("near_plane", near_plane_);
-    pass2_accumulation_shader_program_->uniform("far_minus_near_plane", far_minus_near_plane_);
+    pass2_accumulation_shader_program_->uniform("far_plane", far_plane_ );
     pass2_accumulation_shader_program_->uniform("point_size_factor", point_size_factor_);
-
-
-
-    pass2_accumulation_shader_program_->uniform("ellipsify", ellipsify_);
-    pass2_accumulation_shader_program_->uniform("clamped_normal_mode", clamped_normal_mode_);
-    pass2_accumulation_shader_program_->uniform("max_deform_ratio", max_deform_ratio_);
-
 
     pass3_pass_trough_shader_program_->uniform_sampler("in_color_texture", 0);
 
@@ -154,13 +127,9 @@ void Renderer::UploadUniforms(lamure::ren::Camera const& camera) const
 }
 
 void Renderer::
-UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t const model_id, RenderPass const pass) const
-{
+upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t const model_id, RenderPass const pass) const {
     using namespace lamure::ren;
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
-
-    scm::math::mat4f    view_matrix         = camera.GetViewMatrix();
     scm::math::mat4f    model_matrix        = model_transformations_[model_id];
     scm::math::mat4f    projection_matrix   = camera.GetProjectionMatrix();
 
@@ -171,7 +140,6 @@ UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t 
     
     scm::math::mat4f    model_view_matrix = scm::math::mat4f(vmd);
 
-    scm::math::mat4d    pmd = scm::math::mat4d(projection_matrix);
     scm::math::mat4d    mvpd = scm::math::mat4d(projection_matrix) * vmd;
     
 #define DEFAULT_PRECISION 31
@@ -208,8 +176,8 @@ UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t 
             break;
 #endif
         default:
-            //LOGGER_ERROR("Unknown Pass ID used in function 'UploadTransformationMatrices'");
-            std::cout << "Unknown Pass ID used in function 'UploadTransformationMatrices'\n";
+            //LOGGER_ERROR("Unknown Pass ID used in function 'upload_transformation_matrices'");
+            std::cout << "Unknown Pass ID used in function 'upload_transformation_matrices'\n";
             break;
 
     }
@@ -219,14 +187,14 @@ UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t 
 
 
 void Renderer::
-Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO)
+render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO)
 {
     using namespace lamure;
     using namespace lamure::ren;
 
-    UpdateFrustumDependentParameters(camera);
+    update_frustum_dependent_parameters(camera);
 
-    UploadUniforms(camera);
+    upload_uniforms(camera);
 
     using namespace scm::gl;
     using namespace scm::math;
@@ -264,8 +232,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
     uint32_t size_of_culling_result_vector = 0;
 
-    for (auto& model_id : current_set)
-    {
+    for (auto& model_id : current_set) {
         Cut& cut = cuts->GetCut(context_id, view_id, model_id);
 
         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
@@ -316,8 +283,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                     node_t node_counter = 0;
 
-                    for (auto& model_id : current_set)
-                    {
+                    for (auto& model_id : current_set) {
                         Cut& cut = cuts->GetCut(context_id, view_id, model_id);
 
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
@@ -331,39 +297,26 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
 
 
-                        UploadTransformationMatrices(camera, model_id, RenderPass::DEPTH);
+                        upload_transformation_matrices(camera, model_id, RenderPass::DEPTH);
 
                         scm::gl::frustum frustum_by_model = camera.GetFrustumByModel(model_transformations_[model_id]);
 
 
-                        unsigned int leaf_level_start_index = bvh->GetFirstNodeIdOfDepth(bvh->depth());
-
-
-                        for(std::vector<Cut::NodeSlotAggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
-                        {
-
-                            uint32_t node_culling_result = camera.CullAgainstFrustum( frustum_by_model ,bounding_box_vector[ k->node_id_ ] );
+                        for(auto const& node_slot_aggregate : renderable) {
+                            uint32_t node_culling_result = camera.CullAgainstFrustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
 
 
                              frustum_culling_results[node_counter] = node_culling_result;
 
 
-                            if( (node_culling_result != 1) )
-                            {
-
-
-                                bool is_leaf = (leaf_level_start_index <= k->node_id_);
-
-
-                                pass1_visibility_shader_program_->uniform("is_leaf", is_leaf);
-
+                            if( (node_culling_result != 1) ) {
                                 context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                                 scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
                                 context_->begin_query(depth_pass_timer_query);
 #endif
 
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
+                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (node_slot_aggregate.slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
 
@@ -372,7 +325,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 #endif
                             }
 
-
+                            ++node_counter;
                         }
 
                    }
@@ -385,23 +338,24 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                 /***************************************************************************************
                 *******************************BEGIN ACCUMULATION PASS**********************************
                 ****************************************************************************************/
-
                 {
 
                     context_->clear_color_buffer(pass2_accumulation_fbo_ , 0, vec4f( .0f, .0f, .0f, 0.0f));
                     context_->clear_color_buffer(pass2_accumulation_fbo_ , 1, vec4f( .0f, .0f, .0f, 0.0f));
 
+                    pass2_accumulation_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
+
                     context_->set_frame_buffer(pass2_accumulation_fbo_);
 
                     context_->set_blend_state(color_blending_state_);
 
-                    context_->set_depth_stencil_state(depth_state_disable_);
+                    context_->set_depth_stencil_state(depth_state_test_without_writing_);
 
                     context_->bind_program(pass2_accumulation_shader_program_);
 
-                    context_->bind_texture(pass1_depth_buffer_, filter_nearest_,   0);
+                    //context_->bind_texture(pass1_depth_buffer_, filter_nearest_,   0);
 
-                    context_->bind_texture( gaussian_texture_  ,  filter_nearest_,   1);
+                    //context_->bind_texture( gaussian_texture_  ,  filter_nearest_,   1);
 
                     context_->bind_vertex_array(render_VAO);
                     context_->apply();
@@ -418,8 +372,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
 
 
-                    for (auto& model_id : current_set)
-                    {
+                    for (auto& model_id : current_set) {
                         Cut& cut = cuts->GetCut(context_id, view_id, model_id);
 
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
@@ -427,32 +380,21 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         const Bvh* bvh = database->GetModel(model_id)->bvh();
 
                         size_t surfels_per_node_of_model = bvh->surfels_per_node();
-                        //size_t surfels_per_node_of_model = NumbersOfSurfelsPerNode;
-                        //store culling result and push it back for second pass#
 
 
-                        UploadTransformationMatrices(camera, model_id, RenderPass::ACCUMULATION);
+                        upload_transformation_matrices(camera, model_id, RenderPass::ACCUMULATION);
 
-                        unsigned int leaf_level_start_index = bvh->GetFirstNodeIdOfDepth(bvh->depth());
-
-                        for(std::vector<Cut::NodeSlotAggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
-                        {
+                        for( auto const& node_slot_aggregate : renderable ) {
 
                             if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
                             {
-
-                                bool is_leaf = (leaf_level_start_index <= k->node_id_);
-
-
-                                pass2_accumulation_shader_program_->uniform("is_leaf", is_leaf);
-
                                 context_->apply();
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                                 scm::gl::timer_query_ptr accumulation_pass_timer_query = device_->create_timer_query();
                                 context_->begin_query(accumulation_pass_timer_query);
 #endif
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
+                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (node_slot_aggregate.slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                                 context_->end_query(accumulation_pass_timer_query);
                                 context_->collect_query_results(accumulation_pass_timer_query);
@@ -461,6 +403,8 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                                 ++actually_rendered_nodes;
                             }
+
+                            ++node_counter;
                         }
 
 
@@ -483,8 +427,6 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                     context_->set_depth_stencil_state(depth_state_less_);
 
                     context_->bind_program(pass3_pass_trough_shader_program_);
-
-
 
                     context_->bind_texture(pass2_accumulated_color_buffer_, filter_nearest_,   0);
                     context_->apply();
@@ -553,17 +495,16 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
 
 
-                        UploadTransformationMatrices(camera, model_id, RenderPass::BOUNDING_BOX);
+                        upload_transformation_matrices(camera, model_id, RenderPass::BOUNDING_BOX);
 
-                        for(std::vector<Cut::NodeSlotAggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
-                        {
+                        for( auto const& node_slot_aggregate : renderable ) {
 
                             int culling_result = frustum_culling_results[node_counter];
 
                             if( culling_result  != 1 )  // 0 = inside, 1 = outside, 2 = intersectingS
                             {
 
-                                scm::gl::boxf temp_box = database->GetModel(model_id)->bvh()->bounding_boxes()[k->node_id_ ];
+                                scm::gl::boxf temp_box = database->GetModel(model_id)->bvh()->bounding_boxes()[node_slot_aggregate.node_id_ ];
                                 scm::gl::box_geometry box_to_render(device_,temp_box.min_vertex(), temp_box.max_vertex());
 
 
@@ -577,6 +518,8 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                                 device_->opengl_api().glEnable(GL_DEPTH_TEST);
 
                             }
+
+                            ++node_counter;
                         }
 
 
@@ -619,7 +562,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
     device_->main_context()->unmap_buffer(line_buffer_);
 
-    UploadTransformationMatrices(camera, 0, LINE);
+    upload_transformation_matrices(camera, 0, LINE);
     device_->opengl_api().glDisable(GL_DEPTH_TEST);
 
     context_->set_default_frame_buffer();
@@ -636,7 +579,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 #endif
 
     if(display_info_)
-      DisplayStatus();
+      display_status();
 
       context_->reset();
 
@@ -659,14 +602,11 @@ std::cout << "depth pass        : " << depth_pass_time / ((float)(1000000)) << "
 }
 
 
-void Renderer::SendModelTransform(const lamure::model_t model_id, const scm::math::mat4f& transform) {
+void Renderer::send_model_transform(const lamure::model_t model_id, const scm::math::mat4f& transform) {
     model_transformations_[model_id] = transform;
-
 }
 
-
-
-void Renderer::DisplayStatus()
+void Renderer::display_status()
 {
 
 
@@ -674,18 +614,6 @@ void Renderer::DisplayStatus()
    // os.setprecision(5);
     os
       <<"FPS:   "<<std::setprecision(4)<<fps_<<"\n"
-      /*
-      <<"PointSizeFactor:   "<<point_size_factor_<<"\n"
-      <<"Normal Clamping:   "<< (clamped_normal_mode_ ? "ON" : "OFF")<<"\n"
-      <<"Clamping Threshold:   "<<max_deform_ratio_<<"\n"
-      <<"Splat Mode:   "<<(ellipsify_ ? "elliptical" : "round")<<"\n"
-      <<"Render Mode:   "<<(render_mode_ == 0 ? "Color" : (render_mode_ == 1 ? "LOD" : "Normal"))<<"\n"
-      <<"Rendered Splats:   "<<rendered_splats_<<"\n"
-      <<"Uploaded Nodes:   "<<uploaded_nodes_<<"\n"
-      <<"\n"
-      <<"Cut Update:   "<< (is_cut_update_active_ == true ? "active" : "frozen") <<"\n"
-      <<"Camera:   "<< current_cam_id_;
-*/
       <<"# Points:   "<< (rendered_splats_ / 100000) / 10.0f<< " Mio. \n";
     renderable_text_->text_string(os.str());
     text_renderer_->draw_shadowed(context_, scm::math::vec2i(20, win_y_- 40), renderable_text_);
@@ -697,7 +625,7 @@ void Renderer::DisplayStatus()
 }
 
 void Renderer::
-InitializeVBOs()
+initialize_VBOs()
 {
     // init the GL context
     using namespace scm;
@@ -727,6 +655,8 @@ InitializeVBOs()
     pass2_accumulated_color_buffer_   = device_->create_texture_2d(vec2ui(win_x_, win_y_) * 1, FORMAT_RGBA_32F , 1, 1, 1);
 
     pass2_accumulation_fbo_->attach_color_buffer(0, pass2_accumulated_color_buffer_);
+
+    pass2_accumulation_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
 
 
 
@@ -758,6 +688,8 @@ InitializeVBOs()
 
     depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
 
+    depth_state_test_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
+
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
     std::size_t size_of_line_buffer = max_lines_ * sizeof(float) * 3 * 2;
     line_buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
@@ -772,7 +704,7 @@ InitializeVBOs()
 }
 
 bool Renderer::
-InitializeSchismDeviceAndShaders(int resX, int resY)
+initialize_schism_device_and_shaders(int resX, int resY)
 {
     std::string root_path = LAMURE_SHADERS_DIR;
 
@@ -901,7 +833,7 @@ InitializeSchismDeviceAndShaders(int resX, int resY)
     return true;
 }
 
-void Renderer::ResetViewport(int w, int h)
+void Renderer::reset_viewport(int w, int h)
 {
     //reset viewport
     win_x_ = w;
@@ -940,10 +872,10 @@ void Renderer::ResetViewport(int w, int h)
 }
 
 void Renderer::
-UpdateFrustumDependentParameters(lamure::ren::Camera const& camera)
+update_frustum_dependent_parameters(lamure::ren::Camera const& camera)
 {
     near_plane_ = camera.near_plane_value();
-    far_minus_near_plane_ = camera.far_plane_value() - near_plane_;
+    far_plane_  = camera.far_plane_value();
 
     std::vector<scm::math::vec3d> corner_values = camera.get_frustum_corners();
     double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
@@ -952,7 +884,7 @@ UpdateFrustumDependentParameters(lamure::ren::Camera const& camera)
 }
 
 void Renderer::
-CalcRadScaleFactors()
+calc_rad_scale_factors()
 {
     using namespace lamure::ren;
     uint32_t num_models = (ModelDatabase::GetInstance())->num_models();
@@ -970,7 +902,7 @@ CalcRadScaleFactors()
 //dynamic rendering adjustment functions
 
 void Renderer::
-SwitchBoundingBoxRendering()
+switch_bounding_box_rendering()
 {
     render_bounding_boxes_ = ! render_bounding_boxes_;
 
@@ -984,7 +916,7 @@ SwitchBoundingBoxRendering()
 
 
 void Renderer::
-ChangePointSize(float amount)
+change_point_size(float amount)
 {
     point_size_factor_ += amount;
     if(point_size_factor_ < 0.0001f)
@@ -996,7 +928,7 @@ ChangePointSize(float amount)
 };
 
 void Renderer::
-SwitchRenderMode()
+switch_render_mode()
 {
     render_mode_ = (render_mode_ + 1)%2;
 
@@ -1019,85 +951,41 @@ SwitchRenderMode()
 };
 
 void Renderer::
-SwitchEllipseMode()
-{
-    ellipsify_ = ! ellipsify_;
-    std::cout<<"splat mode: ";
-    if(ellipsify_)
-        std::cout<<"ELLIPTICAL\n\n";
-    else
-        std::cout<<"ROUND\n\n";
-};
-
-void Renderer::
-SwitchClampedNormalMode()
-{
-    clamped_normal_mode_ = !clamped_normal_mode_;
-    std::cout<<"clamp elliptical deform ratio: ";
-    if(clamped_normal_mode_)
-        std::cout<<"ON\n\n";
-    else
-        std::cout<<"OFF\n\n";
-};
-
-void Renderer::
-ChangeDeformRatio(float amount)
-{
-    max_deform_ratio_ += amount;
-
-    if(max_deform_ratio_ < 0.0f)
-        max_deform_ratio_ = 0.0f;
-    else if(max_deform_ratio_ > 5.0f)
-        max_deform_ratio_ = 5.0f;
-
-    std::cout<<"set elliptical deform ratio to: "<<max_deform_ratio_<<"\n\n";
-};
-
-
-void Renderer::
-ToggleCutUpdateInfo()
-{
+toggle_cut_update_info() {
     is_cut_update_active_ = ! is_cut_update_active_;
 }
 
 void Renderer::
-ToggleCameraInfo(const lamure::view_t current_cam_id)
-{
+toggle_camera_info(const lamure::view_t current_cam_id) {
     current_cam_id_ = current_cam_id;
 }
 
 void Renderer::
-ToggleDisplayInfo()
-{
+toggle_display_info() {
     display_info_ = ! display_info_;
 }
 
 void Renderer::
-ToggleVisibleSet() {
+toggle_visible_set() {
     render_visible_set_ = !render_visible_set_;
 }
 
-void Renderer::TakeScreenshot()
-{
+void Renderer::
+take_screenshot() {
 
     std::string scenename_ = "screenshots";
     {
 
-
         {
 
 
-        if(! boost::filesystem::exists("./"+scenename_+"/"))
-        {
+            if(! boost::filesystem::exists("./"+scenename_+"/")) {
                std::cout<<"Creating Folder.\n\n";
                boost::filesystem::create_directories("./"+scenename_+"/");
-        }
+            }
 
 
         }
-
-
-
 
         std::string filename;
         if(current_screenshot_num_ == 0)
@@ -1125,19 +1013,4 @@ void Renderer::TakeScreenshot()
 
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
 }
-
-
-

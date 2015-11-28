@@ -9,7 +9,6 @@
 
 uniform mat4 mvp_matrix;
 uniform mat4 model_view_matrix;
-
 uniform float far_plane;
 
 layout (points) in;
