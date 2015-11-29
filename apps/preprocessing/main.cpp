@@ -106,6 +106,11 @@ int main(int argc, const char *argv[])
          "  const - NDC with constant radius\n"
          "  everysecond - take every fanout-factor's surfel\n"
          "  random - randomly select points with possible duplicates")
+
+        ("normal_radius_algo",
+         po::value<std::string>()->default_value("planefitting"),
+         "Algorithm for computing surfel radius and surfel normal. Possible values:\n"
+         "  planefitting ")
  
         ("rep-radius-algo",
          po::value<std::string>()->default_value("gmean"),
@@ -231,6 +236,7 @@ int main(int argc, const char *argv[])
         // set building options
         lamure::pre::Builder::Descriptor desc;
         std::string reduction_algo = vm["reduction-algo"].as<std::string>();
+        std::string normal_radius_algo = vm["normal_radius_algo"].as<std::string>();
         std::string rep_radius_algo = vm["rep-radius-algo"].as<std::string>();
 
         if (reduction_algo == "ndc")
@@ -243,6 +249,13 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::ReductionAlgorithm::Random;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
+            return EXIT_FAILURE;
+        }
+
+        if (normal_radius_algo == "planefitting")
+            desc.normal_radius_algo      = lamure::pre::NormalRadiusAlgorithm::PlaneFitting;
+        else {
+            std::cerr << "Unknown algorithm for computing surfel atributes: normal, radius" << details_msg;
             return EXIT_FAILURE;
         }
 
