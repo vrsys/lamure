@@ -15,16 +15,21 @@
 Management::
 Management(std::vector<std::string> const& model_filenames,
     std::vector<scm::math::mat4f> const& model_transformations,
-    const std::set<lamure::model_t>& visible_set,
-    const std::set<lamure::model_t>& invisible_set,
-    const bool allow_user_input)
-    :   allow_user_input_(allow_user_input),
+    std::set<lamure::model_t> const& visible_set,
+    std::set<lamure::model_t> const& invisible_set,
+    std::vector<scm::math::mat4d> const& recorded_view_vector,
+    std::string const& session_filename)
+    :   num_taken_screenshots_(0),
+        allow_user_input_(recorded_view_vector.size() == 0),
+        screenshot_session_started_(false),
         camera_recording_enabled_(false),
+        current_session_filename_(session_filename),
         current_session_file_path_(""),
         num_recorded_camera_positions_(0),
         renderer_(nullptr),
         model_filenames_(model_filenames),
         model_transformations_(model_transformations),
+        recorded_view_vector_(recorded_view_vector),
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
         active_camera_left_(nullptr),
         active_camera_right_(nullptr),
@@ -122,9 +127,10 @@ Management::
         renderer_ = nullptr;
     }
 
+
 }
 
-void Management::
+bool Management::
 MainLoop()
 {
     lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
@@ -166,8 +172,25 @@ MainLoop()
  
 #endif
 
-    if ( controller->ms_since_last_node_upload ) {
-        //
+    if (! allow_user_input_) {
+        if ( controller->ms_since_last_node_upload() > 3000) {
+            if ( screenshot_session_started_ )
+                ++num_taken_screenshots_;
+                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + current_session_filename_+ "/" , std::string("color_")+std::to_string(num_taken_screenshots_+1));
+
+            if(! recorded_view_vector_.empty() ) {
+                if (! screenshot_session_started_ ) {
+                    screenshot_session_started_ = true;
+                }
+                active_camera_->set_view_matrix(recorded_view_vector_.back());
+                recorded_view_vector_.pop_back();
+            } else {
+                // leave the main loop
+                return true;
+            }
+
+            controller->reset_ms_since_last_node_upload();
+        }
     }
 
     if (dispatch_ || trigger_one_update_)
@@ -235,6 +258,7 @@ MainLoop()
 
 #endif
 
+    return false;
 }
 
 

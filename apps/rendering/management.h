@@ -33,13 +33,14 @@ public:
                             std::vector<scm::math::mat4f> const& model_transformations,
                             const std::set<lamure::model_t>& visible_set,
                             const std::set<lamure::model_t>& invisible_set,
-                            const bool allow_user_input = true);
+                            std::vector<scm::math::mat4d> const& recorded_view_vector = std::vector<scm::math::mat4d>(),
+                            std::string const& session_filename = "");
     virtual             ~Management();
 
                         Management(const Management&) = delete;
                         Management& operator=(const Management&) = delete;
 
-    void                MainLoop();
+    bool                MainLoop();
     void                UpdateTrackball(int x, int y);
     void                RegisterMousePresses(int button, int state, int x, int y);
     void                DispatchKeyboardInput(unsigned char key);
@@ -60,9 +61,12 @@ protected:
     void                create_quality_measurement_resources();
 
 private:
-
+    
+    size_t              num_taken_screenshots_;
     bool const          allow_user_input_;
+    bool                screenshot_session_started_;
     bool                camera_recording_enabled_;
+    std::string const   current_session_filename_;
     std::string         current_session_file_path_;
     unsigned            num_recorded_camera_positions_;
 
@@ -108,6 +112,8 @@ private:
 
     std::vector<scm::math::mat4f> model_transformations_;
     std::vector<std::string> model_filenames_;
+
+    std::vector<scm::math::mat4d> recorded_view_vector_; 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;

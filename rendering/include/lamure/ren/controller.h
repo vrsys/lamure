@@ -51,6 +51,7 @@ public:
     scm::gl::vertex_array_ptr GetContextMemory(const context_t context_id, scm::gl::render_device_ptr device);
 
     size_t              ms_since_last_node_upload() {return ms_since_last_node_upload_; };
+    size_t              reset_ms_since_last_node_upload() { ms_since_last_node_upload_ = 0;};
 
 protected:
                         Controller();

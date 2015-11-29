@@ -197,7 +197,7 @@ public:
     void switch_render_mode();
     void toggle_cut_update_info();
     void toggle_camera_info(const lamure::view_t current_cam_id);
-    void take_screenshot();
+    void take_screenshot(std::string const& screenshot_path, std::string const& screenshot_name);
     void toggle_visible_set();
     void toggle_display_info();
 };

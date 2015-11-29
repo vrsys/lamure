@@ -961,24 +961,19 @@ toggle_visible_set() {
 }
 
 void Renderer::
-take_screenshot() {
+take_screenshot(std::string const& screenshot_path, std::string const& screenshot_name) {
 
-    std::string scenename_ = "screenshots";
+    std::string file_extension = ".png";
     {
 
         {
-            if(! boost::filesystem::exists("./"+scenename_+"/")) {
-               std::cout<<"Creating Folder.\n\n";
-               boost::filesystem::create_directories("./"+scenename_+"/");
+            if(! boost::filesystem::exists(screenshot_path+"/")) {
+               std::cout<<"Screenshot Folder did not exist. Creating Folder: " << screenshot_path << "\n\n";
+               boost::filesystem::create_directories(screenshot_path+"/");
             }
         }
 
-        std::string filename;
-        if(current_screenshot_num_ == 0)
-            filename = "./"+scenename_+"/__encoded_depth_ground_truth.png";
-        else
-            filename = "./"+scenename_+"/encoded_depth_"+boost::lexical_cast<std::string>( Renderer::current_screenshot_num_)+"_dp_"
-                       +".png";
+        std::string filename = screenshot_path + screenshot_name + file_extension;
 
         // Make the BYTE array, factor of 3 because it's RBG.
         BYTE* pixels = new BYTE[ 4 * win_x_ * win_y_];
