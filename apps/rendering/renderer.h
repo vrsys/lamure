@@ -120,7 +120,7 @@ private:
         //shader programs
         scm::gl::program_ptr                        pass1_visibility_shader_program_;
         scm::gl::program_ptr                        pass2_accumulation_shader_program_;
-        scm::gl::program_ptr                        pass3_pass_trough_shader_program_;
+        scm::gl::program_ptr                        pass3_pass_through_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
 
@@ -133,10 +133,11 @@ private:
 
         scm::gl::frame_buffer_ptr                   pass2_accumulation_fbo_;
         scm::gl::texture_2d_ptr                     pass2_accumulated_color_buffer_;
-        scm::gl::texture_2d_ptr                     pass2_depth_buffer_;
+        scm::gl::texture_2d_ptr                     pass2_accumulated_normal_buffer_;
 
-        scm::gl::frame_buffer_ptr                   pass_filling_fbo_;
-        scm::gl::texture_2d_ptr                     pass_filling_color_texture_;
+        scm::gl::frame_buffer_ptr                   pass3_normalization_fbo_;
+        scm::gl::texture_2d_ptr                     pass3_normalization_color_texture_;
+        scm::gl::texture_2d_ptr                     pass3_normalization_normal_texture_;
 
 
         scm::shared_ptr<scm::gl::quad_geometry>     screen_quad_;

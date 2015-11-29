@@ -72,7 +72,7 @@ Renderer::
 
     pass1_visibility_shader_program_.reset();
     pass2_accumulation_shader_program_.reset();
-    pass3_pass_trough_shader_program_.reset();
+    pass3_pass_through_shader_program_.reset();
 
     bounding_box_vis_shader_program_.reset();
 
@@ -83,7 +83,8 @@ Renderer::
 
     pass2_accumulation_fbo_.reset();
 
-    pass_filling_color_texture_.reset();
+    pass3_normalization_color_texture_.reset();
+    pass3_normalization_normal_texture_.reset();
 
     gaussian_texture_.reset();
 
@@ -108,14 +109,13 @@ upload_uniforms(lamure::ren::Camera const& camera) const
     pass2_accumulation_shader_program_->uniform("far_plane", far_plane_ );
     pass2_accumulation_shader_program_->uniform("point_size_factor", point_size_factor_);
 
-    pass3_pass_trough_shader_program_->uniform_sampler("in_color_texture", 0);
-    
-    pass3_pass_trough_shader_program_->uniform("renderMode", render_mode_);
+    pass3_pass_through_shader_program_->uniform_sampler("in_color_texture", 0);
+    pass3_pass_through_shader_program_->uniform_sampler("in_normal_texture", 1);
+    pass3_pass_through_shader_program_->uniform("renderMode", render_mode_);
 
     pass_filling_program_->uniform_sampler("in_color_texture", 0);
     pass_filling_program_->uniform_sampler("depth_texture", 1);
     pass_filling_program_->uniform("win_size", scm::math::vec2f(win_x_, win_y_) );
-
     pass_filling_program_->uniform("renderMode", render_mode_);
 
 
@@ -408,14 +408,17 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                 {
 
                     //context_->set_default_frame_buffer();
-                    context_->clear_color_buffer(pass_filling_fbo_, 0, vec4( 0.0, 0.0, 0.0, 0) );
-                    context_->set_frame_buffer(pass_filling_fbo_);
+                    context_->clear_color_buffer(pass3_normalization_fbo_, 0, vec4( 0.0, 0.0, 0.0, 0.0) );
+                    context_->clear_color_buffer(pass3_normalization_fbo_, 1, vec3( 0.0, 0.0, 0.0) );
+
+                    context_->set_frame_buffer(pass3_normalization_fbo_);
 
                     context_->set_depth_stencil_state(depth_state_less_);
 
-                    context_->bind_program(pass3_pass_trough_shader_program_);
+                    context_->bind_program(pass3_pass_through_shader_program_);
 
                     context_->bind_texture(pass2_accumulated_color_buffer_, filter_nearest_,   0);
+                    context_->bind_texture(pass2_accumulated_normal_buffer_, filter_nearest_, 1);
                     context_->apply();
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
@@ -442,7 +445,7 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
 
 
-                    context_->bind_texture(pass_filling_color_texture_, filter_nearest_,   0);
+                    context_->bind_texture(pass3_normalization_color_texture_, filter_nearest_,   0);
                     context_->bind_texture(pass1_depth_buffer_, filter_nearest_,   1);
                     context_->apply();
 
@@ -646,8 +649,20 @@ initialize_VBOs()
 
     pass2_accumulation_fbo_->attach_color_buffer(0, pass2_accumulated_color_buffer_);
 
+    pass2_accumulated_normal_buffer_   = device_->create_texture_2d(vec2ui(win_x_, win_y_) * 1, FORMAT_RGB_32F , 1, 1, 1);
+
+    pass2_accumulation_fbo_->attach_color_buffer(1, pass2_accumulated_normal_buffer_);
+
     pass2_accumulation_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
 
+
+    pass3_normalization_fbo_ = device_->create_frame_buffer();
+
+    pass3_normalization_color_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8 , 1, 1, 1);
+    pass3_normalization_normal_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGB_8 , 1, 1, 1);
+
+    pass3_normalization_fbo_->attach_color_buffer(0, pass3_normalization_color_texture_);
+    pass3_normalization_fbo_->attach_color_buffer(1, pass3_normalization_normal_texture_);
 
 
     screen_quad_.reset(new quad_geometry(device_, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
@@ -729,8 +744,8 @@ initialize_schism_device_and_shaders(int resX, int resY)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslv", accumulation_vs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslg", accumulation_gs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslf", accumulation_fs_source)
-            || !read_text_file(root_path + "/pass3_pass_trough.glslv", pass_trough_vs_source)
-            || !read_text_file(root_path + "/pass3_pass_trough.glslf", pass_trough_fs_source)
+            || !read_text_file(root_path + "/pass3_pass_through.glslv", pass_trough_vs_source)
+            || !read_text_file(root_path + "/pass3_pass_through.glslf", pass_trough_fs_source)
             || !read_text_file(root_path + "/pass_reconstruction.glslv", filling_vs_source)
             || !read_text_file(root_path + "/pass_reconstruction.glslf", filling_fs_source)
             || !read_text_file(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
@@ -771,7 +786,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
                                                                           (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
                                                                 );
 
-    pass3_pass_trough_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pass_trough_vs_source))
+    pass3_pass_through_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pass_trough_vs_source))
                                                                 (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pass_trough_fs_source)));
 
     pass_filling_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, filling_vs_source))
@@ -786,7 +801,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
 #endif
 
 
-    if (!pass1_visibility_shader_program_ || !pass2_accumulation_shader_program_ || !pass3_pass_trough_shader_program_ || !pass_filling_program_ || !bounding_box_vis_shader_program_
+    if (!pass1_visibility_shader_program_ || !pass2_accumulation_shader_program_ || !pass3_pass_through_shader_program_ || !pass_filling_program_ || !bounding_box_vis_shader_program_
 
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
         || !line_shader_program_
@@ -842,16 +857,19 @@ void Renderer::reset_viewport(int w, int h)
     pass2_accumulation_fbo_ = device_->create_frame_buffer();
 
     pass2_accumulated_color_buffer_   = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
-
+    pass2_accumulated_normal_buffer_   = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGB_32F , 1, 1, 1);
+    
     pass2_accumulation_fbo_->attach_color_buffer(0, pass2_accumulated_color_buffer_);
+    pass2_accumulation_fbo_->attach_color_buffer(1, pass2_accumulated_normal_buffer_);
 
 
-    pass_filling_fbo_ = device_->create_frame_buffer();
+    pass3_normalization_fbo_ = device_->create_frame_buffer();
 
-    pass_filling_color_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8 , 1, 1, 1);
+    pass3_normalization_color_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8 , 1, 1, 1);
+    pass3_normalization_normal_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGB_8 , 1, 1, 1);
 
-    pass_filling_fbo_->attach_color_buffer(0, pass_filling_color_texture_);
-
+    pass3_normalization_fbo_->attach_color_buffer(0, pass3_normalization_color_texture_);
+    pass3_normalization_fbo_->attach_color_buffer(1, pass3_normalization_normal_texture_);
 
 
     //reset orthogonal projection matrix for text rendering
@@ -973,17 +991,34 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
             }
         }
 
-        std::string filename = screenshot_path + screenshot_name + file_extension;
+        
 
         // Make the BYTE array, factor of 3 because it's RBG.
         BYTE* pixels = new BYTE[ 4 * win_x_ * win_y_];
 
         //device_->opengl_api().glReadPixels(0, 0, win_x_, win_y_, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
         
+        device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_color_texture_->object_id());
         device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
-        // Convert to FreeImage format & save to file
+
+        std::string filename = screenshot_path + "color_" + screenshot_name + file_extension;
+
         FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
+
+
+
+        device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_normal_texture_->object_id());
+        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+
+        filename = screenshot_path + "normal_" + screenshot_name + file_extension;
+
+        image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0xFF0000, 0x00FF00, false);
+        FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
+
+        device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
+
+
 
         // Free resources
         FreeImage_Unload(image);

@@ -24,6 +24,7 @@ in VertexData {
 } VertexIn;
 
 layout(location = 0) out vec4 accumulated_colors;
+layout(location = 1) out vec3 accumulated_normals;
 
 void main() {
   vec2 uv_coords = VertexIn.pass_uv_coords;
@@ -31,9 +32,14 @@ void main() {
   if ( dot(uv_coords, uv_coords)> 1 )
     discard;
 
+  if( VertexIn.pass_normal.z < 0 )
+    VertexIn.pass_normal = VertexIn.pass_normal * -1; 
+
+  VertexIn.pass_normal = (VertexIn.pass_normal + vec3(1.0, 1.0, 1.0)) / 2.0;
   float weight = gaussian[int(round(length(uv_coords) * 31.0 ))];
 
   accumulated_colors = vec4(VertexIn.pass_point_color * weight, weight);
+  accumulated_normals = vec3(VertexIn.pass_normal * weight);
 }
 
 

@@ -176,7 +176,7 @@ MainLoop()
         if ( controller->ms_since_last_node_upload() > 3000) {
             if ( screenshot_session_started_ )
                 ++num_taken_screenshots_;
-                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + current_session_filename_+ "/" , std::string("color_")+std::to_string(num_taken_screenshots_+1));
+                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + current_session_filename_+ "/" , std::to_string(num_taken_screenshots_+1));
 
             if(! recorded_view_vector_.empty() ) {
                 if (! screenshot_session_started_ ) {

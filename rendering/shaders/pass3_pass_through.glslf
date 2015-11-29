@@ -26,20 +26,21 @@ void main()
 
 	if(renderMode == 0 || renderMode == 1) //color mode
 	{
+		vec4 texColor = texture2D(in_color_texture, (pos.xy + 1) / 2.0f);
 
-		    vec4 texColor = texture2D(in_color_texture, (pos.xy + 1) / 2.0f);
-			 texColor = (texColor/texColor.w);
+		if(texColor.w != 0.0f) {
+			texColor.xyz = (texColor.xyz/texColor.w);
 
-		    if(texColor.w != 0.0f)
-		    { 
-			
-		    	out_color = vec4(pow(texColor.xyz, vec3(1.4f)), 1.0f);  
-		    }
-		    else
-		    {
+			vec4 texNormal = texture2D(in_normal_texture, (pos.xy + 1) / 2.0f);
+			texNormal.xyz = (texNormal.xyz/texColor.w);
+
+			out_color  = vec4(pow(texColor.xyz, vec3(1.4f)), 1.0f);
+			out_normal = vec3(texNormal.xyz);
+		} else {
 			
 			out_color = vec4(0.f,0.0f,0.0f,1.0f);
-		    }
+			out_normal = vec3(0.0, 0.0, 0.0);
+		}
 	 
 		
 
@@ -47,18 +48,16 @@ void main()
 	else if(renderMode == 1) //debug ooc mode
 	{
 
-		    vec4 texColor = texture2D(in_color_texture, (pos.xy + 1) / 2.0f);
-			 texColor = texColor/100000000;//(texColor/texColor.w);
+	    vec4 texColor = texture2D(in_color_texture, (pos.xy + 1) / 2.0f);
+		texColor = texColor/100000000;//(texColor/texColor.w);
 
-		    if(texColor.w != 0.0f)
-		    { 
-			
-		    	out_color = vec4(texColor.xyz, 1.0f);  
-		    }
-		    else
-		    {
+	    if(texColor.w != 0.0f) { 
+
+	    	out_color = vec4(texColor.xyz, 1.0f);  
+	    
+	    } else {
 			out_color = vec4(0.2f,0.2f,0.2f,1.0f);
-		    }
+	    }
 	 
 		
 
