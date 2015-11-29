@@ -109,7 +109,7 @@ upload_uniforms(lamure::ren::Camera const& camera) const
     pass2_accumulation_shader_program_->uniform("point_size_factor", point_size_factor_);
 
     pass3_pass_trough_shader_program_->uniform_sampler("in_color_texture", 0);
-
+    
     pass3_pass_trough_shader_program_->uniform("renderMode", render_mode_);
 
     pass_filling_program_->uniform_sampler("in_color_texture", 0);
@@ -978,8 +978,9 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         // Make the BYTE array, factor of 3 because it's RBG.
         BYTE* pixels = new BYTE[ 4 * win_x_ * win_y_];
 
-        device_->opengl_api().glReadPixels(0, 0, win_x_, win_y_, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
-          
+        //device_->opengl_api().glReadPixels(0, 0, win_x_, win_y_, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+        
+        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
         // Convert to FreeImage format & save to file
         FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);

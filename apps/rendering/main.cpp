@@ -218,19 +218,11 @@ int main(int argc, char** argv)
 
     if( ! measurement_file_path.empty() ) {
       parsed_views = parse_camera_session_file(measurement_file_path);
-      size_t last_dot_in_filename = measurement_file_path.find_last_of('.');
-      size_t first_dot_in_filename = measurement_file_path.find_first_of('.');
+      size_t last_dot_in_filename_pos = measurement_file_path.find_last_of('.');
+      size_t first_slash_before_filename_pos = measurement_file_path.find_last_of("/\\", last_dot_in_filename_pos);
 
-      if( last_dot_in_filename == first_dot_in_filename ) {
-        measurement_filename = measurement_file_path;
-      }
-
-      measurement_filename = measurement_file_path.substr(first_dot_in_filename, last_dot_in_filename);
+      measurement_filename = measurement_file_path.substr(first_slash_before_filename_pos+1, last_dot_in_filename_pos);
     }
-
-
-    std::cout << "Measurement filename: " << measurement_filename << "\n\n";
-
 
 
     management_ = new Management(model_filenames, model_transformations, visible_set, invisible_set, parsed_views, measurement_filename);

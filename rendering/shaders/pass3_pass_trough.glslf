@@ -8,9 +8,11 @@
 #version 420 core
  
 layout(binding  = 0) uniform sampler2D in_color_texture;
+layout(binding  = 1) uniform sampler2D in_normal_texture;
 
 
 layout(location = 0) out vec4 out_color;
+layout(location = 1) out vec3 out_normal;
         
 
 uniform int renderMode;
