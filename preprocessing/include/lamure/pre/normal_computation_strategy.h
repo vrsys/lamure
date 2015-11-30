@@ -6,8 +6,8 @@
 // http://www.uni-weimar.de/medien/vr
 
 
-#ifndef NORMAL_RADII_STRATEGY_H_
-#define NORMAL_RADII_STRATEGY_H_
+#ifndef NORMAL_COMPUTATION_STRATEGY_H_
+#define NORMAL_COMPUTATION_STRATEGY_H_
 
 #include <lamure/pre/bvh.h>
 #include <lamure/pre/surfel.h>
@@ -16,14 +16,13 @@ namespace lamure{
 namespace pre {
 
 
-class NormalRadiiStrategy {
+class NormalComputationStrategy {
 public:
-	virtual ~NormalRadiiStrategy() {};
-	virtual vec3f compute_normal(size_t node, size_t surfel, std::vector<std::pair<Surfel, real>>  neighbours) const = 0;
-	virtual real compute_radius(size_t node, size_t surfel, std::vector<std::pair<Surfel, real>>  neighbours) const = 0;
+	virtual ~NormalComputationStrategy() {};
+	virtual vec3f compute_normal(const size_t node_id, const size_t surfel_id,  const uint16_t number_of_neighbours) const = 0;	
 };
 
 } // namespace pre
 } // namespace lamure
 
-#endif //NORMAL_RADII_STRATEGY_H_
+#endif //NORMAL_COMPUTATION_STRATEGY_H_
