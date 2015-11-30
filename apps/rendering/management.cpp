@@ -17,19 +17,19 @@ Management(std::vector<std::string> const& model_filenames,
     std::vector<scm::math::mat4f> const& model_transformations,
     std::set<lamure::model_t> const& visible_set,
     std::set<lamure::model_t> const& invisible_set,
-    std::vector<scm::math::mat4d> const& recorded_view_vector,
-    std::string const& session_filename)
+    snapshot_session_descriptor& snap_descriptor)
     :   num_taken_screenshots_(0),
-        allow_user_input_(recorded_view_vector.size() == 0),
+        allow_user_input_(snap_descriptor.recorded_view_vector_.size() == 0),
         screenshot_session_started_(false),
         camera_recording_enabled_(false),
-        current_session_filename_(session_filename),
+        //current_session_filename_(session_filename),
         current_session_file_path_(""),
         num_recorded_camera_positions_(0),
         renderer_(nullptr),
         model_filenames_(model_filenames),
         model_transformations_(model_transformations),
-        recorded_view_vector_(recorded_view_vector),
+        //recorded_view_vector_(recorded_view_vector),
+        measurement_session_descriptor_(snap_descriptor),
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
         active_camera_left_(nullptr),
         active_camera_right_(nullptr),
@@ -171,28 +171,44 @@ MainLoop()
     renderer_->render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
 #endif
 
-    renderer_->display_status("Current_Camera_Session");
+
+    std::string status_string("");
 
     if (! allow_user_input_) {
-        if ( controller->ms_since_last_node_upload() > 3000) {
+
+        status_string += std::to_string(measurement_session_descriptor_.recorded_view_vector_.size()+1) + " views left to write.\n";
+
+        if ( !screenshot_session_started_ ) {
+            
+        }
+
+        size_t ms_since_update = controller->ms_since_last_node_upload();
+
+        if ( ms_since_update > 3000) {
             if ( screenshot_session_started_ )
                 ++num_taken_screenshots_;
-                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + current_session_filename_+ "/" , std::to_string(num_taken_screenshots_+1));
 
-            if(! recorded_view_vector_.empty() ) {
+                auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
+                renderer_->take_screenshot("../quality_measurement/session_screenshots/", measurement_session_descriptor_.get_screenshot_name() );
+
+            if(! measurement_session_descriptor_.recorded_view_vector_.empty() ) {
                 if (! screenshot_session_started_ ) {
                     screenshot_session_started_ = true;
                 }
-                active_camera_->set_view_matrix(recorded_view_vector_.back());
-                recorded_view_vector_.pop_back();
+                active_camera_->set_view_matrix(measurement_session_descriptor_.recorded_view_vector_.back());
+                controller->reset_ms_since_last_node_upload();
+                measurement_session_descriptor_.recorded_view_vector_.pop_back();
             } else {
                 // leave the main loop
                 return true;
             }
 
-            controller->reset_ms_since_last_node_upload();
+        } else {
+            status_string += std::to_string( ((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
         }
     }
+
+    renderer_->display_status(status_string);
 
     if (dispatch_ || trigger_one_update_)
     {
