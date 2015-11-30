@@ -572,23 +572,41 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
 
 }
 
-void Bvh::compute_normal_and_radius(const size_t node, 
-                                    const size_t surfel,
-                                    const NormalRadiiStrategy& normal_radii_strategy){
+void Bvh::compute_normal_and_radius(const size_t node_id,
+                                    const size_t surfel_id,
+                                    const NormalComputationStrategy& normal_computation_strategy,
+                                    const RadiusComputationStrategy& radius_computation_strategy){
+
+
+    // base class radii_strategy
+    // radii_strategy_average_distance rs(40 /*number_of_k_nearest_neighbors*/)
+    // for_each(nodeid in level) for_each(surfel in nodeid) my_bvh.compute_radii(nodeid, surfelid, rs);
+
+    // radii_strategy_natural_neighbour rsn()
+    // my_bvh.compute_radii(nodeid, surfelid, rsn);
+
+
+    // base class normal_strategy
+    // normal_strategy_plane_fitting rs(40 /*number_of_k_nearest_neighbors*/)
+    // my_bvh.compute_normal(nodeid, surfelid, rs);
+
+    // normal_strategy_plane_fitting_adatpiv rsa(40 /*initial_number_of_k_nearest_neighbors*/) // compute an adaptiv k value for the surfel depending on local noise
+    // my_bvh.compute_normal(nodeid, surfelid, rsa);
+
 
 
     //set sonstant number of neighbours for test
-    //use desc. !? 
-    const uint32_t number_of_neighbours = 40;
-    size_t node_id = node;
-    size_t surfel_id = surfel;
-    std::vector<std::pair<Surfel, real>>  neighbours;
-
-
+    
+   
    /*
     neighbours = GetNearestNeighbours(node_id, surfel_id, number_of_neighbours)
+    
 
-    if (current_surfel < nodes_[node_id].mem_array().length()){
+    //test if node_id is valid ???
+
+
+    //test if surfel_id is valid
+    if (surfel_id < nodes_[node_id].mem_array().length()){
         Surfel surfel = nodes_[node_id].mem_array().ReadSurfel(surfel_id);
 
         surfel.normal() = normal_radii_strategy.compute_normal(node_id, surfel_id, neighbours);

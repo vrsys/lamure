@@ -14,7 +14,8 @@
 #include <lamure/pre/bvh_node.h>
 #include <lamure/pre/node_serializer.h>
 #include <lamure/pre/reduction_strategy.h>
-#include <lamure/pre/normal_radii_strategy.h>
+#include <lamure/pre/normal_computation_strategy.h>
+#include <lamure/pre/radius_computation_strategy.h>
 #include <lamure/pre/logger.h>
 
 #include <boost/filesystem.hpp>
@@ -24,7 +25,8 @@
 namespace lamure {
 namespace pre {
 
-class NormalRadiiStrategy;
+class NormalComputationStrategy;
+class RadiusComputationStrategy;
 
 class PREPROCESSING_DLL Bvh
 {
@@ -88,9 +90,10 @@ public:
                                   bool bin_all_file_extension = false);
     void                ComputeNormalsAndRadii(const uint16_t number_of_neighbours);
 
-    void                compute_normal_and_radius(const size_t node, 
-                                                  const size_t surfel,
-                                                  const NormalRadiiStrategy&  normal_radii_strategy);
+    void                compute_normal_and_radius(const size_t node_id,
+                                                  const size_t surfel_id,
+                                                  const NormalComputationStrategy&  normal_computation_strategy,
+                                                  const RadiusComputationStrategy&  radius_computation_strategy);
 
     void                Upsweep(const ReductionStrategy& reduction_strategy);
 
