@@ -1,4 +1,4 @@
-#include "fileHandler.h"
+#include "file_handler.h"
 
 #if WIN32
   #include <cstdint>
@@ -16,7 +16,7 @@
 #endif
 
 
-const uint32_t fileHandler::
+const uint32_t file_handler::
 GetFirstNodeIdOfDepth(uint32_t depth)
 {
     uint32_t id = 0;
@@ -28,14 +28,14 @@ GetFirstNodeIdOfDepth(uint32_t depth)
     return id;
 }
 
-const uint32_t fileHandler::
+const uint32_t file_handler::
 GetLengthOfDepth(uint32_t depth)
 {
     return (uint32_t)pow((double) 2, (double)depth);
 }
 
 
-fileHandler::fileHandler(){
+file_handler::file_handler(){
   //ctor
   pointsrepository_ = NULL;
   serialtree_ = NULL;
@@ -46,7 +46,7 @@ fileHandler::fileHandler(){
 #endif
 }
 
-fileHandler::~fileHandler(){
+file_handler::~file_handler(){
 
 #if WIN32
   UnmapViewOfFile(mapped_buffer_);
@@ -71,14 +71,14 @@ fileHandler::~fileHandler(){
 }
 
 void
-fileHandler::load(std::string fileName){
+file_handler::load(std::string fileName){
   fileName_ = fileName;
   std::ifstream infile;
   std::string lodfile = fileName + ".lod";
   infile.open(lodfile.c_str(), std::ios::in|std::ios::binary|std::ios::ate); // "ate" = starting at end of file
 
   if(infile.good()){
-  //// Read LOD hierarchy ////
+  //// read LOD hierarchy ////
     long filesize = infile.tellg(); //get filesize
     long scale = 1; std::string unit = "Byte";
     if(1024 < filesize && filesize < 1048576){
@@ -87,7 +87,7 @@ fileHandler::load(std::string fileName){
     else if(filesize>1048576){
       scale = 1048576; unit = "MB";
     }
-    std::cout <<"\nLoading file: " << lodfile <<". Filesize: " <<filesize/scale <<unit;
+    std::cout <<"\nloading file: " << lodfile <<". filesize: " <<filesize/scale <<unit;
 
     infile.seekg(0, std::ios::beg);
     infile.read( reinterpret_cast<char*>(&clustersize_), sizeof(clustersize_) );
@@ -138,7 +138,7 @@ fileHandler::load(std::string fileName){
 }
 
 void
-fileHandler::loadMemoryMapped(std::string fileName){
+file_handler::loadMemoryMapped(std::string fileName){
   fileName_ = fileName;
   std::string lodfile = fileName + ".lod";
 
@@ -217,7 +217,7 @@ fileHandler::loadMemoryMapped(std::string fileName){
 }
 
 void
-fileHandler::printBBX(unsigned long long nodeid){
+file_handler::printBBX(unsigned long long nodeid){
   std::cout << "file " << fileName_ << " BBX: "
 	    << " min " << serialtree_[nodeid].boundbox.minx << " " << serialtree_[nodeid].boundbox.miny << " " << serialtree_[nodeid].boundbox.minz
 	    << " max " << serialtree_[nodeid].boundbox.maxx << " " << serialtree_[nodeid].boundbox.maxy << " " << serialtree_[nodeid].boundbox.maxz
@@ -225,7 +225,7 @@ fileHandler::printBBX(unsigned long long nodeid){
 }
 
 void
-fileHandler::printRepository(void){
+file_handler::printRepository(void){
   for(long i=0; i<repositorysize_; i++){
     std::cout <<"punkt "<<i <<":\n"  <<pointsrepository_[i].x <<"\t"<<pointsrepository_[i].y<<"\t"<<pointsrepository_[i].z
               <<"\n"<<(long)pointsrepository_[i].r<<"\t"<<(long)pointsrepository_[i].g<<"\t"<<(long)pointsrepository_[i].b
@@ -235,37 +235,37 @@ fileHandler::printRepository(void){
 }
 
 long
-fileHandler::TreeDepth(void){
+file_handler::TreeDepth(void){
   return treedepth_;
 }
 
 long
-fileHandler::LeafesCount(void){
+file_handler::LeafesCount(void){
   return leafescount_;
 }
 
 long
-fileHandler::ClusterSize(void){
+file_handler::Clustersize(void){
   return clustersize_;
 }
 
 long
-fileHandler::NodesInTree(void){
+file_handler::NodesInTree(void){
   return nodesintree_;
 }
 
 long
-fileHandler::RepositorySize(void){
+file_handler::Repositorysize(void){
   return repositorysize_;
 }
 
 serializedTree*
-fileHandler::SerialTree(void){
+file_handler::SerialTree(void){
   return serialtree_;
 }
 
 repositoryPoints*
-fileHandler::PointsRepository(void){
+file_handler::PointsRepository(void){
   return pointsrepository_;
 }
 

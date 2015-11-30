@@ -30,8 +30,8 @@ struct nodeBounds {
 };
 
 struct serializedTree{
-  long id; vec4 viewState; nodeBounds boundbox;
-  long repoidx; long clusiz; double minSurfelSize;
+  long id; vec4 viewstate; nodeBounds boundbox;
+  long repoidx; long clusiz; double minsurfelsize;
   double QuantFactor; vec3 KnotenSchwerpunkt;
 };
 
@@ -43,19 +43,19 @@ struct repositoryPoints{
 };
 
 
-class fileHandler{
+class file_handler{
 
   public:
-    fileHandler();
-    ~fileHandler();
+    file_handler();
+    ~file_handler();
 
     void load(std::string fileName);
     void loadMemoryMapped(std::string fileName);
-    long ClusterSize(void);
+    long Clustersize(void);
     long NodesInTree(void);
     long LeafesCount(void);
     long TreeDepth(void);
-    long RepositorySize(void);
+    long Repositorysize(void);
     void printRepository(void);
 
     const uint32_t GetFirstNodeIdOfDepth(uint32_t depth);
