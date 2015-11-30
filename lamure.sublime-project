@@ -1,0 +1,20 @@
+{
+	"folders":
+	[
+		{
+			"follow_symlinks": true,
+			"path": ".",
+            "folder_exclude_patterns": ["third_party", "build", "cmake", "install"],
+            "file_exclude_patterns": ["*.nfs*"]
+		}
+	],
+	"build_systems":
+	[
+	  {
+	    "name": "lamure",
+	    "file_regex": "^(..[^:]*):(.*)$",
+	    "working_dir": "${project_path}/build",
+	    "cmd":  ["make", "install", "-j4"]
+	  },
+	]
+}

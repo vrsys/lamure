@@ -230,7 +230,8 @@ UnmapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::rend
     }
 }
 
-void GpuContext::
+//returns true if any node has been uploaded; false otherwise
+bool GpuContext::
 UpdatePrimaryBuffer(const CutDatabaseRecord::TemporaryBuffer& from_buffer, scm::gl::render_device_ptr device) {
     if (!is_created_)
         Create(device);
@@ -288,6 +289,7 @@ UpdatePrimaryBuffer(const CutDatabaseRecord::TemporaryBuffer& from_buffer, scm::
 
     }
 
+    return uploaded_nodes != 0;
 }
 
 

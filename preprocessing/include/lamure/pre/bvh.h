@@ -14,6 +14,7 @@
 #include <lamure/pre/bvh_node.h>
 #include <lamure/pre/node_serializer.h>
 #include <lamure/pre/reduction_strategy.h>
+#include <lamure/pre/normal_radii_strategy.h>
 #include <lamure/pre/logger.h>
 
 #include <boost/filesystem.hpp>
@@ -22,6 +23,8 @@
 
 namespace lamure {
 namespace pre {
+
+class NormalRadiiStrategy;
 
 class PREPROCESSING_DLL Bvh
 {
@@ -84,8 +87,13 @@ public:
                                   const std::string& surfels_input_file,
                                   bool bin_all_file_extension = false);
     void                ComputeNormalsAndRadii(const uint16_t number_of_neighbours);
-    void                Upsweep(const ReductionStrategy& reduction_strategy);
 
+    void                compute_normal_and_radius(const size_t node, 
+                                                  const size_t surfel,
+                                                  const NormalRadiiStrategy&  normal_radii_strategy);
+
+    void                Upsweep(const ReductionStrategy& reduction_strategy);
+    void                upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy);
 
     void                SerializeTreeToFile(const std::string& output_file,
                                             bool write_intermediate_data);
@@ -157,6 +165,11 @@ private:
                             std::vector<size_t>& result,
                             const size_t first_leaf,
                             const std::unordered_set<size_t>& excluded_leaves) const;
+    void                GetDescendantNodes(
+                            const size_t node,
+                            std::vector<size_t>& result,
+                            const size_t desired_depth,
+                            const std::unordered_set<size_t>& excluded_nodes) const;
 
     void                UpsweepR(
                             BvhNode& node,

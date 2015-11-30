@@ -50,6 +50,8 @@ public:
     scm::gl::buffer_ptr GetContextBuffer(const context_t context_id, scm::gl::render_device_ptr device);
     scm::gl::vertex_array_ptr GetContextMemory(const context_t context_id, scm::gl::render_device_ptr device);
 
+    size_t              ms_since_last_node_upload() {return ms_since_last_node_upload_; };
+    void                reset_ms_since_last_node_upload() { ms_since_last_node_upload_ = 0;};
 
 protected:
                         Controller();
@@ -73,6 +75,8 @@ private:
 
     std::unordered_map<context_t, std::queue<bool>> reset_flags_history_;
 
+    size_t ms_since_last_node_upload_;
+    std::chrono::time_point<std::chrono::system_clock> latest_timestamp_;
 };
 
 

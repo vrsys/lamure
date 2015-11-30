@@ -193,6 +193,21 @@ SetProjectionMatrix(float opening_angle, float aspect_ratio, float near, float f
 }
 
 void Camera::
+set_view_matrix( scm::math::mat4d const& in_view ) {
+  switch (cam_state_) {
+    case CAM_STATE_LAMURE:
+      trackball_.set_transform(in_view);
+      break;
+
+    case CAM_STATE_GUA:
+      view_matrix_ = in_view;
+      break;
+
+      default: break;
+    }
+}
+
+void Camera::
 UpdateTrackballMousePos(double x, double y)
 {
     trackball_init_x_ = x;

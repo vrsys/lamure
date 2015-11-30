@@ -67,6 +67,8 @@ public:
                                                     float near,
                                                     float far);
 
+    void                        set_view_matrix( scm::math::mat4d const& in_view );
+
     void                        CalcViewToScreenSpaceMatrix(scm::math::vec2f const& win_dimensions);
     void                        SetTrackballMatrix(scm::math::mat4d const& tb_matrix) { trackball_.set_transform(tb_matrix); }
     const scm::math::mat4d&     trackball_matrix() const { return trackball_.transform(); };

@@ -17,9 +17,11 @@
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
 
+#include <lamure/pre/normal_radii_plane_fitting.h>
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
+#include <lamure/pre/reduction_random.h>
 
 #include <cstdio>
 
@@ -100,10 +102,24 @@ Construct()
         case ReductionAlgorithm::EverySecond:
             reduction_strategy = new ReductionEverySecond();
             break;
+         case ReductionAlgorithm::Random:
+            reduction_strategy = new ReductionRandom();
+            break;          
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return false;
     };
+
+    NormalRadiiStrategy *normal_radii_strategy;
+    switch (desc_.normal_radius_algo) {
+        case NormalRadiusAlgorithm::PlaneFitting:
+            normal_radii_strategy = new NormalRadiiPlaneFitting();
+            break;       
+        default:
+            LOGGER_ERROR("Non-implemented atribute computation algorithm");
+            return false;
+    };
+
 
     // convert to binary file
     if ((0 >= start_stage) && (0 <= final_stage)) {

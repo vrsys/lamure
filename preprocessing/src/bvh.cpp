@@ -572,6 +572,37 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
 
 }
 
+void Bvh::compute_normal_and_radius(const size_t node, 
+                                    const size_t surfel,
+                                    const NormalRadiiStrategy& normal_radii_strategy){
+
+
+    //set sonstant number of neighbours for test
+    //use desc. !? 
+    const uint32_t number_of_neighbours = 40;
+    size_t node_id = node;
+    size_t surfel_id = surfel;
+    std::vector<std::pair<Surfel, real>>  neighbours;
+
+
+   /*
+    neighbours = GetNearestNeighbours(node_id, surfel_id, number_of_neighbours)
+
+    if (current_surfel < nodes_[node_id].mem_array().length()){
+        Surfel surfel = nodes_[node_id].mem_array().ReadSurfel(surfel_id);
+
+        surfel.normal() = normal_radii_strategy.compute_normal(node_id, surfel_id, neighbours);
+        surfel.radius() = normal_radii_strategy.compute_radius(node_id, surfel_id, neighbours);
+
+        nodes_[node_id].mem_array().WriteSurfel(surfel, surfel_id);
+    };
+
+    */
+    
+
+    
+}
+
 void Bvh::GetDescendantLeaves(
      const size_t node,
      std::vector<size_t>& result,
@@ -590,6 +621,30 @@ void Bvh::GetDescendantLeaves(
         if (excluded_leaves.find(node) == excluded_leaves.end())
         {
             result.push_back(node);
+        }
+    }
+}
+
+void Bvh::GetDescendantNodes(
+     const size_t node,
+     std::vector<size_t>& result,
+     const size_t desired_depth,
+     const std::unordered_set<size_t>& excluded_nodes) const
+{
+    size_t node_depth = std::log((node + 1) * (fan_factor_ - 1)) / std::log(fan_factor_);
+    if (node_depth == desired_depth)
+    {
+        if (excluded_nodes.find(node) == excluded_nodes.end())
+        {
+            result.push_back(node);
+        }
+    }
+    //node is above desired depth
+    else
+    {
+        for (uint16_t i = 0; i < fan_factor_; ++i)
+        {
+            GetDescendantNodes(GetChildId(node, i), result, desired_depth, excluded_nodes);
         }
     }
 }
@@ -617,7 +672,7 @@ GetNearestNeighbours(
     {
         if (i != surfel)
         {
-            Surfel current_surfel = nodes_[current_node].mem_array().ReadSurfel(i);
+            Surfel const& current_surfel = nodes_[current_node].mem_array().ReadSurfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -658,7 +713,7 @@ GetNearestNeighbours(
 
         std::vector<size_t> unvisited_descendant_leaves;
 
-        GetDescendantLeaves(current_node, unvisited_descendant_leaves, first_leaf, processed_leaves);
+        GetDescendantNodes(current_node, unvisited_descendant_leaves, depth_, processed_leaves);
 
         for (auto leaf : unvisited_descendant_leaves)
         {
@@ -714,6 +769,7 @@ GetNearestNeighbours(
 }
 
 
+
 void Bvh::
 Upsweep(const ReductionStrategy& reduction_strategy)
 {
@@ -741,6 +797,47 @@ Upsweep(const ReductionStrategy& reduction_strategy)
     std::cout << std::endl << std::endl;
     LOGGER_TRACE("Total processed nodes: " << ctr.load());
     state_ = State::AfterUpsweep;
+}
+
+
+
+void Bvh::
+upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy)
+{
+    // Start at bottom level and move up towards root.
+    for (uint32_t level = depth_; level >= 0; --level)
+    {
+        // Iterate over nodes of current tree level.
+        for (std::vector<BvhNode>::iterator node_iter = nodes_.begin(); node_iter != nodes_.end(); ++node_iter)
+        {
+            if (node_iter->depth() == level)
+            {
+                // If a node has no data yet, calculate it based on child nodes.
+                if (!node_iter->IsIC() && !node_iter->IsOOC())
+                {
+                    std::vector<SurfelMemArray*> child_mem_data;
+                    for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
+                    {
+                        size_t child_id = this->GetChildId(node_iter->node_id(), child_index);
+                        
+                        for (std::vector<BvhNode>::iterator child_iter = nodes_.begin(); child_iter != nodes_.end(); ++child_iter)
+                        {
+                            if (child_iter->node_id() == child_id)
+                            {
+                                child_mem_data.push_back(&child_iter->mem_array());
+                                //commented for quick merge process
+                                //child_iter = nodes_end();
+                            }
+                        }
+                    }
+                
+
+                    //commented for quick merge process
+                    //node_iter->Reset(reduction_strategy.CreateLod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
+                }
+            }
+        }
+    }
 }
 
 void Bvh::
