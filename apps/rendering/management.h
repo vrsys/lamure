@@ -26,6 +26,28 @@
 
 #include <lamure/ren/ray.h>
 
+struct snapshot_session_descriptor {
+    snapshot_session_descriptor() : num_taken_screenshots(0),
+                                    session_filename_(""),
+                                    recorded_view_vector_(),
+                                    snapshot_resolution_(scm::math::vec2ui(0,0))
+                                    {}
+
+    //set_session_filename();
+    std::string get_screenshot_name() { 
+
+        return
+        session_filename_ + "/" 
+        + std::to_string(++num_taken_screenshots) 
+        + "__" + std::to_string(snapshot_resolution_[0]) 
+        + " " + std::to_string(snapshot_resolution_[1]);}
+
+    unsigned num_taken_screenshots;
+    std::string session_filename_;
+    std::vector<scm::math::mat4d> recorded_view_vector_;
+    scm::math::vec2ui snapshot_resolution_;
+};
+
 class management
 {
 public:
@@ -33,8 +55,7 @@ public:
                             std::vector<scm::math::mat4f> const& model_transformations,
                             const std::set<lamure::model_t>& visible_set,
                             const std::set<lamure::model_t>& invisible_set,
-                            std::vector<scm::math::mat4d> const& recorded_view_vector = std::vector<scm::math::mat4d>(),
-                            std::string const& session_filename = "");
+                            snapshot_session_descriptor& snap_descriptor);
     virtual             ~management();
 
                         management(const management&) = delete;
@@ -113,7 +134,8 @@ private:
     std::vector<scm::math::mat4f> model_transformations_;
     std::vector<std::string> model_filenames_;
 
-    std::vector<scm::math::mat4d> recorded_view_vector_; 
+    snapshot_session_descriptor& measurement_session_descriptor_;
+    //std::vector<scm::math::mat4d>& recorded_view_vector_; 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;

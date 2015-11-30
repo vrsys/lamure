@@ -100,7 +100,7 @@ void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
 }
 
 management* management_ = nullptr;
-
+bool quality_measurement_mode_enabled_ = false;
 
 char* get_cmd_option(char** begin, char** end, const std::string & option) {
     char** it = std::find(begin, end, option);
@@ -185,7 +185,7 @@ int main(int argc, char** argv)
 
     // set min and max
     window_width        = std::max(std::min(window_width, 4096), 1);
-    window_height       = std::max(std::min(window_width, 2160), 1);
+    window_height       = std::max(std::min(window_height, 2160), 1);
     main_memory_budget  = std::max(int(main_memory_budget), 1024);
     video_memory_budget = std::max(int(video_memory_budget), 512);
     max_upload_budget   = std::max(int(max_upload_budget), 64);
@@ -216,16 +216,20 @@ int main(int argc, char** argv)
 
     std::string measurement_filename = "";
 
+    snapshot_session_descriptor measurement_descriptor;
+
     if( ! measurement_file_path.empty() ) {
-      parsed_views = parse_camera_session_file(measurement_file_path);
+      measurement_descriptor.recorded_view_vector_ = parse_camera_session_file(measurement_file_path);
+      measurement_descriptor.snapshot_resolution_ = scm::math::vec2ui(window_width, window_height);
       size_t last_dot_in_filename_pos = measurement_file_path.find_last_of('.');
       size_t first_slash_before_filename_pos = measurement_file_path.find_last_of("/\\", last_dot_in_filename_pos);
 
-      measurement_filename = measurement_file_path.substr(first_slash_before_filename_pos+1, last_dot_in_filename_pos);
+      measurement_descriptor.session_filename_ = measurement_file_path.substr(first_slash_before_filename_pos+1, last_dot_in_filename_pos);
+      quality_measurement_mode_enabled_ = true;
+      glutFullScreenToggle();
     }
 
-
-    management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, parsed_views, measurement_filename);
+    management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, measurement_descriptor);
 
     glutMainLoop();
 
@@ -391,7 +395,8 @@ void glut_keyboard(unsigned char key, int x, int y)
             exit(0);
             break;
         case '.':
-            glutFullScreenToggle();
+            if(!quality_measurement_mode_enabled_)
+                glutFullScreenToggle();
             break;
 
         default:
