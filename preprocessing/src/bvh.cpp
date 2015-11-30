@@ -429,7 +429,7 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
                 // compute radius
                 real avg_distance = 0.0;
 
-                for (auto neighbour : neighbours)
+                for (auto const& neighbour : neighbours)
                 {
                     avg_distance += sqrt(neighbour.second);
                 }
@@ -446,7 +446,7 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
                 real sum_y_y = 0.0, sum_y_z = 0.0;
                 real sum_z_z = 0.0;
 
-                for (auto neighbour : neighbours)
+                for (auto const& neighbour : neighbours)
                 {
                     vec3r neighbour_pos = neighbour.first.pos();
 
@@ -819,7 +819,7 @@ Upsweep(const ReductionStrategy& reduction_strategy)
 
 
 
-void Bvh::
+/*void Bvh::
 upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy)
 {
     // Start at bottom level and move up towards root.
@@ -856,7 +856,7 @@ upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrate
             }
         }
     }
-}
+}*/
 
 void Bvh::
 UpsweepR(BvhNode& node,

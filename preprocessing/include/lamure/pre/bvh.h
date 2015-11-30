@@ -81,6 +81,13 @@ public:
      * \return                    Pair that contains first node id and number of nodes
      */
     std::pair<NodeIdType, NodeIdType> GetNodeRanges(const uint32_t depth) const;
+
+    std::vector<std::pair<Surfel, real>>
+                        GetNearestNeighbours(
+                            const size_t node_id,
+                            const size_t surfel_id,
+                            const uint32_t num_neighbours) const;
+    
     void                PrintTreeProperties() const;
     const NodeIdType    first_leaf() const { return first_leaf_; }
 
@@ -96,7 +103,7 @@ public:
                                                   const RadiusComputationStrategy&  radius_computation_strategy);
 
     void                Upsweep(const ReductionStrategy& reduction_strategy);
-    void                upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy);
+    //void                upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy);
 
     void                SerializeTreeToFile(const std::string& output_file,
                                             bool write_intermediate_data);
@@ -156,12 +163,6 @@ private:
                             uint32_t& processed_nodes,
                             uint8_t& percent_processed,
                             SharedFile leaf_level_access);
-
-    std::vector<std::pair<Surfel, real>>
-                        GetNearestNeighbours(
-                            const size_t node_id,
-                            const size_t surfel_id,
-                            const uint32_t num_neighbours) const;
 
     void                GetDescendantLeaves(
                             const size_t node,
