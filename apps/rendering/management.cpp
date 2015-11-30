@@ -9,15 +9,27 @@
 #include "management.h"
 #include <set>
 #include <ctime>
+#include <algorithm>
+#include <fstream>
 
 Management::
 Management(std::vector<std::string> const& model_filenames,
     std::vector<scm::math::mat4f> const& model_transformations,
-    const std::set<lamure::model_t>& visible_set,
-    const std::set<lamure::model_t>& invisible_set)
-    :   renderer_(nullptr),
+    std::set<lamure::model_t> const& visible_set,
+    std::set<lamure::model_t> const& invisible_set,
+    std::vector<scm::math::mat4d> const& recorded_view_vector,
+    std::string const& session_filename)
+    :   num_taken_screenshots_(0),
+        allow_user_input_(recorded_view_vector.size() == 0),
+        screenshot_session_started_(false),
+        camera_recording_enabled_(false),
+        current_session_filename_(session_filename),
+        current_session_file_path_(""),
+        num_recorded_camera_positions_(0),
+        renderer_(nullptr),
         model_filenames_(model_filenames),
         model_transformations_(model_transformations),
+        recorded_view_vector_(recorded_view_vector),
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
         active_camera_left_(nullptr),
         active_camera_right_(nullptr),
@@ -115,9 +127,10 @@ Management::
         renderer_ = nullptr;
     }
 
+
 }
 
-void Management::
+bool Management::
 MainLoop()
 {
     lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
@@ -127,7 +140,7 @@ MainLoop()
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
        model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(28.f, -389.f, -58.f);
-       renderer_->SendModelTransform(model_id, model_transformations_[model_id]);
+       renderer_->send_model_transform(model_id, model_transformations_[model_id]);
     }
 
 #endif
@@ -151,13 +164,35 @@ MainLoop()
     
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_->Render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()));
-    renderer_->Render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
+    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
 #else
     renderer_->set_radius_scale(importance_);
-    renderer_->Render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()));
- 
+    renderer_->render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
 #endif
+
+    renderer_->display_status("Current_Camera_Session");
+
+    if (! allow_user_input_) {
+        if ( controller->ms_since_last_node_upload() > 3000) {
+            if ( screenshot_session_started_ )
+                ++num_taken_screenshots_;
+                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + current_session_filename_+ "/" , std::to_string(num_taken_screenshots_+1));
+
+            if(! recorded_view_vector_.empty() ) {
+                if (! screenshot_session_started_ ) {
+                    screenshot_session_started_ = true;
+                }
+                active_camera_->set_view_matrix(recorded_view_vector_.back());
+                recorded_view_vector_.pop_back();
+            } else {
+                // leave the main loop
+                return true;
+            }
+
+            controller->reset_ms_since_last_node_upload();
+        }
+    }
 
     if (dispatch_ || trigger_one_update_)
     {
@@ -224,6 +259,7 @@ MainLoop()
 
 #endif
 
+    return false;
 }
 
 
@@ -238,6 +274,10 @@ UpdateTrackball(int x, int y)
 void Management::
 RegisterMousePresses(int button, int state, int x, int y)
 {
+    if(! allow_user_input_) {
+        return;
+    }
+
     switch (button) {
         case GLUT_LEFT_BUTTON:
             {
@@ -267,6 +307,10 @@ void Management::
 DispatchKeyboardInput(unsigned char key)
 {
 
+    if(! allow_user_input_) {
+        return;
+    }
+
     bool override_center_of_rotation = false;
 
     switch (key)
@@ -288,44 +332,23 @@ DispatchKeyboardInput(unsigned char key)
         std::cout << "send rendered: " << test_send_rendered_ << std::endl;
         break;
     case 'w':
-        renderer_->SwitchBoundingBoxRendering();
+        renderer_->toggle_bounding_box_rendering();
         break;
     case 'U':
-        renderer_->ChangePointSize(1.0f);
+        renderer_->change_point_size(1.0f);
         break;
     case 'u':
-        renderer_->ChangePointSize(0.1f);
+        renderer_->change_point_size(0.1f);
         break;
     case 'J':
-        renderer_->ChangePointSize(-1.0f);
+        renderer_->change_point_size(-1.0f);
         break;
     case 'j':
-        renderer_->ChangePointSize(-0.1f);
-        break;
-    case 'n':
-        renderer_->SwitchRenderMode();
-        break;
-    case 'o':
-        renderer_->SwitchEllipseMode();
-        break;
-    case 'c':
-        renderer_->SwitchClampedNormalMode();
-        break;
-    case 'A':
-        renderer_->ChangeDeformRatio(0.1f);
-        break;
-    case 'a':
-        renderer_->ChangeDeformRatio(0.01f);
-        break;
-    case 'S':
-        renderer_->ChangeDeformRatio(-0.1f);
-        break;
-    case 's':
-        renderer_->ChangeDeformRatio(-0.01f);
+        renderer_->change_point_size(-0.1f);
         break;
     case 't':
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
-        renderer_->ToggleVisibleSet();
+        renderer_->toggle_visible_set();
 #endif
         break;
 
@@ -366,13 +389,13 @@ DispatchKeyboardInput(unsigned char key)
                 active_camera_ = active_camera_right_;
             }
 
-            renderer_->ToggleCameraInfo(active_camera_left_->view_id(), active_camera_right_->view_id());
+            renderer_->toggle_camera_info(active_camera_left_->view_id(), active_camera_right_->view_id());
         }
 #else
         {
             lamure::view_t current_camera_id = active_camera_->view_id();
             active_camera_ = cameras_[(++current_camera_id) % num_cameras_];
-            renderer_->ToggleCameraInfo(active_camera_->view_id());
+            renderer_->toggle_camera_info(active_camera_->view_id());
         }
 #endif
 #endif
@@ -380,7 +403,7 @@ DispatchKeyboardInput(unsigned char key)
 
     case 'd':
         this->ToggleDispatching();
-        renderer_->ToggleCutUpdateInfo();
+        renderer_->toggle_cut_update_info();
         break;
 
     case 'z':
@@ -578,13 +601,21 @@ DispatchKeyboardInput(unsigned char key)
 
 #endif
 
+    case 'r':
+    case 'R':
+        toggle_camera_session();
+        break;
+
+    case 'a':
+        record_next_camera_position();
+        break;
 
     case '0':
         active_camera_->SetTrackballMatrix(scm::math::mat4d(reset_matrix_));
         break;
 
     case '9':
-        renderer_->ToggleDisplayInfo();
+        renderer_->toggle_display_info();
         break;
 
     case 'k':
@@ -595,7 +626,6 @@ DispatchKeyboardInput(unsigned char key)
         IncreaseErrorThreshold();
         std::cout << "error threshold: " << error_threshold_ << std::endl;
         break;
-
     }
 }
 
@@ -609,7 +639,7 @@ DispatchResize(int w, int h)
     w/=2;
 #endif
 
-    renderer_->ResetViewport(w,h);
+    renderer_->reset_viewport(w,h);
     lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
     database->set_window_width(w);
     database->set_window_height(h);
@@ -692,7 +722,46 @@ PrintInfo()
 
 }
 
+void Management::
+toggle_camera_session() {
+    camera_recording_enabled_ = !camera_recording_enabled_;
+}
+
+void Management::
+record_next_camera_position() {
+    if (camera_recording_enabled_) {
+        create_quality_measurement_resources();
+    }
+}
+
+void Management::
+create_quality_measurement_resources() {
+
+    std::string base_quality_measurement_path = "../quality_measurement/";
+    std::string session_file_prefix = "session_";
+
+    if(! boost::filesystem::exists(base_quality_measurement_path)) {
+        std::cout<<"Creating Folder.\n\n";
+        boost::filesystem::create_directories(base_quality_measurement_path);
+    }
+
+    if( current_session_file_path_.empty() ) {
+
+        boost::filesystem::directory_iterator begin(base_quality_measurement_path), end;
+        
+        int num_existing_sessions = std::count_if(begin, end,
+            [](const boost::filesystem::directory_entry & d) {
+                return !boost::filesystem::is_directory(d.path());
+            });
+
+        current_session_file_path_ = base_quality_measurement_path+session_file_prefix+std::to_string(num_existing_sessions+1)+".csn";
+        
+
+    }
+
+    std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);
+    active_camera_->WriteViewMatrix(camera_session_file);
+    camera_session_file.close();
 
 
-
-
+}
