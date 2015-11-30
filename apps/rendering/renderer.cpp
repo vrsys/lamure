@@ -19,8 +19,6 @@
 
 #include <scm/gl_core/render_device/opengl/gl_core.h>
 
-size_t Renderer::current_screenshot_num_ = 1;
-
 Renderer::
 Renderer(std::vector<scm::math::mat4f> const& model_transformations,
          const std::set<lamure::model_t>& visible_set,
@@ -32,11 +30,9 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       invisible_set_(invisible_set),
       render_visible_set_(true),
       point_size_factor_(1.0f),
-      render_mode_(0),
       render_bounding_boxes_(false),
       fps_(0.0),
       rendered_splats_(0),
-      uploaded_nodes_(0),
       is_cut_update_active_(true),
       current_cam_id_(0),
       display_info_(true),
@@ -55,7 +51,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
     initialize_VBOs();
     reset_viewport(win_x_, win_y_);
 
-    calc_rad_scale_factors();
+    calculate_radius_scale_per_model();
 }
 
 Renderer::
@@ -63,11 +59,7 @@ Renderer::
 {
     filter_nearest_.reset();
     color_blending_state_.reset();
-    not_blended_state_.reset();
 
-    change_point_size_in_shader_state_.reset();
-
-    depth_state_less_.reset();
     depth_state_disable_.reset();
 
     pass1_visibility_shader_program_.reset();
@@ -85,8 +77,6 @@ Renderer::
 
     pass3_normalization_color_texture_.reset();
     pass3_normalization_normal_texture_.reset();
-
-    gaussian_texture_.reset();
 
     screen_quad_.reset();
 
@@ -111,12 +101,10 @@ upload_uniforms(lamure::ren::Camera const& camera) const
 
     pass3_pass_through_shader_program_->uniform_sampler("in_color_texture", 0);
     pass3_pass_through_shader_program_->uniform_sampler("in_normal_texture", 1);
-    pass3_pass_through_shader_program_->uniform("renderMode", render_mode_);
 
     pass_filling_program_->uniform_sampler("in_color_texture", 0);
     pass_filling_program_->uniform_sampler("depth_texture", 1);
     pass_filling_program_->uniform("win_size", scm::math::vec2f(win_x_, win_y_) );
-    pass_filling_program_->uniform("renderMode", render_mode_);
 
 
     context_->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, .0f, 1.0f)); // how does the image look, if nothing is drawn
@@ -146,21 +134,21 @@ upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_
     scm::math::mat4f    model_view_matrix   = view_matrix * model_matrix;
 #endif
 
-    float rad_scale_fac = radius_scale_ * rad_scale_fac_[model_id];
+    float total_radius_scale = radius_scale_ * radius_scale_per_model_[model_id];
 
     switch(pass) {
         case RenderPass::DEPTH:
             pass1_visibility_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd) );
             pass1_visibility_shader_program_->uniform("model_view_matrix", model_view_matrix);
             pass1_visibility_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
-            pass1_visibility_shader_program_->uniform("rad_scale_fac", rad_scale_fac);
+            pass1_visibility_shader_program_->uniform("model_radius_scale", total_radius_scale);
             break;
 
         case RenderPass::ACCUMULATION:
             pass2_accumulation_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
             pass2_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
             pass2_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
-            pass2_accumulation_shader_program_->uniform("rad_scale_fac", rad_scale_fac);
+            pass2_accumulation_shader_program_->uniform("model_radius_scale", total_radius_scale);
             break;            
 
         case RenderPass::BOUNDING_BOX:
@@ -227,6 +215,8 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
     }
 
 
+    rendered_splats_ = 0;
+
     std::vector<uint32_t>                       frustum_culling_results;
 
     uint32_t size_of_culling_result_vector = 0;
@@ -259,19 +249,17 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                 ****************************************************************************************/
 
                 {
-
-
                     context_->clear_depth_stencil_buffer(pass1_visibility_fbo_);
 
 
                     context_->set_frame_buffer(pass1_visibility_fbo_);
 
+                    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
                     context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
 
                     context_->bind_program(pass1_visibility_shader_program_);
 
 
-                    context_->set_rasterizer_state(change_point_size_in_shader_state_);
                     context_->bind_vertex_array(render_VAO);
                     context_->apply();
 
@@ -321,10 +309,7 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                             ++node_counter;
                         }
-
                    }
-
-
                 }
 
 
@@ -341,15 +326,12 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                     context_->set_frame_buffer(pass2_accumulation_fbo_);
 
+                    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
                     context_->set_blend_state(color_blending_state_);
 
                     context_->set_depth_stencil_state(depth_state_test_without_writing_);
 
                     context_->bind_program(pass2_accumulation_shader_program_);
-
-                    //context_->bind_texture(pass1_depth_buffer_, filter_nearest_,   0);
-
-                    //context_->bind_texture( gaussian_texture_  ,  filter_nearest_,   1);
 
                     context_->bind_vertex_array(render_VAO);
                     context_->apply();
@@ -413,7 +395,7 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                     context_->set_frame_buffer(pass3_normalization_fbo_);
 
-                    context_->set_depth_stencil_state(depth_state_less_);
+                    context_->set_depth_stencil_state(depth_state_disable_);
 
                     context_->bind_program(pass3_pass_through_shader_program_);
 
@@ -568,10 +550,10 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
     device_->opengl_api().glEnable(GL_DEPTH_TEST);
 #endif
 
-    if(display_info_)
-      display_status(current_camera_session);
+    //if(display_info_)
+      //display_status(current_camera_session);
 
-      context_->reset();
+    context_->reset();
 
 
 
@@ -596,25 +578,19 @@ void Renderer::send_model_transform(const lamure::model_t model_id, const scm::m
     model_transformations_[model_id] = transform;
 }
 
-void Renderer::display_status(unsigned const current_camera_session)
+void Renderer::display_status(std::string const& information_to_display)
 {
-
-
     std::stringstream os;
    // os.setprecision(5);
     os
       <<"FPS:   "<<std::setprecision(4)<<fps_<<"\n"
       <<"# Points:   "<< (rendered_splats_ / 100000) / 10.0f<< " Mio. \n";
       
-    os << "Recording Camera Session\n";
+    os << information_to_display;
+    os << "\n";
     
     renderable_text_->text_string(os.str());
     text_renderer_->draw_shadowed(context_, scm::math::vec2i(20, win_y_- 40), renderable_text_);
-
-    rendered_splats_ = 0;
-    uploaded_nodes_ = 0;
-
-
 }
 
 void Renderer::
@@ -628,12 +604,7 @@ initialize_VBOs()
 
     filter_nearest_ = device_->create_sampler_state(FILTER_MIN_MAG_LINEAR, WRAP_CLAMP_TO_EDGE);
 
-
-
-
-    //needs to be set to be able to change point size in shaders
-    change_point_size_in_shader_state_ = device_->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, false, false, 0.0, false, false, point_raster_state(true));
-
+    no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, false, false, 0.0, false, false);
 
     pass1_visibility_fbo_ = device_->create_frame_buffer();
 
@@ -668,30 +639,11 @@ initialize_VBOs()
     screen_quad_.reset(new quad_geometry(device_, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
 
 
-    float gaussian_buffer[32] = {255, 255, 252, 247, 244, 234, 228, 222, 208, 201,
-                                 191, 176, 167, 158, 141, 131, 125, 117, 100,  91,
-                                 87,  71,  65,  58,  48,  42,  39,  32,  28,  25,
-                                 19,  16};
-
-    texture_region ur(vec3ui(0u), vec3ui(32, 1, 1));
-
-    gaussian_texture_ = device_->create_texture_2d(vec2ui(32,1), FORMAT_R_32F, 1, 1, 1);
-
-    context_->update_sub_texture(gaussian_texture_, ur, 0u, FORMAT_R_32F, gaussian_buffer);
-
-
 
     color_blending_state_ = device_->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
 
 
-    not_blended_state_ = device_->create_blend_state(false);
-
-    depth_state_less_ = device_->create_depth_stencil_state(true, true, COMPARISON_LESS);
-
-    depth_stencil_state_desc no_depth_test_descriptor = depth_state_less_->descriptor();
-    no_depth_test_descriptor._depth_test = false;
-
-    depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
+    depth_state_disable_ = device_->create_depth_stencil_state(false, true, scm::gl::COMPARISON_NEVER);
 
     depth_state_test_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
 
@@ -892,25 +844,24 @@ update_frustum_dependent_parameters(lamure::ren::Camera const& camera)
 }
 
 void Renderer::
-calc_rad_scale_factors()
+calculate_radius_scale_per_model()
 {
     using namespace lamure::ren;
     uint32_t num_models = (ModelDatabase::GetInstance())->num_models();
 
-    if(rad_scale_fac_.size() < num_models)
-      rad_scale_fac_.resize(num_models);
+    if(radius_scale_per_model_.size() < num_models)
+      radius_scale_per_model_.resize(num_models);
 
     scm::math::vec4f x_unit_vec = scm::math::vec4f(1.0,0.0,0.0,0.0);
     for(unsigned int model_id = 0; model_id < num_models; ++model_id)
     {
-     rad_scale_fac_[model_id] = scm::math::length(model_transformations_[model_id] * x_unit_vec);
+     radius_scale_per_model_[model_id] = scm::math::length(model_transformations_[model_id] * x_unit_vec);
     }
 }
 
 //dynamic rendering adjustment functions
-
 void Renderer::
-switch_bounding_box_rendering()
+toggle_bounding_box_rendering()
 {
     render_bounding_boxes_ = ! render_bounding_boxes_;
 
@@ -933,29 +884,6 @@ change_point_size(float amount)
     }
 
     std::cout<<"set point size factor to: "<<point_size_factor_<<"\n\n";
-};
-
-void Renderer::
-switch_render_mode()
-{
-    render_mode_ = (render_mode_ + 1)%2;
-
-    std::cout<<"switched render mode to: ";
-    switch(render_mode_)
-    {
-        case 0:
-            std::cout<<"COLOR\n\n";
-            break;
-        case 1:
-            std::cout<<"NORMAL\n\n";
-            break;
-        case 2:
-            std::cout<<"DEPTH\n\n";
-            break;
-        default:
-            std::cout<<"UNKNOWN\n\n";
-            break;
-    }
 };
 
 void Renderer::
@@ -1025,8 +953,5 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         delete [] pixels;
 
         std::cout<<"Saved Screenshot: "<<filename.c_str()<<"\n\n";
-
-        ++Renderer::current_screenshot_num_;
-
     }
 }

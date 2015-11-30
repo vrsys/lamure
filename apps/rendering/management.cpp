@@ -169,8 +169,9 @@ MainLoop()
 #else
     renderer_->set_radius_scale(importance_);
     renderer_->render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()), num_recorded_camera_positions_);
- 
 #endif
+
+    renderer_->display_status("Current_Camera_Session");
 
     if (! allow_user_input_) {
         if ( controller->ms_since_last_node_upload() > 3000) {
@@ -331,7 +332,7 @@ DispatchKeyboardInput(unsigned char key)
         std::cout << "send rendered: " << test_send_rendered_ << std::endl;
         break;
     case 'w':
-        renderer_->switch_bounding_box_rendering();
+        renderer_->toggle_bounding_box_rendering();
         break;
     case 'U':
         renderer_->change_point_size(1.0f);
@@ -344,9 +345,6 @@ DispatchKeyboardInput(unsigned char key)
         break;
     case 'j':
         renderer_->change_point_size(-0.1f);
-        break;
-    case 'n':
-        renderer_->switch_render_mode();
         break;
     case 't':
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN

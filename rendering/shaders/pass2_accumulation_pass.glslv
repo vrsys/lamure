@@ -8,7 +8,7 @@
 #version 420 core
 
 uniform mat4 inv_mv_matrix;
-uniform float rad_scale_fac;
+uniform float model_radius_scale;
 uniform float point_size_factor;
 
 layout(location = 0) in vec3 in_position;
@@ -43,8 +43,8 @@ void main()
   }
 
   //**assign tangent vectors**//
-  VertexOut.pass_ms_u = normalize(ms_u) * point_size_factor * rad_scale_fac * in_radius;
-  VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * point_size_factor * rad_scale_fac * in_radius;
+  VertexOut.pass_ms_u = normalize(ms_u) * point_size_factor * model_radius_scale * in_radius;
+  VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * point_size_factor * model_radius_scale * in_radius;
 
   VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
 
