@@ -768,7 +768,7 @@ Upsweep(const ReductionStrategy& reduction_strategy)
 }
 
 void Bvh::
-UpsweepR(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy)
+upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy)
 {
     // Start at bottom level and move up towards root.
     for (uint32_t level = depth_; level >= 0; --level)
@@ -784,19 +784,22 @@ UpsweepR(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy&
                     std::vector<SurfelMemArray*> child_mem_data;
                     for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
                     {
-                        child_id = this->GetChildId(node_iter->node_id(), child_index);
+                        size_t child_id = this->GetChildId(node_iter->node_id(), child_index);
                         
                         for (std::vector<BvhNode>::iterator child_iter = nodes_.begin(); child_iter != nodes_.end(); ++child_iter)
                         {
                             if (child_iter->node_id() == child_id)
                             {
                                 child_mem_data.push_back(&child_iter->mem_array());
-                                child_iter = nodes_end();
+                                //commented for quick merge process
+                                //child_iter = nodes_end();
                             }
                         }
                     }
                 
-                    node_iter->Reset(reduction_strategy.CreateLod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
+
+                    //commented for quick merge process
+                    //node_iter->Reset(reduction_strategy.CreateLod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
                 }
             }
         }
