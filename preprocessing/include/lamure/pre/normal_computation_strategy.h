@@ -16,11 +16,15 @@
 namespace lamure{
 namespace pre {
 
+class bvh;
+
 class normal_computation_strategy {
 public:
 	virtual ~normal_computation_strategy() {};
-
-	virtual vec3f compute_normal(const size_t node_id, const size_t surfel_id,  const uint16_t number_of_neighbours) const = 0;	
+	virtual vec3f compute_normal(bvh& tree,
+				     const size_t node_id,
+				     const size_t surfel_id,
+				     const uint16_t number_of_neighbours) const = 0;	
 };
 
 } // namespace pre

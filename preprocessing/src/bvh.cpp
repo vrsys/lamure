@@ -42,9 +42,9 @@ namespace pre {
 
 void  bvh::
 init_tree(const std::string& surfels_input_file,
-         const uint32_t max_fan_factor,
-         const size_t desired_surfels_per_node,
-         const boost::filesystem::path& base_path)
+          const uint32_t max_fan_factor,
+          const size_t desired_surfels_per_node,
+          const boost::filesystem::path& base_path)
 {
     assert(state_ == state_type::null);
     assert(max_fan_factor >= 2);
@@ -94,8 +94,8 @@ load_tree(const std::string& kdn_input_file)
 {
     assert(state_ == state_type::null);
 
-    bvh_stream bvh_stream;
-    bvh_stream.read_bvh(kdn_input_file, *this);
+    bvh_stream bvh_strm;
+    bvh_strm.read_bvh(kdn_input_file, *this);
 
     LOGGER_INFO("Load bvh: \"" << kdn_input_file << "\". state_type: " << state_to_string(state_));
     return true;
@@ -195,7 +195,7 @@ downsweep(bool adjust_translation,
     else {
         LOGGER_TRACE("Compute root bounding box out-of-core");
         input_bb = basic_algorithms::compute_aabb(nodes_[0].disk_array(),
-                                                buffer_size_);
+                                                  buffer_size_);
     }
     LOGGER_DEBUG("Root AABB: " << input_bb.min() << " - " << input_bb.max());
 
@@ -245,18 +245,18 @@ downsweep(bool adjust_translation,
             basic_algorithms::splitted_array<surfel_disk_array> surfel_arrays;
 
             basic_algorithms::sort_and_split(current_node.disk_array(),
-                                          surfel_arrays,
-                                          current_node.get_bounding_box(),
-                                          current_node.get_bounding_box().get_longest_axis(),
-                                          fan_factor_,
-                                          memory_limit_);
+                                             surfel_arrays,
+                                             current_node.get_bounding_box(),
+                                             current_node.get_bounding_box().get_longest_axis(),
+                                             fan_factor_,
+                                             memory_limit_);
 
             // iterate through children
             for (size_t i = 0; i < surfel_arrays.size(); ++i) {
                 uint32_t child_id = get_child_id(nid, i);
                 nodes_[child_id] = bvh_node(child_id, level + 1,
-                                           surfel_arrays[i].second,
-                                           surfel_arrays[i].first);
+                                            surfel_arrays[i].second,
+                                            surfel_arrays[i].first);
                 if (nid == slice_left && i == 0)
                     new_slice_left = child_id;
                 if (nid == slice_right && i == surfel_arrays.size() - 1)
@@ -293,8 +293,8 @@ downsweep(bool adjust_translation,
         LOGGER_TRACE("Process subbvh in-core at node " << nid);
         // process subbvh and save leafs
         downsweep_subtree_in_core(current_node, disk_leaf_destination, processed_nodes,
-                               percent_processed,
-                               leaf_level_access);
+                                  percent_processed,
+                                  leaf_level_access);
     }
     //std::cout << std::endl << std::endl;
 
@@ -304,10 +304,10 @@ downsweep(bool adjust_translation,
 
 void bvh::
 downsweep_subtree_in_core( const bvh_node& node,
-                        size_t& disk_leaf_destination,
-                        uint32_t& processed_nodes,
-                        uint8_t& percent_processed,
-                        shared_file leaf_level_access)
+                           size_t& disk_leaf_destination,
+                           uint32_t& processed_nodes,
+                           uint8_t& percent_processed,
+                           shared_file leaf_level_access)
 {
     const size_t sort_parallelizm_thres = 2;
 
@@ -329,11 +329,11 @@ downsweep_subtree_in_core( const bvh_node& node,
             // split and compute child bounding boxes
             basic_algorithms::splitted_array<surfel_mem_array> surfel_arrays;
             basic_algorithms::sort_and_split(current_node.mem_array(),
-                                          surfel_arrays,
-                                          current_node.get_bounding_box(),
-                                          current_node.get_bounding_box().get_longest_axis(),
-                                          fan_factor_,
-                                          (slice_right - slice_left) < sort_parallelizm_thres);
+                                            surfel_arrays,
+                                            current_node.get_bounding_box(),
+                                            current_node.get_bounding_box().get_longest_axis(),
+                                            fan_factor_,
+                                            (slice_right - slice_left) < sort_parallelizm_thres);
 
             // iterate through children
             for (size_t i = 0; i < surfel_arrays.size(); ++i) {
@@ -424,12 +424,12 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
 
                 // find nearest neighbours
                 std::vector<std::pair<surfel, real>> neighbours = get_nearest_neighbours(i, k, number_of_neighbours);
-                surfel surfel = nodes_[i].mem_array().read_surfel(k);
+                surfel surf = nodes_[i].mem_array().read_surfel(k);
 
                 // compute radius
                 real avg_distance = 0.0;
 
-                for (auto neighbour : neighbours)
+                for (auto const& neighbour : neighbours)
                 {
                     avg_distance += sqrt(neighbour.second);
                 }
@@ -439,14 +439,14 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
                 // compute normal
                 // see: http://missingbytes.blogspot.com/2012/06/fitting-plane-to-point-cloud.html
 
-                vec3r center = surfel.pos();
+                vec3r center = surf.pos();
                 vec3f normal(1.0, 0.0 , 0.0);
 
                 real sum_x_x = 0.0, sum_x_y = 0.0, sum_x_z = 0.0;
                 real sum_y_y = 0.0, sum_y_z = 0.0;
                 real sum_z_z = 0.0;
 
-                for (auto neighbour : neighbours)
+                for (auto const& neighbour : neighbours)
                 {
                     vec3r neighbour_pos = neighbour.first.pos();
 
@@ -507,9 +507,9 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
                 }
 
                 // write surfel
-                surfel.radius() = avg_distance * 0.8;
-                surfel.normal() = normal;
-                nodes_[i].mem_array().write_surfel(surfel, k);
+                surf.radius() = avg_distance * 0.8;
+                surf.normal() = normal;
+                nodes_[i].mem_array().write_surfel(surf, k);
 
                 // update average node radius
                 if (i != old_i)
@@ -551,12 +551,12 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
                     std::cout << "\r" << percentage << "% processed" << std::flush;
                 }
 
-                surfel surfel = nodes_[i].mem_array().read_surfel(k);
+                surfel surf = nodes_[i].mem_array().read_surfel(k);
 
-                if (surfel.radius() > max_radius)
+                if (surf.radius() > max_radius)
                 {
-                    surfel.radius() = max_radius;
-                    nodes_[i].mem_array().write_surfel(surfel, k);
+                    surf.radius() = max_radius;
+                    nodes_[i].mem_array().write_surfel(surf, k);
                 }
             }
         }
@@ -572,7 +572,6 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
 
 }
 
-
 void bvh::compute_normal_and_radius(const size_t node_id,
                                     const size_t surfel_id,
                                     const NormalComputationStrategy& normal_computation_strategy,
@@ -581,7 +580,7 @@ void bvh::compute_normal_and_radius(const size_t node_id,
 
     // base class radii_strategy
     // radii_strategy_average_distance rs(40 /*number_of_k_nearest_neighbors*/)
-    // for_each(nodeid in level) for_each(surfel in nodeid) my_bvh.compute_radii(nodeid, surfelid, rs);
+    // for_each(nodeid in level) for_each(surf in nodeid) my_bvh.compute_radii(nodeid, surfelid, rs);
 
     // radii_strategy_natural_neighbour rsn()
     // my_bvh.compute_radii(nodeid, surfelid, rsn);
@@ -590,7 +589,7 @@ void bvh::compute_normal_and_radius(const size_t node_id,
     // base class normal_strategy
     // normal_strategy_plane_fitting rs(40 /*number_of_k_nearest_neighbors*/)
     // my_bvh.compute_normal(nodeid, surfelid, rs);
-    
+
     // normal_strategy_plane_fitting_adatpiv rsa(40 /*initial_number_of_k_nearest_neighbors*/) // compute an adaptiv k value for the surfel depending on local noise
     // my_bvh.compute_normal(nodeid, surfelid, rsa);
 
@@ -608,12 +607,12 @@ void bvh::compute_normal_and_radius(const size_t node_id,
 
     //test if surfel_id is valid
     if (surfel_id < nodes_[node_id].mem_array().length()){
-        Surfel surfel = nodes_[node_id].mem_array().ReadSurfel(surfel_id);
+        surfel surf = nodes_[node_id].mem_array().read_surfel(surfel_id);
 
-        surfel.normal() = normal_radii_strategy.compute_normal(node_id, surfel_id, neighbours);
-        surfel.radius() = normal_radii_strategy.compute_radius(node_id, surfel_id, neighbours);
+        surf.normal() = normal_radii_strategy.compute_normal(node_id, surfel_id, neighbours);
+        surf.radius() = normal_radii_strategy.compute_radius(node_id, surfel_id, neighbours);
 
-        nodes_[node_id].mem_array().write_surfel(surfel, surfel_id);
+        nodes_[node_id].mem_array().write_surfel(surf, surfel_id);
     };
 
     */
@@ -689,7 +688,7 @@ get_nearest_neighbours(
 
     for (size_t i = 0; i < nodes_[current_node].mem_array().length(); ++i)
     {
-      if (i != surf)
+        if (i != surf)
         {
             surfel const& current_surfel = nodes_[current_node].mem_array().read_surfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
@@ -790,7 +789,7 @@ get_nearest_neighbours(
 
 
 void bvh::
-upsweep(const reduction_strategy& reduction_strategy)
+Upsweep(const reduction_strategy& reduction_strtgy)
 {
     LOGGER_TRACE("create level temp files");
 
@@ -810,7 +809,7 @@ upsweep(const reduction_strategy& reduction_strategy)
     {
         #pragma omp single nowait
         {
-            upsweep_r(nodes_[0], reduction_strategy, level_temp_files, ctr);
+            upsweep_r(nodes_[0], reduction_strtgy, level_temp_files, ctr);
         }
     }
     std::cout << std::endl << std::endl;
@@ -820,8 +819,8 @@ upsweep(const reduction_strategy& reduction_strategy)
 
 
 
-void bvh::
-upsweep_new(const reduction_strategy& reduction_strategy, const normal_radii_strategy& normal_radii_strategy)
+/*void bvh::
+upsweep_new(const reduction_strategy& reduction_strtgy, const NormalRadiiStrategy& normal_radii_strategy)
 {
     // Start at bottom level and move up towards root.
     for (uint32_t level = depth_; level >= 0; --level)
@@ -852,18 +851,18 @@ upsweep_new(const reduction_strategy& reduction_strategy, const normal_radii_str
                 
 
                     //commented for quick merge process
-                    //node_iter->reset(reduction_strategy.create_lod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
+                    //node_iter->reset(reduction_strtgy.create_lod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
                 }
             }
         }
     }
-}
+}*/
 
 void bvh::
 upsweep_r(bvh_node& node,
-const reduction_strategy& reduction_strategy,
-         std::vector<shared_file>& level_temp_files,
-         std::atomic_uint& ctr)
+          const reduction_strategy& reduction_strtgy,
+          std::vector<shared_file>& level_temp_files,
+          std::atomic_uint& ctr)
 {
     std::vector<surfel_mem_array*> child_arrays;
 
@@ -883,8 +882,8 @@ const reduction_strategy& reduction_strategy,
         // inner nodes
         for (uint32_t j = 0; j < fan_factor_; ++j) {
             const uint32_t id = get_child_id(node.node_id(), j);
-            #pragma omp task shared(reduction_strategy, level_temp_files, ctr)
-            upsweep_r(nodes_[id], reduction_strategy, level_temp_files, ctr);
+            #pragma omp task shared(reduction_strtgy, level_temp_files, ctr)
+            upsweep_r(nodes_[id], reduction_strtgy, level_temp_files, ctr);
         }
         #pragma omp taskwait
         for (uint32_t j = 0; j < fan_factor_; ++j) {
@@ -896,7 +895,7 @@ const reduction_strategy& reduction_strategy,
     //LOGGER_TRACE("1. LOD " << node.node_id());
     // create LOD for current node
     real reduction_error;
-    node.reset(reduction_strategy.create_lod(reduction_error, child_arrays, max_surfels_per_node_));
+    node.reset(reduction_strtgy.create_lod(reduction_error, child_arrays, max_surfels_per_node_));
 
     //LOGGER_TRACE("2. Error " << node.node_id());
     auto props = basic_algorithms::compute_properties(node.mem_array(), rep_radius_algo_);
@@ -909,7 +908,7 @@ const reduction_strategy& reduction_strategy,
     node.set_bounding_box(new_bounding_box);
 
     // recompute bounding box
-    //const BoundingBox bb = basic_algorithms::compute_aabb(node.mem_array(), false);
+    //const bounding_box bb = basic_algorithms::compute_aabb(node.mem_array(), false);
     //node.set_bounding_box(bb);
 
     //LOGGER_TRACE("3. Offset " << node.node_id());
@@ -946,8 +945,8 @@ serialize_tree_to_file(const std::string& output_file,
 {
     LOGGER_TRACE("Serialize bvh to file: \"" << output_file << "\"");
 
-    bvh_stream bvh_stream;
-    bvh_stream.write_bvh(output_file, *this, write_intermediate_data);
+    bvh_stream bvh_strm;
+    bvh_strm.write_bvh(output_file, *this, write_intermediate_data);
 
 }
 
@@ -976,11 +975,11 @@ std::string bvh::
 state_to_string(state_type state)
 {
     std::map<state_type, std::string> state_typeMap = {
-        {state_type::null,            "Null"},
-        {state_type::empty,           "empty"},
+        {state_type::null,             "Null"},
+        {state_type::empty,            "empty"},
         {state_type::after_downsweep,  "after_downsweep"},
         {state_type::after_upsweep,    "after_upsweep"},
-        {state_type::serialized,      "serialized"}
+        {state_type::serialized,       "serialized"}
     };
     return state_typeMap[state];
 }

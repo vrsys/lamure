@@ -16,9 +16,13 @@
 namespace lamure {
 namespace pre{
 	
-class NormalComputationPlaneFitting: public NormalComputationStrategy{
-
-	vec3f  compute_normal(const size_t node, const size_t surfel,  const uint16_t number_of_neighbours) const override;
+class NormalComputationPlaneFitting: public NormalComputationStrategy
+{
+public:
+	vec3f  compute_normal(Bvh& tree,
+						  const size_t node_id,
+						  const size_t surfel_id,
+						  const uint16_t number_of_neighbours) const override;
 	
 };
 

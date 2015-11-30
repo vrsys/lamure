@@ -16,9 +16,13 @@
 namespace lamure {
 namespace pre{
 	
-class RadiusComputationAverageDistance: public RadiusComputationStrategy{
-
-	 real  compute_radius(const size_t node_id, const size_t surfel_id,  const uint16_t number_of_neighbours) const override;
+class RadiusComputationAverageDistance: public RadiusComputationStrategy
+{
+public:
+	 real  compute_radius(Bvh& tree, 
+	 					  const size_t node_id,
+	 					  const size_t surfel_id,
+	 					  const uint16_t number_of_neighbours) const override;
 	
 };
 

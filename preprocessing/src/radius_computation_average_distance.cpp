@@ -14,10 +14,25 @@ namespace pre{
 	
 
 real RadiusComputationAverageDistance::
-compute_radius(const size_t node_id, const size_t surfel_id,  const uint16_t number_of_neighbours) const {
+compute_radius(Bvh& tree,
+			   const size_t node_id,
+			   const size_t surfel_id,
+			   const uint16_t number_of_neighbours) const {
+	
 
-		
-		return 0.0;
+	// find nearest neighbours
+	std::vector<std::pair<Surfel, real>> const& neighbours = tree.GetNearestNeighbours(node_id, surfel_id, number_of_neighbours);
+    
+    real avg_distance = 0.0;
+
+    // compute radius
+    for (auto const& neighbour : neighbours) {
+    	avg_distance += sqrt(neighbour.second);
+    }
+
+    avg_distance /= neighbours.size();
+
+	return avg_distance;
 	};
 
 }// namespace pre
