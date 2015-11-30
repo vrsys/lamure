@@ -825,16 +825,16 @@ upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrate
                             if (child_iter->node_id() == child_id)
                             {
                                 child_mem_data.push_back(&child_iter->mem_array());
-                                //commented for quick merge process
-                                //child_iter = nodes_end();
+                                child_iter = nodes_.end();
                             }
                         }
                     }
                 
-
-                    //commented for quick merge process
-                    //node_iter->Reset(reduction_strategy.CreateLod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
+                    real reduction_error = node_iter->reduction_error();
+                    node_iter->Reset(reduction_strategy.CreateLod(reduction_error, child_mem_data, max_surfels_per_node_));
                 }
+                
+                // Do attribute calculation per sufel in node here
             }
         }
     }
