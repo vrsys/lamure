@@ -14,7 +14,8 @@
 #include <lamure/pre/bvh_node.h>
 #include <lamure/pre/node_serializer.h>
 #include <lamure/pre/reduction_strategy.h>
-#include <lamure/pre/normal_radii_strategy.h>
+#include <lamure/pre/normal_computation_strategy.h>
+#include <lamure/pre/radius_computation_strategy.h>
 #include <lamure/pre/logger.h>
 
 #include <boost/filesystem.hpp>
@@ -24,7 +25,8 @@
 namespace lamure {
 namespace pre {
 
-class normal_radii_strategy;
+class normal_computation_strategy;
+class radius_computation_strategy;
 
 class PREPROCESSING_DLL bvh
 {
@@ -48,7 +50,7 @@ public:
     virtual             ~bvh() {}
 
                         bvh(const bvh& other) = delete;
-    bvh&            operator=(const bvh& other) = delete;
+    bvh&                operator=(const bvh& other) = delete;
 
     void                init_tree(const std::string& surfels_input_file,
                                  const uint32_t max_fan_factor,
@@ -88,9 +90,10 @@ public:
                                   bool bin_all_file_extension = false);
     void                compute_normals_and_radii(const uint16_t number_of_neighbours);
 
-    void                compute_normal_and_radius(const size_t node, 
-                                                  const size_t surfel,
-                                                  const normal_radii_strategy&  normal_radii_strategy);
+    void                compute_normal_and_radius(const size_t node_id,
+                                                  const size_t surfel_id,
+                                                  const normal_computation_strategy&  normal_computation_strategy,
+                                                  const radius_computation_strategy&  radius_computation_strategy);
 
     void                upsweep(const reduction_strategy& strategy);
     void                upsweep_new(const reduction_strategy& strategy, const normal_radii_strategy& normal_radii_strategy);

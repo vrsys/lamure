@@ -17,7 +17,8 @@
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
 
-#include <lamure/pre/normal_radii_plane_fitting.h>
+#include <lamure/pre/normal_computation_plane_fitting.h>
+#include <lamure/pre/radius_computation_average_distance.h>
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
@@ -110,13 +111,24 @@ construct()
             return false;
     };
 
-    normal_radii_strategy *normal_radii_strategy;
-    switch (desc_.normal_radius_algo) {
-        case normal_radius_algorithm::plane_fitting:
-            normal_radii_strategy = new normal_radii_plane_fitting();
+    normal_computation_strategy *normal_comp_strategy;
+    switch (desc_.normal_computation_algo) {
+        case normal_computation_algorithm::plane_fitting:
+            normal_comp_strategy = new normal_computation_plane_fitting();
             break;       
         default:
-            LOGGER_ERROR("Non-implemented atribute computation algorithm");
+            LOGGER_ERROR("Non-implemented normal computation algorithm");
+            return false;
+    };
+
+
+    radius_computation_strategy *radius_comp_strategy;
+    switch (desc_.radius_computation_algo) {
+        case radius_computation_algorithm::average_distance:
+            radius_comp_strategy = new radiusComputationAverageDistance();
+            break;
+        default:
+            LOGGER_ERROR("Non-implemented radius computation algorithm");
             return false;
     };
 

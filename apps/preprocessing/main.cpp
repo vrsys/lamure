@@ -107,10 +107,15 @@ int main(int argc, const char *argv[])
          "  everysecond - take every fanout-factor's surfel\n"
          "  random - randomly select points with possible duplicates")
 
-        ("normal_radius_algo",
+        ("normal-computation-algo",
          po::value<std::string>()->default_value("planefitting"),
-         "Algorithm for computing surfel radius and surfel normal. Possible values:\n"
+         "Algorithm for computing surfel normal. Possible values:\n"
          "  planefitting ")
+
+         ("radius-computation-algo",
+         po::value<std::string>()->default_value("averagedistance"),
+         "Algorithm for computing surfel radius. Possible values:\n"
+         "  averagedistance ")
  
         ("rep-radius-algo",
          po::value<std::string>()->default_value("gmean"),
@@ -236,7 +241,8 @@ int main(int argc, const char *argv[])
         // set building options
         lamure::pre::builder::descriptor desc;
         std::string reduction_algo = vm["reduction-algo"].as<std::string>();
-        std::string normal_radius_algo = vm["normal_radius_algo"].as<std::string>();
+        std::string normal_computation_algo = vm["normal-computation-algo"].as<std::string>();
+        std::string radius_computation_algo = vm["radius-computation-algo"].as<std::string>();
         std::string rep_radius_algo = vm["rep-radius-algo"].as<std::string>();
 
         if (reduction_algo == "ndc")
@@ -252,10 +258,17 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
 
-        if (normal_radius_algo == "planefitting")
-            desc.normal_radius_algo      = lamure::pre::normal_radius_algorithm::plane_fitting;
+        if (normal_computation_algo == "planefitting")
+            desc.normal_computation_algo      = lamure::pre::normal_computation_algorithm::plane_fitting;
         else {
-            std::cerr << "Unknown algorithm for computing surfel atributes: normal, radius" << details_msg;
+            std::cerr << "Unknown algorithm for computing surfel normal" << details_msg;
+            return EXIT_FAILURE;
+        }
+
+        if (radius_computation_algo == "averagedistance")
+            desc.radius_computation_algo      = lamure::pre::radius_computation_algorithm::average_distance;
+        else {
+            std::cerr << "Unknown algorithm for computing surfel radius" << details_msg;
             return EXIT_FAILURE;
         }
 
