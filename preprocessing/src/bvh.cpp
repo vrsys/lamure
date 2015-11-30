@@ -572,6 +572,37 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
 
 }
 
+void Bvh::compute_normal_and_radius(const size_t node, 
+                                    const size_t surfel,
+                                    const NormalRadiiStrategy& normal_radii_strategy){
+
+
+    //set sonstant number of neighbours for test
+    //use desc. !? 
+    const uint32_t number_of_neighbours = 40;
+    size_t node_id = node;
+    size_t surfel_id = surfel;
+    std::vector<std::pair<Surfel, real>>  neighbours;
+
+
+   /*
+    neighbours = GetNearestNeighbours(node_id, surfel_id, number_of_neighbours)
+
+    if (current_surfel < nodes_[node_id].mem_array().length()){
+        Surfel surfel = nodes_[node_id].mem_array().ReadSurfel(surfel_id);
+
+        surfel.normal() = normal_radii_strategy.compute_normal(node_id, surfel_id, neighbours);
+        surfel.radius() = normal_radii_strategy.compute_radius(node_id, surfel_id, neighbours);
+
+        nodes_[node_id].mem_array().WriteSurfel(surfel, surfel_id);
+    };
+
+    */
+    
+
+    
+}
+
 void Bvh::GetDescendantLeaves(
      const size_t node,
      std::vector<size_t>& result,
@@ -738,6 +769,7 @@ GetNearestNeighbours(
 }
 
 
+
 void Bvh::
 Upsweep(const ReductionStrategy& reduction_strategy)
 {
@@ -766,6 +798,8 @@ Upsweep(const ReductionStrategy& reduction_strategy)
     LOGGER_TRACE("Total processed nodes: " << ctr.load());
     state_ = State::AfterUpsweep;
 }
+
+
 
 void Bvh::
 upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy)

@@ -39,6 +39,7 @@ public:
 
         RepRadiusAlgorithm  rep_radius_algo;
         ReductionAlgorithm  reduction_algo;
+        NormalRadiusAlgorithm normal_radius_algo;
     };
 
     explicit            Builder(const Descriptor& desc);

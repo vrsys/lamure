@@ -14,6 +14,7 @@
 #include <lamure/pre/bvh_node.h>
 #include <lamure/pre/node_serializer.h>
 #include <lamure/pre/reduction_strategy.h>
+#include <lamure/pre/normal_radii_strategy.h>
 #include <lamure/pre/logger.h>
 
 #include <boost/filesystem.hpp>
@@ -86,6 +87,11 @@ public:
                                   const std::string& surfels_input_file,
                                   bool bin_all_file_extension = false);
     void                ComputeNormalsAndRadii(const uint16_t number_of_neighbours);
+
+    void                compute_normal_and_radius(const size_t node, 
+                                                  const size_t surfel,
+                                                  const NormalRadiiStrategy&  normal_radii_strategy);
+
     void                Upsweep(const ReductionStrategy& reduction_strategy);
     void                upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy);
 
