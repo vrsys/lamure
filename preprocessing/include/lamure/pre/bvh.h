@@ -23,38 +23,38 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL Bvh
+class PREPROCESSING_DLL bvh
 {
 public:
 
-    enum class State {
-        Null           = 0, // null tree
-        Empty          = 1, // initialized, but empty tree
-        AfterDownsweep = 2, // after downsweep
-        AfterUpsweep   = 3, // after upsweep
-        Serialized     = 4  // serialized surfel data
+    enum class state_type {
+        null           = 0, // null tree
+        empty          = 1, // initialized, but empty tree
+        after_downsweep = 2, // after downsweep
+        after_upsweep   = 3, // after upsweep
+        serialized     = 4  // serialized surfel data
     };
 
-    explicit            Bvh(const size_t memory_limit,  // in bytes
+    explicit            bvh(const size_t memory_limit,  // in bytes
                                 const size_t buffer_size,   // in bytes
-                                const RepRadiusAlgorithm rep_radius_algo = RepRadiusAlgorithm::GeometricMean)
+                                const rep_radius_algorithm rep_radius_algo = rep_radius_algorithm::geometric_mean)
         : memory_limit_(memory_limit),
           buffer_size_(buffer_size),
           rep_radius_algo_(rep_radius_algo) {}
 
-    virtual             ~Bvh() {}
+    virtual             ~bvh() {}
 
-                        Bvh(const Bvh& other) = delete;
-    Bvh&            operator=(const Bvh& other) = delete;
+                        bvh(const bvh& other) = delete;
+    bvh&                operator=(const bvh& other) = delete;
 
-    void                InitTree(const std::string& surfels_input_file,
+    void                init_tree(const std::string& surfels_input_file,
                                  const uint32_t max_fan_factor,
                                  const size_t desired_surfels_per_node,
                                  const boost::filesystem::path& base_path);
 
-    bool                LoadTree(const std::string& kdn_input_file);
+    bool                load_tree(const std::string& kdn_input_file);
 
-    State               state() const { return state_; }
+    state_type          state() const { return state_; }
     uint8_t             fan_factor() const { return fan_factor_; }
     uint32_t            depth() const { return depth_; }
     size_t              max_surfels_per_node() const { return max_surfels_per_node_; }
@@ -62,12 +62,12 @@ public:
 
     boost::filesystem::path base_path() const { return base_path_; }
 
-    const std::vector<BvhNode>& nodes() const { return nodes_; }
-    std::vector<BvhNode>& nodes() { return nodes_; }
+    const std::vector<bvh_node>& nodes() const { return nodes_; }
+    std::vector<bvh_node>& nodes() { return nodes_; }
 
     // helper funtions
-    uint32_t            GetChildId(const uint32_t node_id, const uint32_t child_index) const;
-    uint32_t            GetParentId(const uint32_t node_id) const;
+    uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
+    uint32_t            get_parent_id(const uint32_t node_id) const;
 
     /**
      * Get id for the first node at given depth and total number of nodes at this depth.
@@ -75,32 +75,32 @@ public:
      * \param[in] depth           Tree layer for the range
      * \return                    Pair that contains first node id and number of nodes
      */
-    std::pair<NodeIdType, NodeIdType> GetNodeRanges(const uint32_t depth) const;
-    void                PrintTreeProperties() const;
-    const NodeIdType    first_leaf() const { return first_leaf_; }
+    std::pair<node_id_type, node_id_type> GetNodeRanges(const uint32_t depth) const;
+    void                print_tree_properties() const;
+    const node_id_type    first_leaf() const { return first_leaf_; }
 
     // processing functions
-    void                Downsweep(bool adjust_translation,
+    void                downsweep(bool adjust_translation,
                                   const std::string& surfels_input_file,
                                   bool bin_all_file_extension = false);
-    void                ComputeNormalsAndRadii(const uint16_t number_of_neighbours);
-    void                Upsweep(const ReductionStrategy& reduction_strategy);
+    void                compute_normals_and_radii(const uint16_t number_of_neighbours);
+    void                upsweep(const reduction_strategy& reduction_strategy);
 
 
-    void                SerializeTreeToFile(const std::string& output_file,
+    void                serialize_tree_to_file(const std::string& output_file,
                                             bool write_intermediate_data);
 
-    void                SerializeSurfelsToFile(const std::string& output_file,
+    void                serialize_surfels_to_file(const std::string& output_file,
                                                const size_t buffer_size) const;
 
-    /* Resets all nodes and deletes temp files
+    /* resets all nodes and deletes temp files
      */
-    void                ResetNodes();
+    void                resetNodes();
 
-    static std::string  StateToString(State state);
+    static std::string  state_to_string(state_type state);
 
 protected:
-    friend class BvhStream;
+    friend class bvh_stream;
     void                set_depth(const uint32_t depth) { depth_ = depth; };
     void                set_fan_factor(const uint8_t fan_factor) { fan_factor_ = fan_factor; };
     void                set_max_surfels_per_node(const size_t max_surfels_per_node) {
@@ -112,14 +112,14 @@ protected:
     //                   }
     //void                set basename(const std::string& basename) { basename_ = basename; };
     void                set_base_path(const boost::filesystem::path& base_path) { base_path_ = base_path; };
-    void                set_nodes(const std::vector<BvhNode>& nodes) { nodes_ = nodes; };
-    void                set_first_leaf(const NodeIdType first_leaf) { first_leaf_ = first_leaf; };
-    void                set_state(const State state) { state_ = state; };
+    void                set_nodes(const std::vector<bvh_node>& nodes) { nodes_ = nodes; };
+    void                set_first_leaf(const node_id_type first_leaf) { first_leaf_ = first_leaf; };
+    void                set_state(const state_type state) { state_ = state; };
 
 private:
-    State               state_ = State::Null;
+    state_type          state_ = state_type::null;
 
-    std::vector<BvhNode>
+    std::vector<bvh_node>
                         nodes_;
     uint8_t             fan_factor_ = 0;
 
@@ -127,7 +127,7 @@ private:
 
     size_t              max_surfels_per_node_ = 0;
 
-    NodeIdType          first_leaf_;
+    node_id_type          first_leaf_;
 
     //std::string         working_directory_;
     //std::string         basename_;
@@ -135,38 +135,38 @@ private:
 
     size_t              memory_limit_;
     size_t              buffer_size_;
-    RepRadiusAlgorithm  rep_radius_algo_;
+    rep_radius_algorithm  rep_radius_algo_;
 
     vec3r               translation_ = vec3r(0.0); ///< translation of surfels
 
-    void                DownsweepSubtreeInCore(
-                            const BvhNode& node,
+    void                downsweep_subtree_in_core(
+                            const bvh_node& node,
                             size_t& disk_leaf_destination,
                             uint32_t& processed_nodes,
                             uint8_t& percent_processed,
-                            SharedFile leaf_level_access);
+                            shared_file leaf_level_access);
 
-    std::vector<std::pair<Surfel, real>>
-                        GetNearestNeighbours(
-                            const size_t node_id,
-                            const size_t surfel_id,
-                            const uint32_t num_neighbours) const;
+   std::vector<std::pair<surfel, real>>
+                       get_nearest_neighbours(
+                           const size_t node_id,
+                           const size_t surfel_id,
+                           const uint32_t num_neighbours) const;
+   
+   void                get_descendant_leaves(
+                           const size_t node,
+                           std::vector<size_t>& result,
+                           const size_t first_leaf,
+                           const std::unordered_set<size_t>& excluded_leaves) const;
 
-    void                GetDescendantLeaves(
-                            const size_t node,
-                            std::vector<size_t>& result,
-                            const size_t first_leaf,
-                            const std::unordered_set<size_t>& excluded_leaves) const;
-
-    void                UpsweepR(
-                            BvhNode& node,
-                            const ReductionStrategy& reduction_strategy,
-                            std::vector<SharedFile>& level_temp_files,
+    void                upsweep_recurse(
+                            bvh_node& node,
+                            const reduction_strategy& reduction_strategy,
+                            std::vector<shared_file>& level_temp_files,
                             std::atomic_uint& ctr);
 
 };
 
-using SharedBvh = std::shared_ptr<Bvh>;
+using bvh_ptr = std::shared_ptr<bvh>;
 
 } // namespace pre
 } // namespace lamure

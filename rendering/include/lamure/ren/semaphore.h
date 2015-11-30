@@ -18,13 +18,13 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Semaphore
+class RENDERING_DLL semaphore
 {
 public:
-                        Semaphore();
-    virtual             ~Semaphore();
+                        semaphore();
+    virtual             ~semaphore();
 
-    void                Wait();
+    void                wait();
     void                Signal(const size_t signal_count);
     void                Lock();
     void                Unlock();

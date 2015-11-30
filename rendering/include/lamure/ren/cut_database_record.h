@@ -19,18 +19,18 @@
 namespace lamure {
 namespace ren {
 
-class CutDatabaseRecord
+class CutdatabaseRecord
 {
 public:
 
-    enum TemporaryBuffer
+    enum Temporarybuffer
     {
         BUFFER_A = 0,
         BUFFER_B = 1,
         BUFFER_COUNT = 2
     };
 
-    enum RecordFront
+    enum Recordfront
     {
         FRONT_A = 0,
         FRONT_B = 1,
@@ -48,10 +48,10 @@ public:
         slot_t dst_;
     };
 
-                        CutDatabaseRecord(const context_t context_id);
-                        CutDatabaseRecord(const CutDatabaseRecord&) = delete;
-                        CutDatabaseRecord& operator=(const CutDatabaseRecord&) = delete;
-    virtual             ~CutDatabaseRecord();
+                        CutdatabaseRecord(const context_t context_id);
+                        CutdatabaseRecord(const CutdatabaseRecord&) = delete;
+                        CutdatabaseRecord& operator=(const CutdatabaseRecord&) = delete;
+    virtual             ~CutdatabaseRecord();
 
     void                SetCut(const view_t view_id, const model_t model_id, Cut& cut);
     Cut&                GetCut(const view_t view_id, const model_t model_id);
@@ -59,36 +59,36 @@ public:
     std::vector<SlotUpdateDescr>& GetUpdatedSet();
     void                SetUpdatedSet(std::vector<SlotUpdateDescr>& updated_set);
 
-    const bool          IsFrontModified() const;
+    const bool          IsfrontModified() const;
     const bool          IsSwapRequired() const;
-    void                SetIsFrontModified(const bool front_modified);
+    void                SetIsfrontModified(const bool front_modified);
     void                SetIsSwapRequired(const bool swap_required);
-    void                SignalUploadComplete();
+    void                SignalUploadcomplete();
 
-    const TemporaryBuffer GetBuffer() const;
-    void                SetBuffer(const TemporaryBuffer buffer);
+    const Temporarybuffer Getbuffer() const;
+    void                Setbuffer(const Temporarybuffer buffer);
 
-    void                SwapFront();
+    void                Swapfront();
 
-    void                LockFront();
-    void                UnlockFront();
+    void                Lockfront();
+    void                Unlockfront();
 
     void                SetCamera(const view_t view_id, const Camera& camera);
-    void                SetHeightDividedByTopMinusBottom(const view_t view_id, float const height_divided_by_top_minus_bottom);
+    void                SetheightDividedByTopMinusBottom(const view_t view_id, float const height_divided_by_top_minus_bottom);
     void                SetTransform(const model_t model_id, const scm::math::mat4f& transform);
-    void                SetRendered(const model_t model_id);
+    void                Setrendered(const model_t model_id);
     void                SetThreshold(const model_t model_id, const float threshold);
 
     void                ReceiveCameras(std::map<view_t, Camera>& cameras);
-    void                ReceiveHeightDividedByTopMinusBottoms(std::map<view_t, float>& height_divided_by_top_minus_bottoms);
+    void                ReceiveheightDividedByTopMinusBottoms(std::map<view_t, float>& height_divided_by_top_minus_bottoms);
     void                ReceiveTransforms(std::map<model_t, scm::math::mat4f>& transforms);
-    void                ReceiveRendered(std::set<model_t>& rendered);
+    void                Receiverendered(std::set<model_t>& rendered);
     void                ReceiveThresholds(std::map<model_t, float>& thresholds);
 
 protected:
 
-    void                ExpandFrontA(const view_t view_id, const model_t model_id);
-    void                ExpandFrontB(const view_t view_id, const model_t model_id);
+    void                expandfrontA(const view_t view_id, const model_t model_id);
+    void                expandfrontB(const view_t view_id, const model_t model_id);
 
 private:
     /* data */
@@ -98,7 +98,7 @@ private:
 
     bool                is_swap_required_;
 
-    RecordFront         current_front_;
+    Recordfront         current_front_;
     
     //dim: [model_id][view_id]
     std::vector<std::vector<Cut>> front_a_cuts_;
@@ -107,8 +107,8 @@ private:
     bool                front_a_is_modified_;
     bool                front_b_is_modified_;
 
-    TemporaryBuffer     front_a_buffer_;
-    TemporaryBuffer     front_b_buffer_;
+    Temporarybuffer     front_a_buffer_;
+    Temporarybuffer     front_b_buffer_;
 
     std::vector<SlotUpdateDescr> front_a_updated_set_;
     std::vector<SlotUpdateDescr> front_b_updated_set_;

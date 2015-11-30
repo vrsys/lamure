@@ -59,23 +59,23 @@
 
 
 
-class Renderer
+class renderer
 {
 public:
-                        Renderer(std::vector<scm::math::mat4f> const& model_transformations,
+                        renderer(std::vector<scm::math::mat4f> const& model_transformations,
                             const std::set<lamure::model_t>& visible_set,
                             const std::set<lamure::model_t>& invisible_set);
-    virtual             ~Renderer();
+    virtual             ~renderer();
 
-    //char*               GetMappedTempBufferPtr(CutDatabaseRecord::TemporaryBuffer const& buffer);
-    //void                UnmapTempBuffer(CutDatabaseRecord::TemporaryBuffer const&  buffer);
-    //void                CopyTempToMainMemory(context_t context_id, CutDatabaseRecord::TemporaryBuffer const& buffer);
+    //char*               GetMappedTempbufferPtr(CutdatabaseRecord::Temporarybuffer const& buffer);
+    //void                UnmapTempbuffer(CutdatabaseRecord::Temporarybuffer const&  buffer);
+    //void                CopyTempToMainMemory(context_t context_id, CutdatabaseRecord::Temporarybuffer const& buffer);
 
-    void                Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO);
+    void                render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO);
 
-    void                ResetViewport(int const x, int const y);
+    void                reset_viewport(int const x, int const y);
 
-    void                SendModelTransform(const lamure::model_t model_id, const scm::math::mat4f& transform);
+    void                send_model_transform(const lamure::model_t model_id, const scm::math::mat4f& transform);
 
     void                set_radius_scale(const float radius_scale) { radius_scale_ = radius_scale; };
 
@@ -83,16 +83,16 @@ public:
     scm::gl::render_device_ptr device() const { return device_; }
 
 protected:
-    bool                InitializeSchismDeviceAndShaders(int resX, int resY);
-    void                InitializeVBOs();
-    void                UpdateFrustumDependentParameters(lamure::ren::Camera const& camera);
+    bool                initialize_device_and_shaders(int resX, int resY);
+    void                initialize_vbos();
+    void                update_frustum_dependent_parameters(lamure::ren::Camera const& camera);
 
-    void                UploadUniforms(lamure::ren::Camera const& camera) const;
-    void                UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const;
-    void                SwapTempBuffers();
-    void                DisplayStatus();
+    void                upload_uniforms(lamure::ren::Camera const& camera) const;
+    void                upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const;
+    void                swap_temporary_buffers();
+    void                display_status();
 
-    void                CalcRadScaleFactors();
+    void                calc_rad_scale_factors();
 private:
 
         int                                         win_x_;
@@ -193,9 +193,9 @@ public:
     void clear_line_begin() { line_begin_.clear(); };
     void clear_line_end() { line_end_.clear(); };
 
-    void SwitchBoundingBoxRendering();
-    void ChangePointSize(float amount);
-    void SwitchRenderMode();
+    void switch_bounding_box_rendering();
+    void change_pointsize(float amount);
+    void SwitchrenderMode();
     void SwitchEllipseMode();
     void SwitchClampedNormalMode();
     void ChangeDeformRatio(float amount);

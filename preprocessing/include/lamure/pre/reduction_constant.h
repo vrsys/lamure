@@ -17,14 +17,14 @@
 namespace lamure {
 namespace pre {
 
-class ReductionConstant: public ReductionStrategy
+class reduction_constant: public reduction_strategy
 {
 public:
 
-    explicit            ReductionConstant() { }
+    explicit            reduction_constant() { }
 
-    SurfelMemArray      CreateLod(real& reduction_error,
-                                  const std::vector<SurfelMemArray*>& input,
+    surfel_mem_array      create_lod(real& reduction_error,
+                                  const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node) const override;
 
 private:
@@ -32,28 +32,28 @@ private:
     using value_index_pair = std::pair<real, uint16_t>;
 
     struct surfel_cluster_with_error {
-        std::list<Surfel>* cluster;
+        std::list<surfel>* cluster;
         float merge_treshold;
     };
 
-    struct OrderBySize {
+    struct order_by_size {
         bool operator() (const surfel_cluster_with_error& left, 
                          const surfel_cluster_with_error& right) {
             return left.cluster->size() < right.cluster->size();
         }
     };
 
-    static Surfel CreateRepresentative(const std::vector<Surfel>& input);
+    static surfel create_representative(const std::vector<surfel>& input);
     
-    static std::pair<vec3ui, vec3b> compute_grid_dimensions(const std::vector<SurfelMemArray*>& input,
-                                                 const BoundingBox& bounding_box,
+    static std::pair<vec3ui, vec3b> compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
+                                                 const bounding_box& bounding_box,
                                                  const uint32_t surfels_per_node);
 
-    static bool Comp (const value_index_pair& l, const value_index_pair& r) {
+    static bool comp (const value_index_pair& l, const value_index_pair& r) {
         return l.first < r.first;
     }
 
-    static bool CompRadius(const Surfel& left, const Surfel& right) {
+    static bool compare_radius(const surfel& left, const surfel& right) {
         return left.radius() < right.radius();
     }
 };

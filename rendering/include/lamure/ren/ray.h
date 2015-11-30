@@ -29,39 +29,39 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Ray
+class RENDERING_DLL ray
 {
 
 public:
 
     //this is for splat-based picking
-    struct Intersection {
+    struct intersection {
 
         scm::math::vec3f position_;
         scm::math::vec3f normal_;
         float distance_;
         float error_;
 
-        Intersection()
+        intersection()
         : position_(scm::math::vec3::zero()), normal_(scm::math::vec3f::one()), distance_(0.f), error_(std::numeric_limits<float>::max()) {
 
         };
 
-        Intersection(const scm::math::vec3f& position, const scm::math::vec3f& normal)
+        intersection(const scm::math::vec3f& position, const scm::math::vec3f& normal)
         : position_(position), normal_(normal), distance_(0.f), error_(std::numeric_limits<float>::max()) {
 
         };
     };
 
     //this is for bvh-based picking
-    struct IntersectionBvh {
+    struct intersection_bvh {
         scm::math::vec3f position_;
         float tmin_;
         float tmax_;
         float representative_radius_;
         std::string bvh_filename_;
         
-        IntersectionBvh()
+        intersection_bvh()
         : position_(scm::math::vec3::zero()), 
           tmin_(std::numeric_limits<float>::max()), 
           tmax_(std::numeric_limits<float>::lowest()), 
@@ -72,9 +72,9 @@ public:
 
     };
 
-    Ray();
-    Ray(const scm::math::vec3f& origin, const scm::math::vec3f& direction, const float max_distance);
-    ~Ray();
+    ray();
+    ray(const scm::math::vec3f& origin, const scm::math::vec3f& direction, const float max_distance);
+    ~ray();
 
     const scm::math::vec3f& origin() const { return origin_; };
     const scm::math::vec3f& direction() const { return direction_; };
@@ -91,45 +91,45 @@ public:
                          const float cone_diameter,
                          const unsigned int max_depth,
                          const unsigned int surfel_skip,
-                         Intersection& intersection);
+                         intersection& intersect);
 
     //this is a BVH-only picking interface,
     //(all models, BVH-based, disambiguation)
-    const bool IntersectBvh(const std::set<std::string>& model_filenames,
+    const bool intersect_bvh(const std::set<std::string>& model_filenames,
                             const float aabb_scale,
-                            IntersectionBvh& intersection);
+                            intersection_bvh& intersection);
 
     //this is a splat-based pick of a single model,
     //(single model, splat-based)
-    const bool IntersectModel(const model_t model_id,
+    const bool intersect_model(const model_t model_id,
                               const scm::math::mat4f& model_transform,
                               const float aabb_scale,
                               const unsigned int max_depth,
                               const unsigned int surfel_skip,
                               const bool is_wysiwyg,
-                              Intersection& intersection);
+                              intersection& intersect);
   
     //this is a BVH-based pick of a single model,
     //(single model, BVH-based)
-    const bool IntersectModelBvh(const model_t model_id,
+    const bool intersect_model_bvh(const model_t model_id,
                                  const scm::math::mat4f& model_transform,
                                  const float aabb_scale,
-                                 IntersectionBvh& intersection);
+                                 intersection_bvh& intersection);
 
 protected:
  
-    const bool IntersectModelUnsafe(const model_t model_id,
+    const bool intersect_model_unsafe(const model_t model_id,
                               const scm::math::mat4f& model_transform,
                               const float aabb_scale,
                               const unsigned int max_depth,
                               const unsigned int surfel_skip,
                               const bool is_wysiwyg,
-                              Intersection& intersection);
-    static const bool IntersectAabb(const scm::gl::boxf& bb,
+                              intersection& intersection);
+    static const bool intersect_aabb(const scm::gl::boxf& bb,
                                     const scm::math::vec3f& ray_origin,
                                     const scm::math::vec3f& ray_direction,
                                     scm::math::vec2f& t);
-    static const bool IntersectSurfel(const LodPointCloud::SerializedSurfel& surfel,
+    static const bool intersect_surfel(const lod_point_cloud::serialized_surfel& surfel,
                                       const scm::math::vec3f& ray_origin,
                                       const scm::math::vec3f& ray_direction,
                                       float& t);
@@ -141,39 +141,39 @@ private:
 };
 
 
-class RayQueue {
+class ray_queue {
 public:
 
-    struct RayJob {
-        Ray ray_;
+    struct ray_job {
+        ray ray_;
         int id_;
 
-        RayJob()
+        ray_job()
         : ray_(scm::math::vec3f::zero(), scm::math::vec3f::zero(), -1.f), id_(-1) {
 
         }
 
-        RayJob(unsigned int id, const Ray& ray)
+        ray_job(unsigned int id, const ray& ray)
         : ray_(ray), id_(id) {
 
         }
     };
 
-    RayQueue();
-    ~RayQueue();
+    ray_queue();
+    ~ray_queue();
 
-    void PushJob(const RayJob& job);
-    const RayJob PopJob();
+    void push_job(const ray_job& job);
+    const ray_job pop_job();
 
-    void Wait();
-    void Relaunch();
-    const bool IsShutdown();
+    void wait();
+    void relaunch();
+    const bool is_shutdown();
     const unsigned int NumJobs();
 
 private:
-    std::queue<RayJob> queue_;
+    std::queue<ray_job> queue_;
     std::mutex mutex_;
-    Semaphore semaphore_;
+    semaphore semaphore_;
     bool is_shutdown_;
 
 };

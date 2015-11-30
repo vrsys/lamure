@@ -20,58 +20,58 @@ namespace pre
 /**
 * A group of basic algorithms, which are used during tree construction.
 */
-class BasicAlgorithms
+class basic_algorithms
 {
 public:
     
-    struct SurfelGroupProperties {
-        real        rep_radius;
-        vec3r       centroid;
-        BoundingBox bounding_box;
+    struct surfel_group_properties {
+        real         rep_radius;
+        vec3r        centroid;
+        bounding_box bounding_box;
     };
 
     template <class T>
-    using SplittedArray = std::vector<std::pair<T, BoundingBox>>;
+    using splitted_array = std::vector<std::pair<T, bounding_box>>;
 
-                        BasicAlgorithms() = delete;
+                        basic_algorithms() = delete;
 
-    static BoundingBox  ComputeAABB(const SurfelMemArray& sa, 
+    static bounding_box  compute_aabb(const surfel_mem_array& sa, 
                                     const bool parallelize = true);
 
-    static BoundingBox  ComputeAABB(const SurfelDiskArray& sa, 
+    static bounding_box  compute_aabb(const surfel_disk_array& sa, 
                                     const size_t buffer_size,
                                     const bool parallelize = true);
 
-    static void         TranslateSurfels(SurfelMemArray& sa,
+    static void         translate_surfels(surfel_mem_array& sa,
                                          const vec3r& translation);
 
-    static void         TranslateSurfels(SurfelDiskArray& sa,
+    static void         translate_surfels(surfel_disk_array& sa,
                                          const vec3r& translation,
                                          const size_t buffer_size);
 
-    static SurfelGroupProperties
-                        ComputeProperties(const SurfelMemArray& sa,
-                                          const RepRadiusAlgorithm rep_radius_algo);
+    static surfel_group_properties
+                        compute_properties(const surfel_mem_array& sa,
+                                          const rep_radius_algorithm rep_radius_algo);
 
-    static void         SortAndSplit(SurfelMemArray& sa,
-                                     SplittedArray<SurfelMemArray>& out,
-                                     const BoundingBox& box,
+    static void         sort_and_split(surfel_mem_array& sa,
+                                     splitted_array<surfel_mem_array>& out,
+                                     const bounding_box& box,
                                      const uint8_t split_axis,
                                      const uint8_t fan_factor, 
                                      const bool parallelize = false);
 
-    static void         SortAndSplit(SurfelDiskArray& sa,
-                                     SplittedArray<SurfelDiskArray>& out,
-                                     const BoundingBox& box,
+    static void         sort_and_split(surfel_disk_array& sa,
+                                     splitted_array<surfel_disk_array>& out,
+                                     const bounding_box& box,
                                      const uint8_t split_axis,
                                      const uint8_t fan_factor, 
                                      const size_t memory_limit);
 private:
 
     template <class T>
-    static void         SplitSurfelArray(T& sa,
-                                         SplittedArray<T>& out,
-                                         const BoundingBox& box,
+    static void         split_surfel_array(T& sa,
+                                         splitted_array<T>& out,
+                                         const bounding_box& box,
                                          const uint8_t split_axis,
                                          const uint8_t fan_factor);
 

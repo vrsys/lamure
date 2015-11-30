@@ -16,22 +16,22 @@
 namespace lamure {
 namespace pre {
 
-class Converter;
+class converter;
 
-class PREPROCESSING_DLL FormatAbstract
+class PREPROCESSING_DLL format_abstract
 {
 public:
 
-    friend class Converter;
-    typedef std::function<void(const Surfel&)> SurfelCallbackFuntion;
-    typedef std::function<bool(SurfelVector&)> BufferCallbackFuntion;
+    friend class converter;
+    typedef std::function<void(const surfel&)> surfel_callback_funtion;
+    typedef std::function<bool(surfel_vector&)> buffer_callback_function;
 
-    explicit            FormatAbstract()
+    explicit            format_abstract()
                             : has_normals_(false),
                               has_radii_(false),
                               has_color_(false) {}
 
-    virtual             ~FormatAbstract() {}
+    virtual             ~format_abstract() {}
 
     const bool          has_normals() const { return has_normals_; }
     const bool          has_radii() const { return has_radii_; }
@@ -39,8 +39,8 @@ public:
 
 protected:
 
-    virtual void        Read(const std::string& filename, SurfelCallbackFuntion callback) = 0;
-    virtual void        Write(const std::string& filename, BufferCallbackFuntion callback) = 0;
+    virtual void        read(const std::string& filename, surfel_callback_funtion callback) = 0;
+    virtual void        write(const std::string& filename, buffer_callback_function callback) = 0;
     
     bool                has_normals_;
     bool                has_radii_;
@@ -50,9 +50,9 @@ protected:
 
 
 template<typename T> 
-FormatAbstract* CreateFormatInstance() { return new T; }
+format_abstract* create_format_instance() { return new T; }
 
-typedef std::map<std::string, FormatAbstract*(*)()> FormatFactory;
+typedef std::map<std::string, format_abstract*(*)()> format_factory;
 
 } // namespace pre
 } // namespace lamure

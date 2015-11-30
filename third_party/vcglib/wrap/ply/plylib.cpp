@@ -137,12 +137,12 @@ const char * PlyFile::newtypenames[9]=
 	"float64"
 };
 
-static int TypeSize[] = {
+static int Typesize[] = {
   0, 1, 2, 4, 1, 2, 4, 4, 8
 };
 
-size_t PropDescriptor::memtypesize() const {return TypeSize[memtype1];}
-size_t PropDescriptor::stotypesize() const {return TypeSize[stotype1];}
+size_t PropDescriptor::memtypesize() const {return Typesize[memtype1];}
+size_t PropDescriptor::stotypesize() const {return Typesize[stotype1];}
 const char *PropDescriptor::memtypename() const {return PlyFile::typenames[memtype1];}
 const char *PropDescriptor::stotypename() const {return PlyFile::typenames[stotype1];}
 
@@ -587,7 +587,7 @@ static inline int SkipScalarB( XFILE * fp, const int tf)
   char dummy[8];
 
 	assert(fp);
-	return pb_fread(dummy,1,TypeSize[tf],fp);
+	return pb_fread(dummy,1,Typesize[tf],fp);
 }
 
 static int ReadScalarB( XFILE * fp, void * mem, const int tf, const int tm, int fmt )
@@ -1916,7 +1916,7 @@ static bool cb_read_list_ascii( GZFILE fp, void * mem, PropDescriptor * d )
 		// Determinazione memoria vettore
 	if(d->alloclist)
 	{
-		store = (char *)calloc(n,TypeSize[d->memtype1]);
+		store = (char *)calloc(n,Typesize[d->memtype1]);
 		assert(store);
 		*(char **)(((char *)mem)+d->offset1) = store;
 	}
@@ -1929,7 +1929,7 @@ static bool cb_read_list_ascii( GZFILE fp, void * mem, PropDescriptor * d )
 	{
 		if( !ReadScalarA(
 				fp, 
-				store+i*TypeSize[d->memtype1],
+				store+i*Typesize[d->memtype1],
 				d->stotype1,
 				d->memtype1
 			 ) )
@@ -3320,7 +3320,7 @@ void PlyFile::compile( PlyProperty * p )
 			}
 			else
 			{
-				switch(TypeSize[p->tipo])
+				switch(Typesize[p->tipo])
 				{
 				case 1: p->cb = cb_skip_list_bin1; break;
 				case 2: p->cb = cb_skip_list_bin2; break;
@@ -3442,7 +3442,7 @@ void PlyFile::compile( PlyProperty * p )
 			}
 			else
 			{
-				switch(TypeSize[p->tipo])
+				switch(Typesize[p->tipo])
 				{
 				case 1: p->cb = cb_skip_bin1; break;
 				case 2: p->cb = cb_skip_bin2; break;
@@ -3489,7 +3489,7 @@ int ReadBin  ( XFILE * fp, const PlyProperty * pr, void * mem, int fmt )
 				// Determinazione memoria vettore
 			if(pr->desc.alloclist)
 			{
-				store = (char *)calloc(n,TypeSize[pr->desc.memtype1]);
+				store = (char *)calloc(n,Typesize[pr->desc.memtype1]);
 				assert(store);
 				*(char **)(((char *)mem)+pr->desc.offset1) = store;
 			}
@@ -3502,7 +3502,7 @@ int ReadBin  ( XFILE * fp, const PlyProperty * pr, void * mem, int fmt )
 			{
 				if( !ReadScalarB(
 						fp, 
-						store+i*TypeSize[pr->desc.memtype1],
+						store+i*Typesize[pr->desc.memtype1],
 						pr->desc.stotype1,
 						pr->desc.memtype1,
 						fmt
@@ -3563,7 +3563,7 @@ int ReadAscii( XFILE * fp, const PlyProperty * pr, void * mem, int /*fmt*/ )
 				// Determinazione memoria vettore
 			if(pr->desc.alloclist)
 			{
-				store = (char *)calloc(n,TypeSize[pr->desc.memtype1]);
+				store = (char *)calloc(n,Typesize[pr->desc.memtype1]);
 				assert(store);
 				*(char **)(((char *)mem)+pr->desc.offset1) = store;
 			}
@@ -3576,7 +3576,7 @@ int ReadAscii( XFILE * fp, const PlyProperty * pr, void * mem, int /*fmt*/ )
 			{
 				if( !ReadScalarA(
 						fp, 
-						store+i*TypeSize[pr->desc.memtype1],
+						store+i*Typesize[pr->desc.memtype1],
 						pr->desc.stotype1,
 						pr->desc.memtype1
 					 ) )

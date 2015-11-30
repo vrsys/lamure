@@ -41,7 +41,11 @@ set(COMMON_LIBRARY ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${SCHISM_LIBRARIES}
-    ${BOOST_LIBRARIES}
+    optimized ${Boost_TIMER_LIBRARY_RELEASE} debug ${Boost_TIMER_LIBRARY_DEBUG}
+    optimized ${Boost_CHRONO_LIBRARY_RELEASE} debug ${Boost_CHRONO_LIBRARY_DEBUG}
+    optimized ${Boost_SYSTEM_LIBRARY_RELEASE} debug ${Boost_SYSTEM_LIBRARY_DEBUG}
+    optimized ${Boost_FILESYSTEM_LIBRARY_RELEASE} debug ${Boost_FILESYSTEM_LIBRARY_DEBUG}
+    optimized ${Boost_PROGRAM_OPTIONS_LIBRARY_RELEASE} debug ${Boost_PROGRAM_OPTIONS_LIBRARY_DEBUG}
     )
 
 set_source_files_properties(${PB_SOURCES} PROPERTIES GENERATED TRUE)

@@ -15,7 +15,7 @@ GpuCache(const slot_t num_slots)
     : Cache(num_slots),
     transfer_budget_(0),
     transfer_slots_written_(0) {
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
     transfer_list_.resize(database->num_models());
 }
 
@@ -25,8 +25,8 @@ GpuCache::
 }
 
 void GpuCache::
-ResetTransferList() {
-    ModelDatabase* database = ModelDatabase::GetInstance();
+resetTransferList() {
+    Modeldatabase* database = Modeldatabase::get_instance();
     transfer_list_.clear();
     transfer_list_.resize(database->num_models());
 }

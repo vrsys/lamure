@@ -15,8 +15,8 @@ namespace lamure
 namespace ren
 {
 
-Semaphore::
-Semaphore()
+semaphore::
+semaphore()
 : signal_count_(0),
   shutdown_(false),
   min_signal_count_(1),
@@ -25,13 +25,13 @@ Semaphore()
 
 }
 
-Semaphore::
-~Semaphore() {
+semaphore::
+~semaphore() {
 
 }
 
-void Semaphore::
-Wait() {
+void semaphore::
+wait() {
     {
         std::unique_lock<std::mutex> ulock(mutex_);
         signal_lock_.wait(ulock, [&]{ return signal_count_ >= min_signal_count_ || shutdown_; });
@@ -42,7 +42,7 @@ Wait() {
 
 }
 
-void Semaphore::
+void semaphore::
 Signal(const size_t signal_count) {
     {
         std::lock_guard<std::mutex> ulock(mutex_);
@@ -54,23 +54,23 @@ Signal(const size_t signal_count) {
 
 }
 
-const size_t Semaphore::
+const size_t semaphore::
 NumSignals() {
     std::lock_guard<std::mutex> lock(mutex_);
     return signal_count_;
 }
 
-void Semaphore::
+void semaphore::
 Lock() {
     mutex_.lock();
 }
 
-void Semaphore::
+void semaphore::
 Unlock() {
     mutex_.unlock();
 }
 
-void Semaphore::
+void semaphore::
 Shutdown() {
     std::lock_guard<std::mutex> lock(mutex_);
     shutdown_ = true;

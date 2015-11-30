@@ -14,11 +14,11 @@
 namespace lamure
 {
 
-class COMMON_DLL MemoryStatus
+class COMMON_DLL memory_status
 {
 public:
-    explicit            MemoryStatus(const float mem_ratio, const size_t element_size);
-    virtual             ~MemoryStatus() {};
+    explicit            memory_status(const float mem_ratio, const size_t element_size);
+    virtual             ~memory_status() {};
 
     const size_t        memory_budget() const { return memory_budget_; };
     void                set_memory_budget(const size_t value)
@@ -28,9 +28,9 @@ public:
     void                set_element_size(const size_t value)
                             { element_size_ = value; };
 
-    const size_t        MaxElementsAllowed() const;
+    const size_t        max_elements_allowed() const;
 
-    const size_t        MaxElementsInBuffer(const size_t buffer_size_mb) const;
+    const size_t        max_elements_in_buffer(const size_t buffer_size_mb) const;
 
 private:
 

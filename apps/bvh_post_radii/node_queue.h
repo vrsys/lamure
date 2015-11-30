@@ -29,18 +29,18 @@ public:
     node_queue_t();
     ~node_queue_t();
 
-    void PushJob(const job_t& job);
-    const job_t PopJob();
+    void push_job(const job_t& job);
+    const job_t pop_job();
 
-    void Wait();
-    void Relaunch();
-    const bool IsShutdown();
+    void wait();
+    void relaunch();
+    const bool is_shutdown();
     const unsigned int NumJobs();
 
 private:
     std::queue<job_t> queue_;
     std::mutex mutex_;
-    lamure::ren::Semaphore semaphore_;
+    lamure::ren::semaphore semaphore_;
     bool is_shutdown_;
 
 };

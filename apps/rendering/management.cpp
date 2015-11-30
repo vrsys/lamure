@@ -42,7 +42,7 @@ Management(std::vector<std::string> const& model_filenames,
 
 {
 
-    lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
 
 #ifdef LAMURE_RENDERING_ENABLE_LAZY_MODELS_TEST
     assert(model_filenames_.size() > 0);
@@ -60,13 +60,13 @@ Management(std::vector<std::string> const& model_filenames,
 
         float scene_diameter = far_plane_;
         for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-            const auto& bb = database->GetModel(model_id)->bvh()->bounding_boxes()[0];
+            const auto& bb = database->GetModel(model_id)->get_bvh()->bounding_boxes()[0];
             scene_diameter = std::max(scm::math::length(bb.max_vertex()-bb.min_vertex()), scene_diameter);
-            model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(database->GetModel(model_id)->bvh()->translation());
+            model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(database->GetModel(model_id)->get_bvh()->translation());
         }
         far_plane_ = 2.0f * scene_diameter;
 
-        auto root_bb = database->GetModel(0)->bvh()->bounding_boxes()[0];
+        auto root_bb = database->GetModel(0)->get_bvh()->bounding_boxes()[0];
         scm::math::vec3 center = model_transformations_[0] * root_bb.center();
         reset_matrix_ = scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f,-0.01f), center, scm::math::vec3f(0.f, 1.f,0.f));
         reset_diameter_ = scm::math::length(root_bb.max_vertex()-root_bb.min_vertex());
@@ -88,11 +88,11 @@ Management(std::vector<std::string> const& model_filenames,
     active_camera_ = cameras_[0];
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_ = new SplitScreenRenderer(model_transformations_);
+    renderer_ = new split_screen_renderer(model_transformations_);
 #endif
 
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
+    renderer_ = new renderer(model_transformations_, visible_set, invisible_set);
 #endif
 
     PrintInfo();
@@ -120,20 +120,20 @@ Management::
 void Management::
 MainLoop()
 {
-    lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
-    lamure::ren::Controller* controller = lamure::ren::Controller::GetInstance();
-    lamure::ren::CutDatabase* cuts = lamure::ren::CutDatabase::GetInstance();
+    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
+    lamure::ren::Controller* controller = lamure::ren::Controller::get_instance();
+    lamure::ren::Cutdatabase* cuts = lamure::ren::Cutdatabase::get_instance();
 
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
        model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(28.f, -389.f, -58.f);
-       renderer_->SendModelTransform(model_id, model_transformations_[model_id]);
+       renderer_->send_model_transform(model_id, model_transformations_[model_id]);
     }
 
 #endif
 
 
-    controller->ResetSystem();
+    controller->resetSystem();
 
     lamure::context_t context_id = controller->DeduceContextId(0);
     
@@ -151,11 +151,11 @@ MainLoop()
     
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_->Render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()));
-    renderer_->Render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->GetContextMemory(context_id, renderer_->device()));
 #else
     renderer_->set_radius_scale(importance_);
-    renderer_->Render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()));
+    renderer_->render(context_id, *active_camera_, view_id, controller->GetContextMemory(context_id, renderer_->device()));
  
 #endif
 
@@ -176,11 +176,11 @@ MainLoop()
             //if (visible_set_.find(model_id) != visible_set_.end())
             if (!test_send_rendered_) {
                if (model_id > num_models_/2) {
-                  cuts->SendRendered(context_id, m_id);
+                  cuts->Sendrendered(context_id, m_id);
                }
             }
             else {
-               cuts->SendRendered(context_id, m_id);
+               cuts->Sendrendered(context_id, m_id);
             }
 
             database->GetModel(m_id)->set_transform(model_transformations_[m_id]);
@@ -195,7 +195,7 @@ MainLoop()
             double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
             float height_divided_by_top_minus_bottom = database->window_height() / top_minus_bottom;
 
-            cuts->SendHeightDividedByTopMinusBottom(context_id, cam_id, height_divided_by_top_minus_bottom);
+            cuts->SendheightDividedByTopMinusBottom(context_id, cam_id, height_divided_by_top_minus_bottom);
         }
 
         //controller->Dispatch(context_id, renderer_->device());
@@ -288,22 +288,22 @@ DispatchKeyboardInput(unsigned char key)
         std::cout << "send rendered: " << test_send_rendered_ << std::endl;
         break;
     case 'w':
-        renderer_->SwitchBoundingBoxRendering();
+        renderer_->switch_bounding_box_rendering();
         break;
     case 'U':
-        renderer_->ChangePointSize(1.0f);
+        renderer_->change_pointsize(1.0f);
         break;
     case 'u':
-        renderer_->ChangePointSize(0.1f);
+        renderer_->change_pointsize(0.1f);
         break;
     case 'J':
-        renderer_->ChangePointSize(-1.0f);
+        renderer_->change_pointsize(-1.0f);
         break;
     case 'j':
-        renderer_->ChangePointSize(-0.1f);
+        renderer_->change_pointsize(-0.1f);
         break;
     case 'n':
-        renderer_->SwitchRenderMode();
+        renderer_->SwitchrenderMode();
         break;
     case 'o':
         renderer_->SwitchEllipseMode();
@@ -385,14 +385,14 @@ DispatchKeyboardInput(unsigned char key)
 
     case 'z':
         {
-        lamure::ren::OocCache* ooc_cache = lamure::ren::OocCache::GetInstance();
+        lamure::ren::OocCache* ooc_cache = lamure::ren::OocCache::get_instance();
         ooc_cache->StartMeasure();
         }
         break;
 
     case 'Z':
         {
-        lamure::ren::OocCache* ooc_cache = lamure::ren::OocCache::GetInstance();
+        lamure::ren::OocCache* ooc_cache = lamure::ren::OocCache::get_instance();
         ooc_cache->EndMeasure();
         }
         break;
@@ -460,9 +460,9 @@ DispatchKeyboardInput(unsigned char key)
 
             float max_distance = 100000.0f;
  
-            lamure::ren::Ray::Intersection intersection;
-            std::vector<lamure::ren::Ray::Intersection> dbg_intersections;
-            lamure::ren::Ray ray(cam_pos, cam_fwd, max_distance);
+            lamure::ren::ray::intersection intersection;
+            std::vector<lamure::ren::ray::intersection> dbg_intersections;
+            lamure::ren::ray ray(cam_pos, cam_fwd, max_distance);
           
             //sample params for single pick (wysiwg)
             unsigned int max_depth = 255;
@@ -493,22 +493,22 @@ DispatchKeyboardInput(unsigned char key)
                 }
 
 #elif 0 /*SINGLE PICK SPLAT-BASED*/
-            lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+            lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
             for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
                scm::math::mat4f model_transform = database->GetModel(model_id)->transform();
-               lamure::ren::Ray::Intersection temp;
-               if (ray.IntersectModel(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
+               lamure::ren::ray::intersection temp;
+               if (ray.intersect_model(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
                   intersection = temp;
                }
             }
 
 #elif 0 /*SINGLE PICK BVH-BASED*/
 
-            lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+            lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
             for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
                scm::math::mat4f model_transform = database->GetModel(model_id)->transform();
-               lamure::ren::Ray::IntersectionBvh temp;
-               if (ray.IntersectModelBvh(model_id, model_transform, 1.0f, temp)) {
+               lamure::ren::ray::intersection_bvh temp;
+               if (ray.intersect_model_bvh(model_id, model_transform, 1.0f, temp)) {
                   //std::cout << "hit i model id " << model_id << " distance: " << temp.tmin_ << std::endl;
                   intersection.position_ = temp.position_;
                   intersection.normal_ = scm::math::vec3f(0.0f, 1.0f, 0.f);
@@ -521,16 +521,16 @@ DispatchKeyboardInput(unsigned char key)
 #else /*DISAMBIGUATION SINGLE PICK BVH-BASED*/
 
       //compile list of model kdn filenames
-      lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+      lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
       std::set<std::string> bvh_filenames;
       for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-         const std::string& bvh_filename = database->GetModel(model_id)->bvh()->filename();
+         const std::string& bvh_filename = database->GetModel(model_id)->get_bvh()->filename();
          bvh_filenames.insert(bvh_filename);
       }
 
       //now test the list of files
-      lamure::ren::Ray::IntersectionBvh temp;
-      if (ray.IntersectBvh(bvh_filenames, 1.0f, temp)) {
+      lamure::ren::ray::intersection_bvh temp;
+      if (ray.intersect_bvh(bvh_filenames, 1.0f, temp)) {
          intersection.position_ = temp.position_;
          intersection.normal_ = scm::math::vec3f(0.f, 1.0f, 1.0f);
          intersection.error_ = 0.f;
@@ -609,8 +609,8 @@ DispatchResize(int w, int h)
     w/=2;
 #endif
 
-    renderer_->ResetViewport(w,h);
-    lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+    renderer_->reset_viewport(w,h);
+    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
     database->set_window_width(w);
     database->set_window_height(h);
 

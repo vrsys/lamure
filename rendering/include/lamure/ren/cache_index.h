@@ -43,7 +43,7 @@ public:
 
     void                AquireSlot(const view_t view_id, const model_t model_id, const node_t node_id);
     void                ReleaseSlot(const view_t view_id, const model_t model_id, const node_t node_id);
-    const bool          ReleaseSlotInvalidate(const view_t view_id, const model_t model_id, const node_t node_id);
+    const bool          ReleaseSlotinvalidate(const view_t view_id, const model_t model_id, const node_t node_id);
 
 private:
 

@@ -14,12 +14,12 @@ namespace lamure
 namespace ren
 {
 
-std::mutex ModelDatabase::mutex_;
-bool ModelDatabase::is_instanced_ = false;
-ModelDatabase* ModelDatabase::single_ = nullptr;
+std::mutex Modeldatabase::mutex_;
+bool Modeldatabase::is_instanced_ = false;
+Modeldatabase* Modeldatabase::single_ = nullptr;
 
-ModelDatabase::
-ModelDatabase()
+Modeldatabase::
+Modeldatabase()
 : num_models_(0),
   num_models_pending_(0),
   surfels_per_node_(0),
@@ -28,14 +28,14 @@ ModelDatabase()
 
 }
 
-ModelDatabase::
-~ModelDatabase() {
+Modeldatabase::
+~Modeldatabase() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     is_instanced_ = false;
 
     for (const auto& model_it : models_) {
-        LodPointCloud* model = model_it.second;
+        lod_point_cloud* model = model_it.second;
         if (model != nullptr) {
             delete model;
             model = nullptr;
@@ -45,13 +45,13 @@ ModelDatabase::
     models_.clear();
 }
 
-ModelDatabase* ModelDatabase::
-GetInstance() {
+Modeldatabase* Modeldatabase::
+get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!is_instanced_) { //double-checked locking
-            single_ = new ModelDatabase();
+            single_ = new Modeldatabase();
             is_instanced_ = true;
         }
 
@@ -62,7 +62,7 @@ GetInstance() {
     }
 }
 
-void ModelDatabase::
+void Modeldatabase::
 Apply() {
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -70,17 +70,17 @@ Apply() {
     surfels_per_node_ = surfels_per_node_pending_;
 }
 
-const model_t ModelDatabase::
+const model_t Modeldatabase::
 AddModel(const std::string& filepath, const std::string& model_key) {
 
-    if (Controller::GetInstance()->IsModelPresent(model_key)) {
-        return Controller::GetInstance()->DeduceModelId(model_key);
+    if (Controller::get_instance()->IsModelPresent(model_key)) {
+        return Controller::get_instance()->DeduceModelId(model_key);
     }
 
-    LodPointCloud* model = new LodPointCloud(filepath);
+    lod_point_cloud* model = new lod_point_cloud(filepath);
 
     if (model->is_loaded()) {
-        const Bvh* bvh = model->bvh();
+        const bvh* bvh = model->get_bvh();
 
         if (num_models_ == 0) {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -93,7 +93,7 @@ AddModel(const std::string& filepath, const std::string& model_key) {
         else {
             if (size_of_surfel_ != bvh->size_of_surfel()) {
                 throw std::runtime_error(
-                    "PLOD: ModelDatabase::Incompatible surfel size");
+                    "PLOD: Modeldatabase::Incompatible surfel size");
             }
         }
 
@@ -109,7 +109,7 @@ AddModel(const std::string& filepath, const std::string& model_key) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
 
-            model_id = Controller::GetInstance()->DeduceModelId(model_key);
+            model_id = Controller::get_instance()->DeduceModelId(model_key);
 
             model->model_id_ = model_id;
             models_[model_id] = model;
@@ -119,7 +119,7 @@ AddModel(const std::string& filepath, const std::string& model_key) {
             num_models_ = num_models_pending_;
             surfels_per_node_ = surfels_per_node_pending_;
 
-            Controller::GetInstance()->SignalSystemReset();
+            Controller::get_instance()->SignalSystemreset();
         }
 
 #ifdef LAMURE_ENABLE_INFO
@@ -130,21 +130,21 @@ AddModel(const std::string& filepath, const std::string& model_key) {
     }
     else {
         throw std::runtime_error(
-            "PLOD: ModelDatabase::Model was not loaded");
+            "PLOD: Modeldatabase::Model was not loaded");
     }
 
     return invalid_model_t;
 
 }
 
-LodPointCloud* ModelDatabase::
+lod_point_cloud* Modeldatabase::
 GetModel(const model_t model_id) {
     if (models_.find(model_id) != models_.end()) {
         return models_[model_id];
     }
 
     throw std::runtime_error(
-        "PLOD: ModelDatabase::Model was not found:" + model_id);
+        "PLOD: Modeldatabase::Model was not found:" + model_id);
 
     return nullptr;
 }

@@ -275,7 +275,7 @@ ReleaseSlot(const view_t view_id, const model_t model_id, const node_t node_id) 
 }
 
 const bool CacheIndex::
-ReleaseSlotInvalidate(const view_t view_id, const model_t model_id, const node_t node_id) {
+ReleaseSlotinvalidate(const view_t view_id, const model_t model_id, const node_t node_id) {
     //purpose: unregister view from node,
     //if no views remain, invalidate node (remove from index)
     //and insert slot to head

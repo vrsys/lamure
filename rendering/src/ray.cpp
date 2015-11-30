@@ -12,7 +12,7 @@ namespace lamure
 namespace ren
 {
 
-Ray::Ray()
+ray::ray()
 : origin_(scm::math::vec3f::zero()),
   direction_(scm::math::vec3f::one()),
   max_distance_(-1.f) {
@@ -20,7 +20,7 @@ Ray::Ray()
 
 }
 
-Ray::Ray(const scm::math::vec3f& origin, const scm::math::vec3f& direction, const float max_distance)
+ray::ray(const scm::math::vec3f& origin, const scm::math::vec3f& direction, const float max_distance)
 : origin_(origin),
   direction_(direction),
   max_distance_(max_distance) {
@@ -28,31 +28,31 @@ Ray::Ray(const scm::math::vec3f& origin, const scm::math::vec3f& direction, cons
 
 }
 
-Ray::~Ray() {
+ray::~ray() {
 
 
 }
 
-const bool Ray::Intersect(
+const bool ray::Intersect(
     const float aabb_scale,
     scm::math::vec3f& ray_up_vector,
     const float bundle_radius,
     const unsigned int max_depth,
     const unsigned int surfel_skip,
-    Ray::Intersection& intersection) {
+    ray::intersection& intersection) {
 
     scm::math::vec3f up_vector = scm::math::normalize(ray_up_vector);
     scm::math::vec3f right_vector = scm::math::normalize(scm::math::cross(up_vector, direction_));
 
     std::srand(255);
 
-    std::vector<Ray> rays;
+    std::vector<ray> rays;
 
-    rays.push_back(Ray(origin_, direction_, max_distance_));
-    rays.push_back(Ray(origin_ + up_vector * bundle_radius, direction_, max_distance_));
-    rays.push_back(Ray(origin_ - up_vector * bundle_radius, direction_, max_distance_));
-    rays.push_back(Ray(origin_ - right_vector * bundle_radius, direction_, max_distance_));
-    rays.push_back(Ray(origin_ + right_vector * bundle_radius, direction_, max_distance_));
+    rays.push_back(ray(origin_, direction_, max_distance_));
+    rays.push_back(ray(origin_ + up_vector * bundle_radius, direction_, max_distance_));
+    rays.push_back(ray(origin_ - up_vector * bundle_radius, direction_, max_distance_));
+    rays.push_back(ray(origin_ - right_vector * bundle_radius, direction_, max_distance_));
+    rays.push_back(ray(origin_ + right_vector * bundle_radius, direction_, max_distance_));
 
     unsigned int num_rays = 5;
 
@@ -73,30 +73,30 @@ const bool Ray::Intersect(
             scm::math::vec2f p2 = rot * scm::math::vec2f(0.f, r);
             scm::math::vec2f p3 = rot * scm::math::vec2f(0.f, -r);
 
-            rays.push_back(Ray(origin_ + right_vector * p0.x + up_vector * p0.y, direction_, max_distance_));
-            rays.push_back(Ray(origin_ + right_vector * p1.x + up_vector * p1.y, direction_, max_distance_));
-            rays.push_back(Ray(origin_ + right_vector * p2.x + up_vector * p2.y, direction_, max_distance_));
-            rays.push_back(Ray(origin_ + right_vector * p3.x + up_vector * p3.y, direction_, max_distance_));
+            rays.push_back(ray(origin_ + right_vector * p0.x + up_vector * p0.y, direction_, max_distance_));
+            rays.push_back(ray(origin_ + right_vector * p1.x + up_vector * p1.y, direction_, max_distance_));
+            rays.push_back(ray(origin_ + right_vector * p2.x + up_vector * p2.y, direction_, max_distance_));
+            rays.push_back(ray(origin_ + right_vector * p3.x + up_vector * p3.y, direction_, max_distance_));
             num_rays += 4;
         }
     }
 
-    std::vector<Ray::Intersection> intersections;
+    std::vector<ray::intersection> intersections;
     std::vector<float> best_errors;
     for (unsigned int i = 0; i < num_rays; ++i) {
-        intersections.push_back(Ray::Intersection());
+        intersections.push_back(ray::intersection());
         best_errors.push_back(std::numeric_limits<float>::max());
     }
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    OocCache* ooc_cache = OocCache::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
+    OocCache* ooc_cache = OocCache::get_instance();
 
     ooc_cache->Lock();
     ooc_cache->Refresh();
 
-    RayQueue job_queue;
+    ray_queue job_queue;
     for (unsigned int i = 0; i < num_rays; ++i) {
-        job_queue.PushJob(RayQueue::RayJob(i, rays[i]));
+        job_queue.push_job(ray_queue::ray_job(i, rays[i]));
     }
 
     unsigned int num_threads = 16;
@@ -106,20 +106,20 @@ const bool Ray::Intersect(
         threads.push_back(std::thread([&]{
 
             while (true) {
-                job_queue.Wait();
+                job_queue.wait();
 
-                if (job_queue.IsShutdown()) {
+                if (job_queue.is_shutdown()) {
                     break;
                 }
 
-                RayQueue::RayJob job = job_queue.PopJob();
+                ray_queue::ray_job job = job_queue.pop_job();
 
                 if (job.id_ >= 0) {
-                    Ray& ray = rays[job.id_];
-                    Ray::Intersection temp;
+                    ray& ray = rays[job.id_];
+                    ray::intersection temp;
                     for (model_t model_id = 0; model_id < database->num_models(); ++model_id) {
                         const scm::math::mat4f& model_transform = database->GetModel(model_id)->transform();
-                        if (ray.IntersectModelUnsafe(model_id, model_transform, aabb_scale, max_depth, surfel_skip, false, temp)) {
+                        if (ray.intersect_model_unsafe(model_id, model_transform, aabb_scale, max_depth, surfel_skip, false, temp)) {
                             if (temp.error_ < best_errors[job.id_]) {
                                 best_errors[job.id_] = temp.error_;
                                 intersections[job.id_] = temp;
@@ -221,21 +221,21 @@ const bool Ray::Intersect(
 
 }
 
-const bool Ray::IntersectModel(
+const bool ray::intersect_model(
     const model_t model_id,
     const scm::math::mat4f& model_transform,
     const float aabb_scale,
     const unsigned int max_depth,
     const unsigned int surfel_skip,
     bool is_wysiwyg,
-    Ray::Intersection& intersection) {
+    ray::intersection& intersection) {
 
 
-    OocCache* ooc_cache = OocCache::GetInstance();
+    OocCache* ooc_cache = OocCache::get_instance();
     ooc_cache->Lock();
     ooc_cache->Refresh();
 
-    bool result = IntersectModelUnsafe(
+    bool result = intersect_model_unsafe(
       model_id,
       model_transform,
       aabb_scale,
@@ -249,23 +249,23 @@ const bool Ray::IntersectModel(
     return result;
 }
 
-const bool Ray::IntersectModelUnsafe(
+const bool ray::intersect_model_unsafe(
     const model_t model_id,
     const scm::math::mat4f& model_transform,
     const float aabb_scale,
     const unsigned int max_depth,
     const unsigned int surfel_skip,
     bool is_wysiwyg,
-    Ray::Intersection& intersection) {
+    ray::intersection& intersection) {
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
     if (model_id >= database->num_models()) {
         return false;
     }
 
-    OocCache* ooc_cache = OocCache::GetInstance();
+    OocCache* ooc_cache = OocCache::get_instance();
 
-    const Bvh* tree = database->GetModel(model_id)->bvh();
+    const bvh* tree = database->GetModel(model_id)->get_bvh();
     unsigned int fan_factor = tree->fan_factor();
     node_t num_nodes = tree->num_nodes();
     uint32_t num_surfels_per_node = database->surfels_per_node();
@@ -299,7 +299,7 @@ const bool Ray::IntersectModelUnsafe(
         bool no_child_available = true;
 
         for (node_t i = 0; i < (node_t)fan_factor; ++i) {
-            node_t node_id = tree->GetChildId(current_parent_id, i);
+            node_t node_id = tree->get_child_id(current_parent_id, i);
 
             if (node_id == invalid_node_t) {
                 continue;
@@ -316,7 +316,7 @@ const bool Ray::IntersectModelUnsafe(
             no_child_available = false;
 
             scm::math::vec2f t = scm::math::vec2f::zero();
-            if (!IntersectAabb(tree->bounding_boxes()[node_id], 
+            if (!intersect_aabb(tree->bounding_boxes()[node_id], 
                                object_ray_origin, object_ray_direction,  
                                t)) {
                 continue;
@@ -329,7 +329,7 @@ const bool Ray::IntersectModelUnsafe(
      
             bool all_children_in_memory = true;
             for (node_t k = 0; k < fan_factor; ++k) {
-                node_t child_id = tree->GetChildId(node_id, k);
+                node_t child_id = tree->get_child_id(node_id, k);
                 if (child_id == invalid_node_t) {
                     all_children_in_memory = false;
                     break;
@@ -351,7 +351,7 @@ const bool Ray::IntersectModelUnsafe(
             if (all_children_in_memory) {
                 bool we_do_not_intersect_either_child = true;
                 for (node_t k = 0; k < fan_factor; ++k) {
-                    node_t child_id = tree->GetChildId(node_id, k);
+                    node_t child_id = tree->get_child_id(node_id, k);
                     
                     if (child_id == invalid_node_t) {
                         we_do_not_intersect_either_child = true;
@@ -364,7 +364,7 @@ const bool Ray::IntersectModelUnsafe(
                     }
 
                     scm::math::vec2f t1 = scm::math::vec2f::zero();
-                    if (IntersectAabb(tree->bounding_boxes()[child_id], 
+                    if (intersect_aabb(tree->bounding_boxes()[child_id], 
                                       object_ray_origin, object_ray_direction, 
                                       t1)) {
                         we_do_not_intersect_either_child = false;
@@ -393,21 +393,21 @@ const bool Ray::IntersectModelUnsafe(
 
             if (intersect_splats) {
  
-                if (tree->GetVisibility(node_id) == Bvh::NodeVisibility::NODE_INVISIBLE) {
+                if (tree->GetVisibility(node_id) == bvh::node_visibility::NODE_INVISIBLE) {
                    continue;
                 }
 
 
                 float object_to_world_scale = max_distance_ / object_ray_max_distance;
 
-                LodPointCloud::SerializedSurfel* surfels = (LodPointCloud::SerializedSurfel*)ooc_cache->NodeData(model_id, node_id);
+                lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->Nodedata(model_id, node_id);
                 for (unsigned int k = 0; k < num_surfels_per_node; k += valid_surfel_skip) {
-                    LodPointCloud::SerializedSurfel& surfel = surfels[k];
+                    lod_point_cloud::serialized_surfel& surfel = surfels[k];
 
 		    if (surfel.size >= std::numeric_limits<float>::min()) {
 
                         float ts = -1.f;
-                        if (IntersectSurfel(surfel, object_ray_origin, object_ray_direction, ts)) {
+                        if (intersect_surfel(surfel, object_ray_origin, object_ray_direction, ts)) {
 
                             if (ts != ts || ts <= 0.f) {
                                 continue;
@@ -460,14 +460,14 @@ const bool Ray::IntersectModelUnsafe(
 
            float object_to_world_scale = max_distance_ / object_ray_max_distance;
 
-           LodPointCloud::SerializedSurfel* surfels = (LodPointCloud::SerializedSurfel*)ooc_cache->NodeData(model_id, node_id);
+           lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->Nodedata(model_id, node_id);
            for (unsigned int k = 0; k < num_surfels_per_node; k += valid_surfel_skip) {
-              LodPointCloud::SerializedSurfel& surfel = surfels[k];
+              lod_point_cloud::serialized_surfel& surfel = surfels[k];
 
               if (surfel.size >= std::numeric_limits<float>::min()) {
 
                  float ts = -1.f;
-                 if (IntersectSurfel(surfel, object_ray_origin, object_ray_direction, ts)) {
+                 if (intersect_surfel(surfel, object_ray_origin, object_ray_direction, ts)) {
 
                     if (ts != ts || ts <= 0.f) {
                        continue;
@@ -517,25 +517,25 @@ const bool Ray::IntersectModelUnsafe(
 }
 
 
-const bool Ray::IntersectBvh(const std::set<std::string>& model_filenames,
+const bool ray::intersect_bvh(const std::set<std::string>& model_filenames,
                              const float aabb_scale,
-                             Ray::IntersectionBvh& intersection) {
+                             ray::intersection_bvh& intersection) {
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
    
-    std::vector<Ray::IntersectionBvh> intersections;
+    std::vector<ray::intersection_bvh> intersections;
 
     //iterate the models, intersect the onces that the user wants
     for (model_t model_id = 0; model_id < database->num_models(); ++model_id) {
 
-       std::string bvh_filename = database->GetModel(model_id)->bvh()->filename();
-       Ray::IntersectionBvh temp;
+       std::string bvh_filename = database->GetModel(model_id)->get_bvh()->filename();
+       ray::intersection_bvh temp;
 
        if (model_filenames.find(bvh_filename) != model_filenames.end()) {
           const scm::math::mat4f& model_transform = database->GetModel(model_id)->transform();
           
-          Ray ray(origin_, direction_, max_distance_);
-          if (ray.IntersectModelBvh(model_id, model_transform, aabb_scale, temp)) {
+          ray ray(origin_, direction_, max_distance_);
+          if (ray.intersect_model_bvh(model_id, model_transform, aabb_scale, temp)) {
              intersections.push_back(temp);
           }
        }
@@ -612,17 +612,17 @@ const bool Ray::IntersectBvh(const std::set<std::string>& model_filenames,
 }
 
 
-const bool Ray::IntersectModelBvh(const model_t model_id,
+const bool ray::intersect_model_bvh(const model_t model_id,
                                   const scm::math::mat4f& model_transform,
                                   const float aabb_scale,
-                                  Ray::IntersectionBvh& intersection) {
+                                  ray::intersection_bvh& intersection) {
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
     if (model_id >= database->num_models()) {
         return false;
     }
 
-    const Bvh* tree = database->GetModel(model_id)->bvh();
+    const bvh* tree = database->GetModel(model_id)->get_bvh();
     unsigned int fan_factor = tree->fan_factor();
     node_t num_nodes = tree->num_nodes();
 
@@ -643,7 +643,7 @@ const bool Ray::IntersectModelBvh(const model_t model_id,
         candidates.pop();
 
         for (node_t i = 0; i < (node_t)fan_factor; ++i) {
-            node_t node_id = tree->GetChildId(current_parent_id, i);
+            node_t node_id = tree->get_child_id(current_parent_id, i);
 
             if (node_id == invalid_node_t) {
                 continue;
@@ -653,7 +653,7 @@ const bool Ray::IntersectModelBvh(const model_t model_id,
                 continue;
             }
 
-            if (tree->GetVisibility(node_id) == Bvh::NodeVisibility::NODE_INVISIBLE) {
+            if (tree->GetVisibility(node_id) == bvh::node_visibility::NODE_INVISIBLE) {
                if (tree->GetDepthOfNode(node_id) == tree->depth()) {
                   continue;
                }
@@ -662,7 +662,7 @@ const bool Ray::IntersectModelBvh(const model_t model_id,
             auto bb = tree->bounding_boxes()[node_id];
 
             scm::math::vec2f t = scm::math::vec2f::zero();
-            if (!IntersectAabb(tree->bounding_boxes()[node_id], 
+            if (!intersect_aabb(tree->bounding_boxes()[node_id], 
                                object_ray_origin, object_ray_direction,  
                                t)) {
                continue;
@@ -688,11 +688,11 @@ const bool Ray::IntersectModelBvh(const model_t model_id,
                float world_tmax = std::min(t.y, object_ray_max_distance) * object_to_world_scale;
 
                if (world_tmin < intersection.tmin_) { //not good enough
-               //if (tree->GetAvgSurfelRadius(node_id) < intersection.representative_radius_) {
+               //if (tree->GetAvgsurfelRadius(node_id) < intersection.representative_radius_) {
                   intersection.tmin_ = world_tmin;
                   intersection.tmax_ = world_tmax;
                   intersection.position_ = origin_ + direction_ * world_tmin;
-                  intersection.representative_radius_ = tree->GetAvgSurfelRadius(node_id);
+                  intersection.representative_radius_ = tree->GetAvgsurfelRadius(node_id);
                   intersection.bvh_filename_ = tree->filename();
                   has_hit = true;
                }
@@ -707,8 +707,8 @@ const bool Ray::IntersectModelBvh(const model_t model_id,
 
 }
 
-const bool Ray::
-IntersectAabb(const scm::gl::boxf& bb,
+const bool ray::
+intersect_aabb(const scm::gl::boxf& bb,
               const scm::math::vec3f& ray_origin,
               const scm::math::vec3f& ray_direction,
               scm::math::vec2f& t) {
@@ -734,8 +734,8 @@ IntersectAabb(const scm::gl::boxf& bb,
 }
 
 
-const bool Ray::
-IntersectSurfel(const LodPointCloud::SerializedSurfel& surfel,
+const bool ray::
+intersect_surfel(const lod_point_cloud::serialized_surfel& surfel,
                 const scm::math::vec3f& ray_origin,
                 const scm::math::vec3f& ray_direction,
                 float& t) {
@@ -775,51 +775,51 @@ IntersectSurfel(const LodPointCloud::SerializedSurfel& surfel,
 }
 
 
-RayQueue::
-RayQueue()
+ray_queue::
+ray_queue()
 : is_shutdown_(false) {
     semaphore_.set_min_signal_count(1);
     semaphore_.set_max_signal_count(std::numeric_limits<float>::max());
 }
 
-RayQueue::
-~RayQueue() {
+ray_queue::
+~ray_queue() {
 
 }
 
-void RayQueue::
-Wait() {
-    semaphore_.Wait();
+void ray_queue::
+wait() {
+    semaphore_.wait();
 }
 
-const bool RayQueue::
-IsShutdown() {
+const bool ray_queue::
+is_shutdown() {
     return is_shutdown_;
 }
 
-void RayQueue::
-Relaunch() {
+void ray_queue::
+relaunch() {
     is_shutdown_ = false;
 }
 
-const unsigned int RayQueue::
+const unsigned int ray_queue::
 NumJobs() {
     return (unsigned int)queue_.size();
 }
 
-void RayQueue::
-PushJob(const RayQueue::RayJob& job) {
+void ray_queue::
+push_job(const ray_queue::ray_job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push(job);
     semaphore_.Signal(1);
 
 }
 
-const RayQueue::RayJob RayQueue::
-PopJob() {
+const ray_queue::ray_job ray_queue::
+pop_job() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    RayJob job;
+    ray_job job;
 
     if (!queue_.empty()) {
         job = queue_.front();

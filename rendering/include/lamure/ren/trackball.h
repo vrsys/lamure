@@ -24,7 +24,7 @@ public:
     void set_dolly(const double dolly) { dolly_ = dolly; };
 
 private:
-    double ProjectToSphere(double x, double y) const;
+    double ProjectTosphere(double x, double y) const;
 
     scm::math::mat4d transform_;
     double radius_;

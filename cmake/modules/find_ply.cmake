@@ -2,11 +2,11 @@
 # search paths
 ##############################################################################
 SET(PLY_INCLUDE_SEARCH_DIRS
-    ${GLOBAL_EXT_DIR}/include/libply
+    ${GLOBAL_EXT_DIR}/libply/include
 )
 
 SET(PLY_LIBRARY_SEARCH_DIRS
-    ${GLOBAL_EXT_DIR}/lib
+    ${GLOBAL_EXT_DIR}/libply/lib
 )
 
 ##############################################################################

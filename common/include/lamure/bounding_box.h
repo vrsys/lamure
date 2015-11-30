@@ -15,13 +15,13 @@
 namespace lamure
 {
 
-class COMMON_DLL BoundingBox
+class COMMON_DLL bounding_box
 {
 public:
 
-    explicit            BoundingBox() : min_(vec3r(1.0)), max_(vec3r(-1.0)) {}
+    explicit            bounding_box() : min_(vec3r(1.0)), max_(vec3r(-1.0)) {}
 
-    explicit            BoundingBox(const vec3r& min,
+    explicit            bounding_box(const vec3r& min,
                                     const vec3r& max)
                             : min_(min), max_(max) {
 
@@ -36,49 +36,49 @@ public:
     const vec3r         max() const { return max_; }
     vec3r&              max() { return max_; }
 
-    const bool          IsInvalid() const { 
+    const bool          is_invalid() const { 
                             return min_.x > max_.x || 
                                    min_.y > max_.y || 
                                    min_.z > max_.z; 
                         }
 
-    const bool          IsValid() const { return !IsInvalid(); }
+    const bool          is_valid() const { return !is_invalid(); }
 
-    const vec3r         GetDimensions() const { 
-                            assert(IsValid());
+    const vec3r         get_dimensions() const { 
+                            assert(is_valid());
                             return max_ - min_;
                         }
 
     const vec3r         GetCenter() const { 
-                            assert(IsValid());
+                            assert(is_valid());
                             return (max_ + min_) / 2.0;
                         }
 
-    const uint8_t       GetLongestAxis() const;
-    const uint8_t       GetShortestAxis() const;
+    const uint8_t       get_longest_axis() const;
+    const uint8_t       get_shortest_axis() const;
 
-    const bool          Contains(const vec3r& point) const {
-                            assert(IsValid());
+    const bool          contains(const vec3r& point) const {
+                            assert(is_valid());
                             return min_.x <= point.x && point.x <= max_.x &&
                                    min_.y <= point.y && point.y <= max_.y &&
                                    min_.z <= point.z && point.z <= max_.z;
                         }
 
-    const bool          Contains(const BoundingBox& bounding_box) const {
-                            assert(IsValid());
-                            assert(bounding_box.IsValid());
-                            return Contains(bounding_box.min()) &&
-                                   Contains(bounding_box.max());
+    const bool          contains(const bounding_box& bounding_box) const {
+                            assert(is_valid());
+                            assert(bounding_box.is_valid());
+                            return contains(bounding_box.min()) &&
+                                   contains(bounding_box.max());
                         }
 
-    const bool          Contains(const Sphere& sphere) const {
-                            assert(IsValid());
-                            return Contains(sphere.GetBoundingBox());
+    const bool          contains(const sphere& sphere) const {
+                            assert(is_valid());
+                            return contains(sphere.get_bounding_box());
                         }
 
-    const bool          Intersects(const BoundingBox& bounding_box) const {
-                            assert(IsValid());
-                            assert(bounding_box.IsValid());
+    const bool          Intersects(const bounding_box& bounding_box) const {
+                            assert(is_valid());
+                            assert(bounding_box.is_valid());
                             return !(max_.x < bounding_box.min().x || 
                                      max_.y < bounding_box.min().y || 
                                      max_.z < bounding_box.min().z || 
@@ -87,17 +87,17 @@ public:
                                      min_.z > bounding_box.max().z);
                         }
 
-    void                Expand(const vec3r& point);
+    void                expand(const vec3r& point);
 
-    void                Expand(const vec3r& point, const real radius);
+    void                expand(const vec3r& point, const real radius);
 
-    void                Expand(const BoundingBox& bounding_box);
+    void                expand(const bounding_box& bounding_box);
 
-    void                Shrink(const BoundingBox& bounding_box);
+    void                Shrink(const bounding_box& bounding_box);
 
-    inline bool         operator==(const BoundingBox& rhs) const
+    inline bool         operator==(const bounding_box& rhs) const
                             { return min_ == rhs.min_ && max_ == rhs.max_; }
-    inline bool         operator!=(const BoundingBox& rhs) const
+    inline bool         operator!=(const bounding_box& rhs) const
                             { return !(operator==(rhs)); }
 
 private:

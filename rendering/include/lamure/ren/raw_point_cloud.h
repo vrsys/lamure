@@ -26,7 +26,7 @@ class RENDERING_DLL RawPointCloud
 
 public:
 
-    struct SerializedSurfel
+    struct serialized_surfel
     {
         float x, y, z;
         uint8_t r, g, b, fake;
@@ -45,9 +45,9 @@ public:
     const bool          is_loaded() const { return is_loaded_; };
     const size_t        num_surfels() const { return data_.size(); };
 
-    const std::vector<SerializedSurfel>& data() const { return data_; };
+    const std::vector<serialized_surfel>& data() const { return data_; };
 
-    const bool          Load(const std::string& filename);
+    const bool          load(const std::string& filename);
 
 protected:
 
@@ -56,7 +56,7 @@ private:
     model_t             model_id_;
     scm::gl::boxf       aabb_;
     bool                is_loaded_;
-    std::vector<SerializedSurfel> data_;
+    std::vector<serialized_surfel> data_;
 
 
 };

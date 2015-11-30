@@ -21,8 +21,8 @@
 namespace lamure {
 namespace pre {
 
-Surfel ReductionNormalDeviationClustering::
-CreateRepresentative(const std::vector<Surfel>& input)
+surfel reduction_normal_deviation_clustering::
+create_representative(const std::vector<surfel>& input)
 {
     assert(input.size() > 0);
 
@@ -57,18 +57,18 @@ CreateRepresentative(const std::vector<Surfel>& input)
         if (radius < dist + surfel.radius()) radius = dist + surfel.radius();
     }
 
-    return Surfel(pos, vec3b(col.x, col.y, col.z), radius, nml);
+    return surfel(pos, vec3b(col.x, col.y, col.z), radius, nml);
 }
 
-std::pair<vec3ui, vec3b> ReductionNormalDeviationClustering::
-compute_grid_dimensions(const std::vector<SurfelMemArray*>& input,
-                        const BoundingBox& bounding_box,
+std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering::
+compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
+                        const bounding_box& bounding_box,
                         const uint32_t surfels_per_node) const
 {
 
     uint16_t max_axis_ratio = 1000;
 
-    vec3r bb_dimensions = bounding_box.GetDimensions();
+    vec3r bb_dimensions = bounding_box.get_dimensions();
 
     // find axis relations
     // mark axes where every surfel has the same position as locked
@@ -215,7 +215,7 @@ compute_grid_dimensions(const std::vector<SurfelMemArray*>& input,
             {
                 for (uint32_t j = 0; j < input[i]->length(); ++j)
                 {
-                    Surfel surfel = input[i]->ReadSurfel(j);
+                    surfel surfel = input[i]->read_surfel(j);
 
                     vec3r surfel_pos = surfel.pos() - bounding_box.min();
                     if (surfel_pos.x < 0.f) surfel_pos.x = 0.f;
@@ -303,29 +303,29 @@ compute_grid_dimensions(const std::vector<SurfelMemArray*>& input,
 
 }
 
-SurfelMemArray ReductionNormalDeviationClustering::
-CreateLod(real& reduction_error,
-          const std::vector<SurfelMemArray*>& input,
+surfel_mem_array reduction_normal_deviation_clustering::
+create_lod(real& reduction_error,
+          const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node) const
 {
     // compute bounding box for actual surfels
-    BoundingBox bounding_box = BasicAlgorithms::ComputeAABB(*input[0], true);
+    bounding_box bbox = basic_algorithms::compute_aabb(*input[0], true);
 
     for (auto child_surfels = input.begin() + 1; child_surfels !=input.end(); ++child_surfels)
     {
-        BoundingBox child_bb = BasicAlgorithms::ComputeAABB(*(*child_surfels), true);
-        bounding_box.Expand(child_bb);
+        bounding_box child_bb = basic_algorithms::compute_aabb(*(*child_surfels), true);
+        bbox.expand(child_bb);
     }
 
-    vec3r bb_dimensions = bounding_box.GetDimensions();
+    vec3r bb_dimensions = bbox.get_dimensions();
 
     // compute grid dimensions
-    std::pair<vec3ui, vec3b> grid_data = compute_grid_dimensions(input, bounding_box, surfels_per_node);
+    std::pair<vec3ui, vec3b> grid_data = compute_grid_dimensions(input, bbox, surfels_per_node);
     vec3ui grid_dimensions = grid_data.first;
     vec3b locked_grid_dimensions = grid_data.second;
 
     // create grid
-    std::vector<std::vector<std::vector<std::list<Surfel>*>>> grid(grid_dimensions[0],std::vector<std::vector<std::list<Surfel>*>>(grid_dimensions[1], std::vector<std::list<Surfel>*>(grid_dimensions[2])));
+    std::vector<std::vector<std::vector<std::list<surfel>*>>> grid(grid_dimensions[0],std::vector<std::vector<std::list<surfel>*>>(grid_dimensions[1], std::vector<std::list<surfel>*>(grid_dimensions[2])));
 
     for (uint32_t i = 0; i < grid_dimensions[0]; ++i)
     {
@@ -333,7 +333,7 @@ CreateLod(real& reduction_error,
         {
             for (uint32_t k = 0; k < grid_dimensions[2]; ++k)
             {
-                grid[i][j][k] = new std::list<Surfel>;
+                grid[i][j][k] = new std::list<surfel>;
             }
         }
     }
@@ -345,9 +345,9 @@ CreateLod(real& reduction_error,
     {
         for (uint32_t j = 0; j < input[i]->length(); ++j)
         {
-            Surfel surfel = input[i]->ReadSurfel(j);
+            surfel surfel = input[i]->read_surfel(j);
 
-            vec3r surfel_pos = surfel.pos() - bounding_box.min();
+            vec3r surfel_pos = surfel.pos() - bbox.min();
             if (surfel_pos.x < 0.f) surfel_pos.x = 0.f;
             if (surfel_pos.y < 0.f) surfel_pos.y = 0.f;
             if (surfel_pos.z < 0.f) surfel_pos.z = 0.f;
@@ -389,7 +389,7 @@ CreateLod(real& reduction_error,
 
     // move grid cells into priority queue
 
-    std::priority_queue<surfel_cluster_with_error, std::vector<surfel_cluster_with_error>, OrderBySize> cell_pq;
+    std::priority_queue<surfel_cluster_with_error, std::vector<surfel_cluster_with_error>, order_by_size> cell_pq;
     uint32_t surfel_count = 0;
 
     for (uint32_t i = 0; i < grid_dimensions[0]; ++i)
@@ -418,7 +418,7 @@ CreateLod(real& reduction_error,
             break;
         }
 
-        std::list<Surfel>* input_cluster = cell_pq.top().cluster;
+        std::list<surfel>* input_cluster = cell_pq.top().cluster;
         float merge_treshold = cell_pq.top().merge_treshold;
         cell_pq.pop();
 
@@ -441,16 +441,16 @@ CreateLod(real& reduction_error,
 
         //real radius_range = max_radius - min_radius;
 
-        std::list<Surfel>* output_cluster = new std::list<Surfel>;
+        std::list<surfel>* output_cluster = new std::list<surfel>;
 
         while(input_cluster->size() != 0)
         {
 
-            std::vector<Surfel> surfels_to_merge;
+            std::vector<surfel> surfels_to_merge;
             surfels_to_merge.push_back(input_cluster->front());
             input_cluster->pop_front();
 
-            std::list<Surfel>::iterator surfel_to_compare = input_cluster->begin();
+            std::list<surfel>::iterator surfel_to_compare = input_cluster->begin();
 
             while(surfel_to_compare != input_cluster->end())
             {
@@ -514,7 +514,7 @@ CreateLod(real& reduction_error,
                     std::advance(surfel_to_compare,1);
                 }
             }
-            output_cluster->push_back(CreateRepresentative(surfels_to_merge));
+            output_cluster->push_back(create_representative(surfels_to_merge));
 
             if (early_termination) {
                 output_cluster->insert(output_cluster->end(), input_cluster->begin(), input_cluster->end());
@@ -536,14 +536,14 @@ CreateLod(real& reduction_error,
 
     }
 
-    SurfelMemArray mem_array(std::make_shared<SurfelVector>(SurfelVector()), 0, 0);
+    surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
     while (!cell_pq.empty())
     {
-        std::list<Surfel>* cluster = cell_pq.top().cluster;
+        std::list<surfel>* cluster = cell_pq.top().cluster;
         cell_pq.pop();
 
-        for(std::list<Surfel>::iterator surfel = cluster->begin(); surfel != cluster->end(); ++surfel)
+        for(std::list<surfel>::iterator surfel = cluster->begin(); surfel != cluster->end(); ++surfel)
         {
             mem_array.mem_data()->push_back(*surfel);
         }

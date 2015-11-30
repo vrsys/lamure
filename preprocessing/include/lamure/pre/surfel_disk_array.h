@@ -14,51 +14,51 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL SurfelDiskArray : public SurfelArrayAbstract
+class PREPROCESSING_DLL surfel_disk_array : public surfel_array_abstract
 {
 public:
 
-    explicit            SurfelDiskArray()
-                            : SurfelArrayAbstract() { Reset(); }
+    explicit            surfel_disk_array()
+                            : surfel_array_abstract() { reset(); }
 
-    explicit            SurfelDiskArray(const SurfelDiskArray& other,
+    explicit            surfel_disk_array(const surfel_disk_array& other,
                                         const size_t offset,
                                         const size_t length)
-                            : SurfelArrayAbstract() { Reset(other.file_, offset, length); }
+                            : surfel_array_abstract() { reset(other.file_, offset, length); }
 
-    explicit            SurfelDiskArray(const SharedFile& file,
+    explicit            surfel_disk_array(const shared_file& file,
                                         const size_t offset,
                                         const size_t length)
-                            : SurfelArrayAbstract() { Reset(file, offset, length); }
+                            : surfel_array_abstract() { reset(file, offset, length); }
 
-    Surfel              ReadSurfel(const size_t index) const override;
-    void                WriteSurfel(const Surfel& surfel, const size_t index) const override;
+    surfel              read_surfel(const size_t index) const override;
+    void                write_surfel(const surfel& surfel, const size_t index) const override;
 
-    SharedFile&         file() { return file_; }
-    const SharedFile&   file() const { return file_; }
+    shared_file&         file() { return file_; }
+    const shared_file&   file() const { return file_; }
 
-    void                Reset() override;
-    void                Reset(const SharedFile &file,
+    void                reset() override;
+    void                reset(const shared_file &file,
                               const size_t offset,
                               const size_t length);
 
-    SharedSurfelVector
-                        ReadAll() const;
+    shared_surfel_vector
+                        read_all() const;
 
-    void                WriteAll(const SharedSurfelVector& data,
+    void                write_all(const shared_surfel_vector& data,
                                  const size_t offset_in_vector);
 
 private:
 
-    SharedFile          file_;
+    shared_file          file_;
 
 };
 
 template <>
-struct SurfelArrayTraits<SurfelDiskArray>
+struct surfel_array_traits<surfel_disk_array>
 {
-    static const bool IsOOC = true;
-    static const bool IsIC = false;
+    static const bool is_out_of_core = true;
+    static const bool is_in_core = false;
 };
 
 } // namespace pre

@@ -5,28 +5,28 @@
 namespace lamure
 {
 
-const uint8_t BoundingBox::
-GetLongestAxis() const
+const uint8_t bounding_box::
+get_longest_axis() const
 {
-    const vec3r d = GetDimensions();
+    const vec3r d = get_dimensions();
     return d.x > d.y ?
         (d.x > d.z ? 0 : (d.y > d.z ? 1 : 2)) :
         (d.y > d.z ? 1 : 2);
 }
 
-const uint8_t BoundingBox::
-GetShortestAxis() const
+const uint8_t bounding_box::
+get_shortest_axis() const
 {
-    const vec3r d = GetDimensions();
+    const vec3r d = get_dimensions();
     return d.x < d.y ?
         (d.x < d.z ? 0 : (d.y < d.z ? 1 : 2)) :
         (d.y < d.z ? 1 : 2);
 }
 
-void BoundingBox::
-Expand(const vec3r& point)
+void bounding_box::
+expand(const vec3r& point)
 {
-    if (IsValid()) {
+    if (is_valid()) {
         min_.x = std::min(min_.x, point.x);
         min_.y = std::min(min_.y, point.y);
         min_.z = std::min(min_.z, point.z);
@@ -40,10 +40,10 @@ Expand(const vec3r& point)
     }
 }
 
-void BoundingBox::
-Expand(const vec3r& point, const real radius)
+void bounding_box::
+expand(const vec3r& point, const real radius)
 {
-    if (IsValid()) {
+    if (is_valid()) {
       min_.x = std::min(min_.x, point.x - radius);
       min_.y = std::min(min_.y, point.y - radius);
       min_.z = std::min(min_.z, point.z - radius);
@@ -58,11 +58,11 @@ Expand(const vec3r& point, const real radius)
     }
 }
 
-void BoundingBox::
-Expand(const BoundingBox& bounding_box)
+void bounding_box::
+expand(const bounding_box& bounding_box)
 {
-    if (bounding_box.IsValid()) {
-        if (IsValid()) {
+    if (bounding_box.is_valid()) {
+        if (is_valid()) {
             min_.x = std::min(min_.x, bounding_box.min().x);
             min_.y = std::min(min_.y, bounding_box.min().y);
             min_.z = std::min(min_.z, bounding_box.min().z);
@@ -77,10 +77,10 @@ Expand(const BoundingBox& bounding_box)
     }
 }
 
-void BoundingBox::
-Shrink(const BoundingBox& bounding_box)
+void bounding_box::
+Shrink(const bounding_box& bounding_box)
 {
-    assert(Contains(bounding_box));
+    assert(contains(bounding_box));
 
 
 }

@@ -52,7 +52,7 @@ Controller::
 }
 
 Controller* Controller::
-GetInstance() {
+get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -78,10 +78,10 @@ NumContextsRegistered() {
 
 
 void Controller::
-SignalSystemReset() {
+SignalSystemreset() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    Policy* policy = Policy::GetInstance();
+    Policy* policy = Policy::get_instance();
     policy->set_reset_system(true);
 
     for (const auto& context : context_map_) {
@@ -91,7 +91,7 @@ SignalSystemReset() {
 }
 
 const bool Controller::
-IsSystemResetSignaled(const context_t context_id) {
+IsSystemresetSignaled(const context_t context_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!reset_flags_history_[context_id].empty()) {
@@ -107,13 +107,13 @@ IsSystemResetSignaled(const context_t context_id) {
 }
 
 void Controller::
-ResetSystem() {
-    Policy* policy = Policy::GetInstance();
+resetSystem() {
+    Policy* policy = Policy::get_instance();
 
     if (policy->reset_system()) {
-        ModelDatabase* database = ModelDatabase::GetInstance();
-        CutDatabase* cuts = CutDatabase::GetInstance();
-        Controller* controller = Controller::GetInstance();
+        Modeldatabase* database = Modeldatabase::get_instance();
+        Cutdatabase* cuts = Cutdatabase::get_instance();
+        Controller* controller = Controller::get_instance();
 
         context_t num_contexts_registered = controller->NumContextsRegistered();
         for (context_t ctx_id = 0; ctx_id < num_contexts_registered; ++ctx_id) {
@@ -124,7 +124,7 @@ ResetSystem() {
 
         if (policy->reset_system()) {
             database->Apply();
-            cuts->Reset();
+            cuts->reset();
 
             for (auto& cut_update_pool_it : cut_update_pools_) {
                 CutUpdatePool* pool = cut_update_pool_it.second;
@@ -274,20 +274,20 @@ Dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
 
     if (cut_update_it != cut_update_pools_.end()) {
 
-        lamure::ren::CutDatabase* cuts = lamure::ren::CutDatabase::GetInstance();
+        lamure::ren::Cutdatabase* cuts = lamure::ren::Cutdatabase::get_instance();
         cuts->Swap(context_id);
 
         cut_update_it->second->DispatchCutUpdate(
             gpu_context_it->second->temporary_storages().storage_a_,
             gpu_context_it->second->temporary_storages().storage_b_);
 
-        if (cuts->IsFrontModified(context_id)) {
-            CutDatabaseRecord::TemporaryBuffer current = cuts->GetBuffer(context_id);
+        if (cuts->IsfrontModified(context_id)) {
+            CutdatabaseRecord::Temporarybuffer current = cuts->Getbuffer(context_id);
 
             GpuContext* ctx = gpu_context_it->second;
             ctx->UnmapTempStorage(current, device);
-            ctx->UpdatePrimaryBuffer(current, device);
-            cuts->SignalUploadComplete(context_id);
+            ctx->UpdatePrimarybuffer(current, device);
+            cuts->SignalUploadcomplete(context_id);
             ctx->MapTempStorage(current, device);
 
         }
@@ -316,7 +316,7 @@ IsModelPresent(const gua_model_desc_t model_desc) {
 
 
 scm::gl::buffer_ptr Controller::
-GetContextBuffer(const context_t context_id, scm::gl::render_device_ptr device) {
+GetContextbuffer(const context_t context_id, scm::gl::render_device_ptr device) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 
     if (gpu_context_it == gpu_contexts_.end()) {
@@ -324,7 +324,7 @@ GetContextBuffer(const context_t context_id, scm::gl::render_device_ptr device) 
             "PLOD: Controller::Gpu Context not found for context: " + context_id);
     }
 
-    return gpu_context_it->second->GetContextBuffer(device);
+    return gpu_context_it->second->GetContextbuffer(device);
 
 }
 

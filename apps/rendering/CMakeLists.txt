@@ -15,13 +15,13 @@ include_directories(${REND_INCLUDE_DIR}
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${REND_LIBRARY}
-    ${OPENGL_LIBRARIES} 
-    debug ${GLUT_LIBRARY_DEBUG} optimized ${GLUT_LIBRARY}
+    ${OpenGL_LIBRARIES} 
+    ${GLUT_LIBRARY}
     ${SCHISM_LIBRARIES}
     ${BOOST_LIBRARIES}
     )
 
 add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common)
 
-MsvcPostBuild()
+MsvcPostBuild(${PROJECT_NAME})
 

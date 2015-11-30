@@ -23,7 +23,7 @@
 
 #include <cstdio>
 
-#define CPU_TIMER AutoTimer timer("CPU time: %ws wall, usr+sys = %ts CPU (%p%)\n")
+#define CPU_TIMER auto_timer timer("CPU time: %ws wall, usr+sys = %ts CPU (%p%)\n")
 
 namespace fs = boost::filesystem;
 
@@ -31,8 +31,8 @@ namespace lamure {
 namespace pre
 {
 
-Builder::
-Builder(const Descriptor& desc)
+builder::
+builder(const descriptor& desc)
     : desc_(desc),
       memory_limit_(0)
 {
@@ -40,16 +40,16 @@ Builder(const Descriptor& desc)
                  / fs::path(desc_.input_file).stem().string();
 }
 
-Builder::~Builder()
+builder::~builder()
 {
 }
 
-bool Builder::
-Construct()
+bool builder::
+construct()
 {
     // compute memory parameters
-    const size_t memory_budget = GetTotalMemory() * desc_.memory_ratio;
-    const size_t occupied = GetTotalMemory() - GetAvailableMemory();
+    const size_t memory_budget = get_total_memory() * desc_.memory_ratio;
+    const size_t occupied = get_total_memory() - get_available_memory();
 
     if (occupied >= memory_budget) {
         LOGGER_ERROR("Memory ratio is too small");
@@ -58,7 +58,7 @@ Construct()
 
     memory_limit_ = memory_budget - occupied;
 
-    LOGGER_INFO("Total physical memory: " << GetTotalMemory() / 1024 / 1024 << " MiB");
+    LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024 / 1024 << " MiB");
     LOGGER_INFO("Memory limit: " << memory_limit_ / 1024 / 1024 << " MiB");
     LOGGER_INFO("Precision for storing coordinates and radii: " << std::string((sizeof(real) == 8) ? "double" : "single"));
 
@@ -89,16 +89,16 @@ Construct()
     }
 
     // init algorithms
-    ReductionStrategy *reduction_strategy;
+    reduction_strategy *reduction_strategy;
     switch (desc_.reduction_algo) {
-        case ReductionAlgorithm::NDC:
-            reduction_strategy = new ReductionNormalDeviationClustering();
+        case reduction_algorithm::NDC:
+            reduction_strategy = new reduction_normal_deviation_clustering();
             break;
-        case ReductionAlgorithm::Constant:
-            reduction_strategy = new ReductionConstant();
+        case reduction_algorithm::constant:
+            reduction_strategy = new reduction_constant();
             break;
-        case ReductionAlgorithm::EverySecond:
-            reduction_strategy = new ReductionEverySecond();
+        case reduction_algorithm::every_second:
+            reduction_strategy = new reduction_every_second();
             break;
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
@@ -113,35 +113,35 @@ Construct()
 
         LOGGER_TRACE("convert to a binary file");
 
-        FormatAbstract* format_in;
+        format_abstract* format_in;
         auto binary_file = base_path_;
 
         if (input_file_type == ".xyz") {
             binary_file += ".bin";
-            format_in = new FormatXYZ();
+            format_in = new format_xyz();
         }
         else if (input_file_type == ".xyz_all") {
             binary_file += ".bin_all";
-            format_in = new FormatXYZAll();
+            format_in = new format_xyzall();
         }
         else if (input_file_type == ".ply") {
             binary_file += ".bin";
-            format_in = new FormatPLY();
+            format_in = new format_ply();
         }
         else {
             LOGGER_ERROR("Unable to convert input file: Unknown file format");
             return false;
         }
 
-        FormatBin format_out;
-        Converter conv(*format_in, format_out, desc_.buffer_size);
+        format_bin format_out;
+        converter conv(*format_in, format_out, desc_.buffer_size);
 
-        conv.set_surfel_callback([](Surfel &s, bool& keep) { if (s.pos() == vec3r(0.0,0.0,0.0)) keep = false; });
+        conv.set_surfel_callback([](surfel &s, bool& keep) { if (s.pos() == vec3r(0.0,0.0,0.0)) keep = false; });
         //conv.set_scale_factor(1);
         //conv.set_translation(vec3r(-605535.577, -5097551.573, -1468.071));
 
         CPU_TIMER;
-        conv.Convert(input_file.string(), binary_file.string());
+        conv.convert(input_file.string(), binary_file.string());
         delete format_in;
 
         input_file = binary_file;
@@ -168,22 +168,22 @@ Construct()
         // create kd-bvh
         LOGGER_TRACE("Create kd-bvh");
 
-        lamure::pre::Bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
+        lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
 
-        bvh.InitTree(input_file.string(), 2, 1000, base_path_);
-        bvh.PrintTreeProperties();
+        bvh.init_tree(input_file.string(), 2, 1000, base_path_);
+        bvh.print_tree_properties();
 
-        bvh.Downsweep(false, input_file.string(), true);
+        bvh.downsweep(false, input_file.string(), true);
 
         // compute normals and radii
-        LOGGER_TRACE("Compute normals and radii");
+        LOGGER_TRACE("compute normals and radii");
 
         CPU_TIMER;
-        bvh.ComputeNormalsAndRadii(desc_.number_of_neighbours);
+        bvh.compute_normals_and_radii(desc_.number_of_neighbours);
 
         // set new input file name
         //fs::path input_file_path = fs::path(input_file);
-        input_file = AddToPath(base_path_, ".bin_all");
+        input_file = add_to_path(base_path_, ".bin_all");
     }
 
     // downsweep (create bvh)
@@ -192,27 +192,27 @@ Construct()
         std::cout << "bvh properties" << std::endl;
         std::cout << "--------------------------------" << std::endl;
 
-        lamure::pre::Bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
+        lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
 
-        bvh.InitTree(input_file.string(),
+        bvh.init_tree(input_file.string(),
                           desc_.max_fan_factor,
                           desc_.surfels_per_node,
                           base_path_);
 
-        bvh.PrintTreeProperties();
+        bvh.print_tree_properties();
         std::cout << std::endl;
 
         std::cout << "--------------------------------" << std::endl;
         std::cout << "downsweep" << std::endl;
         std::cout << "--------------------------------" << std::endl;
-        LOGGER_TRACE("Downsweep stage");
+        LOGGER_TRACE("downsweep stage");
 
         CPU_TIMER;
-        bvh.Downsweep(desc_.translate_to_origin, input_file.string());
+        bvh.downsweep(desc_.translate_to_origin, input_file.string());
 
-        auto bvhd_file = AddToPath(base_path_, ".bvhd");
+        auto bvhd_file = add_to_path(base_path_, ".bvhd");
 
-        bvh.SerializeTreeToFile(bvhd_file.string(), true);
+        bvh.serialize_tree_to_file(bvhd_file.string(), true);
 
         if ((!desc_.keep_intermediate_files) && (start_stage < 1))
         {
@@ -230,15 +230,15 @@ Construct()
         std::cout << "--------------------------------" << std::endl;
         std::cout << "upsweep" << std::endl;
         std::cout << "--------------------------------" << std::endl;
-        LOGGER_TRACE("Upsweep stage");
+        LOGGER_TRACE("upsweep stage");
 
-        lamure::pre::Bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
+        lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
         
-        if (!bvh.LoadTree(input_file.string())) {
+        if (!bvh.load_tree(input_file.string())) {
             return false;
         }
 
-        if (bvh.state() != Bvh::State::AfterDownsweep) {
+        if (bvh.state() != bvh::state_type::after_downsweep) {
             LOGGER_ERROR("Wrong processing state!");
             return false;
         }
@@ -247,11 +247,11 @@ Construct()
 
 
         // perform upsweep
-        bvh.Upsweep(*reduction_strategy);
+        bvh.upsweep(*reduction_strategy);
         delete reduction_strategy;
 
-        auto bvhu_file = AddToPath(base_path_, ".bvhu");
-        bvh.SerializeTreeToFile(bvhu_file.string(), true);
+        auto bvhu_file = add_to_path(base_path_, ".bvhu");
+        bvh.serialize_tree_to_file(bvhu_file.string(), true);
 
         if ((!desc_.keep_intermediate_files) && (start_stage < 2)) {
             std::remove(input_file.string().c_str());
@@ -267,28 +267,28 @@ Construct()
         std::cout << "serialize to file" << std::endl;
         std::cout << "--------------------------------" << std::endl;
 
-        lamure::pre::Bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
-        if (!bvh.LoadTree(input_file.string())) {
+        lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
+        if (!bvh.load_tree(input_file.string())) {
             return false;
         }
-        if (bvh.state() != Bvh::State::AfterUpsweep) {
+        if (bvh.state() != bvh::state_type::after_upsweep) {
             LOGGER_ERROR("Wrong processing state!");
             return false;
         }
 
         CPU_TIMER;
-        auto lod_file = AddToPath(base_path_, ".lod");
-        auto kdn_file = AddToPath(base_path_, ".bvh");
+        auto lod_file = add_to_path(base_path_, ".lod");
+        auto kdn_file = add_to_path(base_path_, ".bvh");
 
         std::cout << "serialize surfels to file" << std::endl;
-        bvh.SerializeSurfelsToFile(lod_file.string(), desc_.buffer_size);
+        bvh.serialize_surfels_to_file(lod_file.string(), desc_.buffer_size);
 
         std::cout << "serialize bvh to file" << std::endl << std::endl;
-        bvh.SerializeTreeToFile(kdn_file.string(), false);
+        bvh.serialize_tree_to_file(kdn_file.string(), false);
 
         if ((!desc_.keep_intermediate_files) && (start_stage < 3)) {
             std::remove(input_file.string().c_str());
-            bvh.ResetNodes();
+            bvh.resetNodes();
         }
         LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }

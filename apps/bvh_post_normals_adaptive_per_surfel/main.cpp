@@ -46,7 +46,7 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
     return std::find(begin, end, option) != end;
 }
 
-float calc_noise(lamure::ren::Bvh* bvh, Surfel* data) { 
+float calc_noise(lamure::ren::bvh* bvh, surfel* data) { 
   
   Statistic x_stat;
   Statistic y_stat;
@@ -68,22 +68,22 @@ float calc_noise(lamure::ren::Bvh* bvh, Surfel* data) {
 
 
 
-void process_node(lamure::ren::Bvh* bvh, 
-                  Surfel* in_surfels, 
-                  Surfel* out_surfels, 
+void process_node(lamure::ren::bvh* bvh, 
+                  surfel* in_surfels, 
+                  surfel* out_surfels, 
                   lamure::node_t node_id, 
                   lamure::ren::LodStream* in_lod_access) {
 
 
    for (size_t splat_id = 0; splat_id < bvh->surfels_per_node(); ++splat_id) {
 
-       Surfel soi = in_surfels[node_id*bvh->surfels_per_node()+splat_id];
+       surfel soi = in_surfels[node_id*bvh->surfels_per_node()+splat_id];
        NodeSplatId splat_of_interest = NodeSplatId(node_id, splat_id);
 
        //find initial 40 neighbours
        unsigned int desired_num_initial_neighbours = 40;
        unsigned int min_num_initial_neighbours = desired_num_initial_neighbours / 2;
-       std::vector<std::pair<Surfel, float>> initial_neighbours;
+       std::vector<std::pair<surfel, float>> initial_neighbours;
        knn::find_nearest_neighbours(bvh,
                                     in_lod_access,
                                     splat_of_interest,
@@ -106,7 +106,7 @@ void process_node(lamure::ren::Bvh* bvh,
 #endif
 
        //estimate noise
-       float per_surfel_noise = calc_noise(bvh, (Surfel*)(in_surfels + node_id * bvh->surfels_per_node())); 
+       float per_surfel_noise = calc_noise(bvh, (surfel*)(in_surfels + node_id * bvh->surfels_per_node())); 
  
        //compute filter size
        float normalized_noise = (per_surfel_noise - MIN_NOISE_THRESHOLD) / (MAX_NOISE_THRESHOLD - MIN_NOISE_THRESHOLD);
@@ -116,7 +116,7 @@ void process_node(lamure::ren::Bvh* bvh,
 
        //find filter neighbours
        unsigned int min_num_filter_neighbours = desired_num_filter_neighbours / 2;
-       std::vector<std::pair<Surfel, float>> filter_neighbours;
+       std::vector<std::pair<surfel, float>> filter_neighbours;
        knn::find_nearest_neighbours(bvh,
                                     in_lod_access,
                                     splat_of_interest,
@@ -162,21 +162,21 @@ void process_node(lamure::ren::Bvh* bvh,
    }
 }
 
-unsigned process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_access, 
+unsigned process_tree(lamure::ren::bvh* bvh, lamure::ren::LodStream* in_lod_access, 
     lamure::ren::LodStream* out_lod_access, std::vector<lamure::node_t> wishlist) {
 
 
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(Surfel);
-    Surfel* in_surfels;
+    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    surfel* in_surfels;
     
     //read all nodes
-    in_surfels = new Surfel[bvh->num_nodes() * bvh->surfels_per_node()];
-    in_lod_access->Read((char*)in_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
+    in_surfels = new surfel[bvh->num_nodes() * bvh->surfels_per_node()];
+    in_lod_access->read((char*)in_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
 
 
-    Surfel* out_surfels = new Surfel[bvh->num_nodes() * bvh->surfels_per_node()];
+    surfel* out_surfels = new surfel[bvh->num_nodes() * bvh->surfels_per_node()];
     memcpy((unsigned char*)out_surfels, (unsigned char*)in_surfels, 
-           bvh->num_nodes() * bvh->surfels_per_node() * sizeof(Surfel));
+           bvh->num_nodes() * bvh->surfels_per_node() * sizeof(surfel));
   
     unsigned int num_nodes_done = 0; 
     unsigned int num_nodes_todo = wishlist.size();
@@ -204,7 +204,7 @@ unsigned process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_acce
         unsigned int i = 0;
         while (i < num_threads && !wishlist.empty()) { 
             unsigned int node_id = wishlist.back();
-            job_queue.PushJob(node_queue_t::job_t(i, node_id));
+            job_queue.push_job(node_queue_t::job_t(i, node_id));
             ++i;
             wishlist.pop_back();
         }
@@ -220,13 +220,13 @@ unsigned process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_acce
                 
                 while (true) {
                 
-                    job_queue.Wait();
+                    job_queue.wait();
                     
-                    if (job_queue.IsShutdown()) {
+                    if (job_queue.is_shutdown()) {
                         break;
                     }
                     
-                    node_queue_t::job_t job = job_queue.PopJob();
+                    node_queue_t::job_t job = job_queue.pop_job();
                     
                     if (job.job_id_ != -1) {
                        process_node(bvh, in_surfels, out_surfels, job.node_id_, in_lod_access);
@@ -242,7 +242,7 @@ unsigned process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_acce
         }
         
         num_nodes_done += num_jobs;
-        job_queue.Relaunch();
+        job_queue.relaunch();
         
         if (num_nodes_done >= num_nodes_todo) {
             break;
@@ -251,7 +251,7 @@ unsigned process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_acce
     }
 
     //write to disk
-    out_lod_access->Write((char*)out_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
+    out_lod_access->write((char*)out_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
 
     delete[] in_surfels;
     delete[] out_surfels;
@@ -315,19 +315,19 @@ int main(int argc, char *argv[]) {
     } 
 
     std::cout << "loading tree from " << input_bvh_file << std::endl;
-    lamure::ren::Bvh* bvh = new lamure::ren::Bvh(input_bvh_file);
+    lamure::ren::bvh* bvh = new lamure::ren::bvh(input_bvh_file);
     
     lamure::ren::LodStream* in_lod_access = new lamure::ren::LodStream();
-    in_lod_access->Open(input_lod_file);
+    in_lod_access->open(input_lod_file);
 
 #ifdef RECOMPUTE_NORMALS
     lamure::ren::LodStream* out_lod_access = new lamure::ren::LodStream();
-    out_lod_access->OpenForWriting(output_lod_file);
+    out_lod_access->openForWriting(output_lod_file);
 #endif
 
     std::cout << "tree has " << bvh->num_nodes() << " nodes" << std::endl;
     
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(Surfel);
+    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
 
     //fill wishlist (entire tree)	    
     std::vector<lamure::node_t> wishlist;
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef RECOMPUTE_NORMALS
-    bvh->WriteBvhFile(output_bvh_file);
+    bvh->writebvhfile(output_bvh_file);
     std::cout << "Done. " << std::endl;
 #endif
 

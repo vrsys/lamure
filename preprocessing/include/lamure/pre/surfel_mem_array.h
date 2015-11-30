@@ -13,47 +13,47 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL SurfelMemArray : public SurfelArrayAbstract
+class PREPROCESSING_DLL surfel_mem_array : public surfel_array_abstract
 {
 public:
 
-    explicit            SurfelMemArray()
-                            : SurfelArrayAbstract() { Reset(); }
+    explicit            surfel_mem_array()
+                            : surfel_array_abstract() { reset(); }
 
-    explicit            SurfelMemArray(const SurfelMemArray& other,
+    explicit            surfel_mem_array(const surfel_mem_array& other,
                                        const size_t offset,
                                        const size_t length)
-                            : SurfelArrayAbstract() { Reset(other.mem_data_, offset, length); }
+                            : surfel_array_abstract() { reset(other.mem_data_, offset, length); }
 
-    explicit            SurfelMemArray(const SharedSurfelVector& mem_data,
+    explicit            surfel_mem_array(const shared_surfel_vector& mem_data,
                                        const size_t offset,
                                        const size_t length)
-                            : SurfelArrayAbstract() { Reset(mem_data, offset, length); }
+                            : surfel_array_abstract() { reset(mem_data, offset, length); }
 
-    Surfel              ReadSurfel(const size_t index) const override;
-    void                WriteSurfel(const Surfel& surfel, const size_t index) const override;
+    surfel              read_surfel(const size_t index) const override;
+    void                write_surfel(const surfel& surfel, const size_t index) const override;
 
-    SharedSurfelVector&
+    shared_surfel_vector&
                         mem_data() { return mem_data_; }
-    const SharedSurfelVector&
+    const shared_surfel_vector&
                         mem_data() const { return mem_data_; }
 
-    void                Reset() override;
-    void                Reset(const SharedSurfelVector& mem_data,
+    void                reset() override;
+    void                reset(const shared_surfel_vector& mem_data,
                               const size_t offset,
                               const size_t length);
 
 private:
 
-    SharedSurfelVector mem_data_;
+    shared_surfel_vector mem_data_;
 
 };
 
 template <>
-struct SurfelArrayTraits<SurfelMemArray>
+struct surfel_array_traits<surfel_mem_array>
 {
-    static const bool IsOOC = false;
-    static const bool IsIC = true;
+    static const bool is_out_of_core = false;
+    static const bool is_in_core = true;
 };
 
 } // namespace pre

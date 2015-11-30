@@ -14,18 +14,18 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL FormatXYZ : public FormatAbstract
+class PREPROCESSING_DLL format_xyz : public format_abstract
 {
 public:
-    explicit            FormatXYZ()
-                            : FormatAbstract()
+    explicit            format_xyz()
+                            : format_abstract()
                             { has_normals_ = false;
                               has_radii_   = false;
                               has_color_   = true; }
 
 protected:
-    virtual void        Read(const std::string& filename, SurfelCallbackFuntion callback);
-    virtual void        Write(const std::string& filename, BufferCallbackFuntion callback);
+  virtual void        read(const std::string& filename, surfel_callback_funtion callback) override;
+  virtual void        write(const std::string& filename, buffer_callback_function callback) override;
 
 };
 

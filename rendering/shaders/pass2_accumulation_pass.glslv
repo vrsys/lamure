@@ -7,11 +7,11 @@
 
 #version 420 core
 
-out VertexData {
+out Vertexdata {
     vec3 color;
     vec4 nor;
     float rad;
-    float pointSize;
+    float pointsize;
     float mv_vertex_depth;
 } VertexOut;
 
@@ -24,7 +24,7 @@ uniform float height_divided_by_top_minus_bottom;
 
 uniform float near_plane;
 
-uniform float minSurfelSize;
+uniform float minsurfelsize;
 
 uniform float QuantFactor;
 
@@ -79,8 +79,8 @@ void main()
 		    VertexOut.nor = inv_mv_matrix * vec4(in_normal,0.0f);
 
 
-		    gl_PointSize = ps;
-		    VertexOut.pointSize = ps;
+		    gl_Pointsize = ps;
+		    VertexOut.pointsize = ps;
 
 
 		    VertexOut.mv_vertex_depth = (pos_es).z;

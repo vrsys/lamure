@@ -26,7 +26,7 @@ OocPool(const uint32_t num_threads, const size_t size_of_slot_in_bytes)
     semaphore_.set_min_signal_count(1);
     semaphore_.set_max_signal_count(std::numeric_limits<size_t>::max());
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     priority_queue_.Initialize(LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE, database->num_models());
 
@@ -54,7 +54,7 @@ OocPool::
 }
 
 bool OocPool::
-IsShutdown() {
+is_shutdown() {
     std::lock_guard<std::mutex> lock(mutex_);
     return shutdown_;
 }
@@ -85,26 +85,26 @@ EndMeasure() {
 
 void OocPool::
 Run() {
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
     model_t num_models = database->num_models();
 
     std::vector<LodStream*> lod_streams;
 
     for (model_t model_id = 0; model_id < num_models; ++model_id) {
-        std::string bvh_filename = database->GetModel(model_id)->bvh()->filename();
+        std::string bvh_filename = database->GetModel(model_id)->get_bvh()->filename();
         std::string lod_file_name = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
 
         LodStream* access = new LodStream();
-        access->Open(lod_file_name);
+        access->open(lod_file_name);
         lod_streams.push_back(access);
     }
 
     char* local_cache = new char[size_of_slot_];
 
     while (true) {
-        semaphore_.Wait();
+        semaphore_.wait();
 
-        if (IsShutdown())
+        if (is_shutdown())
             break;
 
         CacheQueue::Job job = priority_queue_.TopJob();
@@ -113,10 +113,10 @@ Run() {
             assert(job.slot_mem_ != nullptr);
 
             size_t stride_in_bytes = database->size_of_surfel() * 
-               database->GetModel(job.model_id_)->bvh()->surfels_per_node();
+               database->GetModel(job.model_id_)->get_bvh()->surfels_per_node();
             size_t offset_in_bytes = job.node_id_ * stride_in_bytes;
 
-            lod_streams[job.model_id_]->Read(local_cache, offset_in_bytes, stride_in_bytes);
+            lod_streams[job.model_id_]->read(local_cache, offset_in_bytes, stride_in_bytes);
 
             {
                 std::lock_guard<std::mutex> lock(mutex_);
@@ -133,7 +133,7 @@ Run() {
         for (model_t model_id = 0; model_id < num_models; ++model_id) {
             LodStream* lod_stream = lod_streams[model_id];
             if (lod_stream != nullptr) {
-                lod_stream->Close();
+                lod_stream->close();
                 delete lod_stream;
                 lod_stream = nullptr;
             }
@@ -148,12 +148,12 @@ Run() {
 }
 
 void OocPool::
-ResolveCacheHistory(CacheIndex* index) {
+ResolveCachehistogramory(CacheIndex* index) {
     assert(locked_);
 
     for (auto entry : history_) {
         index->ApplySlot(entry.slot_id_, entry.model_id_, entry.node_id_);
-        priority_queue_.PopJob(entry);
+        priority_queue_.pop_job(entry);
     }
 
     history_.clear();
@@ -170,7 +170,7 @@ PerformQueueMaintenance(CacheIndex* index) {
 
         assert(job.slot_id_ != invalid_slot_t);
 
-        priority_queue_.PopJob(job);
+        priority_queue_.pop_job(job);
         index->UnreserveSlot(job.slot_id_);
 
     }
@@ -178,7 +178,7 @@ PerformQueueMaintenance(CacheIndex* index) {
 
 bool OocPool::
 AcknowledgeRequest(CacheQueue::Job job) {
-    bool success = priority_queue_.PushJob(job);
+    bool success = priority_queue_.push_job(job);
 
     if (success) {
         semaphore_.Signal(1);

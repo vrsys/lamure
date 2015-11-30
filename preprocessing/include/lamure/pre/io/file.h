@@ -22,38 +22,38 @@ namespace lamure
 namespace pre
 {
 
-class PREPROCESSING_DLL File
+class PREPROCESSING_DLL file
 {
 public:
-                        File() {}
-                        File(const File&) = delete;
-                        File& operator=(const File&) = delete;
-    virtual             ~File();
+                        file() {}
+                        file(const file&) = delete;
+                        file& operator=(const file&) = delete;
+    virtual             ~file();
 
 
-    void                Open(const std::string& file_name,
+    void                open(const std::string& file_name,
                              const bool truncate = false);
-    void                Close(const bool remove = false);
-    const bool          IsOpen() const;
-    const size_t        GetSize() const;
+    void                close(const bool remove = false);
+    const bool          is_open() const;
+    const size_t        get_size() const;
     const std::string&  file_name() const { return file_name_; }
 
-    void                Append(const SurfelVector* data,
+    void                append(const surfel_vector* data,
                                const size_t offset_in_mem,
                                const size_t length);
-    void                Append(const SurfelVector* data);
+    void                append(const surfel_vector* data);
 
-    void                Write(const SurfelVector* data,
+    void                write(const surfel_vector* data,
                               const size_t offset_in_mem,
                               const size_t offset_in_file,
                               const size_t length);
-    void                Write(const Surfel& surfel, const size_t pos_in_file);
+    void                write(const surfel& surfel, const size_t pos_in_file);
 
-    void                Read(SurfelVector* data,
+    void                read(surfel_vector* data,
                               const size_t offset_in_mem,
                               const size_t offset_in_file,
                               const size_t length) const;
-    const Surfel        Read(const size_t pos_in_file) const;
+    const surfel        read(const size_t pos_in_file) const;
 
 private:
 
@@ -61,12 +61,12 @@ private:
     mutable std::fstream stream_;
     std::string         file_name_;
 
-    void WriteData(char *data, const size_t offset_in_file, const size_t length);
-    void ReadData(char *data, const size_t offset_in_file, const size_t length) const;
+    void write_data(char *data, const size_t offset_in_file, const size_t length);
+    void read_data(char *data, const size_t offset_in_file, const size_t length) const;
 
 };
 
-typedef std::shared_ptr<File> SharedFile;
+typedef std::shared_ptr<file> shared_file;
 
 } // namespace pre
 } // namespace lamure

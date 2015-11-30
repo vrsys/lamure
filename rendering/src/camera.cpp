@@ -200,7 +200,7 @@ UpdateTrackballMousePos(double x, double y)
 }
 
 void Camera::
-UpdateTrackball(int x, int y, int window_width, int window_height, MouseState const& mouse_state)
+UpdateTrackball(int x, int y, int window_width, int window_height, Mousestate const& mouse_state)
 {
 
     double nx = 2.0 * double(x - (window_width/2))/double(window_width);
@@ -224,7 +224,7 @@ UpdateTrackball(int x, int y, int window_width, int window_height, MouseState co
 }
 
 void Camera::
-WriteViewMatrix(std::ofstream& matrix_stream)
+writeViewMatrix(std::ofstream& matrix_stream)
 {
     scm::math::mat4d t_mat = trackball_.transform();
     matrix_stream << t_mat[ 0]<<" "<<t_mat[ 1]<<" "<< t_mat[ 2]<<" "<<t_mat[ 3]<<" "

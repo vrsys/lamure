@@ -10,12 +10,12 @@
 namespace lamure {
 namespace pre {
 
-SurfelMemArray ReductionEverySecond::
-CreateLod(real& reduction_error,
-          const std::vector<SurfelMemArray*>& input,
+surfel_mem_array reduction_every_second::
+create_lod(real& reduction_error,
+          const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node) const
 {
-    SurfelMemArray mem_array(std::make_shared<SurfelVector>(SurfelVector()), 0, 0);
+    surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
     const real fan_factor = 2;
     const real mult = sqrt(1.0 + 1.0 / fan_factor)*1.0;

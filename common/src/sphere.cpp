@@ -5,24 +5,24 @@
 namespace lamure
 {
 
-const BoundingBox Sphere::
-GetBoundingBox() const
+const bounding_box sphere::
+get_bounding_box() const
 {
-    return BoundingBox(
+    return bounding_box(
         vec3r(center_.x - radius_, center_.y - radius_, center_.z - radius_),
         vec3r(center_.x + radius_, center_.y + radius_, center_.z + radius_)
     );
 }
 
-bool Sphere::
-Contains(const vec3r& point) const
+bool sphere::
+contains(const vec3r& point) const
 {
     const real distance_to_center = scm::math::length_sqr(point - center_);
     return distance_to_center <= sqrt(radius_);
 }
 
-bool Sphere::
-IsInside(const BoundingBox& bounding_box) const
+bool sphere::
+is_inside(const bounding_box& bounding_box) const
 {
     const vec3r min = bounding_box.min();
     const vec3r max = bounding_box.max();
@@ -60,7 +60,7 @@ IsInside(const BoundingBox& bounding_box) const
 
     for (auto corner : corners)
     {
-        if (Contains(corner))
+        if (contains(corner))
             return true;
     }
 

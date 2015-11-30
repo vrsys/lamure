@@ -72,7 +72,7 @@ public:
         float           error_;
     };
 
-    struct ActionCompare
+    struct Actioncompare
     {
         bool operator() (const Action& l, const Action& r) const
         {
@@ -94,30 +94,30 @@ public:
     const size_t        NumActions(const Queue queue);
 
     void                PushAction(const Action& action, bool sort);
-    const Action        FrontAction(const Queue queue);
+    const Action        frontAction(const Queue queue);
     const Action        BackAction(const Queue queue);
-    void                PopFrontAction(const Queue queue);
+    void                pop_frontAction(const Queue queue);
     void                PopBackAction(const Queue queue);
 
     const std::set<node_t>& GetCurrentCut(const view_t view_id, const model_t model_id);
     const std::set<node_t>& GetPreviousCut(const view_t view_id, const model_t model_id);
     void                SwapCuts();
-    void                ResetCut(const view_t view_id, const model_t model_id);
+    void                resetCut(const view_t view_id, const model_t model_id);
 
     void                CancelAction(const view_t view_id, const model_t model_id, const node_t node_id);
     void                ApproveAction(const Action& action);
     void                RejectAction(const Action& action);
 
-    const node_t        GetChildId(const model_t model_id, const node_t node_id, const node_t child_index) const;
-    const node_t        GetParentId(const model_t model_id, const node_t node_id) const;
+    const node_t        get_child_id(const model_t model_id, const node_t node_id, const node_t child_index) const;
+    const node_t        get_parent_id(const model_t model_id, const node_t node_id) const;
     void                GetAllSiblings(const model_t model_id, const node_t node_id, std::vector<node_t>& siblings) const;
     void                GetAllChildren(const model_t model_id, const node_t node_id, std::vector<node_t>& children) const;
 
-    void                Sort();
+    void                sort();
 
 private:
 
-    enum CutFront
+    enum Cutfront
     {
         FRONT_A = 0,
         FRONT_B = 1,
@@ -145,7 +145,7 @@ private:
     //mapping [queue] (model, node) to slot
     std::vector<std::map<node_t, std::set<slot_t>>> slot_maps_[Queue::NUM_QUEUES];
 
-    CutFront            current_cut_front_;
+    Cutfront            current_cut_front_;
     //[user][model][node]
     std::map<view_t, std::vector<std::set<node_t>>> front_a_cuts_;
     std::map<view_t, std::vector<std::set<node_t>>> front_b_cuts_;

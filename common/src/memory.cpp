@@ -11,7 +11,7 @@
 namespace lamure {
 
 const size_t 
-GetTotalMemory()
+get_total_memory()
 {
 #if WIN32
   MEMORYSTATUSEX memInfo;
@@ -27,7 +27,7 @@ GetTotalMemory()
 }
 
 const size_t 
-GetAvailableMemory(const bool use_buffers_cache)
+get_available_memory(const bool use_buffers_cache)
 {
 #if WIN32
   MEMORYSTATUSEX statex;
@@ -63,10 +63,10 @@ GetAvailableMemory(const bool use_buffers_cache)
 }
 
 const size_t 
-GetProcessUsedMemory()
+get_process_used_memory()
 {
 #if WIN32
-  return GetTotalMemory() - GetAvailableMemory();
+  return get_total_memory() - get_available_memory();
 #else
     size_t rss_mem = 0;
 

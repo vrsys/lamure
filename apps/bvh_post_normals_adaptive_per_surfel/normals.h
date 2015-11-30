@@ -148,7 +148,7 @@ void jacobi_rotation(const scm::math::mat3d& _matrix,
 }
 
 bool calculate_normal(
-    std::vector<std::pair<Surfel, float>>& nearest_neighbours,
+    std::vector<std::pair<surfel, float>>& nearest_neighbours,
     const scm::math::vec3f& point_of_interest,
     scm::math::vec3f* out_normal) {
 

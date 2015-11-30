@@ -47,17 +47,17 @@ struct s_surfel {
     float nx, ny, nz;
 };
 
-void process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_access, lamure::ren::LodStream* out_lod_access) {
+void process_tree(lamure::ren::bvh* bvh, lamure::ren::LodStream* in_lod_access, lamure::ren::LodStream* out_lod_access) {
 
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(Surfel);
-    Surfel* in_surfels;
+    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    surfel* in_surfels;
     
     //read all nodes
-    in_surfels = new Surfel[bvh->num_nodes() * bvh->surfels_per_node()];
-    in_lod_access->Read((char*)in_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
+    in_surfels = new surfel[bvh->num_nodes() * bvh->surfels_per_node()];
+    in_lod_access->read((char*)in_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
     
     unsigned int num_threads = NUM_THREADS;
-    Surfel* out_surfels = new Surfel[num_threads * bvh->surfels_per_node()];
+    surfel* out_surfels = new surfel[num_threads * bvh->surfels_per_node()];
     
     unsigned int num_nodes_done = 0; 
     node_queue_t job_queue;
@@ -81,10 +81,10 @@ void process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_access, 
             unsigned int current = num_nodes_done + i;
             
             if (current < bvh->num_nodes()) {
-                in_lod_access->Read(((char*)out_surfels)+i*node_size_in_bytes, 
+                in_lod_access->read(((char*)out_surfels)+i*node_size_in_bytes, 
                     (size_t)current * node_size_in_bytes, node_size_in_bytes);
                 
-                job_queue.PushJob(node_queue_t::job_t(i, current));
+                job_queue.push_job(node_queue_t::job_t(i, current));
             }
         }
         
@@ -97,21 +97,21 @@ void process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_access, 
                 
                 while (true) {
                 
-                    job_queue.Wait();
+                    job_queue.wait();
                     
-                    if (job_queue.IsShutdown()) {
+                    if (job_queue.is_shutdown()) {
                         break;
                     }
                     
-                    node_queue_t::job_t job = job_queue.PopJob();
+                    node_queue_t::job_t job = job_queue.pop_job();
                     
                     if (job.job_id_ != -1) {
                         
                         for (size_t splat_id = 0; splat_id < bvh->surfels_per_node(); ++splat_id) {
                             
-                            Surfel soi = in_surfels[job.node_id_*bvh->surfels_per_node()+splat_id];
+                            surfel soi = in_surfels[job.node_id_*bvh->surfels_per_node()+splat_id];
                             NodeSplatId splat_of_interest = NodeSplatId(job.node_id_, splat_id);
-                            std::vector<std::pair<Surfel, float>> nearest_neighbours;
+                            std::vector<std::pair<surfel, float>> nearest_neighbours;
                            
                             unsigned int desired_num_nearest_neighbours = NUM_NEAREST_NEIGHBOURS_CONSIDERED;
                             
@@ -148,7 +148,7 @@ void process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_access, 
  
 #ifdef RECOMPUTE_RADII /*RECOMPUTE_RADII*/
                            
-                            std::vector<std::pair<Surfel, float>> natural_neighbours; //surfel + weight
+                            std::vector<std::pair<surfel, float>> natural_neighbours; //surfel + weight
                             
                             nni::find_natural_neighbours(nearest_neighbours, 
                                                          poi, 
@@ -215,7 +215,7 @@ void process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_access, 
             unsigned int current = num_nodes_done + i;
             
             if (current < bvh->num_nodes()) {
-                out_lod_access->Write(((char*)out_surfels)+i*node_size_in_bytes, 
+                out_lod_access->write(((char*)out_surfels)+i*node_size_in_bytes, 
                     (size_t)current * node_size_in_bytes, node_size_in_bytes);
                     
 #ifdef WRITE_UPDATED_KDN_FILE
@@ -234,13 +234,13 @@ void process_tree(lamure::ren::Bvh* bvh, lamure::ren::LodStream* in_lod_access, 
                     representative_radius /= (float)num_valid_splats;
                 }
         
-                bvh->SetAvgSurfelRadius(current, representative_radius);
+                bvh->SetAvgsurfelRadius(current, representative_radius);
 #endif
             }
         }
         
         num_nodes_done += num_jobs;
-        job_queue.Relaunch();
+        job_queue.relaunch();
         
         if (num_nodes_done >= bvh->num_nodes()) {
             break;
@@ -283,12 +283,12 @@ int main(int argc, char *argv[]) {
     std::string output_bvh_file = input_bvh_file.substr(0, input_bvh_file.size()-4) + "_pr.bvh";
     
     std::cout << "loading tree from " << input_bvh_file << std::endl;
-    lamure::ren::Bvh* bvh = new lamure::ren::Bvh(input_bvh_file);
+    lamure::ren::bvh* bvh = new lamure::ren::bvh(input_bvh_file);
     
     lamure::ren::LodStream* in_lod_access = new lamure::ren::LodStream();
-    in_lod_access->Open(input_lod_file);
+    in_lod_access->open(input_lod_file);
     lamure::ren::LodStream* out_lod_access = new lamure::ren::LodStream();
-    out_lod_access->OpenForWriting(output_lod_file);
+    out_lod_access->openForWriting(output_lod_file);
     
     std::cout << "tree has " << bvh->num_nodes() << " nodes" << std::endl;
     
@@ -297,7 +297,7 @@ int main(int argc, char *argv[]) {
     delete in_lod_access;
     delete out_lod_access;
  
-    bvh->WriteBvhFile(output_bvh_file);
+    bvh->writebvhfile(output_bvh_file);
 
     delete bvh;
 

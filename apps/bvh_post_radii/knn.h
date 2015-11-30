@@ -13,7 +13,7 @@
 namespace knn {
 
 
-static bool contains_sphere(const scm::gl::boxf& box, const Sphere& sphere) {
+static bool contains_sphere(const scm::gl::boxf& box, const sphere& sphere) {
 
     scm::math::vec3f s_min = sphere.center_ - sphere.radius_;
     scm::math::vec3f s_max = sphere.center_ + sphere.radius_;
@@ -30,7 +30,7 @@ static bool contains_sphere(const scm::gl::boxf& box, const Sphere& sphere) {
 }
 
 
-static bool intersects(const Sphere& sphere, const scm::gl::boxf& box) {
+static bool intersects(const sphere& sphere, const scm::gl::boxf& box) {
     float dist_sqr = sphere.radius_ * sphere.radius_;
 
     if (sphere.center_.x < box.min_vertex().x)
@@ -52,7 +52,7 @@ static bool intersects(const Sphere& sphere, const scm::gl::boxf& box) {
 }
 
 
-static void get_all_descendant_leafs(const lamure::ren::Bvh* bvh, const lamure::node_t node_id, unsigned int leaf_depth, std::vector<lamure::node_t>& descendant_leafs) {
+static void get_all_descendant_leafs(const lamure::ren::bvh* bvh, const lamure::node_t node_id, unsigned int leaf_depth, std::vector<lamure::node_t>& descendant_leafs) {
 
   unsigned int node_depth = bvh->GetDepthOfNode(node_id);
 
@@ -61,67 +61,67 @@ static void get_all_descendant_leafs(const lamure::ren::Bvh* bvh, const lamure::
   }
   else {
     for (unsigned int i = 0; i < bvh->fan_factor(); ++i) {
-      get_all_descendant_leafs(bvh, bvh->GetChildId(node_id, i), leaf_depth, descendant_leafs);
+      get_all_descendant_leafs(bvh, bvh->get_child_id(node_id, i), leaf_depth, descendant_leafs);
     }
   }
 
 }
 
 static scm::math::vec3f get_point_of_interest(
-    const lamure::ren::Bvh* bvh,
+    const lamure::ren::bvh* bvh,
     const lamure::ren::LodStream* lod_access,
     lamure::node_t node_id, 
     size_t splat_id) {
     
-    Surfel* surfel = new Surfel();
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(Surfel);
-    lod_access->Read((char*)surfel, (size_t)node_id * node_size_in_bytes + (splat_id*sizeof(Surfel)), sizeof(Surfel));
+    surfel* surfl = new surfel();
+    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    lod_access->read((char*)surfl, (size_t)node_id * node_size_in_bytes + (splat_id*sizeof(surfel)), sizeof(surfel));
 
-    return scm::math::vec3f(surfel->x, surfel->y, surfel->z);
+    return scm::math::vec3f(surfl->x, surfl->y, surfl->z);
     
 }
 
-static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
+static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
     const lamure::ren::LodStream* lod_access,
     const NodeSplatId& splat_of_interest,
     unsigned int num_neighbours,
-    std::vector<std::pair<Surfel, float>>& neighbours,
+    std::vector<std::pair<surfel, float>>& neighbours,
     bool out_of_core,
-    Surfel* surfels) {
+    surfel* surfels) {
 
     lamure::node_t current_node_id = splat_of_interest.node_id_;
     unsigned int knn_leaf_depth = bvh->GetDepthOfNode(current_node_id);
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(Surfel);
+    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
 
     size_t node_offset_in_splats = 0;
     if (out_of_core) {
         //read initial node
-        lod_access->Read((char*)surfels, (size_t)current_node_id * node_size_in_bytes, node_size_in_bytes);
+        lod_access->read((char*)surfels, (size_t)current_node_id * node_size_in_bytes, node_size_in_bytes);
     }
     else {
         node_offset_in_splats = current_node_id * bvh->surfels_per_node();
     }
     
-    Surfel center_splat = surfels[node_offset_in_splats + splat_of_interest.splat_id_];
+    surfel center_splat = surfels[node_offset_in_splats + splat_of_interest.splat_id_];
     scm::math::vec3f center = scm::math::vec3f(center_splat.x, center_splat.y, center_splat.z);
 
 
-    std::vector<std::pair<Surfel, float>> candidates;
+    std::vector<std::pair<surfel, float>> candidates;
     float max_distance_squared = 0.f;
 
     //check initial node
     for (size_t i = 0; i < bvh->surfels_per_node(); ++i) {
         if (i != splat_of_interest.splat_id_) {
-            const Surfel& surfel = surfels[node_offset_in_splats + i];
-            float distance_squared = scm::math::length_sqr(center - scm::math::vec3f(surfel.x, surfel.y, surfel.z));
+            const surfel& surfl = surfels[node_offset_in_splats + i];
+            float distance_squared = scm::math::length_sqr(center - scm::math::vec3f(surfl.x, surfl.y, surfl.z));
 
             if (candidates.size() < num_neighbours || distance_squared < max_distance_squared) {
 
-                candidates.push_back(std::make_pair(surfel, distance_squared));
+              candidates.push_back(std::make_pair(surfl, distance_squared));
 
                 for (int32_t k = (int32_t)candidates.size() - 1; k > 0; --k) {
                     if (candidates[k].second < candidates[k - 1].second) {
-                        std::pair<Surfel, float> temp = candidates [k - 1];
+                        std::pair<surfel, float> temp = candidates [k - 1];
                         candidates[k - 1] = candidates[k];
                         candidates[k] = temp;
                     }
@@ -130,7 +130,7 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
                     }
                 }
 /*
-                std::sort(candidates.begin(), candidates.end(), [](const std::pair<Surfel, float>& a, const std::pair<Surfel, float>& b)->bool { 
+                std::sort(candidates.begin(), candidates.end(), [](const std::pair<surfel, float>& a, const std::pair<surfel, float>& b)->bool { 
                     return a.second < b.second; 
                 });
 */                                  
@@ -150,7 +150,7 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
 
     std::unordered_set<lamure::node_t> processed_leafs;
     processed_leafs.insert(current_node_id);
-    Sphere knn_sphere = Sphere(center, scm::math::sqrt(max_distance_squared));
+    sphere knn_sphere = sphere(center, scm::math::sqrt(max_distance_squared));
 
     //traverse rest of tree
     while (!contains_sphere(bvh->bounding_boxes()[current_node_id], knn_sphere)) {
@@ -158,7 +158,7 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
         if (current_node_id == 0) {
             break;
         }
-        current_node_id = bvh->GetParentId(current_node_id);
+        current_node_id = bvh->get_parent_id(current_node_id);
 
         std::vector<lamure::node_t> descendant_leafs;
         get_all_descendant_leafs(bvh, current_node_id, knn_leaf_depth, descendant_leafs);
@@ -183,7 +183,7 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
 
                 if (out_of_core) {
                     //load leaf data
-                    lod_access->Read((char*)surfels, (size_t)leaf_id * node_size_in_bytes, node_size_in_bytes);
+                    lod_access->read((char*)surfels, (size_t)leaf_id * node_size_in_bytes, node_size_in_bytes);
                 }
                 else {
                     node_offset_in_splats = leaf_id * bvh->surfels_per_node();
@@ -191,16 +191,16 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
                 
                 for (size_t i = 0; i < bvh->surfels_per_node(); ++i) {
 
-                    const Surfel& surfel = surfels[node_offset_in_splats + i];
-                    float distance_squared = scm::math::length_sqr(center - scm::math::vec3f(surfel.x, surfel.y, surfel.z));
+                    const surfel& surfl = surfels[node_offset_in_splats + i];
+                    float distance_squared = scm::math::length_sqr(center - scm::math::vec3f(surfl.x, surfl.y, surfl.z));
 
                     if (candidates.size() < num_neighbours || distance_squared < max_distance_squared) {
 
-                        candidates.push_back(std::make_pair(surfel, distance_squared));
+                      candidates.push_back(std::make_pair(surfl, distance_squared));
 
                         for (int32_t k = (int32_t)candidates.size() - 1; k > 0; --k) {
                             if (candidates[k].second < candidates[k - 1].second) {
-                                std::pair<Surfel, float> temp = candidates [k - 1];
+                                std::pair<surfel, float> temp = candidates [k - 1];
                                 candidates[k - 1] = candidates[k];
                                 candidates[k] = temp;
                             }
@@ -210,7 +210,7 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
                         }
 
 /*
-                std::sort(candidates.begin(), candidates.end(), [](const std::pair<Surfel, float>& a, const std::pair<Surfel, float>& b)->bool { 
+                std::sort(candidates.begin(), candidates.end(), [](const std::pair<surfel, float>& a, const std::pair<surfel, float>& b)->bool { 
                     return a.second < b.second; 
                 });
 */                                        
@@ -227,7 +227,7 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
                 }
 
                 processed_leafs.insert(leaf_id);
-                knn_sphere = Sphere(center, scm::math::sqrt(max_distance_squared));
+                knn_sphere = sphere(center, scm::math::sqrt(max_distance_squared));
 
 
             }
@@ -243,7 +243,7 @@ static void find_nearest_neighbours(const lamure::ren::Bvh* bvh,
 
     uint32_t num_found = std::min((uint64_t)num_neighbours, (uint64_t)candidates.size());
     for (unsigned int i = 0; i < num_found; ++i) {
-        std::pair<Surfel, float>& pair = candidates[i];
+        std::pair<surfel, float>& pair = candidates[i];
         //dbg: is poi contained?
         if (pair.first.x == center.x && pair.first.y == center.y && pair.first.z == center.z) {
             continue;

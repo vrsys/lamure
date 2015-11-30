@@ -50,8 +50,8 @@ public:
                         CutUpdateQueue();
     virtual             ~CutUpdateQueue();
 
-    void                PushJob(const Job& job);
-    const Job           PopFrontJob();
+    void                push_job(const Job& job);
+    const Job           pop_frontJob();
 
     const size_t        NumJobs();
 

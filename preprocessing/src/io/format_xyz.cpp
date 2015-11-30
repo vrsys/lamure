@@ -15,8 +15,8 @@
 namespace lamure {
 namespace pre {
 
-void FormatXYZ::
-Read(const std::string& filename, SurfelCallbackFuntion callback)
+void format_xyz::
+read(const std::string& filename, surfel_callback_funtion callback)
 {
     std::ifstream xyz_file_stream(filename);
 
@@ -53,15 +53,15 @@ Read(const std::string& filename, SurfelCallbackFuntion callback)
         sstream >> color[1];
         sstream >> color[2];
 
-        callback(Surfel(vec3r(pos[0], pos[1], pos[2]),
+        callback(surfel(vec3r(pos[0], pos[1], pos[2]),
                         vec3b(color[0], color[1], color[2])));
     }
 
     xyz_file_stream.close();
 }
 
-void FormatXYZ::
-Write(const std::string& filename, BufferCallbackFuntion callback)
+void format_xyz::
+write(const std::string& filename, buffer_callback_function callback)
 {
     std::ofstream xyz_file_stream(filename);
 
@@ -69,7 +69,7 @@ Write(const std::string& filename, BufferCallbackFuntion callback)
         throw std::runtime_error("Unable to open file: " +
                                  filename);
 
-    SurfelVector buffer;
+    surfel_vector buffer;
     size_t count = 0;
 
     while (true) {

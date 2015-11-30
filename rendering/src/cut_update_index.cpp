@@ -18,9 +18,9 @@ CutUpdateIndex::
 CutUpdateIndex()
 : num_views_(0),
   num_models_(0),
-  current_cut_front_(CutFront::FRONT_A) {
+  current_cut_front_(Cutfront::FRONT_A) {
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     num_models_ = database->num_models();
 
@@ -35,8 +35,8 @@ CutUpdateIndex()
     }
 
     for (model_t model_id = 0; model_id < num_models_; ++model_id) {
-        fan_factor_table_.push_back(database->GetModel(model_id)->bvh()->fan_factor());
-        num_nodes_table_.push_back(database->GetModel(model_id)->bvh()->num_nodes());
+        fan_factor_table_.push_back(database->GetModel(model_id)->get_bvh()->fan_factor());
+        num_nodes_table_.push_back(database->GetModel(model_id)->get_bvh()->num_nodes());
     }
 
 }
@@ -60,7 +60,7 @@ UpdatePolicy(const view_t num_views) {
         }
     }
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     if (database->num_models() != num_models_) {
         num_models_ = database->num_models();
@@ -82,8 +82,8 @@ UpdatePolicy(const view_t num_views) {
         num_nodes_table_.clear();
 
         for (model_t model_id = 0; model_id < num_models_; ++model_id) {
-            fan_factor_table_.push_back(database->GetModel(model_id)->bvh()->fan_factor());
-            num_nodes_table_.push_back(database->GetModel(model_id)->bvh()->num_nodes());
+            fan_factor_table_.push_back(database->GetModel(model_id)->get_bvh()->fan_factor());
+            num_nodes_table_.push_back(database->GetModel(model_id)->get_bvh()->num_nodes());
         }
 
     }
@@ -128,11 +128,11 @@ GetCurrentCut(const view_t view_id, const model_t model_id) {
     assert(model_id < num_models_);
 
     switch (current_cut_front_) {
-        case CutFront::FRONT_A:
+        case Cutfront::FRONT_A:
             return front_a_cuts_[view_id][model_id];
             break;
 
-        case CutFront::FRONT_B:
+        case Cutfront::FRONT_B:
             return front_b_cuts_[view_id][model_id];
             break;
 
@@ -151,11 +151,11 @@ GetPreviousCut(const view_t view_id, const model_t model_id) {
     assert(model_id < num_models_);
 
     switch (current_cut_front_) {
-        case CutFront::FRONT_A:
+        case Cutfront::FRONT_A:
             return front_b_cuts_[view_id][model_id];
             break;
 
-        case CutFront::FRONT_B:
+        case Cutfront::FRONT_B:
             return front_a_cuts_[view_id][model_id];
             break;
 
@@ -170,28 +170,28 @@ void CutUpdateIndex::
 SwapCuts() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (current_cut_front_ == CutFront::FRONT_A) {
-        current_cut_front_ = CutFront::FRONT_B;
+    if (current_cut_front_ == Cutfront::FRONT_A) {
+        current_cut_front_ = Cutfront::FRONT_B;
     }
     else {
-        current_cut_front_ = CutFront::FRONT_A;
+        current_cut_front_ = Cutfront::FRONT_A;
     }
 
 }
 
 void CutUpdateIndex::
-ResetCut(const view_t view_id, const model_t model_id) {
+resetCut(const view_t view_id, const model_t model_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(view_ids_.find(view_id) != view_ids_.end());
     assert(model_id < num_models_);
 
     switch (current_cut_front_) {
-        case CutFront::FRONT_A:
+        case Cutfront::FRONT_A:
             front_a_cuts_[view_id][model_id].clear();
             break;
 
-        case CutFront::FRONT_B:
+        case Cutfront::FRONT_B:
             front_b_cuts_[view_id][model_id].clear();
             break;
 
@@ -213,7 +213,7 @@ PushAction(const Action& action, bool sort) {
 }
 
 const CutUpdateIndex::Action CutUpdateIndex::
-FrontAction(const Queue queue) {
+frontAction(const Queue queue) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(queue < Queue::NUM_QUEUES);
@@ -243,7 +243,7 @@ BackAction(const Queue queue) {
 }
 
 void CutUpdateIndex::
-PopFrontAction(const Queue queue) {
+pop_frontAction(const Queue queue) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(queue < Queue::NUM_QUEUES);
@@ -306,11 +306,11 @@ ApproveAction(const Action& action) {
     switch (action.queue_) {
         case Queue::KEEP:
             switch (current_cut_front_) {
-                case CutFront::FRONT_A:
+                case Cutfront::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case CutFront::FRONT_B:
+                case Cutfront::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -325,11 +325,11 @@ ApproveAction(const Action& action) {
                 GetAllChildren(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case CutFront::FRONT_A:
+                    case Cutfront::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case CutFront::FRONT_B:
+                    case Cutfront::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -342,11 +342,11 @@ ApproveAction(const Action& action) {
 
         case Queue::MUST_COLLAPSE:
             switch (current_cut_front_) {
-                case CutFront::FRONT_A:
+                case Cutfront::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case CutFront::FRONT_B:
+                case Cutfront::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -358,11 +358,11 @@ ApproveAction(const Action& action) {
         case Queue::COLLAPSE_ON_NEED:
             //if a collapse-on-need-action is approved, we collapse the node
             switch (current_cut_front_) {
-                case CutFront::FRONT_A:
+                case Cutfront::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case CutFront::FRONT_B:
+                case Cutfront::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -375,11 +375,11 @@ ApproveAction(const Action& action) {
         case Queue::MAYBE_COLLAPSE:
             //if a maybe-collapse-action is approved, we collapse the node
             switch (current_cut_front_) {
-                case CutFront::FRONT_A:
+                case Cutfront::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case CutFront::FRONT_B:
+                case Cutfront::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -409,11 +409,11 @@ RejectAction(const Action& action) {
 
         case Queue::MUST_SPLIT:
             switch (current_cut_front_) {
-                case CutFront::FRONT_A:
+                case Cutfront::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case CutFront::FRONT_B:
+                case Cutfront::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -427,11 +427,11 @@ RejectAction(const Action& action) {
                 GetAllChildren(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case CutFront::FRONT_A:
+                    case Cutfront::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case CutFront::FRONT_B:
+                    case Cutfront::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -446,11 +446,11 @@ RejectAction(const Action& action) {
                 GetAllChildren(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case CutFront::FRONT_A:
+                    case Cutfront::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case CutFront::FRONT_B:
+                    case Cutfront::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -466,11 +466,11 @@ RejectAction(const Action& action) {
                 GetAllChildren(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case CutFront::FRONT_A:
+                    case Cutfront::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case CutFront::FRONT_B:
+                    case Cutfront::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -515,13 +515,13 @@ CancelAction(const view_t view_id, const model_t model_id, const node_t node_id)
     //firstly, cancel actions that already happened (remove nodes from cuts)
 
     switch (current_cut_front_) {
-        case CutFront::FRONT_A:
+        case Cutfront::FRONT_A:
             if (front_a_cuts_[view_id][model_id].find(node_id) != front_a_cuts_[view_id][model_id].end()) {
                 front_a_cuts_[view_id][model_id].erase(node_id);
             }
             break;
 
-        case CutFront::FRONT_B:
+        case Cutfront::FRONT_B:
             if (front_b_cuts_[view_id][model_id].find(node_id) != front_b_cuts_[view_id][model_id].end()) {
                 front_b_cuts_[view_id][model_id].erase(node_id);
             }
@@ -595,7 +595,7 @@ CancelAction(const view_t view_id, const model_t model_id, const node_t node_id)
 }
 
 void CutUpdateIndex::
-Sort() {
+sort() {
     while(!initial_queue_.empty()) {
         Action action = initial_queue_.top();
         initial_queue_.pop();
@@ -686,7 +686,7 @@ ShuffleDown(const Queue queue, const size_t slot_id) {
 }
 
 const node_t CutUpdateIndex::
-GetChildId(const model_t model_id, const node_t node_id, const node_t child_index) const {
+get_child_id(const model_t model_id, const node_t node_id, const node_t child_index) const {
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
     assert(child_index < fan_factor_table_[model_id]);
@@ -705,7 +705,7 @@ GetChildId(const model_t model_id, const node_t node_id, const node_t child_inde
 }
 
 const node_t CutUpdateIndex::
-GetParentId(const model_t model_id, const node_t node_id) const {
+get_parent_id(const model_t model_id, const node_t node_id) const {
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
 
@@ -728,7 +728,7 @@ GetAllSiblings(const model_t model_id, const node_t node_id, std::vector<node_t>
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
 
-    node_t parent_id = GetParentId(model_id, node_id);
+    node_t parent_id = get_parent_id(model_id, node_id);
 
     if (parent_id == invalid_node_t) {
         return;
@@ -737,7 +737,7 @@ GetAllSiblings(const model_t model_id, const node_t node_id, std::vector<node_t>
     uint32_t fan_factor = fan_factor_table_[model_id];
 
     for (node_t i = 0; i < (node_t)fan_factor; ++i) {
-        siblings.push_back(GetChildId(model_id, parent_id, i));
+        siblings.push_back(get_child_id(model_id, parent_id, i));
     }
 }
 
@@ -749,7 +749,7 @@ GetAllChildren(const model_t model_id, const node_t node_id, std::vector<node_t>
     uint32_t fan_factor = fan_factor_table_[model_id];
 
     for (node_t i = 0; i < (node_t)fan_factor; ++i) {
-        children.push_back(GetChildId(model_id, node_id, i));
+        children.push_back(get_child_id(model_id, node_id, i));
     }
 }
 

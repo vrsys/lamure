@@ -22,7 +22,7 @@ OocCache::
 OocCache(const slot_t num_slots)
 : Cache(num_slots),
   maintenance_counter_(0) {
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     cache_data_ = new char[num_slots * database->size_of_surfel() * database->surfels_per_node()];
 
@@ -58,13 +58,13 @@ OocCache::
 }
 
 OocCache* OocCache::
-GetInstance() {
+get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!is_instanced_) {
-            Policy* policy = Policy::GetInstance();
-            ModelDatabase* database = ModelDatabase::GetInstance();
+            Policy* policy = Policy::get_instance();
+            Modeldatabase* database = Modeldatabase::get_instance();
             size_t size_of_node_in_bytes = database->size_of_surfel() * database->surfels_per_node();
             size_t out_of_core_budget_in_nodes = (policy->out_of_core_budget_in_mb()*1024*1024) / size_of_node_in_bytes;
             single_ = new OocCache(out_of_core_budget_in_nodes);
@@ -112,7 +112,7 @@ RegisterNode(const model_t model_id, const node_t node_id, const int32_t priorit
 }
 
 char* OocCache::
-NodeData(const model_t model_id, const node_t node_id) {
+Nodedata(const model_t model_id, const node_t node_id) {
     return cache_data_ + index_->GetSlot(model_id, node_id) * slot_size();
 
 }
@@ -126,7 +126,7 @@ IsNodeResidentAndAquired(const model_t model_id, const node_t node_id) {
 void OocCache::
 Refresh() {
     pool_->Lock();
-    pool_->ResolveCacheHistory(index_);
+    pool_->ResolveCachehistogramory(index_);
 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_CACHE_MAINTENANCE
@@ -148,7 +148,7 @@ Refresh() {
 void OocCache::
 LockPool() {
     pool_->Lock();
-    pool_->ResolveCacheHistory(index_);
+    pool_->ResolveCachehistogramory(index_);
 }
 
 void OocCache::

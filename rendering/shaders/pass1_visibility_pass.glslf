@@ -7,7 +7,7 @@
 
 #version 420 core
 
-in VertexData {
+in Vertexdata {
 	vec3 nor;
     	float rad;
 	float mv_vertex_depth;

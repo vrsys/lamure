@@ -13,14 +13,14 @@
 namespace lamure {
 namespace pre {
 
-class ReductionEverySecond: public ReductionStrategy
+class reduction_every_second: public reduction_strategy
 {
 public:
 
-    explicit            ReductionEverySecond() { }
+    explicit            reduction_every_second() { }
 
-    SurfelMemArray      CreateLod(real& reduction_error,
-                                  const std::vector<SurfelMemArray*>& input,
+    surfel_mem_array      create_lod(real& reduction_error,
+                                  const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node) const override;
 
 };

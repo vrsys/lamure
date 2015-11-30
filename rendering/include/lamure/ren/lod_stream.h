@@ -30,17 +30,17 @@ public:
     virtual             ~LodStream();
 
 
-    void                Open(const std::string& file_name);
-    void                OpenForWriting(const std::string& file_name);
-    void                Close();
+    void                open(const std::string& file_name);
+    void                openForWriting(const std::string& file_name);
+    void                close();
     const bool          is_file_open() const { return is_file_open_; };
     const std::string&  file_name() const { return file_name_; };
 
-    void                Read(char* const data,
+    void                read(char* const data,
                             const size_t start_in_file,
                             const size_t length_in_bytes) const;
                             
-    void                Write(char* const data,
+    void                write(char* const data,
                             const size_t start_in_file,
                             const size_t length_in_bytes);
 

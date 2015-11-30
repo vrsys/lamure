@@ -5,17 +5,17 @@
 #include <lamure/types.h>
 #include <scm/core/math.h>
 
-struct Sphere {
+struct sphere {
     scm::math::vec3f center_;
     float radius_;
 
-    Sphere(const scm::math::vec3f& center, float radius)
+    sphere(const scm::math::vec3f& center, float radius)
     : center_(center), radius_(radius) {
 
     }
 };
 
-struct Surfel {
+struct surfel {
     float x, y, z;
     uint8_t r, g, b, fake;
     float size;

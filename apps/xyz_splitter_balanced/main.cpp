@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 			std::cout << "Trying to open: "<<current_filename<<"\n\n";
 		}
 		
-		std::ifstream gigFile(current_filename.c_str());
+		std::ifstream gigfile(current_filename.c_str());
 
 		std::string oneline;
 
@@ -121,7 +121,7 @@ int main(int argc, char** argv)
 
 			std::cout << "Starting to determine bounding box\n\n";
 
-			while(getline(gigFile, oneline))
+			while(getline(gigfile, oneline))
 			{
 		
 				istringstream lineparser(oneline);
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
 		
 			
 			}
-			gigFile.close();
+			gigfile.close();
 
 			std::cout<<"Counted num points: "<< num_points<<"\n\n";
 
@@ -172,7 +172,7 @@ int main(int argc, char** argv)
 
 			//open the file again, assume that there was no error to determine a good splitting index
 
-			gigFile.open(current_filename.c_str());
+			gigfile.open(current_filename.c_str());
 	
 			double deltaX = xMax - xMin;
 			double deltaY = yMax - yMin;
@@ -182,7 +182,7 @@ int main(int argc, char** argv)
 
 			std::cout<<"Counting surfels into buckets\n\n";
 
-			while(getline(gigFile, oneline))
+			while(getline(gigfile, oneline))
 			{
 
 				istringstream lineparser(oneline);
@@ -262,7 +262,7 @@ int main(int argc, char** argv)
 			unsigned long long  int index_after_half_points = 99;
 
 
-		//	std::cout<<"Before going into strange loop. NumSurfels: "<<num_points<<"\n";
+		//	std::cout<<"Before going into strange loop. Numsurfels: "<<num_points<<"\n";
 
 			for(int i = 0; i < 100; ++i)
 			{
@@ -315,7 +315,7 @@ int main(int argc, char** argv)
 
 			std::cout<<"actual split index: "<<actual_split_index<<"  splitPos: "<<splitPos<<"\n\n";
 	 
-			gigFile.close();
+			gigfile.close();
 
 
 			//open the file again, assume that there was no error
@@ -354,10 +354,10 @@ int main(int argc, char** argv)
 		
 			unsigned long long int num_surfel_in_bigger_file = 0;
 
-			gigFile.open(current_filename.c_str());
+			gigfile.open(current_filename.c_str());
 
-			std::cout << "Sorting surfels into files\n\n";
-			while(getline(gigFile, oneline))
+			std::cout << "sorting surfels into files\n\n";
+			while(getline(gigfile, oneline))
 			{
 				istringstream lineparser(oneline);
 				double pX, pY, pZ;
@@ -447,7 +447,7 @@ int main(int argc, char** argv)
 			if(num_surfel_in_smaller_file > point_num_threshold * num_points_whole_file)
 			{
 				working_queue.push_back(std::pair<unsigned long long int, unsigned long long int>(smaller_file_index, num_surfel_in_smaller_file) );
-				std::cout << "Pushing back File number: " << smaller_file_index<<"\n\n";
+				std::cout << "Pushing back file number: " << smaller_file_index<<"\n\n";
 			}
 			else
 			{
@@ -458,7 +458,7 @@ int main(int argc, char** argv)
 			if(num_surfel_in_bigger_file > point_num_threshold * num_points_whole_file)
 			{
 				working_queue.push_back(std::pair<unsigned long long int, unsigned long long int>(bigger_file_index, num_surfel_in_bigger_file) );
-				std::cout << "Pushing back File number: " << bigger_file_index<<"\n\n";
+				std::cout << "Pushing back file number: " << bigger_file_index<<"\n\n";
 			}
 			else
 			{
@@ -467,7 +467,7 @@ int main(int argc, char** argv)
 			}
 		
 		
-			gigFile.close();
+			gigfile.close();
 			smaller_file.close();
 			bigger_file.close();
 			
@@ -491,11 +491,11 @@ int main(int argc, char** argv)
 	while(std::getline(leaf_node_file_list, line_buffer) )
 	{
 	 	unsigned int read_number = std::stoi(line_buffer);
-		std::cout << "ReadNumber: " << read_number <<"\n";
+		std::cout << "readNumber: " << read_number <<"\n";
 
 		for(file_deletion_starting_index; file_deletion_starting_index < read_number; ++file_deletion_starting_index)
 		{
-			std::cout << "Deleting intermediate File: "<<output_full_path + "_" + std::to_string(file_deletion_starting_index) + ".xyz" << "\n";
+			std::cout << "Deleting intermediate file: "<<output_full_path + "_" + std::to_string(file_deletion_starting_index) + ".xyz" << "\n";
 			std::remove(std::string(output_full_path + "_" + std::to_string(file_deletion_starting_index) + ".xyz").c_str() );
 
 		}
@@ -508,7 +508,7 @@ int main(int argc, char** argv)
 	
 	leaf_node_file_list.close();
 
-	std::cout << "\nDeleting intermediate File: "<<results_directory + "leaf_file_indices.lf" << "\n";
+	std::cout << "\nDeleting intermediate file: "<<results_directory + "leaf_file_indices.lf" << "\n";
 	std::remove(std::string(results_directory + "leaf_file_indices.lf").c_str() );
 
 	return 0;

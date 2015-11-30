@@ -14,23 +14,23 @@ namespace lamure
 namespace ren
 {
 
-std::mutex CutDatabase::mutex_;
-bool CutDatabase::is_instanced_ = false;
-CutDatabase* CutDatabase::single_ = nullptr;
+std::mutex Cutdatabase::mutex_;
+bool Cutdatabase::is_instanced_ = false;
+Cutdatabase* Cutdatabase::single_ = nullptr;
 
-CutDatabase::
-CutDatabase() {
+Cutdatabase::
+Cutdatabase() {
 
 }
 
-CutDatabase::
-~CutDatabase() {
+Cutdatabase::
+~Cutdatabase() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     is_instanced_ = false;
 
     for (auto& record_it : records_) {
-        CutDatabaseRecord* record = record_it.second;
+        CutdatabaseRecord* record = record_it.second;
         if (record != nullptr) {
             delete record;
             record = nullptr;
@@ -40,13 +40,13 @@ CutDatabase::
     records_.clear();
 }
 
-CutDatabase* CutDatabase::
-GetInstance() {
+Cutdatabase* Cutdatabase::
+get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!is_instanced_) {
-            single_ = new CutDatabase();
+            single_ = new Cutdatabase();
             is_instanced_ = true;
         }
 
@@ -57,12 +57,12 @@ GetInstance() {
     }
 }
 
-void CutDatabase::
-Reset() {
+void Cutdatabase::
+reset() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     for (auto& record_it : records_) {
-        CutDatabaseRecord* record = record_it.second;
+        CutdatabaseRecord* record = record_it.second;
         if (record != nullptr) {
             delete record;
             record = nullptr;
@@ -72,8 +72,8 @@ Reset() {
     records_.clear();
 }
 
-void CutDatabase::
-Expand(const context_t context_id) {
+void Cutdatabase::
+expand(const context_t context_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     //critical section: check for missing entry again
@@ -82,24 +82,24 @@ Expand(const context_t context_id) {
     auto it = records_.find(context_id);
 
     if (it == records_.end()) {
-        records_[context_id] = new CutDatabaseRecord(context_id);
+        records_[context_id] = new CutdatabaseRecord(context_id);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 Swap(const context_t context_id) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->SwapFront();
+        it->second->Swapfront();
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         Swap(context_id);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 SendCamera(context_t const context_id, view_t const view_id, const Camera& camera) {
     auto it = records_.find(context_id);
 
@@ -107,25 +107,25 @@ SendCamera(context_t const context_id, view_t const view_id, const Camera& camer
         it->second->SetCamera(view_id, camera);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         SendCamera(context_id, view_id, camera);
     }
 }
 
-void CutDatabase::
-SendHeightDividedByTopMinusBottom(context_t const context_id, view_t const view_id, const float& height_divided_by_top_minus_bottom) {
+void Cutdatabase::
+SendheightDividedByTopMinusBottom(context_t const context_id, view_t const view_id, const float& height_divided_by_top_minus_bottom) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->SetHeightDividedByTopMinusBottom(view_id, height_divided_by_top_minus_bottom);
+        it->second->SetheightDividedByTopMinusBottom(view_id, height_divided_by_top_minus_bottom);
     }
     else {
-        Expand(context_id);
-        SendHeightDividedByTopMinusBottom(context_id, view_id, height_divided_by_top_minus_bottom);
+        expand(context_id);
+        SendheightDividedByTopMinusBottom(context_id, view_id, height_divided_by_top_minus_bottom);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 SendTransform(context_t const context_id, model_t const model_id, const scm::math::mat4f& transform) {
     auto it = records_.find(context_id);
 
@@ -133,25 +133,25 @@ SendTransform(context_t const context_id, model_t const model_id, const scm::mat
         it->second->SetTransform(model_id, transform);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         SendTransform(context_id, model_id, transform);
     }
 }
 
-void CutDatabase::
-SendRendered(const context_t context_id, const model_t model_id) {
+void Cutdatabase::
+Sendrendered(const context_t context_id, const model_t model_id) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->SetRendered(model_id);
+        it->second->Setrendered(model_id);
     }
     else {
-        Expand(context_id);
-        SendRendered(context_id, model_id);
+        expand(context_id);
+        Sendrendered(context_id, model_id);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 SendThreshold(context_t const context_id, model_t const model_id, const float threshold) {
     auto it = records_.find(context_id);
 
@@ -159,13 +159,13 @@ SendThreshold(context_t const context_id, model_t const model_id, const float th
         it->second->SetThreshold(model_id, threshold);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         SendThreshold(context_id, model_id, threshold);
     }
 }
 
 
-void CutDatabase::
+void Cutdatabase::
 ReceiveCameras(const context_t context_id, std::map<view_t, Camera>& cameras) {
     auto it = records_.find(context_id);
 
@@ -173,26 +173,26 @@ ReceiveCameras(const context_t context_id, std::map<view_t, Camera>& cameras) {
         it->second->ReceiveCameras(cameras);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         ReceiveCameras(context_id, cameras);
     }
 }
 
-void CutDatabase::
-ReceiveHeightDividedByTopMinusBottoms(const context_t context_id, std::map<view_t, float>& height_divided_by_top_minus_bottom) {
+void Cutdatabase::
+ReceiveheightDividedByTopMinusBottoms(const context_t context_id, std::map<view_t, float>& height_divided_by_top_minus_bottom) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->ReceiveHeightDividedByTopMinusBottoms(height_divided_by_top_minus_bottom);
+        it->second->ReceiveheightDividedByTopMinusBottoms(height_divided_by_top_minus_bottom);
     }
     else {
-        Expand(context_id);
-        ReceiveHeightDividedByTopMinusBottoms(context_id, height_divided_by_top_minus_bottom);
+        expand(context_id);
+        ReceiveheightDividedByTopMinusBottoms(context_id, height_divided_by_top_minus_bottom);
     }
 }
 
 
-void CutDatabase::
+void Cutdatabase::
 ReceiveTransforms(const context_t context_id, std::map<model_t, scm::math::mat4f>& transforms) {
     auto it = records_.find(context_id);
 
@@ -200,26 +200,26 @@ ReceiveTransforms(const context_t context_id, std::map<model_t, scm::math::mat4f
         it->second->ReceiveTransforms(transforms);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         ReceiveTransforms(context_id, transforms);
     }
 
 }
 
-void CutDatabase::
-ReceiveRendered(const context_t context_id, std::set<model_t>& rendered) {
+void Cutdatabase::
+Receiverendered(const context_t context_id, std::set<model_t>& rendered) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->ReceiveRendered(rendered);
+        it->second->Receiverendered(rendered);
     }
     else {
-        Expand(context_id);
-        ReceiveRendered(context_id, rendered);
+        expand(context_id);
+        Receiverendered(context_id, rendered);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 ReceiveThresholds(const context_t context_id, std::map<model_t, float>& thresholds) {
     auto it = records_.find(context_id);
 
@@ -227,13 +227,13 @@ ReceiveThresholds(const context_t context_id, std::map<model_t, float>& threshol
         it->second->ReceiveThresholds(thresholds);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         ReceiveThresholds(context_id, thresholds);
     }
 
 }
 
-void CutDatabase::
+void Cutdatabase::
 SetCut(const context_t context_id, const view_t view_id, const model_t model_id, Cut& cut) {
     auto it = records_.find(context_id);
 
@@ -241,12 +241,12 @@ SetCut(const context_t context_id, const view_t view_id, const model_t model_id,
         it->second->SetCut(view_id, model_id, cut);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         SetCut(context_id, view_id, model_id, cut);
     }
 }
 
-Cut& CutDatabase::
+Cut& Cutdatabase::
 GetCut(const context_t context_id, const view_t view_id, const model_t model_id) {
     auto it = records_.find(context_id);
 
@@ -254,12 +254,12 @@ GetCut(const context_t context_id, const view_t view_id, const model_t model_id)
         return it->second->GetCut(view_id, model_id);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         return GetCut(context_id, view_id, model_id);
     }
 }
 
-std::vector<CutDatabaseRecord::SlotUpdateDescr>& CutDatabase::
+std::vector<CutdatabaseRecord::SlotUpdateDescr>& Cutdatabase::
 GetUpdatedSet(const context_t context_id) {
     auto it = records_.find(context_id);
 
@@ -267,38 +267,38 @@ GetUpdatedSet(const context_t context_id) {
         return it->second->GetUpdatedSet();
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         return GetUpdatedSet(context_id);
     }
 }
 
-void CutDatabase::
-SetUpdatedSet(const context_t context_id, std::vector<CutDatabaseRecord::SlotUpdateDescr>& updated_set) {
+void Cutdatabase::
+SetUpdatedSet(const context_t context_id, std::vector<CutdatabaseRecord::SlotUpdateDescr>& updated_set) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
         it->second->SetUpdatedSet(updated_set);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         SetUpdatedSet(context_id, updated_set);
     }
 }
 
-const bool CutDatabase::
-IsFrontModified(const context_t context_id) {
+const bool Cutdatabase::
+IsfrontModified(const context_t context_id) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        return it->second->IsFrontModified();
+        return it->second->IsfrontModified();
     }
     else {
-        Expand(context_id);
-        return IsFrontModified(context_id);
+        expand(context_id);
+        return IsfrontModified(context_id);
     }
 }
 
-const bool CutDatabase::
+const bool Cutdatabase::
 IsSwapRequired(const context_t context_id) {
     auto it = records_.find(context_id);
 
@@ -306,26 +306,26 @@ IsSwapRequired(const context_t context_id) {
         return it->second->IsSwapRequired();
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         return IsSwapRequired(context_id);
     }
 }
 
 
-void CutDatabase::
-SetIsFrontModified(const context_t context_id, const bool front_modified) {
+void Cutdatabase::
+SetIsfrontModified(const context_t context_id, const bool front_modified) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->SetIsFrontModified(front_modified);
+        it->second->SetIsfrontModified(front_modified);
     }
     else {
-        Expand(context_id);
-        SetIsFrontModified(context_id, front_modified);
+        expand(context_id);
+        SetIsfrontModified(context_id, front_modified);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 SetIsSwapRequired(const context_t context_id, const bool swap_required) {
     auto it = records_.find(context_id);
 
@@ -333,72 +333,72 @@ SetIsSwapRequired(const context_t context_id, const bool swap_required) {
         it->second->SetIsSwapRequired(swap_required);
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         SetIsSwapRequired(context_id, swap_required);
     }
 }
 
-void CutDatabase::
-SignalUploadComplete(const context_t context_id) {
+void Cutdatabase::
+SignalUploadcomplete(const context_t context_id) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->SignalUploadComplete();
+        it->second->SignalUploadcomplete();
     }
     else {
-        Expand(context_id);
-        SignalUploadComplete(context_id);
+        expand(context_id);
+        SignalUploadcomplete(context_id);
     }
 }
 
-const CutDatabaseRecord::TemporaryBuffer CutDatabase::
-GetBuffer(const context_t context_id) {
+const CutdatabaseRecord::Temporarybuffer Cutdatabase::
+Getbuffer(const context_t context_id) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        return it->second->GetBuffer();
+        return it->second->Getbuffer();
     }
     else {
-        Expand(context_id);
-        return GetBuffer(context_id);
+        expand(context_id);
+        return Getbuffer(context_id);
     }
 }
 
-void CutDatabase::
-SetBuffer(const context_t context_id, const CutDatabaseRecord::TemporaryBuffer buffer) {
+void Cutdatabase::
+Setbuffer(const context_t context_id, const CutdatabaseRecord::Temporarybuffer buffer) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->SetBuffer(buffer);
+        it->second->Setbuffer(buffer);
     }
     else {
-        Expand(context_id);
-        SetBuffer(context_id, buffer);
+        expand(context_id);
+        Setbuffer(context_id, buffer);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 LockRecord(const context_t context_id) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->LockFront();
+        it->second->Lockfront();
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         LockRecord(context_id);
     }
 }
 
-void CutDatabase::
+void Cutdatabase::
 UnlockRecord(const context_t context_id) {
     auto it = records_.find(context_id);
 
     if (it != records_.end()) {
-        it->second->UnlockFront();
+        it->second->Unlockfront();
     }
     else {
-        Expand(context_id);
+        expand(context_id);
         UnlockRecord(context_id);
     }
 

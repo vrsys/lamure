@@ -52,7 +52,6 @@ target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${COMMON_LIBRARY}
     ${SCHISM_LIBRARIES}
-    ${BOOST_LIBRARIES}
     optimized ${PLY_LIBRARY} debug ${PLY_LIBRARY_DEBUG}
     )
 

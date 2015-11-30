@@ -22,14 +22,14 @@
 namespace lamure {
 namespace ren {
 
-class ModelDatabase;
+class Modeldatabase;
 
-class RENDERING_DLL LodPointCloud
+class RENDERING_DLL lod_point_cloud
 {
 
 public:
 
-    struct SerializedSurfel
+    struct serialized_surfel
     {
         float x, y, z;
         uint8_t r, g, b, fake;
@@ -37,28 +37,28 @@ public:
         float nx, ny, nz;
     };
 
-                        LodPointCloud() {};
-                        LodPointCloud(const std::string& filename);
-    virtual             ~LodPointCloud();
+                        lod_point_cloud() {};
+                        lod_point_cloud(const std::string& filename);
+    virtual             ~lod_point_cloud();
 
     const model_t       model_id() const { return model_id_; };
     const scm::gl::boxf& aabb() const { return aabb_; };
     const bool          is_loaded() const { return is_loaded_; };
-    const Bvh*          bvh() const { return bvh_; };
+    const bvh*          get_bvh() const { return bvh_; };
 
     void                set_transform(const scm::math::mat4f& transform) { transform_ = transform; };
     const scm::math::mat4f transform() const { return transform_; };
 
 protected:
-    void                Load(const std::string& filename);
+    void                load(const std::string& filename);
 
-    friend class        ModelDatabase;
+    friend class        Modeldatabase;
     model_t             model_id_;
 
 private:
     scm::gl::boxf       aabb_;
     bool                is_loaded_;
-    Bvh*                bvh_;
+    bvh*                bvh_;
 
     scm::math::mat4f    transform_;
 

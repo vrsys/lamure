@@ -16,39 +16,39 @@ namespace lamure {
 namespace pre
 {
 
-class PREPROCESSING_DLL ExternalSort
+class PREPROCESSING_DLL external_sort
 {
 public:
 
-    static void         Sort(SurfelDiskArray& array,
+    static void         sort(surfel_disk_array& array,
                              const size_t memory_limit,
-                             const Surfel::CompareFunction& compare);
+                             const surfel::compare_function& compare);
 
 private:
-    explicit            ExternalSort(const size_t memory_limit,
-                                     const Surfel::CompareFunction& compare);
-                        ExternalSort(const ExternalSort&) = delete;
-                        ExternalSort& operator=(const ExternalSort&) = delete;
+    explicit            external_sort(const size_t memory_limit,
+                                     const surfel::compare_function& compare);
+                        external_sort(const external_sort&) = delete;
+                        external_sort& operator=(const external_sort&) = delete;
 
-    class Buffer
+    class buffer
     {
         public:
-            SurfelDiskArray run;
-            SurfelVector data;
+            surfel_disk_array run;
+            surfel_vector data;
             size_t size;
             size_t candidate_pos;
             size_t file_offset;
 
-            Buffer(const SurfelDiskArray& array, const size_t buffer_size)
+            buffer(const surfel_disk_array& array, const size_t buffer_size)
                 : run(array) {
                 size = buffer_size;
                 candidate_pos = size;
                 file_offset = 0;
-                data = SurfelVector(size);
+                data = surfel_vector(size);
             }
 
-            bool Front(Surfel& s) {
-                Invalidate();
+            bool front(surfel& s) {
+                invalidate();
                 if (size > 0) {
                     s = data[candidate_pos];
                     return true;
@@ -56,13 +56,13 @@ private:
                     return false;
             }
 
-            void PopFront() {
+            void pop_front() {
                 assert(size > 0);
                 candidate_pos++;
             }
 
         private:
-            void Invalidate() {
+            void invalidate() {
                 if (size > 0 && candidate_pos >= size) {
                     if (file_offset >= run.length()) {
                         size = 0;
@@ -70,26 +70,26 @@ private:
                     }
 
                     size = std::min(size, run.length() - file_offset);
-                    run.file()->Read(&data, 0, run.offset() + file_offset, size);
+                    run.file()->read(&data, 0, run.offset() + file_offset, size);
                     file_offset += size;
                     candidate_pos = 0;
                 }
             }
     };
 
-    void                CreateRuns(SurfelDiskArray& array,
+    void                create_runs(surfel_disk_array& array,
                                    const size_t run_length, 
                                    const uint32_t runs_count);
-    void                Merge(SurfelDiskArray& array, const size_t buffer_size);
+    void                merge(surfel_disk_array& array, const size_t buffer_size);
 
     size_t              memory_limit_;
 
-    Surfel::CompareFunction
+    surfel::compare_function
                         compare_;
 
-    SharedFile          runs_file_;
+    shared_file          runs_file_;
 
-    std::vector<SurfelDiskArray>
+    std::vector<surfel_disk_array>
                         runs_;
 };
 

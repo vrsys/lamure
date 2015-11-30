@@ -17,7 +17,7 @@ Trackball::~Trackball() {
 }
 
 double Trackball::
-ProjectToSphere(double x, double y) const {
+ProjectTosphere(double x, double y) const {
     double len_sqr = x*x + y*y;
     double len = scm::math::sqrt(len_sqr);
 
@@ -30,8 +30,8 @@ ProjectToSphere(double x, double y) const {
 
 void Trackball::
 Rotate(double fx, double fy, double tx, double ty) {
-    scm::math::vec3d start(fx, fy, ProjectToSphere(fx, fy));
-    scm::math::vec3d end(tx, ty, ProjectToSphere(tx, ty));
+    scm::math::vec3d start(fx, fy, ProjectTosphere(fx, fy));
+    scm::math::vec3d end(tx, ty, ProjectTosphere(tx, ty));
 
     scm::math::vec3d diff(end - start);
     double diff_len = scm::math::length(diff);

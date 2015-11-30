@@ -74,7 +74,7 @@ Initialize(const UpdateMode mode, const model_t num_models) {
 }
 
 bool CacheQueue::
-PushJob(const Job& job) {
+push_job(const Job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(initialized_);
@@ -120,7 +120,7 @@ TopJob() {
 }
 
 void CacheQueue::
-PopJob(const Job& job) {
+pop_job(const Job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(job.model_id_ < num_models_);

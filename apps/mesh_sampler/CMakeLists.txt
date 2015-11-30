@@ -52,15 +52,7 @@ target_link_libraries(${SAMPLER_EXE}
                       debug ${FREEIMAGEPLUS_LIBRARY_DEBUG}
                       )
 
-IF (MSVC)
-    ADD_CUSTOM_COMMAND ( TARGET ${SAMPLER_EXE} POST_BUILD 
-      COMMAND robocopy \"${LIBRARY_OUTPUT_PATH}/$(Configuration)/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/bin/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/bin/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.exe /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/bin/$(Configuration)/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/lib/$(Configuration)/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP \n if %ERRORLEVEL% LEQ 7 (exit /b 0) else (exit /b 1)
-    )
-ENDIF (MSVC)
+MsvcPostBuild(${SAMPLER_EXE})
 
 
 # with wedge normals
@@ -75,15 +67,7 @@ target_link_libraries(${SAMPLER_EXE_WITH_WEDGES}
                       debug ${FREEIMAGE_LIBRARY_DEBUG}
                       debug ${FREEIMAGEPLUS_LIBRARY_DEBUG})
 
-IF (MSVC)
-    ADD_CUSTOM_COMMAND ( TARGET ${SAMPLER_EXE_WITH_WEDGES} POST_BUILD 
-      COMMAND robocopy \"${LIBRARY_OUTPUT_PATH}/$(Configuration)/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/bin/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/bin/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.exe /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/bin/$(Configuration)/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP 
-            & robocopy \"${GLOBAL_EXT_DIR}/lib/$(Configuration)/\" \"${EXECUTABLE_OUTPUT_PATH}/$(Configuration)/\" *.dll /R:0 /W:0 /NP \n if %ERRORLEVEL% LEQ 7 (exit /b 0) else (exit /b 1)
-    )
-ENDIF (MSVC)
+MsvcPostBuild(${SAMPLER_EXE_WITH_WEDGES})
 
 ###############################################################################
 # install 

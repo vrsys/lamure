@@ -11,11 +11,11 @@ namespace lamure {
 namespace pre
 {
 
-BvhNode::
-BvhNode(const NodeIdType id,
+bvh_node::
+bvh_node(const node_id_type id,
         const uint32_t depth,
-        const BoundingBox& bounding_box,
-        const SurfelMemArray& array)
+        const bounding_box& bounding_box,
+        const surfel_mem_array& array)
 : node_id_(id),
   depth_(depth),
   bounding_box_(bounding_box),
@@ -23,14 +23,14 @@ BvhNode(const NodeIdType id,
   avg_surfel_radius_(0.0),
   centroid_(vec3r(0.0))
 {
-    Reset(array);
+    reset(array);
 }
 
-BvhNode::
-BvhNode(const NodeIdType id,
+bvh_node::
+bvh_node(const node_id_type id,
         const uint32_t depth,
-        const BoundingBox& bounding_box,
-        const SurfelDiskArray& array)
+        const bounding_box& bounding_box,
+        const surfel_disk_array& array)
 : node_id_(id),
   depth_(depth),
   bounding_box_(bounding_box),
@@ -38,67 +38,67 @@ BvhNode(const NodeIdType id,
   avg_surfel_radius_(0.0),
   centroid_(vec3r(0.0))
 {
-    Reset(array);
+    reset(array);
 }
 
-BvhNode::
-~BvhNode()
+bvh_node::
+~bvh_node()
 {
-    Reset();
+    reset();
 }
 
-void BvhNode::
-Reset()
+void bvh_node::
+reset()
 {
-    mem_array_.Reset();
-    disk_array_.Reset();
+    mem_array_.reset();
+    disk_array_.reset();
 }
 
-void BvhNode::
-Reset(const SurfelMemArray& array)
+void bvh_node::
+reset(const surfel_mem_array& array)
 {
-    Reset();
+    reset();
     mem_array_ = array;
 }
 
-void BvhNode::
-Reset(const SurfelDiskArray& array)
+void bvh_node::
+reset(const surfel_disk_array& array)
 {
-    Reset();
+    reset();
     disk_array_ = array;
 }
 
-void BvhNode::
-LoadFromDisk()
+void bvh_node::
+load_from_disk()
 {
-    assert(IsOOC());
-    mem_array_.Reset(disk_array_.ReadAll(), 0, disk_array_.length());
+    assert(is_out_of_core());
+    mem_array_.reset(disk_array_.read_all(), 0, disk_array_.length());
 }
 
-void BvhNode::
-FlushToDisk(const SharedFile& file,
+void bvh_node::
+flush_to_disk(const shared_file& file,
             const size_t offset_in_file,
             const bool dealloc_mem_array)
 {
-    assert(IsIC());
+    assert(is_in_core());
 
-    disk_array_.Reset(file, offset_in_file, mem_array_.length());
-    disk_array_.WriteAll(mem_array_.mem_data(), mem_array_.offset());
+    disk_array_.reset(file, offset_in_file, mem_array_.length());
+    disk_array_.write_all(mem_array_.mem_data(), mem_array_.offset());
 
     if (dealloc_mem_array)
-        mem_array_.Reset();
+        mem_array_.reset();
 }
 
-void BvhNode::
-FlushToDisk(const bool dealloc_mem_array)
+void bvh_node::
+flush_to_disk(const bool dealloc_mem_array)
 {
-    assert(IsIC());
-    assert(IsOOC());
+    assert(is_in_core());
+    assert(is_out_of_core());
 
-    disk_array_.WriteAll(mem_array_.mem_data(), mem_array_.offset());
+    disk_array_.write_all(mem_array_.mem_data(), mem_array_.offset());
 
     if (dealloc_mem_array)
-        mem_array_.Reset();
+        mem_array_.reset();
 }
 
 

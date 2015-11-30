@@ -25,13 +25,13 @@ CutUpdateQueue::
 }
 
 void CutUpdateQueue::
-PushJob(const Job& job) {
+push_job(const Job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
     job_queue_.push(job);
 }
 
 const CutUpdateQueue::Job CutUpdateQueue::
-PopFrontJob() {
+pop_frontJob() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     Job job;

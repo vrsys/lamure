@@ -19,7 +19,7 @@
 #include <vcg/complex/algorithms/update/normal.h>
 #include <wrap/io_trimesh/import.h>
 
-#include "Texture.h"
+#include "texture.h"
 
 
 class MyVertex; 
@@ -54,12 +54,12 @@ class MyMesh : public vcg::tri::TriMesh<std::vector<MyVertex>,
                                         std::vector<MyFace>, 
                                         std::vector<MyEdge>> {};
 
-class Sampler {
+class sampler {
 public:
-    Sampler() {};
-    virtual ~Sampler() {};
+    sampler() {};
+    virtual ~sampler() {};
 
-    bool Load(const std::string& filename);
+    bool load(const std::string& filename);
     bool SampleMesh(const std::string& outputFilename);
 
 private:
@@ -71,11 +71,11 @@ private:
         double d;
     };
 
-    typedef std::vector<Splat> SplatVector;
-    typedef vcg::FaceBase<MyUsedTypes>::FacePointer FacePointer;
-    typedef std::unordered_set<FacePointer> FaceSet;
+    typedef std::vector<Splat> splat_vector;
+    typedef vcg::FaceBase<MyUsedTypes>::FacePointer face_pointer;
+    typedef std::unordered_set<face_pointer> face_set;
 
-    inline void AddAdjacent(FaceSet& faceList, MyVertex* v) 
+    inline void add_adjacent(face_set& faceList, MyVertex* v) 
     {  
         vcg::face::VFIterator<MyFace> vfi(v);
         for (; !vfi.End(); ++vfi) {
@@ -83,7 +83,7 @@ private:
         }
     }
 
-    inline double Area(const vcg::Point3d& a, 
+    inline double area(const vcg::Point3d& a, 
                        const vcg::Point3d& b, 
                        const vcg::Point3d& c)
     {
@@ -91,7 +91,7 @@ private:
                                    vcg::Point3d(0.0, 0.0, 0.0));
     }
 
-    inline double Area(const vcg::Point2d& a, 
+    inline double area(const vcg::Point2d& a, 
                        const vcg::Point2d& b, 
                        const vcg::Point2d& c)
     {
@@ -99,7 +99,7 @@ private:
                          (a.X()-b.X())*(c.Y()-a.Y()));
     }
 
-    inline bool IsPointInTriangle(const vcg::Triangle2<double>& t, 
+    inline bool is_point_in_triangle(const vcg::Triangle2<double>& t, 
                                   const vcg::Point2d& p, 
                                   double& uOut, double& vOut)
     {
@@ -124,15 +124,15 @@ private:
         return (u >= 0.0) && (v >= 0.0) && (u+v <= 1.0);
     }
 
-    void ComputeNormals();
+    void compute_normals();
 
-    bool SampleFace(int faceId, SplatVector& out/*, bool onlyCoords*/);
+    bool sample_face(int faceId, splat_vector& out/*, bool onlyCoords*/);
 
-    bool SampleFace(FacePointer facePtr, 
-                    SplatVector& out/*, bool onlyCoords*/);
+    bool sample_face(face_pointer facePtr, 
+                     splat_vector& out/*, bool onlyCoords*/);
 
     MyMesh m;
-    std::vector<Texture> textures;
+    std::vector<texture> textures;
 };
 
 

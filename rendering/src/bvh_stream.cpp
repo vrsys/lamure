@@ -10,24 +10,24 @@
 namespace lamure {
 namespace ren {
 
-BvhStream::
-BvhStream()
+bvh_stream::
+bvh_stream()
 : filename_(""),
   num_segments_(0) {
 
 
 }
 
-BvhStream::
-~BvhStream() {
-    CloseStream(false);
+bvh_stream::
+~bvh_stream() {
+    closeStream(false);
 }
 
-void BvhStream::
-OpenStream(const std::string& bvh_filename,
-           const BvhStreamType type) {
+void bvh_stream::
+openStream(const std::string& bvh_filename,
+           const bvh_stream_type type) {
 
-    CloseStream(false);
+    closeStream(false);
     
     num_segments_ = 0;
     filename_ = bvh_filename;
@@ -35,10 +35,10 @@ OpenStream(const std::string& bvh_filename,
 
     std::ios::openmode mode = std::ios::binary;
 
-    if (type_ == BvhStreamType::BVH_STREAM_IN) {
+    if (type_ == bvh_stream_type::BVH_STREAM_IN) {
         mode |= std::ios::in;
     }
-    if (type_ == BvhStreamType::BVH_STREAM_OUT) {
+    if (type_ == bvh_stream_type::BVH_STREAM_OUT) {
         mode |= std::ios::out;
         mode |= std::ios::trunc;
     }
@@ -47,29 +47,29 @@ OpenStream(const std::string& bvh_filename,
 
     if (!file_.is_open()) {
         throw std::runtime_error(
-            "PLOD: BvhStream::Unable to open stream: " + filename_);
+            "PLOD: bvh_stream::Unable to open stream: " + filename_);
     }
    
 }
 
-void BvhStream::
-CloseStream(const bool remove_file) {
+void bvh_stream::
+closeStream(const bool remove_file) {
     
     if (file_.is_open()) {
-        if (type_ == BvhStreamType::BVH_STREAM_OUT) {
+        if (type_ == bvh_stream_type::BVH_STREAM_OUT) {
             file_.flush();
         }
         file_.close();
         if (file_.fail()) {
             throw std::runtime_error(
-                "PLOD: BvhStream::Unable to close stream: " + filename_);
+                "PLOD: bvh_stream::Unable to close stream: " + filename_);
         }
 
-        if (type_ == BvhStreamType::BVH_STREAM_OUT) {
+        if (type_ == bvh_stream_type::BVH_STREAM_OUT) {
             if (remove_file) {
                 if (std::remove(filename_.c_str())) {
                     throw std::runtime_error(
-                        "PLOD: BvhStream::Unable to delete file: " + filename_);
+                        "PLOD: bvh_stream::Unable to delete file: " + filename_);
                 }
 
             }
@@ -79,15 +79,15 @@ CloseStream(const bool remove_file) {
 }
 
 
-void BvhStream::
-Write(BvhStream::BvhSerializable& serializable) {
+void bvh_stream::
+write(bvh_stream::bvh_serializable& serializable) {
 
     if (!file_.is_open()) {
         throw std::runtime_error(
-            "PLOD: BvhStream::Unable to serialize: " + filename_);
+            "PLOD: bvh_stream::Unable to serialize: " + filename_);
     }
 
-    BvhSig sig;
+    bvh_sig sig;
 
     size_t allocated_size = sig.size() + serializable.size();
     size_t used_size = allocated_size;
@@ -115,18 +115,18 @@ Write(BvhStream::BvhSerializable& serializable) {
 }
 
 
-void BvhStream::
-ReadBvh(const std::string& filename, Bvh& bvh) {
+void bvh_stream::
+readbvh(const std::string& filename, bvh& bvh) {
  
-    OpenStream(filename, BvhStreamType::BVH_STREAM_IN);
+    openStream(filename, bvh_stream_type::BVH_STREAM_IN);
 
     if (type_ != BVH_STREAM_IN) {
         throw std::runtime_error(
-            "PLOD: BvhStream::Failed to read bvh from: " + filename_);
+            "PLOD: bvh_stream::Failed to read bvh from: " + filename_);
     }
     if (!file_.is_open()) {
          throw std::runtime_error(
-            "PLOD: BvhStream::Failed to read bvh from: " + filename_);
+            "PLOD: bvh_stream::Failed to read bvh from: " + filename_);
     }
    
     //scan stream
@@ -136,10 +136,10 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
 
     num_segments_ = 0;
 
-    BvhTreeSeg tree;
-    BvhTreeExtensionSeg tree_ext;
-    std::vector<BvhNodeSeg> nodes;
-    std::vector<BvhNodeExtensionSeg> nodes_ext;
+    bvh_tree_seg tree;
+    bvh_tree_extension_seg tree_ext;
+    std::vector<bvh_node_seg> nodes;
+    std::vector<bvh_node_extension_seg> nodes_ext;
     uint32_t tree_id = 0;
     uint32_t tree_ext_id = 0;
     uint32_t node_id = 0;
@@ -148,14 +148,14 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
 
     //go through entire stream and fetch the segments
     while (true) {
-        BvhSig sig;
+        bvh_sig sig;
         sig.deserialize(file_);
         if (sig.signature_[0] != 'B' ||
             sig.signature_[1] != 'V' ||
             sig.signature_[2] != 'H' ||
             sig.signature_[3] != 'X') {
              throw std::runtime_error(
-                 "PLOD: BvhStream::Invalid magic encountered: " + filename_);
+                 "PLOD: bvh_stream::Invalid magic encountered: " + filename_);
         }
             
         size_t anchor = (size_t)file_.tellg();
@@ -163,7 +163,7 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
         switch (sig.signature_[4]) {
 
             case 'F': { //"BVHXFILE"
-                BvhFileSeg seg;
+                bvh_file_seg seg;
                 seg.deserialize(file_);
                 break;
             }
@@ -181,7 +181,7 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
                     }
                     default: {
                         throw std::runtime_error(
-                            "PLOD: BvhStream::Stream corrupt -- Invalid segment encountered");
+                            "PLOD: bvh_stream::Stream corrupt -- Invalid segment encountered");
                         break;
                     }
                 }
@@ -190,30 +190,30 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
             case 'N': { 
                 switch (sig.signature_[5]) {
                     case 'O': { //"BVHXNODE"
-                        BvhNodeSeg node;
+                        bvh_node_seg node;
                         node.deserialize(file_);
                         nodes.push_back(node);
                         if (node_id != node.node_id_) {
                             throw std::runtime_error(
-                                "PLOD: BvhStream::Stream corrupt -- Invalid node order");
+                                "PLOD: bvh_stream::Stream corrupt -- Invalid node order");
                         }
                         ++node_id;
                         break;
                     }
                     case 'E': { //"BVHXNEXT"
-                        BvhNodeExtensionSeg node_ext;
+                        bvh_node_extension_seg node_ext;
                         node_ext.deserialize(file_);
                         nodes_ext.push_back(node_ext);
                         if (node_ext_id != node_ext.node_id_) {
                             throw std::runtime_error(
-                                "PLOD: BvhStream::Stream corrupt -- Invalid node extension order");
+                                "PLOD: bvh_stream::Stream corrupt -- Invalid node extension order");
                         }
                         ++node_ext_id;
                         break;
                     }
                     default: {
                         throw std::runtime_error(
-                            "PLOD: BvhStream::Stream corrupt -- Invalid segment encountered");
+                            "PLOD: bvh_stream::Stream corrupt -- Invalid segment encountered");
                         break;
                     }
                 }
@@ -221,7 +221,7 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
             }
             default: {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::File corrupt -- Invalid segment encountered");
+                    "PLOD: bvh_stream::file corrupt -- Invalid segment encountered");
                 break;
             }
         }
@@ -235,16 +235,16 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
 
     }
 
-    CloseStream(false);
+    closeStream(false);
 
     if (tree_id != 1) {
        throw std::runtime_error(
-           "PLOD: BvhStream::Stream corrupt -- Invalid number of bvh segments");
+           "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh segments");
     }   
 
     if (tree_ext_id > 1) {
        throw std::runtime_error(
-           "PLOD: BvhStream::Stream corrupt -- Invalid number of bvh extensions");
+           "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh extensions");
     }    
 
     //Note: this is the rendering library version of the file reader!
@@ -261,7 +261,7 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
 
     if (bvh.num_nodes() != node_id) {
        throw std::runtime_error(
-           "PLOD: BvhStream::Stream corrupt -- Ivalid number of node segments");
+           "PLOD: bvh_stream::Stream corrupt -- Ivalid number of node segments");
     }
 
     for (const auto& node : nodes) {
@@ -269,46 +269,46 @@ ReadBvh(const std::string& filename, Bvh& bvh) {
                                  node.centroid_.y_,
                                  node.centroid_.z_);
        bvh.SetCentroid(node.node_id_, centroid);
-       bvh.SetAvgSurfelRadius(node.node_id_, node.avg_surfel_radius_);
-       bvh.SetVisibility(node.node_id_, (Bvh::NodeVisibility)node.visibility_);
+       bvh.SetAvgsurfelRadius(node.node_id_, node.avg_surfel_radius_);
+       bvh.SetVisibility(node.node_id_, (bvh::node_visibility)node.visibility_);
        scm::math::vec3f box_min(node.bounding_box_.min_.x_,
                                 node.bounding_box_.min_.y_,
                                 node.bounding_box_.min_.z_);
        scm::math::vec3f box_max(node.bounding_box_.max_.x_,
                                 node.bounding_box_.max_.y_,
                                 node.bounding_box_.max_.z_);
-       bvh.SetBoundingBox(node.node_id_, scm::gl::boxf(box_min, box_max));
+       bvh.Setbounding_box(node.node_id_, scm::gl::boxf(box_min, box_max));
    
     }
 
 }
 
-void BvhStream::
-WriteBvh(const std::string& filename, Bvh& bvh) {
+void bvh_stream::
+writebvh(const std::string& filename, bvh& bvh) {
 
-   OpenStream(filename, BvhStreamType::BVH_STREAM_OUT);
+   openStream(filename, bvh_stream_type::BVH_STREAM_OUT);
 
    if (type_ != BVH_STREAM_OUT) {
        throw std::runtime_error(
-           "PLOD: BvhStream::Failed to append tree to: " + filename_);
+           "PLOD: bvh_stream::Failed to append tree to: " + filename_);
    }
    if (!file_.is_open()) {
        throw std::runtime_error(
-           "PLOD: BvhStream::Failed to append tree to: " + filename_);
+           "PLOD: bvh_stream::Failed to append tree to: " + filename_);
    }
    
    file_.seekp(0, std::ios::beg);
 
-   BvhFileSeg seg;
+   bvh_file_seg seg;
    seg.major_version_ = 0;
    seg.minor_version_ = 1;
    seg.reserved_ = 0;
 
-   Write(seg);
+   write(seg);
 
    //Note: This is the rendering library version of the file writer!
    
-   BvhTreeSeg tree;
+   bvh_tree_seg tree;
    tree.segment_id_ = num_segments_++;
    tree.depth_ = bvh.depth();
    tree.num_nodes_ = bvh.num_nodes();
@@ -316,7 +316,7 @@ WriteBvh(const std::string& filename, Bvh& bvh) {
    tree.max_surfels_per_node_ = bvh.surfels_per_node();
    tree.serialized_surfel_size_ = bvh.size_of_surfel();
    tree.reserved_0_ = 0;
-   tree.state_ = BvhTreeState::BVH_STATE_SERIALIZED;
+   tree.state_ = bvh_tree_state::BVH_STATE_SERIALIZED;
    tree.reserved_1_ = 0;
    tree.reserved_2_ = 0;
    tree.translation_.x_ = bvh.translation().x;
@@ -324,10 +324,10 @@ WriteBvh(const std::string& filename, Bvh& bvh) {
    tree.translation_.z_ = bvh.translation().z;
    tree.reserved_3_ = 0;
 
-   Write(tree);
+   write(tree);
 
    for (uint32_t node_id = 0; node_id < bvh.num_nodes(); ++node_id) {
-       BvhNodeSeg node;
+       bvh_node_seg node;
        node.segment_id_ = num_segments_++;
        node.node_id_ = node_id;
        const scm::math::vec3f centroid = bvh.GetCentroid(node_id);
@@ -336,10 +336,10 @@ WriteBvh(const std::string& filename, Bvh& bvh) {
        node.centroid_.z_ = centroid.z;
        node.depth_ = bvh.GetDepthOfNode(node_id);
        node.reduction_error_ = 0.f;
-       node.avg_surfel_radius_ = bvh.GetAvgSurfelRadius(node_id);
-       node.visibility_ = (BvhNodeVisibility)bvh.GetVisibility(node_id);
+       node.avg_surfel_radius_ = bvh.GetAvgsurfelRadius(node_id);
+       node.visibility_ = (bvh_node_visibility)bvh.GetVisibility(node_id);
        node.reserved_ = 0;
-       const scm::gl::boxf box = bvh.GetBoundingBox(node_id);
+       const scm::gl::boxf box = bvh.Getbounding_box(node_id);
        node.bounding_box_.min_.x_ = box.min_vertex().x;
        node.bounding_box_.min_.y_ = box.min_vertex().y;
        node.bounding_box_.min_.z_ = box.min_vertex().z;
@@ -347,10 +347,10 @@ WriteBvh(const std::string& filename, Bvh& bvh) {
        node.bounding_box_.max_.y_ = box.max_vertex().y;
        node.bounding_box_.max_.z_ = box.max_vertex().z;
 
-       Write(node);
+       write(node);
    }
 
-   CloseStream(false);
+   closeStream(false);
 
 }
 

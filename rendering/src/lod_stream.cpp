@@ -22,13 +22,13 @@ LodStream()
 LodStream::
 ~LodStream() {
     try {
-        Close();
+        close();
     }
     catch (...) {}
 }
 
 void LodStream::
-Open(const std::string& file_name) {
+open(const std::string& file_name) {
     file_name_ = file_name;
     std::ios::openmode mode = std::ios::in |
                               std::ios::binary;
@@ -53,7 +53,7 @@ Open(const std::string& file_name) {
 
 
 void LodStream::
-OpenForWriting(const std::string& file_name) {
+openForWriting(const std::string& file_name) {
     file_name_ = file_name;
     std::ios::openmode mode = std::ios::out |
                               std::ios::binary;
@@ -69,7 +69,7 @@ OpenForWriting(const std::string& file_name) {
 }
 
 void LodStream::
-Close() {
+close() {
     if (is_file_open_) {
         stream_.close();
         stream_.exceptions(std::ifstream::failbit);
@@ -80,7 +80,7 @@ Close() {
 }
 
 void LodStream::
-Read(char* const data,
+read(char* const data,
      const size_t offset_in_bytes,
      const size_t length_in_bytes) const {
     assert(length_in_bytes > 0);
@@ -94,7 +94,7 @@ Read(char* const data,
 
                             
 void LodStream::
-Write(char* const data,
+write(char* const data,
       const size_t start_in_file,
       const size_t length_in_bytes) {
     assert(length_in_bytes > 0);

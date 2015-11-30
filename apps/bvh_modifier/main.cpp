@@ -17,7 +17,7 @@
 
 #include "tree_modifier.h"
 
-lamure::mat4r LoadMatrix(const std::string& filename)
+lamure::mat4r loadMatrix(const std::string& filename)
 {
     lamure::mat4r mat = lamure::mat4r::identity();
     if (filename == "eye")
@@ -132,22 +132,22 @@ int main(int argc, const char *argv[])
         inp_transforms = vm["transforms"].as<std::vector<std::string>>();
 
 
-    CollisionDetector::ObjectArray bvhs;
+    collision_detector::objectArray bvhs;
 
     auto trans_it = inp_transforms.begin();
 
     for (const auto& s : inp_files) {
-        auto tr = std::make_shared<lamure::pre::Bvh>(0, 0);
-        tr->LoadTree(s);
-        if (tr->state() != lamure::pre::Bvh::State::Serialized) {
-            std::cerr << "File of wrong processing state" << std::endl;
+        auto tr = std::make_shared<lamure::pre::bvh>(0, 0);
+        tr->load_tree(s);
+        if (tr->state() != lamure::pre::bvh::state_type::serialized) {
+            std::cerr << "file of wrong processing state" << std::endl;
             return EXIT_FAILURE;
         }
-        tr->PrintTreeProperties();
+        tr->print_tree_properties();
         lamure::mat4r mat = lamure::mat4r::identity();
         
         if (trans_it != inp_transforms.end()) {
-            mat = LoadMatrix(*trans_it);
+            mat = loadMatrix(*trans_it);
             ++trans_it;
         }
 
@@ -169,7 +169,7 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
         TreeModifier tm(bvhs);
-        tm.ComplementOnFirstTree(vm["relax-levels"].as<int>());
+        tm.complementOnFirstTree(vm["relax-levels"].as<int>());
     }
 
     // histogram matching
@@ -179,7 +179,7 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
         TreeModifier tm(bvhs);
-        tm.HistMatchSecondTree();
+        tm.histogrammatchSecondTree();
     }
     
     // radius multiplier
@@ -206,11 +206,11 @@ int main(int argc, const char *argv[])
 
             /*
             using namespace lamure;
-            pre::NodeSerializer ser(t.first->max_surfels_per_node(), 0);
-            ser.Open(AddToPath(t.first->base_path(), ".lod").string(), true);
+            pre::node_serializer ser(t.first->max_surfels_per_node(), 0);
+            ser.open(add_to_path(t.first->base_path(), ".lod").string(), true);
 
-            pre::Surfel::SurfelVector surfels;
-            ser.ReadNodeImmediate(surfels, 32767);
+            pre::surfel::surfel_vector surfels;
+            ser.read_node_immediate(surfels, 32767);
 
             for(const auto& s: surfels)
                     std::cout << s.radius() << std::endl;

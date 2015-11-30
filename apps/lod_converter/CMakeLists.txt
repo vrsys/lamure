@@ -11,7 +11,7 @@ include_directories(${REND_INCLUDE_DIR} ${COMMON_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${REND_LIBRARY}
-    ${OPENGL_LIBRARIES} 
+    ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     ${SCHISM_LIBRARIES}
     ${BOOST_LIBRARIES}

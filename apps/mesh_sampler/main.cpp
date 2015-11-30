@@ -6,7 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <iostream>
-#include "Sampler.h"
+#include "sampler.h"
 
 int main(int argc, char **argv)
 {
@@ -51,8 +51,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    Sampler sampler;
-    if (!sampler.Load(argv[1]))
+    sampler sampler;
+    if (!sampler.load(argv[1]))
         return -1;
 
     if (!sampler.SampleMesh(argv[2]))

@@ -39,15 +39,15 @@ public:
 
     TemporaryStorages temporary_storages() { return temporary_storages_; };
 
-    scm::gl::buffer_ptr GetContextBuffer(scm::gl::render_device_ptr device);
+    scm::gl::buffer_ptr GetContextbuffer(scm::gl::render_device_ptr device);
     scm::gl::vertex_array_ptr GetContextMemory(scm::gl::render_device_ptr device);
 
     const node_t upload_budget_in_nodes() const { return upload_budget_in_nodes_; };
     const node_t render_budget_in_nodes() const { return render_budget_in_nodes_; };
 
-    void MapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::render_device_ptr device);
-    void UnmapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::render_device_ptr device);
-    void UpdatePrimaryBuffer(const CutDatabaseRecord::TemporaryBuffer& from_buffer, scm::gl::render_device_ptr device);
+    void MapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device);
+    void UnmapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device);
+    void UpdatePrimarybuffer(const CutdatabaseRecord::Temporarybuffer& from_buffer, scm::gl::render_device_ptr device);
 
     void Create(scm::gl::render_device_ptr device);
 

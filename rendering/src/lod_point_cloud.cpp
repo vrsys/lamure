@@ -15,35 +15,35 @@ namespace lamure
 namespace ren
 {
 
-LodPointCloud::
-LodPointCloud(const std::string& filename)
+lod_point_cloud::
+lod_point_cloud(const std::string& filename)
 : model_id_(invalid_model_t),
   is_loaded_(false),
   bvh_(nullptr),
   transform_(scm::math::mat4f::identity()) {
-    Load(filename);
+    load(filename);
 }
 
-LodPointCloud::
-~LodPointCloud() {
+lod_point_cloud::
+~lod_point_cloud() {
     if (bvh_ != nullptr) {
         delete bvh_;
         bvh_ = nullptr;
     }
 }
 
-void LodPointCloud::
-Load(const std::string& filename) {
+void lod_point_cloud::
+load(const std::string& filename) {
 
     std::string extension = filename.substr(filename.size()-3);
     
     if (extension.compare("kdn") == 0 || extension.compare("bvh") == 0) {
-        bvh_ = new Bvh(filename);
+        bvh_ = new bvh(filename);
         is_loaded_ = true;
     }
     else {
         throw std::runtime_error(
-            "LodPointCloud::Incompatible input file: " + filename);
+            "lod_point_cloud::Incompatible input file: " + filename);
     }
     
 }

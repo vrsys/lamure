@@ -11,21 +11,21 @@ namespace lamure {
 namespace pre
 {
 
-std::mutex Logger::mutex_;
-Logger Logger::single_;
+std::mutex logger::mutex_;
+logger logger::single_;
 
-Logger::Logger() 
+logger::logger() 
 {
 
 }
 
-Logger::
-~Logger()
+logger::
+~logger()
 {
 }
 
-Logger& Logger::
-GetInstance() 
+logger& logger::
+get_instance() 
 {
     std::lock_guard<std::mutex> lock(mutex_);
     return single_;

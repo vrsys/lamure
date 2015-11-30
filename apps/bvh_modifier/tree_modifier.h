@@ -11,30 +11,30 @@
 #include <lamure/pre/bvh.h>
 #include <functional>
 
-class CollisionDetector
+class collision_detector
 {
 public:
-    typedef std::pair<lamure::pre::SharedBvh, lamure::mat4r> Object;
-    typedef std::vector<Object> ObjectArray;
-    typedef std::vector<lamure::BoundingBox> AABBArray;
+    typedef std::pair<lamure::pre::bvh_ptr, lamure::mat4r> object;
+    typedef std::vector<object> objectArray;
+    typedef std::vector<lamure::bounding_box> aabb_array;
 
-    typedef std::function<void(lamure::NodeIdType a, lamure::NodeIdType b)> CallbackFunc;
+    typedef std::function<void(lamure::node_id_type a, lamure::node_id_type b)> callback_func;
 
-    CollisionDetector(const Object& bvh_l,
-                      const Object& bvh_r,
+    collision_detector(const object& bvh_l,
+                      const object& bvh_r,
                       int stop_level_a,
                       int stop_level_b);
 
-    void SearchIntersections(const CallbackFunc& callback) const;
-    const AABBArray& boxes() const { return boxes_; };
+    void search_intersections(const callback_func& callback) const;
+    const aabb_array& boxes() const { return boxes_; };
 
 private:
-    const Object& bvh_l_;
-    const Object& bvh_r_;
-    AABBArray boxes_;
+    const object& bvh_l_;
+    const object& bvh_r_;
+    aabb_array boxes_;
 
-    void Traverse(lamure::NodeIdType a, lamure::NodeIdType b, 
-                  const CallbackFunc& callback) const;
+    void traverse(lamure::node_id_type a, lamure::node_id_type b, 
+                  const callback_func& callback) const;
 
     int stop_level_a_;
     int stop_level_b_;
@@ -44,21 +44,21 @@ private:
 class TreeModifier
 {
 public:
-    TreeModifier(CollisionDetector::ObjectArray& bvhs)
+    TreeModifier(collision_detector::objectArray& bvhs)
         : bvhs_(bvhs) {}
 
-    void ComplementOnFirstTree(int relax_levels);
+    void complementOnFirstTree(int relax_levels);
 
-    void HistMatchSecondTree();
+    void histogrammatchSecondTree();
 
     void MultRadii(lamure::real factor);
 
 private:
 
-    lamure::real ComputeAvgRadius(const lamure::pre::Bvh& bvh, unsigned depth) const;
+    lamure::real computeAvgRadius(const lamure::pre::bvh& bvh, unsigned depth) const;
 
 
-    CollisionDetector::ObjectArray& bvhs_;
+    collision_detector::objectArray& bvhs_;
 };
 
 #endif // TREE_MODIFIER_H_

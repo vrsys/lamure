@@ -2,13 +2,13 @@
 # search paths
 ##############################################################################
 SET(GLUT_INCLUDE_SEARCH_DIRS
-  ${GLOBAL_EXT_DIR}/include/freeglut
+  ${GLOBAL_EXT_DIR}/freeglut/include
   ${GLUT_INCLUDE_SEARCH_DIR}
   /usr/include
 )
 
 SET(GLUT_LIBRARY_SEARCH_DIRS
-  ${GLOBAL_EXT_DIR}/lib
+  ${GLOBAL_EXT_DIR}/freeglut/lib
   ${GLUT_LIBRARY_SEARCH_DIR}
   /usr/lib
   /usr/lib/x86_64-linux-gnu

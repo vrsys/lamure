@@ -10,7 +10,7 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release CACHE TYPE INTERNAL FORCE )
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING
-        "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
+        "Choose the type of build, options are: None Debug Release RelWithDebInfo MinsizeRel."
         FORCE)
 endif()
 
@@ -38,7 +38,7 @@ file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
 file(MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
 
 ############################################################
-# Compiler flags
+# compiler flags
 
 if(MSVC)
     set(PROJECT_COMPILE_FLAGS "-D_VARIADIC_MAX=10 -D _SCL_SECURE=0 -D _USE_MATH_DEFINES=1 /MP")
@@ -55,41 +55,81 @@ set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
 
 ############################################################
 # Externals
-include(find_compiler)
+################################
+SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${GLOBAL_EXT_DIR})
+
+################################
+# schism
+################################
+#include(find_compiler)
 include(find_schism)
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS})
 link_directories(${SCHISM_LIBRARY_DIRS})
 
-include(find_boost)
-include_directories(SYSTEM ${BOOST_INCLUDE_DIRS})
-link_directories(${BOOST_LIBRARY_DIRS})
+################################
+# Boost
+################################
+IF (MSVC)
+  set(Boost_USE_MULTITHREADED ON)
+  set(Boost_USE_STATIC_LIBS ON)
+ENDIF ()
 
+IF (MSVC)
+  set(BOOST_INCLUDEDIR ${GLOBAL_EXT_DIR}/boost/include)
+  set(BOOST_LIBRARYDIR ${GLOBAL_EXT_DIR}/boost/lib)
+ELSEIF (UNIX)
+  set(BOOST_INCLUDEDIR /opt/boost/latest/include)
+  set(BOOST_LIBRARYDIR /opt/boost/latest/lib)
+ENDIF ()
+
+find_package( Boost 1.54.0 REQUIRED thread system program_options timer chrono filesystem date_time)
+find_package( Threads )
+
+INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
+LINK_DIRECTORIES(${Boost_LIBRARY_DIR})
+
+################################
 # GLUT
-if (MSVC)
-  include(find_freeglut)
-  
-elseif (UNIX)
-  find_package(GLUT REQUIRED)
-  include_directories(${GLUT_INCLUDE_DIRS})
-  link_directories(${GLUT_LIBRARY_DIRS})
-  add_definitions(${GLUT_DEFINITIONS})
-  set(GLUT_LIBRARY_DEBUG ${GLUT_LIBRARY})
-endif (MSVC)
+################################
+SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${GLOBAL_EXT_DIR}/freeglut/include)
+SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${GLOBAL_EXT_DIR}/freeglut/lib)
+find_package(GLUT REQUIRED)
 
+include_directories(${GLUT_INCLUDE_DIRS})
+link_directories(${GLUT_LIBRARY_DIRS})
+
+add_definitions(${GLUT_DEFINITIONS})
+
+################################
 # OpenGL
-if (MSVC)
-elseif (UNIX)
+################################
+if (UNIX)
   find_package(OpenGL REQUIRED)
   include_directories(${OpenGL_INCLUDE_DIRS})
   link_directories(${OpenGL_LIBRARY_DIRS})
   add_definitions(${OpenGL_DEFINITIONS})
-endif (MSVC)
+endif ()
 
-#list(APPEND PROJECT_LIBS ${MALLOC_LIBRARY})
-#list(APPEND PROJECT_LIBS ${PROFILER_LIBRARY})
-
+################################
+# FreeImage
+################################
 include (find_freeimage)
+
+################################
+# CGAL
+################################
+IF (MSVC)
+  SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/externals/CGAL-4.7/lib/CGAL)
+
+  SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${GLOBAL_EXT_DIR}/CGAL-4.7/include)
+  SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${GLOBAL_EXT_DIR}/CGAL-4.7/lib)
+
+  #include(findCGAL)
+  find_package( CGAL 1.54.0 REQUIRED CGAL CGAL_Core)
+ELSEIF (UNIX)
+  include(find_cgal)
+ENDIF (MSVC)
 
 ############################################################
 # Build 3rd-party

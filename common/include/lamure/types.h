@@ -16,7 +16,7 @@ namespace lamure {
 using real = double; //< for surfel position and radius
 
 // tree types
-using NodeIdType = uint32_t;
+using node_id_type = uint32_t;
 
 // math
 using vec3r  = scm::math::vec<real, 3>; //< for surfel position

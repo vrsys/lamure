@@ -15,8 +15,8 @@
 namespace lamure {
 namespace pre {
 
-void FormatXYZAll::
-Read(const std::string& filename, SurfelCallbackFuntion callback)
+void format_xyzall::
+read(const std::string& filename, surfel_callback_funtion callback)
 {
     std::ifstream xyz_file_stream(filename);
 
@@ -59,7 +59,7 @@ Read(const std::string& filename, SurfelCallbackFuntion callback)
         sstream >> color[2];
         sstream >> radius;
 
-        callback(Surfel(vec3r(pos[0], pos[1], pos[2]),
+        callback(surfel(vec3r(pos[0], pos[1], pos[2]),
                         vec3b(color[0], color[1], color[2]),
                         radius/2.f,
                         vec3f(norm[0], norm[1], norm[2])));
@@ -68,8 +68,8 @@ Read(const std::string& filename, SurfelCallbackFuntion callback)
     xyz_file_stream.close();
 }
 
-void FormatXYZAll::
-Write(const std::string& filename, BufferCallbackFuntion callback)
+void format_xyzall::
+write(const std::string& filename, buffer_callback_function callback)
 {
     throw std::runtime_error("Not implemented yet!");
 }

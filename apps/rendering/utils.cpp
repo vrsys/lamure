@@ -10,7 +10,7 @@
 
 namespace {
 
-scm::math::mat4f LoadMatrix(const std::string& filename)
+scm::math::mat4f loadMatrix(const std::string& filename)
 {
 
     std::ifstream f(filename);
@@ -31,7 +31,7 @@ scm::math::mat4f LoadMatrix(const std::string& filename)
 }
 
 std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > 
-ReadModelString(std::string const& path_to_resource_file, 
+readModelString(std::string const& path_to_resource_file, 
                 std::set<lamure::model_t>* visible_set, 
                 std::set<lamure::model_t>* invisible_set)
 {
@@ -92,7 +92,7 @@ ReadModelString(std::string const& path_to_resource_file,
                     }
                     else {
                         auto tranf_filename = fs::absolute(fs::path(dollar), filename.parent_path());
-                        model_transf = LoadMatrix(tranf_filename.string());
+                        model_transf = loadMatrix(tranf_filename.string());
                     }
                   }
 
@@ -143,7 +143,7 @@ void CreateSceneNameFromVector(std::vector<std::string> const& name_vector, std:
     name = n;
 }
 
-void CreateSceneNameFromCameraSessionFile(std::string const& session_file, std::string& name)
+void CreateSceneNameFromCameraSessionfile(std::string const& session_file, std::string& name)
 {
 
 

@@ -11,11 +11,11 @@ namespace lamure {
 namespace pre
 {
 
-SurfelArrayAbstract::
-~SurfelArrayAbstract() 
+surfel_array_abstract::
+~surfel_array_abstract() 
 {
     try {
-        Reset();
+        reset();
     }
     catch (...) {}
 }

@@ -58,14 +58,14 @@ protected:
 private:
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    SplitScreenRenderer* renderer_;
+    split_screen_renderer* renderer_;
     lamure::ren::Camera*   active_camera_left_;
     lamure::ren::Camera*   active_camera_right_;
     bool                control_left_;
 #endif
 
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    Renderer* renderer_;
+    renderer* renderer_;
 #endif
 
     lamure::ren::Camera*   active_camera_;
@@ -80,7 +80,7 @@ private:
     lamure::view_t         num_cameras_;
     std::vector<lamure::ren::Camera*> cameras_;
 
-    lamure::ren::Camera::MouseState mouse_state_;
+    lamure::ren::Camera::Mousestate mouse_state_;
 
     bool                fast_travel_;
 

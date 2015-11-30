@@ -14,13 +14,13 @@
 namespace lamure {
 namespace pre {
 
-class ReductionStrategy
+class reduction_strategy
 {
 public:
 
-    virtual ~ReductionStrategy() {}
+    virtual ~reduction_strategy() {}
 
-    virtual SurfelMemArray CreateLod(real& reduction_error, const std::vector<SurfelMemArray*>& input,
+    virtual surfel_mem_array create_lod(real& reduction_error, const std::vector<surfel_mem_array*>& input,
                                      const uint32_t surfels_per_node) const = 0;
 
 };

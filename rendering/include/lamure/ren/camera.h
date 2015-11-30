@@ -35,13 +35,13 @@ public:
     mouse
   };
 
-    struct MouseState
+    struct Mousestate
     {
         bool lb_down_;
         bool mb_down_;
         bool rb_down_;
 
-        MouseState() : lb_down_(false), mb_down_(false), rb_down_(false)
+        Mousestate() : lb_down_(false), mb_down_(false), rb_down_(false)
         {}
     };
 
@@ -79,7 +79,7 @@ public:
     void                        UpdateTrackballMousePos(double x, double y);
     void                        UpdateTrackball(int x, int y,
                                                 int window_width, int window_height,
-                                                MouseState const& mouse_state);
+                                                Mousestate const& mouse_state);
 
     void                        set_dolly_sens_(double ds) { dolly_sens_ = ds; }
 
@@ -95,11 +95,11 @@ public:
     scm::math::mat4d const GetHighPrecisionViewMatrix() const;
     scm::math::mat4f const GetProjectionMatrix() const;
 
-    void                        WriteViewMatrix(std::ofstream& matrix_stream);
+    void                        writeViewMatrix(std::ofstream& matrix_stream);
     void                        SetTrackballCenterOfRotation(const scm::math::vec3f& cor);
 protected:
 
-    enum CamState
+    enum Camstate
     {
         CAM_STATE_GUA,
         CAM_STATE_LAMURE,
@@ -143,7 +143,7 @@ private:
     double                      sum_rot_y_;
     double                      sum_rot_z_;
 
-    CamState                    cam_state_;
+    Camstate                    cam_state_;
 };
 
 } } // namespace lamure

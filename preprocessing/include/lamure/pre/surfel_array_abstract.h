@@ -15,16 +15,16 @@ namespace lamure
 namespace pre
 {
 
-class PREPROCESSING_DLL SurfelArrayAbstract
+class PREPROCESSING_DLL surfel_array_abstract
 {
 public:
 
-    explicit           SurfelArrayAbstract()
+    explicit           surfel_array_abstract()
                             : is_empty_(true),
                               offset_(0),
                               length_(0) {}
 
-    virtual             ~SurfelArrayAbstract();
+    virtual             ~surfel_array_abstract();
 
     const bool          is_empty() const { return is_empty_; }
     const size_t        offset() const { return offset_; }
@@ -34,9 +34,9 @@ public:
     void                set_length(const size_t value) { length_ = value; }
 
 
-    virtual Surfel      ReadSurfel(const size_t index) const = 0;
-    virtual void        WriteSurfel(const Surfel& surfel, const size_t index) const = 0;
-    virtual void        Reset() { is_empty_ = true; offset_ = 0; length_ = 0; };
+    virtual surfel      read_surfel(const size_t index) const = 0;
+    virtual void        write_surfel(const surfel& surfel, const size_t index) const = 0;
+    virtual void        reset() { is_empty_ = true; offset_ = 0; length_ = 0; };
 
 protected:
 
@@ -46,7 +46,7 @@ protected:
 };
 
 template <typename T>
-struct SurfelArrayTraits;
+struct surfel_array_traits;
 
 } // namespace pre
 } // namespace lamure

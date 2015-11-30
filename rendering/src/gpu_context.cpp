@@ -62,20 +62,20 @@ Create(scm::gl::render_device_ptr device) {
 
     TestVideoMemory(device);
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     temp_buffer_a_ = new GpuAccess(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
     temp_buffer_b_ = new GpuAccess(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
     primary_buffer_ = new GpuAccess(device, render_budget_in_nodes_, database->surfels_per_node(), true);
 
-    MapTempStorage(CutDatabaseRecord::TemporaryBuffer::BUFFER_A, device);
-    MapTempStorage(CutDatabaseRecord::TemporaryBuffer::BUFFER_B, device);
+    MapTempStorage(CutdatabaseRecord::Temporarybuffer::BUFFER_A, device);
+    MapTempStorage(CutdatabaseRecord::Temporarybuffer::BUFFER_B, device);
 }
 
 void GpuContext::
 TestVideoMemory(scm::gl::render_device_ptr device) {
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    Policy* policy = Policy::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
+    Policy* policy = Policy::get_instance();
 
     size_t size_of_node_in_bytes = database->size_of_surfel() * database->surfels_per_node();
     size_t render_budget_in_mb = policy->render_budget_in_mb();
@@ -99,7 +99,7 @@ TestVideoMemory(scm::gl::render_device_ptr device) {
 #else
     GpuAccess* test_temp = new GpuAccess(device, 1, database->surfels_per_node(), false);
     GpuAccess* test_main = new GpuAccess(device, 1, database->surfels_per_node(), true);
-    LodPointCloud::SerializedSurfel* node_data = (LodPointCloud::SerializedSurfel*)new char[size_of_node_in_bytes];
+    lod_point_cloud::serialized_surfel* node_data = (lod_point_cloud::serialized_surfel*)new char[size_of_node_in_bytes];
     memset((char*)node_data, 0, size_of_node_in_bytes);
     char* mapped_temp = test_temp->Map(device);
     memcpy(mapped_temp, node_data, size_of_node_in_bytes);
@@ -157,7 +157,7 @@ TestVideoMemory(scm::gl::render_device_ptr device) {
 }
 
 scm::gl::buffer_ptr GpuContext::
-GetContextBuffer(scm::gl::render_device_ptr device) {
+GetContextbuffer(scm::gl::render_device_ptr device) {
     if (!is_created_)
         Create(device);
 
@@ -177,21 +177,21 @@ GetContextMemory(scm::gl::render_device_ptr device) {
 }
 
 void GpuContext::
-MapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::render_device_ptr device) {
+MapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device) {
     if (!is_created_)
         Create(device);
 
     assert(device);
 
     switch (buffer) {
-        case CutDatabaseRecord::TemporaryBuffer::BUFFER_A:
+        case CutdatabaseRecord::Temporarybuffer::BUFFER_A:
             if (!temp_buffer_a_->is_mapped()) {
                 temporary_storages_.storage_a_ = temp_buffer_a_->Map(device);
             }
             return;
             break;
 
-        case CutDatabaseRecord::TemporaryBuffer::BUFFER_B:
+        case CutdatabaseRecord::Temporarybuffer::BUFFER_B:
             if (!temp_buffer_b_->is_mapped()) {
                 temporary_storages_.storage_b_ = temp_buffer_b_->Map(device);
             }
@@ -207,20 +207,20 @@ MapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::render
 }
 
 void GpuContext::
-UnmapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::render_device_ptr device) {
+UnmapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device) {
     if (!is_created_)
         Create(device);
 
     assert(device);
 
     switch (buffer) {
-        case CutDatabaseRecord::TemporaryBuffer::BUFFER_A:
+        case CutdatabaseRecord::Temporarybuffer::BUFFER_A:
             if (temp_buffer_a_->is_mapped()) {
                 temp_buffer_a_->Unmap(device);
             }
             break;
 
-        case CutDatabaseRecord::TemporaryBuffer::BUFFER_B:
+        case CutdatabaseRecord::Temporarybuffer::BUFFER_B:
             if (temp_buffer_b_->is_mapped()) {
                 temp_buffer_b_->Unmap(device);
             }
@@ -231,28 +231,28 @@ UnmapTempStorage(const CutDatabaseRecord::TemporaryBuffer& buffer, scm::gl::rend
 }
 
 void GpuContext::
-UpdatePrimaryBuffer(const CutDatabaseRecord::TemporaryBuffer& from_buffer, scm::gl::render_device_ptr device) {
+UpdatePrimarybuffer(const CutdatabaseRecord::Temporarybuffer& from_buffer, scm::gl::render_device_ptr device) {
     if (!is_created_)
         Create(device);
 
     assert(device);
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     size_t size_of_node_in_bytes = database->surfels_per_node() * database->size_of_surfel();
 
-    CutDatabase* cuts = CutDatabase::GetInstance();
+    Cutdatabase* cuts = Cutdatabase::get_instance();
 
     size_t uploaded_nodes = 0;
 
     switch (from_buffer) {
-        case CutDatabaseRecord::TemporaryBuffer::BUFFER_A:
+        case CutdatabaseRecord::Temporarybuffer::BUFFER_A:
         {
             if (temp_buffer_a_->is_mapped()) {
                 throw std::runtime_error(
                    "PLOD: GpuContext::Failed to transfer nodes into main memory on context: " + context_id_);
             }
-            std::vector<CutDatabaseRecord::SlotUpdateDescr>& transfer_descr_list = cuts->GetUpdatedSet(context_id_);
+            std::vector<CutdatabaseRecord::SlotUpdateDescr>& transfer_descr_list = cuts->GetUpdatedSet(context_id_);
             if (!transfer_descr_list.empty()) {
                 uploaded_nodes += transfer_descr_list.size();
 
@@ -266,13 +266,13 @@ UpdatePrimaryBuffer(const CutDatabaseRecord::TemporaryBuffer& from_buffer, scm::
             break;
         }
 
-        case CutDatabaseRecord::TemporaryBuffer::BUFFER_B:
+        case CutdatabaseRecord::Temporarybuffer::BUFFER_B:
         {
             if (temp_buffer_b_->is_mapped()) {
                 throw std::runtime_error(
                    "PLOD: GpuContext::Failed to transfer nodes into main memory on context: " + context_id_);
             }
-            std::vector<CutDatabaseRecord::SlotUpdateDescr>& transfer_descr_list = cuts->GetUpdatedSet(context_id_);
+            std::vector<CutdatabaseRecord::SlotUpdateDescr>& transfer_descr_list = cuts->GetUpdatedSet(context_id_);
             if (!transfer_descr_list.empty()) {
                 uploaded_nodes += transfer_descr_list.size();
 

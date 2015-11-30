@@ -16,22 +16,22 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL FormatPLY : public FormatAbstract
+class PREPROCESSING_DLL format_ply : public format_abstract
 {
 public:
-    explicit            FormatPLY()
-                            : FormatAbstract()
+    explicit            format_ply()
+                            : format_abstract()
                             { has_normals_ = false;
                               has_radii_   = false;
                               has_color_   = true; }
 
 
 protected:
-    virtual void        Read(const std::string& filename, SurfelCallbackFuntion callback);
-    virtual void        Write(const std::string& filename, BufferCallbackFuntion callback);
+  virtual void        read(const std::string& filename, surfel_callback_funtion callback) override;
+  virtual void        write(const std::string& filename, buffer_callback_function callback) override;
 
 private:
-    Surfel              current_surfel_;
+    surfel              current_surfel_;
 
     template <typename ScalarType> 
     std::function <void (ScalarType)> scalar_callback(const std::string& element_name, 
@@ -39,11 +39,11 @@ private:
 };
 
 template <>
-std::function<void(float)> FormatPLY::
+std::function<void(float)> format_ply::
 scalar_callback(const std::string& element_name, const std::string& property_name);
 
 template <>
-std::function<void(uint8_t)> FormatPLY::
+std::function<void(uint8_t)> format_ply::
 scalar_callback(const std::string& element_name, const std::string& property_name);
 
 } // namespace pre

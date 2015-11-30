@@ -19,12 +19,12 @@ namespace lamure {
 namespace pre
 {
 
-class PREPROCESSING_DLL Surfel /*final*/
+class PREPROCESSING_DLL surfel /*final*/
 {
 public:
-    using CompareFunction = std::function<bool(const Surfel& left, const Surfel& right)>;
+  using compare_function = std::function<bool(const surfel& left, const surfel& right)>;
 
-                        Surfel(const vec3r& pos    = vec3r(0.0),
+                        surfel(const vec3r& pos    = vec3r(0.0),
                                const vec3b& color  = vec3b(0),
                                const real   radius = 0.0,
                                const vec3f& normal = vec3f(0.f))
@@ -45,21 +45,20 @@ public:
     const vec3f         normal() const { return normal_; }
     vec3f&              normal() { return normal_; }
 
-    bool                operator==(const Surfel& rhs) const
+    bool                operator==(const surfel& rhs) const
                             { return pos_    == rhs.pos_ &&
                                      color_  == rhs.color_ &&
                                      radius_ == rhs.radius_ &&
                                      normal_ == rhs.normal_; }
 
-    bool                operator!=(const Surfel& rhs) const
+    bool                operator!=(const surfel& rhs) const
                             { return !(operator==(rhs)); }
 
-    static bool         CompareX(const Surfel &left, const Surfel &right);
-    static bool         CompareY(const Surfel &left, const Surfel &right);
-    static bool         CompareZ(const Surfel &left, const Surfel &right);
+    static bool         compare_x(const surfel &left, const surfel &right);
+    static bool         compare_y(const surfel &left, const surfel &right);
+    static bool         compare_z(const surfel &left, const surfel &right);
 
-    static CompareFunction
-                        Compare(const uint8_t axis);
+    static compare_function compare(const uint8_t axis);
 
 private:
 
@@ -70,8 +69,8 @@ private:
 
 };
 
-using SurfelVector = std::vector<Surfel>;
-using SharedSurfelVector = std::shared_ptr<SurfelVector>;
+using surfel_vector = std::vector<surfel>;
+using shared_surfel_vector = std::shared_ptr<surfel_vector>;
 
 } } // namespace lamure
 

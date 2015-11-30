@@ -5,8 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef COMMON_SPHERE_H_
-#define COMMON_SPHERE_H_
+#ifndef COMMON_sphere_H_
+#define COMMON_sphere_H_
 
 #include <lamure/platform.h>
 #include <lamure/types.h>
@@ -14,32 +14,32 @@
 namespace lamure
 {
 
-class BoundingBox;
+class bounding_box;
 
-class COMMON_DLL Sphere
+class COMMON_DLL sphere
 {
 public:
-                        Sphere(const vec3r center = vec3r(0.0),
+                        sphere(const vec3r center = vec3r(0.0),
                                const real radius = 0.0)
                                : center_(center), radius_(radius)
                             {
 
                             }
 
-    virtual             ~Sphere() {}
+    virtual             ~sphere() {}
 
     inline const vec3r  center() const { return center_; }
     inline const real  radius() const { return radius_; }
 
-    inline bool         operator==(const Sphere& rhs) const
+    inline bool         operator==(const sphere& rhs) const
                             { return center_ == rhs.center_ && radius_ == rhs.radius_; }
-    inline bool         operator!=(const Sphere& rhs) const
+    inline bool         operator!=(const sphere& rhs) const
                             { return !(operator==(rhs)); }
 
-    const BoundingBox   GetBoundingBox() const;
+    const bounding_box   get_bounding_box() const;
 
-    bool		        Contains(const vec3r& point) const;
-    bool		        IsInside(const BoundingBox& bounding_box) const;
+    bool		        contains(const vec3r& point) const;
+    bool		        is_inside(const bounding_box& bounding_box) const;
 
 private:
 
@@ -50,4 +50,4 @@ private:
 
 } // namespace lamure
 
-#endif // COMMON_SPHERE_H_
+#endif // COMMON_sphere_H_

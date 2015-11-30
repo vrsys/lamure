@@ -11,33 +11,33 @@
 namespace lamure {
 namespace pre {
 
-Surfel SurfelDiskArray::
-ReadSurfel(const size_t index) const
+surfel surfel_disk_array::
+read_surfel(const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
 
-    return file_->Read(offset_ + index);
+    return file_->read(offset_ + index);
 }
 
-void SurfelDiskArray::
-WriteSurfel(const Surfel& surfel, const size_t index) const
+void surfel_disk_array::
+write_surfel(const surfel& surfel, const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
 
-    file_->Write(surfel, offset_ + index);
+    file_->write(surfel, offset_ + index);
 }
 
-void SurfelDiskArray::
-Reset()
+void surfel_disk_array::
+reset()
 {
-    SurfelArrayAbstract::Reset();
+    surfel_array_abstract::reset();
     file_.reset();
 }
 
-void SurfelDiskArray::
-Reset(const SharedFile& file,
+void surfel_disk_array::
+reset(const shared_file& file,
       const size_t offset,
       const size_t length)
 {
@@ -47,29 +47,29 @@ Reset(const SharedFile& file,
     file_ = file;
 }
 
-SharedSurfelVector SurfelDiskArray::
-ReadAll() const
+shared_surfel_vector surfel_disk_array::
+read_all() const
 {
     if (is_empty()) {
-        LOGGER_ERROR("Attempt to read from an empty SurfelDiskArray");
+        LOGGER_ERROR("Attempt to read from an empty surfel_disk_array");
         exit(1);
     }
 
-    SurfelVector data(length_);
-    file_->Read(&data, 0, offset_, length_);
-    return std::make_shared<SurfelVector>(data);
+    surfel_vector data(length_);
+    file_->read(&data, 0, offset_, length_);
+    return std::make_shared<surfel_vector>(data);
 }
 
-void SurfelDiskArray::
-WriteAll(const SharedSurfelVector& data,
+void surfel_disk_array::
+write_all(const shared_surfel_vector& data,
          const size_t offset_in_vector)
 {
     if (is_empty()) {
-        LOGGER_ERROR("Attempt to write to an empty SurfelDiskArray");
+        LOGGER_ERROR("Attempt to write to an empty surfel_disk_array");
         exit(1);
     }
 
-    file_->Write(data.get(), offset_in_vector, offset_, length_);
+    file_->write(data.get(), offset_in_vector, offset_, length_);
 }
 
 } // namespace pre

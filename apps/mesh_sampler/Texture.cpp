@@ -5,7 +5,7 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include "Texture.h"
+#include "texture.h"
 
 #include <iostream>
 #include <cassert>
@@ -14,14 +14,14 @@
 
 #include <FreeImagePlus.h>
 
-Texture::Texture(Texture&& other)
+texture::texture(texture&& other)
 : _image(other._image)
 {
   other._image.reset();
 }
 
-Texture& Texture::
-operator=(Texture&& other)
+texture& texture::
+operator=(texture&& other)
 {
   if (this != &other)
   {
@@ -31,42 +31,42 @@ operator=(Texture&& other)
   return *this;
 }
 
-bool Texture::
-Load(const std::string& filename)
+bool texture::
+load(const std::string& filename)
 {
   _image = std::make_shared<fipImage>();
 
   if (!_image->load(filename.c_str()))
   {
-    std::cerr << "Texture::load(): " << "unable to open file: " << filename << std::endl;
+    std::cerr << "texture::load(): " << "unable to open file: " << filename << std::endl;
     return false;
   }
   else {
-    std::cerr << "Texture::load(): " << filename << " : " << _image->getWidth() << "x" << _image->getHeight() << std::endl;
+    std::cerr << "texture::load(): " << filename << " : " << _image->getWidth() << "x" << _image->getHeight() << std::endl;
   }
 
   return true;
 }
 
-int Texture::
-Width() const
+int texture::
+width() const
 {
-  assert(IsLoaded());
+  assert(is_loaded());
   return _image->getWidth();
 }
 
-int Texture::
-Height() const
+int texture::
+height() const
 {
-  assert(IsLoaded());
+  assert(is_loaded());
   return _image->getHeight();
 }
 
-Texture::Pixel Texture::
-GetPixel(const int x, const int y) const
+texture::pixel texture::
+get_pixel(const int x, const int y) const
 {
-  assert(IsLoaded());
-  Pixel outPixel = { 0, 0, 0 };
+  assert(is_loaded());
+  pixel outpixel = { 0, 0, 0 };
 
   // wrap coords
   int posX = (x >= 0) ? (x % _image->getWidth()) :
@@ -75,25 +75,25 @@ GetPixel(const int x, const int y) const
     (_image->getHeight() + (y%_image->getHeight())) % _image->getHeight();
 
   RGBQUAD pixel;
-  _image->getPixelColor(x, y, &pixel);
-  outPixel = { pixel.rgbRed, pixel.rgbGreen, pixel.rgbBlue };
+  _image->getpixelColor(x, y, &pixel);
+  outpixel = { pixel.rgbRed, pixel.rgbGreen, pixel.rgbBlue };
 
-  return outPixel;
+  return outpixel;
 }
 
-Texture::Pixel Texture::
-GetPixel(const double x, const double y) const
+texture::pixel texture::
+get_pixel(const double x, const double y) const
 {
-  Pixel outPixel = { 0, 0, 0 };
+  pixel outpixel = { 0, 0, 0 };
   int xF = floor(x);
   int yF = floor(y);
   int xC = ceil(x);
   int yC = ceil(y);
 
-  Pixel c00 = GetPixel(xF, yC);
-  Pixel c01 = GetPixel(xF, yF);
-  Pixel c10 = GetPixel(xC, yC);
-  Pixel c11 = GetPixel(xC, yF);
+  pixel c00 = get_pixel(xF, yC);
+  pixel c01 = get_pixel(xF, yF);
+  pixel c10 = get_pixel(xC, yC);
+  pixel c11 = get_pixel(xC, yF);
 
   double tx = x - double(xF);
   double ty = 1.0 - (y - double(yF));
@@ -101,15 +101,15 @@ GetPixel(const double x, const double y) const
 
   a = double(c00.r) * (1.0 - tx) + double(c10.r) * tx;
   b = double(c01.r) * (1.0 - tx) + double(c11.r) * tx;
-  outPixel.r = a * (1.0 - ty) + b * ty;
+  outpixel.r = a * (1.0 - ty) + b * ty;
 
   a = double(c00.g) * (1.0 - tx) + double(c10.g) * tx;
   b = double(c01.g) * (1.0 - tx) + double(c11.g) * tx;
-  outPixel.g = a * (1.0 - ty) + b * ty;
+  outpixel.g = a * (1.0 - ty) + b * ty;
 
   a = double(c00.b) * (1.0 - tx) + double(c10.b) * tx;
   b = double(c01.b) * (1.0 - tx) + double(c11.b) * tx;
-  outPixel.b = a * (1.0 - ty) + b * ty;
+  outpixel.b = a * (1.0 - ty) + b * ty;
 
-  return outPixel;
+  return outpixel;
 }

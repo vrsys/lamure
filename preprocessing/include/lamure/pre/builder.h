@@ -20,37 +20,37 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL Builder
+class PREPROCESSING_DLL builder
 {
 public:
 
-    struct Descriptor {
-        std::string     input_file;
-        std::string     working_directory;
-        uint32_t        max_fan_factor;
-        size_t          surfels_per_node;
-        uint16_t        final_stage;
-        bool            compute_normals_and_radii;
-        bool            keep_intermediate_files;
-        float           memory_ratio;
-        size_t          buffer_size;
-        uint16_t        number_of_neighbours;
-        bool            translate_to_origin;
+    struct descriptor {
+        std::string           input_file;
+        std::string           working_directory;
+        uint32_t              max_fan_factor;
+        size_t                surfels_per_node;
+        uint16_t              final_stage;
+        bool                  compute_normals_and_radii;
+        bool                  keep_intermediate_files;
+        float                 memory_ratio;
+        size_t                buffer_size;
+        uint16_t              number_of_neighbours;
+        bool                  translate_to_origin;
 
-        RepRadiusAlgorithm  rep_radius_algo;
-        ReductionAlgorithm  reduction_algo;
+        rep_radius_algorithm  rep_radius_algo;
+        reduction_algorithm   reduction_algo;
     };
 
-    explicit            Builder(const Descriptor& desc);
+    explicit            builder(const descriptor& desc);
 
-    virtual             ~Builder();
-                        Builder(const Builder& other) = delete;
-    Builder&            operator=(const Builder& other) = delete;
+    virtual             ~builder();
+                        builder(const builder& other) = delete;
+    builder&            operator=(const builder& other) = delete;
 
-    bool                Construct();
+    bool                construct();
 
 private:
-    Descriptor           desc_;
+    descriptor           desc_;
     size_t               memory_limit_;
     boost::filesystem::path base_path_;
 };

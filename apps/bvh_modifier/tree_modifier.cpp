@@ -25,8 +25,8 @@ namespace {
 
 // Obtain a matrix for transforming points of bvh_a to the space of bvh_b
 lamure::mat4r
-get_frame_transform(const CollisionDetector::Object& bvh_a,
-                    const CollisionDetector::Object& bvh_b)
+get_frame_transform(const collision_detector::object& bvh_a,
+                    const collision_detector::object& bvh_b)
 {
     auto inv_bvh_b_mat = scm::math::inverse(bvh_b.second);
     auto inv_hidden_bvh_b_mat = scm::math::inverse(scm::math::make_translation(bvh_b.first->translation()));
@@ -42,9 +42,9 @@ get_frame_transform(const CollisionDetector::Object& bvh_a,
 }
 
 
-CollisionDetector::
-CollisionDetector(const Object& bvh_l,
-                  const Object& bvh_r,
+collision_detector::
+collision_detector(const object& bvh_l,
+                  const object& bvh_r,
                   int stop_level_a,
                   int stop_level_b)
         : bvh_l_(bvh_l),
@@ -55,23 +55,23 @@ CollisionDetector(const Object& bvh_l,
 
     auto& nd = bvh_r_.first->nodes();
     for(size_t i = 0; i < nd.size(); ++i) {
-        lamure::BoundingBox new_box;
-        auto& nb = nd[i].bounding_box();
+        lamure::bounding_box new_box;
+        auto& nb = nd[i].get_bounding_box();
 
 #if 1
         // extend bboxes
-        nb.min().z = bvh_r_.first->nodes()[0].bounding_box().min().z;
-        nb.max().z = bvh_r_.first->nodes()[0].bounding_box().max().z;
+        nb.min().z = bvh_r_.first->nodes()[0].get_bounding_box().min().z;
+        nb.max().z = bvh_r_.first->nodes()[0].get_bounding_box().max().z;
 #endif
-        new_box.Expand(frame_trans * nb.min());
-        new_box.Expand(frame_trans * lamure::vec3r(nb.min().x, nb.min().y, nb.max().z));
-        new_box.Expand(frame_trans * lamure::vec3r(nb.min().x, nb.max().y, nb.min().z));
-        new_box.Expand(frame_trans * lamure::vec3r(nb.min().x, nb.max().y, nb.max().z));
+        new_box.expand(frame_trans * nb.min());
+        new_box.expand(frame_trans * lamure::vec3r(nb.min().x, nb.min().y, nb.max().z));
+        new_box.expand(frame_trans * lamure::vec3r(nb.min().x, nb.max().y, nb.min().z));
+        new_box.expand(frame_trans * lamure::vec3r(nb.min().x, nb.max().y, nb.max().z));
 
-        new_box.Expand(frame_trans * nb.max());
-        new_box.Expand(frame_trans * lamure::vec3r(nb.max().x, nb.max().y, nb.min().z));
-        new_box.Expand(frame_trans * lamure::vec3r(nb.max().x, nb.min().y, nb.max().z));
-        new_box.Expand(frame_trans * lamure::vec3r(nb.max().x, nb.min().y, nb.min().z));
+        new_box.expand(frame_trans * nb.max());
+        new_box.expand(frame_trans * lamure::vec3r(nb.max().x, nb.max().y, nb.min().z));
+        new_box.expand(frame_trans * lamure::vec3r(nb.max().x, nb.min().y, nb.max().z));
+        new_box.expand(frame_trans * lamure::vec3r(nb.max().x, nb.min().y, nb.min().z));
  
         boxes_.push_back(new_box);
     }
@@ -84,20 +84,20 @@ CollisionDetector(const Object& bvh_l,
 
 }
 
-void CollisionDetector::
-SearchIntersections(const CallbackFunc& callback) const
+void collision_detector::
+search_intersections(const callback_func& callback) const
 {
-    Traverse(0, 0, callback);
+    traverse(0, 0, callback);
 }
 
-void CollisionDetector::
-Traverse(lamure::NodeIdType a, lamure::NodeIdType b, const CallbackFunc& callback) const
+void collision_detector::
+traverse(lamure::node_id_type a, lamure::node_id_type b, const callback_func& callback) const
 {
     
     const auto& tr_a = bvh_l_.first;
     const auto& tr_b = bvh_r_.first;
 
-    if (!tr_a->nodes()[a].bounding_box().Intersects(boxes_[b]))
+    if (!tr_a->nodes()[a].get_bounding_box().Intersects(boxes_[b]))
         return;
 
     const bool is_leaf_a = int(tr_a->nodes()[a].depth()) >= stop_level_a_;
@@ -108,38 +108,38 @@ Traverse(lamure::NodeIdType a, lamure::NodeIdType b, const CallbackFunc& callbac
             callback(a, b);
     }
     else {
-        std::vector<lamure::NodeIdType> children_a, children_b;
+        std::vector<lamure::node_id_type> children_a, children_b;
 
         if (is_leaf_a)
             children_a.push_back(a);
         else {
             for (unsigned i = 0; i < tr_a->fan_factor(); ++i)
-                children_a.push_back(tr_a->GetChildId(a, i));
+                children_a.push_back(tr_a->get_child_id(a, i));
         }
         if (is_leaf_b)
             children_b.push_back(b);
         else {
             for (unsigned i = 0; i < tr_b->fan_factor(); ++i)
-                children_b.push_back(tr_b->GetChildId(b, i));
+                children_b.push_back(tr_b->get_child_id(b, i));
         }
 
         for (const auto& ca: children_a)
             for (const auto& cb: children_b)
-                Traverse(ca, cb, callback);
+                traverse(ca, cb, callback);
     }
 }
 
 void TreeModifier::
-ComplementOnFirstTree(int relax_levels)
+complementOnFirstTree(int relax_levels)
 {
     using namespace lamure;
 
-    CollisionDetector cdet(bvhs_[0], bvhs_[1], -1, -relax_levels - 1);
+    collision_detector cdet(bvhs_[0], bvhs_[1], -1, -relax_levels - 1);
 
     //attempt trivial reject
     
     {
-    const auto& _bb0 = bvhs_[0].first->nodes()[0].bounding_box();
+    const auto& _bb0 = bvhs_[0].first->nodes()[0].get_bounding_box();
     const auto& _bb1 = cdet.boxes()[0];
 
     std::cout << "bounding box frame:" << std::endl;
@@ -183,55 +183,55 @@ ComplementOnFirstTree(int relax_levels)
 
     const lamure::mat4r frame_trans = get_frame_transform(bvhs_[0], bvhs_[1]);
 
-    pre::NodeSerializer ser_a(tr_a->max_surfels_per_node(), 0);
-    ser_a.Open(AddToPath(tr_a->base_path(), ".lod").string(), true);
+    pre::node_serializer ser_a(tr_a->max_surfels_per_node(), 0);
+    ser_a.open(add_to_path(tr_a->base_path(), ".lod").string(), true);
 
-    pre::SurfelVector surfels;
+    pre::surfel_vector surfels;
     size_t pairs = 0, total_discarded = 0;
 
     std::cout << "processing..." << std::flush;
 
-    /*cdet.SearchIntersections([&](lamure::NodeIdType a, lamure::NodeIdType b) {
-        lamure::NodeIdType nid_b = b;
+    /*cdet.search_intersections([&](lamure::node_id_type a, lamure::node_id_type b) {
+        lamure::node_id_type nid_b = b;
         for (int i = 0; i < relax_levels; ++i)
-            nid_b = tr_b->GetParentId(nid_b);
+            nid_b = tr_b->get_parent_id(nid_b);
 
-        const auto& bbox = tr_b->nodes()[nid_b].bounding_box();
+        const auto& bbox = tr_b->nodes()[nid_b].get_bounding_box();
 
-        lamure::NodeIdType nid_a = a;
+        lamure::node_id_type nid_a = a;
         while (true) {
-            ser_a.ReadNodeImmediate(surfels, nid_a);
+            ser_a.read_node_immediate(surfels, nid_a);
             bool discarded = false;
             for (auto& s: surfels) {
                 // check surfel in A intersects with one of the AABB of B
-                if (bbox.Contains(frame_trans * s.pos()) && s.radius() > 0.f) {
+                if (bbox.contains(frame_trans * s.pos()) && s.radius() > 0.f) {
                     discarded = true;
                     s.radius() = 0.0;
                     ++total_discarded;
                 }
             }
             if (discarded)
-                ser_a.WriteNodeImmediate(surfels, nid_a);
+                ser_a.write_node_immediate(surfels, nid_a);
             if (nid_a == 0)
                 break;
-            nid_a = tr_a->GetParentId(nid_a);
+            nid_a = tr_a->get_parent_id(nid_a);
         }
         std::cout << "\r" << ++pairs << " collision pairs processed" << std::flush;
     });*/
 
-    std::unordered_map<lamure::NodeIdType, std::set<lamure::NodeIdType>> collision_info;
+    std::unordered_map<lamure::node_id_type, std::set<lamure::node_id_type>> collision_info;
 
-    cdet.SearchIntersections([&](lamure::NodeIdType a, lamure::NodeIdType b) {
-        lamure::NodeIdType nid_b = b;
+    cdet.search_intersections([&](lamure::node_id_type a, lamure::node_id_type b) {
+        lamure::node_id_type nid_b = b;
         
         //std::cout << "node id " << nid_b << std::endl;
         
         // traverse to top
-        lamure::NodeIdType nid_a = a;
+        lamure::node_id_type nid_a = a;
         while (true) {
             collision_info[nid_a].insert(nid_b);
             if (nid_a == 0) break;
-            nid_a = tr_a->GetParentId(nid_a);
+            nid_a = tr_a->get_parent_id(nid_a);
         }
         // traverse to bottom
         if (++pairs % 1500 == 0)
@@ -244,9 +244,9 @@ ComplementOnFirstTree(int relax_levels)
 
     
     for (const auto& col: collision_info) {
-        lamure::NodeIdType a = col.first;
+        lamure::node_id_type a = col.first;
         bool changed = false;
-        ser_a.ReadNodeImmediate(surfels, a);
+        ser_a.read_node_immediate(surfels, a);
 
 /*
 
@@ -256,11 +256,11 @@ ComplementOnFirstTree(int relax_levels)
           auto& s = surfels[spos];
 //            for (const auto& b : col.second) {
           if (s.radius() > 0.f) {
-            for (lamure::NodeIdType b = tr_b->first_leaf(); b < tr_b->nodes().size(); ++b) {
-              auto bbox = tr_b->nodes()[b].bounding_box();
-              bbox.min().z = tr_b->nodes()[0].bounding_box().min().z;
-              bbox.max().z = tr_b->nodes()[0].bounding_box().max().z;
-              if (bbox.Contains(frame_trans * s.pos())) {
+            for (lamure::node_id_type b = tr_b->first_leaf(); b < tr_b->nodes().size(); ++b) {
+              auto bbox = tr_b->nodes()[b].get_bounding_box();
+              bbox.min().z = tr_b->nodes()[0].get_bounding_box().min().z;
+              bbox.max().z = tr_b->nodes()[0].get_bounding_box().max().z;
+              if (bbox.contains(frame_trans * s.pos())) {
                 changed = true;
                 s.radius() = 0.0;
                 #pragma omp atomic
@@ -276,8 +276,8 @@ ComplementOnFirstTree(int relax_levels)
           auto& s = surfels[spos];
           if (s.radius() > 0.0) {
             for (const auto& b : col.second) {
-              auto bbox = tr_b->nodes()[b].bounding_box();
-              if (bbox.Contains(frame_trans * s.pos())) {
+              auto bbox = tr_b->nodes()[b].get_bounding_box();
+              if (bbox.contains(frame_trans * s.pos())) {
                 changed = true;
                 s.radius() = 0.0;
                 #pragma omp atomic
@@ -289,85 +289,85 @@ ComplementOnFirstTree(int relax_levels)
         }
 
         if (changed)
-            ser_a.WriteNodeImmediate(surfels, a);
+            ser_a.write_node_immediate(surfels, a);
 
         if (++pairs % 500 == 0)
             std::cout << "\r" << pairs << " / " << collision_info.size() << " nodes processed; discarded: " << total_discarded << std::flush;
     }
     std::cout << "\r" << pairs << " nodes processed" << std::flush;
 
-    ser_a.Close();
-    std::cout << std::endl << "Surfels discarded: " << total_discarded << std::endl;
+    ser_a.close();
+    std::cout << std::endl << "surfels discarded: " << total_discarded << std::endl;
 }
 
 void TreeModifier::
-HistMatchSecondTree()
+histogrammatchSecondTree()
 {
     using namespace lamure;
 
     // init serializers
-    std::vector<std::shared_ptr<pre::NodeSerializer>> ser;
+    std::vector<std::shared_ptr<pre::node_serializer>> ser;
     for (auto& tr : bvhs_) {
-        ser.push_back(std::make_shared<pre::NodeSerializer>(tr.first->max_surfels_per_node(), 0));
-        ser.back()->Open(AddToPath(tr.first->base_path(), ".lod").string(), true);
+        ser.push_back(std::make_shared<pre::node_serializer>(tr.first->max_surfels_per_node(), 0));
+        ser.back()->open(add_to_path(tr.first->base_path(), ".lod").string(), true);
     }
 
-    std::set<lamure::NodeIdType> collision_info;
+    std::set<lamure::node_id_type> collision_info;
     size_t ctr = 0;
 
     // collect collisions
     for (size_t i = 1; i < bvhs_.size(); ++i) {
-        CollisionDetector cdet(bvhs_[0], bvhs_[i], -1, -1);
-        cdet.SearchIntersections([&](lamure::NodeIdType a, lamure::NodeIdType b) {
+        collision_detector cdet(bvhs_[0], bvhs_[i], -1, -1);
+        cdet.search_intersections([&](lamure::node_id_type a, lamure::node_id_type b) {
                                  collision_info.insert(a);
                                  ++ctr;
                                  });
     }
     std::cout << ctr << " collision pairs processed" << std::endl;
 
-    HistogramMatcher matcher;
+    histogram_matcher matcher;
     // get reference colors
     {
-        HistogramMatcher::ColorArray ref_colors;
-        pre::SurfelVector surfels;
+        histogram_matcher::color_array ref_colors;
+        pre::surfel_vector surfels;
         for (const auto& col: collision_info) {
-            ser[0]->ReadNodeImmediate(surfels, col);
+            ser[0]->read_node_immediate(surfels, col);
             for (auto& s: surfels) {
-                if (s != pre::Surfel())
-                    ref_colors.AddColor(s.color());
+                if (s != pre::surfel())
+                    ref_colors.add_color(s.color());
             }
         }
         std::cout << "Collected reference colors from " << collision_info.size() << " nodes" << std::endl;
 
-        matcher.InitReference(ref_colors);
+        matcher.init_reference(ref_colors);
     }
     // matching
 
     for (size_t tid = 1; tid < bvhs_.size(); ++ tid) {
         auto& tr = bvhs_[tid].first;
-        pre::SurfelVector surfels;
-        HistogramMatcher::ColorArray colors;
+        pre::surfel_vector surfels;
+        histogram_matcher::color_array colors;
 
         ctr = 0; 
         for (unsigned i = 0; i <= tr->depth(); ++i) {
             auto ranges = tr->GetNodeRanges(i);
-            colors.Clear();
+            colors.clear();
             // get colors
-            for (lamure::NodeIdType j = 0; j < ranges.second; ++j) {
-                ser[tid]->ReadNodeImmediate(surfels, j + ranges.first);
+            for (lamure::node_id_type j = 0; j < ranges.second; ++j) {
+                ser[tid]->read_node_immediate(surfels, j + ranges.first);
                 for (auto& s: surfels) {
-                    if (s != pre::Surfel())
-                        colors.AddColor(s.color());
+                    if (s != pre::surfel())
+                        colors.add_color(s.color());
                 }
             }
-            matcher.Match(colors);
+            matcher.match(colors);
 
             // write colors back
             size_t surfel_ctr = 0;
-            for (lamure::NodeIdType j = 0; j < ranges.second; ++j) {
-                ser[tid]->ReadNodeImmediate(surfels, j + ranges.first);
+            for (lamure::node_id_type j = 0; j < ranges.second; ++j) {
+                ser[tid]->read_node_immediate(surfels, j + ranges.first);
                 for (auto& s: surfels) {
-                    if (s != pre::Surfel()) {
+                    if (s != pre::surfel()) {
                         vec3b c(colors.r[surfel_ctr], 
                                 colors.g[surfel_ctr], 
                                 colors.b[surfel_ctr]);
@@ -375,7 +375,7 @@ HistMatchSecondTree()
                         ++surfel_ctr;
                     }
                 }
-                ser[tid]->WriteNodeImmediate(surfels, j + ranges.first);
+                ser[tid]->write_node_immediate(surfels, j + ranges.first);
             }
             std::cout << "\r" << ctr++ << " / " << tr->depth() << " levels processed" << std::flush;
         }
@@ -387,27 +387,27 @@ void TreeModifier::
 MultRadii(lamure::real factor)
 {
     using namespace lamure;
-    pre::SurfelVector surfels;
+    pre::surfel_vector surfels;
     for (size_t tid = 0; tid < bvhs_.size(); ++ tid) {
         auto& tr = bvhs_[tid].first;
         size_t ctr{};
 
-        pre::NodeSerializer ser(tr->max_surfels_per_node(), 0);
-        ser.Open(AddToPath(tr->base_path(), ".lod").string(), true);
+        pre::node_serializer ser(tr->max_surfels_per_node(), 0);
+        ser.open(add_to_path(tr->base_path(), ".lod").string(), true);
 
-        for (lamure::NodeIdType i = 0; i < tr->nodes().size(); ++i) {
-            ser.ReadNodeImmediate(surfels, i);
+        for (lamure::node_id_type i = 0; i < tr->nodes().size(); ++i) {
+            ser.read_node_immediate(surfels, i);
             for (auto& s: surfels) {
-                if (s != pre::Surfel() && s.radius() != 0.f)
+                if (s != pre::surfel() && s.radius() != 0.f)
                     s.radius() *= factor;
             }
-            ser.WriteNodeImmediate(surfels, i);
+            ser.write_node_immediate(surfels, i);
             tr->nodes()[i].set_avg_surfel_radius(tr->nodes()[i].avg_surfel_radius() * factor);
             if (++ctr % 500 == 0)
-                std::cout << "\r" << int(float(ctr)/tr->nodes().size()*100) << "\% processed" << std::flush;
+                std::cout << "\r" << int(float(ctr)/tr->nodes().size()*100) << " % processed" << std::flush;
         }
 
-        tr->SerializeTreeToFile(AddToPath(tr->base_path(), ".bvh").string(), false);
+        tr->serialize_tree_to_file(add_to_path(tr->base_path(), ".bvh").string(), false);
 
         std::cout << ". Tree " << tid << " finished" << std::endl;
     }
@@ -415,12 +415,12 @@ MultRadii(lamure::real factor)
 }
 
 lamure::real TreeModifier::
-ComputeAvgRadius(const lamure::pre::Bvh& bvh, unsigned depth) const
+computeAvgRadius(const lamure::pre::bvh& bvh, unsigned depth) const
 {
     lamure::real avg_surfel = 0.0;
     auto ranges = bvh.GetNodeRanges(depth);
 
-    for (lamure::NodeIdType j = 0; j < ranges.second; ++j)
+    for (lamure::node_id_type j = 0; j < ranges.second; ++j)
         avg_surfel += bvh.nodes()[j + ranges.first].avg_surfel_radius();
     avg_surfel /= ranges.second;
 

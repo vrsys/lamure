@@ -11,37 +11,37 @@ namespace lamure {
 namespace pre
 {
 
-bool Surfel::
-CompareX(const Surfel &left, const Surfel &right)
+bool surfel::
+compare_x(const surfel &left, const surfel &right)
 {
     return left.pos().x < right.pos().x;
 }
 
-bool Surfel::
-CompareY(const Surfel &left, const Surfel &right)
+bool surfel::
+compare_y(const surfel &left, const surfel &right)
 {
     return left.pos().y < right.pos().y;
 }
 
-bool Surfel::
-CompareZ(const Surfel &left, const Surfel &right)
+bool surfel::
+compare_z(const surfel &left, const surfel &right)
 {
     return left.pos().z < right.pos().z;
 }
 
-Surfel::CompareFunction
-Surfel::Compare(const uint8_t axis)
+surfel::compare_function
+surfel::compare(const uint8_t axis)
 {
     assert(axis <= 2);
-    CompareFunction comp;
+    compare_function comp;
 
     switch (axis) {
         case 0:
-            comp = &Surfel::CompareX; break;
+            comp = &surfel::compare_x; break;
         case 1:
-            comp = &Surfel::CompareY; break;
+            comp = &surfel::compare_y; break;
         case 2:
-            comp = &Surfel::CompareZ; break;
+            comp = &surfel::compare_z; break;
     }
     return comp;
 }

@@ -40,23 +40,23 @@ namespace fs = boost::filesystem;
 namespace lamure {
 namespace pre {
 
-void  Bvh::
-InitTree(const std::string& surfels_input_file,
+void  bvh::
+init_tree(const std::string& surfels_input_file,
          const uint32_t max_fan_factor,
          const size_t desired_surfels_per_node,
          const boost::filesystem::path& base_path)
 {
-    assert(state_ == State::Null);
+    assert(state_ == state_type::null);
     assert(max_fan_factor >= 2);
     assert(desired_surfels_per_node >= 5);
 
     base_path_ = base_path;
 
     // get number of surfels
-    File input;
-    input.Open(surfels_input_file);
-    size_t num_surfels = input.GetSize();
-    input.Close();
+    file input;
+    input.open(surfels_input_file);
+    size_t num_surfels = input.get_size();
+    input.close();
 
     // compute bvh properties
     size_t best = std::numeric_limits<size_t>::max();
@@ -84,31 +84,31 @@ InitTree(const std::string& surfels_input_file,
         num_nodes += count *= fan_factor_;
     }
 
-    nodes_ = std::vector<BvhNode>(num_nodes);
+    nodes_ = std::vector<bvh_node>(num_nodes);
     first_leaf_ = nodes_.size() - std::pow(fan_factor_, depth_);
-    state_ = State::Empty;
+    state_ = state_type::empty;
 }
 
-bool Bvh::
-LoadTree(const std::string& kdn_input_file)
+bool bvh::
+load_tree(const std::string& kdn_input_file)
 {
-    assert(state_ == State::Null);
+  assert(state_ == state_type::null);
 
-    BvhStream bvh_stream;
-    bvh_stream.ReadBvh(kdn_input_file, *this);
+    bvh_stream bvh_stream;
+    bvh_stream.readbvh(kdn_input_file, *this);
 
-    LOGGER_INFO("Load bvh: \"" << kdn_input_file << "\". State: " << StateToString(state_));
+    LOGGER_INFO("load bvh: \"" << kdn_input_file << "\". state: " << state_to_string(state_));
     return true;
 }
 
-uint32_t Bvh::
-GetChildId(const uint32_t node_id, const uint32_t child_index) const
+uint32_t bvh::
+get_child_id(const uint32_t node_id, const uint32_t child_index) const
 {
     return node_id*fan_factor_ + 1 + child_index;
 }
 
-uint32_t Bvh::
-GetParentId(const uint32_t node_id) const
+uint32_t bvh::
+get_parent_id(const uint32_t node_id) const
 {
     //TODO: might be better to assert on root node instead
     if (node_id == 0) return 0;
@@ -120,21 +120,21 @@ GetParentId(const uint32_t node_id) const
                / fan_factor_ - 1;
 }
 
-std::pair<NodeIdType, NodeIdType> Bvh::
+std::pair<node_id_type, node_id_type> bvh::
 GetNodeRanges(const uint32_t depth) const
 {
     assert(depth >= 0 && depth <= depth_);
 
-    NodeIdType first = 0, count = 1;
-    for (NodeIdType i = 1; i <= depth; ++i) {
+    node_id_type first = 0, count = 1;
+    for (node_id_type i = 1; i <= depth; ++i) {
         first += count;
         count *= fan_factor_;
     }
     return std::make_pair(first, count);
 }
 
-void Bvh::
-PrintTreeProperties() const
+void bvh::
+print_tree_properties() const
 {
     LOGGER_INFO("Fan-out factor: " << int(fan_factor_));
     LOGGER_INFO("Depth: " << depth_);
@@ -143,14 +143,14 @@ PrintTreeProperties() const
     LOGGER_INFO("First leaf node id: " << first_leaf_);
 }
 
-void Bvh::
-Downsweep(bool adjust_translation,
+void bvh::
+downsweep(bool adjust_translation,
           const std::string& surfels_input_file,
           bool bin_all_file_extension)
 {
-    assert(state_ == State::Empty);
+  assert(state_ == state_type::empty);
 
-    size_t in_core_surfel_capacity = memory_limit_ / sizeof(Surfel);
+    size_t in_core_surfel_capacity = memory_limit_ / sizeof(surfel);
 
     size_t disk_leaf_destination = 0,
            slice_left = 0,
@@ -159,17 +159,17 @@ Downsweep(bool adjust_translation,
     LOGGER_INFO("Build bvh for \"" << surfels_input_file << "\"");
 
     // open input file and leaf level file
-    SharedFile input_file_disk_access = std::make_shared<File>();
-    input_file_disk_access->Open(surfels_input_file);
+    shared_file input_file_disk_access = std::make_shared<file>();
+    input_file_disk_access->open(surfels_input_file);
 
-    SharedFile leaf_level_access = std::make_shared<File>();
+    shared_file leaf_level_access = std::make_shared<file>();
     std::string file_extension = ".lv" + std::to_string(depth_);
     if (bin_all_file_extension)
         file_extension = ".bin_all";
-    leaf_level_access->Open(AddToPath(base_path_, file_extension).string(), true);
+    leaf_level_access->open(add_to_path(base_path_, file_extension).string(), true);
 
     // instantiate root surfel array
-    SurfelDiskArray input(input_file_disk_access, 0, input_file_disk_access->GetSize());
+    surfel_disk_array input(input_file_disk_access, 0, input_file_disk_access->get_size());
     LOGGER_INFO("Total number of surfels: " << input.length());
 
     // compute depth at which we can switch to in-core
@@ -182,19 +182,19 @@ Downsweep(bool adjust_translation,
     LOGGER_INFO("Tree depth to switch in-core: " << final_depth);
 
     // construct root node
-    nodes_[0] = BvhNode(0, 0, BoundingBox(), input);
-    BoundingBox input_bb;
+    nodes_[0] = bvh_node(0, 0, bounding_box(), input);
+    bounding_box input_bb;
 
     // check if the root can be switched to in-core
     if (final_depth == 0) {
-        LOGGER_TRACE("Compute root bounding box in-core");
-        nodes_[0].LoadFromDisk();
-        input_bb = BasicAlgorithms::ComputeAABB(nodes_[0].mem_array());
+        LOGGER_TRACE("compute root bounding box in-core");
+        nodes_[0].load_from_disk();
+        input_bb = basic_algorithms::compute_aabb(nodes_[0].mem_array());
 
     }
     else {
-        LOGGER_TRACE("Compute root bounding box out-of-core");
-        input_bb = BasicAlgorithms::ComputeAABB(nodes_[0].disk_array(),
+        LOGGER_TRACE("compute root bounding box out-of-core");
+        input_bb = basic_algorithms::compute_aabb(nodes_[0].disk_array(),
                                                 buffer_size_);
     }
     LOGGER_DEBUG("Root AABB: " << input_bb.min() << " - " << input_bb.max());
@@ -213,10 +213,10 @@ Downsweep(bool adjust_translation,
         input_bb.max() -= translation;
 
         if (final_depth == 0) {
-            BasicAlgorithms::TranslateSurfels(nodes_[0].mem_array(), -translation);
+            basic_algorithms::translate_surfels(nodes_[0].mem_array(), -translation);
         }
         else {
-            BasicAlgorithms::TranslateSurfels(nodes_[0].disk_array(), -translation, buffer_size_);
+            basic_algorithms::translate_surfels(nodes_[0].disk_array(), -translation, buffer_size_);
         }
         LOGGER_DEBUG("New root AABB: " << input_bb.min() << " - " << input_bb.max());
     }
@@ -237,24 +237,24 @@ Downsweep(bool adjust_translation,
                new_slice_right = 0;
 
         for (size_t nid = slice_left; nid <= slice_right; ++nid) {
-            BvhNode& current_node = nodes_[nid];
+            bvh_node& current_node = nodes_[nid];
             // make sure that current node is out-of-core
-            assert(current_node.IsOOC());
+            assert(current_node.is_out_of_core());
 
             // split and compute child bounding boxes
-            BasicAlgorithms::SplittedArray<SurfelDiskArray> surfel_arrays;
+            basic_algorithms::splitted_array<surfel_disk_array> surfel_arrays;
 
-            BasicAlgorithms::SortAndSplit(current_node.disk_array(),
+            basic_algorithms::sort_and_split(current_node.disk_array(),
                                           surfel_arrays,
-                                          current_node.bounding_box(),
-                                          current_node.bounding_box().GetLongestAxis(),
+                                          current_node.get_bounding_box(),
+                                          current_node.get_bounding_box().get_longest_axis(),
                                           fan_factor_,
                                           memory_limit_);
 
             // iterate through children
             for (size_t i = 0; i < surfel_arrays.size(); ++i) {
-                uint32_t child_id = GetChildId(nid, i);
-                nodes_[child_id] = BvhNode(child_id, level + 1,
+                uint32_t child_id = get_child_id(nid, i);
+                nodes_[child_id] = bvh_node(child_id, level + 1,
                                            surfel_arrays[i].second,
                                            surfel_arrays[i].first);
                 if (nid == slice_left && i == 0)
@@ -263,7 +263,7 @@ Downsweep(bool adjust_translation,
                     new_slice_right = child_id;
             }
 
-            current_node.Reset();
+            current_node.reset();
 
             // percent counter
             ++processed_nodes;
@@ -283,31 +283,31 @@ Downsweep(bool adjust_translation,
 
     // construct next level in-core
     for (size_t nid = slice_left; nid <= slice_right; ++nid) {
-        BvhNode& current_node = nodes_[nid];
+        bvh_node& current_node = nodes_[nid];
 
         // make sure that current node is out-of-core and switch to in-core (unless root node)
         if (nid > 0) {
-            assert(current_node.IsOOC());
-            current_node.LoadFromDisk();
+            assert(current_node.is_out_of_core());
+            current_node.load_from_disk();
         }
         LOGGER_TRACE("Process subbvh in-core at node " << nid);
         // process subbvh and save leafs
-        DownsweepSubtreeInCore(current_node, disk_leaf_destination, processed_nodes,
+        downsweep_subtree_in_core(current_node, disk_leaf_destination, processed_nodes,
                                percent_processed,
                                leaf_level_access);
     }
     //std::cout << std::endl << std::endl;
 
-    input_file_disk_access->Close();
-    state_ = State::AfterDownsweep;
+    input_file_disk_access->close();
+    state_ = state_type::after_downsweep;
 }
 
-void Bvh::
-DownsweepSubtreeInCore( const BvhNode& node,
+void bvh::
+downsweep_subtree_in_core( const bvh_node& node,
                         size_t& disk_leaf_destination,
                         uint32_t& processed_nodes,
                         uint8_t& percent_processed,
-                        SharedFile leaf_level_access)
+                        shared_file leaf_level_access)
 {
     const size_t sort_parallelizm_thres = 2;
 
@@ -322,23 +322,23 @@ DownsweepSubtreeInCore( const BvhNode& node,
 
         #pragma omp parallel for
         for (size_t nid = slice_left; nid <= slice_right; ++nid) {
-            BvhNode& current_node = nodes_[nid];
+            bvh_node& current_node = nodes_[nid];
             // make sure that current node is in-core
-            assert(current_node.IsIC());
+            assert(current_node.is_in_core());
 
             // split and compute child bounding boxes
-            BasicAlgorithms::SplittedArray<SurfelMemArray> surfel_arrays;
-            BasicAlgorithms::SortAndSplit(current_node.mem_array(),
+            basic_algorithms::splitted_array<surfel_mem_array> surfel_arrays;
+            basic_algorithms::sort_and_split(current_node.mem_array(),
                                           surfel_arrays,
-                                          current_node.bounding_box(),
-                                          current_node.bounding_box().GetLongestAxis(),
+                                          current_node.get_bounding_box(),
+                                          current_node.get_bounding_box().get_longest_axis(),
                                           fan_factor_,
                                           (slice_right - slice_left) < sort_parallelizm_thres);
 
             // iterate through children
             for (size_t i = 0; i < surfel_arrays.size(); ++i) {
-                uint32_t child_id = GetChildId(nid, i);
-                nodes_[child_id] = BvhNode(child_id, level + 1,
+                uint32_t child_id = get_child_id(nid, i);
+                nodes_[child_id] = bvh_node(child_id, level + 1,
                                            surfel_arrays[i].second,
                                            surfel_arrays[i].first);
                 if (nid == slice_left && i == 0)
@@ -347,7 +347,7 @@ DownsweepSubtreeInCore( const BvhNode& node,
                     new_slice_right = child_id;
             }
 
-            current_node.Reset();
+            current_node.reset();
 
             // percent counter
             ++processed_nodes;
@@ -364,12 +364,12 @@ DownsweepSubtreeInCore( const BvhNode& node,
         slice_right = new_slice_right;
     }
 
-    LOGGER_TRACE("Compute node properties for leaves");
+    LOGGER_TRACE("compute node properties for leaves");
     // compute avg surfel radius for leaves
     #pragma omp parallel for
     for (size_t nid = slice_left; nid <= slice_right; ++nid) {
-        BvhNode& current_node = nodes_[nid];
-        auto props = BasicAlgorithms::ComputeProperties(current_node.mem_array(), rep_radius_algo_);
+        bvh_node& current_node = nodes_[nid];
+        auto props = basic_algorithms::compute_properties(current_node.mem_array(), rep_radius_algo_);
         current_node.set_avg_surfel_radius(props.rep_radius);
         current_node.set_centroid(props.centroid);
         current_node.set_bounding_box(props.bounding_box);
@@ -378,21 +378,21 @@ DownsweepSubtreeInCore( const BvhNode& node,
     LOGGER_TRACE("Save leaves to disk");
     // save leaves to disk
     for (size_t nid = slice_left; nid <= slice_right; ++nid) {
-        BvhNode& current_node = nodes_[nid];
-        current_node.FlushToDisk(leaf_level_access,
+        bvh_node& current_node = nodes_[nid];
+        current_node.flush_to_disk(leaf_level_access,
                                  disk_leaf_destination, true);
         disk_leaf_destination += current_node.disk_array().length();
     }
 }
 
-void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
+void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
 {
     size_t number_of_leaves = std::pow(fan_factor_, depth_);
 
     // load from disk
     for (size_t i = first_leaf_; i < nodes_.size(); ++i)
     {
-        nodes_[i].LoadFromDisk();
+        nodes_[i].load_from_disk();
     }
 
     size_t counter = 0;
@@ -423,8 +423,8 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
             {
 
                 // find nearest neighbours
-                std::vector<std::pair<Surfel, real>> neighbours = GetNearestNeighbours(i, k, number_of_neighbours);
-                Surfel surfel = nodes_[i].mem_array().ReadSurfel(k);
+                std::vector<std::pair<surfel, real>> neighbours = get_nearest_neighbours(i, k, number_of_neighbours);
+                surfel surfel = nodes_[i].mem_array().read_surfel(k);
 
                 // compute radius
                 real avg_distance = 0.0;
@@ -509,7 +509,7 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
                 // write surfel
                 surfel.radius() = avg_distance * 0.8;
                 surfel.normal() = normal;
-                nodes_[i].mem_array().WriteSurfel(surfel, k);
+                nodes_[i].mem_array().write_surfel(surfel, k);
 
                 // update average node radius
                 if (i != old_i)
@@ -551,12 +551,12 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
                     std::cout << "\r" << percentage << "% processed" << std::flush;
                 }
 
-                Surfel surfel = nodes_[i].mem_array().ReadSurfel(k);
+                surfel surfel = nodes_[i].mem_array().read_surfel(k);
 
                 if (surfel.radius() > max_radius)
                 {
                     surfel.radius() = max_radius;
-                    nodes_[i].mem_array().WriteSurfel(surfel, k);
+                    nodes_[i].mem_array().write_surfel(surfel, k);
                 }
             }
         }
@@ -565,14 +565,14 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
 
     for (size_t i = first_leaf_; i < nodes_.size(); ++i)
     {
-        nodes_[i].FlushToDisk(true);
+        nodes_[i].flush_to_disk(true);
     }
 
     std::cout << std::endl << std::endl;
 
 }
 
-void Bvh::GetDescendantLeaves(
+void bvh::get_descendant_leaves(
      const size_t node,
      std::vector<size_t>& result,
      const size_t first_leaf,
@@ -582,7 +582,7 @@ void Bvh::GetDescendantLeaves(
     {
         for (uint16_t i = 0; i < fan_factor_; ++i)
         {
-            GetDescendantLeaves(GetChildId(node, i), result, first_leaf, excluded_leaves);
+            get_descendant_leaves(get_child_id(node, i), result, first_leaf, excluded_leaves);
         }
     }
     else // leaf node
@@ -594,19 +594,19 @@ void Bvh::GetDescendantLeaves(
     }
 }
 
-std::vector<std::pair<Surfel, real>> Bvh::
-GetNearestNeighbours(
+std::vector<std::pair<surfel, real>> bvh::
+get_nearest_neighbours(
     const size_t node,
-    const size_t surfel,
+    const size_t surfel_of_interest,
     const uint32_t number_of_neighbours) const
 {
     size_t current_node = node;
     std::unordered_set<size_t> processed_leaves;
-    vec3r center = nodes_[node].mem_array().ReadSurfel(surfel).pos();
+    vec3r center = nodes_[node].mem_array().read_surfel(surfel_of_interest).pos();
 
-    std::vector<std::pair<Surfel, real>> candidates;
+    std::vector<std::pair<surfel, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
-    Sphere candidates_sphere;
+    sphere candidates_sphere;
 
     size_t number_of_leaves = pow(fan_factor_, depth_);
     size_t first_leaf = nodes_.size() - number_of_leaves;
@@ -615,9 +615,9 @@ GetNearestNeighbours(
 
     for (size_t i = 0; i < nodes_[current_node].mem_array().length(); ++i)
     {
-        if (i != surfel)
+      if (i != surfel_of_interest)
         {
-            Surfel current_surfel = nodes_[current_node].mem_array().ReadSurfel(i);
+            surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -631,7 +631,7 @@ GetNearestNeighbours(
                 {
                     if (candidates[k].second < candidates[k - 1].second)
                     {
-                        std::pair<Surfel, real> temp = candidates [k - 1];
+                        std::pair<surfel, real> temp = candidates [k - 1];
                         candidates[k - 1] = candidates[k];
                         candidates[k] = temp;
                     }
@@ -648,31 +648,31 @@ GetNearestNeighbours(
     }
 
     processed_leaves.insert(current_node);
-    candidates_sphere = Sphere(center, sqrt(max_candidate_distance));
+    candidates_sphere = sphere(center, sqrt(max_candidate_distance));
 
     // check rest of kd-bvh
-    while ( (!nodes_[current_node].bounding_box().Contains(candidates_sphere)) &&
+    while ( (!nodes_[current_node].get_bounding_box().contains(candidates_sphere)) &&
             (current_node != 0) )
     {
-        current_node = GetParentId(current_node);
+        current_node = get_parent_id(current_node);
 
         std::vector<size_t> unvisited_descendant_leaves;
 
-        GetDescendantLeaves(current_node, unvisited_descendant_leaves, first_leaf, processed_leaves);
+        get_descendant_leaves(current_node, unvisited_descendant_leaves, first_leaf, processed_leaves);
 
         for (auto leaf : unvisited_descendant_leaves)
         {
 
-            if (candidates_sphere.IsInside(nodes_[leaf].bounding_box()))
+            if (candidates_sphere.is_inside(nodes_[leaf].get_bounding_box()))
             {
 
-                assert(nodes_[leaf].IsOOC());
+                assert(nodes_[leaf].is_out_of_core());
 
                 for (size_t i = 0; i < nodes_[leaf].mem_array().length(); ++i)
                 {
-                    if (!(leaf == node && i == surfel))
+                  if (!(leaf == node && i == surfel_of_interest))
                     {
-                        Surfel current_surfel = nodes_[leaf].mem_array().ReadSurfel(i);
+                        surfel current_surfel = nodes_[leaf].mem_array().read_surfel(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
                         if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -686,7 +686,7 @@ GetNearestNeighbours(
                             {
                                 if (candidates[k].second < candidates[k - 1].second)
                                 {
-                                    std::pair<Surfel, real> temp = candidates [k - 1];
+                                    std::pair<surfel, real> temp = candidates [k - 1];
                                     candidates[k - 1] = candidates[k];
                                     candidates[k] = temp;
                                 }
@@ -702,7 +702,7 @@ GetNearestNeighbours(
                 }
 
                 processed_leaves.insert(leaf);
-                candidates_sphere = Sphere(center, sqrt(max_candidate_distance));
+                candidates_sphere = sphere(center, sqrt(max_candidate_distance));
 
             }
 
@@ -713,21 +713,20 @@ GetNearestNeighbours(
     return candidates;
 }
 
-
-void Bvh::
-Upsweep(const ReductionStrategy& reduction_strategy)
+void bvh::
+upsweep(const reduction_strategy& reduction_strategy)
 {
     LOGGER_TRACE("Create level temp files");
 
-    std::vector<SharedFile> level_temp_files;
+    std::vector<shared_file> level_temp_files;
     for (uint32_t i = 0; i <= depth_; ++i) {
-        level_temp_files.push_back(std::make_shared<File>());
+        level_temp_files.push_back(std::make_shared<file>());
         std::string ext = ".lv" + std::to_string(i);
-        level_temp_files.back()->Open(AddToPath(base_path_, ext).string(),
+        level_temp_files.back()->open(add_to_path(base_path_, ext).string(),
                                       i != depth_);
     }
 
-    LOGGER_TRACE("Compute LOD hierarchy");
+    LOGGER_TRACE("compute LOD hierarchy");
 
     std::atomic_uint ctr{ 0 };
 
@@ -735,56 +734,56 @@ Upsweep(const ReductionStrategy& reduction_strategy)
     {
         #pragma omp single nowait
         {
-            UpsweepR(nodes_[0], reduction_strategy, level_temp_files, ctr);
+            upsweep_recurse(nodes_[0], reduction_strategy, level_temp_files, ctr);
         }
     }
     std::cout << std::endl << std::endl;
     LOGGER_TRACE("Total processed nodes: " << ctr.load());
-    state_ = State::AfterUpsweep;
+    state_ = state_type::after_upsweep;
 }
 
-void Bvh::
-UpsweepR(BvhNode& node,
-         const ReductionStrategy& reduction_strategy,
-         std::vector<SharedFile>& level_temp_files,
+void bvh::
+upsweep_recurse(bvh_node& node,
+         const reduction_strategy& reduction_strategy,
+         std::vector<shared_file>& level_temp_files,
          std::atomic_uint& ctr)
 {
-    std::vector<SurfelMemArray*> child_arrays;
+    std::vector<surfel_mem_array*> child_arrays;
 
-    BoundingBox new_bounding_box;
+    bounding_box new_bounding_box;
 
     if (node.depth() == depth_ - 1) {
         // leaf nodes
         for (uint32_t j = 0; j < fan_factor_; ++j) {
-            const uint32_t id = GetChildId(node.node_id(), j);
-            assert(!nodes_[id].IsIC());
-            nodes_[id].LoadFromDisk();
+            const uint32_t id = get_child_id(node.node_id(), j);
+            assert(!nodes_[id].is_in_core());
+            nodes_[id].load_from_disk();
             child_arrays.push_back(&nodes_[id].mem_array());
-            new_bounding_box.Expand(nodes_[id].bounding_box());
+            new_bounding_box.expand(nodes_[id].get_bounding_box());
         }
     }
     else {
         // inner nodes
         for (uint32_t j = 0; j < fan_factor_; ++j) {
-            const uint32_t id = GetChildId(node.node_id(), j);
+            const uint32_t id = get_child_id(node.node_id(), j);
             #pragma omp task shared(reduction_strategy, level_temp_files, ctr)
-            UpsweepR(nodes_[id], reduction_strategy, level_temp_files, ctr);
+            upsweep_recurse(nodes_[id], reduction_strategy, level_temp_files, ctr);
         }
         #pragma omp taskwait
         for (uint32_t j = 0; j < fan_factor_; ++j) {
-            const uint32_t id = GetChildId(node.node_id(), j);
+            const uint32_t id = get_child_id(node.node_id(), j);
             child_arrays.push_back(&nodes_[id].mem_array());
-            new_bounding_box.Expand(nodes_[id].bounding_box());
+            new_bounding_box.expand(nodes_[id].get_bounding_box());
         }
     }
     //LOGGER_TRACE("1. LOD " << node.node_id());
     // create LOD for current node
     real reduction_error;
-    node.Reset(reduction_strategy.CreateLod(reduction_error, child_arrays, max_surfels_per_node_));
+    node.reset(reduction_strategy.create_lod(reduction_error, child_arrays, max_surfels_per_node_));
 
     //LOGGER_TRACE("2. Error " << node.node_id());
-    auto props = BasicAlgorithms::ComputeProperties(node.mem_array(), rep_radius_algo_);
-    new_bounding_box.Expand(props.bounding_box);
+    auto props = basic_algorithms::compute_properties(node.mem_array(), rep_radius_algo_);
+    new_bounding_box.expand(props.bounding_box);
 
     // set reduction error, average radius, and new bounding box
     node.set_reduction_error(reduction_error);
@@ -793,7 +792,7 @@ UpsweepR(BvhNode& node,
     node.set_bounding_box(new_bounding_box);
 
     // recompute bounding box
-    //const BoundingBox bb = BasicAlgorithms::ComputeAABB(node.mem_array(), false);
+    //const bounding_box bb = basic_algorithms::compute_aabb(node.mem_array(), false);
     //node.set_bounding_box(bb);
 
     //LOGGER_TRACE("3. Offset " << node.node_id());
@@ -805,13 +804,13 @@ UpsweepR(BvhNode& node,
 
     //LOGGER_TRACE("4. Flush " << node.node_id());
     // save computed node to disk
-    node.FlushToDisk(level_temp_files[node.depth()], size_t(lid) * max_surfels_per_node_, false);
+    node.flush_to_disk(level_temp_files[node.depth()], size_t(lid) * max_surfels_per_node_, false);
 
     //LOGGER_TRACE("5. Switch children " << node.node_id());
     // switch children to out-of-core
     for (uint32_t j = 0; j < fan_factor_; ++j) {
-        const uint32_t id = GetChildId(node.node_id(), j);
-        nodes_[id].mem_array().Reset();
+        const uint32_t id = get_child_id(node.node_id(), j);
+        nodes_[id].mem_array().reset();
     }
 
     auto count = ctr.fetch_add(1u);
@@ -824,49 +823,49 @@ UpsweepR(BvhNode& node,
     }
 }
 
-void Bvh::
-SerializeTreeToFile(const std::string& output_file,
+void bvh::
+serialize_tree_to_file(const std::string& output_file,
                     bool write_intermediate_data)
 {
-    LOGGER_TRACE("Serialize bvh to file: \"" << output_file << "\"");
+    LOGGER_TRACE("serialize bvh to file: \"" << output_file << "\"");
 
-    BvhStream bvh_stream;
-    bvh_stream.WriteBvh(output_file, *this, write_intermediate_data);
+    bvh_stream bvh_stream;
+    bvh_stream.writebvh(output_file, *this, write_intermediate_data);
 
 }
 
 
-void Bvh::
-SerializeSurfelsToFile(const std::string& output_file, const size_t buffer_size) const
+void bvh::
+serialize_surfels_to_file(const std::string& output_file, const size_t buffer_size) const
 {
-    LOGGER_TRACE("Serialize surfels to file: \"" << output_file << "\"");
-    NodeSerializer serializer(max_surfels_per_node_, buffer_size);
-    serializer.Open(output_file);
-    serializer.SerializeNodes(nodes_);
+    LOGGER_TRACE("serialize surfels to file: \"" << output_file << "\"");
+    node_serializer serializer(max_surfels_per_node_, buffer_size);
+    serializer.open(output_file);
+    serializer.serialize_nodes(nodes_);
 }
 
-void Bvh::
-ResetNodes()
+void bvh::
+resetNodes()
 {
     for (auto& n: nodes_) {
-        if (n.IsOOC() && n.disk_array().file().use_count() == 1) {
-            n.disk_array().file()->Close(true);
+        if (n.is_out_of_core() && n.disk_array().file().use_count() == 1) {
+            n.disk_array().file()->close(true);
         }
-        n.Reset();
+        n.reset();
     }
 }
 
-std::string Bvh::
-StateToString(State state)
+std::string bvh::
+state_to_string(state_type state)
 {
-    std::map<State, std::string> StateMap = {
-        {State::Null,            "Null"},
-        {State::Empty,           "Empty"},
-        {State::AfterDownsweep,  "AfterDownsweep"},
-        {State::AfterUpsweep,    "AfterUpsweep"},
-        {State::Serialized,      "Serialized"}
+    std::map<state_type, std::string> state_map = {
+      { state_type::null, "null" },
+      { state_type::empty, "empty" },
+      { state_type::after_downsweep, "after_downsweep" },
+      { state_type::after_upsweep, "after_upsweep" },
+      { state_type::serialized, "serialized" }
     };
-    return StateMap[state];
+    return state_map[state];
 }
 
 } // namespace pre

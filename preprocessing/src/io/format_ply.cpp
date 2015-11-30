@@ -16,14 +16,14 @@
 namespace lamure {
 namespace pre {
 
-void FormatPLY::
-Read(const std::string& filename, SurfelCallbackFuntion callback)
+void format_ply::
+read(const std::string& filename, surfel_callback_funtion callback)
 {
     using namespace std::placeholders;
     typedef std::tuple<std::function<void()>, std::function<void()>> FuncTuple;
 
     const std::string basename = boost::filesystem::path(filename).stem().string();
-    auto begin_point = [&](){ current_surfel_ = Surfel(); };
+    auto begin_point = [&](){ current_surfel_ = surfel(); };
     auto end_point   = [&](){ 
         callback(current_surfel_); 
     };
@@ -34,8 +34,8 @@ Read(const std::string& filename, SurfelCallbackFuntion callback)
     ply::ply_parser::scalar_property_definition_callbacks_type scalar_callbacks;
 
     using namespace ply;
-    at<ply::float32>(scalar_callbacks) = std::bind(&FormatPLY::scalar_callback<ply::float32>, this, _1, _2);
-    at<ply::uint8>(scalar_callbacks) = std::bind(&FormatPLY::scalar_callback<ply::uint8>, this, _1, _2);
+    at<ply::float32>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<ply::float32>, this, _1, _2);
+    at<ply::uint8>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<ply::uint8>, this, _1, _2);
 
     // set callbacks
     ply_parser.scalar_property_definition_callbacks(scalar_callbacks);
@@ -46,7 +46,7 @@ Read(const std::string& filename, SurfelCallbackFuntion callback)
             else if(element_name == "face")
 	      return FuncTuple(nullptr,nullptr);
             else 
-                throw std::runtime_error("FormatPLY::Read() : Invalid element_name!");
+                throw std::runtime_error("format_ply::read() : Invalid element_name!");
     });
 
     ply_parser.info_callback([&](std::size_t line, const std::string& message) {
@@ -64,14 +64,14 @@ Read(const std::string& filename, SurfelCallbackFuntion callback)
     ply_parser.parse(filename);
 }
 
-void FormatPLY::
-Write(const std::string& filename, BufferCallbackFuntion callback)
+void format_ply::
+write(const std::string& filename, buffer_callback_function callback)
 {
     throw std::runtime_error("Not implemented yet!");
 }
 
 template <>
-std::function<void(float)> FormatPLY::
+std::function<void(float)> format_ply::
 scalar_callback(const std::string& element_name, const std::string& property_name)
 {
     if (element_name == "vertex") {
@@ -88,14 +88,14 @@ scalar_callback(const std::string& element_name, const std::string& property_nam
         else if (property_name == "nz")
             return [this](float value) { current_surfel_.normal().z = value; };
 	else
-          throw std::runtime_error("FormatPLY::scalar_callback(): Invalid property_name!");
+          throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }
     else
-      throw std::runtime_error("FormatPLY::scalar_callback(): Invalid element_name!");
+      throw std::runtime_error("format_ply::scalar_callback(): Invalid element_name!");
 }
 
 template <>
-std::function<void(uint8_t)> FormatPLY::
+std::function<void(uint8_t)> format_ply::
 scalar_callback(const std::string& element_name, const std::string& property_name)
 {
     if (element_name == "vertex") {
@@ -108,10 +108,10 @@ scalar_callback(const std::string& element_name, const std::string& property_nam
         else if (property_name == "alpha")
 	  return [this](uint8_t value) { /*current_surfel_.color().z = value*/; };
         else
-          throw std::runtime_error("FormatPLY::scalar_callback(): Invalid property_name!");
+          throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }
     else
-      throw std::runtime_error("FormatPLY::scalar_callback(): Invalid element_name!");
+      throw std::runtime_error("format_ply::scalar_callback(): Invalid element_name!");
 }
 
 } // namespace pre

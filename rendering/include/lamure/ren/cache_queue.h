@@ -75,9 +75,9 @@ public:
                         CacheQueue();
     virtual             ~CacheQueue();
 
-    bool                PushJob(const Job& job);
+    bool                push_job(const Job& job);
     const Job           TopJob();
-    void                PopJob(const Job& job);
+    void                pop_job(const Job& job);
     void                UpdateJob(const model_t model_id, const node_t node_id, int32_t priority);
     const AbortResult   AbortJob(const Job& job);
 

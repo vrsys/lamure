@@ -57,9 +57,9 @@ void InitializeGlut(int argc, char** argv, uint32_t width, uint32_t height)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA | GLUT_ALPHA | GLUT_MULTISAMPLE);
 
     glutInitWindowPosition(400,300);
-    glutInitWindowSize(width, height);
+    glutInitWindowsize(width, height);
 
-    int wh1 = glutCreateWindow("Point Renderer");
+    int wh1 = glutCreateWindow("Point renderer");
 
     glutSetWindow(wh1);
 
@@ -166,19 +166,19 @@ int main(int argc, char** argv)
     std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > model_attributes;
     std::set<lamure::model_t> visible_set;
     std::set<lamure::model_t> invisible_set;
-    model_attributes = ReadModelString(resource_file, &visible_set, &invisible_set);
+    model_attributes = readModelString(resource_file, &visible_set, &invisible_set);
 
     //std::string scene_name;
     //CreateSceneNameFromVector(model_attributes.first, scene_name);
     std::vector<scm::math::mat4f> & model_transformations = model_attributes.second;
     std::vector<std::string> const& model_filenames = model_attributes.first;
 
-    lamure::ren::Policy* policy = lamure::ren::Policy::GetInstance();
+    lamure::ren::Policy* policy = lamure::ren::Policy::get_instance();
     policy->set_max_upload_budget_in_mb(max_upload_budget); //8
     policy->set_render_budget_in_mb(video_memory_budget); //2048
     policy->set_out_of_core_budget_in_mb(main_memory_budget); //4096, 8192
 
-    lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
     database->set_window_width(window_width);
     database->set_window_height(window_height);
     management_ = new Management(model_filenames, model_transformations, visible_set, invisible_set);
@@ -191,23 +191,23 @@ int main(int argc, char** argv)
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "memory cleanup...(1)" << std::endl;
 #endif
-        delete lamure::ren::CutDatabase::GetInstance();
+        delete lamure::ren::Cutdatabase::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted cut database" << std::endl;
 #endif
-        delete lamure::ren::Controller::GetInstance();
+        delete lamure::ren::Controller::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted controller" << std::endl;
 #endif
-        delete lamure::ren::ModelDatabase::GetInstance();
+        delete lamure::ren::Modeldatabase::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted model database" << std::endl;
 #endif
-        delete lamure::ren::Policy::GetInstance();
+        delete lamure::ren::Policy::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted policy" << std::endl;
 #endif
-        delete lamure::ren::OocCache::GetInstance();
+        delete lamure::ren::OocCache::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted ooc cache" << std::endl;
 #endif
@@ -276,23 +276,23 @@ void Cleanup()
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "memory cleanup...(1)" << std::endl;
 #endif
-        delete lamure::ren::CutDatabase::GetInstance();
+        delete lamure::ren::Cutdatabase::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted cut database" << std::endl;
 #endif
-        delete lamure::ren::Controller::GetInstance();
+        delete lamure::ren::Controller::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted controller" << std::endl;
 #endif
-        delete lamure::ren::ModelDatabase::GetInstance();
+        delete lamure::ren::Modeldatabase::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted model database" << std::endl;
 #endif
-        delete lamure::ren::Policy::GetInstance();
+        delete lamure::ren::Policy::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted policy" << std::endl;
 #endif
-        delete lamure::ren::OocCache::GetInstance();
+        delete lamure::ren::OocCache::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted ooc cache" << std::endl;
 #endif
@@ -311,23 +311,23 @@ void glut_close()
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "memory cleanup...(1)" << std::endl;
 #endif
-        delete lamure::ren::CutDatabase::GetInstance();
+        delete lamure::ren::Cutdatabase::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted cut database" << std::endl;
 #endif
-        delete lamure::ren::Controller::GetInstance();
+        delete lamure::ren::Controller::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted controller" << std::endl;
 #endif
-        delete lamure::ren::ModelDatabase::GetInstance();
+        delete lamure::ren::Modeldatabase::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted model database" << std::endl;
 #endif
-        delete lamure::ren::Policy::GetInstance();
+        delete lamure::ren::Policy::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted policy" << std::endl;
 #endif
-        delete lamure::ren::OocCache::GetInstance();
+        delete lamure::ren::OocCache::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted ooc cache" << std::endl;
 #endif

@@ -11,7 +11,7 @@ include_directories(${PREPROC_INCLUDE_DIR} ${COMMON_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${PREPROC_LIBRARY}
-    ${OPENGL_LIBRARIES} 
+    ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     ${SCHISM_LIBRARIES}
     ${BOOST_LIBRARIES}
@@ -19,5 +19,4 @@ target_link_libraries(${PROJECT_NAME}
 
 add_dependencies(${PROJECT_NAME} lamure_preprocessing)
 
-MsvcPostBuild()
-
+MsvcPostBuild(${PROJECT_NAME})

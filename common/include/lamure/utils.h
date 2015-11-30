@@ -18,15 +18,15 @@
 
 namespace lamure {
 
-typedef boost::timer::auto_cpu_timer AutoTimer;
-typedef boost::timer::cpu_timer CpuTimer;
+typedef boost::timer::auto_cpu_timer auto_timer;
+typedef boost::timer::cpu_timer cpu_timer;
 
 /**
- * Converts the input vector to the vector of pointers.
+ * converts the input vector to the vector of pointers.
  * The pointers refer to the base class of input's elements.
  */
 template <class Base, class Derived>
-std::vector<Base*> VectorToPtr(std::vector<Derived>& input)
+std::vector<Base*> vector_to_ptr(std::vector<Derived>& input)
 {
     std::vector<Base*> result(input.size());
     std::transform(input.begin(), input.end(), result.begin(),
@@ -34,7 +34,7 @@ std::vector<Base*> VectorToPtr(std::vector<Derived>& input)
     return result;
 }
 
-COMMON_DLL boost::filesystem::path AddToPath(const boost::filesystem::path& path,
+COMMON_DLL boost::filesystem::path add_to_path(const boost::filesystem::path& path,
                                   const std::string& addition);
 
 

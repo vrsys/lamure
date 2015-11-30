@@ -24,52 +24,52 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL BvhStream
+class PREPROCESSING_DLL bvh_stream
 {
 
 public:
-    BvhStream();
-    ~BvhStream();
+    bvh_stream();
+    ~bvh_stream();
 
 
-    enum BvhStreamType {
+    enum bvh_stream_type {
         BVH_STREAM_IN = 0,
         BVH_STREAM_OUT = 1
     };
 
-    const BvhStreamType type() const { return type_; };
+    const bvh_stream_type type() const { return type_; };
     const std::string filename() const { return filename_; };
 
-    void ReadBvh(const std::string& filename, Bvh& bvh);
-    void WriteBvh(const std::string& filename, Bvh& bvh, const bool intermediate);
+    void readbvh(const std::string& filename, bvh& bvh);
+    void writebvh(const std::string& filename, bvh& bvh, const bool intermediate);
 
 
 protected:
 
-    struct BvhVector {
+    struct bvh_vector {
         float x_;
         float y_;
         float z_;
     };
-    struct BvhBoundingBox {
-        BvhVector min_;
-        BvhVector max_;
+    struct bvh_bounding_box {
+        bvh_vector min_;
+        bvh_vector max_;
     };
-    struct BvhDiskArray {
+    struct bvh_disk_array {
         uint32_t disk_access_ref_; //reference to OocDiskAccess
         uint32_t reserved_;
         uint64_t offset_;
-        uint64_t length_; //length of zero defines empty BvhDiskArray
+        uint64_t length_; //length of zero defines empty bvh_disk_array
     };
-    struct BvhString {
+    struct bvh_string {
         uint64_t length_;
         std::string string_;
     };
-    enum BvhNodeVisibility {
+    enum bvh_node_visibility {
         BVH_NODE_VISIBLE = 0,
         BVH_NODE_INVISIBLE = 1
     };
-    enum BvhTreeState {
+    enum bvh_tree_state {
         BVH_STATE_NULL            = 0, //null tree
         BVH_STATE_EMPTY           = 1, //initialized, but empty tree
         BVH_STATE_AFTER_DOWNSWEEP = 2, //after downsweep
@@ -77,22 +77,22 @@ protected:
         BVH_STATE_SERIALIZED      = 4  //serialized surfel data
     };
   
-    class BvhSerializable {
+    class bvh_serializable {
     public:
-        ~BvhSerializable() {};
+        ~bvh_serializable() {};
         size_t data_offset_;
     protected:
-        friend class BvhStream;
-        BvhSerializable() {};
+        friend class bvh_stream;
+        bvh_serializable() {};
         virtual const size_t size() const = 0;
         virtual void signature(char* signature) = 0;
         virtual void serialize(std::fstream& file) = 0;
         virtual void deserialize(std::fstream& file) = 0;
 
-        void serialize_string(std::fstream& file, const BvhString& text) {
+        void serialize_string(std::fstream& file, const bvh_string& text) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to serialize");
+                    "PLOD: bvh_stream::Unable to serialize");
             }
             file.write((char*)&text.length_, 8);
             file.write(text.string_.c_str(), text.length_);
@@ -105,10 +105,10 @@ protected:
             }
 
         }
-        void deserialize_string(std::fstream& file, BvhString& text) {
+        void deserialize_string(std::fstream& file, bvh_string& text) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to deserialize");
+                    "PLOD: bvh_stream::Unable to deserialize");
             }
             file.read((char*)&text.length_, 8);
             char* buffer = new char[text.length_];
@@ -131,17 +131,17 @@ protected:
 
     };
 
-    class BvhSig : public BvhSerializable {
+    class bvh_sig : public bvh_serializable {
     public:
-        BvhSig()
-        : BvhSerializable() {};
-        ~BvhSig() {};
+        bvh_sig()
+        : bvh_serializable() {};
+        ~bvh_sig() {};
         char signature_[8];
         size_t reserved_;
         size_t allocated_size_;
         size_t used_size_;
     protected:
-        friend class BvhStream;
+        friend class bvh_stream;
         const size_t size() const {
             return 8*sizeof(uint32_t);
         }
@@ -149,7 +149,7 @@ protected:
         void serialize(std::fstream& file) {
              if (!file.is_open()) {
                  throw std::runtime_error(
-                     "PLOD: BvhStream::Unable to serialize");
+                     "PLOD: bvh_stream::Unable to serialize");
              }
              file.write(signature_, 8);
              file.write((char*)&reserved_, 8);
@@ -159,7 +159,7 @@ protected:
         void deserialize(std::fstream& file) {
              if (!file.is_open()) {
                  throw std::runtime_error(
-                     "PLOD: BvhStreamLLUnable to deserialize");
+                     "PLOD: bvh_streamLLUnable to deserialize");
              }
              for (uint32_t i = 0; i < 8; ++i) {
                  file.read(&signature_[i], 1);
@@ -170,18 +170,18 @@ protected:
         }
     };
 
-    class BvhFileSeg : public BvhSerializable {
+    class bvh_file_seg : public bvh_serializable {
     public:
-        BvhFileSeg()
-        : BvhSerializable() {};
-        ~BvhFileSeg() {};
+        bvh_file_seg()
+        : bvh_serializable() {};
+        ~bvh_file_seg() {};
 
         uint32_t major_version_;
         uint32_t minor_version_;
         size_t reserved_;
 
     protected:
-        friend class BvhStream;
+        friend class bvh_stream;
         const size_t size() const {
             return 4*sizeof(uint32_t);
         }
@@ -198,7 +198,7 @@ protected:
         void serialize(std::fstream& file) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to serialize");
+                    "PLOD: bvh_stream::Unable to serialize");
             }
             file.write((char*)&major_version_, 4);
             file.write((char*)&minor_version_, 4);
@@ -207,7 +207,7 @@ protected:
         void deserialize(std::fstream& file) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to deserialize");
+                    "PLOD: bvh_stream::Unable to deserialize");
             }
             file.read((char*)&major_version_, 4);
             file.read((char*)&minor_version_, 4);
@@ -215,11 +215,11 @@ protected:
         }
     };
 
-    class BvhTreeSeg : public BvhSerializable {
+    class bvh_tree_seg : public bvh_serializable {
     public:
-        BvhTreeSeg()
-        : BvhSerializable() {};
-        ~BvhTreeSeg() {};
+        bvh_tree_seg()
+        : bvh_serializable() {};
+        ~bvh_tree_seg() {};
 
         uint32_t segment_id_;
         uint32_t depth_;
@@ -230,15 +230,15 @@ protected:
         uint32_t serialized_surfel_size_;
         uint64_t reserved_0_;
 
-        BvhTreeState state_;
+        bvh_tree_state state_;
         uint32_t reserved_1_;
         uint64_t reserved_2_;
 
-        BvhVector translation_;
+        bvh_vector translation_;
         uint32_t reserved_3_;
 
     protected:
-        friend class BvhStream;
+        friend class bvh_stream;
         const size_t size() const {
             return 16*sizeof(uint32_t);
         }
@@ -255,7 +255,7 @@ protected:
         void serialize(std::fstream& file) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to serialize");
+                    "PLOD: bvh_stream::Unable to serialize");
             }
             file.write((char*)&segment_id_, 4);
             file.write((char*)&depth_, 4);
@@ -275,7 +275,7 @@ protected:
         void deserialize(std::fstream& file) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to deserialize");
+                    "PLOD: bvh_stream::Unable to deserialize");
             }
             file.read((char*)&segment_id_, 4);
             file.read((char*)&depth_, 4);
@@ -295,28 +295,28 @@ protected:
         
     };
 
-    class BvhNodeSeg : public BvhSerializable {
+    class bvh_node_seg : public bvh_serializable {
     public:
-        BvhNodeSeg()
-        : BvhSerializable() {};
-        ~BvhNodeSeg() {};
+        bvh_node_seg()
+        : bvh_serializable() {};
+        ~bvh_node_seg() {};
         
         uint32_t segment_id_;
         uint32_t node_id_;
 
-        BvhVector centroid_;
+        bvh_vector centroid_;
         uint32_t depth_;
         
         float reduction_error_;
         float avg_surfel_radius_;
         
-        BvhNodeVisibility visibility_;
+        bvh_node_visibility visibility_;
         uint32_t reserved_;
 
-        BvhBoundingBox bounding_box_;
+        bvh_bounding_box bounding_box_;
         
     protected:
-        friend class BvhStream;
+        friend class bvh_stream;
         const size_t size() const {
             return 16*sizeof(uint32_t);
         };
@@ -333,7 +333,7 @@ protected:
         void serialize(std::fstream& file) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to serialize");
+                    "PLOD: bvh_stream::Unable to serialize");
             }
             file.write((char*)&segment_id_, 4);
             file.write((char*)&node_id_, 4);
@@ -355,7 +355,7 @@ protected:
         void deserialize(std::fstream& file) {
             if (!file.is_open()) {
                 throw std::runtime_error(
-                    "PLOD: BvhStream::Unable to deserialize");
+                    "PLOD: bvh_stream::Unable to deserialize");
             }
             file.read((char*)&segment_id_, 4);
             file.read((char*)&node_id_, 4);
@@ -377,20 +377,20 @@ protected:
 
     };
 
-    class BvhNodeExtensionSeg : public BvhSerializable {
+    class bvh_node_extension_seg : public bvh_serializable {
     public:
-        BvhNodeExtensionSeg()
-        : BvhSerializable() {};
-        ~BvhNodeExtensionSeg() {};
+        bvh_node_extension_seg()
+        : bvh_serializable() {};
+        ~bvh_node_extension_seg() {};
 
         uint32_t segment_id_;
         uint32_t node_id_;
         uint32_t empty_;
         uint32_t reserved_;
-        BvhDiskArray disk_array_;
+        bvh_disk_array disk_array_;
 
     protected:
-        friend class BvhStream;
+        friend class bvh_stream;
         const size_t size() const {
             return 10*sizeof(uint32_t);
         };
@@ -407,7 +407,7 @@ protected:
         void serialize(std::fstream& file) {
             if (!file.is_open()) {
                throw std::runtime_error(
-                   "PLOD: BvhStream::Unable to serialize");
+                   "PLOD: bvh_stream::Unable to serialize");
             }
             file.write((char*)&segment_id_, 4);
             file.write((char*)&node_id_, 4);
@@ -421,7 +421,7 @@ protected:
         void deserialize(std::fstream& file) {
             if (!file.is_open()) {
                throw std::runtime_error(
-                   "PLOD: BvhStream::Unable to deserialize");
+                   "PLOD: bvh_stream::Unable to deserialize");
             }
             file.read((char*)&segment_id_, 4);
             file.read((char*)&node_id_, 4);
@@ -436,20 +436,20 @@ protected:
     };
 
 
-    class BvhTreeExtensionSeg : public BvhSerializable {
+    class bvh_tree_extension_seg : public bvh_serializable {
     public:
-        BvhTreeExtensionSeg()
-        : BvhSerializable() {};
-        ~BvhTreeExtensionSeg() {};
+        bvh_tree_extension_seg()
+        : bvh_serializable() {};
+        ~bvh_tree_extension_seg() {};
 
         uint32_t segment_id_;
-        BvhString working_directory_;
-        BvhString filename_;
+        bvh_string working_directory_;
+        bvh_string filename_;
         uint32_t num_disk_accesses_;
-        std::vector<BvhString> disk_accesses_;
+        std::vector<bvh_string> disk_accesses_;
 
     protected:
-        friend class BvhStream;
+        friend class bvh_stream;
         const size_t size() const {
             //this takes some effort to compute since strings have arbitray length
             size_t size = 8;
@@ -473,28 +473,28 @@ protected:
         void serialize(std::fstream& file) {
             if (!file.is_open()) {
                throw std::runtime_error(
-                   "PLOD: BvhStream::Unable to serialize");
+                   "PLOD: bvh_stream::Unable to serialize");
             }
             file.write((char*)&segment_id_, 4);
             serialize_string(file, working_directory_);
             serialize_string(file, filename_);
             file.write((char*)&num_disk_accesses_, 4);
             for (unsigned int i = 0; i < num_disk_accesses_; ++i) {
-                const BvhString& disk_access = disk_accesses_[i];
+                const bvh_string& disk_access = disk_accesses_[i];
                 serialize_string(file, disk_access);
             }
         }
         void deserialize(std::fstream& file) {
             if (!file.is_open()) {
                throw std::runtime_error(
-                   "PLOD: BvhStream::Unable to deserialize");
+                   "PLOD: bvh_stream::Unable to deserialize");
             }
             file.read((char*)&segment_id_, 4);
             deserialize_string(file, working_directory_);
             deserialize_string(file, filename_);
             file.read((char*)&num_disk_accesses_, 4);
             for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
-                 BvhString disk_access;
+                 bvh_string disk_access;
                  deserialize_string(file, disk_access);
                  disk_accesses_.push_back(disk_access);
             }
@@ -502,15 +502,15 @@ protected:
         
     };
     
-    void OpenStream(const std::string& bvh_filename,
-                    const BvhStreamType type);
-    void CloseStream(const bool remove_file);    
+    void openStream(const std::string& bvh_filename,
+                    const bvh_stream_type type);
+    void closeStream(const bool remove_file);    
  
-    void Write(BvhSerializable& serializable);
+    void write(bvh_serializable& serializable);
 
 
 private:
-    BvhStreamType type_;    
+    bvh_stream_type type_;    
     std::string filename_;
     std::fstream file_;
     uint32_t num_segments_;

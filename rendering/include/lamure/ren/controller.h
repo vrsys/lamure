@@ -27,15 +27,15 @@ public:
     typedef view_t gua_view_desc_t;
     typedef std::string gua_model_desc_t;
 
-    static Controller* GetInstance();
+    static Controller* get_instance();
 
                         Controller(const Controller&) = delete;
                         Controller& operator=(const Controller&) = delete;
     virtual             ~Controller();
 
-    void                SignalSystemReset();
-    void                ResetSystem();
-    const bool          IsSystemResetSignaled(const context_t context_id);
+    void                SignalSystemreset();
+    void                resetSystem();
+    const bool          IsSystemresetSignaled(const context_t context_id);
 
     context_t           DeduceContextId(const gua_context_desc_t context_desc);
     view_t              DeduceViewId(const gua_context_desc_t context_desc, const gua_view_desc_t view_desc);
@@ -47,7 +47,7 @@ public:
     void                Dispatch(const context_t context_id, scm::gl::render_device_ptr device);
     const bool          IsCutUpdateInProgress(const context_t context_id);
 
-    scm::gl::buffer_ptr GetContextBuffer(const context_t context_id, scm::gl::render_device_ptr device);
+    scm::gl::buffer_ptr GetContextbuffer(const context_t context_id, scm::gl::render_device_ptr device);
     scm::gl::vertex_array_ptr GetContextMemory(const context_t context_id, scm::gl::render_device_ptr device);
 
 

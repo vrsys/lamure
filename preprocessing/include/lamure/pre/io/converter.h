@@ -19,13 +19,13 @@
 namespace lamure {
 namespace pre {
 
-class PREPROCESSING_DLL Converter
+class PREPROCESSING_DLL converter
 {
 public:
-    typedef std::function<void(Surfel&, bool&)> SurfelModifierFunction;
+    typedef std::function<void(surfel&, bool&)> surfel_modifier_function;
 
-    explicit            Converter(FormatAbstract& in_format,
-                                  FormatAbstract& out_format,
+    explicit            converter(format_abstract& in_format,
+                                  format_abstract& out_format,
                                   const size_t buffer_size) // buffer_size - in bytes
                             : in_format_(in_format),
                               out_format_(out_format),
@@ -36,24 +36,24 @@ public:
                               new_radius_(0.0),
                               discarded_(0)
                         {
-                            surfels_in_buffer_ = buffer_size / sizeof(Surfel);
+                            surfels_in_buffer_ = buffer_size / sizeof(surfel);
                         }
 
 
-    virtual             ~Converter() {}
+    virtual             ~converter() {}
 
-    void                Convert(const std::string& input_filename,
+    void                convert(const std::string& input_filename,
                                 const std::string& output_filename);
 
 
     const size_t        surfels_in_buffer() const { return surfels_in_buffer_; }
 
-    void                OverrideRadius(const real radius) {
+    void                override_radius(const real radius) {
                             override_radius_ = true;
                             new_radius_ = radius;
                         }
 
-    void                OverrideColor(const vec3b& color) {
+    void                override_color(const vec3b& color) {
                             override_color_ = true;
                             new_color_ = color;
                         }
@@ -64,7 +64,7 @@ public:
     void                set_translation(const vec3r& translation)
                             { translation_ = translation; }
 
-    void                set_surfel_callback(const SurfelModifierFunction& callback) { surfel_callback_ = callback; }
+    void                set_surfel_callback(const surfel_modifier_function& callback) { surfel_callback_ = callback; }
 
 private:
 
@@ -74,25 +74,25 @@ private:
     std::mutex          mtx_;
     std::condition_variable cv_;
 
-    void                AppendSurfel(const Surfel& surfel);
-    void                FlushBuffer();
-    const bool          IsDegenerate(const Surfel& s) const;
+    void                append_surfel(const surfel& surfel);
+    void                flush_buffer();
+    const bool          is_degenerate(const surfel& s) const;
 
 
-    FormatAbstract&     in_format_;
-    FormatAbstract&     out_format_;
+    format_abstract&     in_format_;
+    format_abstract&     out_format_;
 
 
     vec3r               translation_;
     size_t              surfels_in_buffer_;
     bool                override_radius_;
     bool                override_color_;
-    real              scale_factor_;
-    SurfelModifierFunction surfel_callback_;
+    real                scale_factor_;
+    surfel_modifier_function surfel_callback_;
 
-    SurfelVector        buffer_;
+    surfel_vector        buffer_;
 
-    real              new_radius_;
+    real                new_radius_;
     vec3b               new_color_;
     size_t              discarded_;
 

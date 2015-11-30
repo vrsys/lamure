@@ -35,7 +35,7 @@ Policy::
 }
 
 Policy* Policy::
-GetInstance() {
+get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 

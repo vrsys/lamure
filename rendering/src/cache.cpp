@@ -17,7 +17,7 @@ namespace ren
 Cache::
 Cache(const slot_t num_slots)
     : num_slots_(num_slots), slot_size_(0) {
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     slot_size_ = (size_t)(database->size_of_surfel() * database->surfels_per_node());
 
@@ -65,10 +65,10 @@ ReleaseNode(const context_t context_id, const view_t view_id, const model_t mode
 }
 
 const bool Cache::
-ReleaseNodeInvalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
+ReleaseNodeinvalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
     if (index_->IsNodeIndexed(model_id, node_id)) {
         uint32_t hash_id = ((((uint32_t)context_id) & 0xFFFF) << 16) | (((uint32_t)view_id) & 0xFFFF);
-        return index_->ReleaseSlotInvalidate(hash_id, model_id, node_id);
+        return index_->ReleaseSlotinvalidate(hash_id, model_id, node_id);
     }
 
     return false;

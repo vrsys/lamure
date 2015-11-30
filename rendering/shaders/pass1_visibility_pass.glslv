@@ -7,7 +7,7 @@
 
 #version 420 core
 
-out VertexData {
+out Vertexdata {
 	vec3 nor;
   float rad;
 	float mv_vertex_depth;
@@ -21,7 +21,7 @@ uniform float height_divided_by_top_minus_bottom;
 
 uniform float near_plane;
 
-uniform float minSurfelSize;
+uniform float minsurfelsize;
 
 uniform float QuantFactor;
 
@@ -77,7 +77,7 @@ void main()
 
 		  VertexOut.nor = (inv_mv_matrix * vec4(in_normal,0.0f)) .xyz;
 
-		  gl_PointSize = ps;
+		  gl_Pointsize = ps;
 
 		  VertexOut.rad = (scaled_radius) * point_size_factor;
 

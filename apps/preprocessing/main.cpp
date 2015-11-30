@@ -168,11 +168,11 @@ int main(int argc, const char *argv[])
         const auto input_file = fs::canonical(files[0]);
         const auto output_file = fs::absolute(files[1]);
 
-        lamure::pre::FormatFactory f;
-        f[".xyz"] = &lamure::pre::CreateFormatInstance<lamure::pre::FormatXYZ>;
-        f[".xyz_all"] = &lamure::pre::CreateFormatInstance<lamure::pre::FormatXYZAll>;
-        f[".ply"] = &lamure::pre::CreateFormatInstance<lamure::pre::FormatPLY>;
-        f[".bin"] = &lamure::pre::CreateFormatInstance<lamure::pre::FormatBin>;
+        lamure::pre::format_factory f;
+        f[".xyz"] = &lamure::pre::create_format_instance<lamure::pre::format_xyz>;
+        f[".xyz_all"] = &lamure::pre::create_format_instance<lamure::pre::format_xyzall>;
+        f[".ply"] = &lamure::pre::create_format_instance<lamure::pre::format_ply>;
+        f[".bin"] = &lamure::pre::create_format_instance<lamure::pre::format_bin>;
 
         auto input_type = input_file.extension().string();
         auto output_type = output_file.extension().string();
@@ -185,12 +185,12 @@ int main(int argc, const char *argv[])
             std::cerr << "Unknown output file format" << details_msg;
             return EXIT_FAILURE;
         }
-        lamure::pre::FormatAbstract* inp = f[input_type]();
-        lamure::pre::FormatAbstract* out = f[output_type]();
+        lamure::pre::format_abstract* inp = f[input_type]();
+        lamure::pre::format_abstract* out = f[output_type]();
 
-        lamure::pre::Converter conv(*inp, *out, buffer_size);
+        lamure::pre::converter conv(*inp, *out, buffer_size);
 
-        conv.Convert(input_file.string(), output_file.string());
+        conv.convert(input_file.string(), output_file.string());
 
         delete inp;
         delete out;
@@ -228,27 +228,27 @@ int main(int argc, const char *argv[])
         }
 
         // set building options
-        lamure::pre::Builder::Descriptor desc;
+        lamure::pre::builder::descriptor desc;
         std::string reduction_algo = vm["reduction-algo"].as<std::string>();
         std::string rep_radius_algo = vm["rep-radius-algo"].as<std::string>();
 
         if (reduction_algo == "ndc")
-            desc.reduction_algo        = lamure::pre::ReductionAlgorithm::NDC;
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::NDC;
         else if (reduction_algo == "const")
-            desc.reduction_algo        = lamure::pre::ReductionAlgorithm::Constant;
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::constant;
         else if (reduction_algo == "everysecond")
-            desc.reduction_algo        = lamure::pre::ReductionAlgorithm::EverySecond;
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::every_second;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;
         }
 
         if (rep_radius_algo == "amean")
-            desc.rep_radius_algo       = lamure::pre::RepRadiusAlgorithm::ArithmeticMean;
+            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::arithmetic_mean;
         else if (rep_radius_algo == "gmean")
-            desc.rep_radius_algo       = lamure::pre::RepRadiusAlgorithm::GeometricMean;
+            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::geometric_mean;
         else if (rep_radius_algo == "hmean")
-            desc.rep_radius_algo       = lamure::pre::RepRadiusAlgorithm::HarmonicMean;
+            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::harmonic_mean;
         else {
             std::cerr << "Unknown algorithm for computing representative surfel radius" << details_msg;
             return EXIT_FAILURE;
@@ -267,8 +267,8 @@ int main(int argc, const char *argv[])
         desc.translate_to_origin       = !vm.count("no-translate-to-origin");
 
         // preprocess
-        lamure::pre::Builder builder(desc);
-        if (!builder.Construct())
+        lamure::pre::builder builder(desc);
+        if (!builder.construct())
             return EXIT_FAILURE;
     }
 

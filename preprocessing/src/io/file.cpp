@@ -17,23 +17,23 @@ namespace lamure {
 namespace pre
 {
 
-File::
-~File()
+file::
+~file()
 {
     try {
-        Close();
+        close();
     }
     catch (...) {}
 }
 
-void File::
-Open(const std::string& file_name, const bool truncate)
+void file::
+open(const std::string& file_name, const bool truncate)
 {
-    if (IsOpen()) {
+    if (is_open()) {
         LOGGER_ERROR("Attempt to open file when the instance of "
-                                "pre::File is already in open state. "
-                                "File: \"" << file_name << "\" "
-                                "Opened file: \"" << file_name_ << "\"");
+                                "pre::file is already in open state. "
+                                "file: \"" << file_name << "\" "
+                                "opened file: \"" << file_name_ << "\"");
         exit(1);
     }
 
@@ -47,17 +47,17 @@ Open(const std::string& file_name, const bool truncate)
     
     stream_.open(file_name_, mode);
 
-    if (!IsOpen()) {
+    if (!is_open()) {
         LOGGER_ERROR("Failed to open file: \"" << file_name_ << 
                                 "\". " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
-void File::
-Close(const bool remove)
+void file::
+close(const bool remove)
 {
-    if (IsOpen()) {
+    if (is_open()) {
         stream_.flush();
         stream_.close();
         if (stream_.fail()) {
@@ -75,61 +75,61 @@ Close(const bool remove)
     }
 }
 
-const bool File::
-IsOpen() const
+const bool file::
+is_open() const
 {
     return stream_.is_open();
 }
 
-const size_t File::
-GetSize() const
+const size_t file::
+get_size() const
 {
     std::lock_guard<std::mutex> lock(read_write_mutex_);
 
-    assert(IsOpen());
+    assert(is_open());
     stream_.seekg(0, stream_.end);
     size_t len = stream_.tellg();
     stream_.seekg(0, stream_.beg);
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("GetSize failed. File: \"" << file_name_ << 
+        LOGGER_ERROR("get_size failed. file: \"" << file_name_ << 
                                 "\". " << strerror(errno));
     }
-    return len / sizeof(Surfel);
+    return len / sizeof(surfel);
 }
 
-void File::
-Append(const SurfelVector* data,
+void file::
+append(const surfel_vector* data,
        const size_t offset_in_mem,
        const size_t length)
 {
     std::lock_guard<std::mutex> lock(read_write_mutex_);
 
-    assert(IsOpen());
+    assert(is_open());
     assert(length > 0);
     assert(offset_in_mem + length <= data->size());
 
     stream_.seekp(0, stream_.end);
     stream_.write(reinterpret_cast<char*>(
-                  const_cast<Surfel*>(&(*data)[offset_in_mem])),
-                  length * sizeof(Surfel));
+                  const_cast<surfel*>(&(*data)[offset_in_mem])),
+                  length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("Append failed. File: \"" << file_name_ << 
+        LOGGER_ERROR("append failed. file: \"" << file_name_ << 
                                 "\". (mem offset: " << offset_in_mem << 
                                 ", len: " << length << "). " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
-void File::
-Append(const SurfelVector* data)
+void file::
+append(const surfel_vector* data)
 {
-    Append(data, 0, data->size());
+    append(data, 0, data->size());
 }
 
-void File::
-Write(const SurfelVector* data,
+void file::
+write(const surfel_vector* data,
       const size_t offset_in_mem,
       const size_t offset_in_file,
       const size_t length)
@@ -137,20 +137,20 @@ Write(const SurfelVector* data,
     assert(length > 0);
     assert(offset_in_mem + length <= data->size());
 
-    WriteData(reinterpret_cast<char*>(
-              const_cast<Surfel*>(&(*data)[offset_in_mem])),
+    write_data(reinterpret_cast<char*>(
+              const_cast<surfel*>(&(*data)[offset_in_mem])),
               offset_in_file, length);
 }
 
-void File::
-Write(const Surfel& surfel, const size_t pos_in_file)
+void file::
+write(const surfel& srfl, const size_t pos_in_file)
 {
-    WriteData(reinterpret_cast<char*>(const_cast<Surfel*>(&surfel)),
+  write_data(reinterpret_cast<char*>(const_cast<surfel*>(&srfl)),
               pos_in_file, 1);
 }
 
-void File::
-Read(SurfelVector* data,
+void file::
+read(surfel_vector* data,
      const size_t offset_in_mem,
      const size_t offset_in_file,
      const size_t length) const
@@ -158,47 +158,47 @@ Read(SurfelVector* data,
     assert(length > 0);
     assert(offset_in_mem + length <= data->size());
 
-    ReadData(reinterpret_cast<char*>(&(*data)[offset_in_mem]),
+    read_data(reinterpret_cast<char*>(&(*data)[offset_in_mem]),
              offset_in_file, length);
 }
 
-const Surfel File::
-Read(const size_t pos_in_file) const
+const surfel file::
+read(const size_t pos_in_file) const
 {
-    Surfel s;
-    ReadData(reinterpret_cast<char*>(&s), pos_in_file, 1);
+    surfel s;
+    read_data(reinterpret_cast<char*>(&s), pos_in_file, 1);
     return s;
 }
 
 
-void File::
-WriteData(char *data, const size_t offset_in_file, const size_t length)
+void file::
+write_data(char *data, const size_t offset_in_file, const size_t length)
 {
-    assert(IsOpen());
+    assert(is_open());
 
     std::lock_guard<std::mutex> lock(read_write_mutex_);
-    stream_.seekp(offset_in_file * sizeof(Surfel));
-    stream_.write(data, length * sizeof(Surfel));
+    stream_.seekp(offset_in_file * sizeof(surfel));
+    stream_.write(data, length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("Write failed. File: \"" << file_name_ << 
+        LOGGER_ERROR("write failed. file: \"" << file_name_ << 
                                 "\". (offset: " << offset_in_file << 
                                 ", len: " << length << "). " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
-void File::
-ReadData(char *data, const size_t offset_in_file, const size_t length) const
+void file::
+read_data(char *data, const size_t offset_in_file, const size_t length) const
 {
-    assert(IsOpen());
+    assert(is_open());
 
     std::lock_guard<std::mutex> lock(read_write_mutex_);
-    stream_.seekg(offset_in_file * sizeof(Surfel));
-    stream_.read(data, length * sizeof(Surfel));
+    stream_.seekg(offset_in_file * sizeof(surfel));
+    stream_.read(data, length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("Read failed. File: \"" << file_name_ << 
+        LOGGER_ERROR("read failed. file: \"" << file_name_ << 
                                 "\". (offset: " << offset_in_file << 
                                 ", len: " << length << "). " << strerror(errno));
     }

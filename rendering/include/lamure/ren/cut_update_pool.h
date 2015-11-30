@@ -63,19 +63,19 @@ protected:
     void                    CutMaster();
     void                    CutAnalysis(view_t view_id, model_t model_id);
     void                    CutUpdate();
-    void                    CompileTransferList();
-    void                    CompileRenderList();
+    void                    compileTransferList();
+    void                    compilerenderList();
 #ifdef LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
     void                    PrefetchRoutine();             
 #endif
 
 private:
-    bool                    IsShutdown();
+    bool                    is_shutdown();
 
     context_t               context_id_;
     
     bool                    locked_;
-    Semaphore               semaphore_;
+    semaphore               semaphore_;
     std::mutex              mutex_;
 
     uint32_t                num_threads_;
@@ -88,14 +88,14 @@ private:
     GpuCache*               gpu_cache_;
     CutUpdateIndex*         index_;
 
-    std::vector<CutDatabaseRecord::SlotUpdateDescr> transfer_list_;
+    std::vector<CutdatabaseRecord::SlotUpdateDescr> transfer_list_;
     std::vector<std::vector<std::vector<Cut::NodeSlotAggregate>>> render_list_;
 
     char*                   current_gpu_storage_A_;
     char*                   current_gpu_storage_B_;
     char*                   current_gpu_storage_;
 
-    CutDatabaseRecord::TemporaryBuffer current_gpu_buffer_;
+    CutdatabaseRecord::Temporarybuffer current_gpu_buffer_;
 
     std::map<view_t, Camera> user_cameras_;
     std::map<view_t, float> height_divided_by_top_minus_bottoms_;
@@ -124,7 +124,7 @@ private:
     boost::timer::nanosecond_type last_frame_elapsed_;
 #endif
 
-    Semaphore               master_semaphore_;
+    semaphore               master_semaphore_;
     bool                    master_dispatched_;
 
 };

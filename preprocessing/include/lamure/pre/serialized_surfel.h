@@ -16,36 +16,36 @@ namespace lamure {
 namespace pre
 {
 
-class SerializedSurfel /*final*/
+class serialized_surfel /*final*/
 {
 public:
-                        SerializedSurfel() {
+                        serialized_surfel() {
                             data_ = { 0.f, 0.f, 0.f,
                                       0u,  0u,  0u,  0u,
                                       0.f,
                                       0.f, 0.f, 0.f };
                         }
 
-                        SerializedSurfel(const Surfel& surfel) {    
-                            SetSurfel(surfel);
+                        serialized_surfel(const surfel& surfel) {    
+                            set_surfel(surfel);
                         }
 
-                        SerializedSurfel& operator=(const Surfel& other) {
-                            SetSurfel(other);
+                        serialized_surfel& operator=(const surfel& other) {
+                            set_surfel(other);
                             return *this;
                         }
 
-    static const size_t GetSize() { return sizeof(Data); };
+    static const size_t get_size() { return sizeof(data); };
 
-    bool                operator==(const SerializedSurfel& rhs) const
+    bool                operator==(const serialized_surfel& rhs) const
                             { return std::memcmp(raw_data_, 
                                                  rhs.raw_data_, 
-                                                 sizeof(Data)) == 0; }
+                                                 sizeof(data)) == 0; }
 
-    bool                operator!=(const SerializedSurfel& rhs) const
+    bool                operator!=(const serialized_surfel& rhs) const
                             { return !(operator==(rhs)); }
 
-    void SetSurfel(const Surfel& surfel) {
+    void set_surfel(const surfel& surfel) {
         data_ = {
             float(surfel.pos().x),    float(surfel.pos().y),    float(surfel.pos().z),
             surfel.color().x,  surfel.color().y,  surfel.color().z, 0,
@@ -53,25 +53,25 @@ public:
             surfel.normal().x, surfel.normal().y, surfel.normal().z };
     }
 
-    Surfel GetSurfel() const {
-        return Surfel(vec3r(data_.x, data_.y, data_.z),
+    surfel get_surfel() const {
+        return surfel(vec3r(data_.x, data_.y, data_.z),
                       vec3b(data_.r, data_.g, data_.b),
                       data_.size,
                       vec3f(data_.nx, data_.ny, data_.nz));
     }
 
-    void Serialize(char *data) {
-        std::memcpy(data, raw_data_, GetSize());
+    void serialize(char *data) {
+        std::memcpy(data, raw_data_, get_size());
     }
 
-    SerializedSurfel& Deserialize(char *data) {
-        std::memcpy(raw_data_, data, GetSize());
+    serialized_surfel& Deserialize(char *data) {
+        std::memcpy(raw_data_, data, get_size());
         return *this;
     }
 
 private:
     
-    struct Data
+    struct data
     {
         float x, y, z;
         uint8_t r, g, b, fake;
@@ -80,8 +80,8 @@ private:
     };
 
     union {
-      Data    data_;
-      uint8_t raw_data_[sizeof(Data)];
+      data    data_;
+      uint8_t raw_data_[sizeof(data)];
     };
 
 };

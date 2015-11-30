@@ -23,39 +23,39 @@ namespace pre
 {
 
 /**
-* Serializes nodes to a LOD file that can be used in rendering application.
+* serializes nodes to a LOD file that can be used in rendering application.
 */
-class PREPROCESSING_DLL NodeSerializer
+class PREPROCESSING_DLL node_serializer
 {
 public:
-    explicit            NodeSerializer(const size_t surfels_per_node,
+    explicit            node_serializer(const size_t surfels_per_node,
                                        const size_t buffer_size); // buffer_size - in bytes
 
-                        NodeSerializer(const NodeSerializer&) = delete;
-                        NodeSerializer& operator=(const NodeSerializer&) = delete;
-    virtual             ~NodeSerializer();
+                        node_serializer(const node_serializer&) = delete;
+                        node_serializer& operator=(const node_serializer&) = delete;
+    virtual             ~node_serializer();
 
-    void                Open(const std::string& file_name, const bool read_write_mode = false);
-    void                Close();
-    const bool          IsOpen() const;
+    void                open(const std::string& file_name, const bool read_write_mode = false);
+    void                close();
+    const bool          is_open() const;
 
-    void                SerializeNodes(const std::vector<BvhNode>& nodes);
+    void                serialize_nodes(const std::vector<bvh_node>& nodes);
 
-    void                ReadNodeImmediate(SurfelVector& surfels, 
+    void                read_node_immediate(surfel_vector& surfels, 
                                           const size_t offset);
-    void                WriteNodeImmediate(const SurfelVector& surfels, 
+    void                write_node_immediate(const surfel_vector& surfels, 
                                            const size_t offset);
 
 private:
 
-    void                WriteNodeStreamed(const BvhNode& node);
-    void                FlushBuffer();
+    void                write_node_streamed(const bvh_node& node);
+    void                flush_buffer();
 
     mutable std::fstream stream_;
     std::string         file_name_;
     size_t              surfels_per_node_;
 
-    std::deque<SurfelVector*> 
+    std::deque<surfel_vector*> 
                         buffer_;
     size_t              max_nodes_in_buffer_;
 };

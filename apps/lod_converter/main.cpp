@@ -18,7 +18,7 @@
 #include <lamure/ren/bvh.h>
 #include <lamure/ren/lod_stream.h>
 
-#include "fileHandler.h"
+#include "file_handler.h"
 
 char* get_cmd_option(char** begin, char** end, const std::string & option) {
     char** it = std::find(begin, end, option);
@@ -31,7 +31,7 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
     return std::find(begin, end, option) != end;
 }
 
-struct Surfel {
+struct surfel {
     float x, y, z;
     uint8_t r, g, b, fake;
     float size;
@@ -73,9 +73,9 @@ int main(int argc, char *argv[]) {
        
     //prepare lod output file
     lamure::ren::LodStream* out_lod_access = new lamure::ren::LodStream();
-    out_lod_access->OpenForWriting(out_lod_file);
+    out_lod_access->openForWriting(out_lod_file);
 
-    fileHandler knobi_file_handler;
+    file_handler knobi_file_handler;
     
     knobi_file_handler.load(input_knobi_file.substr(0, input_knobi_file.size()-4));
 
@@ -84,25 +84,25 @@ int main(int argc, char *argv[]) {
     unsigned int depth = knobi_file_handler.TreeDepth(); 
     depth = depth == 0 ? 0 : depth-1;
     unsigned int num_leafes = knobi_file_handler.LeafesCount();
-    unsigned int num_surfels_per_node = knobi_file_handler.ClusterSize();
+    unsigned int num_surfels_per_node = knobi_file_handler.Clustersize();
     unsigned int num_points = num_nodes * num_surfels_per_node;
 
     repositoryPoints* knobi_lodRep = knobi_file_handler.PointsRepository();
     serializedTree* knobi_serTree = knobi_file_handler.SerialTree();
     
-    Surfel* data = new Surfel[num_surfels_per_node];
-    size_t size_of_node_in_bytes = sizeof(Surfel) * num_surfels_per_node;
+    surfel* data = new surfel[num_surfels_per_node];
+    size_t size_of_node_in_bytes = sizeof(surfel) * num_surfels_per_node;
     memset((char*)data, 0, size_of_node_in_bytes);
 
     std::vector<float> average_surfels_per_node;
     average_surfels_per_node.resize(num_nodes);
 
-    lamure::ren::Bvh* bvh = new lamure::ren::Bvh();
+    lamure::ren::bvh* bvh = new lamure::ren::bvh();
     bvh->set_num_nodes(num_nodes);
     bvh->set_fan_factor(fan_factor);
     bvh->set_depth(depth);
     bvh->set_surfels_per_node(num_surfels_per_node);
-    bvh->set_size_of_surfel(sizeof(Surfel));
+    bvh->set_size_of_surfel(sizeof(surfel));
     bvh->set_translation(scm::math::vec3f(0.f, 0.f, 0.f));
 
     for (unsigned int node_id = 0; node_id < num_nodes; ++node_id) {
@@ -122,13 +122,13 @@ int main(int argc, char *argv[]) {
 
       serializedTree* knobi_node = knobi_serTree + node_id;       
       float quant_factor = knobi_node->QuantFactor;
-      float min_surfel_size = knobi_node->minSurfelSize;
+      float min_surfel_size = knobi_node->minsurfelsize;
       float representative_surfel_size = 0.f;
    
       for (unsigned int surfel_id = 0; surfel_id < num_surfels_per_node; ++surfel_id) {
         repositoryPoints* point = (knobi_lodRep + knobi_node->repoidx + surfel_id);
 
-        Surfel s;
+        surfel s;
         s.x = point->x;
         s.y = point->y;
         s.z = point->z;
@@ -147,20 +147,20 @@ int main(int argc, char *argv[]) {
       
       //store representative
       representative_surfel_size = representative_surfel_size / (float)num_surfels_per_node;
-      out_lod_access->Write((char*)data, node_id * size_of_node_in_bytes, size_of_node_in_bytes);
+      out_lod_access->write((char*)data, node_id * size_of_node_in_bytes, size_of_node_in_bytes);
    
       scm::math::vec3f bb_min(scm::math::vec3f(knobi_node->boundbox.minx, knobi_node->boundbox.miny, knobi_node->boundbox.minz));
       scm::math::vec3f bb_max(scm::math::vec3f(knobi_node->boundbox.maxx, knobi_node->boundbox.maxy, knobi_node->boundbox.maxz));
       scm::math::vec3f bb_centroid = 0.5f * (bb_min + bb_max);
 
-      bvh->SetBoundingBox(node_id, scm::gl::boxf(bb_min, bb_max));
+      bvh->Setbounding_box(node_id, scm::gl::boxf(bb_min, bb_max));
       bvh->SetCentroid(node_id, bb_centroid);
-      bvh->SetAvgSurfelRadius(node_id, representative_surfel_size);
-      bvh->SetVisibility(node_id, lamure::ren::Bvh::NodeVisibility::NODE_VISIBLE);
+      bvh->SetAvgsurfelRadius(node_id, representative_surfel_size);
+      bvh->SetVisibility(node_id, lamure::ren::bvh::node_visibility::NODE_VISIBLE);
        
     }
 
-    bvh->WriteBvhFile(out_bvh_file);
+    bvh->writebvhfile(out_bvh_file);
 
     delete bvh;
     delete[] data;

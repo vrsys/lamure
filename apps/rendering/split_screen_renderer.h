@@ -57,34 +57,34 @@
 
 #include <GL/freeglut.h>
 
-class SplitScreenRenderer
+class split_screen_renderer
 {
 public:
-                        SplitScreenRenderer(std::vector<scm::math::mat4f> const& model_transformations);
-    virtual             ~SplitScreenRenderer();
+                        split_screen_renderer(std::vector<scm::math::mat4f> const& model_transformations);
+    virtual             ~split_screen_renderer();
 
-    void                Reset();
+    void                reset();
 
-    void                Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO);
+    void                render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO);
 
-    void                ResetViewport(int const x, int const y);
+    void                reset_viewport(int const x, int const y);
 
-    void                SendModelTransform(const lamure::model_t model_id, const scm::math::mat4f& transform);
+    void                send_model_transform(const lamure::model_t model_id, const scm::math::mat4f& transform);
 
     scm::gl::render_device_ptr device() const { return device_; }
 
 protected:
-    void                UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const;
+    void                upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const;
 
-    bool                InitializeSchismDeviceAndShaders(int resX, int resY);
-    void                InitializeVBOs();
-    void                UpdateFrustumDependentParameters(lamure::ren::Camera const& camera);
+    bool                initialize_device_and_shaders(int resX, int resY);
+    void                initialize_vbos();
+    void                update_frustum_dependent_parameters(lamure::ren::Camera const& camera);
 
-    void                UploadUniforms(lamure::ren::Camera const& camera) const;
-    void                SwapTempBuffers();
-    void                DisplayStatus();
+    void                upload_uniforms(lamure::ren::Camera const& camera) const;
+    void                swap_temporary_buffers();
+    void                display_status();
 
-    void                CalcRadScaleFactors();
+    void                calc_rad_scale_factors();
 private:
 
     int                                         win_x_;
@@ -167,10 +167,10 @@ private:
 //methods for changing rendering settings dynamically
 public:
 
-    void SwitchBoundingBoxRendering();
-    void SwitchSurfelRendering();
-    void ChangePointSize(float amount);
-    void SwitchRenderMode();
+    void switch_bounding_box_rendering();
+    void switch_surfel_rendering();
+    void change_pointsize(float amount);
+    void SwitchrenderMode();
     void SwitchEllipseMode();
     void SwitchClampedNormalMode();
     void ChangeDeformRatio(float amount);

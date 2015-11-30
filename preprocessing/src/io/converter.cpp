@@ -12,15 +12,15 @@
 namespace lamure {
 namespace pre {
 
-void Converter::
-Convert(const std::string& input_filename,
+void converter::
+convert(const std::string& input_filename,
         const std::string& output_filename)
 {
     discarded_ = 0;
     flush_ready_ = false;
     flush_done_ = false;
 
-    auto buf_callback = [&](SurfelVector& surfels) {
+    auto buf_callback = [&](surfel_vector& surfels) {
         std::unique_lock<std::mutex> lk(mtx_);
         cv_.wait(lk, [this]{return flush_ready_;});
 
@@ -37,14 +37,14 @@ Convert(const std::string& input_filename,
 
     // output thread
     std::thread tr([&] {
-        out_format_.Write(output_filename, buf_callback);
+        out_format_.write(output_filename, buf_callback);
     });
 
     // read input
-    in_format_.Read(input_filename,
-                    [&](const Surfel& s) { this->AppendSurfel(s); });
+    in_format_.read(input_filename,
+                    [&](const surfel& s) { this->append_surfel(s); });
 
-    FlushBuffer();
+    flush_buffer();
     {
         std::lock_guard<std::mutex> lk(mtx_);
         flush_ready_ = true;
@@ -58,15 +58,15 @@ Convert(const std::string& input_filename,
     }
 }
 
-void Converter::
-AppendSurfel(const Surfel& surfel)
+void converter::
+append_surfel(const surfel& surf)
 {
-    if (IsDegenerate(surfel)) {
+  if (is_degenerate(surf)) {
         ++discarded_;
         return;
     }
 
-    Surfel s(surfel);
+  surfel s(surf);
     bool keep = true;
 
     if (surfel_callback_)
@@ -93,16 +93,16 @@ AppendSurfel(const Surfel& surfel)
         buffer_.push_back(s);
 
         if (buffer_.size() > surfels_in_buffer_)
-            FlushBuffer();
+            flush_buffer();
     }
 }
 
 
-void Converter::
-FlushBuffer()
+void converter::
+flush_buffer()
 {
     if (!buffer_.empty()) {
-        LOGGER_TRACE("Flush buffer to disk. Buffer size: " << 
+        LOGGER_TRACE("Flush buffer to disk. buffer size: " << 
                         buffer_.size() << " surfels");
         {
             std::lock_guard<std::mutex> lk(mtx_);
@@ -119,8 +119,8 @@ FlushBuffer()
     }
 }
 
-const bool Converter::
-IsDegenerate(const Surfel& s) const
+const bool converter::
+is_degenerate(const surfel& s) const
 {
     return !std::isfinite(s.pos().x) 
         || !std::isfinite(s.pos().y)

@@ -64,7 +64,9 @@ target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${COMMON_LIBRARY}
     ${SCHISM_LIBRARIES}
-    ${BOOST_LIBRARIES}
+    optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
+    optimized ${Boost_DATE_TIME_LIBRARY_RELEASE} debug ${Boost_DATE_TIME_LIBRARY_DEBUG}
+    optimized ${Boost_PROGRAM_OPTIONS_LIBRARY_RELEASE} debug ${Boost_PROGRAM_OPTIONS_LIBRARY_DEBUG}
     ${FREEIMAGE_LIBRARY}
     )
 

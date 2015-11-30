@@ -16,12 +16,12 @@
 
 #include <FreeImagePlus.h>
 
-#include <scm/gl_core/render_device/opengl/gl_core.h>
+#include <scm/gl_core/render_device/OpenGL/gl_core.h>
 
-size_t Renderer::current_screenshot_num_ = 1;
+size_t renderer::current_screenshot_num_ = 1;
 
-Renderer::
-Renderer(std::vector<scm::math::mat4f> const& model_transformations,
+renderer::
+renderer(std::vector<scm::math::mat4f> const& model_transformations,
          const std::set<lamure::model_t>& visible_set,
          const std::set<lamure::model_t>& invisible_set)
     : height_divided_by_top_minus_bottom_(1000.f),
@@ -48,20 +48,20 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       model_transformations_(model_transformations),
       radius_scale_(1.f)
 {
-    lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
 
     win_x_ = database->window_width();
     win_y_ = database->window_height();
 
-    InitializeSchismDeviceAndShaders(win_x_, win_y_);
-    InitializeVBOs();
-    ResetViewport(win_x_, win_y_);
+    initialize_device_and_shaders(win_x_, win_y_);
+    initialize_vbos();
+    reset_viewport(win_x_, win_y_);
 
-    CalcRadScaleFactors();
+    calc_rad_scale_factors();
 }
 
-Renderer::
-~Renderer()
+renderer::
+~renderer()
 {
 
     filter_nearest_.reset();
@@ -101,7 +101,7 @@ Renderer::
 
 }
 
-void Renderer::UploadUniforms(lamure::ren::Camera const& camera) const
+void renderer::upload_uniforms(lamure::ren::Camera const& camera) const
 {
     using namespace lamure::ren;
     using namespace scm::gl;
@@ -156,12 +156,12 @@ void Renderer::UploadUniforms(lamure::ren::Camera const& camera) const
     context_->apply();
 }
 
-void Renderer::
-UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const
+void renderer::
+upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const
 {
     using namespace lamure::ren;
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
 
     scm::math::mat4f    view_matrix         = camera.GetViewMatrix();
     scm::math::mat4f    model_matrix        = model_transformations_[model_id];
@@ -227,23 +227,23 @@ UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t 
 }
 
 
-void Renderer::
-Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO)
+void renderer::
+render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO)
 {
     using namespace lamure;
     using namespace lamure::ren;
 
-    UpdateFrustumDependentParameters(camera);
+    update_frustum_dependent_parameters(camera);
 
-    UploadUniforms(camera);
+    upload_uniforms(camera);
 
     using namespace scm::gl;
     using namespace scm::math;
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    CutDatabase* cuts = CutDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
+    Cutdatabase* cuts = Cutdatabase::get_instance();
 
-    size_t NumbersOfSurfelsPerNode = database->surfels_per_node();
+    size_t NumbersOfsurfelsPerNode = database->surfels_per_node();
     model_t num_models = database->num_models();
 
     //determine set of models to render
@@ -319,7 +319,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                     context_->apply();
 
 
-                    pass1_visibility_shader_program_->uniform("minSurfelSize", 1.0f);
+                    pass1_visibility_shader_program_->uniform("minsurfelsize", 1.0f);
                     pass1_visibility_shader_program_->uniform("QuantFactor", 1.0f);
                     context_->apply();
 
@@ -331,16 +331,16 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
 
-                        const Bvh* bvh = database->GetModel(model_id)->bvh();
+                        const bvh* bvh = database->GetModel(model_id)->get_bvh();
 
                         size_t surfels_per_node_of_model = bvh->surfels_per_node();
-                        //size_t surfels_per_node_of_model = NumbersOfSurfelsPerNode;
+                        //size_t surfels_per_node_of_model = NumbersOfsurfelsPerNode;
                         //store culling result and push it back for second pass#
 
                         std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
 
 
-                        UploadTransformationMatrices(camera, model_id, 1);
+                        upload_transformation_matrices(camera, model_id, 1);
 
                         scm::gl::frustum frustum_by_model = camera.GetFrustumByModel(model_transformations_[model_id]);
 
@@ -372,7 +372,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                                 context_->begin_query(depth_pass_timer_query);
 #endif
 
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
+                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfsurfelsPerNode, surfels_per_node_of_model);
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
 
@@ -416,7 +416,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                     context_->apply();
 
 
-                    pass2_accumulation_shader_program_->uniform("minSurfelSize", 1.0f);
+                    pass2_accumulation_shader_program_->uniform("minsurfelsize", 1.0f);
                     pass2_accumulation_shader_program_->uniform("QuantFactor", 1.0f);
                     context_->apply();
 
@@ -433,14 +433,14 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
 
-                        const Bvh* bvh = database->GetModel(model_id)->bvh();
+                        const bvh* bvh = database->GetModel(model_id)->get_bvh();
 
                         size_t surfels_per_node_of_model = bvh->surfels_per_node();
-                        //size_t surfels_per_node_of_model = NumbersOfSurfelsPerNode;
+                        //size_t surfels_per_node_of_model = NumbersOfsurfelsPerNode;
                         //store culling result and push it back for second pass#
 
 
-                        UploadTransformationMatrices(camera, model_id, 2);
+                        upload_transformation_matrices(camera, model_id, 2);
 
                         unsigned int leaf_level_start_index = bvh->GetFirstNodeIdOfDepth(bvh->depth());
 
@@ -461,7 +461,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                                 scm::gl::timer_query_ptr accumulation_pass_timer_query = device_->create_timer_query();
                                 context_->begin_query(accumulation_pass_timer_query);
 #endif
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
+                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfsurfelsPerNode, surfels_per_node_of_model);
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                                 context_->end_query(accumulation_pass_timer_query);
                                 context_->collect_query_results(accumulation_pass_timer_query);
@@ -562,7 +562,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
 
 
-                        UploadTransformationMatrices(camera, model_id, 5);
+                        upload_transformation_matrices(camera, model_id, 5);
 
                         for(std::vector<Cut::NodeSlotAggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
                         {
@@ -572,7 +572,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                             if( culling_result  != 1 )  // 0 = inside, 1 = outside, 2 = intersectingS
                             {
 
-                                scm::gl::boxf temp_box = database->GetModel(model_id)->bvh()->bounding_boxes()[k->node_id_ ];
+                                scm::gl::boxf temp_box = database->GetModel(model_id)->get_bvh()->bounding_boxes()[k->node_id_ ];
                                 scm::gl::box_geometry box_to_render(device_,temp_box.min_vertex(), temp_box.max_vertex());
 
 
@@ -628,7 +628,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
     device_->main_context()->unmap_buffer(line_buffer_);
 
-    UploadTransformationMatrices(camera, 0, 1111);
+    upload_transformation_matrices(camera, 0, 1111);
     device_->opengl_api().glDisable(GL_DEPTH_TEST);
 
     context_->set_default_frame_buffer();
@@ -645,7 +645,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 #endif
 
     if(display_info_)
-      DisplayStatus();
+      display_status();
 
       context_->reset();
 
@@ -668,14 +668,14 @@ std::cout << "depth pass        : " << depth_pass_time / ((float)(1000000)) << "
 }
 
 
-void Renderer::SendModelTransform(const lamure::model_t model_id, const scm::math::mat4f& transform) {
+void renderer::send_model_transform(const lamure::model_t model_id, const scm::math::mat4f& transform) {
     model_transformations_[model_id] = transform;
 
 }
 
 
 
-void Renderer::DisplayStatus()
+void renderer::display_status()
 {
 
 
@@ -684,12 +684,12 @@ void Renderer::DisplayStatus()
     os
       <<"FPS:   "<<std::setprecision(4)<<fps_<<"\n"
       /*
-      <<"PointSizeFactor:   "<<point_size_factor_<<"\n"
+      <<"PointsizeFactor:   "<<point_size_factor_<<"\n"
       <<"Normal Clamping:   "<< (clamped_normal_mode_ ? "ON" : "OFF")<<"\n"
       <<"Clamping Threshold:   "<<max_deform_ratio_<<"\n"
       <<"Splat Mode:   "<<(ellipsify_ ? "elliptical" : "round")<<"\n"
-      <<"Render Mode:   "<<(render_mode_ == 0 ? "Color" : (render_mode_ == 1 ? "LOD" : "Normal"))<<"\n"
-      <<"Rendered Splats:   "<<rendered_splats_<<"\n"
+      <<"render Mode:   "<<(render_mode_ == 0 ? "Color" : (render_mode_ == 1 ? "LOD" : "Normal"))<<"\n"
+      <<"rendered Splats:   "<<rendered_splats_<<"\n"
       <<"Uploaded Nodes:   "<<uploaded_nodes_<<"\n"
       <<"\n"
       <<"Cut Update:   "<< (is_cut_update_active_ == true ? "active" : "frozen") <<"\n"
@@ -705,8 +705,8 @@ void Renderer::DisplayStatus()
 
 }
 
-void Renderer::
-InitializeVBOs()
+void renderer::
+initialize_vbos()
 {
     // init the GL context
     using namespace scm;
@@ -780,8 +780,8 @@ InitializeVBOs()
 #endif
 }
 
-bool Renderer::
-InitializeSchismDeviceAndShaders(int resX, int resY)
+bool renderer::
+initialize_device_and_shaders(int resX, int resY)
 {
     std::string root_path = LAMURE_SHADERS_DIR;
 
@@ -899,7 +899,7 @@ InitializeSchismDeviceAndShaders(int resX, int resY)
     return true;
 }
 
-void Renderer::ResetViewport(int w, int h)
+void renderer::reset_viewport(int w, int h)
 {
     //reset viewport
     win_x_ = w;
@@ -937,8 +937,8 @@ void Renderer::ResetViewport(int w, int h)
 
 }
 
-void Renderer::
-UpdateFrustumDependentParameters(lamure::ren::Camera const& camera)
+void renderer::
+update_frustum_dependent_parameters(lamure::ren::Camera const& camera)
 {
     near_plane_ = camera.near_plane_value();
     far_minus_near_plane_ = camera.far_plane_value() - near_plane_;
@@ -949,11 +949,11 @@ UpdateFrustumDependentParameters(lamure::ren::Camera const& camera)
     height_divided_by_top_minus_bottom_ = win_y_ / top_minus_bottom;
 }
 
-void Renderer::
-CalcRadScaleFactors()
+void renderer::
+calc_rad_scale_factors()
 {
     using namespace lamure::ren;
-    uint32_t num_models = (ModelDatabase::GetInstance())->num_models();
+    uint32_t num_models = (Modeldatabase::get_instance())->num_models();
 
     if(rad_scale_fac_.size() < num_models)
       rad_scale_fac_.resize(num_models);
@@ -967,8 +967,8 @@ CalcRadScaleFactors()
 
 //dynamic rendering adjustment functions
 
-void Renderer::
-SwitchBoundingBoxRendering()
+void renderer::
+switch_bounding_box_rendering()
 {
     render_bounding_boxes_ = ! render_bounding_boxes_;
 
@@ -981,8 +981,8 @@ SwitchBoundingBoxRendering()
 
 
 
-void Renderer::
-ChangePointSize(float amount)
+void renderer::
+change_pointsize(float amount)
 {
     point_size_factor_ += amount;
     if(point_size_factor_ < 0.0001f)
@@ -993,8 +993,8 @@ ChangePointSize(float amount)
     std::cout<<"set point size factor to: "<<point_size_factor_<<"\n\n";
 };
 
-void Renderer::
-SwitchRenderMode()
+void renderer::
+SwitchrenderMode()
 {
     render_mode_ = (render_mode_ + 1)%2;
 
@@ -1016,7 +1016,7 @@ SwitchRenderMode()
     }
 };
 
-void Renderer::
+void renderer::
 SwitchEllipseMode()
 {
     ellipsify_ = ! ellipsify_;
@@ -1027,7 +1027,7 @@ SwitchEllipseMode()
         std::cout<<"ROUND\n\n";
 };
 
-void Renderer::
+void renderer::
 SwitchClampedNormalMode()
 {
     clamped_normal_mode_ = !clamped_normal_mode_;
@@ -1038,7 +1038,7 @@ SwitchClampedNormalMode()
         std::cout<<"OFF\n\n";
 };
 
-void Renderer::
+void renderer::
 ChangeDeformRatio(float amount)
 {
     max_deform_ratio_ += amount;
@@ -1052,30 +1052,30 @@ ChangeDeformRatio(float amount)
 };
 
 
-void Renderer::
+void renderer::
 ToggleCutUpdateInfo()
 {
     is_cut_update_active_ = ! is_cut_update_active_;
 }
 
-void Renderer::
+void renderer::
 ToggleCameraInfo(const lamure::view_t current_cam_id)
 {
     current_cam_id_ = current_cam_id;
 }
 
-void Renderer::
+void renderer::
 ToggleDisplayInfo()
 {
     display_info_ = ! display_info_;
 }
 
-void Renderer::
+void renderer::
 ToggleVisibleSet() {
     render_visible_set_ = !render_visible_set_;
 }
 
-void Renderer::TakeScreenshot()
+void renderer::TakeScreenshot()
 {
 
     std::string scenename_ = "screenshots";
@@ -1101,7 +1101,7 @@ void Renderer::TakeScreenshot()
         if(current_screenshot_num_ == 0)
             filename = "./"+scenename_+"/__encoded_depth_ground_truth.png";
         else
-            filename = "./"+scenename_+"/encoded_depth_"+boost::lexical_cast<std::string>( Renderer::current_screenshot_num_)+"_dp_"
+            filename = "./"+scenename_+"/encoded_depth_"+boost::lexical_cast<std::string>( renderer::current_screenshot_num_)+"_dp_"
                        +".png";
 
         // Make the BYTE array, factor of 3 because it's RBG.
@@ -1109,7 +1109,7 @@ void Renderer::TakeScreenshot()
 
         device_->opengl_api().glReadPixels(0, 0, win_x_, win_y_, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
           
-        // Convert to FreeImage format & save to file
+        // convert to FreeImage format & save to file
         FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
 
@@ -1119,7 +1119,7 @@ void Renderer::TakeScreenshot()
 
         std::cout<<"Saved Screenshot: "<<filename.c_str()<<"\n\n";
 
-        ++Renderer::current_screenshot_num_;
+        ++renderer::current_screenshot_num_;
 
     }
 

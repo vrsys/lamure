@@ -43,7 +43,7 @@ public:
 
     CacheQueue::QueryResult AcknowledgeQuery(const model_t model_id, const node_t node_id);
 
-    void                ResolveCacheHistory(CacheIndex* index);
+    void                ResolveCachehistogramory(CacheIndex* index);
     void                PerformQueueMaintenance(CacheIndex* index);
 
     void                Lock();
@@ -55,12 +55,12 @@ public:
 protected:
 
     void                Run();
-    bool                IsShutdown();
+    bool                is_shutdown();
 
 private:
 
     bool                locked_;
-    Semaphore           semaphore_;
+    semaphore           semaphore_;
     size_t              size_of_slot_;
     std::mutex          mutex_;
 

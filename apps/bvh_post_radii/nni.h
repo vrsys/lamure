@@ -33,7 +33,7 @@ struct nni_sample_t {
 };
 
 static void fit_plane(
-    std::vector<std::pair<Surfel, float>>& neighbours,
+    std::vector<std::pair<surfel, float>>& neighbours,
     plane_t& plane) {
     
     unsigned int num_neighbours = neighbours.size();
@@ -85,9 +85,9 @@ static void fit_plane(
 }
 
 static void find_natural_neighbours(
-    std::vector<std::pair<Surfel, float>>& nearest_neighbours,
+    std::vector<std::pair<surfel, float>>& nearest_neighbours,
     const scm::math::vec3f& point_of_interest,
-    std::vector<std::pair<Surfel, float>>& natural_neighbours) {
+    std::vector<std::pair<surfel, float>>& natural_neighbours) {
 
     std::srand(613475635);
     std::random_shuffle(nearest_neighbours.begin(), nearest_neighbours.end());
@@ -202,7 +202,7 @@ static void find_natural_neighbours(
     }
     
     for (const auto& it : nni_weights) {
-        const Surfel surfel = nearest_neighbours[it.first].first;
+        const surfel surfel = nearest_neighbours[it.first].first;
         natural_neighbours.push_back(std::make_pair(surfel, it.second));
     }
 #ifdef NNI_VERBOSE

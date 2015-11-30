@@ -26,7 +26,7 @@ public:
                         Policy& operator=(const Policy&) = delete;
     virtual             ~Policy();
 
-    static Policy*      GetInstance();
+    static Policy*      get_instance();
 
     void                set_reset_system(const bool reset_system) { reset_system_ = reset_system; };
     void                set_max_upload_budget_in_mb(const size_t max_upload_budget) { max_upload_budget_in_mb_ = max_upload_budget; };

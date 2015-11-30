@@ -7,11 +7,11 @@
 
 #version 420 core
 
-in VertexData {
+in Vertexdata {
 	vec3 color;
 	vec4 nor;
   	float rad;
-	float pointSize;
+	float pointsize;
 	float mv_vertex_depth;
 } VertexIn;
 

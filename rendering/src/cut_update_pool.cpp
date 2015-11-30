@@ -24,7 +24,7 @@ CutUpdatePool(const context_t context_id,
     current_gpu_storage_A_(nullptr),
     current_gpu_storage_B_(nullptr),
     current_gpu_storage_(nullptr),
-    current_gpu_buffer_(CutDatabaseRecord::TemporaryBuffer::BUFFER_A),
+    current_gpu_buffer_(CutdatabaseRecord::Temporarybuffer::BUFFER_A),
     upload_budget_in_nodes_(upload_budget_in_nodes),
     render_budget_in_nodes_(render_budget_in_nodes),
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
@@ -60,8 +60,8 @@ CutUpdatePool::
 
 void CutUpdatePool::
 Initialize() {
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    Policy* policy = Policy::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
+    Policy* policy = Policy::get_instance();
 
     assert(policy->render_budget_in_mb() > 0);
     assert(policy->out_of_core_budget_in_mb() > 0);
@@ -105,7 +105,7 @@ Shutdown() {
 }
 
 bool CutUpdatePool::
-IsShutdown() {
+is_shutdown() {
     std::lock_guard<std::mutex> lock(mutex_);
     return shutdown_;
 }
@@ -136,7 +136,7 @@ DispatchCutUpdate(char* current_gpu_storage_A, char* current_gpu_storage_B) {
 
         master_dispatched_ = true;
 
-        job_queue_.PushJob(
+        job_queue_.push_job(
             CutUpdateQueue::Job(
                 CutUpdateQueue::Task::CUT_MASTER_TASK, invalid_view_t, invalid_model_t));
 
@@ -150,12 +150,12 @@ DispatchCutUpdate(char* current_gpu_storage_A, char* current_gpu_storage_B) {
 void CutUpdatePool::
 Run() {
     while (true) {
-        semaphore_.Wait();
+        semaphore_.wait();
 
-        if (IsShutdown()) break;
+        if (is_shutdown()) break;
 
         //dequeue job
-        CutUpdateQueue::Job job = job_queue_.PopFrontJob();
+        CutUpdateQueue::Job job = job_queue_.pop_frontJob();
 
         if (job.task_ != CutUpdateQueue::Task::CUT_INVALID_TASK) {
             switch (job.task_) {
@@ -181,17 +181,17 @@ Run() {
 
 const bool CutUpdatePool::
 Prepare() {
-    CutDatabase* cut_database = CutDatabase::GetInstance();
+    Cutdatabase* cut_database = Cutdatabase::get_instance();
 
     cut_database->ReceiveCameras(context_id_, user_cameras_);
-    cut_database->ReceiveHeightDividedByTopMinusBottoms(context_id_, height_divided_by_top_minus_bottoms_);
+    cut_database->ReceiveheightDividedByTopMinusBottoms(context_id_, height_divided_by_top_minus_bottoms_);
     cut_database->ReceiveTransforms(context_id_, model_transforms_);
     cut_database->ReceiveThresholds(context_id_, model_thresholds_);
 
     transfer_list_.clear();
     render_list_.clear();
 
-    gpu_cache_->ResetTransferList();
+    gpu_cache_->resetTransferList();
     gpu_cache_->set_transfer_budget(upload_budget_in_nodes_);
     gpu_cache_->set_transfer_slots_written(0);
 
@@ -208,7 +208,7 @@ Prepare() {
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
     ++cut_update_counter_;
     std::set<model_t> rendered_model_ids;
-    cut_database->ReceiveRendered(context_id_, rendered_model_ids);
+    cut_database->Receiverendered(context_id_, rendered_model_ids);
 
     for (const auto& model_id : rendered_model_ids) {
         model_freshness_[model_id] = cut_update_counter_;
@@ -232,7 +232,7 @@ Prepare() {
     if (!all_roots_resident) {
         all_roots_resident = true;
 
-        OocCache* ooc_cache = OocCache::GetInstance();
+        OocCache* ooc_cache = OocCache::get_instance();
 
         ooc_cache->Lock();
         ooc_cache->Refresh();
@@ -297,19 +297,19 @@ CutMaster() {
 #endif
 
     //swap and use temporary buffer
-    if (current_gpu_buffer_ == CutDatabaseRecord::TemporaryBuffer::BUFFER_A) {
-        current_gpu_buffer_ = CutDatabaseRecord::TemporaryBuffer::BUFFER_B;
+    if (current_gpu_buffer_ == CutdatabaseRecord::Temporarybuffer::BUFFER_A) {
+        current_gpu_buffer_ = CutdatabaseRecord::Temporarybuffer::BUFFER_B;
         current_gpu_storage_ = current_gpu_storage_B_;
     }
     else {
-        current_gpu_buffer_ = CutDatabaseRecord::TemporaryBuffer::BUFFER_A;
+        current_gpu_buffer_ = CutdatabaseRecord::Temporarybuffer::BUFFER_A;
         current_gpu_storage_ = current_gpu_storage_A_;
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_REPEAT_MODE
 
     uint32_t num_cut_updates = 0;
-    AutoTimer tmr;
+    auto_timer tmr;
 
     while (true) {
         boost::timer::cpu_times const elapsed_times(tmr.elapsed());
@@ -349,20 +349,20 @@ CutMaster() {
     //launch slaves
     for (view_t view_id = 0; view_id < index_->num_views(); ++view_id) {
         for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
-            job_queue_.PushJob(CutUpdateQueue::Job(CutUpdateQueue::Task::CUT_ANALYSIS_TASK, view_id, model_id));
+            job_queue_.push_job(CutUpdateQueue::Job(CutUpdateQueue::Task::CUT_ANALYSIS_TASK, view_id, model_id));
         }
     }
 
     semaphore_.Signal(index_->num_models() * index_->num_views());
 
-    master_semaphore_.Wait();
-    if (IsShutdown())
+    master_semaphore_.wait();
+    if (is_shutdown())
         return;
 
     assert(semaphore_.NumSignals() == 0);
     assert(master_semaphore_.NumSignals() == 0);
 
-    index_->Sort();
+    index_->sort();
 
     //re-configure semaphores
     master_semaphore_.Lock();
@@ -375,11 +375,11 @@ CutMaster() {
     semaphore_.set_min_signal_count(1);
     semaphore_.Unlock();
 
-    job_queue_.PushJob(CutUpdateQueue::Job(CutUpdateQueue::Task::CUT_UPDATE_TASK, 0, 0));
+    job_queue_.push_job(CutUpdateQueue::Job(CutUpdateQueue::Task::CUT_UPDATE_TASK, 0, 0));
     semaphore_.Signal(1);
 
-    master_semaphore_.Wait();
-    if (IsShutdown())
+    master_semaphore_.wait();
+    if (is_shutdown())
         return;
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_REPEAT_MODE
@@ -388,8 +388,8 @@ CutMaster() {
 
     //apply changes
     {
-        //ModelDatabase* database = ModelDatabase::GetInstance();
-        CutDatabase* cuts = CutDatabase::GetInstance();
+        //Modeldatabase* database = Modeldatabase::get_instance();
+        Cutdatabase* cuts = Cutdatabase::get_instance();
 
         cuts->LockRecord(context_id_);
 
@@ -404,9 +404,9 @@ CutMaster() {
 
         cuts->SetUpdatedSet(context_id_, transfer_list_);
 
-        cuts->SetIsFrontModified(context_id_, gpu_cache_->transfer_budget() < upload_budget_in_nodes_); //...
+        cuts->SetIsfrontModified(context_id_, gpu_cache_->transfer_budget() < upload_budget_in_nodes_); //...
         cuts->SetIsSwapRequired(context_id_, true);
-        cuts->SetBuffer(context_id_, current_gpu_buffer_);
+        cuts->Setbuffer(context_id_, current_gpu_buffer_);
 
         cuts->UnlockRecord(context_id_);
 
@@ -446,7 +446,7 @@ CutAnalysis(view_t view_id, model_t model_id) {
     //perform cut analysis
     std::set<node_t> old_cut = index_->GetPreviousCut(view_id, model_id);
 
-    index_->ResetCut(view_id, model_id);
+    index_->resetCut(view_id, model_id);
 
     uint32_t fan_factor = index_->FanFactor(model_id);
 
@@ -474,7 +474,7 @@ CutAnalysis(view_t view_id, model_t model_id) {
         assert(node_id < index_->NumNodes(model_id));
 
         if (node_id > 0 && node_id < index_->NumNodes(model_id)) {
-            parent_id = index_->GetParentId(model_id, node_id);
+            parent_id = index_->get_parent_id(model_id, node_id);
             parent_error = CalculateNodeError(view_id, model_id, parent_id);
 
             index_->GetAllSiblings(model_id, node_id, siblings);
@@ -660,7 +660,7 @@ CutUpdateSplitAgain(const CutUpdateIndex::Action& split_action) {
 
 void CutUpdatePool::
 CutUpdate() {
-    OocCache* ooc_cache = OocCache::GetInstance();
+    OocCache* ooc_cache = OocCache::get_instance();
     ooc_cache->Lock();
     ooc_cache->Refresh();
     gpu_cache_->Lock();
@@ -673,7 +673,7 @@ CutUpdate() {
     //cut update
     while (index_->NumActions(CutUpdateIndex::Queue::MUST_SPLIT) > 0) {
 
-        CutUpdateIndex::Action must_split_action = index_->FrontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+        CutUpdateIndex::Action must_split_action = index_->frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
         size_t fan_factor = index_->FanFactor(must_split_action.model_id_);
 
 #if 1
@@ -701,7 +701,7 @@ CutUpdate() {
 
         if (all_children_in_ooc_cache && all_children_in_gpu_cache) {
 
-            index_->PopFrontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+            index_->pop_frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
 
             for (const auto& child_id : child_ids) {
                 gpu_cache_->AquireNode(context_id_, must_split_action.view_id_, must_split_action.model_id_, child_id);
@@ -727,8 +727,8 @@ CutUpdate() {
 
         if ((all_children_fit_in_ooc_cache && all_children_fit_in_gpu_cache)
             || (all_children_in_ooc_cache && all_children_fit_in_gpu_cache)) {
-            CutUpdateIndex::Action msa = index_->FrontAction(CutUpdateIndex::Queue::MUST_SPLIT);
-            index_->PopFrontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+            CutUpdateIndex::Action msa = index_->frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+            index_->pop_frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
 
             SplitNode(msa);
             check_residency = true;
@@ -736,16 +736,16 @@ CutUpdate() {
         }
 
         if (index_->NumActions(CutUpdateIndex::Queue::MUST_COLLAPSE) > 0) {
-            CutUpdateIndex::Action collapse_action = index_->FrontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
-            index_->PopFrontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
+            CutUpdateIndex::Action collapse_action = index_->frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
+            index_->pop_frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
 
             CollapseNode(collapse_action);
             continue;
         }
 
         if (index_->NumActions(CutUpdateIndex::Queue::COLLAPSE_ON_NEED) > 0) {
-            CutUpdateIndex::Action collapse_on_need_action = index_->FrontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
-            index_->PopFrontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
+            CutUpdateIndex::Action collapse_on_need_action = index_->frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
+            index_->pop_frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
 
             CollapseNode(collapse_on_need_action);
             continue;
@@ -768,7 +768,7 @@ CutUpdate() {
             index_->PopBackAction(CutUpdateIndex::Queue::KEEP);
 
             if (must_split_action.error_ > keep_action.error_) {
-                node_t keep_action_parent_id = index_->GetParentId(keep_action.model_id_, keep_action.node_id_);
+                node_t keep_action_parent_id = index_->get_parent_id(keep_action.model_id_, keep_action.node_id_);
 
                 if (keep_action.node_id_ > 0 && keep_action_parent_id > 0) {
 
@@ -806,7 +806,7 @@ CutUpdate() {
                                     //cancel all possible actions on sibling_id
                                     index_->CancelAction(keep_action.view_id_, keep_action.model_id_, sibling_id);
 
-                                    if (gpu_cache_->ReleaseNodeInvalidate(context_id_,
+                                    if (gpu_cache_->ReleaseNodeinvalidate(context_id_,
                                                                           keep_action.view_id_,
                                                                           keep_action.model_id_,
                                                                           sibling_id)) {
@@ -822,7 +822,7 @@ CutUpdate() {
                                         if (sibling_child_id != invalid_node_t) {
                                             index_->CancelAction(keep_action.view_id_, keep_action.model_id_, sibling_child_id);
 
-                                            if (gpu_cache_->ReleaseNodeInvalidate(context_id_,
+                                            if (gpu_cache_->ReleaseNodeinvalidate(context_id_,
                                                                                 keep_action.view_id_,
                                                                                 keep_action.model_id_,
                                                                                 sibling_child_id)) {
@@ -862,7 +862,7 @@ CutUpdate() {
             index_->PopBackAction(CutUpdateIndex::Queue::MUST_SPLIT);
 
             if (must_split_action.error_ > split_action.error_) {
-                node_t split_action_parent_id = index_->GetParentId(split_action.model_id_, split_action.node_id_);
+                node_t split_action_parent_id = index_->get_parent_id(split_action.model_id_, split_action.node_id_);
 
                 if (split_action.node_id_ > 0 && split_action_parent_id > 0) {
 
@@ -925,8 +925,8 @@ CutUpdate() {
 #endif
 
         //no success, reject must split action
-        CutUpdateIndex::Action msa = index_->FrontAction(CutUpdateIndex::Queue::MUST_SPLIT);
-        index_->PopFrontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+        CutUpdateIndex::Action msa = index_->frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+        index_->pop_frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
         index_->RejectAction(msa);
         check_residency = true;
 
@@ -934,8 +934,8 @@ CutUpdate() {
 
     //approve all remaining must-collapse-actions
     while (index_->NumActions(CutUpdateIndex::Queue::MUST_COLLAPSE) > 0) {
-        CutUpdateIndex::Action collapse_action = index_->FrontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
-        index_->PopFrontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
+        CutUpdateIndex::Action collapse_action = index_->frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
+        index_->pop_frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
         CollapseNode(collapse_action);
 
     }
@@ -948,24 +948,24 @@ CutUpdate() {
 
     //reject remaining collapse-on-need-actions
     while (index_->NumActions(CutUpdateIndex::Queue::COLLAPSE_ON_NEED) > 0) {
-        CutUpdateIndex::Action collapse_on_need_action = index_->FrontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
-        index_->PopFrontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
+        CutUpdateIndex::Action collapse_on_need_action = index_->frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
+        index_->pop_frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
         index_->RejectAction(collapse_on_need_action);
 
     }
 
     //reject remaining maybe-collapse-actions
     while (index_->NumActions(CutUpdateIndex::Queue::MAYBE_COLLAPSE) > 0) {
-        CutUpdateIndex::Action maybe_collapse_action = index_->FrontAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
-        index_->PopFrontAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
+        CutUpdateIndex::Action maybe_collapse_action = index_->frontAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
+        index_->pop_frontAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
         index_->RejectAction(maybe_collapse_action);
 
     }
 
     //approve all keep-actions
     while (index_->NumActions(CutUpdateIndex::Queue::KEEP) > 0) {
-        CutUpdateIndex::Action keep_action = index_->FrontAction(CutUpdateIndex::Queue::KEEP);
-        index_->PopFrontAction(CutUpdateIndex::Queue::KEEP);
+        CutUpdateIndex::Action keep_action = index_->frontAction(CutUpdateIndex::Queue::KEEP);
+        index_->pop_frontAction(CutUpdateIndex::Queue::KEEP);
         index_->ApproveAction(keep_action);
 
     }
@@ -976,15 +976,15 @@ CutUpdate() {
     assert(index_->NumActions(CutUpdateIndex::Queue::COLLAPSE_ON_NEED) == 0);
     assert(index_->NumActions(CutUpdateIndex::Queue::MAYBE_COLLAPSE) == 0);
 
-    CompileRenderList();
-    CompileTransferList();
+    compilerenderList();
+    compileTransferList();
 
     master_semaphore_.Signal(1);
 
 }
 
 void CutUpdatePool::
-CompileRenderList() {
+compilerenderList() {
     render_list_.clear();
 
     const std::set<view_t>& view_ids = index_->view_ids();
@@ -1013,7 +1013,7 @@ CompileRenderList() {
 void CutUpdatePool::
 PrefetchRoutine() {
 
-   OocCache* ooc_cache = OocCache::GetInstance();
+   OocCache* ooc_cache = OocCache::get_instance();
 
 #if 0
    uint32_t num_prefetched = 0;
@@ -1097,9 +1097,9 @@ PrefetchRoutine() {
 #endif
 
 void CutUpdatePool::
-CompileTransferList() {
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    OocCache* ooc_cache = OocCache::GetInstance();
+compileTransferList() {
+    Modeldatabase* database = Modeldatabase::get_instance();
+    OocCache* ooc_cache = OocCache::get_instance();
 
     const std::vector<std::unordered_set<node_t>>& transfer_list = gpu_cache_->transfer_list();
 
@@ -1112,11 +1112,11 @@ CompileTransferList() {
 
             assert(slot_id < (slot_t)render_budget_in_nodes_);
 
-            char* node_data = ooc_cache->NodeData(model_id, node_id);
+            char* node_data = ooc_cache->Nodedata(model_id, node_id);
 
             memcpy(current_gpu_storage_ + slot_count*stride_in_bytes, node_data, stride_in_bytes);
 
-            transfer_list_.push_back(CutDatabaseRecord::SlotUpdateDescr(slot_count, slot_id));
+            transfer_list_.push_back(CutdatabaseRecord::SlotUpdateDescr(slot_count, slot_id));
 
             ++slot_count;
 
@@ -1124,7 +1124,7 @@ CompileTransferList() {
 
     }
 
-    gpu_cache_->ResetTransferList();
+    gpu_cache_->resetTransferList();
     gpu_cache_->set_transfer_slots_written(slot_count);
 
 
@@ -1148,7 +1148,7 @@ SplitNode(const CutUpdateIndex::Action& action) {
 
     bool all_children_available = true;
 
-    OocCache* ooc_cache = OocCache::GetInstance();
+    OocCache* ooc_cache = OocCache::get_instance();
     bool all_children_fit_in_ooc_cache = ooc_cache->NumFreeSlots() >= fan_factor;
     bool all_children_fit_in_gpu_cache = gpu_cache_->transfer_budget() >= fan_factor && gpu_cache_->NumFreeSlots() >= fan_factor;
 
@@ -1219,7 +1219,7 @@ CollapseNode(const CutUpdateIndex::Action& action) {
     std::vector<node_t> child_ids;
     index_->GetAllChildren(action.model_id_, action.node_id_, child_ids);
 
-    OocCache* ooc_cache = OocCache::GetInstance();
+    OocCache* ooc_cache = OocCache::get_instance();
 
     for (const auto& child_id : child_ids) {
         gpu_cache_->ReleaseNode(context_id_, action.view_id_, action.model_id_, child_id);
@@ -1250,8 +1250,8 @@ IsAllNodesInCut(const model_t model_id, const std::vector<node_t>& node_ids, con
 
 const bool CutUpdatePool::
 IsNodeInFrustum(const view_t view_id, const model_t model_id, const node_t node_id, const scm::gl::frustum& frustum) {
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    return 1 != user_cameras_[view_id].CullAgainstFrustum(frustum, database->GetModel(model_id)->bvh()->bounding_boxes()[node_id]);
+    Modeldatabase* database = Modeldatabase::get_instance();
+    return 1 != user_cameras_[view_id].CullAgainstFrustum(frustum, database->GetModel(model_id)->get_bvh()->bounding_boxes()[node_id]);
 }
 
 const bool CutUpdatePool::
@@ -1263,8 +1263,8 @@ IsNoNodeInFrustum(const view_t view_id, const model_t model_id, const std::vecto
         if (node_id == invalid_node_t)
             return false;
 
-        ModelDatabase* database = ModelDatabase::GetInstance();
-        if (1 != user_cameras_[view_id].CullAgainstFrustum(frustum, database->GetModel(model_id)->bvh()->bounding_boxes()[node_id]))
+        Modeldatabase* database = Modeldatabase::get_instance();
+        if (1 != user_cameras_[view_id].CullAgainstFrustum(frustum, database->GetModel(model_id)->get_bvh()->bounding_boxes()[node_id]))
             return false;
     }
 
@@ -1275,14 +1275,14 @@ IsNoNodeInFrustum(const view_t view_id, const model_t model_id, const std::vecto
 const float CutUpdatePool::
 CalculateNodeError(const view_t view_id, const model_t model_id, const node_t node_id) {
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    auto bvh = database->GetModel(model_id)->bvh();
+    Modeldatabase* database = Modeldatabase::get_instance();
+    auto bvh = database->GetModel(model_id)->get_bvh();
 
     const scm::math::mat4f& model_matrix = model_transforms_[model_id];
     const scm::math::mat4f& view_matrix = user_cameras_[view_id].GetViewMatrix();
 
     float radius_scaling = scm::math::length(model_matrix * scm::math::vec4f(1.0f,0.f,0.f,0.f));
-    float representative_radius = bvh->GetAvgSurfelRadius(node_id) * radius_scaling;
+    float representative_radius = bvh->GetAvgsurfelRadius(node_id) * radius_scaling;
 
     auto bb = bvh->bounding_boxes()[node_id];
 

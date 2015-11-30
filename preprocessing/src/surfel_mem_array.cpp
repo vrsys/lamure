@@ -10,8 +10,8 @@
 namespace lamure {
 namespace pre {
 
-Surfel SurfelMemArray::
-ReadSurfel(const size_t index) const
+surfel surfel_mem_array::
+read_surfel(const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
@@ -20,8 +20,8 @@ ReadSurfel(const size_t index) const
     return mem_data_->at(offset_ + index);
 }
 
-void SurfelMemArray::
-WriteSurfel(const Surfel& surfel, const size_t index) const
+void surfel_mem_array::
+write_surfel(const surfel& surfel, const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
@@ -30,15 +30,15 @@ WriteSurfel(const Surfel& surfel, const size_t index) const
     mem_data_->at(offset_ + index) = surfel;
 }
 
-void SurfelMemArray::
-Reset()
+void surfel_mem_array::
+reset()
 {
-    SurfelArrayAbstract::Reset();
+    surfel_array_abstract::reset();
     mem_data_.reset();
 }
 
-void SurfelMemArray::
-Reset(const SharedSurfelVector& mem_data,
+void surfel_mem_array::
+reset(const shared_surfel_vector& mem_data,
       const size_t offset,
       const size_t length)
 {

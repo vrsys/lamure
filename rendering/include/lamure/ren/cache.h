@@ -47,7 +47,7 @@ public:
 
     void                AquireNode(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
     void                ReleaseNode(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
-    const bool          ReleaseNodeInvalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
+    const bool          ReleaseNodeinvalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
 
 protected:
                         Cache(const slot_t num_slots);

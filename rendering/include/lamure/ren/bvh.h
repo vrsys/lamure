@@ -23,22 +23,22 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Bvh
+class RENDERING_DLL bvh
 {
 
 
 public:
-    enum NodeVisibility {
+    enum node_visibility {
        NODE_VISIBLE = 0,
        NODE_INVISIBLE = 1
     };
 
-                        Bvh();
-                        Bvh(const std::string& filename);
-    virtual             ~Bvh() {}
+                        bvh();
+                        bvh(const std::string& filename);
+    virtual             ~bvh() {}
 
-    const node_t        GetChildId(const node_t node_id, const node_t child_index) const;
-    const node_t        GetParentId(const node_t node_id) const;
+    const node_t        get_child_id(const node_t node_id, const node_t child_index) const;
+    const node_t        get_parent_id(const node_t node_id) const;
     const node_t        GetFirstNodeIdOfDepth(uint32_t depth) const;
     const uint32_t      GetLengthOfDepth(uint32_t depth) const;
     const uint32_t      GetDepthOfNode(const node_t node_id) const;
@@ -66,23 +66,23 @@ public:
     const std::vector<scm::gl::boxf>& bounding_boxes() const { return bounding_boxes_; }
     const std::vector<vec3f>& centroids() const { return centroids_; };
 
-    const scm::gl::boxf& GetBoundingBox(const node_t node_id) const;
-    void                SetBoundingBox(const lamure::node_t node_id, const scm::gl::boxf& bounding_box);
+    const scm::gl::boxf& Getbounding_box(const node_t node_id) const;
+    void                Setbounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box);
 
     const scm::math::vec3f& GetCentroid(const node_t node_id) const;
     void                SetCentroid(const lamure::node_t node_id, const scm::math::vec3f& centroid);
 
-    const float         GetAvgSurfelRadius(const node_t node_id) const;
-    void                SetAvgSurfelRadius(const lamure::node_t node_id, const float radius);
+    const float         GetAvgsurfelRadius(const node_t node_id) const;
+    void                SetAvgsurfelRadius(const lamure::node_t node_id, const float radius);
 
-    const NodeVisibility GetVisibility(const node_t node_id) const;
-    void                SetVisibility(const node_t node_id, const NodeVisibility visibility);
+    const node_visibility GetVisibility(const node_t node_id) const;
+    void                SetVisibility(const node_t node_id, const node_visibility visibility);
 
-    void                WriteBvhFile(const std::string& filename);
+    void                writebvhfile(const std::string& filename);
 
 protected:
 
-    void                LoadBvhFile(const std::string& filename);
+    void                loadbvhfile(const std::string& filename);
 
 private:
 
@@ -94,7 +94,7 @@ private:
 
     std::vector<scm::gl::boxf> bounding_boxes_;
     std::vector<vec3f>  centroids_;
-    std::vector<NodeVisibility> visibility_;
+    std::vector<node_visibility> visibility_;
 
     std::vector<float>  avg_surfel_radii_;
     std::string         filename_;

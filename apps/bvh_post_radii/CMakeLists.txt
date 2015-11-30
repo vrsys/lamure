@@ -3,16 +3,11 @@
 
 InitApp(${CMAKE_PROJECT_NAME}_bvh_post_radii)
 
-include(find_cgal)
-
 #plod essentials and cgal essentials
 include_directories(${REND_INCLUDE_DIR} ${COMMON_INCLUDE_DIR} ${CGAL_INCLUDE_DIRS} ${GMP_INCLUDE_DIR} ${MPFR_INCLUDE_DIR})
 
 ############################################################
 # Libraries
-
-message("${GMP_LIBRARIES}")
-message("${MPFR_LIBRARIES}")
 
 if (UNIX)
   SET(GMP_LIBRARIES ${GMP_LIBRARIES}/libgmp.so)
@@ -21,14 +16,10 @@ elseif (MSVC)
   
 endif(UNIX)
 
-message("${GMP_LIBRARIES}")
-message("${MPFR_LIBRARIES}")
-
-
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${REND_LIBRARY}
-    ${OPENGL_LIBRARIES} 
+    ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     ${SCHISM_LIBRARIES}
     ${GMP_LIBRARIES}

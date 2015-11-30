@@ -15,17 +15,17 @@ node_queue_t::
 }
 
 void node_queue_t::
-Wait() {
-    semaphore_.Wait();
+wait() {
+    semaphore_.wait();
 }
 
 const bool node_queue_t::
-IsShutdown() {
+is_shutdown() {
     return is_shutdown_;
 }
 
 void node_queue_t::
-Relaunch() {
+relaunch() {
     is_shutdown_ = false;
 }
 
@@ -35,7 +35,7 @@ NumJobs() {
 }
 
 void node_queue_t::
-PushJob(const node_queue_t::job_t& job) {
+push_job(const node_queue_t::job_t& job) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push(job);
     semaphore_.Signal(1);
@@ -43,7 +43,7 @@ PushJob(const node_queue_t::job_t& job) {
 }
 
 const node_queue_t::job_t node_queue_t::
-PopJob() {
+pop_job() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     job_t job;

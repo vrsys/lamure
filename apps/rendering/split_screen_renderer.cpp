@@ -10,8 +10,8 @@
 #include <lamure/config.h>
 #include <ctime>
 
-SplitScreenRenderer::
-SplitScreenRenderer(std::vector<scm::math::mat4f> const& model_transformations)
+split_screen_renderer::
+split_screen_renderer(std::vector<scm::math::mat4f> const& model_transformations)
     : height_divided_by_top_minus_bottom_(0.f),
       near_plane_(0.f),
       far_minus_near_plane_(0.f),
@@ -30,20 +30,20 @@ SplitScreenRenderer(std::vector<scm::math::mat4f> const& model_transformations)
       current_cam_id_right_(0),
       model_transformations_(model_transformations)
 {
-    lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
+    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
 
     win_x_ = database->window_width();
     win_y_ = database->window_height();
 
-    InitializeSchismDeviceAndShaders(win_x_, win_y_);
-    InitializeVBOs();
-    ResetViewport(win_x_, win_y_);
+    initialize_device_and_shaders(win_x_, win_y_);
+    initialize_vbos();
+    reset_viewport(win_x_, win_y_);
 
-    CalcRadScaleFactors();
+    calc_rad_scale_factors();
 }
 
-SplitScreenRenderer::
-~SplitScreenRenderer()
+split_screen_renderer::
+~split_screen_renderer()
 {
     filter_nearest_.reset();
     filter_linear_.reset();
@@ -86,13 +86,13 @@ SplitScreenRenderer::
 
 }
 
-void SplitScreenRenderer::
-Reset()
+void split_screen_renderer::
+reset()
 {
 
 }
 
-void SplitScreenRenderer::UploadUniforms(lamure::ren::Camera const& camera) const
+void split_screen_renderer::upload_uniforms(lamure::ren::Camera const& camera) const
 {
     using namespace scm::gl;
     using namespace scm::math;
@@ -160,14 +160,14 @@ void SplitScreenRenderer::UploadUniforms(lamure::ren::Camera const& camera) cons
 
 
 
-void SplitScreenRenderer::
-UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const
+void split_screen_renderer::
+upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const
 {
 
     using namespace lamure::ren;
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    const Bvh* bvh = database->GetModel(model_id)->bvh();
+    Modeldatabase* database = Modeldatabase::get_instance();
+    const bvh* bvh = database->GetModel(model_id)->get_bvh();
 
     scm::math::mat4f    view_matrix         = camera.GetViewMatrix();
     scm::math::mat4f    model_matrix        = model_transformations_[model_id];
@@ -209,27 +209,27 @@ UploadTransformationMatrices(lamure::ren::Camera const& camera, lamure::model_t 
 
 
 
-void SplitScreenRenderer::
-Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO)
+void split_screen_renderer::
+render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO)
 {
     using namespace lamure;
     using namespace lamure::ren;
 
-    UpdateFrustumDependentParameters(camera);
+    update_frustum_dependent_parameters(camera);
 
-    UploadUniforms(camera);
+    upload_uniforms(camera);
 
     using namespace scm::gl;
     using namespace scm::math;
 
 
-    ModelDatabase* database = ModelDatabase::GetInstance();
-    CutDatabase* cuts = CutDatabase::GetInstance();
+    Modeldatabase* database = Modeldatabase::get_instance();
+    Cutdatabase* cuts = Cutdatabase::get_instance();
 
 
     model_t models_count = database->num_models();
 
-    int32_t NumbersOfSurfelsPerNode = database->surfels_per_node();
+    int32_t NumbersOfsurfelsPerNode = database->surfels_per_node();
 
 
     std::vector<uint32_t>  frustum_culling_results;
@@ -274,7 +274,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                     context_->apply();
 
 
-                    pass1_visibility_shader_program_->uniform("minSurfelSize", 1.0f);
+                    pass1_visibility_shader_program_->uniform("minsurfelsize", 1.0f);
                     pass1_visibility_shader_program_->uniform("QuantFactor", 1.0f);
                     context_->apply();
 
@@ -286,7 +286,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
 
-                        const Bvh* bvh = database->GetModel(model_id)->bvh();
+                        const bvh* bvh = database->GetModel(model_id)->get_bvh();
 
                         uint32_t surfels_per_node_of_model = bvh->surfels_per_node();
                         //store culling result and push it back for second pass#
@@ -294,7 +294,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                         std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
 
 
-                        UploadTransformationMatrices(camera, model_id, 1);
+                        upload_transformation_matrices(camera, model_id, 1);
 
                         scm::gl::frustum frustum_by_model = camera.GetFrustumByModel(model_transformations_[model_id]);
 
@@ -322,7 +322,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                                 context_->apply();
 
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
+                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfsurfelsPerNode, surfels_per_node_of_model);
                             }
 
 
@@ -359,7 +359,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                     context_->apply();
 
 
-                    pass2_accumulation_shader_program_->uniform("minSurfelSize", 1.0f);
+                    pass2_accumulation_shader_program_->uniform("minsurfelsize", 1.0f);
                     pass2_accumulation_shader_program_->uniform("QuantFactor", 1.0f);
                     context_->apply();
 
@@ -376,13 +376,13 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                         std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
 
-                        const Bvh* bvh = database->GetModel(model_id)->bvh();
+                        const bvh* bvh = database->GetModel(model_id)->get_bvh();
 
                         uint32_t surfels_per_node_of_model = bvh->surfels_per_node();
                         //store culling result and push it back for second pass#
 
 
-                        UploadTransformationMatrices(camera, model_id, 2);
+                        upload_transformation_matrices(camera, model_id, 2);
 
                         unsigned int leaf_level_start_index = bvh->GetFirstNodeIdOfDepth(bvh->depth());
 
@@ -400,7 +400,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
                                 context_->apply();
 
 
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfSurfelsPerNode, surfels_per_node_of_model);
+                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfsurfelsPerNode, surfels_per_node_of_model);
 
                                 ++actually_rendered_nodes;
                             }
@@ -529,7 +529,7 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
             frame_time_.start();
 
-          DisplayStatus();
+          display_status();
       }
 
       context_->reset();
@@ -545,26 +545,26 @@ Render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
 
 
-void SplitScreenRenderer::SendModelTransform(const lamure::model_t model_id, const scm::math::mat4f& transform) {
+void split_screen_renderer::send_model_transform(const lamure::model_t model_id, const scm::math::mat4f& transform) {
     model_transformations_[model_id] = transform;
 
 }
 
 
 
-void SplitScreenRenderer::DisplayStatus()
+void split_screen_renderer::display_status()
 {
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(win_x_*(1/resize_value), win_y_*(1/resize_value))));
 
     std::stringstream os;
    // os.setprecision(5);
     os<<"FPS:   "<<std::setprecision(4)<<fps_<<"\n"
-      <<"PointSizeFactor:   "<<point_size_factor_<<"\n"
+      <<"PointsizeFactor:   "<<point_size_factor_<<"\n"
       <<"Normal Clamping:   "<< (clamped_normal_mode_ ? "ON" : "OFF")<<"\n"
       <<"Clamping Threshold:   "<<max_deform_ratio_<<"\n"
       <<"Splat Mode:   "<<(ellipsify_ ? "elliptical" : "round")<<"\n"
-      <<"Render Mode:   "<<(render_mode_ == 0 ? "Color" : (render_mode_ == 1 ? "LOD" : "Normal"))<<"\n"
-      <<"Rendered Splats:   "<<rendered_splats_<<"\n"
+      <<"render Mode:   "<<(render_mode_ == 0 ? "Color" : (render_mode_ == 1 ? "LOD" : "Normal"))<<"\n"
+      <<"rendered Splats:   "<<rendered_splats_<<"\n"
       <<"Uploaded Nodes:   "<<uploaded_nodes_<<"\n"
       <<"\n"
       <<"Cut Update:   "<< (is_cut_update_active_ == true ? "active" : "frozen") <<"\n"
@@ -581,8 +581,8 @@ void SplitScreenRenderer::DisplayStatus()
 
 }
 
-void SplitScreenRenderer::
-InitializeVBOs()
+void split_screen_renderer::
+initialize_vbos()
 {
 
     // init the GL context
@@ -662,8 +662,8 @@ InitializeVBOs()
 
 }
 
-bool SplitScreenRenderer::
-InitializeSchismDeviceAndShaders(int resX, int resY)
+bool split_screen_renderer::
+initialize_device_and_shaders(int resX, int resY)
 {
     std::string root_path = LAMURE_SHADERS_DIR;
 
@@ -762,7 +762,7 @@ InitializeSchismDeviceAndShaders(int resX, int resY)
     return true;
 }
 
-void SplitScreenRenderer::ResetViewport(int w, int h)
+void split_screen_renderer::reset_viewport(int w, int h)
 {
 
     win_x_ = resize_value*w;
@@ -813,8 +813,8 @@ void SplitScreenRenderer::ResetViewport(int w, int h)
 
 }
 
-void SplitScreenRenderer::
-UpdateFrustumDependentParameters(lamure::ren::Camera const& camera)
+void split_screen_renderer::
+update_frustum_dependent_parameters(lamure::ren::Camera const& camera)
 {
     near_plane_ = camera.near_plane_value();
     far_minus_near_plane_ = camera.far_plane_value() - near_plane_;
@@ -827,12 +827,12 @@ UpdateFrustumDependentParameters(lamure::ren::Camera const& camera)
 
 
 
-void SplitScreenRenderer::
-CalcRadScaleFactors()
+void split_screen_renderer::
+calc_rad_scale_factors()
 {
     using namespace lamure::ren;
 
-   uint32_t num_models = (ModelDatabase::GetInstance())->num_models();
+   uint32_t num_models = (Modeldatabase::get_instance())->num_models();
 
    if(rad_scale_fac_.size() < num_models)
       rad_scale_fac_.resize(num_models);
@@ -846,8 +846,8 @@ CalcRadScaleFactors()
 
 //dynamic render adjustment functions
 
-void SplitScreenRenderer::
-SwitchBoundingBoxRendering()
+void split_screen_renderer::
+switch_bounding_box_rendering()
 {
     render_bounding_boxes_ = ! render_bounding_boxes_;
 
@@ -858,8 +858,8 @@ SwitchBoundingBoxRendering()
         std::cout<<"OFF\n\n";
 };
 
-void SplitScreenRenderer::
-SwitchSurfelRendering()
+void split_screen_renderer::
+switch_surfel_rendering()
 {
     render_splats_ = ! render_splats_;
     std::cout<<"splat rendering: ";
@@ -870,8 +870,8 @@ SwitchSurfelRendering()
 };
 
 
-void SplitScreenRenderer::
-ChangePointSize(float amount)
+void split_screen_renderer::
+change_pointsize(float amount)
 {
     point_size_factor_ += amount;
     if(point_size_factor_ < 0.0001f)
@@ -883,8 +883,8 @@ ChangePointSize(float amount)
 };
 
 
-void SplitScreenRenderer::
-SwitchRenderMode()
+void split_screen_renderer::
+SwitchrenderMode()
 {
     render_mode_ = (render_mode_ + 1)%2;
 
@@ -906,7 +906,7 @@ SwitchRenderMode()
     }
 };
 
-void SplitScreenRenderer::
+void split_screen_renderer::
 SwitchEllipseMode()
 {
     ellipsify_ = ! ellipsify_;
@@ -917,7 +917,7 @@ SwitchEllipseMode()
         std::cout<<"ROUND\n\n";
 };
 
-void SplitScreenRenderer::
+void split_screen_renderer::
 SwitchClampedNormalMode()
 {
     clamped_normal_mode_ = !clamped_normal_mode_;
@@ -928,7 +928,7 @@ SwitchClampedNormalMode()
         std::cout<<"OFF\n\n";
 };
 
-void SplitScreenRenderer::
+void split_screen_renderer::
 ChangeDeformRatio(float amount)
 {
     max_deform_ratio_ += amount;
@@ -941,21 +941,21 @@ ChangeDeformRatio(float amount)
     std::cout<<"set elliptical deform ratio to: "<<max_deform_ratio_<<"\n\n";
 };
 
-void SplitScreenRenderer::
+void split_screen_renderer::
 ToggleCutUpdateInfo()
 {
     is_cut_update_active_ = ! is_cut_update_active_;
 }
 
 
-void SplitScreenRenderer::
+void split_screen_renderer::
 ToggleCameraInfo(const lamure::view_t left_cam_id, const lamure::view_t right_cam_id)
 {
     current_cam_id_left_ = left_cam_id;
     current_cam_id_right_ = right_cam_id;
 }
 
-void SplitScreenRenderer::
+void split_screen_renderer::
 ToggleDisplayInfo()
 {
     display_info_ = ! display_info_;

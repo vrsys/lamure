@@ -12,16 +12,16 @@ namespace lamure {
 namespace pre
 {
 
-enum class RepRadiusAlgorithm {
-    ArithmeticMean = 0,
-    GeometricMean  = 1,
-    HarmonicMean   = 2
+enum class rep_radius_algorithm {
+    arithmetic_mean = 0,
+    geometric_mean  = 1,
+    harmonic_mean   = 2
 };
 
-enum class ReductionAlgorithm {
+enum class reduction_algorithm {
     NDC            = 0,
-    Constant       = 1,
-    EverySecond    = 2
+    constant       = 1,
+    every_second    = 2
 };
 
 }}

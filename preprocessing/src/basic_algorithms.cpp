@@ -22,14 +22,14 @@ namespace lamure {
 namespace pre 
 {
 
-BoundingBox BasicAlgorithms::
-ComputeAABB(const SurfelMemArray& sa,
+bounding_box basic_algorithms::
+compute_aabb(const surfel_mem_array& sa,
             const bool parallelize)
 {
     assert(!sa.is_empty());
     assert(sa.length() > 0);
 
-    vec3r min = sa.ReadSurfel(0).pos();
+    vec3r min = sa.read_surfel(0).pos();
     vec3r max = min;
 
     const auto begin = sa.mem_data()->begin() + sa.offset();
@@ -46,8 +46,8 @@ ComputeAABB(const SurfelMemArray& sa,
         }
     }
     else {
-        // INFO: OpenMP 3.1 supports min/max reduction. Available in GCC 4.7
-        //       or above. The code below doesn't require OpenMP 3.1.
+        // INFO: openMP 3.1 supports min/max reduction. Available in GCC 4.7
+        //       or above. The code below doesn't require openMP 3.1.
         #pragma omp parallel sections
         {
             {
@@ -81,11 +81,11 @@ ComputeAABB(const SurfelMemArray& sa,
                         max[2] = s->pos()[2]; }
         }
     }
-    return BoundingBox(min, max);
+    return bounding_box(min, max);
 }
 
-BoundingBox BasicAlgorithms::
-ComputeAABB(const SurfelDiskArray& sa,
+bounding_box basic_algorithms::
+compute_aabb(const surfel_disk_array& sa,
             const size_t buffer_size,
             const bool parallelize)
 {
@@ -99,7 +99,7 @@ ComputeAABB(const SurfelDiskArray& sa,
                       std::numeric_limits<real>::lowest(),
                       std::numeric_limits<real>::lowest());
 
-    const size_t surfels_in_buffer = buffer_size / sizeof(Surfel);
+    const size_t surfels_in_buffer = buffer_size / sizeof(surfel);
 
     for (size_t i = 0; i < sa.length(); i += surfels_in_buffer) {
 
@@ -108,8 +108,8 @@ ComputeAABB(const SurfelDiskArray& sa,
             sa.length() - i :
             surfels_in_buffer;
 
-        SurfelVector data(len);
-        sa.file()->Read(&data, 0, offset, len);
+        surfel_vector data(len);
+        sa.file()->read(&data, 0, offset, len);
 
         if (!parallelize) {
 
@@ -157,11 +157,11 @@ ComputeAABB(const SurfelDiskArray& sa,
             }
         }
     }
-    return BoundingBox(min, max);
+    return bounding_box(min, max);
 }
 
-void BasicAlgorithms::
-TranslateSurfels(SurfelMemArray& sa,
+void basic_algorithms::
+translate_surfels(surfel_mem_array& sa,
                  const vec3r& translation)
 {
     assert(!sa.is_empty());
@@ -175,15 +175,15 @@ TranslateSurfels(SurfelMemArray& sa,
     }
 }
 
-void BasicAlgorithms::
-TranslateSurfels(SurfelDiskArray& sa,
+void basic_algorithms::
+translate_surfels(surfel_disk_array& sa,
                  const vec3r& translation,
                  const size_t buffer_size)
 {
     assert(!sa.is_empty());
     assert(sa.length() > 0);
 
-    const size_t surfels_in_buffer = buffer_size / sizeof(Surfel);
+    const size_t surfels_in_buffer = buffer_size / sizeof(surfel);
 
     for (size_t i = 0; i < sa.length(); i += surfels_in_buffer) {
         const size_t offset = sa.offset() + i;
@@ -191,20 +191,20 @@ TranslateSurfels(SurfelDiskArray& sa,
             sa.length() - i :
             surfels_in_buffer;
 
-        SurfelVector data(len);
-        sa.file()->Read(&data, 0, offset, len);
+        surfel_vector data(len);
+        sa.file()->read(&data, 0, offset, len);
 
         for (size_t s = 0; s < len; ++s) {
             data[s].pos() += translation;
         }
-        sa.file()->Write(&data, 0, offset, len);
+        sa.file()->write(&data, 0, offset, len);
     }
 }
 
-void BasicAlgorithms::
-SortAndSplit(SurfelMemArray& sa,
-             SplittedArray<SurfelMemArray>& out,
-             const BoundingBox& box,
+void basic_algorithms::
+sort_and_split(surfel_mem_array& sa,
+             splitted_array<surfel_mem_array>& out,
+             const bounding_box& box,
              const uint8_t split_axis,
              const uint8_t fan_factor,
              const bool parallelize)
@@ -217,43 +217,43 @@ SortAndSplit(SurfelMemArray& sa,
       // todo: find platform independent sort
       Concurrency::parallel_sort(sa.mem_data()->begin() + sa.offset(),
         sa.mem_data()->begin() + sa.offset() + sa.length(),
-        Surfel::Compare(split_axis));
+        surfel::compare(split_axis));
 #else
       __gnu_parallel::sort(sa.mem_data()->begin() + sa.offset(),
         sa.mem_data()->begin() + sa.offset() + sa.length(),
-        Surfel::Compare(split_axis));
+        surfel::compare(split_axis));
 #endif
     } else {
       std::sort(sa.mem_data()->begin() + sa.offset(),
         sa.mem_data()->begin() + sa.offset() + sa.length(),
-        Surfel::Compare(split_axis));
+        surfel::compare(split_axis));
     }
 
-    SplitSurfelArray<SurfelMemArray>(sa, out, box, split_axis, fan_factor);
+    split_surfel_array<surfel_mem_array>(sa, out, box, split_axis, fan_factor);
 }
 
-void BasicAlgorithms::
-SortAndSplit(SurfelDiskArray& sa,
-             SplittedArray<SurfelDiskArray>& out,
-             const BoundingBox& box,
+void basic_algorithms::
+sort_and_split(surfel_disk_array& sa,
+             splitted_array<surfel_disk_array>& out,
+             const bounding_box& box,
              const uint8_t split_axis,
              const uint8_t fan_factor,
              const size_t memory_limit)
 {
-    ExternalSort::Sort(sa, memory_limit, Surfel::Compare(split_axis));
-    SplitSurfelArray<SurfelDiskArray>(sa, out, box, split_axis, fan_factor);
+    external_sort::sort(sa, memory_limit, surfel::compare(split_axis));
+    split_surfel_array<surfel_disk_array>(sa, out, box, split_axis, fan_factor);
 }
 
 template <class T>
-void BasicAlgorithms::
-SplitSurfelArray(T& sa,
-                 SplittedArray<T>& out,
-                 const BoundingBox& box,
+void basic_algorithms::
+split_surfel_array(T& sa,
+                 splitted_array<T>& out,
+                 const bounding_box& box,
                  const uint8_t split_axis,
                  const uint8_t fan_factor)
 {
-    using Traits = SurfelArrayTraits<T>;
-    static_assert(Traits::IsIC || Traits::IsOOC, "Wrong type");
+    using Traits = surfel_array_traits<T>;
+    static_assert(Traits::is_in_core || Traits::is_out_of_core, "Wrong type");
 
     const uint32_t child_size = (int)sa.length() / fan_factor;
     uint32_t remainder = sa.length() % fan_factor;
@@ -272,7 +272,7 @@ SplitSurfelArray(T& sa,
         }
 
         auto child_array = T(sa, child_first, child_last - child_first);
-        out.push_back(std::make_pair(child_array, BoundingBox()));
+        out.push_back(std::make_pair(child_array, bounding_box()));
     }
 
     // compute bounding boxes
@@ -280,8 +280,8 @@ SplitSurfelArray(T& sa,
     std::vector<real> splits;
 
     for (size_t i = 0; i < out.size() - 1; ++i) {
-        real p0 = out[i].first.ReadSurfel(out[i].first.length() - 1).pos()[split_axis];
-        real p1 = out[i + 1].first.ReadSurfel(0).pos()[split_axis];
+        real p0 = out[i].first.read_surfel(out[i].first.length() - 1).pos()[split_axis];
+        real p1 = out[i + 1].first.read_surfel(0).pos()[split_axis];
 
         splits.push_back((p1 - p0) / 2.0 + p0);
     }
@@ -301,39 +301,39 @@ SplitSurfelArray(T& sa,
             child_max[split_axis] = splits[i];
         }
 
-        out[i].second = BoundingBox(child_min, child_max);
+        out[i].second = bounding_box(child_min, child_max);
     }
 }
 
-BasicAlgorithms::SurfelGroupProperties BasicAlgorithms::
-ComputeProperties(const SurfelMemArray& sa,
-                  const RepRadiusAlgorithm rep_radius_algo)
+basic_algorithms::surfel_group_properties basic_algorithms::
+compute_properties(const surfel_mem_array& sa,
+                  const rep_radius_algorithm rep_radius_algo)
 {
     assert(!sa.is_empty());
-    assert(rep_radius_algo == RepRadiusAlgorithm::ArithmeticMean ||
-           rep_radius_algo == RepRadiusAlgorithm::GeometricMean ||
-           rep_radius_algo == RepRadiusAlgorithm::HarmonicMean);
+    assert(rep_radius_algo == rep_radius_algorithm::arithmetic_mean ||
+           rep_radius_algo == rep_radius_algorithm::geometric_mean ||
+           rep_radius_algo == rep_radius_algorithm::harmonic_mean);
 
-    SurfelGroupProperties props = {0.0, vec3r(0.0), BoundingBox()};
+    surfel_group_properties props = {0.0, vec3r(0.0), bounding_box()};
 
-//    if (rep_radius_algo == RepRadiusAlgorithm::GeometricMean)
+//    if (rep_radius_algo == rep_radius_algorithm::geometric_mean)
 //        props.rep_radius = 1.0;
 
     size_t counter = 0;
 
     for (size_t i = 0; i < sa.length(); ++i) {
-        Surfel s = sa.ReadSurfel(i);
+        surfel s = sa.read_surfel(i);
         
         // TODO: moved here to fix normal-radii computation
-        props.bounding_box.Expand(s.pos(), s.radius());
+        props.bounding_box.expand(s.pos(), s.radius());
 
         if (s.radius() <= 0.0)
             continue;
 
         switch (rep_radius_algo) {
-            case RepRadiusAlgorithm::ArithmeticMean: props.rep_radius += s.radius(); break;
-            case RepRadiusAlgorithm::GeometricMean:  props.rep_radius += log(s.radius()); break;
-            case RepRadiusAlgorithm::HarmonicMean:   props.rep_radius += 1.0 / s.radius(); break;
+            case rep_radius_algorithm::arithmetic_mean: props.rep_radius += s.radius(); break;
+            case rep_radius_algorithm::geometric_mean:  props.rep_radius += log(s.radius()); break;
+            case rep_radius_algorithm::harmonic_mean:   props.rep_radius += 1.0 / s.radius(); break;
         }
 
         props.centroid += s.pos();
@@ -343,9 +343,9 @@ ComputeProperties(const SurfelMemArray& sa,
     if (counter > 0) {
 
         switch (rep_radius_algo) {
-            case RepRadiusAlgorithm::ArithmeticMean: props.rep_radius /= static_cast<real>(counter); break;
-            case RepRadiusAlgorithm::GeometricMean:  props.rep_radius = exp(props.rep_radius / static_cast<real>(counter)); break;
-            case RepRadiusAlgorithm::HarmonicMean:   props.rep_radius = static_cast<real>(counter) / props.rep_radius; break;
+            case rep_radius_algorithm::arithmetic_mean: props.rep_radius /= static_cast<real>(counter); break;
+            case rep_radius_algorithm::geometric_mean:  props.rep_radius = exp(props.rep_radius / static_cast<real>(counter)); break;
+            case rep_radius_algorithm::harmonic_mean:   props.rep_radius = static_cast<real>(counter) / props.rep_radius; break;
         }
 
         props.centroid /= static_cast<real>(counter);

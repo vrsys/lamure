@@ -26,7 +26,7 @@ RawPointCloud::
 }
 
 const bool RawPointCloud::
-Load(const std::string& filename) {
+load(const std::string& filename) {
     if (filename.substr(filename.find_last_of('.') + 1) != "xyz_all") {
         throw std::runtime_error(
             "RawPointCloud::Incompatible input file: " + filename);
@@ -81,7 +81,7 @@ Load(const std::string& filename) {
         if (pos[1] > max[1]) max[1] = pos[1];
         if (pos[2] > max[2]) max[2] = pos[2];
 
-        data_.push_back(SerializedSurfel({
+        data_.push_back(serialized_surfel({
                             pos[0], pos[1], pos[2],
                             uint8_t(color[0]), uint8_t(color[1]), uint8_t(color[2]), 0,
                             radius/2.f,

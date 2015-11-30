@@ -33,7 +33,7 @@ public:
 
     const bool          RegisterNode(const model_t model_id, const node_t node_id);
 
-    void                ResetTransferList();
+    void                resetTransferList();
     void                RemoveFromTransferList(const model_t model_id, const node_t node_id);
 
 private:

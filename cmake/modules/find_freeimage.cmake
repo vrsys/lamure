@@ -2,12 +2,12 @@
 # search paths
 ##############################################################################
 SET(FREEIMAGE_INCLUDE_SEARCH_DIRS
-    ${GLOBAL_EXT_DIR}/include/freeimage
+    ${GLOBAL_EXT_DIR}/freeimage/include
     /usr/include
 )
 
 SET(FREEIMAGE_LIBRARY_SEARCH_DIRS
-    ${GLOBAL_EXT_DIR}/lib
+    ${GLOBAL_EXT_DIR}/freeimage/lib
     /usr/lib
 )
 

@@ -2,13 +2,13 @@
 # search paths
 ##############################################################################
 SET(UNITTEST_INCLUDE_SEARCH_DIRS
-  ${GLOBAL_EXT_DIR}/include/unittest
+  ${GLOBAL_EXT_DIR}/unittest/include
   ${UNITTEST_INCLUDE_SEARCH_DIR}
   /usr/include
 )
 
 SET(UNITTEST_LIBRARY_SEARCH_DIRS
-  ${GLOBAL_EXT_DIR}/lib
+  ${GLOBAL_EXT_DIR}/unittest/lib
   ${UNITTEST_LIBRARY_SEARCH_DIR}
   /usr/lib
   /usr/lib/x86_64-linux-gnu

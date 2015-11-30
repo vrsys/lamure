@@ -11,31 +11,31 @@
 #include <lamure/types.h>
 #include <vector>
 
-class HistogramMatcher
+class histogram_matcher
 {
  public:
 
-  struct ColorArray {
+  struct color_array {
       std::vector<unsigned char> r;
       std::vector<unsigned char> g;
       std::vector<unsigned char> b;
 
-      void AddColor(const lamure::vec3b& c) {
+      void add_color(const lamure::vec3b& c) {
           r.push_back(c.r);
           g.push_back(c.g);
           b.push_back(c.b);
       }
 
-      size_t Size() const { return r.size(); }
-      void Clear() { r.clear(); g.clear(); b.clear(); }
+      size_t size() const { return r.size(); }
+      void clear() { r.clear(); g.clear(); b.clear(); }
   };
 
-  void InitReference(const ColorArray& colors);
-  void Match(ColorArray& colors, double blend_fac = 1.0) const;
+  void init_reference(const color_array& colors);
+  void match(color_array& colors, double blend_fac = 1.0) const;
 
  private:
 
-  struct Hist {
+  struct histogram {
 #if WIN32
       double c[3][256];
 #else
@@ -45,9 +45,9 @@ class HistogramMatcher
       const double* operator[](size_t n) const { return c[n]; }
   };
 
-  Hist BuildHistogram(const ColorArray& colors) const; 
+  histogram build_histogram(const color_array& colors) const; 
 
-  Hist reference;
+  histogram reference;
 };
 
 #endif // #ifndef HISTOGRAMMATCHER_H

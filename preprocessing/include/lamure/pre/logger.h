@@ -20,18 +20,18 @@ namespace pre {
 /**
 * Replacement class for log4cplus. Initial dummy version.
 */
-class PREPROCESSING_DLL Logger
+class PREPROCESSING_DLL logger
 {
 public:
 
-                        Logger(const Logger&) = delete;
-                        Logger& operator=(const Logger&) = delete;
-    virtual             ~Logger();
+                        logger(const logger&) = delete;
+                        logger& operator=(const logger&) = delete;
+    virtual             ~logger();
 
-    static Logger&      GetInstance();
+    static logger&      get_instance();
 
     template <typename T>
-    friend Logger& operator <<(Logger& log, const T& value) {
+    friend logger& operator <<(logger& log, const T& value) {
         std::cout << value;
         return log;
     }
@@ -39,8 +39,8 @@ public:
 
 
 protected:
-                        Logger();
-    static Logger       single_;
+                        logger();
+    static logger       single_;
 
 private:
     static std::mutex   mutex_;
@@ -48,12 +48,12 @@ private:
 };
 
 
-#define LOGGER_TRACE(msg) Logger::GetInstance()<<msg<<"\n"
-#define LOGGER_INFO(msg) Logger::GetInstance()<<msg<<"\n"
-#define LOGGER_WARN(msg) Logger::GetInstance()<<msg<<"\n"
-#define LOGGER_ERROR(msg) Logger::GetInstance()<<msg<<"\n"
+#define LOGGER_TRACE(msg) logger::get_instance()<<msg<<"\n"
+#define LOGGER_INFO(msg) logger::get_instance()<<msg<<"\n"
+#define LOGGER_WARN(msg) logger::get_instance()<<msg<<"\n"
+#define LOGGER_ERROR(msg) logger::get_instance()<<msg<<"\n"
 #define LOGGER_DEBUG(msg) 0
-#define LOGGER_TEXT(msg) Logger::GetInstance()<<msg<<"\n"
+#define LOGGER_TEXT(msg) logger::get_instance()<<msg<<"\n"
 
 
 

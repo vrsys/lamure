@@ -31,10 +31,10 @@ public:
                         OocCache& operator=(const OocCache&) = delete;
     virtual             ~OocCache();
 
-    static OocCache*    GetInstance();
+    static OocCache*    get_instance();
 
     void                RegisterNode(const model_t model_id, const node_t node_id, const int32_t priority);
-    char*               NodeData(const model_t model_id, const node_t node_id);
+    char*               Nodedata(const model_t model_id, const node_t node_id);
 
     const bool          IsNodeResidentAndAquired(const model_t model_id, const node_t node_id);
 

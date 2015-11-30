@@ -7,19 +7,19 @@
 
 #include "HistogramMatcher.h"
 
-void HistogramMatcher::
-InitReference(const ColorArray& colors)
+void histogram_matcher::
+init_reference(const color_array& colors)
 {
-    reference = BuildHistogram(colors);
+    reference = build_histogram(colors);
 }
 
-HistogramMatcher::Hist HistogramMatcher::
-BuildHistogram(const ColorArray& colors) const
+histogram_matcher::histogram histogram_matcher::
+build_histogram(const color_array& colors) const
 {
-    Hist h;
+    histogram h;
 
     #pragma omp parallel for
-    for (size_t i = 0; i < colors.Size(); ++i ){
+    for (size_t i = 0; i < colors.size(); ++i ){
         #pragma omp atomic update
         ++h[0][colors.r[i]];
         
@@ -31,18 +31,18 @@ BuildHistogram(const ColorArray& colors) const
     }
     #pragma omp parallel for
     for (size_t i = 0; i < 256; ++i ) {
-        h[0][i] /= colors.Size();
-        h[1][i] /= colors.Size();
-        h[2][i] /= colors.Size();
+        h[0][i] /= colors.size();
+        h[1][i] /= colors.size();
+        h[2][i] /= colors.size();
     }
     return h;
 }
 
-void HistogramMatcher::
-Match(ColorArray& colors, double blend_fac) const
+void histogram_matcher::
+match(color_array& colors, double blend_fac) const
 {
-    Hist hist = BuildHistogram(colors);
-    Hist T;
+    histogram hist = build_histogram(colors);
+    histogram T;
 
     // match histograms
     #pragma omp parallel for
@@ -72,7 +72,7 @@ Match(ColorArray& colors, double blend_fac) const
     }
 
     #pragma omp parallel for
-    for (size_t idx = 0; idx < colors.Size(); ++idx){
+    for (size_t idx = 0; idx < colors.size(); ++idx){
         colors.r[idx] = static_cast<unsigned char>(blend_fac * T[0][colors.r[idx]] + (1.0 - blend_fac) * colors.r[idx]);
         colors.g[idx] = static_cast<unsigned char>(blend_fac * T[1][colors.g[idx]] + (1.0 - blend_fac) * colors.g[idx]);
         colors.b[idx] = static_cast<unsigned char>(blend_fac * T[2][colors.b[idx]] + (1.0 - blend_fac) * colors.b[idx]);
