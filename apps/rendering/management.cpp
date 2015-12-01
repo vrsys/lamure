@@ -189,7 +189,8 @@ MainLoop()
                 ++num_taken_screenshots_;
 
                 auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
-                renderer_->take_screenshot("../quality_measurement/session_screenshots/", measurement_session_descriptor_.get_screenshot_name() );
+                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
+                                            measurement_session_descriptor_.get_screenshot_name() );
 
             if(! measurement_session_descriptor_.recorded_view_vector_.empty() ) {
                 if (! screenshot_session_started_ ) {
@@ -655,7 +656,13 @@ DispatchResize(int w, int h)
     w/=2;
 #endif
 
-    renderer_->reset_viewport(w,h);
+    // if snapshots are taken, use the user specified resolution
+    if( measurement_session_descriptor_.snapshot_session_enabled_ ) {
+        renderer_->reset_viewport(measurement_session_descriptor_.snapshot_resolution_[0],
+                                  measurement_session_descriptor_.snapshot_resolution_[1]);
+    } else { // otherwise react on window resizing 
+        renderer_->reset_viewport(w,h);
+    }
     lamure::ren::ModelDatabase* database = lamure::ren::ModelDatabase::GetInstance();
     database->set_window_width(w);
     database->set_window_height(h);
