@@ -269,17 +269,18 @@ int main(int argc, char** argv)
 
 void glut_display()
 {
-
+    bool signaled_shutdown = false;
     if (management_ != nullptr)
     {
-        bool signaled_shutdown = management_->MainLoop(); 
+        signaled_shutdown = management_->MainLoop(); 
 
-        if(signaled_shutdown) {
-            glut_close();
-        }
         glutSwapBuffers();
     }
 
+        if(signaled_shutdown) {
+            glutExit();
+            exit(0);
+        }
 }
 
 
@@ -406,7 +407,6 @@ void glut_keyboard(unsigned char key, int x, int y)
                 management_->DispatchKeyboardInput(key);
             }
             break;
-
 
     }
 }

@@ -137,6 +137,7 @@ MainLoop()
     lamure::ren::Controller* controller = lamure::ren::Controller::GetInstance();
     lamure::ren::CutDatabase* cuts = lamure::ren::CutDatabase::GetInstance();
 
+    bool signal_shutdown = false;
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
        model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(28.f, -389.f, -58.f);
@@ -201,7 +202,7 @@ MainLoop()
                 measurement_session_descriptor_.recorded_view_vector_.pop_back();
             } else {
                 // leave the main loop
-                return true;
+                signal_shutdown = true;
             }
 
         } else {
@@ -276,7 +277,7 @@ MainLoop()
 
 #endif
 
-    return false;
+    return signal_shutdown;
 }
 
 
