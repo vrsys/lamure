@@ -838,7 +838,9 @@ upsweep(const reduction_strategy& reduction_strtgy)
 }
 
 void bvh::
-upsweep_new(const reduction_strategy& reduction_strategy, const normal_computation_strategy& normal_comp_strategy, const radius_computation_strategy& radius_comp_strategy)
+upsweep_new(const reduction_strategy& reduction_strategy, 
+            const normal_computation_strategy& normal_strategy, 
+            const radius_computation_strategy& radius_strategy)
 {
     // Start at bottom level and move up towards root.
     for (uint32_t level = depth_; level >= 0; --level)
@@ -870,7 +872,16 @@ upsweep_new(const reduction_strategy& reduction_strategy, const normal_computati
                     node_iter->reset(reduction_strategy.create_lod(reduction_error, child_mem_data, max_surfels_per_node_));
                 }
                 
-                // Do attribute calculation per sufel in node here
+                // Do attribute calculation per sufel in current node.
+                for (uint16_t surfel_index = 0; surfel_index < node_iter->mem_array().length(); ++surfel_index)
+                {
+                    surfel current_surfel = node_iter->mem_array().read_surfel(surfel_index);
+                    
+                    current_surfel.normal() = normal_strategy.compute_normal(*this, node_iter->node_id(), surfel_index);
+                    current_surfel.radius() = radius_strategy.compute_radius(*this, node_iter->node_id(), surfel_index);
+                    
+                    node_iter->mem_array().write_surfel(current_surfel, surfel_index);
+                }
             }
         }
     }
