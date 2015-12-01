@@ -137,6 +137,8 @@ MainLoop()
     lamure::ren::controller* controller = lamure::ren::controller::get_instance();
     lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
 
+    bool signal_shutdown = false;
+
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
        model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(28.f, -389.f, -58.f);
@@ -201,7 +203,7 @@ MainLoop()
                 measurement_session_descriptor_.recorded_view_vector_.pop_back();
             } else {
                 // leave the main loop
-                return true;
+                signal_shutdown = true;
             }
 
         } else {
@@ -276,7 +278,7 @@ MainLoop()
 
 #endif
 
-    return false;
+    return signal_shutdown;
 }
 
 
@@ -785,6 +787,4 @@ create_quality_measurement_resources() {
     std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);
     active_camera_->write_view_matrix(camera_session_file);
     camera_session_file.close();
-
-
 }
