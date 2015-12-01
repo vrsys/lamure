@@ -922,31 +922,27 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         
 
         // Make the BYTE array, factor of 3 because it's RBG.
-        BYTE* pixels = new BYTE[ 4 * win_x_ * win_y_];
+        BYTE* pixels = new BYTE[ 3 * win_x_ * win_y_];
 
-        //device_->opengl_api().glReadPixels(0, 0, win_x_, win_y_, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
         
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_color_texture_->object_id());
-        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
-        std::string filename = screenshot_path + "color_" + screenshot_name + file_extension;
+        std::string filename = screenshot_path + screenshot_name +"color_"  + file_extension;
 
-        FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0xFF0000, 0x00FF00, false);
+        FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
-
 
 
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_normal_texture_->object_id());
-        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
         filename = screenshot_path + "normal_" + screenshot_name + file_extension;
 
-        image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0xFF0000, 0x00FF00, false);
+        image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
 
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
-
-
 
         // Free resources
         FreeImage_Unload(image);

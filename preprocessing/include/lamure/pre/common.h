@@ -18,8 +18,12 @@ enum class RepRadiusAlgorithm {
     HarmonicMean   = 2
 };
 
-enum class NormalRadiusAlgorithm {
+enum class NormalComputationAlgorithm {
 	PlaneFitting = 0
+};
+
+enum class RadiusComputationAlgorithm {
+	AverageDistance = 0
 };
 
 enum class ReductionAlgorithm {
