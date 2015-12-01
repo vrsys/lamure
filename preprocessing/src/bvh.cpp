@@ -819,8 +819,10 @@ Upsweep(const ReductionStrategy& reduction_strategy)
 
 
 
-/*void Bvh::
-upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy)
+void Bvh::
+upsweep_new(const ReductionStrategy& reduction_strategy, 
+            const NormalComputationStrategy& normal_strategy, 
+            const RadiusComputationStrategy& radius_strategy)
 {
     // Start at bottom level and move up towards root.
     for (uint32_t level = depth_; level >= 0; --level)
@@ -852,11 +854,20 @@ upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrate
                     node_iter->Reset(reduction_strategy.CreateLod(reduction_error, child_mem_data, max_surfels_per_node_));
                 }
                 
-                // Do attribute calculation per sufel in node here
+                // Do attribute calculation per sufel in current node.
+                for (uint16_t surfel_index = 0; surfel_index < node_iter->mem_array().length(); ++surfel_index)
+                {
+                    Surfel current_surfel = node_iter->mem_array().ReadSurfel(surfel_index);
+                    
+                    current_surfel.normal() = normal_strategy.compute_normal(*this, node_iter->node_id(), surfel_index, 20);
+                    current_surfel.radius() = radius_strategy.compute_radius(*this, node_iter->node_id(), surfel_index, 20);
+                    
+                    node_iter->mem_array().WriteSurfel(current_surfel, surfel_index);
+                }
             }
         }
     }
-}*/
+}
 
 void Bvh::
 UpsweepR(BvhNode& node,

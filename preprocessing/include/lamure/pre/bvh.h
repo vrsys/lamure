@@ -103,7 +103,9 @@ public:
                                                   const RadiusComputationStrategy&  radius_computation_strategy);
 
     void                Upsweep(const ReductionStrategy& reduction_strategy);
-    //void                upsweep_new(const ReductionStrategy& reduction_strategy, const NormalRadiiStrategy& normal_radii_strategy);
+    void                upsweep_new(const ReductionStrategy& reduction_strategy, 
+                                    const NormalComputationStrategy& normal_strategy, 
+                                    const RadiusComputationStrategy& radius_strategy);
 
     void                SerializeTreeToFile(const std::string& output_file,
                                             bool write_intermediate_data);
