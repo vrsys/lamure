@@ -47,6 +47,8 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
     win_x_ = database->window_width();
     win_y_ = database->window_height();
 
+    win_x_ = 800;
+    win_y_ = 600;
     initialize_schism_device_and_shaders(win_x_, win_y_);
     initialize_VBOs();
     reset_viewport(win_x_, win_y_);
@@ -828,7 +830,6 @@ void Renderer::reset_viewport(int w, int h)
     scm::math::mat4f   fs_projection = scm::math::make_ortho_matrix(0.0f, static_cast<float>(win_x_),
                                                                     0.0f, static_cast<float>(win_y_), -1.0f, 1.0f);
     text_renderer_->projection_matrix(fs_projection);
-
 }
 
 void Renderer::
@@ -912,10 +913,11 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
     std::string file_extension = ".png";
     {
 
+        std::string full_path = screenshot_path + "/";
         {
-            if(! boost::filesystem::exists(screenshot_path+"/")) {
-               std::cout<<"Screenshot Folder did not exist. Creating Folder: " << screenshot_path << "\n\n";
-               boost::filesystem::create_directories(screenshot_path+"/");
+            if(! boost::filesystem::exists(full_path)) {
+               std::cout<<"Screenshot Folder did not exist. Creating Folder: " << full_path << "\n\n";
+               boost::filesystem::create_directories(full_path);
             }
         }
 
@@ -928,7 +930,7 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_color_texture_->object_id());
         device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
-        std::string filename = screenshot_path + screenshot_name +"color_"  + file_extension;
+        std::string filename = full_path + "color__" + screenshot_name + file_extension;
 
         FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
@@ -937,7 +939,7 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_normal_texture_->object_id());
         device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
-        filename = screenshot_path + "normal_" + screenshot_name + file_extension;
+        filename = full_path + "normal__" + screenshot_name + file_extension;
 
         image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);

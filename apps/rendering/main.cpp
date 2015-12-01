@@ -226,6 +226,7 @@ int main(int argc, char** argv)
 
       measurement_descriptor.session_filename_ = measurement_file_path.substr(first_slash_before_filename_pos+1, last_dot_in_filename_pos);
       quality_measurement_mode_enabled_ = true;
+      measurement_descriptor.snapshot_session_enabled_ = true;
       glutFullScreenToggle();
     }
 

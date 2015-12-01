@@ -171,6 +171,7 @@ MainLoop()
     renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, renderer_->device()), num_recorded_camera_positions_);
 #endif
 
+
     std::string status_string("");
 
     if (! allow_user_input_) {
@@ -188,7 +189,8 @@ MainLoop()
                 ++num_taken_screenshots_;
 
                 auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
-                renderer_->take_screenshot("../quality_measurement/session_screenshots/", measurement_session_descriptor_.get_screenshot_name() );
+                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
+                                            measurement_session_descriptor_.get_screenshot_name() );
 
             if(! measurement_session_descriptor_.recorded_view_vector_.empty() ) {
                 if (! screenshot_session_started_ ) {
@@ -230,7 +232,7 @@ MainLoop()
                }
             }
             else {
-              cuts->send_rendered(context_id, m_id);
+               cuts->send_rendered(context_id, m_id);
             }
 
             database->get_model(m_id)->set_transform(model_transformations_[m_id]);
@@ -498,9 +500,9 @@ dispatchKeyboardInput(unsigned char key)
 
             float max_distance = 100000.0f;
  
-            lamure::ren::ray::intersection intersection;
+            lamure::ren::ray::intersection intersectn;
             std::vector<lamure::ren::ray::intersection> dbg_intersections;
-            lamure::ren::ray ray(cam_pos, cam_fwd, max_distance);
+            lamure::ren::ray intersection_ray(cam_pos, cam_fwd, max_distance);
           
             //sample params for single pick (wysiwg)
             unsigned int max_depth = 255;
@@ -509,17 +511,17 @@ dispatchKeyboardInput(unsigned char key)
 
 
 #if 1 /*INTERPOLATION PICK*/
-                if (ray.Intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
+                if (intersection_ray.Intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
 #ifdef LAMURE_ENABLE_INFO
-                    std::cout << "intersection distance: " << intersection.distance_ << std::endl;
-                    std::cout << "intersection position: " << intersection.position_ << std::endl;
+                    std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
+                    std::cout << "intersection position: " << intersectn.position_ << std::endl;
 #endif
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
                     renderer_->clear_line_begin();
                     renderer_->clear_line_end();
-                    scm::math::vec3f intersection_position = cam_pos + cam_fwd * intersection.distance_;
+                    scm::math::vec3f intersection_position = cam_pos + cam_fwd * intersectn.distance_;
                     renderer_->add_line_begin(intersection_position);
-                    renderer_->add_line_end(intersection_position + intersection.normal_ * 5.f);
+                    renderer_->add_line_end(intersection_position + intersectn.normal_ * 5.f);
                     //std::cout << "num debug intersections " << dbg_intersections.size() << std::endl;
                     for (const auto& dbg : dbg_intersections) {
                        renderer_->add_line_begin(dbg.position_);
@@ -535,7 +537,7 @@ dispatchKeyboardInput(unsigned char key)
             for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
                scm::math::mat4f model_transform = database->get_model(model_id)->transform();
                lamure::ren::ray::Intersection temp;
-               if (ray.IntersectModel(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
+               if (intersection_ray.IntersectModel(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
                   intersection = temp;
                }
             }
@@ -546,12 +548,12 @@ dispatchKeyboardInput(unsigned char key)
             for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
                scm::math::mat4f model_transform = database->get_model(model_id)->transform();
                lamure::ren::ray::Intersectionbvh temp;
-               if (ray.IntersectModelbvh(model_id, model_transform, 1.0f, temp)) {
+               if (intersection_ray.IntersectModelBvh(model_id, model_transform, 1.0f, temp)) {
                   //std::cout << "hit i model id " << model_id << " distance: " << temp.tmin_ << std::endl;
-                  intersection.position_ = temp.position_;
-                  intersection.normal_ = scm::math::vec3f(0.0f, 1.0f, 0.f);
-                  intersection.error_ = 0.f;
-                  intersection.distance_ = temp.tmin_;   
+                  intersectn.position_ = temp.position_;
+                  intersectn.normal_ = scm::math::vec3f(0.0f, 1.0f, 0.f);
+                  intersectn.error_ = 0.f;
+                  intersectn.distance_ = temp.tmin_;   
                }
 
             }
@@ -568,11 +570,11 @@ dispatchKeyboardInput(unsigned char key)
 
       //now test the list of files
       lamure::ren::ray::Intersectionbvh temp;
-      if (ray.Intersectbvh(bvh_filenames, 1.0f, temp)) {
-         intersection.position_ = temp.position_;
-         intersection.normal_ = scm::math::vec3f(0.f, 1.0f, 1.0f);
-         intersection.error_ = 0.f;
-         intersection.distance_ = temp.tmin_;
+      if (intersection_ray.Intersectbvh(bvh_filenames, 1.0f, temp)) {
+         intersectn.position_ = temp.position_;
+         intersectn.normal_ = scm::math::vec3f(0.f, 1.0f, 1.0f);
+         intersectn.error_ = 0.f;
+         intersectn.distance_ = temp.tmin_;
          std::cout << temp.bvh_filename_ << std::endl;
       }
     
@@ -580,15 +582,15 @@ dispatchKeyboardInput(unsigned char key)
 #endif
 
 #ifdef LAMURE_ENABLE_INFO
-               // std::cout << "intersection distance: " << intersection.distance_ << std::endl;
-               // std::cout << "intersection position: " << intersection.position_ << std::endl;
+               // std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
+               // std::cout << "intersection position: " << intersectn.position_ << std::endl;
 #endif
 
-                if (intersection.error_ < std::numeric_limits<float>::max()) {
+                if (intersectn.error_ < std::numeric_limits<float>::max()) {
                   renderer_->clear_line_begin();
                   renderer_->clear_line_end();
-                  renderer_->add_line_begin(intersection.position_);
-                  renderer_->add_line_end(intersection.position_ + intersection.normal_ * 5.f);
+                  renderer_->add_line_begin(intersectn.position_);
+                  renderer_->add_line_end(intersectn.position_ + intersectn.normal_ * 5.f);
                  // std::cout << "num debug intersections " << dbg_intersections.size() << std::endl;
                   for (const auto& dbg : dbg_intersections) {
                     renderer_->add_line_begin(dbg.position_);
@@ -604,8 +606,8 @@ dispatchKeyboardInput(unsigned char key)
 #if 1
              if (override_center_of_rotation) {
                //move center of rotation to intersection
-               if (intersection.error_ < std::numeric_limits<float>::max()) {
-                   active_camera_->set_trackball_center_of_rotation(intersection.position_);
+               if (intersectn.error_ < std::numeric_limits<float>::max()) {
+                   active_camera_->set_trackball_center_of_rotation(intersectn.position_);
 
                }
              }
@@ -654,7 +656,13 @@ dispatchResize(int w, int h)
     w/=2;
 #endif
 
-    renderer_->reset_viewport(w,h);
+    // if snapshots are taken, use the user specified resolution
+    if( measurement_session_descriptor_.snapshot_session_enabled_ ) {
+        renderer_->reset_viewport(measurement_session_descriptor_.snapshot_resolution_[0],
+                                  measurement_session_descriptor_.snapshot_resolution_[1]);
+    } else { // otherwise react on window resizing 
+        renderer_->reset_viewport(w,h);
+    }
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     database->set_window_width(w);
     database->set_window_height(h);
