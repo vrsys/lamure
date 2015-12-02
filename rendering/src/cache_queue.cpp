@@ -177,7 +177,7 @@ Updatejob(const model_t model_id, const node_t node_id, int32_t priority) {
 
 const cache_queue::abort_result cache_queue::
 Abortjob(const job& job) {
-    abort_result abort_result = abort_result::ABORT_FAILED;
+    abort_result result = abort_result::ABORT_FAILED;
 
     if (mode_ != update_mode::UPDATE_NEVER) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -194,12 +194,12 @@ Abortjob(const job& job) {
                 shuffle_down(slot_id);
                 requested_set_[job.model_id_].erase(job.node_id_);
 
-                abort_result = abort_result::ABORT_SUCCESS;
+                result = abort_result::ABORT_SUCCESS;
             }
         }
     }
 
-    return abort_result;
+    return result;
 }
 
 void cache_queue::

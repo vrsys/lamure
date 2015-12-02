@@ -372,7 +372,7 @@ downsweep_subtree_in_core( const bvh_node& node,
         auto props = basic_algorithms::compute_properties(current_node.mem_array(), rep_radius_algo_);
         current_node.set_avg_surfel_radius(props.rep_radius);
         current_node.set_centroid(props.centroid);
-        current_node.set_bounding_box(props.bounding_box);
+        current_node.set_bounding_box(props.bbox);
     }
 
     LOGGER_TRACE("Save leaves to disk");
@@ -881,7 +881,7 @@ const reduction_strategy& reduction_strategy,
 
     //LOGGER_TRACE("2. Error " << node.node_id());
     auto props = basic_algorithms::compute_properties(node.mem_array(), rep_radius_algo_);
-    new_bounding_box.expand(props.bounding_box);
+    new_bounding_box.expand(props.bbox);
 
     // set reduction error, average radius, and new bounding box
     node.set_reduction_error(reduction_error);

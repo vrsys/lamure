@@ -4,14 +4,14 @@
 SET(GMP_INCLUDE_SEARCH_DIRS
   ${GLOBAL_EXT_DIR}/gmp/include
   /usr/include
-  /opt/lib/gmp/include
+  /opt/gmp/include
 )
 
 SET(GMP_LIBRARY_SEARCH_DIRS
   ${GLOBAL_EXT_DIR}/gmp/lib
   /usr/lib
   /usr/lib/x86_64-linux-gnu
-  /opt/lib/gmp/lib
+  /opt/gmp/lib
 )
 
 ##############################################################################

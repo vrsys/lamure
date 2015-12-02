@@ -27,7 +27,7 @@ public:
     struct surfel_group_properties {
         real         rep_radius;
         vec3r        centroid;
-        bounding_box bounding_box;
+        bounding_box bbox;
     };
 
     template <class T>

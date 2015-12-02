@@ -11,7 +11,7 @@
 
 #include <scm/gl_core.h>
 #include <scm/gl_core/render_device.h>
-#include <scm/gl_core/render_device/OpenGL/gl_core.h>
+#include <scm/gl_core/render_device/opengl/gl_core.h>
 #include <scm/gl_core/render_device/device.h>
 
 namespace lamure

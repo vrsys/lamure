@@ -325,7 +325,7 @@ compute_properties(const surfel_mem_array& sa,
         surfel s = sa.read_surfel(i);
         
         // TODO: moved here to fix normal-radii computation
-        props.bounding_box.expand(s.pos(), s.radius());
+        props.bbox.expand(s.pos(), s.radius());
 
         if (s.radius() <= 0.0)
             continue;

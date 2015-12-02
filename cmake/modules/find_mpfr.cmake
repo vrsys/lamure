@@ -4,14 +4,14 @@
 SET(MPFR_INCLUDE_SEARCH_DIRS
   ${GLOBAL_EXT_DIR}/mpfr/include
   /usr/include
-  /opt/lib/mpfr/include
+  /opt/mpfr/include
 )
 
 SET(MPFR_LIBRARY_SEARCH_DIRS
   ${GLOBAL_EXT_DIR}/mpfr/lib
   /usr/lib
   /usr/lib/x86_64-linux-gnu
-  /opt/lib/mpfr/lib
+  /opt/mpfr/lib
 )
 
 ##############################################################################
