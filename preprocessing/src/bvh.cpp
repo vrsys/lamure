@@ -92,12 +92,12 @@ init_tree(const std::string& surfels_input_file,
 bool bvh::
 load_tree(const std::string& kdn_input_file)
 {
-  assert(state_ == state_type::null);
+    assert(state_ == state_type::null);
 
     bvh_stream bvh_stream;
-    bvh_stream.readbvh(kdn_input_file, *this);
+    bvh_stream.read_bvh(kdn_input_file, *this);
 
-    LOGGER_INFO("load bvh: \"" << kdn_input_file << "\". state: " << state_to_string(state_));
+    LOGGER_INFO("Load bvh: \"" << kdn_input_file << "\". state_type: " << state_to_string(state_));
     return true;
 }
 
@@ -121,7 +121,7 @@ get_parent_id(const uint32_t node_id) const
 }
 
 std::pair<node_id_type, node_id_type> bvh::
-GetNodeRanges(const uint32_t depth) const
+get_node_ranges(const uint32_t depth) const
 {
     assert(depth >= 0 && depth <= depth_);
 
@@ -148,7 +148,7 @@ downsweep(bool adjust_translation,
           const std::string& surfels_input_file,
           bool bin_all_file_extension)
 {
-  assert(state_ == state_type::empty);
+    assert(state_ == state_type::empty);
 
     size_t in_core_surfel_capacity = memory_limit_ / sizeof(surfel);
 
@@ -187,13 +187,13 @@ downsweep(bool adjust_translation,
 
     // check if the root can be switched to in-core
     if (final_depth == 0) {
-        LOGGER_TRACE("compute root bounding box in-core");
+        LOGGER_TRACE("Compute root bounding box in-core");
         nodes_[0].load_from_disk();
         input_bb = basic_algorithms::compute_aabb(nodes_[0].mem_array());
 
     }
     else {
-        LOGGER_TRACE("compute root bounding box out-of-core");
+        LOGGER_TRACE("Compute root bounding box out-of-core");
         input_bb = basic_algorithms::compute_aabb(nodes_[0].disk_array(),
                                                 buffer_size_);
     }
@@ -364,7 +364,7 @@ downsweep_subtree_in_core( const bvh_node& node,
         slice_right = new_slice_right;
     }
 
-    LOGGER_TRACE("compute node properties for leaves");
+    LOGGER_TRACE("Compute node properties for leaves");
     // compute avg surfel radius for leaves
     #pragma omp parallel for
     for (size_t nid = slice_left; nid <= slice_right; ++nid) {
@@ -572,6 +572,37 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
 
 }
 
+void bvh::compute_normal_and_radius(const size_t node, 
+                                    const size_t surf,
+                                    const normal_radii_strategy& normal_radii_strategy){
+
+
+    //set sonstant number of neighbours for test
+    //use desc. !? 
+    const uint32_t number_of_neighbours = 40;
+    size_t node_id = node;
+    size_t surfel_id = surf;
+    std::vector<std::pair<surfel, real>>  neighbours;
+
+
+   /*
+    neighbours = get_nearest_neighbours(node_id, surfel_id, number_of_neighbours)
+
+    if (current_surfel < nodes_[node_id].mem_array().length()){
+        surfel surfel = nodes_[node_id].mem_array().read_surfel(surfel_id);
+
+        surfel.normal() = normal_radii_strategy.compute_normal(node_id, surfel_id, neighbours);
+        surfel.radius() = normal_radii_strategy.compute_radius(node_id, surfel_id, neighbours);
+
+        nodes_[node_id].mem_array().write_surfel(surfel, surfel_id);
+    };
+
+    */
+    
+
+    
+}
+
 void bvh::get_descendant_leaves(
      const size_t node,
      std::vector<size_t>& result,
@@ -594,15 +625,39 @@ void bvh::get_descendant_leaves(
     }
 }
 
+void bvh::get_descendant_nodes(
+     const size_t node,
+     std::vector<size_t>& result,
+     const size_t desired_depth,
+     const std::unordered_set<size_t>& excluded_nodes) const
+{
+    size_t node_depth = std::log((node + 1) * (fan_factor_ - 1)) / std::log(fan_factor_);
+    if (node_depth == desired_depth)
+    {
+        if (excluded_nodes.find(node) == excluded_nodes.end())
+        {
+            result.push_back(node);
+        }
+    }
+    //node is above desired depth
+    else
+    {
+        for (uint16_t i = 0; i < fan_factor_; ++i)
+        {
+            get_descendant_nodes(get_child_id(node, i), result, desired_depth, excluded_nodes);
+        }
+    }
+}
+
 std::vector<std::pair<surfel, real>> bvh::
 get_nearest_neighbours(
     const size_t node,
-    const size_t surfel_of_interest,
+    const size_t surf,
     const uint32_t number_of_neighbours) const
 {
     size_t current_node = node;
     std::unordered_set<size_t> processed_leaves;
-    vec3r center = nodes_[node].mem_array().read_surfel(surfel_of_interest).pos();
+    vec3r center = nodes_[node].mem_array().read_surfel(surf).pos();
 
     std::vector<std::pair<surfel, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
@@ -615,9 +670,9 @@ get_nearest_neighbours(
 
     for (size_t i = 0; i < nodes_[current_node].mem_array().length(); ++i)
     {
-      if (i != surfel_of_interest)
+      if (i != surf)
         {
-            surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            surfel const& current_surfel = nodes_[current_node].mem_array().read_surfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -658,7 +713,7 @@ get_nearest_neighbours(
 
         std::vector<size_t> unvisited_descendant_leaves;
 
-        get_descendant_leaves(current_node, unvisited_descendant_leaves, first_leaf, processed_leaves);
+        get_descendant_nodes(current_node, unvisited_descendant_leaves, depth_, processed_leaves);
 
         for (auto leaf : unvisited_descendant_leaves)
         {
@@ -670,7 +725,7 @@ get_nearest_neighbours(
 
                 for (size_t i = 0; i < nodes_[leaf].mem_array().length(); ++i)
                 {
-                  if (!(leaf == node && i == surfel_of_interest))
+                    if (!(leaf == node && i == surf))
                     {
                         surfel current_surfel = nodes_[leaf].mem_array().read_surfel(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
@@ -713,10 +768,12 @@ get_nearest_neighbours(
     return candidates;
 }
 
+
+
 void bvh::
 upsweep(const reduction_strategy& reduction_strategy)
 {
-    LOGGER_TRACE("Create level temp files");
+    LOGGER_TRACE("create level temp files");
 
     std::vector<shared_file> level_temp_files;
     for (uint32_t i = 0; i <= depth_; ++i) {
@@ -726,7 +783,7 @@ upsweep(const reduction_strategy& reduction_strategy)
                                       i != depth_);
     }
 
-    LOGGER_TRACE("compute LOD hierarchy");
+    LOGGER_TRACE("Compute LOD hierarchy");
 
     std::atomic_uint ctr{ 0 };
 
@@ -734,7 +791,7 @@ upsweep(const reduction_strategy& reduction_strategy)
     {
         #pragma omp single nowait
         {
-            upsweep_recurse(nodes_[0], reduction_strategy, level_temp_files, ctr);
+            upsweep_r(nodes_[0], reduction_strategy, level_temp_files, ctr);
         }
     }
     std::cout << std::endl << std::endl;
@@ -742,9 +799,50 @@ upsweep(const reduction_strategy& reduction_strategy)
     state_ = state_type::after_upsweep;
 }
 
+
+
 void bvh::
-upsweep_recurse(bvh_node& node,
-         const reduction_strategy& reduction_strategy,
+upsweep_new(const reduction_strategy& reduction_strategy, const normal_radii_strategy& normal_radii_strategy)
+{
+    // Start at bottom level and move up towards root.
+    for (uint32_t level = depth_; level >= 0; --level)
+    {
+        // Iterate over nodes of current tree level.
+        for (std::vector<bvh_node>::iterator node_iter = nodes_.begin(); node_iter != nodes_.end(); ++node_iter)
+        {
+            if (node_iter->depth() == level)
+            {
+                // If a node has no data yet, calculate it based on child nodes.
+                if (!node_iter->is_in_core() && !node_iter->is_out_of_core())
+                {
+                    std::vector<surfel_mem_array*> child_mem_data;
+                    for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
+                    {
+                        size_t child_id = this->get_child_id(node_iter->node_id(), child_index);
+                        
+                        for (std::vector<bvh_node>::iterator child_iter = nodes_.begin(); child_iter != nodes_.end(); ++child_iter)
+                        {
+                            if (child_iter->node_id() == child_id)
+                            {
+                                child_mem_data.push_back(&child_iter->mem_array());
+                                //commented for quick merge process
+                                //child_iter = nodes_end();
+                            }
+                        }
+                    }
+                
+
+                    //commented for quick merge process
+                    //node_iter->reset(reduction_strategy.create_lod(node_iter->reduction_error(), child_mem_data, max_surfels_per_node_));
+                }
+            }
+        }
+    }
+}
+
+void bvh::
+upsweep_r(bvh_node& node,
+const reduction_strategy& reduction_strategy,
          std::vector<shared_file>& level_temp_files,
          std::atomic_uint& ctr)
 {
@@ -767,7 +865,7 @@ upsweep_recurse(bvh_node& node,
         for (uint32_t j = 0; j < fan_factor_; ++j) {
             const uint32_t id = get_child_id(node.node_id(), j);
             #pragma omp task shared(reduction_strategy, level_temp_files, ctr)
-            upsweep_recurse(nodes_[id], reduction_strategy, level_temp_files, ctr);
+            upsweep_r(nodes_[id], reduction_strategy, level_temp_files, ctr);
         }
         #pragma omp taskwait
         for (uint32_t j = 0; j < fan_factor_; ++j) {
@@ -792,7 +890,7 @@ upsweep_recurse(bvh_node& node,
     node.set_bounding_box(new_bounding_box);
 
     // recompute bounding box
-    //const bounding_box bb = basic_algorithms::compute_aabb(node.mem_array(), false);
+    //const BoundingBox bb = basic_algorithms::compute_aabb(node.mem_array(), false);
     //node.set_bounding_box(bb);
 
     //LOGGER_TRACE("3. Offset " << node.node_id());
@@ -827,10 +925,10 @@ void bvh::
 serialize_tree_to_file(const std::string& output_file,
                     bool write_intermediate_data)
 {
-    LOGGER_TRACE("serialize bvh to file: \"" << output_file << "\"");
+    LOGGER_TRACE("Serialize bvh to file: \"" << output_file << "\"");
 
     bvh_stream bvh_stream;
-    bvh_stream.writebvh(output_file, *this, write_intermediate_data);
+    bvh_stream.write_bvh(output_file, *this, write_intermediate_data);
 
 }
 
@@ -838,14 +936,14 @@ serialize_tree_to_file(const std::string& output_file,
 void bvh::
 serialize_surfels_to_file(const std::string& output_file, const size_t buffer_size) const
 {
-    LOGGER_TRACE("serialize surfels to file: \"" << output_file << "\"");
+    LOGGER_TRACE("Serialize surfels to file: \"" << output_file << "\"");
     node_serializer serializer(max_surfels_per_node_, buffer_size);
     serializer.open(output_file);
     serializer.serialize_nodes(nodes_);
 }
 
 void bvh::
-resetNodes()
+reset_nodes()
 {
     for (auto& n: nodes_) {
         if (n.is_out_of_core() && n.disk_array().file().use_count() == 1) {
@@ -858,14 +956,14 @@ resetNodes()
 std::string bvh::
 state_to_string(state_type state)
 {
-    std::map<state_type, std::string> state_map = {
-      { state_type::null, "null" },
-      { state_type::empty, "empty" },
-      { state_type::after_downsweep, "after_downsweep" },
-      { state_type::after_upsweep, "after_upsweep" },
-      { state_type::serialized, "serialized" }
+    std::map<state_type, std::string> state_typeMap = {
+        {state_type::null,            "Null"},
+        {state_type::empty,           "empty"},
+        {state_type::after_downsweep,  "after_downsweep"},
+        {state_type::after_upsweep,    "after_upsweep"},
+        {state_type::serialized,      "serialized"}
     };
-    return state_map[state];
+    return state_typeMap[state];
 }
 
 } // namespace pre

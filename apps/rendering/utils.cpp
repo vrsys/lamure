@@ -31,7 +31,7 @@ scm::math::mat4f loadMatrix(const std::string& filename)
 }
 
 std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > 
-readModelString(std::string const& path_to_resource_file, 
+read_model_string(std::string const& path_to_resource_file, 
                 std::set<lamure::model_t>* visible_set, 
                 std::set<lamure::model_t>* invisible_set)
 {
@@ -120,7 +120,7 @@ readModelString(std::string const& path_to_resource_file,
 }
 
 
-void CreateSceneNameFromVector(std::vector<std::string> const& name_vector, std::string& name)
+void create_scene_name_from_vector(std::vector<std::string> const& name_vector, std::string& name)
 {
 
     std::string n = "";
@@ -143,7 +143,7 @@ void CreateSceneNameFromVector(std::vector<std::string> const& name_vector, std:
     name = n;
 }
 
-void CreateSceneNameFromCameraSessionfile(std::string const& session_file, std::string& name)
+void create_scene_name_from_camera_session_file(std::string const& session_file, std::string& name)
 {
 
 

@@ -20,16 +20,16 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Cut
+class RENDERING_DLL cut
 {
 public:
-                        Cut();
-                        Cut(const context_t context_id, const view_t view_id, const model_t model_id);
-    virtual             ~Cut();
+                        cut();
+                        cut(const context_t context_id, const view_t view_id, const model_t model_id);
+    virtual             ~cut();
 
-    struct NodeSlotAggregate
+    struct node_slot_aggregate
     {
-        NodeSlotAggregate(
+        node_slot_aggregate(
             const node_t node_id,
             const slot_t slot_id)
             : node_id_(node_id),
@@ -43,8 +43,8 @@ public:
     const view_t        view_id() const { return view_id_; };
     const model_t       model_id() const { return model_id_; };
 
-    std::vector<Cut::NodeSlotAggregate>& complete_set() { return complete_set_; };
-    void                set_complete_set(std::vector<Cut::NodeSlotAggregate>& complete_set) { complete_set_ = complete_set; };
+    std::vector<cut::node_slot_aggregate>& complete_set() { return complete_set_; };
+    void                set_complete_set(std::vector<cut::node_slot_aggregate>& complete_set) { complete_set_ = complete_set; };
 
 
 protected:
@@ -55,7 +55,7 @@ private:
     view_t              view_id_;
     model_t             model_id_;
 
-    std::vector<Cut::NodeSlotAggregate> complete_set_;
+    std::vector<cut::node_slot_aggregate> complete_set_;
 };
 
 

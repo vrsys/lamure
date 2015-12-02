@@ -14,12 +14,12 @@ namespace lamure
 namespace ren
 {
 
-std::mutex Modeldatabase::mutex_;
-bool Modeldatabase::is_instanced_ = false;
-Modeldatabase* Modeldatabase::single_ = nullptr;
+std::mutex model_database::mutex_;
+bool model_database::is_instanced_ = false;
+model_database* model_database::single_ = nullptr;
 
-Modeldatabase::
-Modeldatabase()
+model_database::
+model_database()
 : num_models_(0),
   num_models_pending_(0),
   surfels_per_node_(0),
@@ -28,8 +28,8 @@ Modeldatabase()
 
 }
 
-Modeldatabase::
-~Modeldatabase() {
+model_database::
+~model_database() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     is_instanced_ = false;
@@ -45,13 +45,13 @@ Modeldatabase::
     models_.clear();
 }
 
-Modeldatabase* Modeldatabase::
+model_database* model_database::
 get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!is_instanced_) { //double-checked locking
-            single_ = new Modeldatabase();
+            single_ = new model_database();
             is_instanced_ = true;
         }
 
@@ -62,19 +62,19 @@ get_instance() {
     }
 }
 
-void Modeldatabase::
-Apply() {
+void model_database::
+apply() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     num_models_ = num_models_pending_;
     surfels_per_node_ = surfels_per_node_pending_;
 }
 
-const model_t Modeldatabase::
-AddModel(const std::string& filepath, const std::string& model_key) {
+const model_t model_database::
+add_model(const std::string& filepath, const std::string& model_key) {
 
-    if (Controller::get_instance()->IsModelPresent(model_key)) {
-        return Controller::get_instance()->DeduceModelId(model_key);
+    if (controller::get_instance()->is_model_present(model_key)) {
+        return controller::get_instance()->deduce_model_id(model_key);
     }
 
     lod_point_cloud* model = new lod_point_cloud(filepath);
@@ -93,7 +93,7 @@ AddModel(const std::string& filepath, const std::string& model_key) {
         else {
             if (size_of_surfel_ != bvh->size_of_surfel()) {
                 throw std::runtime_error(
-                    "PLOD: Modeldatabase::Incompatible surfel size");
+                    "PLOD: model_database::Incompatible surfel size");
             }
         }
 
@@ -109,7 +109,7 @@ AddModel(const std::string& filepath, const std::string& model_key) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
 
-            model_id = Controller::get_instance()->DeduceModelId(model_key);
+            model_id = controller::get_instance()->deduce_model_id(model_key);
 
             model->model_id_ = model_id;
             models_[model_id] = model;
@@ -119,7 +119,7 @@ AddModel(const std::string& filepath, const std::string& model_key) {
             num_models_ = num_models_pending_;
             surfels_per_node_ = surfels_per_node_pending_;
 
-            Controller::get_instance()->SignalSystemreset();
+            controller::get_instance()->signal_system_reset();
         }
 
 #ifdef LAMURE_ENABLE_INFO
@@ -130,21 +130,21 @@ AddModel(const std::string& filepath, const std::string& model_key) {
     }
     else {
         throw std::runtime_error(
-            "PLOD: Modeldatabase::Model was not loaded");
+            "PLOD: model_database::Model was not loaded");
     }
 
     return invalid_model_t;
 
 }
 
-lod_point_cloud* Modeldatabase::
-GetModel(const model_t model_id) {
+lod_point_cloud* model_database::
+get_model(const model_t model_id) {
     if (models_.find(model_id) != models_.end()) {
         return models_[model_id];
     }
 
     throw std::runtime_error(
-        "PLOD: Modeldatabase::Model was not found:" + model_id);
+        "PLOD: model_database::Model was not found:" + model_id);
 
     return nullptr;
 }

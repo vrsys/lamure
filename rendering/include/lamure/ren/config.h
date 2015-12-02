@@ -83,8 +83,8 @@ namespace ren {
 //for ooc_pool:
 //------------------------------
 
-#define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE CacheQueue::UpdateMode::UPDATE_ALWAYS
-//#define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE CacheQueue::UpdateMode::UPDATE_INCREMENT_ONLY
+#define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE cache_queue::update_mode::UPDATE_ALWAYS
+//#define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE cache_queue::update_mode::UPDATE_INCREMENT_ONLY
 
 //------------------------------
 //for bvh_stream: 

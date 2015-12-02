@@ -61,17 +61,17 @@ NumSignals() {
 }
 
 void semaphore::
-Lock() {
+lock() {
     mutex_.lock();
 }
 
 void semaphore::
-Unlock() {
+unlock() {
     mutex_.unlock();
 }
 
 void semaphore::
-Shutdown() {
+shutdown() {
     std::lock_guard<std::mutex> lock(mutex_);
     shutdown_ = true;
     signal_lock_.notify_all();

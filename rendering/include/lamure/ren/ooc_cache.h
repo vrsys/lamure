@@ -23,41 +23,41 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL OocCache : public Cache
+class RENDERING_DLL ooc_cache : public cache
 {
 public:
 
-                        OocCache(const OocCache&) = delete;
-                        OocCache& operator=(const OocCache&) = delete;
-    virtual             ~OocCache();
+                        ooc_cache(const ooc_cache&) = delete;
+                        ooc_cache& operator=(const ooc_cache&) = delete;
+    virtual             ~ooc_cache();
 
-    static OocCache*    get_instance();
+    static ooc_cache*    get_instance();
 
-    void                RegisterNode(const model_t model_id, const node_t node_id, const int32_t priority);
-    char*               Nodedata(const model_t model_id, const node_t node_id);
+    void                register_node(const model_t model_id, const node_t node_id, const int32_t priority);
+    char*               node_data(const model_t model_id, const node_t node_id);
 
-    const bool          IsNodeResidentAndAquired(const model_t model_id, const node_t node_id);
+    const bool          is_node_resident_and_aquired(const model_t model_id, const node_t node_id);
 
-    void                Refresh();
+    void                refresh();
 
-    void                LockPool();
-    void                UnlockPool();
+    void                lock_pool();
+    void                unlock_pool();
 
-    void                StartMeasure();
-    void                EndMeasure();
+    void                begin_measure();
+    void                end_measure();
 
 protected:
 
-                        OocCache(const size_t num_slots);
+                        ooc_cache(const size_t num_slots);
     static bool         is_instanced_;
-    static OocCache*    single_;
+    static ooc_cache*    single_;
 
 private:
     static std::mutex   mutex_;
 
     char*               cache_data_;
     uint32_t            maintenance_counter_;
-    OocPool*            pool_;
+    ooc_pool*            pool_;
 };
 
 

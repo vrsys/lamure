@@ -15,11 +15,11 @@
 namespace lamure {
 namespace ren {
 
-class CutUpdateQueue
+class cut_update_queue
 {
 public:
 
-    enum Task
+    enum task_t
     {
         CUT_MASTER_TASK,
         CUT_ANALYSIS_TASK,
@@ -27,39 +27,39 @@ public:
         CUT_INVALID_TASK
     };
 
-    struct Job
+    struct job
     {
-        explicit Job(
-            Task task,
+        explicit job(
+            task_t task,
             const view_t view_id,
             const model_t model_id)
             : task_(task),
             view_id_(view_id),
             model_id_(model_id) {};
 
-        explicit Job()
-            : task_(Task::CUT_INVALID_TASK),
+        explicit job()
+            : task_(task_t::CUT_INVALID_TASK),
             view_id_(invalid_view_t),
             model_id_(invalid_model_t) {};
 
-        Task            task_;
+        task_t            task_;
         view_t          view_id_;
         model_t         model_id_;
     };
 
-                        CutUpdateQueue();
-    virtual             ~CutUpdateQueue();
+                        cut_update_queue();
+    virtual             ~cut_update_queue();
 
-    void                push_job(const Job& job);
-    const Job           pop_frontJob();
+    void                push_job(const job& job);
+    const job           pop_frontjob();
 
-    const size_t        NumJobs();
+    const size_t        Numjobs();
 
 
 private:
     /* data */
 
-    std::queue<Job>     job_queue_;
+    std::queue<job>     job_queue_;
     std::mutex          mutex_;
 
 };

@@ -35,7 +35,7 @@ public:
     void wait();
     void relaunch();
     const bool is_shutdown();
-    const unsigned int NumJobs();
+    const unsigned int Numjobs();
 
 private:
     std::queue<job_t> queue_;

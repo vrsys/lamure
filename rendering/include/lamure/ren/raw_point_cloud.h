@@ -21,7 +21,7 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL RawPointCloud
+class RENDERING_DLL raw_point_cloud
 {
 
 public:
@@ -34,10 +34,10 @@ public:
         float nx, ny, nz;
     };
 
-                        RawPointCloud(const model_t model_id);
-                        RawPointCloud(const RawPointCloud&) = delete;
-                        RawPointCloud& operator=(const RawPointCloud&) = delete;
-    virtual             ~RawPointCloud();
+                        raw_point_cloud(const model_t model_id);
+                        raw_point_cloud(const raw_point_cloud&) = delete;
+                        raw_point_cloud& operator=(const raw_point_cloud&) = delete;
+    virtual             ~raw_point_cloud();
 
 
     const model_t       model_id() const { return model_id_; };

@@ -88,7 +88,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::LodStream* in_lod_access, 
             }
         }
         
-        unsigned int num_jobs = job_queue.NumJobs();
+        unsigned int num_jobs = job_queue.Numjobs();
         
         
         std::vector<std::thread> threads;
@@ -234,7 +234,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::LodStream* in_lod_access, 
                     representative_radius /= (float)num_valid_splats;
                 }
         
-                bvh->SetAvgsurfelRadius(current, representative_radius);
+                bvh->set_average_surfel_radius(current, representative_radius);
 #endif
             }
         }
@@ -297,7 +297,7 @@ int main(int argc, char *argv[]) {
     delete in_lod_access;
     delete out_lod_access;
  
-    bvh->writebvhfile(output_bvh_file);
+    bvh->write_bvh_file(output_bvh_file);
 
     delete bvh;
 

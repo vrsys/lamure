@@ -14,49 +14,49 @@ namespace lamure
 namespace ren
 {
 
-Cache::
-Cache(const slot_t num_slots)
+cache::
+cache(const slot_t num_slots)
     : num_slots_(num_slots), slot_size_(0) {
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
 
     slot_size_ = (size_t)(database->size_of_surfel() * database->surfels_per_node());
 
-    index_ = new CacheIndex(database->num_models(), num_slots_);
+    index_ = new cache_index(database->num_models(), num_slots_);
 }
 
-Cache::
-~Cache() {
+cache::
+~cache() {
     if (index_ != nullptr) {
         delete index_;
         index_ = nullptr;
     }
 }
 
-const bool Cache::
-IsNodeResident(const model_t model_id, const node_t node_id) {
+const bool cache::
+is_node_resident(const model_t model_id, const node_t node_id) {
     return index_->IsNodeIndexed(model_id, node_id);
 }
 
-const slot_t Cache::
-NumFreeSlots() {
-    return index_->NumFreeSlots();
+const slot_t cache::
+num_free_slots() {
+    return index_->num_free_slots();
 }
 
-const slot_t Cache::
-SlotId(const model_t model_id, const node_t node_id) {
-    return index_->GetSlot(model_id, node_id);
+const slot_t cache::
+slot_id(const model_t model_id, const node_t node_id) {
+    return index_->get_slot(model_id, node_id);
 }
 
-void Cache::
-AquireNode(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
+void cache::
+aquire_node(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
     if (index_->IsNodeIndexed(model_id, node_id)) {
         uint32_t hash_id = ((((uint32_t)context_id) & 0xFFFF) << 16) | (((uint32_t)view_id) & 0xFFFF);
         index_->AquireSlot(hash_id, model_id, node_id);
     }
 }
 
-void Cache::
-ReleaseNode(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
+void cache::
+release_node(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
     if (index_->IsNodeIndexed(model_id, node_id)) {
         uint32_t hash_id = ((((uint32_t)context_id) & 0xFFFF) << 16) | (((uint32_t)view_id) & 0xFFFF);
         index_->ReleaseSlot(hash_id, model_id, node_id);
@@ -64,8 +64,8 @@ ReleaseNode(const context_t context_id, const view_t view_id, const model_t mode
 
 }
 
-const bool Cache::
-ReleaseNodeinvalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
+const bool cache::
+release_node_invalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
     if (index_->IsNodeIndexed(model_id, node_id)) {
         uint32_t hash_id = ((((uint32_t)context_id) & 0xFFFF) << 16) | (((uint32_t)view_id) & 0xFFFF);
         return index_->ReleaseSlotinvalidate(hash_id, model_id, node_id);
@@ -74,13 +74,13 @@ ReleaseNodeinvalidate(const context_t context_id, const view_t view_id, const mo
     return false;
 }
 
-void Cache::
-Lock() {
+void cache::
+lock() {
     mutex_.lock();
 }
 
-void Cache::
-Unlock() {
+void cache::
+unlock() {
     mutex_.unlock();
 }
 

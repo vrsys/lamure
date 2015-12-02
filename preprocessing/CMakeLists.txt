@@ -15,19 +15,28 @@ file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/*.h)
 file(GLOB IO_SRC ${PROJECT_SOURCE_DIR}/io/*.cpp)
 file(GLOB IO_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/io/*.h)
 
+file(GLOB PLY_SRC ${PROJECT_SOURCE_DIR}/io/ply/*.cpp)
+file(GLOB PLY_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/io/ply/*.h)
+
 SOURCE_GROUP("preprocessing" FILES ${MAIN_SRC})
 SOURCE_GROUP("preprocessing" FILES ${MAIN_INC})
 
 SOURCE_GROUP("io" FILES ${IO_SRC})
 SOURCE_GROUP("io" FILES ${IO_INC})
 
-set(PROJECT_SOURCES ${MAIN_SRC} ${IO_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${IO_INC})
+SOURCE_GROUP("io\\ply" FILES ${PLY_SRC})
+SOURCE_GROUP("io\\ply" FILES ${PLY_INC})
+
+set(PROJECT_SOURCES ${MAIN_SRC} ${IO_SRC} ${PLY_SRC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${IO_INC} ${PLY_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}  
-                    ${PLY_INCLUDE_DIR} 
-                    ${LAMURE_CONFIG_DIR})
+                    ${LAMURE_CONFIG_DIR}
+                    ${SCHISM_INCLUDE_DIRS}
+                    ${Boost_INCLUDE_DIR})
+
+link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES})
 
@@ -52,7 +61,6 @@ target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${COMMON_LIBRARY}
     ${SCHISM_LIBRARIES}
-    optimized ${PLY_LIBRARY} debug ${PLY_LIBRARY_DEBUG}
     )
 
 ###############################################################################

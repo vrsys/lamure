@@ -88,11 +88,11 @@ const bool ray::Intersect(
         best_errors.push_back(std::numeric_limits<float>::max());
     }
 
-    Modeldatabase* database = Modeldatabase::get_instance();
-    OocCache* ooc_cache = OocCache::get_instance();
+    model_database* database = model_database::get_instance();
+    ooc_cache* ooc_cache = ooc_cache::get_instance();
 
-    ooc_cache->Lock();
-    ooc_cache->Refresh();
+    ooc_cache->lock();
+    ooc_cache->refresh();
 
     ray_queue job_queue;
     for (unsigned int i = 0; i < num_rays; ++i) {
@@ -118,7 +118,7 @@ const bool ray::Intersect(
                     ray& ray = rays[job.id_];
                     ray::intersection temp;
                     for (model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-                        const scm::math::mat4f& model_transform = database->GetModel(model_id)->transform();
+                        const scm::math::mat4f& model_transform = database->get_model(model_id)->transform();
                         if (ray.intersect_model_unsafe(model_id, model_transform, aabb_scale, max_depth, surfel_skip, false, temp)) {
                             if (temp.error_ < best_errors[job.id_]) {
                                 best_errors[job.id_] = temp.error_;
@@ -143,7 +143,7 @@ const bool ray::Intersect(
         }
     }
 
-    ooc_cache->Unlock();
+    ooc_cache->unlock();
 
     if (num_rays_hit > num_rays/4) {
 
@@ -231,9 +231,9 @@ const bool ray::intersect_model(
     ray::intersection& intersection) {
 
 
-    OocCache* ooc_cache = OocCache::get_instance();
-    ooc_cache->Lock();
-    ooc_cache->Refresh();
+    ooc_cache* ooc_cache = ooc_cache::get_instance();
+    ooc_cache->lock();
+    ooc_cache->refresh();
 
     bool result = intersect_model_unsafe(
       model_id,
@@ -244,7 +244,7 @@ const bool ray::intersect_model(
       is_wysiwyg,
       intersection);
 
-    ooc_cache->Unlock();
+    ooc_cache->unlock();
 
     return result;
 }
@@ -258,14 +258,14 @@ const bool ray::intersect_model_unsafe(
     bool is_wysiwyg,
     ray::intersection& intersection) {
 
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
     if (model_id >= database->num_models()) {
         return false;
     }
 
-    OocCache* ooc_cache = OocCache::get_instance();
+    ooc_cache* ooc_cache = ooc_cache::get_instance();
 
-    const bvh* tree = database->GetModel(model_id)->get_bvh();
+    const bvh* tree = database->get_model(model_id)->get_bvh();
     unsigned int fan_factor = tree->fan_factor();
     node_t num_nodes = tree->num_nodes();
     uint32_t num_surfels_per_node = database->surfels_per_node();
@@ -282,7 +282,7 @@ const bool ray::intersect_model_unsafe(
     candidates.push(0);
 
     //check if model has started loading, otherwise we cant do nothin
-    if (!ooc_cache->IsNodeResidentAndAquired(model_id, 0)) {
+    if (!ooc_cache->is_node_resident_and_aquired(model_id, 0)) {
        return false;
     }
 
@@ -309,7 +309,7 @@ const bool ray::intersect_model_unsafe(
                 continue;
             }
 
-            if (!ooc_cache->IsNodeResidentAndAquired(model_id, node_id)) {
+            if (!ooc_cache->is_node_resident_and_aquired(model_id, node_id)) {
                 continue;
             }
  
@@ -340,7 +340,7 @@ const bool ray::intersect_model_unsafe(
                     break;
                 }
 
-                if (!ooc_cache->IsNodeResidentAndAquired(model_id, child_id)) {
+                if (!ooc_cache->is_node_resident_and_aquired(model_id, child_id)) {
                     all_children_in_memory = false;
                     break;
                 }
@@ -377,7 +377,7 @@ const bool ray::intersect_model_unsafe(
                     intersect_splats = true;
                 }
                 else {
-                    if (tree->GetDepthOfNode(node_id)+1 < valid_max_depth) {
+                    if (tree->get_depth_of_node(node_id)+1 < valid_max_depth) {
                        candidates.push(node_id);
                     }
                     else {
@@ -393,14 +393,14 @@ const bool ray::intersect_model_unsafe(
 
             if (intersect_splats) {
  
-                if (tree->GetVisibility(node_id) == bvh::node_visibility::NODE_INVISIBLE) {
+                if (tree->get_visibility(node_id) == bvh::node_visibility::NODE_INVISIBLE) {
                    continue;
                 }
 
 
                 float object_to_world_scale = max_distance_ / object_ray_max_distance;
 
-                lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->Nodedata(model_id, node_id);
+                lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->node_data(model_id, node_id);
                 for (unsigned int k = 0; k < num_surfels_per_node; k += valid_surfel_skip) {
                     lod_point_cloud::serialized_surfel& surfel = surfels[k];
 
@@ -460,7 +460,7 @@ const bool ray::intersect_model_unsafe(
 
            float object_to_world_scale = max_distance_ / object_ray_max_distance;
 
-           lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->Nodedata(model_id, node_id);
+           lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->node_data(model_id, node_id);
            for (unsigned int k = 0; k < num_surfels_per_node; k += valid_surfel_skip) {
               lod_point_cloud::serialized_surfel& surfel = surfels[k];
 
@@ -521,18 +521,18 @@ const bool ray::intersect_bvh(const std::set<std::string>& model_filenames,
                              const float aabb_scale,
                              ray::intersection_bvh& intersection) {
 
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
    
     std::vector<ray::intersection_bvh> intersections;
 
     //iterate the models, intersect the onces that the user wants
     for (model_t model_id = 0; model_id < database->num_models(); ++model_id) {
 
-       std::string bvh_filename = database->GetModel(model_id)->get_bvh()->filename();
+       std::string bvh_filename = database->get_model(model_id)->get_bvh()->filename();
        ray::intersection_bvh temp;
 
        if (model_filenames.find(bvh_filename) != model_filenames.end()) {
-          const scm::math::mat4f& model_transform = database->GetModel(model_id)->transform();
+          const scm::math::mat4f& model_transform = database->get_model(model_id)->transform();
           
           ray ray(origin_, direction_, max_distance_);
           if (ray.intersect_model_bvh(model_id, model_transform, aabb_scale, temp)) {
@@ -617,12 +617,12 @@ const bool ray::intersect_model_bvh(const model_t model_id,
                                   const float aabb_scale,
                                   ray::intersection_bvh& intersection) {
 
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
     if (model_id >= database->num_models()) {
         return false;
     }
 
-    const bvh* tree = database->GetModel(model_id)->get_bvh();
+    const bvh* tree = database->get_model(model_id)->get_bvh();
     unsigned int fan_factor = tree->fan_factor();
     node_t num_nodes = tree->num_nodes();
 
@@ -653,8 +653,8 @@ const bool ray::intersect_model_bvh(const model_t model_id,
                 continue;
             }
 
-            if (tree->GetVisibility(node_id) == bvh::node_visibility::NODE_INVISIBLE) {
-               if (tree->GetDepthOfNode(node_id) == tree->depth()) {
+            if (tree->get_visibility(node_id) == bvh::node_visibility::NODE_INVISIBLE) {
+               if (tree->get_depth_of_node(node_id) == tree->depth()) {
                   continue;
                }
             }
@@ -674,7 +674,7 @@ const bool ray::intersect_model_bvh(const model_t model_id,
             }
 
             bool hit_now = false;
-            if (tree->GetDepthOfNode(node_id) == tree->depth()) {
+            if (tree->get_depth_of_node(node_id) == tree->depth()) {
                hit_now = true;
             }
             else {
@@ -688,11 +688,11 @@ const bool ray::intersect_model_bvh(const model_t model_id,
                float world_tmax = std::min(t.y, object_ray_max_distance) * object_to_world_scale;
 
                if (world_tmin < intersection.tmin_) { //not good enough
-               //if (tree->GetAvgsurfelRadius(node_id) < intersection.representative_radius_) {
+               //if (tree->get_average_surfel_radius(node_id) < intersection.representative_radius_) {
                   intersection.tmin_ = world_tmin;
                   intersection.tmax_ = world_tmax;
                   intersection.position_ = origin_ + direction_ * world_tmin;
-                  intersection.representative_radius_ = tree->GetAvgsurfelRadius(node_id);
+                  intersection.representative_radius_ = tree->get_average_surfel_radius(node_id);
                   intersection.bvh_filename_ = tree->filename();
                   has_hit = true;
                }
@@ -803,7 +803,7 @@ relaunch() {
 }
 
 const unsigned int ray_queue::
-NumJobs() {
+Numjobs() {
     return (unsigned int)queue_.size();
 }
 
@@ -828,7 +828,7 @@ pop_job() {
 
     if (queue_.empty()) {
         is_shutdown_ = true;
-        semaphore_.Shutdown();
+        semaphore_.shutdown();
     }
 
     return job;

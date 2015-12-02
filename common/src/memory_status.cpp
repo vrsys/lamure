@@ -9,7 +9,7 @@ memory_status::
 memory_status(const float mem_ratio, const size_t element_size)
     : element_size_(element_size)
 {
-    memory_budget_ = get_total_memory() * mem_ratio;
+    memory_budget_ = std::size_t(get_total_memory() * mem_ratio);
 }
 
 const size_t memory_status::

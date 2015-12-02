@@ -22,19 +22,19 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Modeldatabase
+class RENDERING_DLL model_database
 {
 public:
 
-                        Modeldatabase(const Modeldatabase&) = delete;
-                        Modeldatabase& operator=(const Modeldatabase&) = delete;
-    virtual             ~Modeldatabase();
+                        model_database(const model_database&) = delete;
+                        model_database& operator=(const model_database&) = delete;
+    virtual             ~model_database();
 
-    static Modeldatabase* get_instance();
+    static model_database* get_instance();
 
-    const model_t       AddModel(const std::string& filepath, const std::string& model_key);
-    lod_point_cloud*      GetModel(const model_t model_id);
-    void                Apply();
+    const model_t       add_model(const std::string& filepath, const std::string& model_key);
+    lod_point_cloud*    get_model(const model_t model_id);
+    void                apply();
 
     const model_t       num_models() const { std::lock_guard<std::mutex> lock(mutex_); return num_models_; };
     const size_t        size_of_surfel() const { std::lock_guard<std::mutex> lock(mutex_); return size_of_surfel_; };
@@ -48,9 +48,9 @@ public:
 
 protected:
 
-                        Modeldatabase();
+                        model_database();
     static bool         is_instanced_;
-    static Modeldatabase* single_;
+    static model_database* single_;
 
 private:
     static std::mutex   mutex_;

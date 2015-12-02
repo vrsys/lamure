@@ -27,32 +27,32 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Cache
+class RENDERING_DLL cache
 {
 public:
-                        Cache(const Cache&) = delete;
-                        Cache& operator=(const Cache&) = delete;
-    virtual             ~Cache();
+                        cache(const cache&) = delete;
+                        cache& operator=(const cache&) = delete;
+    virtual             ~cache();
 
-    const bool          IsNodeResident(const model_t model_id, const node_t node_id);
+    const bool          is_node_resident(const model_t model_id, const node_t node_id);
 
-    const slot_t        NumFreeSlots();
-    const slot_t        SlotId(const model_t model_id, const node_t node_id);
+    const slot_t        num_free_slots();
+    const slot_t        slot_id(const model_t model_id, const node_t node_id);
 
     const slot_t        num_slots() const { return num_slots_; };
     const slot_t        slot_size() const { return slot_size_; };
 
-    void                Lock();
-    void                Unlock();
+    void                lock();
+    void                unlock();
 
-    void                AquireNode(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
-    void                ReleaseNode(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
-    const bool          ReleaseNodeinvalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
+    void                aquire_node(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
+    void                release_node(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
+    const bool          release_node_invalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id);
 
 protected:
-                        Cache(const slot_t num_slots);
+                        cache(const slot_t num_slots);
 
-    CacheIndex*         index_;
+    cache_index*        index_;
     std::mutex          mutex_;
 
 private:

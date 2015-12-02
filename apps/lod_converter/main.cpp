@@ -153,14 +153,14 @@ int main(int argc, char *argv[]) {
       scm::math::vec3f bb_max(scm::math::vec3f(knobi_node->boundbox.maxx, knobi_node->boundbox.maxy, knobi_node->boundbox.maxz));
       scm::math::vec3f bb_centroid = 0.5f * (bb_min + bb_max);
 
-      bvh->Setbounding_box(node_id, scm::gl::boxf(bb_min, bb_max));
-      bvh->SetCentroid(node_id, bb_centroid);
-      bvh->SetAvgsurfelRadius(node_id, representative_surfel_size);
-      bvh->SetVisibility(node_id, lamure::ren::bvh::node_visibility::NODE_VISIBLE);
+      bvh->set_bounding_box(node_id, scm::gl::boxf(bb_min, bb_max));
+      bvh->set_centroid(node_id, bb_centroid);
+      bvh->set_average_surfel_radius(node_id, representative_surfel_size);
+      bvh->set_visibility(node_id, lamure::ren::bvh::node_visibility::NODE_VISIBLE);
        
     }
 
-    bvh->writebvhfile(out_bvh_file);
+    bvh->write_bvh_file(out_bvh_file);
 
     delete bvh;
     delete[] data;

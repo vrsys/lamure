@@ -19,10 +19,10 @@
 #include <lamure/types.h>
 
 
-std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > readModelString(std::string const& path_to_resource_file, std::set<lamure::model_t>* visible_set, std::set<lamure::model_t>* invisible_set);
+std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > read_model_string(std::string const& path_to_resource_file, std::set<lamure::model_t>* visible_set, std::set<lamure::model_t>* invisible_set);
 
-void CreateSceneNameFromVector(std::vector<std::string> const&, std::string&);
+void create_scene_name_from_vector(std::vector<std::string> const&, std::string&);
 
-void CreateSceneNameFromCameraSessionfile(std::string const& session_file, std::string& name);
+void create_scene_name_from_camera_session_file(std::string const& session_file, std::string& name);
 
 #endif

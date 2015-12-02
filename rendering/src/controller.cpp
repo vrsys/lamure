@@ -7,31 +7,34 @@
 
 #include <lamure/ren/controller.h>
 
+#include <chrono>
+
 namespace lamure
 {
 
 namespace ren
 {
 
-std::mutex Controller::mutex_;
-bool Controller::is_instanced_ = false;
-Controller* Controller::single_ = nullptr;
+std::mutex controller::mutex_;
+bool controller::is_instanced_ = false;
+controller* controller::single_ = nullptr;
 
-Controller::
-Controller()
+controller::
+controller()
 : num_contexts_registered_(0),
-  num_models_registered_(0) {
-
+  num_models_registered_(0),
+  ms_since_last_node_upload_(0),
+  latest_timestamp_(std::chrono::system_clock::now()) {
 }
 
-Controller::
-~Controller() {
+controller::
+~controller() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     is_instanced_ = false;
 
     for (auto& cut_update_pool_it : cut_update_pools_) {
-        CutUpdatePool* pool = cut_update_pool_it.second;
+        cut_update_pool* pool = cut_update_pool_it.second;
         if (pool != nullptr) {
             delete pool;
             pool = nullptr;
@@ -40,7 +43,7 @@ Controller::
     cut_update_pools_.clear();
 
     for (auto& gpu_context_it : gpu_contexts_) {
-        GpuContext* ctx = gpu_context_it.second;
+        gpu_context* ctx = gpu_context_it.second;
         if (ctx != nullptr) {
             delete ctx;
             ctx = nullptr;
@@ -51,13 +54,13 @@ Controller::
 
 }
 
-Controller* Controller::
+controller* controller::
 get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!is_instanced_) {
-            single_ = new Controller();
+            single_ = new controller();
             is_instanced_ = true;
         }
 
@@ -69,19 +72,19 @@ get_instance() {
 }
 
 
-const context_t Controller::
-NumContextsRegistered() {
+const context_t controller::
+num_contexts_registered() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     return num_contexts_registered_;
 }
 
 
-void Controller::
-SignalSystemreset() {
+void controller::
+signal_system_reset() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    Policy* policy = Policy::get_instance();
+    policy* policy = policy::get_instance();
     policy->set_reset_system(true);
 
     for (const auto& context : context_map_) {
@@ -90,8 +93,8 @@ SignalSystemreset() {
     }
 }
 
-const bool Controller::
-IsSystemresetSignaled(const context_t context_id) {
+const bool controller::
+is_system_reset_signaled(const context_t context_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!reset_flags_history_[context_id].empty()) {
@@ -106,30 +109,30 @@ IsSystemresetSignaled(const context_t context_id) {
 
 }
 
-void Controller::
-resetSystem() {
-    Policy* policy = Policy::get_instance();
+void controller::
+reset_system() {
+    policy* policy = policy::get_instance();
 
     if (policy->reset_system()) {
-        Modeldatabase* database = Modeldatabase::get_instance();
-        Cutdatabase* cuts = Cutdatabase::get_instance();
-        Controller* controller = Controller::get_instance();
+        model_database* database = model_database::get_instance();
+        cut_database* cuts = cut_database::get_instance();
+        controller* controller = controller::get_instance();
 
-        context_t num_contexts_registered = controller->NumContextsRegistered();
+        context_t num_contexts_registered = controller->num_contexts_registered();
         for (context_t ctx_id = 0; ctx_id < num_contexts_registered; ++ctx_id) {
-            while (controller->IsCutUpdateInProgress(ctx_id)) {};
+            while (controller->is_cut_update_in_progress(ctx_id)) {};
         }
 
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (policy->reset_system()) {
-            database->Apply();
+            database->apply();
             cuts->reset();
 
             for (auto& cut_update_pool_it : cut_update_pools_) {
-                CutUpdatePool* pool = cut_update_pool_it.second;
+                cut_update_pool* pool = cut_update_pool_it.second;
                 if (pool != nullptr) {
-                    while (pool->IsRunning()) {};
+                    while (pool->is_running()) {};
                     delete pool;
                     pool = nullptr;
                 }
@@ -138,7 +141,7 @@ resetSystem() {
             cut_update_pools_.clear();
 
             for (auto& gpu_context_it : gpu_contexts_) {
-                GpuContext* context = gpu_context_it.second;
+                gpu_context* context = gpu_context_it.second;
                 if (context != nullptr) {
                     delete context;
                     context = nullptr;
@@ -161,8 +164,8 @@ resetSystem() {
     }
 }
 
-context_t Controller::
-DeduceContextId(const gua_context_desc_t context_desc) {
+context_t controller::
+deduce_context_id(const gua_context_desc_t context_desc) {
     auto context_it = context_map_.find(context_desc);
 
     if (context_it != context_map_.end()) {
@@ -176,19 +179,19 @@ DeduceContextId(const gua_context_desc_t context_desc) {
             view_map_[num_contexts_registered_] = std::unordered_map<context_t, view_t>();
             num_views_registered_.push_back(0);
 
-            gpu_contexts_.insert(std::make_pair(num_contexts_registered_, new GpuContext(num_contexts_registered_)));
+            gpu_contexts_.insert(std::make_pair(num_contexts_registered_, new gpu_context(num_contexts_registered_)));
 #ifdef LAMURE_ENABLE_INFO
             std::cout << "PLOD: registered context id " << num_contexts_registered_ << std::endl;
 #endif
             ++num_contexts_registered_;
         }
-        return DeduceContextId(context_desc);
+        return deduce_context_id(context_desc);
     }
 }
 
-view_t Controller::
-DeduceViewId(const gua_context_desc_t context_desc, const gua_view_desc_t view_desc) {
-    context_t context_id = DeduceContextId(context_desc);
+view_t controller::
+deduce_view_id(const gua_context_desc_t context_desc, const gua_view_desc_t view_desc) {
+    context_t context_id = deduce_context_id(context_desc);
 
     auto view_it = view_map_[context_id].find(view_desc);
 
@@ -205,14 +208,14 @@ DeduceViewId(const gua_context_desc_t context_desc, const gua_view_desc_t view_d
 #endif
             ++num_views_registered_[context_id];
         }
-        return DeduceViewId(context_desc, view_desc);
+        return deduce_view_id(context_desc, view_desc);
     }
 
 
 }
 
-model_t Controller::
-DeduceModelId(const gua_model_desc_t& model_desc) {
+model_t controller::
+deduce_model_id(const gua_model_desc_t& model_desc) {
     auto model_it = model_map_.find(model_desc);
 
     if (model_it != model_map_.end()) {
@@ -229,116 +232,128 @@ DeduceModelId(const gua_model_desc_t& model_desc) {
             ++num_models_registered_;
         }
 
-        return DeduceModelId(model_desc);
+        return deduce_model_id(model_desc);
     }
 
 }
 
-const bool Controller::
-IsCutUpdateInProgress(const context_t context_id) {
+const bool controller::
+is_cut_update_in_progress(const context_t context_id) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: Controller::Gpu Context not found for context: " + context_id);
+            "PLOD: controller::Gpu Context not found for context: " + context_id);
     }
 
     auto cut_update_it = cut_update_pools_.find(context_id);
 
     if (cut_update_it != cut_update_pools_.end()) {
-        return cut_update_it->second->IsRunning();
+        return cut_update_it->second->is_running();
     }
     else {
-        GpuContext* ctx = gpu_context_it->second;
+        gpu_context* ctx = gpu_context_it->second;
         if (!ctx->is_created()) {
             throw std::runtime_error(
-                "PLOD: Controller::Gpu Context not created for context: " + context_id);
+                "PLOD: controller::Gpu Context not created for context: " + context_id);
         }
-        cut_update_pools_[context_id] = new CutUpdatePool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
-        return IsCutUpdateInProgress(context_id);
+        cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
+        return is_cut_update_in_progress(context_id);
     }
 
     return true;
 }
 
-void Controller::
-Dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
+void controller::
+dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: Controller::Gpu Context not found for context: " + context_id);
+            "PLOD: controller::Gpu Context not found for context: " + context_id);
     }
 
     auto cut_update_it = cut_update_pools_.find(context_id);
 
     if (cut_update_it != cut_update_pools_.end()) {
 
-        lamure::ren::Cutdatabase* cuts = lamure::ren::Cutdatabase::get_instance();
-        cuts->Swap(context_id);
+        lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+        cuts->swap(context_id);
 
-        cut_update_it->second->DispatchCutUpdate(
-            gpu_context_it->second->temporary_storages().storage_a_,
-            gpu_context_it->second->temporary_storages().storage_b_);
+        cut_update_it->second->dispatch_cut_update(
+          gpu_context_it->second->get_temporary_storages().storage_a_,
+          gpu_context_it->second->get_temporary_storages().storage_b_);
 
-        if (cuts->IsfrontModified(context_id)) {
-            CutdatabaseRecord::Temporarybuffer current = cuts->Getbuffer(context_id);
+        if (cuts->is_front_modified(context_id)) {
+            cut_database_record::temporary_buffer current = cuts->get_buffer(context_id);
 
-            GpuContext* ctx = gpu_context_it->second;
-            ctx->UnmapTempStorage(current, device);
-            ctx->UpdatePrimarybuffer(current, device);
-            cuts->SignalUploadcomplete(context_id);
-            ctx->MapTempStorage(current, device);
+            gpu_context* ctx = gpu_context_it->second;
+            ctx->unmap_temporary_storage(current, device);
+
+
+            if( ctx->update_primary_buffer(current, device) ) {
+                ms_since_last_node_upload_ = 0;
+            }
+
+            cuts->signal_upload_complete(context_id);
+            ctx->map_temporary_storage(current, device);
 
         }
     }
     else {
-        GpuContext* ctx = gpu_context_it->second;
+        gpu_context* ctx = gpu_context_it->second;
         if (!ctx->is_created()) {
             //throw std::runtime_error(
-            //    "PLOD: Controller::Gpu Context not created for context: " + context_id);
+            //    "PLOD: controller::Gpu Context not created for context: " + context_id);
 
             //fix for gua:
-            ctx->Create(device);
+            ctx->create(device);
         }
 
-        cut_update_pools_[context_id] = new CutUpdatePool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
-        Dispatch(context_id, device);
+        cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
+        dispatch(context_id, device);
+    }
+
+    {
+        auto const& current_time_stamp = std::chrono::system_clock::now();
+        ms_since_last_node_upload_ +=
+        ( std::chrono::duration_cast<std::chrono::duration<int,std::milli>>(current_time_stamp-latest_timestamp_).count() );
+          latest_timestamp_ = current_time_stamp;
     }
 
 }
 
-const bool Controller::
-IsModelPresent(const gua_model_desc_t model_desc) {
+const bool controller::
+is_model_present(const gua_model_desc_t model_desc) {
     return model_map_.find(model_desc) != model_map_.end();
 
 }
 
 
-scm::gl::buffer_ptr Controller::
-GetContextbuffer(const context_t context_id, scm::gl::render_device_ptr device) {
+scm::gl::buffer_ptr controller::
+get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: Controller::Gpu Context not found for context: " + context_id);
+            "PLOD: controller::Gpu Context not found for context: " + context_id);
     }
 
-    return gpu_context_it->second->GetContextbuffer(device);
+    return gpu_context_it->second->get_context_buffer(device);
 
 }
 
 
-scm::gl::vertex_array_ptr Controller::
-GetContextMemory(const context_t context_id, scm::gl::render_device_ptr device) {
+scm::gl::vertex_array_ptr controller::
+get_context_memory(const context_t context_id, scm::gl::render_device_ptr device) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: Controller::Gpu Context not found for context: " + context_id);
+            "PLOD: controller::Gpu Context not found for context: " + context_id);
     }
 
-    return gpu_context_it->second->GetContextMemory(device);
+    return gpu_context_it->second->get_context_memory(device);
 
 }
 

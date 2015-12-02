@@ -14,17 +14,17 @@ namespace ren
 {
 
 
-CutUpdateIndex::
-CutUpdateIndex()
+cut_update_index::
+cut_update_index()
 : num_views_(0),
   num_models_(0),
-  current_cut_front_(Cutfront::FRONT_A) {
+  current_cut_front_(cut_front::FRONT_A) {
 
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
 
     num_models_ = database->num_models();
 
-    for (int32_t queue_id = 0; queue_id < Queue::NUM_QUEUES; ++queue_id) {
+    for (int32_t queue_id = 0; queue_id < queue_t::NUM_QUEUES; ++queue_id) {
         num_slots_[queue_id] = 0;
         slot_maps_[queue_id].resize(num_models_);
     }
@@ -35,19 +35,19 @@ CutUpdateIndex()
     }
 
     for (model_t model_id = 0; model_id < num_models_; ++model_id) {
-        fan_factor_table_.push_back(database->GetModel(model_id)->get_bvh()->fan_factor());
-        num_nodes_table_.push_back(database->GetModel(model_id)->get_bvh()->num_nodes());
+        fan_factor_table_.push_back(database->get_model(model_id)->get_bvh()->fan_factor());
+        num_nodes_table_.push_back(database->get_model(model_id)->get_bvh()->num_nodes());
     }
 
 }
 
-CutUpdateIndex::
-~CutUpdateIndex() {
+cut_update_index::
+~cut_update_index() {
 
 }
 
-void CutUpdateIndex::
-UpdatePolicy(const view_t num_views) {
+void cut_update_index::
+update_policy(const view_t num_views) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     view_t prev_num_views = num_views_;
@@ -60,12 +60,12 @@ UpdatePolicy(const view_t num_views) {
         }
     }
 
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
 
     if (database->num_models() != num_models_) {
         num_models_ = database->num_models();
 
-        for (int32_t queue_id = 0; queue_id < Queue::NUM_QUEUES; ++queue_id) {
+        for (int32_t queue_id = 0; queue_id < queue_t::NUM_QUEUES; ++queue_id) {
             num_slots_[queue_id] = 0;
             slot_maps_[queue_id].clear();
             slot_maps_[queue_id].resize(num_models_);
@@ -82,8 +82,8 @@ UpdatePolicy(const view_t num_views) {
         num_nodes_table_.clear();
 
         for (model_t model_id = 0; model_id < num_models_; ++model_id) {
-            fan_factor_table_.push_back(database->GetModel(model_id)->get_bvh()->fan_factor());
-            num_nodes_table_.push_back(database->GetModel(model_id)->get_bvh()->num_nodes());
+            fan_factor_table_.push_back(database->get_model(model_id)->get_bvh()->fan_factor());
+            num_nodes_table_.push_back(database->get_model(model_id)->get_bvh()->num_nodes());
         }
 
     }
@@ -97,42 +97,42 @@ UpdatePolicy(const view_t num_views) {
 
 }
 
-const node_t CutUpdateIndex::
-NumNodes(const model_t model_id) const {
+const node_t cut_update_index::
+num_nodes(const model_t model_id) const {
     assert(model_id < num_models_);
 
     return num_nodes_table_[model_id];
 }
 
-const size_t CutUpdateIndex::
-FanFactor(const model_t model_id) const {
+const size_t cut_update_index::
+fan_factor(const model_t model_id) const {
     assert(model_id < num_models_);
 
     return fan_factor_table_[model_id];
 }
 
-const size_t CutUpdateIndex::
-NumActions(const Queue queue) {
+const size_t cut_update_index::
+num_actions(const queue_t queue) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    assert(queue < Queue::NUM_QUEUES);
+    assert(queue < queue_t::NUM_QUEUES);
 
     return num_slots_[queue];
 }
 
-const std::set<node_t>& CutUpdateIndex::
-GetCurrentCut(const view_t view_id, const model_t model_id) {
+const std::set<node_t>& cut_update_index::
+get_current_cut(const view_t view_id, const model_t model_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(view_ids_.find(view_id) != view_ids_.end());
     assert(model_id < num_models_);
 
     switch (current_cut_front_) {
-        case Cutfront::FRONT_A:
+        case cut_front::FRONT_A:
             return front_a_cuts_[view_id][model_id];
             break;
 
-        case Cutfront::FRONT_B:
+        case cut_front::FRONT_B:
             return front_b_cuts_[view_id][model_id];
             break;
 
@@ -143,19 +143,19 @@ GetCurrentCut(const view_t view_id, const model_t model_id) {
     return front_a_cuts_[view_id][model_id];
 }
 
-const std::set<node_t>& CutUpdateIndex::
-GetPreviousCut(const view_t view_id, const model_t model_id) {
+const std::set<node_t>& cut_update_index::
+get_previous_cut(const view_t view_id, const model_t model_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(view_ids_.find(view_id) != view_ids_.end());
     assert(model_id < num_models_);
 
     switch (current_cut_front_) {
-        case Cutfront::FRONT_A:
+        case cut_front::FRONT_A:
             return front_b_cuts_[view_id][model_id];
             break;
 
-        case Cutfront::FRONT_B:
+        case cut_front::FRONT_B:
             return front_a_cuts_[view_id][model_id];
             break;
 
@@ -166,32 +166,32 @@ GetPreviousCut(const view_t view_id, const model_t model_id) {
     return front_b_cuts_[view_id][model_id];
 }
 
-void CutUpdateIndex::
-SwapCuts() {
+void cut_update_index::
+swap_cuts() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (current_cut_front_ == Cutfront::FRONT_A) {
-        current_cut_front_ = Cutfront::FRONT_B;
+    if (current_cut_front_ == cut_front::FRONT_A) {
+        current_cut_front_ = cut_front::FRONT_B;
     }
     else {
-        current_cut_front_ = Cutfront::FRONT_A;
+        current_cut_front_ = cut_front::FRONT_A;
     }
 
 }
 
-void CutUpdateIndex::
-resetCut(const view_t view_id, const model_t model_id) {
+void cut_update_index::
+reset_cut(const view_t view_id, const model_t model_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(view_ids_.find(view_id) != view_ids_.end());
     assert(model_id < num_models_);
 
     switch (current_cut_front_) {
-        case Cutfront::FRONT_A:
+        case cut_front::FRONT_A:
             front_a_cuts_[view_id][model_id].clear();
             break;
 
-        case Cutfront::FRONT_B:
+        case cut_front::FRONT_B:
             front_b_cuts_[view_id][model_id].clear();
             break;
 
@@ -201,24 +201,24 @@ resetCut(const view_t view_id, const model_t model_id) {
 
 }
 
-void CutUpdateIndex::
-PushAction(const Action& action, bool sort) {
+void cut_update_index::
+push_action(const action& action, bool sort) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(action.model_id_ < num_models_);
     assert(action.node_id_ < num_nodes_table_[action.model_id_]);
-    assert(action.queue_ < Queue::NUM_QUEUES);
+    assert(action.queue_ < queue_t::NUM_QUEUES);
 
-    AddAction(action, sort);
+    add_action(action, sort);
 }
 
-const CutUpdateIndex::Action CutUpdateIndex::
-frontAction(const Queue queue) {
+const cut_update_index::action cut_update_index::
+front_action(const queue_t queue) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    assert(queue < Queue::NUM_QUEUES);
+    assert(queue < queue_t::NUM_QUEUES);
 
-    Action action;
+    action action;
 
     if (num_slots_[queue] > 0) {
         action = slots_[queue].front();
@@ -227,13 +227,13 @@ frontAction(const Queue queue) {
     return action;
 }
 
-const CutUpdateIndex::Action CutUpdateIndex::
-BackAction(const Queue queue) {
+const cut_update_index::action cut_update_index::
+back_action(const queue_t queue) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    assert(queue < Queue::NUM_QUEUES);
+    assert(queue < queue_t::NUM_QUEUES);
 
-    Action action;
+    action action;
 
     if (num_slots_[queue] > 0) {
         action = slots_[queue].back();
@@ -242,17 +242,17 @@ BackAction(const Queue queue) {
     return action;
 }
 
-void CutUpdateIndex::
-pop_frontAction(const Queue queue) {
+void cut_update_index::
+pop_front_action(const queue_t queue) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    assert(queue < Queue::NUM_QUEUES);
+    assert(queue < queue_t::NUM_QUEUES);
     assert(!slots_[queue].empty());
 
-    Action action = slots_[queue].front();
+    action action = slots_[queue].front();
     assert(action.queue_ == queue);
 
-    Swap(queue, 0, num_slots_[queue]-1);
+    swap(queue, 0, num_slots_[queue]-1);
 
 
     assert(slot_maps_[queue][action.model_id_][action.node_id_].find(num_slots_[queue]-1) != slot_maps_[queue][action.model_id_][action.node_id_].end());
@@ -262,7 +262,7 @@ pop_frontAction(const Queue queue) {
 
     --num_slots_[queue];
 
-    ShuffleDown(queue, 0);
+    shuffle_down(queue, 0);
 
     if (slot_maps_[queue][action.model_id_][action.node_id_].empty()) {
         slot_maps_[queue][action.model_id_].erase(action.node_id_);
@@ -270,14 +270,14 @@ pop_frontAction(const Queue queue) {
 
 }
 
-void CutUpdateIndex::
-PopBackAction(const Queue queue) {
+void cut_update_index::
+Popback_action(const queue_t queue) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    assert(queue < Queue::NUM_QUEUES);
+    assert(queue < queue_t::NUM_QUEUES);
     assert(!slots_[queue].empty());
 
-    Action action = slots_[queue].back();
+    action action = slots_[queue].back();
     assert(action.queue_ == queue);
 
     assert(slot_maps_[queue][action.model_id_][action.node_id_].find(num_slots_[queue]-1) != slot_maps_[queue][action.model_id_][action.node_id_].end());
@@ -294,23 +294,23 @@ PopBackAction(const Queue queue) {
 
 }
 
-void CutUpdateIndex::
-ApproveAction(const Action& action) {
+void cut_update_index::
+approve_action(const action& action) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(action.model_id_ < num_models_);
     assert(action.node_id_ < num_nodes_table_[action.model_id_]);
-    assert(action.queue_ < Queue::NUM_QUEUES);
+    assert(action.queue_ < queue_t::NUM_QUEUES);
 
     //approve action, this adds the action to all cuts of all the users in question.
     switch (action.queue_) {
-        case Queue::KEEP:
+        case queue_t::KEEP:
             switch (current_cut_front_) {
-                case Cutfront::FRONT_A:
+                case cut_front::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case Cutfront::FRONT_B:
+                case cut_front::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -319,17 +319,17 @@ ApproveAction(const Action& action) {
             }
             break;
 
-        case Queue::MUST_SPLIT:
+        case queue_t::MUST_SPLIT:
             {
                 std::vector<node_t> children;
-                GetAllChildren(action.model_id_, action.node_id_, children);
+                get_all_children(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case Cutfront::FRONT_A:
+                    case cut_front::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case Cutfront::FRONT_B:
+                    case cut_front::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -340,13 +340,13 @@ ApproveAction(const Action& action) {
             }
             break;
 
-        case Queue::MUST_COLLAPSE:
+        case queue_t::MUST_COLLAPSE:
             switch (current_cut_front_) {
-                case Cutfront::FRONT_A:
+                case cut_front::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case Cutfront::FRONT_B:
+                case cut_front::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -355,14 +355,14 @@ ApproveAction(const Action& action) {
             }
             break;
 
-        case Queue::COLLAPSE_ON_NEED:
+        case queue_t::COLLAPSE_ON_NEED:
             //if a collapse-on-need-action is approved, we collapse the node
             switch (current_cut_front_) {
-                case Cutfront::FRONT_A:
+                case cut_front::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case Cutfront::FRONT_B:
+                case cut_front::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -372,14 +372,14 @@ ApproveAction(const Action& action) {
             break;
 
 
-        case Queue::MAYBE_COLLAPSE:
+        case queue_t::MAYBE_COLLAPSE:
             //if a maybe-collapse-action is approved, we collapse the node
             switch (current_cut_front_) {
-                case Cutfront::FRONT_A:
+                case cut_front::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case Cutfront::FRONT_B:
+                case cut_front::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -393,27 +393,27 @@ ApproveAction(const Action& action) {
 
 }
 
-void CutUpdateIndex::
-RejectAction(const Action& action) {
+void cut_update_index::
+reject_action(const action& action) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(action.model_id_ < num_models_);
     assert(action.node_id_ < num_nodes_table_[action.model_id_]);
-    assert(action.queue_ < Queue::NUM_QUEUES);
+    assert(action.queue_ < queue_t::NUM_QUEUES);
 
     //raise replacement action
     switch (action.queue_) {
-        case Queue::KEEP:
+        case queue_t::KEEP:
             assert(false);
             break;
 
-        case Queue::MUST_SPLIT:
+        case queue_t::MUST_SPLIT:
             switch (current_cut_front_) {
-                case Cutfront::FRONT_A:
+                case cut_front::FRONT_A:
                     front_a_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
-                case Cutfront::FRONT_B:
+                case cut_front::FRONT_B:
                     front_b_cuts_[action.view_id_][action.model_id_].insert(action.node_id_);
                     break;
 
@@ -422,16 +422,16 @@ RejectAction(const Action& action) {
             }
             break;
 
-        case Queue::MUST_COLLAPSE: {
+        case queue_t::MUST_COLLAPSE: {
                 std::vector<node_t> children;
-                GetAllChildren(action.model_id_, action.node_id_, children);
+                get_all_children(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case Cutfront::FRONT_A:
+                    case cut_front::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case Cutfront::FRONT_B:
+                    case cut_front::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -441,16 +441,16 @@ RejectAction(const Action& action) {
             }
             break;
 
-        case Queue::COLLAPSE_ON_NEED: {
+        case queue_t::COLLAPSE_ON_NEED: {
                 std::vector<node_t> children;
-                GetAllChildren(action.model_id_, action.node_id_, children);
+                get_all_children(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case Cutfront::FRONT_A:
+                    case cut_front::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case Cutfront::FRONT_B:
+                    case cut_front::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -460,17 +460,17 @@ RejectAction(const Action& action) {
             }
             break;
 
-        case Queue::MAYBE_COLLAPSE:
+        case queue_t::MAYBE_COLLAPSE:
             {
                 std::vector<node_t> children;
-                GetAllChildren(action.model_id_, action.node_id_, children);
+                get_all_children(action.model_id_, action.node_id_, children);
 
                 switch (current_cut_front_) {
-                    case Cutfront::FRONT_A:
+                    case cut_front::FRONT_A:
                         front_a_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
-                    case Cutfront::FRONT_B:
+                    case cut_front::FRONT_B:
                         front_b_cuts_[action.view_id_][action.model_id_].insert(children.begin(), children.end());
                         break;
 
@@ -485,11 +485,11 @@ RejectAction(const Action& action) {
 
 }
 
-void CutUpdateIndex::
-AddAction(const Action& action, bool sort) {
+void cut_update_index::
+add_action(const action& action, bool sort) {
     assert(action.model_id_ < num_models_);
     assert(action.node_id_ < num_nodes_table_[action.model_id_]);
-    assert(action.queue_ < Queue::NUM_QUEUES);
+    assert(action.queue_ < queue_t::NUM_QUEUES);
 
     if (sort) {
         slots_[action.queue_].push_back(action);
@@ -497,7 +497,7 @@ AddAction(const Action& action, bool sort) {
 
         slot_maps_[action.queue_][action.model_id_][action.node_id_].insert(num_slots_[action.queue_]-1);
 
-        ShuffleUp(action.queue_, num_slots_[action.queue_]-1);
+        shuffle_up(action.queue_, num_slots_[action.queue_]-1);
 
     }
     else {
@@ -506,8 +506,8 @@ AddAction(const Action& action, bool sort) {
 
 }
 
-void CutUpdateIndex::
-CancelAction(const view_t view_id, const model_t model_id, const node_t node_id) {
+void cut_update_index::
+cancel_action(const view_t view_id, const model_t model_id, const node_t node_id) {
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
     assert(view_ids_.find(view_id) != view_ids_.end());
@@ -515,13 +515,13 @@ CancelAction(const view_t view_id, const model_t model_id, const node_t node_id)
     //firstly, cancel actions that already happened (remove nodes from cuts)
 
     switch (current_cut_front_) {
-        case Cutfront::FRONT_A:
+        case cut_front::FRONT_A:
             if (front_a_cuts_[view_id][model_id].find(node_id) != front_a_cuts_[view_id][model_id].end()) {
                 front_a_cuts_[view_id][model_id].erase(node_id);
             }
             break;
 
-        case Cutfront::FRONT_B:
+        case cut_front::FRONT_B:
             if (front_b_cuts_[view_id][model_id].find(node_id) != front_b_cuts_[view_id][model_id].end()) {
                 front_b_cuts_[view_id][model_id].erase(node_id);
             }
@@ -533,7 +533,7 @@ CancelAction(const view_t view_id, const model_t model_id, const node_t node_id)
 
     //secondly, cancel all pending actions (remove actions from queues)
 
-    for (uint32_t queue = 0; queue < Queue::NUM_QUEUES; ++queue) {
+    for (uint32_t queue = 0; queue < queue_t::NUM_QUEUES; ++queue) {
         const auto slot_it = slot_maps_[queue][model_id].find(node_id);
 
         if (slot_it == slot_maps_[queue][model_id].end()) {
@@ -553,8 +553,8 @@ CancelAction(const view_t view_id, const model_t model_id, const node_t node_id)
 
             if (slots_[queue][slot_id].view_id_ == view_id) {
 
-                Action current_item = slots_[queue][slot_id];
-                Action last_item = slots_[queue][num_slots_[queue]-1];
+                action current_item = slots_[queue][slot_id];
+                action last_item = slots_[queue][num_slots_[queue]-1];
 
                 assert(slot_maps_[queue][current_item.model_id_][current_item.node_id_].find(slot_id) != slot_maps_[queue][current_item.model_id_][current_item.node_id_].end());
                 assert(slot_maps_[queue][last_item.model_id_][last_item.node_id_].find(num_slots_[queue]-1) != slot_maps_[queue][last_item.model_id_][last_item.node_id_].end());
@@ -578,7 +578,7 @@ CancelAction(const view_t view_id, const model_t model_id, const node_t node_id)
 
                 --num_slots_[queue];
 
-                ShuffleDown((Queue)queue, slot_id);
+                shuffle_down((queue_t)queue, slot_id);
 
             }
 
@@ -594,10 +594,10 @@ CancelAction(const view_t view_id, const model_t model_id, const node_t node_id)
 
 }
 
-void CutUpdateIndex::
+void cut_update_index::
 sort() {
     while(!initial_queue_.empty()) {
-        Action action = initial_queue_.top();
+        action action = initial_queue_.top();
         initial_queue_.pop();
 
         slots_[action.queue_].push_back(action);
@@ -605,20 +605,20 @@ sort() {
 
         slot_maps_[action.queue_][action.model_id_][action.node_id_].insert(num_slots_[action.queue_]-1);
 
-        ShuffleUp(action.queue_, num_slots_[action.queue_]-1);
+        shuffle_up(action.queue_, num_slots_[action.queue_]-1);
 
     }
 
 }
 
-void CutUpdateIndex::
-Swap(const Queue queue, const size_t slot_id_0, const size_t slot_id_1) {
+void cut_update_index::
+swap(const queue_t queue, const size_t slot_id_0, const size_t slot_id_1) {
     if (slot_id_0 == slot_id_1) {
         return;
     }
 
-    Action& item0 = slots_[queue][slot_id_0];
-    Action& item1 = slots_[queue][slot_id_1];
+    action& item0 = slots_[queue][slot_id_0];
+    action& item1 = slots_[queue][slot_id_1];
 
 
     assert(slot_maps_[queue][item0.model_id_][item0.node_id_].find(slot_id_0) != slot_maps_[queue][item0.model_id_][item0.node_id_].end());
@@ -634,8 +634,8 @@ Swap(const Queue queue, const size_t slot_id_0, const size_t slot_id_1) {
     std::swap(slots_[queue][slot_id_0], slots_[queue][slot_id_1]);
 }
 
-void CutUpdateIndex::
-ShuffleUp(const Queue queue, const size_t slot_id) {
+void cut_update_index::
+shuffle_up(const queue_t queue, const size_t slot_id) {
     if (slot_id == 0) {
         return;
     }
@@ -646,13 +646,13 @@ ShuffleUp(const Queue queue, const size_t slot_id) {
         return;
     }
 
-    Swap(queue, slot_id, parent_slot_id);
+    swap(queue, slot_id, parent_slot_id);
 
-    ShuffleUp(queue, parent_slot_id);
+    shuffle_up(queue, parent_slot_id);
 }
 
-void CutUpdateIndex::
-ShuffleDown(const Queue queue, const size_t slot_id) {
+void cut_update_index::
+shuffle_down(const queue_t queue, const size_t slot_id) {
     size_t left_child_id = slot_id*2 + 1;
     size_t right_child_id = slot_id*2 + 2;
 
@@ -680,12 +680,12 @@ ShuffleDown(const Queue queue, const size_t slot_id) {
     }
 
     if (replace_id != slot_id) {
-        Swap(queue, slot_id, replace_id);
-        ShuffleDown(queue, replace_id);
+        swap(queue, slot_id, replace_id);
+        shuffle_down(queue, replace_id);
     }
 }
 
-const node_t CutUpdateIndex::
+const node_t cut_update_index::
 get_child_id(const model_t model_id, const node_t node_id, const node_t child_index) const {
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
@@ -704,7 +704,7 @@ get_child_id(const model_t model_id, const node_t node_id, const node_t child_in
     }
 }
 
-const node_t CutUpdateIndex::
+const node_t cut_update_index::
 get_parent_id(const model_t model_id, const node_t node_id) const {
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
@@ -723,8 +723,8 @@ get_parent_id(const model_t model_id, const node_t node_id) const {
     }
 }
 
-void CutUpdateIndex::
-GetAllSiblings(const model_t model_id, const node_t node_id, std::vector<node_t>& siblings) const {
+void cut_update_index::
+get_all_siblings(const model_t model_id, const node_t node_id, std::vector<node_t>& siblings) const {
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
 
@@ -741,8 +741,8 @@ GetAllSiblings(const model_t model_id, const node_t node_id, std::vector<node_t>
     }
 }
 
-void CutUpdateIndex::
-GetAllChildren(const model_t model_id, const node_t node_id, std::vector<node_t>& children) const {
+void cut_update_index::
+get_all_children(const model_t model_id, const node_t node_id, std::vector<node_t>& children) const {
     assert(model_id < num_models_);
     assert(node_id < num_nodes_table_[model_id]);
 

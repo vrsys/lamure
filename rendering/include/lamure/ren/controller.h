@@ -20,47 +20,49 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Controller
+class RENDERING_DLL controller
 {
 public:
     typedef size_t gua_context_desc_t;
     typedef view_t gua_view_desc_t;
     typedef std::string gua_model_desc_t;
 
-    static Controller* get_instance();
+    static controller* get_instance();
 
-                        Controller(const Controller&) = delete;
-                        Controller& operator=(const Controller&) = delete;
-    virtual             ~Controller();
+                        controller(const controller&) = delete;
+                        controller& operator=(const controller&) = delete;
+    virtual             ~controller();
 
-    void                SignalSystemreset();
-    void                resetSystem();
-    const bool          IsSystemresetSignaled(const context_t context_id);
+    void                signal_system_reset();
+    void                reset_system();
+    const bool          is_system_reset_signaled(const context_t context_id);
 
-    context_t           DeduceContextId(const gua_context_desc_t context_desc);
-    view_t              DeduceViewId(const gua_context_desc_t context_desc, const gua_view_desc_t view_desc);
-    model_t             DeduceModelId(const gua_model_desc_t& model_desc);
+    context_t           deduce_context_id(const gua_context_desc_t context_desc);
+    view_t              deduce_view_id(const gua_context_desc_t context_desc, const gua_view_desc_t view_desc);
+    model_t             deduce_model_id(const gua_model_desc_t& model_desc);
 
-    const bool          IsModelPresent(const gua_model_desc_t model_desc);
-    const context_t     NumContextsRegistered();
+    const bool          is_model_present(const gua_model_desc_t model_desc);
+    const context_t     num_contexts_registered();
 
-    void                Dispatch(const context_t context_id, scm::gl::render_device_ptr device);
-    const bool          IsCutUpdateInProgress(const context_t context_id);
+    void                dispatch(const context_t context_id, scm::gl::render_device_ptr device);
+    const bool          is_cut_update_in_progress(const context_t context_id);
 
-    scm::gl::buffer_ptr GetContextbuffer(const context_t context_id, scm::gl::render_device_ptr device);
-    scm::gl::vertex_array_ptr GetContextMemory(const context_t context_id, scm::gl::render_device_ptr device);
+    scm::gl::buffer_ptr get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device);
+    scm::gl::vertex_array_ptr get_context_memory(const context_t context_id, scm::gl::render_device_ptr device);
 
+    size_t              ms_since_last_node_upload() {return ms_since_last_node_upload_; };
+    void                reset_ms_since_last_node_upload() { ms_since_last_node_upload_ = 0;};
 
 protected:
-                        Controller();
+                        controller();
     static bool         is_instanced_;
-    static Controller*  single_;
+    static controller*  single_;
 
 private:
     static std::mutex   mutex_;
 
-    std::unordered_map<context_t, CutUpdatePool*> cut_update_pools_;
-    std::unordered_map<context_t, GpuContext*> gpu_contexts_;
+    std::unordered_map<context_t, cut_update_pool*> cut_update_pools_;
+    std::unordered_map<context_t, gpu_context*> gpu_contexts_;
 
     std::unordered_map<gua_context_desc_t, context_t> context_map_;
     context_t num_contexts_registered_;
@@ -73,6 +75,8 @@ private:
 
     std::unordered_map<context_t, std::queue<bool>> reset_flags_history_;
 
+    size_t ms_since_last_node_upload_;
+    std::chrono::time_point<std::chrono::system_clock> latest_timestamp_;
 };
 
 

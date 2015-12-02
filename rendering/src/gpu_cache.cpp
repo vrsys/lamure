@@ -10,30 +10,30 @@
 namespace lamure {
 namespace ren {
 
-GpuCache::
-GpuCache(const slot_t num_slots)
-    : Cache(num_slots),
+gpu_cache::
+gpu_cache(const slot_t num_slots)
+    : cache(num_slots),
     transfer_budget_(0),
     transfer_slots_written_(0) {
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
     transfer_list_.resize(database->num_models());
 }
 
-GpuCache::
-~GpuCache() {
+gpu_cache::
+~gpu_cache() {
     transfer_list_.clear();
 }
 
-void GpuCache::
+void gpu_cache::
 resetTransferList() {
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
     transfer_list_.clear();
     transfer_list_.resize(database->num_models());
 }
 
-const bool GpuCache::
-RegisterNode(const model_t model_id, const node_t node_id) {
-    if (IsNodeResident(model_id, node_id)) {
+const bool gpu_cache::
+register_node(const model_t model_id, const node_t node_id) {
+    if (is_node_resident(model_id, node_id)) {
         return false;
     }
 
@@ -41,9 +41,9 @@ RegisterNode(const model_t model_id, const node_t node_id) {
         --transfer_budget_;
     }
 
-    node_t least_recently_used_slot = index_->ReserveSlot();
+    node_t least_recently_used_slot = index_->reserve_slot();
 
-    index_->ApplySlot(least_recently_used_slot, model_id, node_id);
+    index_->applySlot(least_recently_used_slot, model_id, node_id);
 
     transfer_list_[model_id].insert(node_id);
 
@@ -51,7 +51,7 @@ RegisterNode(const model_t model_id, const node_t node_id) {
 }
 
 
-void GpuCache::
+void gpu_cache::
 RemoveFromTransferList(const model_t model_id, const node_t node_id) {
     if (transfer_list_[model_id].find(node_id) != transfer_list_[model_id].end()) {
         transfer_list_[model_id].erase(node_id);

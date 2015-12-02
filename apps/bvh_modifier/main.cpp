@@ -196,7 +196,7 @@ int main(int argc, const char *argv[])
     if (vm["mode"].as<std::string>() == "info") {
         for (const auto& t : bvhs) {
             for (uint32_t j = 0; j <= t.first->depth(); ++j) {
-                auto range = t.first->GetNodeRanges(j);
+                auto range = t.first->get_node_ranges(j);
 
                 for (size_t i = range.first; i < range.first + 4 && i < range.first + range.second; ++i) {
                     //std::cout << i << " centroid:   " << t.first->nodes()[i].centroid() << std::endl;

@@ -54,7 +54,7 @@ static bool intersects(const sphere& sphere, const scm::gl::boxf& box) {
 
 static void get_all_descendant_leafs(const lamure::ren::bvh* bvh, const lamure::node_t node_id, unsigned int leaf_depth, std::vector<lamure::node_t>& descendant_leafs) {
 
-  unsigned int node_depth = bvh->GetDepthOfNode(node_id);
+  unsigned int node_depth = bvh->get_depth_of_node(node_id);
 
   if (node_depth == leaf_depth) {
     descendant_leafs.push_back(node_id);
@@ -90,7 +90,7 @@ static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
     surfel* surfels) {
 
     lamure::node_t current_node_id = splat_of_interest.node_id_;
-    unsigned int knn_leaf_depth = bvh->GetDepthOfNode(current_node_id);
+    unsigned int knn_leaf_depth = bvh->get_depth_of_node(current_node_id);
     size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
 
     size_t node_offset_in_splats = 0;

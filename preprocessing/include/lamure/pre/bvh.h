@@ -14,6 +14,7 @@
 #include <lamure/pre/bvh_node.h>
 #include <lamure/pre/node_serializer.h>
 #include <lamure/pre/reduction_strategy.h>
+#include <lamure/pre/normal_radii_strategy.h>
 #include <lamure/pre/logger.h>
 
 #include <boost/filesystem.hpp>
@@ -22,6 +23,8 @@
 
 namespace lamure {
 namespace pre {
+
+class normal_radii_strategy;
 
 class PREPROCESSING_DLL bvh
 {
@@ -45,7 +48,7 @@ public:
     virtual             ~bvh() {}
 
                         bvh(const bvh& other) = delete;
-    bvh&                operator=(const bvh& other) = delete;
+    bvh&            operator=(const bvh& other) = delete;
 
     void                init_tree(const std::string& surfels_input_file,
                                  const uint32_t max_fan_factor,
@@ -54,7 +57,7 @@ public:
 
     bool                load_tree(const std::string& kdn_input_file);
 
-    state_type          state() const { return state_; }
+    state_type               state() const { return state_; }
     uint8_t             fan_factor() const { return fan_factor_; }
     uint32_t            depth() const { return depth_; }
     size_t              max_surfels_per_node() const { return max_surfels_per_node_; }
@@ -75,7 +78,7 @@ public:
      * \param[in] depth           Tree layer for the range
      * \return                    Pair that contains first node id and number of nodes
      */
-    std::pair<node_id_type, node_id_type> GetNodeRanges(const uint32_t depth) const;
+    std::pair<node_id_type, node_id_type> get_node_ranges(const uint32_t depth) const;
     void                print_tree_properties() const;
     const node_id_type    first_leaf() const { return first_leaf_; }
 
@@ -84,8 +87,13 @@ public:
                                   const std::string& surfels_input_file,
                                   bool bin_all_file_extension = false);
     void                compute_normals_and_radii(const uint16_t number_of_neighbours);
-    void                upsweep(const reduction_strategy& reduction_strategy);
 
+    void                compute_normal_and_radius(const size_t node, 
+                                                  const size_t surfel,
+                                                  const normal_radii_strategy&  normal_radii_strategy);
+
+    void                upsweep(const reduction_strategy& strategy);
+    void                upsweep_new(const reduction_strategy& strategy, const normal_radii_strategy& normal_radii_strategy);
 
     void                serialize_tree_to_file(const std::string& output_file,
                                             bool write_intermediate_data);
@@ -95,7 +103,7 @@ public:
 
     /* resets all nodes and deletes temp files
      */
-    void                resetNodes();
+    void                reset_nodes();
 
     static std::string  state_to_string(state_type state);
 
@@ -146,19 +154,24 @@ private:
                             uint8_t& percent_processed,
                             shared_file leaf_level_access);
 
-   std::vector<std::pair<surfel, real>>
-                       get_nearest_neighbours(
-                           const size_t node_id,
-                           const size_t surfel_id,
-                           const uint32_t num_neighbours) const;
-   
-   void                get_descendant_leaves(
-                           const size_t node,
-                           std::vector<size_t>& result,
-                           const size_t first_leaf,
-                           const std::unordered_set<size_t>& excluded_leaves) const;
+    std::vector<std::pair<surfel, real>>
+                        get_nearest_neighbours(
+                            const size_t node_id,
+                            const size_t surfel_id,
+                            const uint32_t num_neighbours) const;
 
-    void                upsweep_recurse(
+    void                get_descendant_leaves(
+                            const size_t node,
+                            std::vector<size_t>& result,
+                            const size_t first_leaf,
+                            const std::unordered_set<size_t>& excluded_leaves) const;
+    void                get_descendant_nodes(
+                            const size_t node,
+                            std::vector<size_t>& result,
+                            const size_t desired_depth,
+                            const std::unordered_set<size_t>& excluded_nodes) const;
+
+    void                upsweep_r(
                             bvh_node& node,
                             const reduction_strategy& reduction_strategy,
                             std::vector<shared_file>& level_temp_files,

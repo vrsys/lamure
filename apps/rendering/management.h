@@ -26,23 +26,25 @@
 
 #include <lamure/ren/ray.h>
 
-class Management
+class management
 {
 public:
-                        Management(std::vector<std::string> const& model_filenames,
+                        management(std::vector<std::string> const& model_filenames,
                             std::vector<scm::math::mat4f> const& model_transformations,
                             const std::set<lamure::model_t>& visible_set,
-                            const std::set<lamure::model_t>& invisible_set);
-    virtual             ~Management();
+                            const std::set<lamure::model_t>& invisible_set,
+                            std::vector<scm::math::mat4d> const& recorded_view_vector = std::vector<scm::math::mat4d>(),
+                            std::string const& session_filename = "");
+    virtual             ~management();
 
-                        Management(const Management&) = delete;
-                        Management& operator=(const Management&) = delete;
+                        management(const management&) = delete;
+                        management& operator=(const management&) = delete;
 
-    void                MainLoop();
-    void                UpdateTrackball(int x, int y);
+    bool                MainLoop();
+    void                update_trackball(int x, int y);
     void                RegisterMousePresses(int button, int state, int x, int y);
-    void                DispatchKeyboardInput(unsigned char key);
-    void                DispatchResize(int w, int h);
+    void                dispatchKeyboardInput(unsigned char key);
+    void                dispatchResize(int w, int h);
 
     void                PrintInfo();
     void                SetSceneName();
@@ -53,22 +55,33 @@ public:
 
 protected:
 
-    void                ToggleDispatching();
+    void                Toggledispatching();
+    void                toggle_camera_session();
+    void                record_next_camera_position();
+    void                create_quality_measurement_resources();
 
 private:
+    
+    size_t              num_taken_screenshots_;
+    bool const          allow_user_input_;
+    bool                screenshot_session_started_;
+    bool                camera_recording_enabled_;
+    std::string const   current_session_filename_;
+    std::string         current_session_file_path_;
+    unsigned            num_recorded_camera_positions_;
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
     split_screen_renderer* renderer_;
-    lamure::ren::Camera*   active_camera_left_;
-    lamure::ren::Camera*   active_camera_right_;
+    lamure::ren::camera*   active_camera_left_;
+    lamure::ren::camera*   active_camera_right_;
     bool                control_left_;
 #endif
 
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer* renderer_;
+    Renderer* renderer_;
 #endif
 
-    lamure::ren::Camera*   active_camera_;
+    lamure::ren::camera*   active_camera_;
 
     int32_t             width_;
     int32_t             height_;
@@ -78,9 +91,9 @@ private:
     bool test_send_rendered_;
 
     lamure::view_t         num_cameras_;
-    std::vector<lamure::ren::Camera*> cameras_;
+    std::vector<lamure::ren::camera*> cameras_;
 
-    lamure::ren::Camera::Mousestate mouse_state_;
+    lamure::ren::camera::mouse_state mouse_state_;
 
     bool                fast_travel_;
 
@@ -90,7 +103,7 @@ private:
     scm::math::mat4f    reset_matrix_;
     float               reset_diameter_;
 
-    lamure::model_t        num_models_;
+    lamure::model_t     num_models_;
 
     scm::math::vec3f    detail_translation_;
     float               detail_angle_;
@@ -99,6 +112,8 @@ private:
 
     std::vector<scm::math::mat4f> model_transformations_;
     std::vector<std::string> model_filenames_;
+
+    std::vector<scm::math::mat4d> recorded_view_vector_; 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;

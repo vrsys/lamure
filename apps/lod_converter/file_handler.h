@@ -58,8 +58,8 @@ class file_handler{
     long Repositorysize(void);
     void printRepository(void);
 
-    const uint32_t GetFirstNodeIdOfDepth(uint32_t depth);
-    const uint32_t GetLengthOfDepth(uint32_t depth);
+    const uint32_t get_first_node_id_of_depth(uint32_t depth);
+    const uint32_t get_length_of_depth(uint32_t depth);
 
 
     serializedTree* SerialTree(void);

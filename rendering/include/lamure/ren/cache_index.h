@@ -24,22 +24,22 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL CacheIndex
+class RENDERING_DLL cache_index
 {
 public:
-                        CacheIndex(const model_t num_models, const slot_t num_slots);
-    virtual             ~CacheIndex();
+                        cache_index(const model_t num_models, const slot_t num_slots);
+    virtual             ~cache_index();
 
     const slot_t        num_slots() const { return num_slots_; };
 
-    const slot_t        NumFreeSlots();
-    const slot_t        ReserveSlot();
-    void                ApplySlot(const slot_t slot_id, const model_t model_id, const node_t node_id);
-    void                UnreserveSlot(const slot_t slot_id);
+    const slot_t        num_free_slots();
+    const slot_t        reserve_slot();
+    void                applySlot(const slot_t slot_id, const model_t model_id, const node_t node_id);
+    void                unreserve_slot(const slot_t slot_id);
 
-    const slot_t        GetSlot(const model_t model_id, const node_t node_id);
+    const slot_t        get_slot(const model_t model_id, const node_t node_id);
     const bool          IsNodeIndexed(const model_t model_id, const node_t node_id);
-    const bool          IsNodeAquired(const model_t model_id, const node_t node_id);
+    const bool          is_node_aquired(const model_t model_id, const node_t node_id);
 
     void                AquireSlot(const view_t view_id, const model_t model_id, const node_t node_id);
     void                ReleaseSlot(const view_t view_id, const model_t model_id, const node_t node_id);
@@ -52,9 +52,9 @@ private:
     slot_t              num_free_slots_;
 
 
-    struct CacheIndexNode
+    struct cache_index_node
     {
-        CacheIndexNode(
+        cache_index_node(
             const model_t model_id,
             const node_t node_id,
             const slot_t prev,
@@ -64,7 +64,7 @@ private:
             prev_(prev),
             next_(next) {};
 
-        CacheIndexNode()
+        cache_index_node()
             : model_id_(invalid_model_t),
             node_id_(invalid_node_t),
             prev_(invalid_slot_t),
@@ -79,7 +79,7 @@ private:
 
     std::mutex          mutex_;
 
-    std::vector<CacheIndexNode> slots_;
+    std::vector<cache_index_node> slots_;
     std::vector<std::map<node_t, slot_t>> maps_;
 };
 

@@ -14,14 +14,19 @@ namespace pre
 
 enum class rep_radius_algorithm {
     arithmetic_mean = 0,
-    geometric_mean  = 1,
-    harmonic_mean   = 2
+    geometric_mean = 1,
+    harmonic_mean = 2
+};
+
+enum class normal_radius_algorithm {
+	plane_fitting = 0
 };
 
 enum class reduction_algorithm {
-    NDC            = 0,
+    ndc            = 0,
     constant       = 1,
-    every_second    = 2
+    every_second   = 2,
+    random         = 3
 };
 
 }}

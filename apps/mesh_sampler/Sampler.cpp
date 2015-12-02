@@ -134,7 +134,7 @@ SampleMesh(const std::string& outputFilename)
                 auto comp = [](const FL& a, const FL& b ) { return a.second < b.second; };
                 std::priority_queue<FL, std::vector<FL>, decltype(comp)> nq(comp);
 
-                auto AddToQueue = [&](const Splat& afp) {
+                auto AddToqueue_t = [&](const Splat& afp) {
                     double dist = std::pow(afp.x - p.x, 2) + std::pow(afp.y - p.y, 2) + std::pow(afp.z - p.z, 2);
                     if (dist < 0.000000001) return;
                     //std::cout << "for p " << p.x <<" "<< p.y<< " " << p.z<< " d " << sqrt(dist) << std::endl;
@@ -154,7 +154,7 @@ SampleMesh(const std::string& outputFilename)
 
                     if (&face == af) {
                         for (auto& afp: points) {
-                            AddToQueue(afp);
+                            AddToqueue_t(afp);
                         }
                         //std::cout << "add 1 for p " << p.x << p.y << " ptr " << size_t(af) << std::endl;
 
@@ -163,7 +163,7 @@ SampleMesh(const std::string& outputFilename)
                         splat_vector pointsF;
                         sample_face(af, pointsF, true);
                         for (auto& afp: pointsF) {
-                            AddToQueue(afp);
+                            AddToqueue_t(afp);
                         }
                         //std::cout << "add 2 for p " << p.x << p.y  << " ptr " << size_t(af)<< std::endl;
                     }

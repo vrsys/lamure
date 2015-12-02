@@ -14,47 +14,47 @@ namespace lamure
 namespace ren
 {
 
-CutdatabaseRecord::
-CutdatabaseRecord(const context_t context_id)
+cut_database_record::
+cut_database_record(const context_t context_id)
     : context_id_(context_id),
     is_swap_required_(false),
-    current_front_(Recordfront::FRONT_A),
+    current_front_(record_front::FRONT_A),
     front_a_is_modified_(false),
     front_b_is_modified_(false),
-    front_a_buffer_(Temporarybuffer::BUFFER_A),
-    front_b_buffer_(Temporarybuffer::BUFFER_A) {
+    front_a_buffer_(temporary_buffer::BUFFER_A),
+    front_b_buffer_(temporary_buffer::BUFFER_A) {
 
 }
 
-CutdatabaseRecord::
-~CutdatabaseRecord() {
+cut_database_record::
+~cut_database_record() {
 
 }
 
-void CutdatabaseRecord::
-Swapfront() {
+void cut_database_record::
+swap_front() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (is_swap_required_) {
         is_swap_required_ = false;
 
-        if (current_front_ == Recordfront::FRONT_A) {
-            current_front_ = Recordfront::FRONT_B;
+        if (current_front_ == record_front::FRONT_A) {
+            current_front_ = record_front::FRONT_B;
             front_b_rendered_.clear();
         }
         else {
-            current_front_ = Recordfront::FRONT_A;
+            current_front_ = record_front::FRONT_A;
             front_a_rendered_.clear();
         }
     }
 }
 
-void CutdatabaseRecord::
-SetCamera(const view_t view_id, const Camera& camera) {
+void cut_database_record::
+set_camera(const view_t view_id, const camera& camera) {
 #ifdef LAMURE_DATABASE_SAFE_MODE
     std::lock_guard<std::mutex> lock(mutex_);
 #endif
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         expandfrontA(view_id, 0);
 
         auto it = front_a_cameras_.find(view_id);
@@ -81,12 +81,12 @@ SetCamera(const view_t view_id, const Camera& camera) {
 
 }
 
-void CutdatabaseRecord::
-SetheightDividedByTopMinusBottom(const view_t view_id, float const height_divided_by_top_minus_bottom) {
+void cut_database_record::
+set_height_divided_by_top_minus_bottom(const view_t view_id, float const height_divided_by_top_minus_bottom) {
 #ifdef LAMURE_DATABASE_SAFE_MODE
     std::lock_guard<std::mutex> lock(mutex_);
 #endif
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         expandfrontA(view_id, 0);
 
         auto it = front_a_height_divided_by_top_minus_bottom_.find(view_id);
@@ -113,12 +113,12 @@ SetheightDividedByTopMinusBottom(const view_t view_id, float const height_divide
 
 }
 
-void CutdatabaseRecord::
-SetTransform(const view_t model_id, const scm::math::mat4f& transform) {
+void cut_database_record::
+set_transform(const view_t model_id, const scm::math::mat4f& transform) {
 #ifdef LAMURE_DATABASE_SAFE_MODE
     std::lock_guard<std::mutex> lock(mutex_);
 #endif
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         expandfrontA(0, model_id);
 
         auto it = front_a_transforms_.find(model_id);
@@ -146,12 +146,12 @@ SetTransform(const view_t model_id, const scm::math::mat4f& transform) {
 
 }
 
-void CutdatabaseRecord::
-Setrendered(const model_t model_id) {
+void cut_database_record::
+set_rendered(const model_t model_id) {
 #ifdef LAMURE_DATABASE_SAFE_MODE
     std::lock_guard<std::mutex> lock(mutex_);
 #endif
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         expandfrontA(0, model_id);
 
         auto it = front_a_rendered_.find(model_id);
@@ -178,12 +178,12 @@ Setrendered(const model_t model_id) {
 
 }
 
-void CutdatabaseRecord::
-SetThreshold(const model_t model_id, const float threshold) {
+void cut_database_record::
+set_threshold(const model_t model_id, const float threshold) {
 #ifdef LAMURE_DATABASE_SAFE_MODE
     std::lock_guard<std::mutex> lock(mutex_);
 #endif
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         expandfrontA(0, model_id);
 
         auto it = front_a_thresholds_.find(model_id);
@@ -212,13 +212,13 @@ SetThreshold(const model_t model_id, const float threshold) {
 
 
 
-void CutdatabaseRecord::
-ReceiveTransforms(std::map<model_t, scm::math::mat4f>& transforms) {
+void cut_database_record::
+receive_transforms(std::map<model_t, scm::math::mat4f>& transforms) {
     //transforms.clear();
 
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         for (const auto& trans_it : front_b_transforms_) {
             scm::math::mat4f transform = trans_it.second;
             model_t model_id = trans_it.first;
@@ -234,35 +234,35 @@ ReceiveTransforms(std::map<model_t, scm::math::mat4f>& transforms) {
     }
 }
 
-void CutdatabaseRecord::
-ReceiveCameras(std::map<view_t, Camera>& cameras) {
+void cut_database_record::
+receive_cameras(std::map<view_t, camera>& cameras) {
     //cameras.clear();
 
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         for (const auto& cam_it : front_b_cameras_) {
-            Camera camera = cam_it.second;
+            camera camera = cam_it.second;
             view_t view_id = cam_it.first;
             cameras[view_id] = camera;
         }
     }
     else {
         for (const auto& cam_it : front_a_cameras_) {
-            Camera camera = cam_it.second;
+            camera camera = cam_it.second;
             view_t view_id = cam_it.first;
             cameras[view_id] = camera;
         }
     }
 }
 
-void CutdatabaseRecord::
-ReceiveheightDividedByTopMinusBottoms(std::map<view_t, float>& height_divided_by_top_minus_bottoms) {
+void cut_database_record::
+receive_height_divided_by_top_minus_bottoms(std::map<view_t, float>& height_divided_by_top_minus_bottoms) {
     //height_divided_by_top_minus_bottoms.clear();
 
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         for (const auto& hdtmb_it : front_b_height_divided_by_top_minus_bottom_) {
 
             float hdtmb = hdtmb_it.second;
@@ -280,13 +280,13 @@ ReceiveheightDividedByTopMinusBottoms(std::map<view_t, float>& height_divided_by
 }
 
 
-void CutdatabaseRecord::
-Receiverendered(std::set<model_t>& rendered) {
+void cut_database_record::
+receive_rendered(std::set<model_t>& rendered) {
     //rendered.clear();
 
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         rendered = front_b_rendered_;
     }
     else {
@@ -295,13 +295,13 @@ Receiverendered(std::set<model_t>& rendered) {
 
 }
 
-void CutdatabaseRecord::
-ReceiveThresholds(std::map<model_t, float>& thresholds) {
+void cut_database_record::
+receive_thresholds(std::map<model_t, float>& thresholds) {
     //thresholds.clear();
 
     std::lock_guard<std::mutex> lock(mutex_);
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         for (const auto& threshold_it : front_b_thresholds_) {
             float threshold = threshold_it.second;
             view_t model_id = threshold_it.first;
@@ -320,12 +320,12 @@ ReceiveThresholds(std::map<model_t, float>& thresholds) {
 }
 
 
-void CutdatabaseRecord::
+void cut_database_record::
 expandfrontA(const view_t view_id, const model_t model_id) {
     while (model_id >= front_a_cuts_.size())
     {
         //expand cut front B
-        front_a_cuts_.push_back(std::vector<Cut>());
+        front_a_cuts_.push_back(std::vector<cut>());
         front_a_transforms_.insert(std::make_pair(model_id, scm::math::mat4f::identity()));
         front_a_thresholds_.insert(std::make_pair(model_id, LAMURE_DEFAULT_THRESHOLD));
     }
@@ -334,7 +334,7 @@ expandfrontA(const view_t view_id, const model_t model_id) {
 
     while (view_id >= front_a_cuts_[model_id].size())
     {
-        front_a_cuts_[model_id].push_back(Cut(context_id_, new_view_id, model_id));
+        front_a_cuts_[model_id].push_back(cut(context_id_, new_view_id, model_id));
         front_a_height_divided_by_top_minus_bottom_.insert(std::make_pair(new_view_id, 1000.0f));
         ++new_view_id;
     }
@@ -345,12 +345,12 @@ expandfrontA(const view_t view_id, const model_t model_id) {
 }
 
 
-void CutdatabaseRecord::
+void cut_database_record::
 expandfrontB(const view_t view_id, const model_t model_id) {
     while (model_id >= front_b_cuts_.size())
     {
         //expand cut front B
-        front_b_cuts_.push_back(std::vector<Cut>());
+        front_b_cuts_.push_back(std::vector<cut>());
         front_b_transforms_.insert(std::make_pair(model_id, scm::math::mat4f::identity()));
         front_b_thresholds_.insert(std::make_pair(model_id, LAMURE_DEFAULT_THRESHOLD));
     }
@@ -359,7 +359,7 @@ expandfrontB(const view_t view_id, const model_t model_id) {
 
     while (view_id >= front_b_cuts_[model_id].size())
     {
-        front_b_cuts_[model_id].push_back(Cut(context_id_, new_view_id, model_id));
+        front_b_cuts_[model_id].push_back(cut(context_id_, new_view_id, model_id));
         front_b_height_divided_by_top_minus_bottom_.insert(std::make_pair(new_view_id, 1000.0f));
         ++new_view_id;
     }
@@ -370,9 +370,9 @@ expandfrontB(const view_t view_id, const model_t model_id) {
 
 }
 
-Cut& CutdatabaseRecord::
-GetCut(const view_t view_id, const model_t model_id) {
-    if (current_front_ == Recordfront::FRONT_A) {
+cut& cut_database_record::
+get_cut(const view_t view_id, const model_t model_id) {
+    if (current_front_ == record_front::FRONT_A) {
         expandfrontA(view_id, model_id);
         return front_a_cuts_[model_id][view_id];
     }
@@ -383,11 +383,11 @@ GetCut(const view_t view_id, const model_t model_id) {
 
 }
 
-void CutdatabaseRecord::
-SetCut(const view_t view_id, const model_t model_id, Cut& cut) {
+void cut_database_record::
+set_cut(const view_t view_id, const model_t model_id, cut& cut) {
     is_swap_required_ = true;
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         expandfrontB(view_id, model_id);
         front_b_cuts_[model_id][view_id] = cut;
     }
@@ -398,9 +398,9 @@ SetCut(const view_t view_id, const model_t model_id, Cut& cut) {
 
 }
 
-std::vector<CutdatabaseRecord::SlotUpdateDescr>& CutdatabaseRecord::
-GetUpdatedSet() {
-    if (current_front_ == Recordfront::FRONT_A) {
+std::vector<cut_database_record::slot_update_desc>& cut_database_record::
+get_updated_set() {
+    if (current_front_ == record_front::FRONT_A) {
         return front_a_updated_set_;
     }
     else {
@@ -409,11 +409,11 @@ GetUpdatedSet() {
 
 }
 
-void CutdatabaseRecord::
-SetUpdatedSet(std::vector<CutdatabaseRecord::SlotUpdateDescr>& updated_set) {
+void cut_database_record::
+set_updated_set(std::vector<cut_database_record::slot_update_desc>& updated_set) {
     is_swap_required_ = true;
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         front_b_updated_set_ = updated_set;
     }
     else {
@@ -422,9 +422,9 @@ SetUpdatedSet(std::vector<CutdatabaseRecord::SlotUpdateDescr>& updated_set) {
 
 }
 
-const bool CutdatabaseRecord::
-IsfrontModified() const {
-    if (current_front_ == Recordfront::FRONT_A) {
+const bool cut_database_record::
+is_front_modified() const {
+    if (current_front_ == record_front::FRONT_A) {
         return front_a_is_modified_;
     }
     else {
@@ -433,11 +433,11 @@ IsfrontModified() const {
 
 };
 
-void CutdatabaseRecord::
-SetIsfrontModified(const bool front_modified) {
+void cut_database_record::
+set_is_front_modified(const bool front_modified) {
     is_swap_required_ = true;
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         front_b_is_modified_ = front_modified;
     }
     else {
@@ -445,9 +445,9 @@ SetIsfrontModified(const bool front_modified) {
     }
 };
 
-void CutdatabaseRecord::
-SignalUploadcomplete() {
-    if (current_front_ == Recordfront::FRONT_A) {
+void cut_database_record::
+signal_upload_complete() {
+    if (current_front_ == record_front::FRONT_A) {
         front_a_is_modified_ = false;
     }
     else {
@@ -455,19 +455,19 @@ SignalUploadcomplete() {
     }
 }
 
-const bool CutdatabaseRecord::
-IsSwapRequired() const {
+const bool cut_database_record::
+is_swap_required() const {
     return is_swap_required_;
 };
 
-void CutdatabaseRecord::
-SetIsSwapRequired(const bool swap_required) {
+void cut_database_record::
+set_is_swap_required(const bool swap_required) {
     is_swap_required_ = true;
 };
 
-const CutdatabaseRecord::Temporarybuffer CutdatabaseRecord::
-Getbuffer() const {
-    if (current_front_ == Recordfront::FRONT_A) {
+const cut_database_record::temporary_buffer cut_database_record::
+get_buffer() const {
+    if (current_front_ == record_front::FRONT_A) {
         return front_a_buffer_;
     }
     else {
@@ -476,11 +476,11 @@ Getbuffer() const {
 
 };
 
-void CutdatabaseRecord::
-Setbuffer(const CutdatabaseRecord::Temporarybuffer buffer) {
+void cut_database_record::
+set_buffer(const cut_database_record::temporary_buffer buffer) {
     is_swap_required_ = true;
 
-    if (current_front_ == Recordfront::FRONT_A) {
+    if (current_front_ == record_front::FRONT_A) {
         front_b_buffer_ = buffer;
     }
     else {
@@ -488,13 +488,13 @@ Setbuffer(const CutdatabaseRecord::Temporarybuffer buffer) {
     }
 };
 
-void CutdatabaseRecord::
-Lockfront() {
+void cut_database_record::
+lock_front() {
     mutex_.lock();
 }
 
-void CutdatabaseRecord::
-Unlockfront() {
+void cut_database_record::
+unlock_front() {
     mutex_.unlock();
 }
 

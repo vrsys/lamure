@@ -44,7 +44,7 @@ get_available_memory(const bool use_buffers_cache)
                 std::string s;
                 ifs >> s;
                 if (ifs.eof()) break;
-                if (s == "Cached:") {
+                if (s == "cached:") {
                     ifs >> cached_mem;
                     break;
                 }

@@ -11,6 +11,7 @@
 #include <memory>
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <algorithm>
 
@@ -30,7 +31,7 @@
 #include <boost/program_options.hpp>
 
 
-void InitializeGlut();
+void initialize_glut();
 
 void glut_display();
 void glut_resize(int w, int h);
@@ -42,8 +43,34 @@ void glut_keyboard_release(unsigned char key, int x, int y);
 void glut_timer(int value);
 void glut_close();
 
+std::vector<scm::math::mat4d> const parse_camera_session_file( std::string const& session_file_path ) {
 
-void InitializeGlut(int argc, char** argv, uint32_t width, uint32_t height)
+    std::ifstream camera_session_file(session_file_path);
+
+    std::string view_matrix_as_string;
+
+    std::vector<scm::math::mat4d> read_view_matrices;
+
+    while( std::getline(camera_session_file, view_matrix_as_string) ) {
+        scm::math::mat4d curr_view_matrix;
+        std::istringstream view_matrix_as_strstream(view_matrix_as_string);
+
+        for(int matrix_element_idx = 0; 
+                matrix_element_idx < 16; 
+                ++matrix_element_idx) {
+            view_matrix_as_strstream >> curr_view_matrix[matrix_element_idx];
+        }
+
+        read_view_matrices.push_back(curr_view_matrix);
+
+    }
+
+    //reverse vector in order to pop_back elements in correct order
+    std::reverse(read_view_matrices.begin(), read_view_matrices.end());
+    return read_view_matrices;
+}
+
+void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
 {
     glutInit(&argc, argv);
     glutInitContextVersion(4, 4);
@@ -57,9 +84,9 @@ void InitializeGlut(int argc, char** argv, uint32_t width, uint32_t height)
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA | GLUT_ALPHA | GLUT_MULTISAMPLE);
 
     glutInitWindowPosition(400,300);
-    glutInitWindowsize(width, height);
+    glutInitWindowSize(width, height);
 
-    int wh1 = glutCreateWindow("Point renderer");
+    int wh1 = glutCreateWindow("Point Renderer");
 
     glutSetWindow(wh1);
 
@@ -72,7 +99,7 @@ void InitializeGlut(int argc, char** argv, uint32_t width, uint32_t height)
     glutIdleFunc(glut_idle);
 }
 
-Management* management_ = nullptr;
+management* management_ = nullptr;
 
 
 char* get_cmd_option(char** begin, char** end, const std::string & option) {
@@ -102,8 +129,9 @@ int main(int argc, char** argv)
     unsigned int main_memory_budget;
     unsigned int video_memory_budget ;
     unsigned int max_upload_budget;
-    float error_threshold;
-    std::string resource_file = "auto_generated.rsc";
+
+    std::string resource_file_path = "auto_generated.rsc";
+    std::string measurement_file_path = "";
 
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
@@ -111,10 +139,11 @@ int main(int argc, char** argv)
       ("help", "print help message")
       ("width,w", po::value<int>(&window_width)->default_value(1920), "specify window width (default=1920)")
       ("height,h", po::value<int>(&window_height)->default_value(1080), "specify window height (default=1080)")
-      ("input,f", po::value<std::string>(&resource_file), "specify input file")
+      ("resource-file,f", po::value<std::string>(&resource_file_path), "specify resource input-file")
       ("vram,v", po::value<unsigned>(&video_memory_budget)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(258), "specify maximum video memory upload budget per frame in MB (default=258)")
+      ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")");
       ;
 
     po::positional_options_description p;
@@ -137,7 +166,7 @@ int main(int argc, char** argv)
       // no explicit input -> use unknown options
       if (!vm.count("input")) 
       {
-        std::fstream ofstr(resource_file, std::ios::out);
+        std::fstream ofstr(resource_file_path, std::ios::out);
         if (ofstr.good()) 
         {
           for (auto argument : to_pass_further)
@@ -155,33 +184,48 @@ int main(int argc, char** argv)
     }
 
     // set min and max
-    window_width        = std::max(std::min(window_width, 1920), 800);
-    window_height       = std::max(std::min(window_width, 1080), 600);
+    window_width        = std::max(std::min(window_width, 4096), 1);
+    window_height       = std::max(std::min(window_width, 2160), 1);
     main_memory_budget  = std::max(int(main_memory_budget), 1024);
     video_memory_budget = std::max(int(video_memory_budget), 512);
     max_upload_budget   = std::max(int(max_upload_budget), 64);
 
-    InitializeGlut(argc, argv, window_width, window_height);
+    initialize_glut(argc, argv, window_width, window_height);
 
     std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > model_attributes;
     std::set<lamure::model_t> visible_set;
     std::set<lamure::model_t> invisible_set;
-    model_attributes = readModelString(resource_file, &visible_set, &invisible_set);
+    model_attributes = read_model_string(resource_file_path, &visible_set, &invisible_set);
 
     //std::string scene_name;
-    //CreateSceneNameFromVector(model_attributes.first, scene_name);
+    //create_scene_name_from_vector(model_attributes.first, scene_name);
     std::vector<scm::math::mat4f> & model_transformations = model_attributes.second;
     std::vector<std::string> const& model_filenames = model_attributes.first;
 
-    lamure::ren::Policy* policy = lamure::ren::Policy::get_instance();
+    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(max_upload_budget); //8
     policy->set_render_budget_in_mb(video_memory_budget); //2048
     policy->set_out_of_core_budget_in_mb(main_memory_budget); //4096, 8192
 
-    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     database->set_window_width(window_width);
     database->set_window_height(window_height);
-    management_ = new Management(model_filenames, model_transformations, visible_set, invisible_set);
+
+
+    std::vector<scm::math::mat4d> parsed_views = std::vector<scm::math::mat4d>();
+
+    std::string measurement_filename = "";
+
+    if( ! measurement_file_path.empty() ) {
+      parsed_views = parse_camera_session_file(measurement_file_path);
+      size_t last_dot_in_filename_pos = measurement_file_path.find_last_of('.');
+      size_t first_slash_before_filename_pos = measurement_file_path.find_last_of("/\\", last_dot_in_filename_pos);
+
+      measurement_filename = measurement_file_path.substr(first_slash_before_filename_pos+1, last_dot_in_filename_pos);
+    }
+
+
+    management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, parsed_views, measurement_filename);
 
     glutMainLoop();
 
@@ -191,29 +235,27 @@ int main(int argc, char** argv)
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "memory cleanup...(1)" << std::endl;
 #endif
-        delete lamure::ren::Cutdatabase::get_instance();
+        delete lamure::ren::cut_database::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted cut database" << std::endl;
 #endif
-        delete lamure::ren::Controller::get_instance();
+        delete lamure::ren::controller::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted controller" << std::endl;
 #endif
-        delete lamure::ren::Modeldatabase::get_instance();
+        delete lamure::ren::model_database::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted model database" << std::endl;
 #endif
-        delete lamure::ren::Policy::get_instance();
+        delete lamure::ren::policy::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted policy" << std::endl;
 #endif
-        delete lamure::ren::OocCache::get_instance();
+        delete lamure::ren::ooc_cache::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted ooc cache" << std::endl;
 #endif
     }
-
-
 
     return 0;
 }
@@ -225,7 +267,11 @@ void glut_display()
 
     if (management_ != nullptr)
     {
-        management_->MainLoop();
+        bool signaled_shutdown = management_->MainLoop(); 
+
+        if(signaled_shutdown) {
+            glut_close();
+        }
         glutSwapBuffers();
     }
 
@@ -237,7 +283,7 @@ void glut_resize(int w, int h)
 
     if (management_ != nullptr)
     {
-        management_->DispatchResize(w, h);
+        management_->dispatchResize(w, h);
     }
 
 }
@@ -256,7 +302,7 @@ void glut_mousemotion(int x, int y)
 {
     if (management_ != nullptr)
     {
-        management_->UpdateTrackball(x, y);
+        management_->update_trackball(x, y);
     }
 }
 
@@ -276,23 +322,23 @@ void Cleanup()
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "memory cleanup...(1)" << std::endl;
 #endif
-        delete lamure::ren::Cutdatabase::get_instance();
+        delete lamure::ren::cut_database::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted cut database" << std::endl;
 #endif
-        delete lamure::ren::Controller::get_instance();
+        delete lamure::ren::controller::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted controller" << std::endl;
 #endif
-        delete lamure::ren::Modeldatabase::get_instance();
+        delete lamure::ren::model_database::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted model database" << std::endl;
 #endif
-        delete lamure::ren::Policy::get_instance();
+        delete lamure::ren::policy::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted policy" << std::endl;
 #endif
-        delete lamure::ren::OocCache::get_instance();
+        delete lamure::ren::ooc_cache::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted ooc cache" << std::endl;
 #endif
@@ -311,23 +357,23 @@ void glut_close()
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "memory cleanup...(1)" << std::endl;
 #endif
-        delete lamure::ren::Cutdatabase::get_instance();
+        delete lamure::ren::cut_database::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted cut database" << std::endl;
 #endif
-        delete lamure::ren::Controller::get_instance();
+        delete lamure::ren::controller::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted controller" << std::endl;
 #endif
-        delete lamure::ren::Modeldatabase::get_instance();
+        delete lamure::ren::model_database::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted model database" << std::endl;
 #endif
-        delete lamure::ren::Policy::get_instance();
+        delete lamure::ren::policy::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted policy" << std::endl;
 #endif
-        delete lamure::ren::OocCache::get_instance();
+        delete lamure::ren::ooc_cache::get_instance();
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "deleted ooc cache" << std::endl;
 #endif
@@ -351,7 +397,7 @@ void glut_keyboard(unsigned char key, int x, int y)
         default:
             if (management_ != nullptr)
             {
-                management_->DispatchKeyboardInput(key);
+                management_->dispatchKeyboardInput(key);
             }
             break;
 

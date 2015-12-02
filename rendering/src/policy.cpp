@@ -15,12 +15,12 @@ namespace lamure
 namespace ren
 {
 
-std::mutex Policy::mutex_;
-bool Policy::is_instanced_ = false;
-Policy* Policy::single_ = nullptr;
+std::mutex policy::mutex_;
+bool policy::is_instanced_ = false;
+policy* policy::single_ = nullptr;
 
-Policy::
-Policy()
+policy::
+policy()
 : reset_system_(true),
   max_upload_budget_in_mb_(LAMURE_DEFAULT_UPLOAD_BUDGET),
   render_budget_in_mb_(LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET),
@@ -28,19 +28,19 @@ Policy()
 
 }
 
-Policy::
-~Policy() {
+policy::
+~policy() {
     std::lock_guard<std::mutex> lock(mutex_);
     is_instanced_ = false;
 }
 
-Policy* Policy::
+policy* policy::
 get_instance() {
     if (!is_instanced_) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         if (!is_instanced_) {
-            single_ = new Policy();
+            single_ = new policy();
             is_instanced_ = true;
         }
 

@@ -142,9 +142,9 @@ static int Typesize[] = {
 };
 
 size_t PropDescriptor::memtypesize() const {return Typesize[memtype1];}
-size_t PropDescriptor::stotypesize() const {return Typesize[stotype1];}
-const char *PropDescriptor::memtypename() const {return PlyFile::typenames[memtype1];}
-const char *PropDescriptor::stotypename() const {return PlyFile::typenames[stotype1];}
+size_t PropDescriptor::stotypesize() const { return Typesize[stotype1]; }
+const char *PropDescriptor::memtypename() const { return PlyFile::typenames[memtype1]; }
+const char *PropDescriptor::stotypename() const { return PlyFile::typenames[stotype1]; }
 
 static char CrossType[9][9]=
 {
@@ -165,14 +165,14 @@ static char CrossType[9][9]=
 
 		// Big-little endian
 
-static inline void SwapShort( ushort * s )
+static inline void swapShort( ushort * s )
 {
 	assert(s);
     *s = ushort( (int(*s)>>8) | (int(*s)<<8) );
 }
 
 
-static inline void SwapInt( uint * x )
+static inline void swapInt( uint * x )
 {
 	assert(x);
     *x = 
@@ -183,7 +183,7 @@ static inline void SwapInt( uint * x )
 }
 
 
-static inline void SwapDouble( double * /*d*/ )
+static inline void swapDouble( double * /*d*/ )
 {
 	// Come si fa?
 	assert(0);
@@ -214,7 +214,7 @@ static inline int ReadShortB( XFILE * fp, short * s, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-	SwapShort((ushort *)s);
+	swapShort((ushort *)s);
 
 	return r;
 }
@@ -233,7 +233,7 @@ static inline int ReadIntB( XFILE * fp, int * i, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		SwapInt((uint *)i);
+		swapInt((uint *)i);
 
 	return r;
 }
@@ -261,7 +261,7 @@ static inline int ReadUShortB( XFILE * fp, ushort * us, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		SwapShort(us);
+		swapShort(us);
 
 	return r;
 }
@@ -280,7 +280,7 @@ static inline int ReadUIntB( XFILE * fp, uint * ui, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		SwapInt(ui);
+		swapInt(ui);
 
 	return r;
 }
@@ -299,7 +299,7 @@ static inline int ReadFloatB( XFILE * fp, float * f, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		SwapInt((uint *)f);
+		swapInt((uint *)f);
 
 	return r;
 }
@@ -318,7 +318,7 @@ static inline int ReadDoubleB( XFILE * fp, double * d, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		SwapDouble(d);
+		swapDouble(d);
 
 	return r;
 }

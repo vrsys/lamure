@@ -22,14 +22,14 @@ bvh_stream()
 
 bvh_stream::
 ~bvh_stream() {
-    closeStream(false);
+    close_stream(false);
 }
 
 void bvh_stream::
-openStream(const std::string& bvh_filename,
+open_stream(const std::string& bvh_filename,
            const bvh_stream_type type) {
 
-    closeStream(false);
+    close_stream(false);
     
     num_segments_ = 0;
     filename_ = bvh_filename;
@@ -55,7 +55,7 @@ openStream(const std::string& bvh_filename,
 }
 
 void bvh_stream::
-closeStream(const bool remove_file) {
+close_stream(const bool remove_file) {
     
     if (file_.is_open()) {
         if (type_ == bvh_stream_type::BVH_STREAM_OUT) {
@@ -118,9 +118,9 @@ write(bvh_stream::bvh_serializable& serializable) {
 
 
 void bvh_stream::
-readbvh(const std::string& filename, bvh& bvh) {
+read_bvh(const std::string& filename, bvh& bvh) {
  
-    openStream(filename, bvh_stream_type::BVH_STREAM_IN);
+    open_stream(filename, bvh_stream_type::BVH_STREAM_IN);
 
     if (type_ != BVH_STREAM_IN) {
         throw std::runtime_error(
@@ -237,7 +237,7 @@ readbvh(const std::string& filename, bvh& bvh) {
 
     }
 
-    closeStream(false);
+    close_stream(false);
 
     if (tree_id != 1) {
        throw std::runtime_error(
@@ -360,9 +360,9 @@ readbvh(const std::string& filename, bvh& bvh) {
 }
 
 void bvh_stream::
-writebvh(const std::string& filename, bvh& bvh, const bool intermediate) {
+write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
 
-   openStream(filename, bvh_stream_type::BVH_STREAM_OUT);
+   open_stream(filename, bvh_stream_type::BVH_STREAM_OUT);
 
    if (type_ != BVH_STREAM_OUT) {
        throw std::runtime_error(
@@ -489,7 +489,7 @@ writebvh(const std::string& filename, bvh& bvh, const bool intermediate) {
        bvh.set_state(bvh::state_type::serialized);
    }
 
-   closeStream(false);
+   close_stream(false);
 
 }
 

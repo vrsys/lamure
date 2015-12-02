@@ -19,27 +19,27 @@
 namespace lamure {
 namespace ren {
 
-class CutdatabaseRecord
+class cut_database_record
 {
 public:
 
-    enum Temporarybuffer
+    enum temporary_buffer
     {
         BUFFER_A = 0,
         BUFFER_B = 1,
         BUFFER_COUNT = 2
     };
 
-    enum Recordfront
+    enum record_front
     {
         FRONT_A = 0,
         FRONT_B = 1,
         FRONT_COUNT = 2
     };
 
-    struct SlotUpdateDescr
+    struct slot_update_desc
     {
-        explicit SlotUpdateDescr(
+        explicit slot_update_desc(
             const slot_t src,
             const slot_t dst)
             : src_(src), dst_(dst) {};
@@ -48,42 +48,42 @@ public:
         slot_t dst_;
     };
 
-                        CutdatabaseRecord(const context_t context_id);
-                        CutdatabaseRecord(const CutdatabaseRecord&) = delete;
-                        CutdatabaseRecord& operator=(const CutdatabaseRecord&) = delete;
-    virtual             ~CutdatabaseRecord();
+                        cut_database_record(const context_t context_id);
+                        cut_database_record(const cut_database_record&) = delete;
+                        cut_database_record& operator=(const cut_database_record&) = delete;
+    virtual             ~cut_database_record();
 
-    void                SetCut(const view_t view_id, const model_t model_id, Cut& cut);
-    Cut&                GetCut(const view_t view_id, const model_t model_id);
+    void                set_cut(const view_t view_id, const model_t model_id, cut& cut);
+    cut&                get_cut(const view_t view_id, const model_t model_id);
 
-    std::vector<SlotUpdateDescr>& GetUpdatedSet();
-    void                SetUpdatedSet(std::vector<SlotUpdateDescr>& updated_set);
+    std::vector<slot_update_desc>& get_updated_set();
+    void                set_updated_set(std::vector<slot_update_desc>& updated_set);
 
-    const bool          IsfrontModified() const;
-    const bool          IsSwapRequired() const;
-    void                SetIsfrontModified(const bool front_modified);
-    void                SetIsSwapRequired(const bool swap_required);
-    void                SignalUploadcomplete();
+    const bool          is_front_modified() const;
+    const bool          is_swap_required() const;
+    void                set_is_front_modified(const bool front_modified);
+    void                set_is_swap_required(const bool swap_required);
+    void                signal_upload_complete();
 
-    const Temporarybuffer Getbuffer() const;
-    void                Setbuffer(const Temporarybuffer buffer);
+    const temporary_buffer get_buffer() const;
+    void                set_buffer(const temporary_buffer buffer);
 
-    void                Swapfront();
+    void                swap_front();
 
-    void                Lockfront();
-    void                Unlockfront();
+    void                lock_front();
+    void                unlock_front();
 
-    void                SetCamera(const view_t view_id, const Camera& camera);
-    void                SetheightDividedByTopMinusBottom(const view_t view_id, float const height_divided_by_top_minus_bottom);
-    void                SetTransform(const model_t model_id, const scm::math::mat4f& transform);
-    void                Setrendered(const model_t model_id);
-    void                SetThreshold(const model_t model_id, const float threshold);
+    void                set_camera(const view_t view_id, const camera& cam);
+    void                set_height_divided_by_top_minus_bottom(const view_t view_id, float const height_divided_by_top_minus_bottom);
+    void                set_transform(const model_t model_id, const scm::math::mat4f& transform);
+    void                set_rendered(const model_t model_id);
+    void                set_threshold(const model_t model_id, const float threshold);
 
-    void                ReceiveCameras(std::map<view_t, Camera>& cameras);
-    void                ReceiveheightDividedByTopMinusBottoms(std::map<view_t, float>& height_divided_by_top_minus_bottoms);
-    void                ReceiveTransforms(std::map<model_t, scm::math::mat4f>& transforms);
-    void                Receiverendered(std::set<model_t>& rendered);
-    void                ReceiveThresholds(std::map<model_t, float>& thresholds);
+    void                receive_cameras(std::map<view_t, camera>& cameras);
+    void                receive_height_divided_by_top_minus_bottoms(std::map<view_t, float>& height_divided_by_top_minus_bottoms);
+    void                receive_transforms(std::map<model_t, scm::math::mat4f>& transforms);
+    void                receive_rendered(std::set<model_t>& rendered);
+    void                receive_thresholds(std::map<model_t, float>& thresholds);
 
 protected:
 
@@ -98,23 +98,23 @@ private:
 
     bool                is_swap_required_;
 
-    Recordfront         current_front_;
+    record_front         current_front_;
     
     //dim: [model_id][view_id]
-    std::vector<std::vector<Cut>> front_a_cuts_;
-    std::vector<std::vector<Cut>> front_b_cuts_;
+    std::vector<std::vector<cut>> front_a_cuts_;
+    std::vector<std::vector<cut>> front_b_cuts_;
 
     bool                front_a_is_modified_;
     bool                front_b_is_modified_;
 
-    Temporarybuffer     front_a_buffer_;
-    Temporarybuffer     front_b_buffer_;
+    temporary_buffer     front_a_buffer_;
+    temporary_buffer     front_b_buffer_;
 
-    std::vector<SlotUpdateDescr> front_a_updated_set_;
-    std::vector<SlotUpdateDescr> front_b_updated_set_;
+    std::vector<slot_update_desc> front_a_updated_set_;
+    std::vector<slot_update_desc> front_b_updated_set_;
 
-    std::map<view_t, Camera> front_a_cameras_;
-    std::map<view_t, Camera> front_b_cameras_;
+    std::map<view_t, camera> front_a_cameras_;
+    std::map<view_t, camera> front_b_cameras_;
 
     std::map<view_t, float> front_a_height_divided_by_top_minus_bottom_;
     std::map<view_t, float> front_b_height_divided_by_top_minus_bottom_;

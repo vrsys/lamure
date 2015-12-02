@@ -39,9 +39,9 @@ public:
 
     const node_t        get_child_id(const node_t node_id, const node_t child_index) const;
     const node_t        get_parent_id(const node_t node_id) const;
-    const node_t        GetFirstNodeIdOfDepth(uint32_t depth) const;
-    const uint32_t      GetLengthOfDepth(uint32_t depth) const;
-    const uint32_t      GetDepthOfNode(const node_t node_id) const;
+    const node_t        get_first_node_id_of_depth(uint32_t depth) const;
+    const uint32_t      get_length_of_depth(uint32_t depth) const;
+    const uint32_t      get_depth_of_node(const node_t node_id) const;
 
     const std::string   filename() const { return filename_; }
     
@@ -66,23 +66,23 @@ public:
     const std::vector<scm::gl::boxf>& bounding_boxes() const { return bounding_boxes_; }
     const std::vector<vec3f>& centroids() const { return centroids_; };
 
-    const scm::gl::boxf& Getbounding_box(const node_t node_id) const;
-    void                Setbounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box);
+    const scm::gl::boxf& get_bounding_box(const node_t node_id) const;
+    void                set_bounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box);
 
-    const scm::math::vec3f& GetCentroid(const node_t node_id) const;
-    void                SetCentroid(const lamure::node_t node_id, const scm::math::vec3f& centroid);
+    const scm::math::vec3f& get_centroid(const node_t node_id) const;
+    void                set_centroid(const lamure::node_t node_id, const scm::math::vec3f& centroid);
 
-    const float         GetAvgsurfelRadius(const node_t node_id) const;
-    void                SetAvgsurfelRadius(const lamure::node_t node_id, const float radius);
+    const float         get_average_surfel_radius(const node_t node_id) const;
+    void                set_average_surfel_radius(const lamure::node_t node_id, const float radius);
 
-    const node_visibility GetVisibility(const node_t node_id) const;
-    void                SetVisibility(const node_t node_id, const node_visibility visibility);
+    const node_visibility get_visibility(const node_t node_id) const;
+    void                set_visibility(const node_t node_id, const node_visibility visibility);
 
-    void                writebvhfile(const std::string& filename);
+    void                write_bvh_file(const std::string& filename);
 
 protected:
 
-    void                loadbvhfile(const std::string& filename);
+    void                load_bvh_file(const std::string& filename);
 
 private:
 

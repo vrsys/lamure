@@ -16,12 +16,12 @@
 namespace lamure {
 namespace ren {
 
-class GpuCache : public Cache
+class gpu_cache : public cache
 {
 public:
 
-                        GpuCache(const slot_t num_slots);
-    virtual             ~GpuCache();
+                        gpu_cache(const slot_t num_slots);
+    virtual             ~gpu_cache();
 
     const node_t        transfer_budget() const { return transfer_budget_; };
     void                set_transfer_budget(const node_t transfer_budget) { transfer_budget_ = transfer_budget; };
@@ -31,7 +31,7 @@ public:
 
     const std::vector<std::unordered_set<node_t>>& transfer_list() const { return transfer_list_; };
 
-    const bool          RegisterNode(const model_t model_id, const node_t node_id);
+    const bool          register_node(const model_t model_id, const node_t node_id);
 
     void                resetTransferList();
     void                RemoveFromTransferList(const model_t model_id, const node_t node_id);

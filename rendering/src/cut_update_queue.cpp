@@ -14,27 +14,27 @@ namespace lamure
 namespace ren
 {
 
-CutUpdateQueue::
-CutUpdateQueue() {
+cut_update_queue::
+cut_update_queue() {
 
 }
 
-CutUpdateQueue::
-~CutUpdateQueue() {
+cut_update_queue::
+~cut_update_queue() {
 
 }
 
-void CutUpdateQueue::
-push_job(const Job& job) {
+void cut_update_queue::
+push_job(const job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
     job_queue_.push(job);
 }
 
-const CutUpdateQueue::Job CutUpdateQueue::
-pop_frontJob() {
+const cut_update_queue::job cut_update_queue::
+pop_frontjob() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    Job job;
+    job job;
 
     if (!job_queue_.empty()) {
         job = job_queue_.front();
@@ -44,8 +44,8 @@ pop_frontJob() {
     return job;
 }
 
-const size_t CutUpdateQueue::
-NumJobs() {
+const size_t cut_update_queue::
+Numjobs() {
     std::lock_guard<std::mutex> lock(mutex_);
     return job_queue_.size();
 }

@@ -65,7 +65,7 @@ public:
 
     void                reset();
 
-    void                render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO);
+    void                render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO);
 
     void                reset_viewport(int const x, int const y);
 
@@ -74,13 +74,13 @@ public:
     scm::gl::render_device_ptr device() const { return device_; }
 
 protected:
-    void                upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const;
+    void                upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_t model_id, uint32_t pass_id) const;
 
     bool                initialize_device_and_shaders(int resX, int resY);
     void                initialize_vbos();
-    void                update_frustum_dependent_parameters(lamure::ren::Camera const& camera);
+    void                update_frustum_dependent_parameters(lamure::ren::camera const& camera);
 
-    void                upload_uniforms(lamure::ren::Camera const& camera) const;
+    void                upload_uniforms(lamure::ren::camera const& camera) const;
     void                swap_temporary_buffers();
     void                display_status();
 
@@ -170,14 +170,14 @@ public:
     void switch_bounding_box_rendering();
     void switch_surfel_rendering();
     void change_pointsize(float amount);
-    void SwitchrenderMode();
-    void SwitchEllipseMode();
-    void SwitchClampedNormalMode();
-    void ChangeDeformRatio(float amount);
-    void SwitchLighting();
-    void ToggleCutUpdateInfo();
-    void ToggleCameraInfo(const lamure::view_t left_cam_id, const lamure::view_t right_cam_id);
-    void ToggleDisplayInfo();
+    void switch_render_mode();
+    void switch_ellipse_mode();
+    void switch_clamped_normal_mode();
+    void change_deform_ratio(float amount);
+    void switch_lighting();
+    void toggle_cut_update_info();
+    void toggle_camera_info(const lamure::view_t left_cam_id, const lamure::view_t right_cam_id);
+    void toggle_display_info();
 };
 
 

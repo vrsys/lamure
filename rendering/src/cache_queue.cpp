@@ -13,41 +13,41 @@ namespace lamure
 namespace ren
 {
 
-CacheQueue::
-CacheQueue()
+cache_queue::
+cache_queue()
 : num_slots_(0),
   num_models_(0),
-  mode_(UpdateMode::UPDATE_NEVER),
+  mode_(update_mode::UPDATE_NEVER),
   initialized_(false) {
 
 }
 
-CacheQueue::
-~CacheQueue() {
+cache_queue::
+~cache_queue() {
 
 }
 
-const size_t CacheQueue::
-NumJobs() {
+const size_t cache_queue::
+Numjobs() {
     std::lock_guard<std::mutex> lock(mutex_);
     return num_slots_;
 }
 
-const CacheQueue::QueryResult CacheQueue::
+const cache_queue::query_result cache_queue::
 IsNodeIndexed(const model_t model_id, const node_t node_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(initialized_);
     assert(model_id < num_models_);
 
-    QueryResult result = QueryResult::NOT_INDEXED;
+    query_result result = query_result::NOT_INDEXED;
 
     if (requested_set_[model_id].find(node_id) != requested_set_[model_id].end()) {
-        result = QueryResult::INDEXED_AS_LOADING;
+        result = query_result::INDEXED_AS_LOADING;
 
-        if (mode_ != UpdateMode::UPDATE_NEVER) {
+        if (mode_ != update_mode::UPDATE_NEVER) {
             if (pending_set_[model_id].find(node_id) == pending_set_[model_id].end()) {
-                result = QueryResult::INDEXED_AS_WAITING;
+                result = query_result::INDEXED_AS_WAITING;
             }
         }
     }
@@ -55,8 +55,8 @@ IsNodeIndexed(const model_t model_id, const node_t node_id) {
     return result;
 }
 
-void CacheQueue::
-Initialize(const UpdateMode mode, const model_t num_models) {
+void cache_queue::
+initialize(const update_mode mode, const model_t num_models) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(!initialized_);
@@ -66,15 +66,15 @@ Initialize(const UpdateMode mode, const model_t num_models) {
 
     requested_set_.resize(num_models_);
 
-    if (mode_ != UpdateMode::UPDATE_NEVER) {
+    if (mode_ != update_mode::UPDATE_NEVER) {
         pending_set_.resize(num_models_);
     }
 
     initialized_ = true;
 }
 
-bool CacheQueue::
-push_job(const Job& job) {
+bool cache_queue::
+push_job(const job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(initialized_);
@@ -86,7 +86,7 @@ push_job(const Job& job) {
 
         ++num_slots_;
 
-        ShuffleUp(num_slots_-1);
+        shuffle_up(num_slots_-1);
 
         return true;
     }
@@ -95,39 +95,39 @@ push_job(const Job& job) {
 
 }
 
-const CacheQueue::Job CacheQueue::
-TopJob() {
+const cache_queue::job cache_queue::
+Topjob() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    Job job;
+    job job;
 
     if (num_slots_ > 0) {
         job = slots_.front();
 
-        if (mode_ != UpdateMode::UPDATE_NEVER) {
+        if (mode_ != update_mode::UPDATE_NEVER) {
             pending_set_[job.model_id_].insert(job.node_id_);
         }
 
-        Swap(0, num_slots_-1);
+        swap(0, num_slots_-1);
         slots_.pop_back();
 
         --num_slots_;
 
-        ShuffleDown(0);
+        shuffle_down(0);
     }
 
     return job;
 }
 
-void CacheQueue::
-pop_job(const Job& job) {
+void cache_queue::
+pop_job(const job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(job.model_id_ < num_models_);
 
     requested_set_[job.model_id_].erase(job.node_id_);
 
-    if (mode_ != UpdateMode::UPDATE_NEVER) {
+    if (mode_ != update_mode::UPDATE_NEVER) {
         assert(pending_set_[job.model_id_].find(job.node_id_) != pending_set_[job.model_id_].end());
 
         if (pending_set_[job.model_id_].find(job.node_id_) != pending_set_[job.model_id_].end()) {
@@ -136,9 +136,9 @@ pop_job(const Job& job) {
     }
 }
 
-void CacheQueue::
-UpdateJob(const model_t model_id, const node_t node_id, int32_t priority) {
-    if (mode_ == UpdateMode::UPDATE_NEVER) {
+void cache_queue::
+Updatejob(const model_t model_id, const node_t node_id, int32_t priority) {
+    if (mode_ == update_mode::UPDATE_NEVER) {
         return;
     }
 
@@ -161,25 +161,25 @@ UpdateJob(const model_t model_id, const node_t node_id, int32_t priority) {
     size_t slot_id = it->second;
 
     if (priority < slots_[slot_id].priority_) {
-        if (mode_ == UpdateMode::UPDATE_ALWAYS || mode_ == UpdateMode::UPDATE_DECREMENT_ONLY) {
+        if (mode_ == update_mode::UPDATE_ALWAYS || mode_ == update_mode::UPDATE_DECREMENT_ONLY) {
             slots_[slot_id].priority_ = priority;
-            ShuffleDown(slot_id);
+            shuffle_down(slot_id);
         }
     }
     else if (priority > slots_[slot_id].priority_) {
-        if (mode_ == UpdateMode::UPDATE_ALWAYS || mode_ == UpdateMode::UPDATE_INCREMENT_ONLY) {
+        if (mode_ == update_mode::UPDATE_ALWAYS || mode_ == update_mode::UPDATE_INCREMENT_ONLY) {
             slots_[slot_id].priority_ = priority;
-            ShuffleUp(slot_id);
+            shuffle_up(slot_id);
         }
     }
 
 }
 
-const CacheQueue::AbortResult CacheQueue::
-AbortJob(const Job& job) {
-    AbortResult abort_result = AbortResult::ABORT_FAILED;
+const cache_queue::abort_result cache_queue::
+Abortjob(const job& job) {
+    abort_result abort_result = abort_result::ABORT_FAILED;
 
-    if (mode_ != UpdateMode::UPDATE_NEVER) {
+    if (mode_ != update_mode::UPDATE_NEVER) {
         std::lock_guard<std::mutex> lock(mutex_);
 
         const auto it = requested_set_[job.model_id_].find(job.node_id_);
@@ -188,13 +188,13 @@ AbortJob(const Job& job) {
             if (pending_set_[job.model_id_].find(job.node_id_) == pending_set_[job.model_id_].end()) {
                 size_t slot_id = it->second;
 
-                Swap(slot_id, num_slots_-1);
+                swap(slot_id, num_slots_-1);
                 slots_.pop_back();
                 --num_slots_;
-                ShuffleDown(slot_id);
+                shuffle_down(slot_id);
                 requested_set_[job.model_id_].erase(job.node_id_);
 
-                abort_result = AbortResult::ABORT_SUCCESS;
+                abort_result = abort_result::ABORT_SUCCESS;
             }
         }
     }
@@ -202,18 +202,18 @@ AbortJob(const Job& job) {
     return abort_result;
 }
 
-void CacheQueue::
-Swap(const size_t slot_id_0, const size_t slot_id_1) {
-    Job& job0 = slots_[slot_id_0];
-    Job& job1 = slots_[slot_id_1];
+void cache_queue::
+swap(const size_t slot_id_0, const size_t slot_id_1) {
+    job& job0 = slots_[slot_id_0];
+    job& job1 = slots_[slot_id_1];
 
     requested_set_[job0.model_id_][job0.node_id_] = slot_id_1;
     requested_set_[job1.model_id_][job1.node_id_] = slot_id_0;
     std::swap(slots_[slot_id_0], slots_[slot_id_1]);
 }
 
-void CacheQueue::
-ShuffleUp(const size_t slot_id) {
+void cache_queue::
+shuffle_up(const size_t slot_id) {
     if (slot_id == 0) {
         return;
     }
@@ -224,13 +224,13 @@ ShuffleUp(const size_t slot_id) {
         return;
     }
 
-    Swap(slot_id, parent_slot_id);
+    swap(slot_id, parent_slot_id);
 
-    ShuffleUp(parent_slot_id);
+    shuffle_up(parent_slot_id);
 }
 
-void CacheQueue::
-ShuffleDown(const size_t slot_id) {
+void cache_queue::
+shuffle_down(const size_t slot_id) {
     size_t left_child_id = slot_id*2 + 1;
     size_t right_child_id = slot_id*2 + 2;
 
@@ -253,8 +253,8 @@ ShuffleDown(const size_t slot_id) {
     }
 
     if (replace_id != slot_id) {
-        Swap(slot_id, replace_id);
-        ShuffleDown(replace_id);
+        swap(slot_id, replace_id);
+        shuffle_down(replace_id);
     }
 }
 

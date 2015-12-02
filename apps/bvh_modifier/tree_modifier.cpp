@@ -97,7 +97,7 @@ traverse(lamure::node_id_type a, lamure::node_id_type b, const callback_func& ca
     const auto& tr_a = bvh_l_.first;
     const auto& tr_b = bvh_r_.first;
 
-    if (!tr_a->nodes()[a].get_bounding_box().Intersects(boxes_[b]))
+    if (!tr_a->nodes()[a].get_bounding_box().intersects(boxes_[b]))
         return;
 
     const bool is_leaf_a = int(tr_a->nodes()[a].depth()) >= stop_level_a_;
@@ -350,7 +350,7 @@ histogrammatchSecondTree()
 
         ctr = 0; 
         for (unsigned i = 0; i <= tr->depth(); ++i) {
-            auto ranges = tr->GetNodeRanges(i);
+            auto ranges = tr->get_node_ranges(i);
             colors.clear();
             // get colors
             for (lamure::node_id_type j = 0; j < ranges.second; ++j) {
@@ -418,7 +418,7 @@ lamure::real TreeModifier::
 computeAvgRadius(const lamure::pre::bvh& bvh, unsigned depth) const
 {
     lamure::real avg_surfel = 0.0;
-    auto ranges = bvh.GetNodeRanges(depth);
+    auto ranges = bvh.get_node_ranges(depth);
 
     for (lamure::node_id_type j = 0; j < ranges.second; ++j)
         avg_surfel += bvh.nodes()[j + ranges.first].avg_surfel_radius();

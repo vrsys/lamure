@@ -5,19 +5,19 @@
 namespace lamure {
 namespace ren {
 
-Trackball::Trackball()
+trackball::trackball()
  : transform_(scm::math::mat4d::identity()),
    radius_(1.0),
    dolly_(0.0) {
 
 }
 
-Trackball::~Trackball() {
+trackball::~trackball() {
 
 }
 
-double Trackball::
-ProjectTosphere(double x, double y) const {
+double trackball::
+project_to_sphere(double x, double y) const {
     double len_sqr = x*x + y*y;
     double len = scm::math::sqrt(len_sqr);
 
@@ -28,10 +28,10 @@ ProjectTosphere(double x, double y) const {
     }
 }
 
-void Trackball::
+void trackball::
 Rotate(double fx, double fy, double tx, double ty) {
-    scm::math::vec3d start(fx, fy, ProjectTosphere(fx, fy));
-    scm::math::vec3d end(tx, ty, ProjectTosphere(tx, ty));
+    scm::math::vec3d start(fx, fy, project_to_sphere(fx, fy));
+    scm::math::vec3d end(tx, ty, project_to_sphere(tx, ty));
 
     scm::math::vec3d diff(end - start);
     double diff_len = scm::math::length(diff);
@@ -53,7 +53,7 @@ Rotate(double fx, double fy, double tx, double ty) {
 }
 
 
-void Trackball::
+void trackball::
 Translate(double x, double y) {
     double dolly_abs = abs(dolly_);
     double near_dist = 1.0;
@@ -74,7 +74,7 @@ Translate(double x, double y) {
 }
 
 
-void Trackball::
+void trackball::
 Dolly(double y) {
     scm::math::mat4d tmp_dolly(scm::math::mat4d::identity());
     scm::math::mat4d tmp_dolly_inv(scm::math::mat4d::identity());

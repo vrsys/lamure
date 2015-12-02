@@ -26,9 +26,9 @@ public:
 
     void                wait();
     void                Signal(const size_t signal_count);
-    void                Lock();
-    void                Unlock();
-    void                Shutdown();
+    void                lock();
+    void                unlock();
+    void                shutdown();
 
     inline const size_t max_signal_count() const { return max_signal_count_; };
     inline const size_t min_signal_count() const { return min_signal_count_; };

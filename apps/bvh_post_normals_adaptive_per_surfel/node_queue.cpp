@@ -30,7 +30,7 @@ relaunch() {
 }
 
 const unsigned int node_queue_t::
-NumJobs() {
+Numjobs() {
     return (unsigned int)queue_.size();
 }
 
@@ -55,7 +55,7 @@ pop_job() {
 
     if (queue_.empty()) {
         is_shutdown_ = true;
-        semaphore_.Shutdown();
+        semaphore_.shutdown();
     }
 
     return job;

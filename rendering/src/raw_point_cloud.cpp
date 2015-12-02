@@ -13,30 +13,30 @@ namespace lamure
 namespace ren
 {
 
-RawPointCloud::
-RawPointCloud(const model_t model_id)
+raw_point_cloud::
+raw_point_cloud(const model_t model_id)
 : model_id_(model_id),
   is_loaded_(false) {
 
 }
 
-RawPointCloud::
-~RawPointCloud() {
+raw_point_cloud::
+~raw_point_cloud() {
 
 }
 
-const bool RawPointCloud::
+const bool raw_point_cloud::
 load(const std::string& filename) {
     if (filename.substr(filename.find_last_of('.') + 1) != "xyz_all") {
         throw std::runtime_error(
-            "RawPointCloud::Incompatible input file: " + filename);
+            "raw_point_cloud::Incompatible input file: " + filename);
     }
 
     std::ifstream xyz_file_stream(filename);
 
     if (!xyz_file_stream.is_open()) {
         throw std::runtime_error(
-            "RawPointCloud::Unable to open input file: " + filename);
+            "raw_point_cloud::Unable to open input file: " + filename);
     }
 
     std::string line;

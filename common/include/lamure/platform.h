@@ -8,6 +8,8 @@
 #ifndef COMMON_PLATFORM_H_
 #define COMMON_PLATFORM_H_
 
+#pragma warning (disable: 4251) // needs to have dll-interface to be used by clients of class
+
 #if WIN32
   #if defined(LAMURE_COMMON_LIBRARY)
     #define COMMON_DLL __declspec( dllexport )

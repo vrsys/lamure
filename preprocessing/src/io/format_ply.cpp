@@ -7,7 +7,9 @@
 
 #include <lamure/pre/io/format_ply.h>
 
-#include <ply.hpp>
+#include <lamure/pre/io/ply/ply.h>
+#include <lamure/pre/io/ply/ply_parser.h>
+
 #include <boost/filesystem.hpp>
 #include <stdexcept>
 #include <tuple>
@@ -28,14 +30,15 @@ read(const std::string& filename, surfel_callback_funtion callback)
         callback(current_surfel_); 
     };
 
-    ply::ply_parser ply_parser;
+    io::ply::ply_parser ply_parser;
 
     // define scalar property definition callbacks
-    ply::ply_parser::scalar_property_definition_callbacks_type scalar_callbacks;
+    io::ply::ply_parser::scalar_property_definition_callbacks_type scalar_callbacks;
 
-    using namespace ply;
-    at<ply::float32>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<ply::float32>, this, _1, _2);
-    at<ply::uint8>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<ply::uint8>, this, _1, _2);
+    using namespace io::ply;
+
+    at<io::ply::float32>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float32>, this, _1, _2);
+    at<io::ply::uint8>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::uint8>, this, _1, _2);
 
     // set callbacks
     ply_parser.scalar_property_definition_callbacks(scalar_callbacks);

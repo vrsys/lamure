@@ -17,9 +17,11 @@
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
 
+#include <lamure/pre/normal_radii_plane_fitting.h>
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
+#include <lamure/pre/reduction_random.h>
 
 #include <cstdio>
 
@@ -91,7 +93,7 @@ construct()
     // init algorithms
     reduction_strategy *reduction_strategy;
     switch (desc_.reduction_algo) {
-        case reduction_algorithm::NDC:
+        case reduction_algorithm::ndc:
             reduction_strategy = new reduction_normal_deviation_clustering();
             break;
         case reduction_algorithm::constant:
@@ -100,10 +102,24 @@ construct()
         case reduction_algorithm::every_second:
             reduction_strategy = new reduction_every_second();
             break;
+        case reduction_algorithm::random:
+            reduction_strategy = new reduction_random();
+            break;          
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return false;
     };
+
+    normal_radii_strategy *normal_radii_strategy;
+    switch (desc_.normal_radius_algo) {
+        case normal_radius_algorithm::plane_fitting:
+            normal_radii_strategy = new normal_radii_plane_fitting();
+            break;       
+        default:
+            LOGGER_ERROR("Non-implemented atribute computation algorithm");
+            return false;
+    };
+
 
     // convert to binary file
     if ((0 >= start_stage) && (0 <= final_stage)) {
@@ -166,7 +182,7 @@ construct()
         }
 
         // create kd-bvh
-        LOGGER_TRACE("Create kd-bvh");
+        LOGGER_TRACE("create kd-bvh");
 
         lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
 
@@ -288,7 +304,7 @@ construct()
 
         if ((!desc_.keep_intermediate_files) && (start_stage < 3)) {
             std::remove(input_file.string().c_str());
-            bvh.resetNodes();
+            bvh.reset_nodes();
         }
         LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }

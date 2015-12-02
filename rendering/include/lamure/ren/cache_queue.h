@@ -19,11 +19,11 @@
 
 namespace lamure {
 namespace ren {
-class RENDERING_DLL CacheQueue
+class RENDERING_DLL cache_queue
 {
 public:
 
-    enum UpdateMode
+    enum update_mode
     {
         UPDATE_ALWAYS,
         UPDATE_INCREMENT_ONLY,
@@ -31,22 +31,22 @@ public:
         UPDATE_NEVER
     };
 
-    enum QueryResult
+    enum query_result
     {
         NOT_INDEXED,
         INDEXED_AS_WAITING,
         INDEXED_AS_LOADING
     };
 
-    enum AbortResult
+    enum abort_result
     {
         ABORT_SUCCESS,
         ABORT_FAILED
     };
 
-    struct Job
+    struct job
     {
-        explicit Job(
+        explicit job(
             const model_t model_id,
             const node_t node_id,
             const slot_t slot_id,
@@ -58,7 +58,7 @@ public:
             priority_(priority),
             slot_mem_(slot_mem) {};
 
-        explicit Job()
+        explicit job()
             : model_id_(invalid_model_t),
             node_id_(invalid_node_t),
             slot_id_(invalid_slot_t),
@@ -72,31 +72,31 @@ public:
         char*           slot_mem_;
     };
 
-                        CacheQueue();
-    virtual             ~CacheQueue();
+                        cache_queue();
+    virtual             ~cache_queue();
 
-    bool                push_job(const Job& job);
-    const Job           TopJob();
-    void                pop_job(const Job& job);
-    void                UpdateJob(const model_t model_id, const node_t node_id, int32_t priority);
-    const AbortResult   AbortJob(const Job& job);
+    bool                push_job(const job& job);
+    const job           Topjob();
+    void                pop_job(const job& job);
+    void                Updatejob(const model_t model_id, const node_t node_id, int32_t priority);
+    const abort_result   Abortjob(const job& job);
 
-    const size_t        NumJobs();
-    void                Initialize(const UpdateMode mode, const model_t num_models);
-    const QueryResult   IsNodeIndexed(const model_t model_id, const node_t node_id);
+    const size_t        Numjobs();
+    void                initialize(const update_mode mode, const model_t num_models);
+    const query_result   IsNodeIndexed(const model_t model_id, const node_t node_id);
 
 private:
-    void                Swap(const size_t slot_id_0, const size_t slot_id_1);
-    void                ShuffleUp(const size_t slot_id);
-    void                ShuffleDown(const size_t slot_id);
+    void                swap(const size_t slot_id_0, const size_t slot_id_1);
+    void                shuffle_up(const size_t slot_id);
+    void                shuffle_down(const size_t slot_id);
 
     size_t              num_slots_;
     model_t             num_models_;
     std::mutex          mutex_;
-    UpdateMode          mode_;
+    update_mode          mode_;
     bool                initialized_;
 
-    std::vector<Job>    slots_;
+    std::vector<job>    slots_;
 
     //mapping (model, node) to slot
     std::vector<std::unordered_map<node_t, slot_t>> requested_set_;

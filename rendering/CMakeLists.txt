@@ -24,25 +24,16 @@ file(GLOB SHADERS ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.glslv
 
 SOURCE_GROUP("shaders" FILES ${SHADERS})
 
-
-#add_custom_target(copy_shaders)
-#foreach(SHADER ${SHADERS})
-#    get_filename_component(SHADER_FN ${SHADER} NAME)
-#    add_custom_command(TARGET copy_shaders POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders
-#                     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SHADER} ${CMAKE_CURRENT_BINARY_DIR}/shaders
-#                     DEPENDS ${SHADER}
-                     #COMMENT "Copy shader: ${SHADER_FN}"
-#                     )
-#endforeach()
-
 ############################################################
 # Build library
 
 include_directories(${PROJECT_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR} 
-                    ${HIDAPI_INCLUDE_DIR}
-                    ${LAMURE_CONFIG_DIR})
+                    ${LAMURE_CONFIG_DIR}
+                    ${SCHISM_INCLUDE_DIRS}
+                    ${Boost_INCLUDE_DIR})
+
+link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES} ${SHADERS})
 

@@ -21,11 +21,11 @@ namespace lamure
 namespace ren
 {
 
-class GpuAccess
+class gpu_access
 {
 public:
-    GpuAccess(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, bool create_layout = true);
-    ~GpuAccess();
+    gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, bool create_layout = true);
+    ~gpu_access();
 
     const slot_t num_slots() const { return num_slots_; };
     const size_t size_of_surfel() const { return size_of_surfel_; };
@@ -39,7 +39,7 @@ public:
     scm::gl::buffer_ptr buffer() { return buffer_; };
     scm::gl::vertex_array_ptr memory() { return memory_; };
 
-    static const size_t QueryVideoRamInMb(scm::gl::render_device_ptr const& device);
+    static const size_t query_video_memory_in_mb(scm::gl::render_device_ptr const& device);
 
 
 private:

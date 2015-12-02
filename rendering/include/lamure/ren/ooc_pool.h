@@ -27,34 +27,34 @@
 namespace lamure {
 namespace ren {
 
-class OocPool
+class ooc_pool
 {
 public:
-                        OocPool(const uint32_t num_loader_threads,
+                        ooc_pool(const uint32_t num_loader_threads,
                                 const size_t size_of_slot_in_bytes);
-    /*virtual*/         ~OocPool();
+    /*virtual*/         ~ooc_pool();
 
     const uint32_t      num_threads() const { return num_threads_; };
 
-    bool                AcknowledgeRequest(CacheQueue::Job job);
-    void                AcknowledgeUpdate(const model_t model_id,
+    bool                acknowledge_request(cache_queue::job job);
+    void                acknowledge_update(const model_t model_id,
                                           const node_t node_id,
                                           int32_t priority);
 
-    CacheQueue::QueryResult AcknowledgeQuery(const model_t model_id, const node_t node_id);
+    cache_queue::query_result acknowledge_query(const model_t model_id, const node_t node_id);
 
-    void                ResolveCachehistogramory(CacheIndex* index);
-    void                PerformQueueMaintenance(CacheIndex* index);
+    void                resolve_cache_histogramory(cache_index* index);
+    void                perform_queue_maintenance(cache_index* index);
 
-    void                Lock();
-    void                Unlock();
+    void                lock();
+    void                unlock();
 
-    void                StartMeasure();
-    void                EndMeasure();
+    void                begin_measure();
+    void                end_measure();
 
 protected:
 
-    void                Run();
+    void                run();
     bool                is_shutdown();
 
 private:
@@ -71,9 +71,9 @@ private:
 
     size_t              bytes_loaded_;
 
-    std::vector<CacheQueue::Job> history_;
+    std::vector<cache_queue::job> history_;
 
-    CacheQueue          priority_queue_;
+    cache_queue          priority_queue_;
 };
 
 } } // namespace lamure

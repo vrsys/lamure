@@ -209,7 +209,7 @@ unsigned process_tree(lamure::ren::bvh* bvh, lamure::ren::LodStream* in_lod_acce
             wishlist.pop_back();
         }
         
-        unsigned int num_jobs = job_queue.NumJobs();
+        unsigned int num_jobs = job_queue.Numjobs();
         if (num_jobs == 0) {
            break;
         }
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef RECOMPUTE_NORMALS
-    bvh->writebvhfile(output_bvh_file);
+    bvh->write_bvh_file(output_bvh_file);
     std::cout << "Done. " << std::endl;
 #endif
 

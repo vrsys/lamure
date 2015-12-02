@@ -48,7 +48,7 @@ bvh(const std::string& filename)
 
     std::string extension = filename.substr(filename.size()-3);
     if (extension.compare("bvh") == 0) {
-       loadbvhfile(filename);
+       load_bvh_file(filename);
     }
     else {
        throw std::runtime_error(
@@ -75,7 +75,7 @@ get_parent_id(const node_t node_id) const {
 }
 
 const node_t bvh::
-GetFirstNodeIdOfDepth(uint32_t depth) const {
+get_first_node_id_of_depth(uint32_t depth) const {
     node_t id = 0;
     for (uint32_t i = 0; i < depth; ++i) {
         id += (node_t)pow((double)fan_factor_, (double)i);
@@ -85,43 +85,43 @@ GetFirstNodeIdOfDepth(uint32_t depth) const {
 }
 
 const uint32_t bvh::
-GetLengthOfDepth(uint32_t depth) const {
+get_length_of_depth(uint32_t depth) const {
     return pow((double)fan_factor_, (double)depth);
 }
 
 const uint32_t bvh::
-GetDepthOfNode(const node_t node_id) const {
+get_depth_of_node(const node_t node_id) const {
     return (uint32_t)(std::log((node_id+1) * (fan_factor_-1)) / std::log(fan_factor_));
 }
 
 void bvh::
-loadbvhfile(const std::string& filename) {
+load_bvh_file(const std::string& filename) {
 
     filename_ = filename;
 
     bvh_stream bvh_stream;
-    bvh_stream.readbvh(filename, *this);
+    bvh_stream.read_bvh(filename, *this);
 }
 
 
 void bvh::
-writebvhfile(const std::string& filename) {
+write_bvh_file(const std::string& filename) {
     
     filename_ = filename;
 
     bvh_stream bvh_stream;
-    bvh_stream.writebvh(filename, *this);
+    bvh_stream.write_bvh(filename, *this);
 
 }
 
 const scm::gl::boxf& bvh::
-Getbounding_box(const node_t node_id) const {
+get_bounding_box(const node_t node_id) const {
     assert(node_id >= 0 && node_id < num_nodes_);
     return bounding_boxes_[node_id];
 }
 
 void bvh::
-Setbounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box) {
+set_bounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box) {
     assert(node_id >= 0 && node_id < num_nodes_);
     while (bounding_boxes_.size() <= node_id) {
        bounding_boxes_.push_back(scm::gl::boxf());
@@ -130,13 +130,13 @@ Setbounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box)
 }
 
 const scm::math::vec3f& bvh::
-GetCentroid(const node_t node_id) const {
+get_centroid(const node_t node_id) const {
     assert(node_id >= 0 && node_id < num_nodes_);
     return centroids_[node_id];
 }
 
 void bvh::
-SetCentroid(const lamure::node_t node_id, const scm::math::vec3f& centroid) {
+set_centroid(const lamure::node_t node_id, const scm::math::vec3f& centroid) {
     assert(node_id >= 0 && node_id < num_nodes_);
     while (centroids_.size() <= node_id) {
        centroids_.push_back(scm::math::vec3f(0.f, 0.f, 0.f));
@@ -145,13 +145,13 @@ SetCentroid(const lamure::node_t node_id, const scm::math::vec3f& centroid) {
 }
 
 const float bvh::
-GetAvgsurfelRadius(const node_t node_id) const {
+get_average_surfel_radius(const node_t node_id) const {
     assert(node_id >= 0 && node_id < num_nodes_);
     return avg_surfel_radii_[node_id];
 }
 
 void bvh::
-SetAvgsurfelRadius(const lamure::node_t node_id, const float radius) {
+set_average_surfel_radius(const lamure::node_t node_id, const float radius) {
     assert(node_id >= 0 && node_id < num_nodes_);
     while (avg_surfel_radii_.size() <= node_id) {
        avg_surfel_radii_.push_back(0.f);
@@ -160,13 +160,13 @@ SetAvgsurfelRadius(const lamure::node_t node_id, const float radius) {
 }
 
 const bvh::
-node_visibility bvh::GetVisibility(const node_t node_id) const {
+node_visibility bvh::get_visibility(const node_t node_id) const {
     assert(node_id >= 0 && node_id < num_nodes_);
     return visibility_[node_id];
 };
 
 void bvh::
-SetVisibility(const node_t node_id, const bvh::node_visibility visibility) {
+set_visibility(const node_t node_id, const bvh::node_visibility visibility) {
     assert(node_id >= 0 && node_id < num_nodes_);
     while (visibility_.size() <= node_id) {
        visibility_.push_back(node_visibility::NODE_VISIBLE);

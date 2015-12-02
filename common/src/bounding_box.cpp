@@ -78,7 +78,7 @@ expand(const bounding_box& bounding_box)
 }
 
 void bounding_box::
-Shrink(const bounding_box& bounding_box)
+shrink(const bounding_box& bounding_box)
 {
     assert(contains(bounding_box));
 

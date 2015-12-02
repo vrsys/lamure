@@ -12,18 +12,25 @@ layout(binding  = 1) uniform sampler2D depth_texture;
 
 layout(location = 0) out vec4 out_color;
         
-
-uniform int renderMode;
 uniform vec2 win_size;
+
 //for texture access
 in vec2 pos;
 
+void fetch_neighborhood_depth( inout float[8] in_out_neighborhood ) {
+	in_out_neighborhood[0] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(-1,+1) )/(win_size.xy) ).r; //upper left pixel
+	in_out_neighborhood[1] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(0,+1) )/(win_size.xy) ).r; //upper pixel
+	in_out_neighborhood[2] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(+1,+1) )/(win_size.xy) ).r; //upper right pixel
+	in_out_neighborhood[3] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(-1,0) )/(win_size.xy) ).r; //left pixel
+	in_out_neighborhood[4] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(+1,0) )/(win_size.xy) ).r; //right pixel
+	in_out_neighborhood[5] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(-1,-1) )/(win_size.xy) ).r; //lower left pixel
+	in_out_neighborhood[6] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(0,-1) )/(win_size.xy) ).r; //lower pixel
+	in_out_neighborhood[7] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(+1,-1) )/(win_size.xy) ).r; //lower right pixel
+}
 
-void main()
-{
+void main() {
 
-  		  float depthValue = texture2D(depth_texture, gl_FragCoord.xy/win_size.xy).r ;
-
+  	float depthValue = texture2D(depth_texture, gl_FragCoord.xy/win_size.xy).r ;
 
 	{
 
@@ -31,17 +38,13 @@ void main()
 		  out_color = texture2D(in_color_texture, gl_FragCoord.xy/(win_size.xy));
 		else
 		{
-	          float[8] surrounding;
-		  surrounding[0] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(-1,+1) )/(win_size.xy) ).r; //upper left pixel
-		  surrounding[1] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(0,+1) )/(win_size.xy) ).r; //upper pixel
-		  surrounding[2] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(+1,+1) )/(win_size.xy) ).r; //upper right pixel
-		  surrounding[3] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(-1,0) )/(win_size.xy) ).r; //left pixel
-		  surrounding[4] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(+1,0) )/(win_size.xy) ).r; //right pixel
-		  surrounding[5] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(-1,-1) )/(win_size.xy) ).r; //lower left pixel
-		  surrounding[6] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(0,-1) )/(win_size.xy) ).r; //lower pixel
-		  surrounding[7] = texture2D(depth_texture, (gl_FragCoord.xy + vec2(+1,-1) )/(win_size.xy) ).r; //lower right pixel
+	      
+	      float[8] neighborhood_depth;
+
+	      fetch_neighborhood_depth(neighborhood_depth);
+
 		
-		  // surrounding neighbourhood indexing:
+		  // neighborhood_depth neighbourhood indexing:
 		  // 0 1 2
 		  // 3   4
 		  // 5 6 7
@@ -62,7 +65,7 @@ void main()
  		  //x o b    x   4
 		  //x b b    x 6 7
 		 
-		 bool pattern0 = (surrounding[1] == 1.0) && (surrounding[2] == 1.0) && (surrounding[4] == 1.0) && (surrounding[6] == 1.0) && (surrounding[7] == 1.0) ;
+		 bool pattern0 = (neighborhood_depth[1] == 1.0) && (neighborhood_depth[2] == 1.0) && (neighborhood_depth[4] == 1.0) && (neighborhood_depth[6] == 1.0) && (neighborhood_depth[7] == 1.0) ;
 		 
 		 //test against pattern 1  
 		  
@@ -70,7 +73,7 @@ void main()
  		  //b o b    3   4
 		  //x x x    x x x
 	
-		 bool pattern1 = (surrounding[0] == 1.0) && (surrounding[1] == 1.0) && (surrounding[2] == 1.0) && (surrounding[3] == 1.0) && (surrounding[4] == 1.0) ;
+		 bool pattern1 = (neighborhood_depth[0] == 1.0) && (neighborhood_depth[1] == 1.0) && (neighborhood_depth[2] == 1.0) && (neighborhood_depth[3] == 1.0) && (neighborhood_depth[4] == 1.0) ;
 
 		 //test against pattern 2  
 		  
@@ -78,7 +81,7 @@ void main()
  		  //b o x    3   x
 		  //b b x    5 6 x
 	
-		 bool pattern2 = (surrounding[0] == 1.0) && (surrounding[1] == 1.0) && (surrounding[3] == 1.0) && (surrounding[5] == 1.0) && (surrounding[6] == 1.0) ;
+		 bool pattern2 = (neighborhood_depth[0] == 1.0) && (neighborhood_depth[1] == 1.0) && (neighborhood_depth[3] == 1.0) && (neighborhood_depth[5] == 1.0) && (neighborhood_depth[6] == 1.0) ;
 
 		 //test against pattern 3  
 		  
@@ -86,7 +89,7 @@ void main()
  		  //b o b    3   4
 		  //b b b    5 6 7
 	
-		 bool pattern3 = (surrounding[3] == 1.0) && (surrounding[4] == 1.0) && (surrounding[5] == 1.0) && (surrounding[6] == 1.0) && (surrounding[7] == 1.0) ;
+		 bool pattern3 = (neighborhood_depth[3] == 1.0) && (neighborhood_depth[4] == 1.0) && (neighborhood_depth[5] == 1.0) && (neighborhood_depth[6] == 1.0) && (neighborhood_depth[7] == 1.0) ;
 
 		 //test against pattern 4  
 		  
@@ -94,7 +97,7 @@ void main()
  		  //x o b    x   4
 		  //x x b    x x 7
 	
-		 bool pattern4 = (surrounding[0] == 1.0) && (surrounding[1] == 1.0) && (surrounding[2] == 1.0) && (surrounding[4] == 1.0) && (surrounding[7] == 1.0) ;
+		 bool pattern4 = (neighborhood_depth[0] == 1.0) && (neighborhood_depth[1] == 1.0) && (neighborhood_depth[2] == 1.0) && (neighborhood_depth[4] == 1.0) && (neighborhood_depth[7] == 1.0) ;
 
 		 //test against pattern 5  
 		  
@@ -102,7 +105,7 @@ void main()
  		  //b o x    3   x
 		  //b x x    5 x x
 	
-		 bool pattern5 = (surrounding[0] == 1.0) && (surrounding[1] == 1.0) && (surrounding[2] == 1.0) && (surrounding[3] == 1.0) && (surrounding[5] == 1.0) ;
+		 bool pattern5 = (neighborhood_depth[0] == 1.0) && (neighborhood_depth[1] == 1.0) && (neighborhood_depth[2] == 1.0) && (neighborhood_depth[3] == 1.0) && (neighborhood_depth[5] == 1.0) ;
 
 		 //test against pattern 6
 		  
@@ -110,7 +113,7 @@ void main()
  		  //b o x    3   x
 		  //b b b    5 6 7
 	
-		 bool pattern6 = (surrounding[0] == 1.0) && (surrounding[3] == 1.0) && (surrounding[5] == 1.0) && (surrounding[6] == 1.0) && (surrounding[7] == 1.0) ;
+		 bool pattern6 = (neighborhood_depth[0] == 1.0) && (neighborhood_depth[3] == 1.0) && (neighborhood_depth[5] == 1.0) && (neighborhood_depth[6] == 1.0) && (neighborhood_depth[7] == 1.0) ;
 
 		 //test against pattern 7
 		  
@@ -118,7 +121,7 @@ void main()
  		  //x o b    x   4
 		  //b b b    5 6 7
 	
-		 bool pattern7 = (surrounding[2] == 1.0) && (surrounding[4] == 1.0) && (surrounding[5] == 1.0) && (surrounding[6] == 1.0) && (surrounding[7] == 1.0) ;
+		 bool pattern7 = (neighborhood_depth[2] == 1.0) && (neighborhood_depth[4] == 1.0) && (neighborhood_depth[5] == 1.0) && (neighborhood_depth[6] == 1.0) && (neighborhood_depth[7] == 1.0) ;
 
 
 		//red means: is background and should be filled
@@ -136,31 +139,31 @@ void main()
 
 			
 
-			//re-fill the surrounding array with luminocity values of the surrounding area
+			//re-fill the neighborhood_depth array with luminocity values of the neighborhood_depth area
 			vec3 tempCol = vec3(0.0,0.0,0.0);
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,+1) )/(win_size.xy) ).rgb; //upper left pixel
-			surrounding[0] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[0] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(0,+1) )/(win_size.xy) ).rgb; //upper pixel
-			surrounding[1] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[1] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,+1) )/(win_size.xy) ).rgb; //upper right pixel
-			surrounding[2] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[2] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,0) )/(win_size.xy) ).rgb; //left pixel
-			surrounding[3] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[3] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,0) )/(win_size.xy) ).rgb; //right pixel
-			surrounding[4] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[4] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,-1) )/(win_size.xy) ).rgb; //lower left pixel
-			surrounding[5] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[5] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(0,-1) )/(win_size.xy) ).rgb; //lower pixel
-			surrounding[6] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[6] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,-1) )/(win_size.xy) ).rgb; //lower right pixel
-			surrounding[7] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
+			neighborhood_depth[7] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
 
 			//find the median element with index 4
 			for(int i = 0; i < 8; ++i)
@@ -173,10 +176,10 @@ void main()
 				{
 					if(i != k)
 					{
-						if(surrounding[i] < surrounding[k])  //our current element was smaller, so we don't have to do anything
+						if(neighborhood_depth[i] < neighborhood_depth[k])  //our current element was smaller, so we don't have to do anything
 						{//do nothing
 						}
-						else if(surrounding[i] > surrounding[k])
+						else if(neighborhood_depth[i] > neighborhood_depth[k])
 						{
 							sum_smaller_elements += 1;
 						}
@@ -191,8 +194,6 @@ void main()
 				if((sum_smaller_elements +  sum_equal_elements >= 3) )
 				{
 
-					if(renderMode == 0)
-					{
 						vec4 tempC;
 						if( i == 0)
 						{
@@ -236,8 +237,7 @@ void main()
 						{
 							out_color = tempC;
 						}
-					}
-
+					
 						break;
 				}
 			}
@@ -253,9 +253,5 @@ void main()
 
 
 	}
-
-
-
-//out_color = texture2D(in_color_texture, gl_FragCoord.xy/(win_size.xy));
 
  }

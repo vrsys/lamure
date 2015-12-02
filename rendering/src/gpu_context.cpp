@@ -17,23 +17,23 @@ namespace lamure
 namespace ren
 {
 
-GpuContext::
-GpuContext(const context_t context_id)
+gpu_context::
+gpu_context(const context_t context_id)
 : context_id_(context_id),
   is_created_(false),
   temp_buffer_a_(nullptr),
   temp_buffer_b_(nullptr),
   primary_buffer_(nullptr),
-  temporary_storages_(TemporaryStorages(nullptr, nullptr)),
+  temporary_storages_(temporary_storages(nullptr, nullptr)),
   upload_budget_in_nodes_(LAMURE_DEFAULT_UPLOAD_BUDGET),
   render_budget_in_nodes_(LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET) {
 
 }
 
 
-GpuContext::
-~GpuContext() {
-    temporary_storages_ = TemporaryStorages(nullptr, nullptr);
+gpu_context::
+~gpu_context() {
+    temporary_storages_ = temporary_storages(nullptr, nullptr);
 
     if (temp_buffer_a_) {
         delete temp_buffer_a_;
@@ -52,35 +52,35 @@ GpuContext::
 
 }
 
-void GpuContext::
-Create(scm::gl::render_device_ptr device) {
+void gpu_context::
+create(scm::gl::render_device_ptr device) {
     assert(device);
     if (is_created_) {
         return;
     }
     is_created_ = true;
 
-    TestVideoMemory(device);
+    test_video_memory(device);
 
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
 
-    temp_buffer_a_ = new GpuAccess(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
-    temp_buffer_b_ = new GpuAccess(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
-    primary_buffer_ = new GpuAccess(device, render_budget_in_nodes_, database->surfels_per_node(), true);
+    temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
+    temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
+    primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->surfels_per_node(), true);
 
-    MapTempStorage(CutdatabaseRecord::Temporarybuffer::BUFFER_A, device);
-    MapTempStorage(CutdatabaseRecord::Temporarybuffer::BUFFER_B, device);
+    map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_A, device);
+    map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device);
 }
 
-void GpuContext::
-TestVideoMemory(scm::gl::render_device_ptr device) {
-    Modeldatabase* database = Modeldatabase::get_instance();
-    Policy* policy = Policy::get_instance();
+void gpu_context::
+test_video_memory(scm::gl::render_device_ptr device) {
+    model_database* database = model_database::get_instance();
+    policy* policy = policy::get_instance();
 
     size_t size_of_node_in_bytes = database->size_of_surfel() * database->surfels_per_node();
     size_t render_budget_in_mb = policy->render_budget_in_mb();
 
-    size_t video_ram_in_mb = GpuAccess::QueryVideoRamInMb(device);
+    size_t video_ram_in_mb = gpu_access::query_video_memory_in_mb(device);
     render_budget_in_mb = render_budget_in_mb < LAMURE_MIN_VIDEO_MEMORY_BUDGET ? LAMURE_MIN_VIDEO_MEMORY_BUDGET : render_budget_in_mb;
     render_budget_in_mb = render_budget_in_mb > video_ram_in_mb * 0.75 ? video_ram_in_mb * 0.75 : render_budget_in_mb;
     render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / size_of_node_in_bytes;
@@ -97,9 +97,9 @@ TestVideoMemory(scm::gl::render_device_ptr device) {
    // upload_budget_in_nodes_ = max_upload_budget_in_nodes/4;
 
 #else
-    GpuAccess* test_temp = new GpuAccess(device, 1, database->surfels_per_node(), false);
-    GpuAccess* test_main = new GpuAccess(device, 1, database->surfels_per_node(), true);
-    lod_point_cloud::serialized_surfel* node_data = (lod_point_cloud::serialized_surfel*)new char[size_of_node_in_bytes];
+    gpu_access* test_temp = new gpu_access(device, 1, database->surfels_per_node(), false);
+    gpu_access* test_main = new gpu_access(device, 1, database->surfels_per_node(), true);
+    LodPointCloud::serializedsurfel* node_data = (LodPointCloud::serializedsurfel*)new char[size_of_node_in_bytes];
     memset((char*)node_data, 0, size_of_node_in_bytes);
     char* mapped_temp = test_temp->Map(device);
     memcpy(mapped_temp, node_data, size_of_node_in_bytes);
@@ -156,42 +156,42 @@ TestVideoMemory(scm::gl::render_device_ptr device) {
 
 }
 
-scm::gl::buffer_ptr GpuContext::
-GetContextbuffer(scm::gl::render_device_ptr device) {
+scm::gl::buffer_ptr gpu_context::
+get_context_buffer(scm::gl::render_device_ptr device) {
     if (!is_created_)
-        Create(device);
+        create(device);
 
     assert(device);
 
     return primary_buffer_->buffer();
 }
 
-scm::gl::vertex_array_ptr GpuContext::
-GetContextMemory(scm::gl::render_device_ptr device) {
+scm::gl::vertex_array_ptr gpu_context::
+get_context_memory(scm::gl::render_device_ptr device) {
     if (!is_created_)
-        Create(device);
+        create(device);
 
     assert(device);
 
     return primary_buffer_->memory();
 }
 
-void GpuContext::
-MapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device) {
+void gpu_context::
+map_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::gl::render_device_ptr device) {
     if (!is_created_)
-        Create(device);
+        create(device);
 
     assert(device);
 
     switch (buffer) {
-        case CutdatabaseRecord::Temporarybuffer::BUFFER_A:
+        case cut_database_record::temporary_buffer::BUFFER_A:
             if (!temp_buffer_a_->is_mapped()) {
                 temporary_storages_.storage_a_ = temp_buffer_a_->Map(device);
             }
             return;
             break;
 
-        case CutdatabaseRecord::Temporarybuffer::BUFFER_B:
+        case cut_database_record::temporary_buffer::BUFFER_B:
             if (!temp_buffer_b_->is_mapped()) {
                 temporary_storages_.storage_b_ = temp_buffer_b_->Map(device);
             }
@@ -206,21 +206,21 @@ MapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render
 
 }
 
-void GpuContext::
-UnmapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device) {
+void gpu_context::
+unmap_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::gl::render_device_ptr device) {
     if (!is_created_)
-        Create(device);
+        create(device);
 
     assert(device);
 
     switch (buffer) {
-        case CutdatabaseRecord::Temporarybuffer::BUFFER_A:
+        case cut_database_record::temporary_buffer::BUFFER_A:
             if (temp_buffer_a_->is_mapped()) {
                 temp_buffer_a_->Unmap(device);
             }
             break;
 
-        case CutdatabaseRecord::Temporarybuffer::BUFFER_B:
+        case cut_database_record::temporary_buffer::BUFFER_B:
             if (temp_buffer_b_->is_mapped()) {
                 temp_buffer_b_->Unmap(device);
             }
@@ -230,29 +230,30 @@ UnmapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::rend
     }
 }
 
-void GpuContext::
-UpdatePrimarybuffer(const CutdatabaseRecord::Temporarybuffer& from_buffer, scm::gl::render_device_ptr device) {
+//returns true if any node has been uploaded; false otherwise
+bool gpu_context::
+update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, scm::gl::render_device_ptr device) {
     if (!is_created_)
-        Create(device);
+        create(device);
 
     assert(device);
 
-    Modeldatabase* database = Modeldatabase::get_instance();
+    model_database* database = model_database::get_instance();
 
     size_t size_of_node_in_bytes = database->surfels_per_node() * database->size_of_surfel();
 
-    Cutdatabase* cuts = Cutdatabase::get_instance();
+    cut_database* cuts = cut_database::get_instance();
 
     size_t uploaded_nodes = 0;
 
     switch (from_buffer) {
-        case CutdatabaseRecord::Temporarybuffer::BUFFER_A:
+        case cut_database_record::temporary_buffer::BUFFER_A:
         {
             if (temp_buffer_a_->is_mapped()) {
                 throw std::runtime_error(
-                   "PLOD: GpuContext::Failed to transfer nodes into main memory on context: " + context_id_);
+                   "PLOD: gpu_context::Failed to transfer nodes into main memory on context: " + context_id_);
             }
-            std::vector<CutdatabaseRecord::SlotUpdateDescr>& transfer_descr_list = cuts->GetUpdatedSet(context_id_);
+            std::vector<cut_database_record::slot_update_desc>& transfer_descr_list = cuts->get_updated_set(context_id_);
             if (!transfer_descr_list.empty()) {
                 uploaded_nodes += transfer_descr_list.size();
 
@@ -266,13 +267,13 @@ UpdatePrimarybuffer(const CutdatabaseRecord::Temporarybuffer& from_buffer, scm::
             break;
         }
 
-        case CutdatabaseRecord::Temporarybuffer::BUFFER_B:
+        case cut_database_record::temporary_buffer::BUFFER_B:
         {
             if (temp_buffer_b_->is_mapped()) {
                 throw std::runtime_error(
-                   "PLOD: GpuContext::Failed to transfer nodes into main memory on context: " + context_id_);
+                   "PLOD: gpu_context::Failed to transfer nodes into main memory on context: " + context_id_);
             }
-            std::vector<CutdatabaseRecord::SlotUpdateDescr>& transfer_descr_list = cuts->GetUpdatedSet(context_id_);
+            std::vector<cut_database_record::slot_update_desc>& transfer_descr_list = cuts->get_updated_set(context_id_);
             if (!transfer_descr_list.empty()) {
                 uploaded_nodes += transfer_descr_list.size();
 
@@ -288,6 +289,7 @@ UpdatePrimarybuffer(const CutdatabaseRecord::Temporarybuffer& from_buffer, scm::
 
     }
 
+    return uploaded_nodes != 0;
 }
 
 

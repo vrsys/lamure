@@ -30,7 +30,7 @@ split_screen_renderer(std::vector<scm::math::mat4f> const& model_transformations
       current_cam_id_right_(0),
       model_transformations_(model_transformations)
 {
-    lamure::ren::Modeldatabase* database = lamure::ren::Modeldatabase::get_instance();
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
     win_x_ = database->window_width();
     win_y_ = database->window_height();
@@ -92,16 +92,16 @@ reset()
 
 }
 
-void split_screen_renderer::upload_uniforms(lamure::ren::Camera const& camera) const
+void split_screen_renderer::upload_uniforms(lamure::ren::camera const& camera) const
 {
     using namespace scm::gl;
     using namespace scm::math;
 
     using namespace lamure::ren;
 
-    mat4f    view_matrix         = camera.GetViewMatrix();
+    mat4f    view_matrix         = camera.get_view_matrix();
     mat4f    model_matrix        = mat4f::identity();
-    mat4f    projection_matrix   = camera.GetProjectionMatrix();
+    mat4f    projection_matrix   = camera.get_projection_matrix();
 
     mat4f    model_view_matrix   = view_matrix * model_matrix;
 
@@ -161,18 +161,18 @@ void split_screen_renderer::upload_uniforms(lamure::ren::Camera const& camera) c
 
 
 void split_screen_renderer::
-upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_t model_id, uint32_t pass_id) const
+upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_t model_id, uint32_t pass_id) const
 {
 
     using namespace lamure::ren;
 
-    Modeldatabase* database = Modeldatabase::get_instance();
-    const bvh* bvh = database->GetModel(model_id)->get_bvh();
+    model_database* database = model_database::get_instance();
+    const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-    scm::math::mat4f    view_matrix         = camera.GetViewMatrix();
+    scm::math::mat4f    view_matrix         = camera.get_view_matrix();
     scm::math::mat4f    model_matrix        = model_transformations_[model_id];
 
-    scm::math::mat4f    projection_matrix   = camera.GetProjectionMatrix();
+    scm::math::mat4f    projection_matrix   = camera.get_projection_matrix();
 
     scm::math::mat4f    model_view_matrix   = view_matrix * model_matrix;
 
@@ -210,7 +210,7 @@ upload_transformation_matrices(lamure::ren::Camera const& camera, lamure::model_
 
 
 void split_screen_renderer::
-render(lamure::context_t context_id, lamure::ren::Camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO)
+render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO)
 {
     using namespace lamure;
     using namespace lamure::ren;
@@ -223,8 +223,8 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
     using namespace scm::math;
 
 
-    Modeldatabase* database = Modeldatabase::get_instance();
-    Cutdatabase* cuts = Cutdatabase::get_instance();
+    model_database* database = model_database::get_instance();
+    cut_database* cuts = cut_database::get_instance();
 
 
     model_t models_count = database->num_models();
@@ -238,9 +238,9 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
     for (model_t model_id = 0; model_id < models_count; ++model_id)
     {
-        Cut& cut = cuts->GetCut(context_id, view_id, model_id);
+        cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-        std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
+        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
 
         size_of_culling_result_vector += renderable.size();
     }
@@ -282,11 +282,11 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                     for (model_t model_id = 0; model_id < models_count; ++model_id)
                     {
-                        Cut& cut = cuts->GetCut(context_id, view_id, model_id);
+                        cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-                        std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
+                        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
 
-                        const bvh* bvh = database->GetModel(model_id)->get_bvh();
+                        const bvh* bvh = database->get_model(model_id)->get_bvh();
 
                         uint32_t surfels_per_node_of_model = bvh->surfels_per_node();
                         //store culling result and push it back for second pass#
@@ -296,15 +296,15 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                         upload_transformation_matrices(camera, model_id, 1);
 
-                        scm::gl::frustum frustum_by_model = camera.GetFrustumByModel(model_transformations_[model_id]);
+                        scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
 
 
-                        unsigned int leaf_level_start_index = bvh->GetFirstNodeIdOfDepth(bvh->depth());
+                        unsigned int leaf_level_start_index = bvh->get_first_node_id_of_depth(bvh->depth());
 
-                        for(std::vector<Cut::NodeSlotAggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
+                        for(std::vector<cut::node_slot_aggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
                         {
 
-                         //   uint32_t node_culling_result = camera.CullAgainstFrustum( frustum_by_model ,bounding_box_vector[ k->node_id_ ] );
+                         //   uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ k->node_id_ ] );
                            uint32_t node_culling_result = 0;
                            //frustum_culling_results.push_back(node_culling_result);
 
@@ -372,11 +372,11 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                     for (model_t model_id = 0; model_id < models_count; ++model_id)
                     {
-                        Cut& cut = cuts->GetCut(context_id, view_id, model_id);
+                        cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-                        std::vector<Cut::NodeSlotAggregate> renderable = cut.complete_set();
+                        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
 
-                        const bvh* bvh = database->GetModel(model_id)->get_bvh();
+                        const bvh* bvh = database->get_model(model_id)->get_bvh();
 
                         uint32_t surfels_per_node_of_model = bvh->surfels_per_node();
                         //store culling result and push it back for second pass#
@@ -384,9 +384,9 @@ render(lamure::context_t context_id, lamure::ren::Camera const& camera, const la
 
                         upload_transformation_matrices(camera, model_id, 2);
 
-                        unsigned int leaf_level_start_index = bvh->GetFirstNodeIdOfDepth(bvh->depth());
+                        unsigned int leaf_level_start_index = bvh->get_first_node_id_of_depth(bvh->depth());
 
-                        for(std::vector<Cut::NodeSlotAggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
+                        for(std::vector<cut::node_slot_aggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
                         {
 
                             if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
@@ -567,9 +567,9 @@ void split_screen_renderer::display_status()
       <<"rendered Splats:   "<<rendered_splats_<<"\n"
       <<"Uploaded Nodes:   "<<uploaded_nodes_<<"\n"
       <<"\n"
-      <<"Cut Update:   "<< (is_cut_update_active_ == true ? "active" : "frozen") <<"\n"
-      <<"Left Camera :   "<< current_cam_id_left_<<"\n"
-      <<"Right Camera :   "<< current_cam_id_right_;
+      <<"cut Update:   "<< (is_cut_update_active_ == true ? "active" : "frozen") <<"\n"
+      <<"Left camera :   "<< current_cam_id_left_<<"\n"
+      <<"Right camera :   "<< current_cam_id_right_;
 
 
     renderable_text_->text_string(os.str());
@@ -814,7 +814,7 @@ void split_screen_renderer::reset_viewport(int w, int h)
 }
 
 void split_screen_renderer::
-update_frustum_dependent_parameters(lamure::ren::Camera const& camera)
+update_frustum_dependent_parameters(lamure::ren::camera const& camera)
 {
     near_plane_ = camera.near_plane_value();
     far_minus_near_plane_ = camera.far_plane_value() - near_plane_;
@@ -832,7 +832,7 @@ calc_rad_scale_factors()
 {
     using namespace lamure::ren;
 
-   uint32_t num_models = (Modeldatabase::get_instance())->num_models();
+   uint32_t num_models = (model_database::get_instance())->num_models();
 
    if(rad_scale_fac_.size() < num_models)
       rad_scale_fac_.resize(num_models);
@@ -884,7 +884,7 @@ change_pointsize(float amount)
 
 
 void split_screen_renderer::
-SwitchrenderMode()
+switch_render_mode()
 {
     render_mode_ = (render_mode_ + 1)%2;
 
@@ -907,7 +907,7 @@ SwitchrenderMode()
 };
 
 void split_screen_renderer::
-SwitchEllipseMode()
+switch_ellipse_mode()
 {
     ellipsify_ = ! ellipsify_;
     std::cout<<"splat mode: ";
@@ -918,7 +918,7 @@ SwitchEllipseMode()
 };
 
 void split_screen_renderer::
-SwitchClampedNormalMode()
+switch_clamped_normal_mode()
 {
     clamped_normal_mode_ = !clamped_normal_mode_;
     std::cout<<"clamp elliptical deform ratio: ";
@@ -929,7 +929,7 @@ SwitchClampedNormalMode()
 };
 
 void split_screen_renderer::
-ChangeDeformRatio(float amount)
+change_deform_ratio(float amount)
 {
     max_deform_ratio_ += amount;
 
@@ -942,21 +942,21 @@ ChangeDeformRatio(float amount)
 };
 
 void split_screen_renderer::
-ToggleCutUpdateInfo()
+toggle_cut_update_info()
 {
     is_cut_update_active_ = ! is_cut_update_active_;
 }
 
 
 void split_screen_renderer::
-ToggleCameraInfo(const lamure::view_t left_cam_id, const lamure::view_t right_cam_id)
+toggle_camera_info(const lamure::view_t left_cam_id, const lamure::view_t right_cam_id)
 {
     current_cam_id_left_ = left_cam_id;
     current_cam_id_right_ = right_cam_id;
 }
 
 void split_screen_renderer::
-ToggleDisplayInfo()
+toggle_display_info()
 {
     display_info_ = ! display_info_;
 }

@@ -20,14 +20,14 @@ bvh_stream()
 
 bvh_stream::
 ~bvh_stream() {
-    closeStream(false);
+    close_stream(false);
 }
 
 void bvh_stream::
-openStream(const std::string& bvh_filename,
+open_stream(const std::string& bvh_filename,
            const bvh_stream_type type) {
 
-    closeStream(false);
+    close_stream(false);
     
     num_segments_ = 0;
     filename_ = bvh_filename;
@@ -53,7 +53,7 @@ openStream(const std::string& bvh_filename,
 }
 
 void bvh_stream::
-closeStream(const bool remove_file) {
+close_stream(const bool remove_file) {
     
     if (file_.is_open()) {
         if (type_ == bvh_stream_type::BVH_STREAM_OUT) {
@@ -116,9 +116,9 @@ write(bvh_stream::bvh_serializable& serializable) {
 
 
 void bvh_stream::
-readbvh(const std::string& filename, bvh& bvh) {
+read_bvh(const std::string& filename, bvh& bvh) {
  
-    openStream(filename, bvh_stream_type::BVH_STREAM_IN);
+    open_stream(filename, bvh_stream_type::BVH_STREAM_IN);
 
     if (type_ != BVH_STREAM_IN) {
         throw std::runtime_error(
@@ -235,7 +235,7 @@ readbvh(const std::string& filename, bvh& bvh) {
 
     }
 
-    closeStream(false);
+    close_stream(false);
 
     if (tree_id != 1) {
        throw std::runtime_error(
@@ -268,25 +268,25 @@ readbvh(const std::string& filename, bvh& bvh) {
        scm::math::vec3f centroid(node.centroid_.x_,
                                  node.centroid_.y_,
                                  node.centroid_.z_);
-       bvh.SetCentroid(node.node_id_, centroid);
-       bvh.SetAvgsurfelRadius(node.node_id_, node.avg_surfel_radius_);
-       bvh.SetVisibility(node.node_id_, (bvh::node_visibility)node.visibility_);
+       bvh.set_centroid(node.node_id_, centroid);
+       bvh.set_average_surfel_radius(node.node_id_, node.avg_surfel_radius_);
+       bvh.set_visibility(node.node_id_, (bvh::node_visibility)node.visibility_);
        scm::math::vec3f box_min(node.bounding_box_.min_.x_,
                                 node.bounding_box_.min_.y_,
                                 node.bounding_box_.min_.z_);
        scm::math::vec3f box_max(node.bounding_box_.max_.x_,
                                 node.bounding_box_.max_.y_,
                                 node.bounding_box_.max_.z_);
-       bvh.Setbounding_box(node.node_id_, scm::gl::boxf(box_min, box_max));
+       bvh.set_bounding_box(node.node_id_, scm::gl::boxf(box_min, box_max));
    
     }
 
 }
 
 void bvh_stream::
-writebvh(const std::string& filename, bvh& bvh) {
+write_bvh(const std::string& filename, bvh& bvh) {
 
-   openStream(filename, bvh_stream_type::BVH_STREAM_OUT);
+   open_stream(filename, bvh_stream_type::BVH_STREAM_OUT);
 
    if (type_ != BVH_STREAM_OUT) {
        throw std::runtime_error(
@@ -330,16 +330,16 @@ writebvh(const std::string& filename, bvh& bvh) {
        bvh_node_seg node;
        node.segment_id_ = num_segments_++;
        node.node_id_ = node_id;
-       const scm::math::vec3f centroid = bvh.GetCentroid(node_id);
+       const scm::math::vec3f centroid = bvh.get_centroid(node_id);
        node.centroid_.x_ = centroid.x;
        node.centroid_.y_ = centroid.y;
        node.centroid_.z_ = centroid.z;
-       node.depth_ = bvh.GetDepthOfNode(node_id);
+       node.depth_ = bvh.get_depth_of_node(node_id);
        node.reduction_error_ = 0.f;
-       node.avg_surfel_radius_ = bvh.GetAvgsurfelRadius(node_id);
-       node.visibility_ = (bvh_node_visibility)bvh.GetVisibility(node_id);
+       node.avg_surfel_radius_ = bvh.get_average_surfel_radius(node_id);
+       node.visibility_ = (bvh_node_visibility)bvh.get_visibility(node_id);
        node.reserved_ = 0;
-       const scm::gl::boxf box = bvh.Getbounding_box(node_id);
+       const scm::gl::boxf box = bvh.get_bounding_box(node_id);
        node.bounding_box_.min_.x_ = box.min_vertex().x;
        node.bounding_box_.min_.y_ = box.min_vertex().y;
        node.bounding_box_.min_.z_ = box.min_vertex().z;
@@ -350,7 +350,7 @@ writebvh(const std::string& filename, bvh& bvh) {
        write(node);
    }
 
-   closeStream(false);
+   close_stream(false);
 
 }
 

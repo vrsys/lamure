@@ -75,7 +75,7 @@ get_pixel(const int x, const int y) const
     (_image->getHeight() + (y%_image->getHeight())) % _image->getHeight();
 
   RGBQUAD pixel;
-  _image->getpixelColor(x, y, &pixel);
+  _image->getPixelColor(x, y, &pixel);
   outpixel = { pixel.rgbRed, pixel.rgbGreen, pixel.rgbBlue };
 
   return outpixel;

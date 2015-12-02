@@ -17,7 +17,7 @@
 
 
 const uint32_t file_handler::
-GetFirstNodeIdOfDepth(uint32_t depth)
+get_first_node_id_of_depth(uint32_t depth)
 {
     uint32_t id = 0;
     for (uint32_t i = 0; i < depth; ++i)
@@ -29,7 +29,7 @@ GetFirstNodeIdOfDepth(uint32_t depth)
 }
 
 const uint32_t file_handler::
-GetLengthOfDepth(uint32_t depth)
+get_length_of_depth(uint32_t depth)
 {
     return (uint32_t)pow((double) 2, (double)depth);
 }

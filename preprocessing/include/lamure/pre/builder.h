@@ -25,20 +25,21 @@ class PREPROCESSING_DLL builder
 public:
 
     struct descriptor {
-        std::string           input_file;
-        std::string           working_directory;
-        uint32_t              max_fan_factor;
-        size_t                surfels_per_node;
-        uint16_t              final_stage;
-        bool                  compute_normals_and_radii;
-        bool                  keep_intermediate_files;
-        float                 memory_ratio;
-        size_t                buffer_size;
-        uint16_t              number_of_neighbours;
-        bool                  translate_to_origin;
+        std::string     input_file;
+        std::string     working_directory;
+        uint32_t        max_fan_factor;
+        size_t          surfels_per_node;
+        uint16_t        final_stage;
+        bool            compute_normals_and_radii;
+        bool            keep_intermediate_files;
+        float           memory_ratio;
+        size_t          buffer_size;
+        uint16_t        number_of_neighbours;
+        bool            translate_to_origin;
 
         rep_radius_algorithm  rep_radius_algo;
-        reduction_algorithm   reduction_algo;
+        reduction_algorithm  reduction_algo;
+        normal_radius_algorithm normal_radius_algo;
     };
 
     explicit            builder(const descriptor& desc);

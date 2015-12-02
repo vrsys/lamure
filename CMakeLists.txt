@@ -61,11 +61,9 @@ SET(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${GLOBAL_EXT_DIR})
 ################################
 # schism
 ################################
-#include(find_compiler)
 include(find_schism)
 
-include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS})
-link_directories(${SCHISM_LIBRARY_DIRS})
+#LINK_DIRECTORIES(${SCHISM_LIBRARY_DIRS})
 
 ################################
 # Boost
@@ -86,8 +84,10 @@ ENDIF ()
 find_package( Boost 1.54.0 REQUIRED thread system program_options timer chrono filesystem date_time)
 find_package( Threads )
 
-INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
-LINK_DIRECTORIES(${Boost_LIBRARY_DIR})
+ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
+
+#INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
+#LINK_DIRECTORIES(${Boost_LIBRARY_DIR})
 
 ################################
 # GLUT
@@ -96,10 +96,10 @@ SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${GLOBAL_EXT_DIR}/freeglut/include)
 SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${GLOBAL_EXT_DIR}/freeglut/lib)
 find_package(GLUT REQUIRED)
 
-include_directories(${GLUT_INCLUDE_DIRS})
-link_directories(${GLUT_LIBRARY_DIRS})
+#include_directories(${GLUT_INCLUDE_DIR})
+#link_directories(${GLUT_LIBRARY_DIRS})
 
-add_definitions(${GLUT_DEFINITIONS})
+#add_definitions(${GLUT_DEFINITIONS})
 
 ################################
 # OpenGL
@@ -111,7 +111,7 @@ if (UNIX)
   add_definitions(${OpenGL_DEFINITIONS})
 endif ()
 
-################################
+################################ 
 # FreeImage
 ################################
 include (find_freeimage)
@@ -119,22 +119,21 @@ include (find_freeimage)
 ################################
 # CGAL
 ################################
-IF (MSVC)
-  SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/externals/CGAL-4.7/lib/CGAL)
+include(find_cgal)
 
-  SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${GLOBAL_EXT_DIR}/CGAL-4.7/include)
-  SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${GLOBAL_EXT_DIR}/CGAL-4.7/lib)
+################################
+# GMP
+################################
+include(find_gmp)
 
-  #include(findCGAL)
-  find_package( CGAL 1.54.0 REQUIRED CGAL CGAL_Core)
-ELSEIF (UNIX)
-  include(find_cgal)
-ENDIF (MSVC)
+################################
+# MPFR
+################################
+include(find_mpfr)
+
 
 ############################################################
 # Build 3rd-party
-
-add_subdirectory(${THIRD_PARTY_PROJECTS_DIR}/ply)
 
 ############################################################
 # Targets

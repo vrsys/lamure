@@ -1,9 +1,14 @@
 ############################################################
 # CMake Build Script for the bvh_modifier executable
 
-InitApp(${CMAKE_PROJECT_NAME}_bvh_modifier)
+link_directories(${SCHISM_LIBRARY_DIRS})
 
-include_directories(${PREPROC_INCLUDE_DIR} ${COMMON_INCLUDE_DIR})
+include_directories(${PREPROC_INCLUDE_DIR} 
+                    ${COMMON_INCLUDE_DIR}
+                    ${SCHISM_INCLUDE_DIRS}
+                    ${Boost_INCLUDE_DIR})
+
+InitApp(${CMAKE_PROJECT_NAME}_bvh_modifier)
 
 ############################################################
 # Libraries
@@ -14,8 +19,9 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     ${SCHISM_LIBRARIES}
-    ${BOOST_LIBRARIES}
+    optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
+    optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     )
 
-#add_dependencies(${PROJECT_NAME} lamure_preprocessing)
+add_dependencies(${PROJECT_NAME} lamure_preprocessing lamure_common)
 

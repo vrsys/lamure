@@ -49,7 +49,7 @@ public:
                             return max_ - min_;
                         }
 
-    const vec3r         GetCenter() const { 
+    const vec3r         get_center() const { 
                             assert(is_valid());
                             return (max_ + min_) / 2.0;
                         }
@@ -76,7 +76,7 @@ public:
                             return contains(sphere.get_bounding_box());
                         }
 
-    const bool          Intersects(const bounding_box& bounding_box) const {
+    const bool          intersects(const bounding_box& bounding_box) const {
                             assert(is_valid());
                             assert(bounding_box.is_valid());
                             return !(max_.x < bounding_box.min().x || 
@@ -93,7 +93,7 @@ public:
 
     void                expand(const bounding_box& bounding_box);
 
-    void                Shrink(const bounding_box& bounding_box);
+    void                shrink(const bounding_box& bounding_box);
 
     inline bool         operator==(const bounding_box& rhs) const
                             { return min_ == rhs.min_ && max_ == rhs.max_; }

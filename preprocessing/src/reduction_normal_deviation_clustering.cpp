@@ -186,7 +186,7 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
         
             // safety check
             if (termination_ctr++ >=40000) {
-                LOGGER_WARN("Reached maximum number of iterations in NDC while computing grid dimensions!");
+                LOGGER_WARN("Reached maximum number of iterations in ndc while computing grid dimensions!");
                 break;
             }
 
@@ -413,7 +413,7 @@ create_lod(real& reduction_error,
     {
         // safety check
         if (termination_ctr++ >=30000) {
-            LOGGER_WARN("Reached maximum number of iterations in NDC!"
+            LOGGER_WARN("Reached maximum number of iterations in ndc!"
                            << " Current surfel count:" << surfel_count);
             break;
         }

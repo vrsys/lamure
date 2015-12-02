@@ -27,7 +27,7 @@
 namespace lamure {
 namespace ren {
 
-class RENDERING_DLL Camera
+class RENDERING_DLL camera
 {
 public:
 
@@ -35,55 +35,57 @@ public:
     mouse
   };
 
-    struct Mousestate
+    struct mouse_state
     {
         bool lb_down_;
         bool mb_down_;
         bool rb_down_;
 
-        Mousestate() : lb_down_(false), mb_down_(false), rb_down_(false)
+        mouse_state() : lb_down_(false), mb_down_(false), rb_down_(false)
         {}
     };
 
-                                Camera() {};
-                                Camera(const view_t view_id,
+                                camera() {};
+                                camera(const view_t view_id,
                                     float near_plane,
                                     scm::math::mat4f const& view,
                                     scm::math::mat4f const& proj);
 
-                                Camera(const view_t view_id,
+                                camera(const view_t view_id,
                                        scm::math::mat4f const& init_tb_mat,
                                        float distance,
                                        bool fast_travel = false,
                                        bool touch_screen_mode = false);
-    virtual                     ~Camera();
+    virtual                     ~camera();
 
     void                        event_callback(uint16_t code, float value);
 
     const view_t                view_id() const { return view_id_; };
 
-    void                        SetProjectionMatrix(float opening_angle,
+    void                        set_projection_matrix(float opening_angle,
                                                     float aspect_ratio,
                                                     float near,
                                                     float far);
 
-    void                        CalcViewToScreenSpaceMatrix(scm::math::vec2f const& win_dimensions);
-    void                        SetTrackballMatrix(scm::math::mat4d const& tb_matrix) { trackball_.set_transform(tb_matrix); }
+    void                        set_view_matrix( scm::math::mat4d const& in_view );
+
+    void                        calc_view_to_screen_space_matrix(scm::math::vec2f const& win_dimensions);
+    void                        set_trackball_matrix(scm::math::mat4d const& tb_matrix) { trackball_.set_transform(tb_matrix); }
     const scm::math::mat4d&     trackball_matrix() const { return trackball_.transform(); };
 
-    scm::gl::frustum::classification_result const CullAgainstFrustum(scm::gl::frustum const& frustum,
+    scm::gl::frustum::classification_result const cull_against_frustum(scm::gl::frustum const& frustum,
                                                                scm::gl::box const & b) const;
 
-    scm::gl::frustum const GetFrustumByModel(scm::math::mat4 const& model) const;
+    scm::gl::frustum const get_frustum_by_model(scm::math::mat4 const& model) const;
 
-    void                        UpdateTrackballMousePos(double x, double y);
-    void                        UpdateTrackball(int x, int y,
+    void                        update_trackball_mouse_pos(double x, double y);
+    void                        update_trackball(int x, int y,
                                                 int window_width, int window_height,
-                                                Mousestate const& mouse_state);
+                                                mouse_state const& mouse_state);
 
     void                        set_dolly_sens_(double ds) { dolly_sens_ = ds; }
 
-    scm::gl::frustum const      GetPredictedFrustum(scm::math::mat4f const& in_cam_or_mat);
+    scm::gl::frustum const      get_predicted_frustum(scm::math::mat4f const& in_cam_or_mat);
 
     inline const float          near_plane_value() const { return near_plane_value_; }
     inline const float          far_plane_value() const {return far_plane_value_; }
@@ -91,15 +93,15 @@ public:
 
     std::vector<scm::math::vec3d>     get_frustum_corners() const;
 
-    scm::math::mat4f const GetViewMatrix() const;
-    scm::math::mat4d const GetHighPrecisionViewMatrix() const;
-    scm::math::mat4f const GetProjectionMatrix() const;
+    scm::math::mat4f const get_view_matrix() const;
+    scm::math::mat4d const get_high_precision_view_matrix() const;
+    scm::math::mat4f const get_projection_matrix() const;
 
-    void                        writeViewMatrix(std::ofstream& matrix_stream);
-    void                        SetTrackballCenterOfRotation(const scm::math::vec3f& cor);
+    void                        write_view_matrix(std::ofstream& matrix_stream);
+    void                        set_trackball_center_of_rotation(const scm::math::vec3f& cor);
 protected:
 
-    enum Camstate
+    enum camera_state
     {
         CAM_STATE_GUA,
         CAM_STATE_LAMURE,
@@ -107,9 +109,9 @@ protected:
     };
 
 
-    float const                 RemapValue(float value, float oldMin, float oldMax,
+    float const                 remap_value(float value, float oldMin, float oldMax,
                                            float newMin, float newMax) const;
-    float const                 TransferValues(float currentValue, float maxValue) const;
+    float const                 transfer_values(float currentValue, float maxValue) const;
 
 
 private:
@@ -123,7 +125,7 @@ private:
     float                       near_plane_value_;
     float                       far_plane_value_;
 
-    lamure::ren::Trackball         trackball_;
+    lamure::ren::trackball         trackball_;
 
     double                      trackball_init_x_;
     double                      trackball_init_y_;
@@ -143,7 +145,7 @@ private:
     double                      sum_rot_y_;
     double                      sum_rot_z_;
 
-    Camstate                    cam_state_;
+    camera_state                    cam_state_;
 };
 
 } } // namespace lamure

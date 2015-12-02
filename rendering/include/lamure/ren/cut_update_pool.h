@@ -29,44 +29,44 @@
 namespace lamure {
 namespace ren {
 
-class CutUpdatePool
+class cut_update_pool
 {
 public:
-                            CutUpdatePool(const context_t context_id,
+                            cut_update_pool(const context_t context_id,
                                 const node_t upload_budget_in_nodes,
                                 const node_t render_budget_in_nodes);
-    virtual                 ~CutUpdatePool();
+    virtual                 ~cut_update_pool();
 
     const uint32_t          num_threads() const { return num_threads_; };
 
-    void                    DispatchCutUpdate(char* current_gpu_storage_A, char* current_gpu_storage_B);
-    const bool              IsRunning();
+    void                    dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B);
+    const bool              is_running();
 
 protected:
-    void                    Initialize();
-    const bool              Prepare();
+    void                    initialize();
+    const bool              prepare();
 
-    void                    SplitNode(const CutUpdateIndex::Action& item);
-    void                    CollapseNode(const CutUpdateIndex::Action& item);
-    void                    CutUpdateSplitAgain(const CutUpdateIndex::Action& split_action);
+    void                    split_node(const cut_update_index::action& item);
+    void                    collapse_node(const cut_update_index::action& item);
+    void                    cut_update_split_again(const cut_update_index::action& split_action);
 
-    const bool              IsAllNodesInCut(const model_t model_id, const std::vector<node_t>& node_ids, const std::set<node_t>& cut);
-    const bool              IsNodeInFrustum(const view_t view_id, const model_t model_id, const node_t node_id, const scm::gl::frustum& frustum);
-    const bool              IsNoNodeInFrustum(const view_t view_id, const model_t model_id, const std::vector<node_t>& node_ids, const scm::gl::frustum& frustum);
+    const bool              is_all_nodes_in_cut(const model_t model_id, const std::vector<node_t>& node_ids, const std::set<node_t>& cut);
+    const bool              is_node_in_frustum(const view_t view_id, const model_t model_id, const node_t node_id, const scm::gl::frustum& frustum);
+    const bool              is_no_node_in_frustum(const view_t view_id, const model_t model_id, const std::vector<node_t>& node_ids, const scm::gl::frustum& frustum);
 
-    const float             CalculateNodeError(const view_t view_id, const model_t model_id, const node_t node_id);
+    const float             calculate_node_error(const view_t view_id, const model_t model_id, const node_t node_id);
 
 
-    /*virtual*/ void        Run();
-    void                    Shutdown();
+    /*virtual*/ void        run();
+    void                    shutdown();
 
-    void                    CutMaster();
-    void                    CutAnalysis(view_t view_id, model_t model_id);
-    void                    CutUpdate();
-    void                    compileTransferList();
-    void                    compilerenderList();
+    void                    cut_master();
+    void                    cut_analysis(view_t view_id, model_t model_id);
+    void                    cut_update();
+    void                    compile_transfer_list();
+    void                    compile_render_list();
 #ifdef LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
-    void                    PrefetchRoutine();             
+    void                    prefetch_routine();             
 #endif
 
 private:
@@ -83,21 +83,21 @@ private:
 
     bool                    shutdown_;
 
-    CutUpdateQueue          job_queue_;
+    cut_update_queue          job_queue_;
 
-    GpuCache*               gpu_cache_;
-    CutUpdateIndex*         index_;
+    gpu_cache*               gpu_cache_;
+    cut_update_index*         index_;
 
-    std::vector<CutdatabaseRecord::SlotUpdateDescr> transfer_list_;
-    std::vector<std::vector<std::vector<Cut::NodeSlotAggregate>>> render_list_;
+    std::vector<cut_database_record::slot_update_desc> transfer_list_;
+    std::vector<std::vector<std::vector<cut::node_slot_aggregate>>> render_list_;
 
     char*                   current_gpu_storage_A_;
     char*                   current_gpu_storage_B_;
     char*                   current_gpu_storage_;
 
-    CutdatabaseRecord::Temporarybuffer current_gpu_buffer_;
+    cut_database_record::temporary_buffer current_gpu_buffer_;
 
-    std::map<view_t, Camera> user_cameras_;
+    std::map<view_t, camera> user_cameras_;
     std::map<view_t, float> height_divided_by_top_minus_bottoms_;
     std::map<model_t, scm::math::mat4f> model_transforms_;
     std::map<model_t, float> model_thresholds_;
@@ -114,7 +114,7 @@ private:
 #endif
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
-    std::vector<CutUpdateIndex::Action> pending_prefetch_set_;
+    std::vector<cut_update_index::action> pending_prefetch_set_;
 #endif
 
 

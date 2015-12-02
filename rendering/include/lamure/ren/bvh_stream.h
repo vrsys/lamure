@@ -39,8 +39,8 @@ public:
     const bvh_stream_type type() const { return type_; };
     const std::string filename() const { return filename_; };
 
-    void readbvh(const std::string& filename, bvh& bvh);
-    void writebvh(const std::string& filename, bvh& bvh);
+    void read_bvh(const std::string& filename, bvh& bvh);
+    void write_bvh(const std::string& filename, bvh& bvh);
 
 
 protected:
@@ -500,9 +500,9 @@ protected:
         
     };
     
-    void openStream(const std::string& bvh_filename,
+    void open_stream(const std::string& bvh_filename,
                     const bvh_stream_type type);
-    void closeStream(const bool remove_file);    
+    void close_stream(const bool remove_file);    
  
     void write(bvh_serializable& serializable);
 

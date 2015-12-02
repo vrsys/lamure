@@ -13,8 +13,8 @@ namespace lamure
 namespace ren
 {
 
-CutUpdatePool::
-CutUpdatePool(const context_t context_id,
+cut_update_pool::
+cut_update_pool(const context_t context_id,
   const node_t upload_budget_in_nodes,
   const node_t render_budget_in_nodes)
   : context_id_(context_id),
@@ -24,7 +24,7 @@ CutUpdatePool(const context_t context_id,
     current_gpu_storage_A_(nullptr),
     current_gpu_storage_B_(nullptr),
     current_gpu_storage_(nullptr),
-    current_gpu_buffer_(CutdatabaseRecord::Temporarybuffer::BUFFER_A),
+    current_gpu_buffer_(cut_database_record::temporary_buffer::BUFFER_A),
     upload_budget_in_nodes_(upload_budget_in_nodes),
     render_budget_in_nodes_(render_budget_in_nodes),
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
@@ -32,21 +32,21 @@ CutUpdatePool(const context_t context_id,
 #endif
     master_dispatched_(false) {
 
-    Initialize();
+    initialize();
 
     for (uint32_t i = 0; i < num_threads_; ++i) {
-        threads_.push_back(std::thread(&CutUpdatePool::Run, this));
+        threads_.push_back(std::thread(&cut_update_pool::run, this));
     }
 }
 
-CutUpdatePool::
-~CutUpdatePool() {
+cut_update_pool::
+~cut_update_pool() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
         shutdown_ = true;
-        semaphore_.Shutdown();
-        master_semaphore_.Shutdown();
+        semaphore_.shutdown();
+        master_semaphore_.shutdown();
     }
 
     for (auto& thread : threads_) {
@@ -55,13 +55,13 @@ CutUpdatePool::
     }
     threads_.clear();
 
-    Shutdown();
+    shutdown();
 }
 
-void CutUpdatePool::
-Initialize() {
-    Modeldatabase* database = Modeldatabase::get_instance();
-    Policy* policy = Policy::get_instance();
+void cut_update_pool::
+initialize() {
+    model_database* database = model_database::get_instance();
+    policy* policy = policy::get_instance();
 
     assert(policy->render_budget_in_mb() > 0);
     assert(policy->out_of_core_budget_in_mb() > 0);
@@ -71,9 +71,9 @@ Initialize() {
     out_of_core_budget_in_nodes_ =
         (policy->out_of_core_budget_in_mb()*1024*1024) / size_of_node_in_bytes;
 
-    index_ = new CutUpdateIndex();
-    index_->UpdatePolicy(0);
-    gpu_cache_ = new GpuCache(render_budget_in_nodes_);
+    index_ = new cut_update_index();
+    index_->update_policy(0);
+    gpu_cache_ = new gpu_cache(render_budget_in_nodes_);
 
     semaphore_.set_max_signal_count(1);
     semaphore_.set_min_signal_count(1);
@@ -85,8 +85,8 @@ Initialize() {
 
 }
 
-void CutUpdatePool::
-Shutdown() {
+void cut_update_pool::
+shutdown() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (gpu_cache_ != nullptr) {
@@ -104,20 +104,20 @@ Shutdown() {
 
 }
 
-bool CutUpdatePool::
+bool cut_update_pool::
 is_shutdown() {
     std::lock_guard<std::mutex> lock(mutex_);
     return shutdown_;
 }
 
-const bool CutUpdatePool::
-IsRunning() {
+const bool cut_update_pool::
+is_running() {
     std::lock_guard<std::mutex> lock(mutex_);
     return master_dispatched_;
 }
 
-void CutUpdatePool::
-DispatchCutUpdate(char* current_gpu_storage_A, char* current_gpu_storage_B) {
+void cut_update_pool::
+dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(current_gpu_storage_A != nullptr);
@@ -137,8 +137,8 @@ DispatchCutUpdate(char* current_gpu_storage_A, char* current_gpu_storage_B) {
         master_dispatched_ = true;
 
         job_queue_.push_job(
-            CutUpdateQueue::Job(
-                CutUpdateQueue::Task::CUT_MASTER_TASK, invalid_view_t, invalid_model_t));
+            cut_update_queue::job(
+                cut_update_queue::task_t::CUT_MASTER_TASK, invalid_view_t, invalid_model_t));
 
         semaphore_.Signal(1);
 
@@ -147,28 +147,28 @@ DispatchCutUpdate(char* current_gpu_storage_A, char* current_gpu_storage_B) {
 }
 
 
-void CutUpdatePool::
-Run() {
+void cut_update_pool::
+run() {
     while (true) {
         semaphore_.wait();
 
         if (is_shutdown()) break;
 
         //dequeue job
-        CutUpdateQueue::Job job = job_queue_.pop_frontJob();
+        cut_update_queue::job job = job_queue_.pop_frontjob();
 
-        if (job.task_ != CutUpdateQueue::Task::CUT_INVALID_TASK) {
+        if (job.task_ != cut_update_queue::task_t::CUT_INVALID_TASK) {
             switch (job.task_) {
-                case CutUpdateQueue::Task::CUT_MASTER_TASK:
-                    CutMaster();
+                case cut_update_queue::task_t::CUT_MASTER_TASK:
+                    cut_master();
                     break;
 
-                case CutUpdateQueue::Task::CUT_ANALYSIS_TASK:
-                    CutAnalysis(job.view_id_, job.model_id_);
+                case cut_update_queue::task_t::CUT_ANALYSIS_TASK:
+                    cut_analysis(job.view_id_, job.model_id_);
                     break;
 
-                case CutUpdateQueue::Task::CUT_UPDATE_TASK:
-                    CutUpdate();
+                case cut_update_queue::task_t::CUT_UPDATE_TASK:
+                    cut_update();
                     break;
 
                 default: break;
@@ -179,14 +179,14 @@ Run() {
 
 }
 
-const bool CutUpdatePool::
-Prepare() {
-    Cutdatabase* cut_database = Cutdatabase::get_instance();
+const bool cut_update_pool::
+prepare() {
+    cut_database* cut_database = cut_database::get_instance();
 
-    cut_database->ReceiveCameras(context_id_, user_cameras_);
-    cut_database->ReceiveheightDividedByTopMinusBottoms(context_id_, height_divided_by_top_minus_bottoms_);
-    cut_database->ReceiveTransforms(context_id_, model_transforms_);
-    cut_database->ReceiveThresholds(context_id_, model_thresholds_);
+    cut_database->receive_cameras(context_id_, user_cameras_);
+    cut_database->receive_height_divided_by_top_minus_bottoms(context_id_, height_divided_by_top_minus_bottoms_);
+    cut_database->receive_transforms(context_id_, model_transforms_);
+    cut_database->receive_thresholds(context_id_, model_thresholds_);
 
     transfer_list_.clear();
     render_list_.clear();
@@ -195,7 +195,7 @@ Prepare() {
     gpu_cache_->set_transfer_budget(upload_budget_in_nodes_);
     gpu_cache_->set_transfer_slots_written(0);
 
-    index_->UpdatePolicy(user_cameras_.size());
+    index_->update_policy(user_cameras_.size());
 
     //clamp threshold
     for (auto& threshold_it : model_thresholds_) {
@@ -208,7 +208,7 @@ Prepare() {
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
     ++cut_update_counter_;
     std::set<model_t> rendered_model_ids;
-    cut_database->Receiverendered(context_id_, rendered_model_ids);
+    cut_database->receive_rendered(context_id_, rendered_model_ids);
 
     for (const auto& model_id : rendered_model_ids) {
         model_freshness_[model_id] = cut_update_counter_;
@@ -223,7 +223,7 @@ Prepare() {
 
     for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
         for (view_t view_id = 0; view_id < index_->num_views(); ++view_id) {
-            if (index_->GetCurrentCut(view_id, model_id).empty()) {
+            if (index_->get_current_cut(view_id, model_id).empty()) {
                 all_roots_resident = false;
             }
         }
@@ -232,47 +232,47 @@ Prepare() {
     if (!all_roots_resident) {
         all_roots_resident = true;
 
-        OocCache* ooc_cache = OocCache::get_instance();
+        ooc_cache* ooc_cache = ooc_cache::get_instance();
 
-        ooc_cache->Lock();
-        ooc_cache->Refresh();
+        ooc_cache->lock();
+        ooc_cache->refresh();
 
         for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
-            if (!ooc_cache->IsNodeResident(model_id, 0)) {
-                ooc_cache->RegisterNode(model_id, 0, 100);
+            if (!ooc_cache->is_node_resident(model_id, 0)) {
+                ooc_cache->register_node(model_id, 0, 100);
                 all_roots_resident = false;
             }
         }
 
-        ooc_cache->Unlock();
+        ooc_cache->unlock();
 
         if (!all_roots_resident) {
             return false;
         }
         else {
-            ooc_cache->Lock();
-            gpu_cache_->Lock();
+            ooc_cache->lock();
+            gpu_cache_->lock();
             for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
-                if (!gpu_cache_->IsNodeResident(model_id, 0)) {
-                    gpu_cache_->RegisterNode(model_id, 0);
+                if (!gpu_cache_->is_node_resident(model_id, 0)) {
+                    gpu_cache_->register_node(model_id, 0);
                 }
 
                 for (view_t view_id = 0; view_id < index_->num_views(); ++view_id) {
-                    if (index_->GetCurrentCut(view_id, model_id).empty()) {
-                        assert(ooc_cache->IsNodeResident(model_id, 0));
-                        assert(gpu_cache_->IsNodeResident(model_id, 0));
+                    if (index_->get_current_cut(view_id, model_id).empty()) {
+                        assert(ooc_cache->is_node_resident(model_id, 0));
+                        assert(gpu_cache_->is_node_resident(model_id, 0));
 
-                        ooc_cache->AquireNode(context_id_, view_id, model_id, 0);
-                        gpu_cache_->AquireNode(context_id_, view_id, model_id, 0);
+                        ooc_cache->aquire_node(context_id_, view_id, model_id, 0);
+                        gpu_cache_->aquire_node(context_id_, view_id, model_id, 0);
 
-                        index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP, view_id, model_id, 0, 10000.f), false);
+                        index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, view_id, model_id, 0, 10000.f), false);
 
                     }
                 }
             }
 
-            gpu_cache_->Unlock();
-            ooc_cache->Unlock();
+            gpu_cache_->unlock();
+            ooc_cache->unlock();
         }
     }
 
@@ -280,29 +280,29 @@ Prepare() {
 
 }
 
-void CutUpdatePool::
-CutMaster() {
-    if (!Prepare()) {
+void cut_update_pool::
+cut_master() {
+    if (!prepare()) {
         std::lock_guard<std::mutex> lock(mutex_);
         master_dispatched_ = false;
         return;
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SHOW_GPU_CACHE_USAGE
-    std::cout << "PLOD: free slots gpu : " << gpu_cache_->NumFreeSlots() << "\t\t( " << gpu_cache_->num_slots()-gpu_cache_->NumFreeSlots() << " occupied)" << std::endl;
+    std::cout << "PLOD: free slots gpu : " << gpu_cache_->num_free_slots() << "\t\t( " << gpu_cache_->num_slots()-gpu_cache_->num_free_slots() << " occupied)" << std::endl;
 #endif
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SHOW_OOC_CACHE_USAGE
-    std::cout << "PLOD: free slots cpu: " << ooc_cache_->NumFreeSlots() << "\t\t( " << ooc_cache_->num_slots()-ooc_cache_->NumFreeSlots() << " occupied)" << std::endl << std::endl;
+    std::cout << "PLOD: free slots cpu: " << ooc_cache_->num_free_slots() << "\t\t( " << ooc_cache_->num_slots()-ooc_cache_->num_free_slots() << " occupied)" << std::endl << std::endl;
 #endif
 
     //swap and use temporary buffer
-    if (current_gpu_buffer_ == CutdatabaseRecord::Temporarybuffer::BUFFER_A) {
-        current_gpu_buffer_ = CutdatabaseRecord::Temporarybuffer::BUFFER_B;
+    if (current_gpu_buffer_ == cut_database_record::temporary_buffer::BUFFER_A) {
+        current_gpu_buffer_ = cut_database_record::temporary_buffer::BUFFER_B;
         current_gpu_storage_ = current_gpu_storage_B_;
     }
     else {
-        current_gpu_buffer_ = CutdatabaseRecord::Temporarybuffer::BUFFER_A;
+        current_gpu_buffer_ = cut_database_record::temporary_buffer::BUFFER_A;
         current_gpu_storage_ = current_gpu_storage_A_;
     }
 
@@ -330,26 +330,26 @@ CutMaster() {
 
 
     //swap cut index
-    index_->SwapCuts();
+    index_->swap_cuts();
 
     assert(semaphore_.NumSignals() == 0);
     assert(master_semaphore_.NumSignals() == 0);
 
     //re-configure semaphores
-    master_semaphore_.Lock();
+    master_semaphore_.lock();
     master_semaphore_.set_max_signal_count(index_->num_models() * index_->num_views());
     master_semaphore_.set_min_signal_count(index_->num_models() * index_->num_views());
-    master_semaphore_.Unlock();
+    master_semaphore_.unlock();
 
-    semaphore_.Lock();
+    semaphore_.lock();
     semaphore_.set_max_signal_count(index_->num_models() * index_->num_views());
     semaphore_.set_min_signal_count(1);
-    semaphore_.Unlock();
+    semaphore_.unlock();
 
     //launch slaves
     for (view_t view_id = 0; view_id < index_->num_views(); ++view_id) {
         for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
-            job_queue_.push_job(CutUpdateQueue::Job(CutUpdateQueue::Task::CUT_ANALYSIS_TASK, view_id, model_id));
+            job_queue_.push_job(cut_update_queue::job(cut_update_queue::task_t::CUT_ANALYSIS_TASK, view_id, model_id));
         }
     }
 
@@ -365,17 +365,17 @@ CutMaster() {
     index_->sort();
 
     //re-configure semaphores
-    master_semaphore_.Lock();
+    master_semaphore_.lock();
     master_semaphore_.set_max_signal_count(1);
     master_semaphore_.set_min_signal_count(1);
-    master_semaphore_.Unlock();
+    master_semaphore_.unlock();
 
-    semaphore_.Lock();
+    semaphore_.lock();
     semaphore_.set_max_signal_count(1);
     semaphore_.set_min_signal_count(1);
-    semaphore_.Unlock();
+    semaphore_.unlock();
 
-    job_queue_.push_job(CutUpdateQueue::Job(CutUpdateQueue::Task::CUT_UPDATE_TASK, 0, 0));
+    job_queue_.push_job(cut_update_queue::job(cut_update_queue::task_t::CUT_UPDATE_TASK, 0, 0));
     semaphore_.Signal(1);
 
     master_semaphore_.wait();
@@ -388,27 +388,27 @@ CutMaster() {
 
     //apply changes
     {
-        //Modeldatabase* database = Modeldatabase::get_instance();
-        Cutdatabase* cuts = Cutdatabase::get_instance();
+        //model_database* database = model_database::get_instance();
+        cut_database* cuts = cut_database::get_instance();
 
-        cuts->LockRecord(context_id_);
+        cuts->lock_record(context_id_);
 
         for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
             for (view_t view_id = 0; view_id < index_->num_views(); ++view_id) {
-                Cut cut(context_id_, view_id, model_id);
+                cut cut(context_id_, view_id, model_id);
                 cut.set_complete_set(render_list_[view_id][model_id]);
 
-                cuts->SetCut(context_id_, view_id, model_id, cut);
+                cuts->set_cut(context_id_, view_id, model_id, cut);
             }
         }
 
-        cuts->SetUpdatedSet(context_id_, transfer_list_);
+        cuts->set_updated_set(context_id_, transfer_list_);
 
-        cuts->SetIsfrontModified(context_id_, gpu_cache_->transfer_budget() < upload_budget_in_nodes_); //...
-        cuts->SetIsSwapRequired(context_id_, true);
-        cuts->Setbuffer(context_id_, current_gpu_buffer_);
+        cuts->set_is_front_modified(context_id_, gpu_cache_->transfer_budget() < upload_budget_in_nodes_); //...
+        cuts->set_is_swap_required(context_id_, true);
+        cuts->set_buffer(context_id_, current_gpu_buffer_);
 
-        cuts->UnlockRecord(context_id_);
+        cuts->unlock_record(context_id_);
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -420,8 +420,8 @@ CutMaster() {
 }
 
 
-void CutUpdatePool::
-CutAnalysis(view_t view_id, model_t model_id) {
+void cut_update_pool::
+cut_analysis(view_t view_id, model_t model_id) {
 
     assert(view_id != invalid_view_t);
     assert(model_id != invalid_model_t);
@@ -440,15 +440,15 @@ CutAnalysis(view_t view_id, model_t model_id) {
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
         freshness = model_freshness_[model_id];
 #endif
-        frustum = user_cameras_[view_id].GetFrustumByModel(model_matrix);
+        frustum = user_cameras_[view_id].get_frustum_by_model(model_matrix);
     }
 
     //perform cut analysis
-    std::set<node_t> old_cut = index_->GetPreviousCut(view_id, model_id);
+    std::set<node_t> old_cut = index_->get_previous_cut(view_id, model_id);
 
-    index_->resetCut(view_id, model_id);
+    index_->reset_cut(view_id, model_id);
 
-    uint32_t fan_factor = index_->FanFactor(model_id);
+    uint32_t fan_factor = index_->fan_factor(model_id);
 
     bool freshness_timeout = false;
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
@@ -471,27 +471,27 @@ CutAnalysis(view_t view_id, model_t model_id) {
         std::vector<node_t> siblings;
 
         assert(node_id != invalid_node_t);
-        assert(node_id < index_->NumNodes(model_id));
+        assert(node_id < index_->num_nodes(model_id));
 
-        if (node_id > 0 && node_id < index_->NumNodes(model_id)) {
+        if (node_id > 0 && node_id < index_->num_nodes(model_id)) {
             parent_id = index_->get_parent_id(model_id, node_id);
-            parent_error = CalculateNodeError(view_id, model_id, parent_id);
+            parent_error = calculate_node_error(view_id, model_id, parent_id);
 
-            index_->GetAllSiblings(model_id, node_id, siblings);
+            index_->get_all_siblings(model_id, node_id, siblings);
 
-            all_siblings_in_cut = IsAllNodesInCut(model_id, siblings, old_cut);
-            no_sibling_in_frustum = !IsNodeInFrustum(view_id, model_id, parent_id, frustum);
+            all_siblings_in_cut = is_all_nodes_in_cut(model_id, siblings, old_cut);
+            no_sibling_in_frustum = !is_node_in_frustum(view_id, model_id, parent_id, frustum);
         }
 
         if (!all_siblings_in_cut) {
-            float node_error = CalculateNodeError(view_id, model_id, node_id);
-            bool node_in_frustum = IsNodeInFrustum(view_id, model_id, node_id, frustum);
+            float node_error = calculate_node_error(view_id, model_id, node_id);
+            bool node_in_frustum = is_node_in_frustum(view_id, model_id, node_id, frustum);
 
             if (node_in_frustum && node_error > max_error_threshold) {
                 //only split if the predicted error of children does not require collapsing
                 bool split = true;
                 std::vector<node_t> children;
-                index_->GetAllChildren(model_id, node_id, children);
+                index_->get_all_children(model_id, node_id, children);
                 for (const auto& child_id : children) {
                     if (child_id == invalid_node_t)
                     {
@@ -499,7 +499,7 @@ CutAnalysis(view_t view_id, model_t model_id) {
                         break;
                     }
 
-                    float child_error = CalculateNodeError(view_id, model_id, child_id);
+                    float child_error = calculate_node_error(view_id, model_id, child_id);
                     if (child_error < min_error_threshold)
                     {
                         split = false;
@@ -507,30 +507,30 @@ CutAnalysis(view_t view_id, model_t model_id) {
                     }
                 }
                 if (!split || freshness_timeout) {
-                    index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP, view_id, model_id, node_id, parent_error), false);
+                    index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, view_id, model_id, node_id, parent_error), false);
                 }
                 else {
-                    index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::MUST_SPLIT,view_id, model_id, node_id, node_error), false);
+                    index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_SPLIT,view_id, model_id, node_id, node_error), false);
                 }
             }
             else {
-                index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP, view_id, model_id, node_id, parent_error), false);
+                index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, view_id, model_id, node_id, parent_error), false);
             }
 
         }
         else {
             if (no_sibling_in_frustum) {
 #ifdef LAMURE_CUT_UPDATE_MUST_COLLAPSE_OUTSIDE_FRUSTUM
-                index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::MUST_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
+                index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
 #else
-                index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::COLLAPSE_ON_NEED, view_id, model_id, parent_id, parent_error), false);
+                index_->push_action(cut_update_index::action(cut_update_index::queue_t::COLLAPSE_ON_NEED, view_id, model_id, parent_id, parent_error), false);
 #endif
             }
             else {
                 //the entire group of siblings is in the cut and visible
 
                 if (freshness_timeout) {
-                    index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::COLLAPSE_ON_NEED, view_id, model_id, parent_id, parent_error), false);
+                    index_->push_action(cut_update_index::action(cut_update_index::queue_t::COLLAPSE_ON_NEED, view_id, model_id, parent_id, parent_error), false);
 
                     //skip to next group of siblings
                     std::advance(cut_it, fan_factor-1);
@@ -544,21 +544,21 @@ CutAnalysis(view_t view_id, model_t model_id) {
                 std::vector<bool> keep_sibling;
 
                 for (const auto& sibling_id : siblings) {
-                    float sibling_error = CalculateNodeError(view_id, model_id, sibling_id);
-                    bool sibling_in_frustum = IsNodeInFrustum(view_id, model_id, sibling_id, frustum);
+                    float sibling_error = calculate_node_error(view_id, model_id, sibling_id);
+                    bool sibling_in_frustum = is_node_in_frustum(view_id, model_id, sibling_id, frustum);
 
                     if (sibling_error > max_error_threshold && sibling_in_frustum) {
                         //only split if the predicted error of children does not require collapsing
                         bool split = true;
                         std::vector<node_t> children;
-                        index_->GetAllChildren(model_id, sibling_id, children);
+                        index_->get_all_children(model_id, sibling_id, children);
                         for (const auto& child_id : children) {
                             if (child_id == invalid_node_t) {
                                 split = false;
                                 break;
                             }
 
-                            float child_error = CalculateNodeError(view_id, model_id, child_id);
+                            float child_error = calculate_node_error(view_id, model_id, child_id);
                             if (child_error < min_error_threshold) {
                                 split = false;
                                 break;
@@ -568,7 +568,7 @@ CutAnalysis(view_t view_id, model_t model_id) {
                             keep_sibling.push_back(true);
                         }
                         else {
-                            index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::MUST_SPLIT, view_id, model_id, sibling_id, sibling_error), false);
+                            index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_SPLIT, view_id, model_id, sibling_id, sibling_error), false);
 
                             keep_all_siblings = false;
                             keep_sibling.push_back(false);
@@ -584,15 +584,15 @@ CutAnalysis(view_t view_id, model_t model_id) {
 
 
                 if (keep_all_siblings && all_sibling_errors_below_min_error_threshold) {
-                    index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::MUST_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
+                    index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
                 }
                 else if (keep_all_siblings) {
-                    index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::MAYBE_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
+                    index_->push_action(cut_update_index::action(cut_update_index::queue_t::MAYBE_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
                 }
                 else {
                     for (uint32_t j = 0; j < fan_factor; ++j) {
                         if (keep_sibling[j]) {
-                            index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP, view_id, model_id, siblings[j], parent_error), false);
+                            index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, view_id, model_id, siblings[j], parent_error), false);
                         }
                     }
                 }
@@ -610,60 +610,60 @@ CutAnalysis(view_t view_id, model_t model_id) {
 
 }
 
-void CutUpdatePool::
-CutUpdateSplitAgain(const CutUpdateIndex::Action& split_action) {
+void cut_update_pool::
+cut_update_split_again(const cut_update_index::action& split_action) {
 
     std::vector<node_t> candidates;
-    index_->GetAllChildren(split_action.model_id_, split_action.node_id_, candidates);
+    index_->get_all_children(split_action.model_id_, split_action.node_id_, candidates);
 
     scm::math::mat4f model_matrix = model_transforms_[split_action.model_id_];
-    scm::gl::frustum frustum = user_cameras_[split_action.view_id_].GetFrustumByModel(model_matrix);
+    scm::gl::frustum frustum = user_cameras_[split_action.view_id_].get_frustum_by_model(model_matrix);
 
     float min_error_threshold = model_thresholds_[split_action.model_id_] - 0.1f;
     float max_error_threshold = model_thresholds_[split_action.model_id_] + 0.1f;
     
     for (const auto& candidate_id : candidates) {
-        float node_error = CalculateNodeError(split_action.view_id_, split_action.model_id_, candidate_id);
+        float node_error = calculate_node_error(split_action.view_id_, split_action.model_id_, candidate_id);
 
         if (node_error > max_error_threshold) {
             //only split if the predicted error of children does not require collapsing
             bool split = true;
             std::vector<node_t> children;
-            index_->GetAllChildren(split_action.model_id_, candidate_id, children);
+            index_->get_all_children(split_action.model_id_, candidate_id, children);
             for (const auto& child_id : children) {
                 if (child_id == invalid_node_t) {
                     split = false;
                     break;
                 }
 
-                float child_error = CalculateNodeError(split_action.view_id_, split_action.model_id_, child_id);
+                float child_error = calculate_node_error(split_action.view_id_, split_action.model_id_, child_id);
                 if (child_error < min_error_threshold) {
                     split = false;
                     break;
                 }
             }
             if (!split) {
-                index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP, split_action.view_id_, split_action.model_id_, candidate_id, node_error), true);
+                index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, split_action.view_id_, split_action.model_id_, candidate_id, node_error), true);
 
             }
             else {
-                index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::MUST_SPLIT, split_action.view_id_, split_action.model_id_, candidate_id, node_error), true);
+                index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_SPLIT, split_action.view_id_, split_action.model_id_, candidate_id, node_error), true);
 
             }
         }
         else {
-            index_->PushAction(CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP, split_action.view_id_, split_action.model_id_, candidate_id, node_error), true);
+            index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, split_action.view_id_, split_action.model_id_, candidate_id, node_error), true);
         }
     }
 
 }
 
-void CutUpdatePool::
-CutUpdate() {
-    OocCache* ooc_cache = OocCache::get_instance();
-    ooc_cache->Lock();
-    ooc_cache->Refresh();
-    gpu_cache_->Lock();
+void cut_update_pool::
+cut_update() {
+    ooc_cache* ooc_cache = ooc_cache::get_instance();
+    ooc_cache->lock();
+    ooc_cache->refresh();
+    gpu_cache_->lock();
 
     bool check_residency = true;
 
@@ -671,10 +671,10 @@ CutUpdate() {
     bool all_children_in_gpu_cache = true;
 
     //cut update
-    while (index_->NumActions(CutUpdateIndex::Queue::MUST_SPLIT) > 0) {
+    while (index_->num_actions(cut_update_index::queue_t::MUST_SPLIT) > 0) {
 
-        CutUpdateIndex::Action must_split_action = index_->frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
-        size_t fan_factor = index_->FanFactor(must_split_action.model_id_);
+        cut_update_index::action must_split_action = index_->front_action(cut_update_index::queue_t::MUST_SPLIT);
+        size_t fan_factor = index_->fan_factor(must_split_action.model_id_);
 
 #if 1
 
@@ -683,15 +683,15 @@ CutUpdate() {
 
 
         std::vector<node_t> child_ids;
-        index_->GetAllChildren(must_split_action.model_id_, must_split_action.node_id_, child_ids);
+        index_->get_all_children(must_split_action.model_id_, must_split_action.node_id_, child_ids);
 
         for (const auto& child_id : child_ids) {
-            if (!ooc_cache->IsNodeResident(must_split_action.model_id_, child_id)) {
+            if (!ooc_cache->is_node_resident(must_split_action.model_id_, child_id)) {
                 all_children_in_ooc_cache = false;
                 if (!all_children_in_gpu_cache)
                     break;
             }
-            if (!gpu_cache_->IsNodeResident(must_split_action.model_id_, child_id)) {
+            if (!gpu_cache_->is_node_resident(must_split_action.model_id_, child_id)) {
                 all_children_in_gpu_cache = false;
                 if (!all_children_in_ooc_cache)
                     break;
@@ -701,17 +701,17 @@ CutUpdate() {
 
         if (all_children_in_ooc_cache && all_children_in_gpu_cache) {
 
-            index_->pop_frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+            index_->pop_front_action(cut_update_index::queue_t::MUST_SPLIT);
 
             for (const auto& child_id : child_ids) {
-                gpu_cache_->AquireNode(context_id_, must_split_action.view_id_, must_split_action.model_id_, child_id);
-                ooc_cache->AquireNode(context_id_, must_split_action.view_id_, must_split_action.model_id_, child_id);
+                gpu_cache_->aquire_node(context_id_, must_split_action.view_id_, must_split_action.model_id_, child_id);
+                ooc_cache->aquire_node(context_id_, must_split_action.view_id_, must_split_action.model_id_, child_id);
             }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SPLIT_AGAIN_MODE
-            CutUpdateSplitAgain(must_split_action);
+            cut_update_split_again(must_split_action);
 #else
-            index_->ApproveAction(must_split_action);
+            index_->approve_action(must_split_action);
 #endif
             continue;
 
@@ -722,50 +722,50 @@ CutUpdate() {
 #endif
         check_residency = false;
 
-        bool all_children_fit_in_ooc_cache = ooc_cache->NumFreeSlots() >= fan_factor;
-        bool all_children_fit_in_gpu_cache = gpu_cache_->NumFreeSlots() >= fan_factor;
+        bool all_children_fit_in_ooc_cache = ooc_cache->num_free_slots() >= fan_factor;
+        bool all_children_fit_in_gpu_cache = gpu_cache_->num_free_slots() >= fan_factor;
 
         if ((all_children_fit_in_ooc_cache && all_children_fit_in_gpu_cache)
             || (all_children_in_ooc_cache && all_children_fit_in_gpu_cache)) {
-            CutUpdateIndex::Action msa = index_->frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
-            index_->pop_frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
+            cut_update_index::action msa = index_->front_action(cut_update_index::queue_t::MUST_SPLIT);
+            index_->pop_front_action(cut_update_index::queue_t::MUST_SPLIT);
 
-            SplitNode(msa);
+            split_node(msa);
             check_residency = true;
             continue;
         }
 
-        if (index_->NumActions(CutUpdateIndex::Queue::MUST_COLLAPSE) > 0) {
-            CutUpdateIndex::Action collapse_action = index_->frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
-            index_->pop_frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
+        if (index_->num_actions(cut_update_index::queue_t::MUST_COLLAPSE) > 0) {
+            cut_update_index::action collapse_action = index_->front_action(cut_update_index::queue_t::MUST_COLLAPSE);
+            index_->pop_front_action(cut_update_index::queue_t::MUST_COLLAPSE);
 
-            CollapseNode(collapse_action);
+            collapse_node(collapse_action);
             continue;
         }
 
-        if (index_->NumActions(CutUpdateIndex::Queue::COLLAPSE_ON_NEED) > 0) {
-            CutUpdateIndex::Action collapse_on_need_action = index_->frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
-            index_->pop_frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
+        if (index_->num_actions(cut_update_index::queue_t::COLLAPSE_ON_NEED) > 0) {
+            cut_update_index::action collapse_on_need_action = index_->front_action(cut_update_index::queue_t::COLLAPSE_ON_NEED);
+            index_->pop_front_action(cut_update_index::queue_t::COLLAPSE_ON_NEED);
 
-            CollapseNode(collapse_on_need_action);
+            collapse_node(collapse_on_need_action);
             continue;
         }
 
-        if (index_->NumActions(CutUpdateIndex::Queue::MAYBE_COLLAPSE) > 0) {
+        if (index_->num_actions(cut_update_index::queue_t::MAYBE_COLLAPSE) > 0) {
             if (must_split_action.error_
-                > index_->BackAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE).error_) {
-                CutUpdateIndex::Action collapse_action = index_->BackAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
-                index_->PopBackAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
+                > index_->back_action(cut_update_index::queue_t::MAYBE_COLLAPSE).error_) {
+                cut_update_index::action collapse_action = index_->back_action(cut_update_index::queue_t::MAYBE_COLLAPSE);
+                index_->Popback_action(cut_update_index::queue_t::MAYBE_COLLAPSE);
 
-                CollapseNode(collapse_action);
+                collapse_node(collapse_action);
                 continue;
             }
         }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_CUT_UPDATE_EXPERIMENTAL_MODE
-        if (index_->NumActions(CutUpdateIndex::Queue::KEEP) > 0) {
-            CutUpdateIndex::Action keep_action = index_->BackAction(CutUpdateIndex::Queue::KEEP);
-            index_->PopBackAction(CutUpdateIndex::Queue::KEEP);
+        if (index_->num_actions(cut_update_index::queue_t::KEEP) > 0) {
+            cut_update_index::action keep_action = index_->back_action(cut_update_index::queue_t::KEEP);
+            index_->Popback_action(cut_update_index::queue_t::KEEP);
 
             if (must_split_action.error_ > keep_action.error_) {
                 node_t keep_action_parent_id = index_->get_parent_id(keep_action.model_id_, keep_action.node_id_);
@@ -773,9 +773,9 @@ CutUpdate() {
                 if (keep_action.node_id_ > 0 && keep_action_parent_id > 0) {
 
                     std::vector<node_t> siblings;
-                    index_->GetAllSiblings(keep_action.model_id_, keep_action.node_id_, siblings);
+                    index_->get_all_siblings(keep_action.model_id_, keep_action.node_id_, siblings);
 
-                    if (IsAllNodesInCut(keep_action.model_id_, siblings, index_->GetPreviousCut(keep_action.view_id_, keep_action.model_id_))) {
+                    if (is_all_nodes_in_cut(keep_action.model_id_, siblings, index_->get_previous_cut(keep_action.view_id_, keep_action.model_id_))) {
                         bool singularity = false;
 
                         for (const auto& sibling_id : siblings) {
@@ -788,7 +788,7 @@ CutUpdate() {
                             }
 
                             std::vector<node_t> sibling_children;
-                            index_->GetAllChildren(keep_action.model_id_, sibling_id, sibling_children);
+                            index_->get_all_children(keep_action.model_id_, sibling_id, sibling_children);
 
                             for (const auto& sibling_child_id : sibling_children) {
                                 if (sibling_child_id == must_split_action.node_id_) {
@@ -804,42 +804,42 @@ CutUpdate() {
                                 if (sibling_id != invalid_node_t) {
 
                                     //cancel all possible actions on sibling_id
-                                    index_->CancelAction(keep_action.view_id_, keep_action.model_id_, sibling_id);
+                                    index_->cancel_action(keep_action.view_id_, keep_action.model_id_, sibling_id);
 
-                                    if (gpu_cache_->ReleaseNodeinvalidate(context_id_,
+                                    if (gpu_cache_->release_node_invalidate(context_id_,
                                                                           keep_action.view_id_,
                                                                           keep_action.model_id_,
                                                                           sibling_id)) {
                                         gpu_cache_->RemoveFromTransferList(keep_action.model_id_, sibling_id);
                                     }
 
-                                    ooc_cache->ReleaseNode(context_id_, keep_action.view_id_, keep_action.model_id_, sibling_id);
+                                    ooc_cache->release_node(context_id_, keep_action.view_id_, keep_action.model_id_, sibling_id);
 
                                     //cancel a possible split action that already happened
                                     std::vector<node_t> sibling_children;
-                                    index_->GetAllChildren(keep_action.model_id_, sibling_id, sibling_children);
+                                    index_->get_all_children(keep_action.model_id_, sibling_id, sibling_children);
                                     for (const auto& sibling_child_id : sibling_children) {
                                         if (sibling_child_id != invalid_node_t) {
-                                            index_->CancelAction(keep_action.view_id_, keep_action.model_id_, sibling_child_id);
+                                            index_->cancel_action(keep_action.view_id_, keep_action.model_id_, sibling_child_id);
 
-                                            if (gpu_cache_->ReleaseNodeinvalidate(context_id_,
+                                            if (gpu_cache_->release_node_invalidate(context_id_,
                                                                                 keep_action.view_id_,
                                                                                 keep_action.model_id_,
                                                                                 sibling_child_id)) {
                                                 gpu_cache_->RemoveFromTransferList(keep_action.model_id_, sibling_child_id);
                                             }
 
-                                            ooc_cache->ReleaseNode(context_id_, keep_action.view_id_, keep_action.model_id_, sibling_child_id);
+                                            ooc_cache->release_node(context_id_, keep_action.view_id_, keep_action.model_id_, sibling_child_id);
                                         }
                                     }
                                 }
                             }
 
-                            assert(gpu_cache_->IsNodeResident(keep_action.model_id_, keep_action_parent_id));
-                            assert(ooc_cache->IsNodeResident(keep_action.model_id_, keep_action_parent_id));
+                            assert(gpu_cache_->is_node_resident(keep_action.model_id_, keep_action_parent_id));
+                            assert(ooc_cache->is_node_resident(keep_action.model_id_, keep_action_parent_id));
 
-                            index_->ApproveAction(
-                                CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP,
+                            index_->approve_action(
+                                cut_update_index::action(cut_update_index::queue_t::KEEP,
                                                        keep_action.view_id_,
                                                        keep_action.model_id_,
                                                        keep_action_parent_id,
@@ -852,14 +852,14 @@ CutUpdate() {
             }
 
             //approve keep action
-            index_->ApproveAction(keep_action);
+            index_->approve_action(keep_action);
 
         }
 
 
-        if (index_->NumActions(CutUpdateIndex::Queue::MUST_SPLIT) > 1) { //> 1, prevent request from canceling itself
-            CutUpdateIndex::Action split_action = index_->BackAction(CutUpdateIndex::Queue::MUST_SPLIT);
-            index_->PopBackAction(CutUpdateIndex::Queue::MUST_SPLIT);
+        if (index_->num_actions(cut_update_index::queue_t::MUST_SPLIT) > 1) { //> 1, prevent request from canceling itself
+            cut_update_index::action split_action = index_->back_action(cut_update_index::queue_t::MUST_SPLIT);
+            index_->Popback_action(cut_update_index::queue_t::MUST_SPLIT);
 
             if (must_split_action.error_ > split_action.error_) {
                 node_t split_action_parent_id = index_->get_parent_id(split_action.model_id_, split_action.node_id_);
@@ -871,16 +871,16 @@ CutUpdate() {
                     //and there is really no reason to cancel this action if we cannot use it
                     //to cut down memory usage in the end.
                     std::vector<node_t> siblings;
-                    index_->GetAllSiblings(split_action.model_id_, split_action.node_id_, siblings);
+                    index_->get_all_siblings(split_action.model_id_, split_action.node_id_, siblings);
 
-                    if (IsAllNodesInCut(split_action.model_id_,
+                    if (is_all_nodes_in_cut(split_action.model_id_,
                                         siblings,
-                                        index_->GetPreviousCut(split_action.view_id_, split_action.model_id_))) {
+                                        index_->get_previous_cut(split_action.view_id_, split_action.model_id_))) {
 
                         bool singularity = split_action.node_id_ == must_split_action.node_id_;
 
                         std::vector<node_t> split_children;
-                        index_->GetAllChildren(split_action.model_id_, split_action.node_id_, split_children);
+                        index_->get_all_children(split_action.model_id_, split_action.node_id_, split_children);
 
                         //check if children of split_action are equal to the must_split_node (parent of must_split)
                         //this is important, since it would not free any memory anyways to cancel a split_action that is above
@@ -893,16 +893,16 @@ CutUpdate() {
                         }
 
                         if (!singularity) {
-                            assert(gpu_cache_->IsNodeResident(split_action.model_id_, split_action.node_id_));
-                            assert(ooc_cache->IsNodeResident(split_action.model_id_, split_action.node_id_));
+                            assert(gpu_cache_->is_node_resident(split_action.model_id_, split_action.node_id_));
+                            assert(ooc_cache->is_node_resident(split_action.model_id_, split_action.node_id_));
 
                             scm::math::mat4f model_matrix = model_transforms_[split_action.model_id_];
 
-                            float replacement_node_error = CalculateNodeError(split_action.view_id_,
+                            float replacement_node_error = calculate_node_error(split_action.view_id_,
                                                                               split_action.model_id_,
                                                                               split_action.node_id_);
-                            index_->PushAction(
-                                CutUpdateIndex::Action(CutUpdateIndex::Queue::KEEP,
+                            index_->push_action(
+                                cut_update_index::action(cut_update_index::queue_t::KEEP,
                                                        split_action.view_id_,
                                                        split_action.model_id_,
                                                        split_action.node_id_,
@@ -918,87 +918,87 @@ CutUpdate() {
             }
 
             //reject split action
-            index_->RejectAction(split_action);
+            index_->reject_action(split_action);
 
         }
 
 #endif
 
         //no success, reject must split action
-        CutUpdateIndex::Action msa = index_->frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
-        index_->pop_frontAction(CutUpdateIndex::Queue::MUST_SPLIT);
-        index_->RejectAction(msa);
+        cut_update_index::action msa = index_->front_action(cut_update_index::queue_t::MUST_SPLIT);
+        index_->pop_front_action(cut_update_index::queue_t::MUST_SPLIT);
+        index_->reject_action(msa);
         check_residency = true;
 
     }
 
     //approve all remaining must-collapse-actions
-    while (index_->NumActions(CutUpdateIndex::Queue::MUST_COLLAPSE) > 0) {
-        CutUpdateIndex::Action collapse_action = index_->frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
-        index_->pop_frontAction(CutUpdateIndex::Queue::MUST_COLLAPSE);
-        CollapseNode(collapse_action);
+    while (index_->num_actions(cut_update_index::queue_t::MUST_COLLAPSE) > 0) {
+        cut_update_index::action collapse_action = index_->front_action(cut_update_index::queue_t::MUST_COLLAPSE);
+        index_->pop_front_action(cut_update_index::queue_t::MUST_COLLAPSE);
+        collapse_node(collapse_action);
 
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
-    PrefetchRoutine();      
+    prefetch_routine();      
 #endif
-    gpu_cache_->Unlock();
-    ooc_cache->Unlock();
+    gpu_cache_->unlock();
+    ooc_cache->unlock();
 
     //reject remaining collapse-on-need-actions
-    while (index_->NumActions(CutUpdateIndex::Queue::COLLAPSE_ON_NEED) > 0) {
-        CutUpdateIndex::Action collapse_on_need_action = index_->frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
-        index_->pop_frontAction(CutUpdateIndex::Queue::COLLAPSE_ON_NEED);
-        index_->RejectAction(collapse_on_need_action);
+    while (index_->num_actions(cut_update_index::queue_t::COLLAPSE_ON_NEED) > 0) {
+        cut_update_index::action collapse_on_need_action = index_->front_action(cut_update_index::queue_t::COLLAPSE_ON_NEED);
+        index_->pop_front_action(cut_update_index::queue_t::COLLAPSE_ON_NEED);
+        index_->reject_action(collapse_on_need_action);
 
     }
 
     //reject remaining maybe-collapse-actions
-    while (index_->NumActions(CutUpdateIndex::Queue::MAYBE_COLLAPSE) > 0) {
-        CutUpdateIndex::Action maybe_collapse_action = index_->frontAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
-        index_->pop_frontAction(CutUpdateIndex::Queue::MAYBE_COLLAPSE);
-        index_->RejectAction(maybe_collapse_action);
+    while (index_->num_actions(cut_update_index::queue_t::MAYBE_COLLAPSE) > 0) {
+        cut_update_index::action maybe_collapse_action = index_->front_action(cut_update_index::queue_t::MAYBE_COLLAPSE);
+        index_->pop_front_action(cut_update_index::queue_t::MAYBE_COLLAPSE);
+        index_->reject_action(maybe_collapse_action);
 
     }
 
     //approve all keep-actions
-    while (index_->NumActions(CutUpdateIndex::Queue::KEEP) > 0) {
-        CutUpdateIndex::Action keep_action = index_->frontAction(CutUpdateIndex::Queue::KEEP);
-        index_->pop_frontAction(CutUpdateIndex::Queue::KEEP);
-        index_->ApproveAction(keep_action);
+    while (index_->num_actions(cut_update_index::queue_t::KEEP) > 0) {
+        cut_update_index::action keep_action = index_->front_action(cut_update_index::queue_t::KEEP);
+        index_->pop_front_action(cut_update_index::queue_t::KEEP);
+        index_->approve_action(keep_action);
 
     }
 
-    assert(index_->NumActions(CutUpdateIndex::Queue::KEEP) == 0);
-    assert(index_->NumActions(CutUpdateIndex::Queue::MUST_SPLIT) == 0);
-    assert(index_->NumActions(CutUpdateIndex::Queue::MUST_COLLAPSE) == 0);
-    assert(index_->NumActions(CutUpdateIndex::Queue::COLLAPSE_ON_NEED) == 0);
-    assert(index_->NumActions(CutUpdateIndex::Queue::MAYBE_COLLAPSE) == 0);
+    assert(index_->num_actions(cut_update_index::queue_t::KEEP) == 0);
+    assert(index_->num_actions(cut_update_index::queue_t::MUST_SPLIT) == 0);
+    assert(index_->num_actions(cut_update_index::queue_t::MUST_COLLAPSE) == 0);
+    assert(index_->num_actions(cut_update_index::queue_t::COLLAPSE_ON_NEED) == 0);
+    assert(index_->num_actions(cut_update_index::queue_t::MAYBE_COLLAPSE) == 0);
 
-    compilerenderList();
-    compileTransferList();
+    compile_render_list();
+    compile_transfer_list();
 
     master_semaphore_.Signal(1);
 
 }
 
-void CutUpdatePool::
-compilerenderList() {
+void cut_update_pool::
+compile_render_list() {
     render_list_.clear();
 
     const std::set<view_t>& view_ids = index_->view_ids();
 
     for (const auto  view_id : view_ids) {
-        std::vector<std::vector<Cut::NodeSlotAggregate>> view_render_lists;
+        std::vector<std::vector<cut::node_slot_aggregate>> view_render_lists;
 
         for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
-            std::vector<Cut::NodeSlotAggregate> model_render_lists;
+            std::vector<cut::node_slot_aggregate> model_render_lists;
 
-            const std::set<node_t>& current_cut = index_->GetCurrentCut(view_id, model_id);
+            const std::set<node_t>& current_cut = index_->get_current_cut(view_id, model_id);
 
             for (const auto& node_id : current_cut) {
-                model_render_lists.push_back(Cut::NodeSlotAggregate(node_id, gpu_cache_->SlotId(model_id, node_id)));
+                model_render_lists.push_back(cut::node_slot_aggregate(node_id, gpu_cache_->slot_id(model_id, node_id)));
             }
 
             view_render_lists.push_back(model_render_lists);
@@ -1010,10 +1010,10 @@ compilerenderList() {
 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
-void CutUpdatePool::
-PrefetchRoutine() {
+void cut_update_pool::
+prefetch_routine() {
 
-   OocCache* ooc_cache = OocCache::get_instance();
+   ooc_cache* ooc_cache = ooc_cache::get_instance();
 
 #if 0
    uint32_t num_prefetched = 0;
@@ -1030,7 +1030,7 @@ PrefetchRoutine() {
       if (action.error_ > max_error_threshold * LAMURE_CUT_UPDATE_PREFETCH_FACTOR) {
  
          std::vector<node_t> child_ids;
-         index_->GetAllChildren(action.model_id_, action.node_id_, child_ids);
+         index_->get_all_children(action.model_id_, action.node_id_, child_ids);
          for (const auto& child_id : child_ids) {
             node_id_queue.push(std::make_pair(action.model_id_, child_id));
          }
@@ -1048,15 +1048,15 @@ PrefetchRoutine() {
      node_id_queue.pop();
 
      std::vector<node_t> child_ids;
-     index_->GetAllChildren(model_id, node_id, child_ids);
+     index_->get_all_children(model_id, node_id, child_ids);
             
-     uint32_t fan_factor = index_->FanFactor(model_id);
+     uint32_t fan_factor = index_->fan_factor(model_id);
      if (++current_prefetch_depth < LAMURE_CUT_UPDATE_PREFETCH_BUDGET) {
-        if (ooc_cache->NumFreeSlots() > ooc_cache->num_slots()/4
-           && gpu_cache_->NumFreeSlots() > gpu_cache_->num_slots()/4) {
+        if (ooc_cache->num_free_slots() > ooc_cache->num_slots()/4
+           && gpu_cache_->num_free_slots() > gpu_cache_->num_slots()/4) {
  
-           bool all_children_fit_in_ooc_cache = ooc_cache->NumFreeSlots() >= fan_factor;
-           bool all_children_fit_in_gpu_cache = gpu_cache_->NumFreeSlots() >= fan_factor;     
+           bool all_children_fit_in_ooc_cache = ooc_cache->num_free_slots() >= fan_factor;
+           bool all_children_fit_in_gpu_cache = gpu_cache_->num_free_slots() >= fan_factor;     
 
            if (all_children_fit_in_ooc_cache && all_children_fit_in_gpu_cache) {
               for (const auto& child_id : child_ids) {
@@ -1064,10 +1064,10 @@ PrefetchRoutine() {
                 if (child_id == invalid_node_t) 
                    continue;
 
-                if (!ooc_cache->IsNodeResident(model_id, child_id)) {
+                if (!ooc_cache->is_node_resident(model_id, child_id)) {
                    //load child from harddisk
-                   if (ooc_cache->NumFreeSlots() > 0) {
-                      ooc_cache->RegisterNode(model_id, child_id, (int32_t)(-current_prefetch_depth));
+                   if (ooc_cache->num_free_slots() > 0) {
+                      ooc_cache->register_node(model_id, child_id, (int32_t)(-current_prefetch_depth));
                    }
                 }
                     
@@ -1096,10 +1096,10 @@ PrefetchRoutine() {
 }
 #endif
 
-void CutUpdatePool::
-compileTransferList() {
-    Modeldatabase* database = Modeldatabase::get_instance();
-    OocCache* ooc_cache = OocCache::get_instance();
+void cut_update_pool::
+compile_transfer_list() {
+    model_database* database = model_database::get_instance();
+    ooc_cache* ooc_cache = ooc_cache::get_instance();
 
     const std::vector<std::unordered_set<node_t>>& transfer_list = gpu_cache_->transfer_list();
 
@@ -1108,15 +1108,15 @@ compileTransferList() {
 
     for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
         for (const auto& node_id : transfer_list[model_id]) {
-            slot_t slot_id = gpu_cache_->SlotId(model_id, node_id);
+            slot_t slot_id = gpu_cache_->slot_id(model_id, node_id);
 
             assert(slot_id < (slot_t)render_budget_in_nodes_);
 
-            char* node_data = ooc_cache->Nodedata(model_id, node_id);
+            char* node_data = ooc_cache->node_data(model_id, node_id);
 
             memcpy(current_gpu_storage_ + slot_count*stride_in_bytes, node_data, stride_in_bytes);
 
-            transfer_list_.push_back(CutdatabaseRecord::SlotUpdateDescr(slot_count, slot_id));
+            transfer_list_.push_back(cut_database_record::slot_update_desc(slot_count, slot_id));
 
             ++slot_count;
 
@@ -1130,35 +1130,35 @@ compileTransferList() {
 
 }
 
-void CutUpdatePool::
-SplitNode(const CutUpdateIndex::Action& action) {
+void cut_update_pool::
+split_node(const cut_update_index::action& action) {
 
     std::vector<node_t> child_ids;
-    index_->GetAllChildren(action.model_id_, action.node_id_, child_ids);
+    index_->get_all_children(action.model_id_, action.node_id_, child_ids);
 
     //return if children are invalid node ids
     if (child_ids[0] == invalid_node_t || action.node_id_ == invalid_node_t) {
-        index_->RejectAction(action);
+        index_->reject_action(action);
         return;
     }
 
-    size_t fan_factor = index_->FanFactor(action.model_id_);
+    size_t fan_factor = index_->fan_factor(action.model_id_);
 
-    assert(child_ids[0] < index_->NumNodes(action.model_id_));
+    assert(child_ids[0] < index_->num_nodes(action.model_id_));
 
     bool all_children_available = true;
 
-    OocCache* ooc_cache = OocCache::get_instance();
-    bool all_children_fit_in_ooc_cache = ooc_cache->NumFreeSlots() >= fan_factor;
-    bool all_children_fit_in_gpu_cache = gpu_cache_->transfer_budget() >= fan_factor && gpu_cache_->NumFreeSlots() >= fan_factor;
+    ooc_cache* ooc_cache = ooc_cache::get_instance();
+    bool all_children_fit_in_ooc_cache = ooc_cache->num_free_slots() >= fan_factor;
+    bool all_children_fit_in_gpu_cache = gpu_cache_->transfer_budget() >= fan_factor && gpu_cache_->num_free_slots() >= fan_factor;
 
     //try to obtain children
     for (const auto& child_id : child_ids) {
-        if (!ooc_cache->IsNodeResident(action.model_id_, child_id)) {
+        if (!ooc_cache->is_node_resident(action.model_id_, child_id)) {
             if (all_children_fit_in_ooc_cache) {
                 //load child from harddisk
-                if (ooc_cache->NumFreeSlots() > 0) {
-                    ooc_cache->RegisterNode(action.model_id_, child_id, (int32_t)action.error_);
+                if (ooc_cache->num_free_slots() > 0) {
+                    ooc_cache->register_node(action.model_id_, child_id, (int32_t)action.error_);
                 }
             }
             all_children_available = false;
@@ -1167,11 +1167,11 @@ SplitNode(const CutUpdateIndex::Action& action) {
 
     if (all_children_available) {
         for (const auto& child_id : child_ids) {
-            if (!gpu_cache_->IsNodeResident(action.model_id_, child_id)) {
+            if (!gpu_cache_->is_node_resident(action.model_id_, child_id)) {
                 if (all_children_fit_in_gpu_cache) {
                     //transfer child to gpu
-                    if (gpu_cache_->transfer_budget() > 0 && gpu_cache_->NumFreeSlots() > 0) {
-                        if (gpu_cache_->RegisterNode(action.model_id_, child_id)) {
+                    if (gpu_cache_->transfer_budget() > 0 && gpu_cache_->num_free_slots() > 0) {
+                        if (gpu_cache_->register_node(action.model_id_, child_id)) {
 #ifdef LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
                            pending_prefetch_set_.push_back(action);
 #endif
@@ -1191,51 +1191,51 @@ SplitNode(const CutUpdateIndex::Action& action) {
 
     if (all_children_available) {
         for (const auto& child_id : child_ids) {
-            gpu_cache_->AquireNode(context_id_, action.view_id_, action.model_id_, child_id);
-            ooc_cache->AquireNode(context_id_, action.view_id_, action.model_id_, child_id);
+            gpu_cache_->aquire_node(context_id_, action.view_id_, action.model_id_, child_id);
+            ooc_cache->aquire_node(context_id_, action.view_id_, action.model_id_, child_id);
         }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SPLIT_AGAIN_MODE
-        CutUpdateSplitAgain(action);
+        cut_update_split_again(action);
 #else
-        index_->ApproveAction(action);
+        index_->approve_action(action);
 #endif
     }
     else {
-        index_->RejectAction(action);
+        index_->reject_action(action);
     }
 
 }
 
-void CutUpdatePool::
-CollapseNode(const CutUpdateIndex::Action& action) {
+void cut_update_pool::
+collapse_node(const cut_update_index::action& action) {
 
     //return if parent is invalid node id
     if (action.node_id_ < 1 || action.node_id_ == invalid_node_t) {
-        index_->RejectAction(action);
+        index_->reject_action(action);
         return;
     }
 
     std::vector<node_t> child_ids;
-    index_->GetAllChildren(action.model_id_, action.node_id_, child_ids);
+    index_->get_all_children(action.model_id_, action.node_id_, child_ids);
 
-    OocCache* ooc_cache = OocCache::get_instance();
+    ooc_cache* ooc_cache = ooc_cache::get_instance();
 
     for (const auto& child_id : child_ids) {
-        gpu_cache_->ReleaseNode(context_id_, action.view_id_, action.model_id_, child_id);
-        ooc_cache->ReleaseNode(context_id_, action.view_id_, action.model_id_, child_id);
+        gpu_cache_->release_node(context_id_, action.view_id_, action.model_id_, child_id);
+        ooc_cache->release_node(context_id_, action.view_id_, action.model_id_, child_id);
     }
 
-    index_->ApproveAction(action);
+    index_->approve_action(action);
 
 }
 
-const bool CutUpdatePool::
-IsAllNodesInCut(const model_t model_id, const std::vector<node_t>& node_ids, const std::set<node_t>& cut) {
+const bool cut_update_pool::
+is_all_nodes_in_cut(const model_t model_id, const std::vector<node_t>& node_ids, const std::set<node_t>& cut) {
     for (node_t i = 0; i < node_ids.size(); ++i) {
         node_t node_id = node_ids[i];
 
-        if (node_id >= (node_t)index_->NumNodes(model_id))
+        if (node_id >= (node_t)index_->num_nodes(model_id))
             return false;
 
         if (node_id == invalid_node_t)
@@ -1248,23 +1248,23 @@ IsAllNodesInCut(const model_t model_id, const std::vector<node_t>& node_ids, con
     return true;
 }
 
-const bool CutUpdatePool::
-IsNodeInFrustum(const view_t view_id, const model_t model_id, const node_t node_id, const scm::gl::frustum& frustum) {
-    Modeldatabase* database = Modeldatabase::get_instance();
-    return 1 != user_cameras_[view_id].CullAgainstFrustum(frustum, database->GetModel(model_id)->get_bvh()->bounding_boxes()[node_id]);
+const bool cut_update_pool::
+is_node_in_frustum(const view_t view_id, const model_t model_id, const node_t node_id, const scm::gl::frustum& frustum) {
+    model_database* database = model_database::get_instance();
+    return 1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->bounding_boxes()[node_id]);
 }
 
-const bool CutUpdatePool::
-IsNoNodeInFrustum(const view_t view_id, const model_t model_id, const std::vector<node_t>& node_ids, const scm::gl::frustum& frustum) {
+const bool cut_update_pool::
+is_no_node_in_frustum(const view_t view_id, const model_t model_id, const std::vector<node_t>& node_ids, const scm::gl::frustum& frustum) {
     for (const auto& node_id : node_ids) {
-        if (node_id >= (node_t)index_->NumNodes(model_id))
+        if (node_id >= (node_t)index_->num_nodes(model_id))
             return false;
 
         if (node_id == invalid_node_t)
             return false;
 
-        Modeldatabase* database = Modeldatabase::get_instance();
-        if (1 != user_cameras_[view_id].CullAgainstFrustum(frustum, database->GetModel(model_id)->get_bvh()->bounding_boxes()[node_id]))
+        model_database* database = model_database::get_instance();
+        if (1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->bounding_boxes()[node_id]))
             return false;
     }
 
@@ -1272,17 +1272,17 @@ IsNoNodeInFrustum(const view_t view_id, const model_t model_id, const std::vecto
 }
 
 
-const float CutUpdatePool::
-CalculateNodeError(const view_t view_id, const model_t model_id, const node_t node_id) {
+const float cut_update_pool::
+calculate_node_error(const view_t view_id, const model_t model_id, const node_t node_id) {
 
-    Modeldatabase* database = Modeldatabase::get_instance();
-    auto bvh = database->GetModel(model_id)->get_bvh();
+    model_database* database = model_database::get_instance();
+    auto bvh = database->get_model(model_id)->get_bvh();
 
     const scm::math::mat4f& model_matrix = model_transforms_[model_id];
-    const scm::math::mat4f& view_matrix = user_cameras_[view_id].GetViewMatrix();
+    const scm::math::mat4f& view_matrix = user_cameras_[view_id].get_view_matrix();
 
     float radius_scaling = scm::math::length(model_matrix * scm::math::vec4f(1.0f,0.f,0.f,0.f));
-    float representative_radius = bvh->GetAvgsurfelRadius(node_id) * radius_scaling;
+    float representative_radius = bvh->get_average_surfel_radius(node_id) * radius_scaling;
 
     auto bb = bvh->bounding_boxes()[node_id];
 
@@ -1297,7 +1297,7 @@ CalculateNodeError(const view_t view_id, const model_t model_id, const node_t no
 
 #else
     
-    const scm::math::mat4f& proj_matrix = user_cameras_[view_id].GetProjectionMatrix();
+    const scm::math::mat4f& proj_matrix = user_cameras_[view_id].get_projection_matrix();
 
     scm::math::mat4 cm = scm::math::inverse(view_matrix);
     scm::math::vec3f position = model_matrix * bvh->centroids()[node_id];

@@ -23,7 +23,11 @@ SOURCE_GROUP("common" FILES ${PLATFORM_INCLUDE})
 
 include_directories(${PROJECT_INCLUDE_DIR}
                     ${PROJECT_BINARY_DIR}
-                    ${LAMURE_CONFIG_DIR})
+                    ${LAMURE_CONFIG_DIR}
+                    ${SCHISM_INCLUDE_DIRS}
+                    ${Boost_INCLUDE_DIR})
+
+link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES} ${LAMURE_CONFIG_DIR}/lamure/config.h)
 

@@ -19,7 +19,7 @@ namespace lamure
 namespace ren
 {
 
-GpuAccess::GpuAccess(scm::gl::render_device_ptr device,
+gpu_access::gpu_access(scm::gl::render_device_ptr device,
                      const slot_t num_slots,
                      const uint32_t num_surfels_per_node,
                      bool create_layout)
@@ -59,15 +59,15 @@ GpuAccess::GpuAccess(scm::gl::render_device_ptr device,
 
 }
 
-GpuAccess::
-~GpuAccess() {
+gpu_access::
+~gpu_access() {
     buffer_.reset();
     if (has_layout_) {
         memory_.reset();
     }
 }
 
-char* GpuAccess::
+char* gpu_access::
 Map(scm::gl::render_device_ptr const& device) {
     if (!is_mapped_) {
         assert(device);
@@ -77,7 +77,7 @@ Map(scm::gl::render_device_ptr const& device) {
     return nullptr;
 }
 
-void GpuAccess::
+void gpu_access::
 Unmap(scm::gl::render_device_ptr const& device) {
     if (is_mapped_) {
         assert(device);
@@ -86,8 +86,8 @@ Unmap(scm::gl::render_device_ptr const& device) {
     }
 }
 
-const size_t GpuAccess::
-QueryVideoRamInMb(scm::gl::render_device_ptr const& device) {
+const size_t gpu_access::
+query_video_memory_in_mb(scm::gl::render_device_ptr const& device) {
   int size_in_kb;
   device->opengl_api().glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &size_in_kb);
   //glGetIntegerv(0x9048/*GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX*/, &size_in_kb);

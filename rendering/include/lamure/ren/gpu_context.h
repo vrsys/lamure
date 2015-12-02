@@ -17,17 +17,17 @@ namespace lamure
 namespace ren
 {
 
-class GpuContext
+class gpu_context
 {
 
 public:
-    GpuContext(const context_t context_id);
-    ~GpuContext();
+    gpu_context(const context_t context_id);
+    ~gpu_context();
 
 
-    struct TemporaryStorages
+    struct temporary_storages
     {
-        TemporaryStorages(char* storage_a, char* storage_b)
+        temporary_storages(char* storage_a, char* storage_b)
         : storage_a_(storage_a), storage_b_(storage_b) {};
 
         char* storage_a_;
@@ -37,32 +37,32 @@ public:
     const context_t context_id() const { return context_id_; };
     const bool is_created() const { return is_created_; };
 
-    TemporaryStorages temporary_storages() { return temporary_storages_; };
+    temporary_storages get_temporary_storages() { return temporary_storages_; };
 
-    scm::gl::buffer_ptr GetContextbuffer(scm::gl::render_device_ptr device);
-    scm::gl::vertex_array_ptr GetContextMemory(scm::gl::render_device_ptr device);
+    scm::gl::buffer_ptr get_context_buffer(scm::gl::render_device_ptr device);
+    scm::gl::vertex_array_ptr get_context_memory(scm::gl::render_device_ptr device);
 
     const node_t upload_budget_in_nodes() const { return upload_budget_in_nodes_; };
     const node_t render_budget_in_nodes() const { return render_budget_in_nodes_; };
 
-    void MapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device);
-    void UnmapTempStorage(const CutdatabaseRecord::Temporarybuffer& buffer, scm::gl::render_device_ptr device);
-    void UpdatePrimarybuffer(const CutdatabaseRecord::Temporarybuffer& from_buffer, scm::gl::render_device_ptr device);
+    void map_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::gl::render_device_ptr device);
+    void unmap_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::gl::render_device_ptr device);
+    bool update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, scm::gl::render_device_ptr device);
 
-    void Create(scm::gl::render_device_ptr device);
+    void create(scm::gl::render_device_ptr device);
 
 private:
-    void TestVideoMemory(scm::gl::render_device_ptr device);
+    void test_video_memory(scm::gl::render_device_ptr device);
 
     context_t context_id_;
 
     bool is_created_;
     
-    GpuAccess* temp_buffer_a_;
-    GpuAccess* temp_buffer_b_;
-    GpuAccess* primary_buffer_;
+    gpu_access* temp_buffer_a_;
+    gpu_access* temp_buffer_b_;
+    gpu_access* primary_buffer_;
 
-    TemporaryStorages temporary_storages_;
+    temporary_storages temporary_storages_;
     node_t upload_budget_in_nodes_;
     node_t render_budget_in_nodes_;
 

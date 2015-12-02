@@ -22,7 +22,7 @@
 namespace lamure {
 namespace ren {
 
-class Modeldatabase;
+class model_database;
 
 class RENDERING_DLL lod_point_cloud
 {
@@ -52,7 +52,7 @@ public:
 protected:
     void                load(const std::string& filename);
 
-    friend class        Modeldatabase;
+    friend class        model_database;
     model_t             model_id_;
 
 private:

@@ -51,7 +51,7 @@ sort(surfel_disk_array& array,
 
     LOGGER_INFO("External sort. Length: " << array.length());
     LOGGER_INFO("Max run length: " << run_length << 
-            " surfels. Runs: " << runs_count << 
+            " surfels. runs: " << runs_count << 
             ". merge buffer size: " << merge_buffer_size << " surfels.");
 
 
@@ -70,7 +70,7 @@ sort(surfel_disk_array& array,
     if (runs_count > 1u) {
         // external sort
         es.runs_file_->open(array.file()->file_name() + TEMP_FILE_EXT, true);
-        LOGGER_TRACE("Create runs");
+        LOGGER_TRACE("create runs");
         es.create_runs(array, run_length, runs_count);
         LOGGER_TRACE("merge");
         es.merge(array, merge_buffer_size);

@@ -14,24 +14,24 @@ namespace lamure
 namespace ren
 {
 
-Cut::
-Cut()
+cut::
+cut()
 : context_id_(invalid_context_t),
   view_id_(invalid_view_t),
   model_id_(invalid_model_t) {
 
 }
 
-Cut::
-Cut(const context_t context_id, const view_t view_id, const model_t model_id)
+cut::
+cut(const context_t context_id, const view_t view_id, const model_t model_id)
 : context_id_(context_id),
   view_id_(view_id),
   model_id_(model_id) {
 
 }
 
-Cut::
-~Cut() {
+cut::
+~cut() {
 
 }
 

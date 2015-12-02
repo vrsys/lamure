@@ -8,11 +8,11 @@
 namespace lamure {
 namespace ren {
 
-class Trackball
+class trackball
 {
 public:
-    Trackball();
-    ~Trackball();
+    trackball();
+    ~trackball();
 
     void Rotate(double fx, double fy, double tx, double ty);
     void Translate(double x, double y);
@@ -24,7 +24,7 @@ public:
     void set_dolly(const double dolly) { dolly_ = dolly; };
 
 private:
-    double ProjectTosphere(double x, double y) const;
+    double project_to_sphere(double x, double y) const;
 
     scm::math::mat4d transform_;
     double radius_;
