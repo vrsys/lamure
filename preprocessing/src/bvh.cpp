@@ -824,49 +824,98 @@ upsweep_new(const ReductionStrategy& reduction_strategy,
             const NormalComputationStrategy& normal_strategy, 
             const RadiusComputationStrategy& radius_strategy)
 {
-    // Start at bottom level and move up towards root.
-    for (uint32_t level = depth_; level >= 0; --level)
+    // Create level temp files
+    std::vector<SharedFile> level_temp_files;
+    for (uint32_t i = 0; i <= depth_; ++i)
     {
-        // Iterate over nodes of current tree level.
-        for (std::vector<BvhNode>::iterator node_iter = nodes_.begin(); node_iter != nodes_.end(); ++node_iter)
+        level_temp_files.push_back(std::make_shared<File>());
+        std::string ext = ".lv" + std::to_string(i);
+        level_temp_files.back()->Open(AddToPath(base_path_, ext).string(), i != depth_);
+    }
+
+    // Start at bottom level and move up towards root.
+    for (int16_t level = depth_; level >= 0; --level)
+    {
+        std::cout << "entering level " << level << std::endl;
+    
+        // Collect nodes of current level.
+        std::vector<BvhNode*> current_level_nodes;
+        for (int16_t node_index = 0; node_index < (int16_t)nodes_.size(); ++node_index)
         {
-            if (node_iter->depth() == level)
+            BvhNode* node = &(nodes_.at(node_index));
+            if ((int16_t)node->depth() == level)
             {
-                // If a node has no data yet, calculate it based on child nodes.
-                if (!node_iter->IsIC() && !node_iter->IsOOC())
+                current_level_nodes.push_back(node);
+            }
+        }
+    
+        // Iterate over nodes of current tree level.
+        //for (std::vector<BvhNode>::iterator node_iter = nodes_.begin(); node_iter != nodes_.end(); ++node_iter)
+        #pragma omp parallel for
+        for(uint16_t node_index = 0; node_index < current_level_nodes.size(); ++node_index)
+        {
+            BvhNode* current_node = current_level_nodes.at(node_index);
+        
+            // If a node has no data yet, calculate it based on child nodes.
+            if (!current_node->IsIC() && !current_node->IsOOC())
+            {
+                std::vector<SurfelMemArray*> child_mem_arrays;
+                for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
                 {
-                    std::vector<SurfelMemArray*> child_mem_data;
-                    for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
+                    size_t child_id = this->GetChildId(current_node->node_id(), child_index);
+                    
+                    for (std::vector<BvhNode>::iterator child_iter = nodes_.begin(); child_iter != nodes_.end(); ++child_iter)
                     {
-                        size_t child_id = this->GetChildId(node_iter->node_id(), child_index);
-                        
-                        for (std::vector<BvhNode>::iterator child_iter = nodes_.begin(); child_iter != nodes_.end(); ++child_iter)
+                        if (child_iter->node_id() == child_id)
                         {
-                            if (child_iter->node_id() == child_id)
+                            if (child_iter->IsOOC())
                             {
-                                child_mem_data.push_back(&child_iter->mem_array());
-                                child_iter = nodes_.end();
+                                child_iter->LoadFromDisk();
                             }
+                        
+                            child_mem_arrays.push_back(&child_iter->mem_array());
+                            
+                            child_iter = nodes_.end();
+                            --child_iter;
                         }
                     }
-                
-                    real reduction_error = node_iter->reduction_error();
-                    node_iter->Reset(reduction_strategy.CreateLod(reduction_error, child_mem_data, max_surfels_per_node_));
                 }
+            
+                real reduction_error = current_node->reduction_error();
+                SurfelMemArray reduction = reduction_strategy.CreateLod(reduction_error, child_mem_arrays, max_surfels_per_node_);
+                current_node->Reset(reduction);
+            }
+            
+            if (current_node->IsOOC())
+            {
+                current_node->LoadFromDisk();
+            }
+            
+            // Do attribute calculation per sufel in current node.
+            for (uint16_t surfel_index = 0; surfel_index < current_node->mem_array().length(); ++surfel_index)
+            {   
+                Surfel current_surfel = current_node->mem_array().ReadSurfel(surfel_index);
                 
-                // Do attribute calculation per sufel in current node.
-                for (uint16_t surfel_index = 0; surfel_index < node_iter->mem_array().length(); ++surfel_index)
-                {
-                    Surfel current_surfel = node_iter->mem_array().ReadSurfel(surfel_index);
-                    
-                    current_surfel.normal() = normal_strategy.compute_normal(*this, node_iter->node_id(), surfel_index, 20);
-                    current_surfel.radius() = radius_strategy.compute_radius(*this, node_iter->node_id(), surfel_index, 20);
-                    
-                    node_iter->mem_array().WriteSurfel(current_surfel, surfel_index);
-                }
+                current_surfel.normal() = normal_strategy.compute_normal(*this, current_node->node_id(), surfel_index, 20);
+                current_surfel.radius() = radius_strategy.compute_radius(*this, current_node->node_id(), surfel_index, 20);
+                
+                current_node->mem_array().WriteSurfel(current_surfel, surfel_index);
+                
+                //compute_normal_and_radius(current_node->node_id(), surfel_index, normal_strategy, radius_strategy);
+                
+                // compute node offset in file
+                int32_t lid = current_node->node_id();
+                for (uint32_t i = 0; i < current_node->depth(); ++i)
+                    lid -= uint32_t(pow(fan_factor_, i));
+                lid = std::max(0, lid);
+
+                // save computed node to disk
+                current_node->FlushToDisk(level_temp_files[current_node->depth()], size_t(lid) * max_surfels_per_node_, false);
             }
         }
     }
+    
+    state_ = State::AfterUpsweep;
 }
 
 void Bvh::
