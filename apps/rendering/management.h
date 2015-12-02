@@ -30,22 +30,23 @@ struct snapshot_session_descriptor {
     snapshot_session_descriptor() : num_taken_screenshots(0),
                                     session_filename_(""),
                                     recorded_view_vector_(),
-                                    snapshot_resolution_(scm::math::vec2ui(0,0))
+                                    snapshot_resolution_(scm::math::vec2ui(0,0)),
+                                    snapshot_session_enabled_(false)
                                     {}
 
     //set_session_filename();
     std::string get_screenshot_name() { 
 
         return
-        session_filename_ + "/" 
-        + std::to_string(++num_taken_screenshots) 
+          std::to_string(++num_taken_screenshots) 
         + "__" + std::to_string(snapshot_resolution_[0]) 
-        + " " + std::to_string(snapshot_resolution_[1]);}
+        + "_" + std::to_string(snapshot_resolution_[1]);}
 
     unsigned num_taken_screenshots;
     std::string session_filename_;
     std::vector<scm::math::mat4d> recorded_view_vector_;
     scm::math::vec2ui snapshot_resolution_;
+    bool snapshot_session_enabled_;
 };
 
 class Management

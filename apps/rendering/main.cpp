@@ -226,6 +226,7 @@ int main(int argc, char** argv)
 
       measurement_descriptor.session_filename_ = measurement_file_path.substr(first_slash_before_filename_pos+1, last_dot_in_filename_pos);
       quality_measurement_mode_enabled_ = true;
+      measurement_descriptor.snapshot_session_enabled_ = true;
       glutFullScreenToggle();
     }
 
@@ -268,17 +269,18 @@ int main(int argc, char** argv)
 
 void glut_display()
 {
-
+    bool signaled_shutdown = false;
     if (management_ != nullptr)
     {
-        bool signaled_shutdown = management_->MainLoop(); 
+        signaled_shutdown = management_->MainLoop(); 
 
-        if(signaled_shutdown) {
-            glut_close();
-        }
         glutSwapBuffers();
     }
 
+        if(signaled_shutdown) {
+            glutExit();
+            exit(0);
+        }
 }
 
 
@@ -405,7 +407,6 @@ void glut_keyboard(unsigned char key, int x, int y)
                 management_->DispatchKeyboardInput(key);
             }
             break;
-
 
     }
 }
