@@ -114,7 +114,7 @@ Construct()
     NormalComputationStrategy *normal_computation_strategy;
     switch (desc_.normal_computation_algo) {
         case NormalComputationAlgorithm::PlaneFitting:
-            normal_computation_strategy = new NormalComputationPlaneFitting();
+            normal_computation_strategy = new NormalComputationPlaneFitting(desc_.number_of_neighbours);
             break;       
         default:
             LOGGER_ERROR("Non-implemented normal computation algorithm");
@@ -125,7 +125,7 @@ Construct()
     RadiusComputationStrategy *radius_computation_strategy;
     switch (desc_.radius_computation_algo) {
         case RadiusComputationAlgorithm::AverageDistance:
-            radius_computation_strategy = new RadiusComputationAverageDistance();
+            radius_computation_strategy = new RadiusComputationAverageDistance(desc_.number_of_neighbours);
             break;
         default:
             LOGGER_ERROR("Non-implemented radius computation algorithm");
@@ -208,6 +208,7 @@ Construct()
 
         CPU_TIMER;
         bvh.ComputeNormalsAndRadii(desc_.number_of_neighbours);
+        //bvh.compute_normal_and_radius(*normal_computation_strategy, *radius_computation_strategy);
 
         // set new input file name
         //fs::path input_file_path = fs::path(input_file);

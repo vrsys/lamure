@@ -20,10 +20,10 @@ class Bvh;
 class RadiusComputationStrategy {
 public:
 	virtual ~RadiusComputationStrategy() {};
-	virtual real compute_radius(Bvh& tree,
+	virtual real compute_radius(const Bvh& tree,
 								const size_t node_id,
-								const size_t surfel_id, 
-								const uint16_t number_of_neighbours) const = 0;
+								const size_t surfel_id) const = 0;
+
 };
 
 } // namespace pre

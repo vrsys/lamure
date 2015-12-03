@@ -9,6 +9,8 @@
 #include <lamure/pre/bvh_stream.h>
 #include <lamure/pre/basic_algorithms.h>
 #include <lamure/pre/reduction_strategy.h>
+#include <lamure/pre/radius_computation_strategy.h>
+#include <lamure/pre/normal_computation_strategy.h>
 #include <lamure/pre/serialized_surfel.h>
 #include <lamure/utils.h>
 #include <lamure/sphere.h>
@@ -525,7 +527,7 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
             }
         }
     }
-
+    
     average_radius /= nodes_.size();
 
     // filter outlier radii
@@ -572,54 +574,74 @@ void Bvh::ComputeNormalsAndRadii(const uint16_t number_of_neighbours)
 
 }
 
-void Bvh::compute_normal_and_radius(const size_t node_id,
-                                    const size_t surfel_id,
-                                    const NormalComputationStrategy& normal_computation_strategy,
-                                    const RadiusComputationStrategy& radius_computation_strategy){
+void Bvh::compute_normal_and_radius(
+    const NormalComputationStrategy& normal_computation_strategy,
+    const RadiusComputationStrategy& radius_computation_strategy){
+    size_t number_of_leaves = std::pow(fan_factor_, depth_);
 
+    // load from disk
+    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
+    {
+        nodes_[i].LoadFromDisk();
+    }
 
-    // base class radii_strategy
-    // radii_strategy_average_distance rs(40 /*number_of_k_nearest_neighbors*/)
-    // for_each(nodeid in level) for_each(surfel in nodeid) my_bvh.compute_radii(nodeid, surfelid, rs);
+    size_t counter = 0;
+    uint16_t percentage = 0;
 
-    // radii_strategy_natural_neighbour rsn()
-    // my_bvh.compute_radii(nodeid, surfelid, rsn);
+    size_t old_i = first_leaf_;
+    real average_radius = 0.0;
+    real average_radius_for_node = 0.0;
 
+    std::cout << std::endl << "compute normals and radii" << std::endl;
 
-    // base class normal_strategy
-    // normal_strategy_plane_fitting rs(40 /*number_of_k_nearest_neighbors*/)
-    // my_bvh.compute_normal(nodeid, surfelid, rs);
+    // compute normals and radii
+    #pragma omp parallel for firstprivate(old_i, average_radius_for_node) shared(average_radius) collapse(2)
+    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
+    {
+        for (size_t k = 0; k < max_surfels_per_node_; ++k)
+        {
 
-    // normal_strategy_plane_fitting_adatpiv rsa(40 /*initial_number_of_k_nearest_neighbors*/) // compute an adaptiv k value for the surfel depending on local noise
-    // my_bvh.compute_normal(nodeid, surfelid, rsa);
+            ++counter;
+            uint16_t new_percentage = int(float(counter)/(number_of_leaves*max_surfels_per_node_) * 100);
+            if (percentage + 1 == new_percentage)
+            {
+                percentage = new_percentage;
+                std::cout << "\r" << percentage << "% processed" << std::flush;
+            }
 
+            if (k < nodes_[i].mem_array().length())
+            {
 
+                // read surfel
+                Surfel surfel = nodes_[i].mem_array().ReadSurfel(k);
 
-    //set sonstant number of neighbours for test
-    
-   
-   /*
-    neighbours = GetNearestNeighbours(node_id, surfel_id, number_of_neighbours)
-    
+                // compute radius
+                real avg_distance = radius_computation_strategy.compute_radius(*this, i, k);                
 
-    //test if node_id is valid ???
+                // compute normal
+                vec3f normal = normal_computation_strategy.compute_normal(*this, i, k);            
 
+                // write surfel
+                surfel.radius() = avg_distance * 0.8;
+                surfel.normal() = normal;
+                nodes_[i].mem_array().WriteSurfel(surfel, k);
 
-    //test if surfel_id is valid
-    if (surfel_id < nodes_[node_id].mem_array().length()){
-        Surfel surfel = nodes_[node_id].mem_array().ReadSurfel(surfel_id);
+                // update average node radius
+                if (i != old_i)
+                {
+                    average_radius += average_radius_for_node/nodes_[old_i].mem_array().length();
+                    average_radius_for_node = 0.0;
+                    old_i = i;
+                }
+                else
+                {
+                    average_radius_for_node += avg_distance * 0.8;
+                }
+            }
+        }
 
-        surfel.normal() = normal_radii_strategy.compute_normal(node_id, surfel_id, neighbours);
-        surfel.radius() = normal_radii_strategy.compute_radius(node_id, surfel_id, neighbours);
-
-        nodes_[node_id].mem_array().WriteSurfel(surfel, surfel_id);
-    };
-
-    */
-    
-
-    
-}
+    }
+}    
 
 void Bvh::GetDescendantLeaves(
      const size_t node,

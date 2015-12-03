@@ -11,29 +11,27 @@
 
 namespace lamure {
 namespace pre{
-	
 
 real RadiusComputationAverageDistance::
-compute_radius(Bvh& tree,
+compute_radius(const Bvh& tree,
 			   const size_t node_id,
-			   const size_t surfel_id,
-			   const uint16_t number_of_neighbours) const {
-	
+			   const size_t surfel_id) const {
+
+	const uint16_t num = number_of_neighbours_;
 
 	// find nearest neighbours
-	std::vector<std::pair<Surfel, real>> const& neighbours = tree.GetNearestNeighbours(node_id, surfel_id, number_of_neighbours);
-    
-    real avg_distance = 0.0;
+	std::vector<std::pair<Surfel, real>> const& neighbours = tree.GetNearestNeighbours(node_id, surfel_id, num);
+	real avg_distance = 0.0;
 
     // compute radius
-    for (auto const& neighbour : neighbours) {
-    	avg_distance += sqrt(neighbour.second);
-    }
+	for (auto const& neighbour : neighbours) {
+		avg_distance += sqrt(neighbour.second);
+	}
 
-    avg_distance /= neighbours.size();
+	avg_distance /= neighbours.size();
 
 	return avg_distance;
-	};
+};
 
 }// namespace pre
 }// namespace lamure

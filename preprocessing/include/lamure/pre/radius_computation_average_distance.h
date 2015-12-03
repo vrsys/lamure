@@ -14,16 +14,21 @@
 #include <vector>
 
 namespace lamure {
-namespace pre{
-	
+namespace pre {
+
 class RadiusComputationAverageDistance: public RadiusComputationStrategy
 {
-public:
-	 real  compute_radius(Bvh& tree, 
-	 					  const size_t node_id,
-	 					  const size_t surfel_id,
-	 					  const uint16_t number_of_neighbours) const override;
 	
+public:
+	explicit RadiusComputationAverageDistance(const uint16_t number_of_neighbours)
+		: number_of_neighbours_(number_of_neighbours){}
+
+	real  compute_radius(const Bvh& tree,
+						 const size_t node_id,
+						 const size_t surfel_id) const override;
+
+private:
+	const uint16_t number_of_neighbours_;
 };
 
 }// namespace pre

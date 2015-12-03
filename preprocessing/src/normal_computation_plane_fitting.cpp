@@ -13,13 +13,12 @@ namespace lamure {
 namespace pre{
 	
 vec3f NormalComputationPlaneFitting::
-compute_normal(Bvh& tree,
+compute_normal(const Bvh& tree,
 			   const size_t node_id,
-			   const size_t surfel_id,
-			   const uint16_t number_of_neighbours) const {
+			   const size_t surfel_id) const {
 
 	// find nearest neighbours
-    std::vector<std::pair<Surfel, real>> const& neighbours = tree.GetNearestNeighbours(node_id, surfel_id, number_of_neighbours);
+    std::vector<std::pair<Surfel, real>> const& neighbours = tree.GetNearestNeighbours(node_id, surfel_id, number_of_neighbours_);
 
     auto& bvh_nodes = (tree.nodes());
     Surfel surfel = bvh_nodes[node_id].mem_array().ReadSurfel(surfel_id);

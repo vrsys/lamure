@@ -97,9 +97,7 @@ public:
                                   bool bin_all_file_extension = false);
     void                ComputeNormalsAndRadii(const uint16_t number_of_neighbours);
 
-    void                compute_normal_and_radius(const size_t node_id,
-                                                  const size_t surfel_id,
-                                                  const NormalComputationStrategy&  normal_computation_strategy,
+    void                compute_normal_and_radius(const NormalComputationStrategy&  normal_computation_strategy,
                                                   const RadiusComputationStrategy&  radius_computation_strategy);
 
     void                Upsweep(const ReductionStrategy& reduction_strategy);
