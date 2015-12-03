@@ -1,5 +1,12 @@
-#ifndef PLY_BYTE_ORDER_HPP_INCLUDED
-#define PLY_BYTE_ORDER_HPP_INCLUDED
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#ifndef PRE_IO_PLY_BYTE_ORDER_H_
+#define PRE_IO_PLY_BYTE_ORDER_H_
 
 namespace lamure {
   namespace pre {
@@ -77,4 +84,4 @@ namespace lamure {
   }
 } // namespace lamure::pre::io::ply
 
-#endif // PLY_BYTE_ORDER_HPP_INCLUDED
+#endif // PRE_IO_PLY_BYTE_ORDER_H_

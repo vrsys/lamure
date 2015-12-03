@@ -65,3 +65,12 @@ ELSEIF(MSVC)
   find_library(CGAL_LIBRARY_DEBUG NAMES ${CGAL_LIBRARY_DEBUG_FILENAME} PATHS ${CGAL_LIBRARY_SEARCH_DIRS})
   find_library(CGAL_CORE_LIBRARY_DEBUG NAMES ${CGAL_CORE_LIBRARY_DEBUG_FILENAME} PATHS ${CGAL_LIBRARY_SEARCH_DIRS})
 ENDIF()
+
+##############################################################################
+# verify
+##############################################################################
+IF ( CGAL_LIBRARY AND CGAL_INCLUDE_DIR)
+  MESSAGE(STATUS "--  found matching CGAL version")
+ELSE ()
+  MESSAGE(FATAL_ERROR "find_CGAL.cmake: unable to find CGAL library.")
+ENDIF ()

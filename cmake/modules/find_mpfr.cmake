@@ -34,3 +34,12 @@ ENDFOREACH()
 find_path(MPFR_INCLUDE_DIR NAMES mpfr.h PATHS ${MPFR_INCLUDE_SEARCH_DIRS})
 
 find_library(MPFR_LIBRARY NAMES libMPFR ${MPFR_LIBRARY_FILENAMES} PATHS ${MPFR_LIBRARY_SEARCH_DIRS})
+
+##############################################################################
+# verify
+##############################################################################
+IF ( MPFR_INCLUDE_DIR AND MPFR_LIBRARY)
+  MESSAGE(STATUS "--  found matching MPFR version")
+ELSE()
+  MESSAGE(FATAL_ERROR "find_MPFR.cmake: unable to find MPFR library.")
+ENDIF ()

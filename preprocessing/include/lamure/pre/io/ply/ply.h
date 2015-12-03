@@ -1,5 +1,12 @@
-#ifndef PLY_PLY_HPP_INCLUDED
-#define PLY_PLY_HPP_INCLUDED
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#ifndef PRE_IO_PLY_PLY_H_
+#define PRE_IO_PLY_PLY_H_
 
 #include <cstdint>
 
@@ -52,4 +59,4 @@ enum format { ascii_format, binary_little_endian_format, binary_big_endian_forma
   }
 } // namespace lamure::pre::io::ply
 
-#endif // PLY_PLY_HPP_INCLUDED
+#endif // PRE_IO_PLY_PLY_H_

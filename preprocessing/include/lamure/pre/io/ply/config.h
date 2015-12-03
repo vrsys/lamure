@@ -1,5 +1,12 @@
-#ifndef _PLY_CONFIG_HPP
-#define _PLY_CONFIG_HPP 1
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#ifndef PRE_IO_PLY_CONFIG_H_
+#define PRE_IO_PLY_CONFIG_H_
  
 /* ply/config.hpp. Generated automatically at end of configure. */
 /* config.h.  Generated from config.h.in by configure.  */

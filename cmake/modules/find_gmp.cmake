@@ -34,3 +34,12 @@ ENDFOREACH()
 find_path(GMP_INCLUDE_DIR NAMES gmp.h PATHS ${GMP_INCLUDE_SEARCH_DIRS})
 
 find_library(GMP_LIBRARY NAMES libGMP ${GMP_LIBRARY_FILENAMES} PATHS ${GMP_LIBRARY_SEARCH_DIRS})
+
+##############################################################################
+# verify
+##############################################################################
+IF ( GMP_INCLUDE_DIR AND GMP_LIBRARY)
+  MESSAGE(STATUS "--  found matching GMP version")
+ELSE()
+  MESSAGE(FATAL_ERROR "find_GMP.cmake: unable to find GMP library.")
+ENDIF ()

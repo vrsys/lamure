@@ -1,5 +1,12 @@
-#ifndef PLY_PLY_PARSER_HPP_INCLUDED
-#define PLY_PLY_PARSER_HPP_INCLUDED
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
+#ifndef PRE_IO_PLY_PLY_PARSER_H_
+#define PRE_IO_PLY_PLY_PARSER_H_
 
 #include <fstream>
 #include <iostream>
@@ -516,4 +523,4 @@ inline bool ply_parser::parse_list_property(format_type format, std::istream& is
 
 }}}} // namespace lamure::pre::io::ply
 
-#endif // PLY_PLY_PARSER_HPP_INCLUDED
+#endif // PRE_IO_PLY_PLY_PARSER_H_
