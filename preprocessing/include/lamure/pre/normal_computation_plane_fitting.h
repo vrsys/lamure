@@ -21,11 +21,15 @@ class bvh;
 class normal_computation_plane_fitting: public normal_computation_strategy
 {
 public:
-	vec3f  compute_normal(bvh& tree,
+	explicit normal_computation_plane_fitting(const uint16_t number_of_neighbours)
+		: number_of_neighbours_(number_of_neighbours){}
+
+	vec3f  compute_normal(const bvh& tree,
 						  const size_t node_id,
-						  const size_t surfel_id,
-						  const uint16_t number_of_neighbours) const override;
-	
+						  const size_t surfel_id) const override;
+
+private:
+	const uint16_t number_of_neighbours_;
 };
 
 }// namespace pre

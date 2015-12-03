@@ -12,15 +12,15 @@
 
 namespace lamure {
 namespace pre{
-	
-vec3f normal_computation_plane_fitting::
-compute_normal(bvh& tree,
-			   const size_t node_id,
-			   const size_t surfel_id,
-			   const uint16_t number_of_neighbours) const {
 
+vec3f normal_computation_plane_fitting::
+compute_normal(const bvh& tree,
+			   const size_t node_id,
+			   const size_t surfel_id) const {
+
+    const uint16_t num = number_of_neighbours_;
 	// find nearest neighbours
-    std::vector<std::pair<surfel, real>> const& neighbours = tree.get_nearest_neighbours(node_id, surfel_id, number_of_neighbours);
+    std::vector<std::pair<surfel, real>> const& neighbours = tree.get_nearest_neighbours(node_id, surfel_id, num);
 
     auto& bvh_nodes = (tree.nodes());
     surfel surf = bvh_nodes[node_id].mem_array().read_surfel(surfel_id);
@@ -28,6 +28,7 @@ compute_normal(bvh& tree,
     // compute normal
     // see: http://missingbytes.blogspot.com/2012/06/fitting-plane-to-point-cloud.html
     vec3r center = surf.pos();
+
     vec3f normal(1.0, 0.0 , 0.0);
 
     real sum_x_x = 0.0, sum_x_y = 0.0, sum_x_z = 0.0;

@@ -14,14 +14,14 @@ namespace pre{
 	
 
 real radius_computation_average_distance::
-compute_radius(bvh& tree,
+compute_radius(const bvh& tree,
 			   const size_t node_id,
-			   const size_t surfel_id,
-			   const uint16_t number_of_neighbours) const {
+			   const size_t surfel_id) const {
 	
+	const uint16_t num = number_of_neighbours_;
 
 	// find nearest neighbours
-	std::vector<std::pair<surfel, real>> const& neighbours = tree.get_nearest_neighbours(node_id, surfel_id, number_of_neighbours);
+	std::vector<std::pair<surfel, real>> const& neighbours = tree.get_nearest_neighbours(node_id, surfel_id, num);
     
     real avg_distance = 0.0;
 

@@ -41,8 +41,8 @@ public:
     };
 
     explicit            bvh(const size_t memory_limit,  // in bytes
-                                const size_t buffer_size,   // in bytes
-                                const rep_radius_algorithm rep_radius_algo = rep_radius_algorithm::geometric_mean)
+                            const size_t buffer_size,   // in bytes
+                            const rep_radius_algorithm rep_radius_algo = rep_radius_algorithm::geometric_mean)
         : memory_limit_(memory_limit),
           buffer_size_(buffer_size),
           rep_radius_algo_(rep_radius_algo) {}
@@ -89,17 +89,16 @@ public:
                             const uint32_t num_neighbours) const;
 
     void                print_tree_properties() const;
-    const node_id_type    first_leaf() const { return first_leaf_; }
+    const node_id_type  first_leaf() const { return first_leaf_; }
 
     // processing functions
     void                downsweep(bool adjust_translation,
                                   const std::string& surfels_input_file,
                                   bool bin_all_file_extension = false);
+
     void                compute_normals_and_radii(const uint16_t number_of_neighbours);
 
-    void                compute_normal_and_radius(const size_t node_id,
-                                                  const size_t surfel_id,
-                                                  const normal_computation_strategy&  normal_computation_strategy,
+    void                compute_normal_and_radius(const normal_computation_strategy&  normal_computation_strategy,
                                                   const radius_computation_strategy&  radius_computation_strategy);
 
     void                upsweep(const reduction_strategy& strategy);

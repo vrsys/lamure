@@ -57,6 +57,7 @@ public:
                             const std::set<lamure::model_t>& visible_set,
                             const std::set<lamure::model_t>& invisible_set,
                             snapshot_session_descriptor& snap_descriptor);
+                        
     virtual             ~management();
 
                         management(const management&) = delete;

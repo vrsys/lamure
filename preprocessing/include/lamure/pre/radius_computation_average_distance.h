@@ -15,15 +15,23 @@
 
 namespace lamure {
 namespace pre{
-	
+
+class bvh;
+
 class radius_computation_average_distance: public radius_computation_strategy
 {
 public:
-	 real  compute_radius(bvh& tree, 
-	 					  const size_t node_id,
-	 					  const size_t surfel_id,
-	 					  const uint16_t number_of_neighbours) const override;
-	
+	explicit radius_computation_average_distance(const uint16_t number_of_neighbours)
+		: number_of_neighbours_(number_of_neighbours){}
+
+
+	real  compute_radius(const bvh& tree, 
+	 					 const size_t node_id,
+	 					 const size_t surfel_id) const override;
+
+
+private:
+	const uint16_t number_of_neighbours_;
 };
 
 }// namespace pre
