@@ -13,15 +13,15 @@ namespace lamure {
 namespace pre{
 	
 
-real RadiusComputationAverageDistance::
-compute_radius(Bvh& tree,
+real radius_computation_average_distance::
+compute_radius(bvh& tree,
 			   const size_t node_id,
 			   const size_t surfel_id,
 			   const uint16_t number_of_neighbours) const {
 	
 
 	// find nearest neighbours
-	std::vector<std::pair<Surfel, real>> const& neighbours = tree.GetNearestNeighbours(node_id, surfel_id, number_of_neighbours);
+	std::vector<std::pair<surfel, real>> const& neighbours = tree.get_nearest_neighbours(node_id, surfel_id, number_of_neighbours);
     
     real avg_distance = 0.0;
 

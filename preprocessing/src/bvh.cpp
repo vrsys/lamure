@@ -574,8 +574,8 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
 
 void bvh::compute_normal_and_radius(const size_t node_id,
                                     const size_t surfel_id,
-                                    const NormalComputationStrategy& normal_computation_strategy,
-                                    const RadiusComputationStrategy& radius_computation_strategy){
+                                    const normal_computation_strategy& normal_computation_strategy,
+                                    const radius_computation_strategy& radius_computation_strategy){
 
 
     // base class radii_strategy
@@ -682,7 +682,7 @@ get_nearest_neighbours(
     sphere candidates_sphere;
 
     size_t number_of_leaves = pow(fan_factor_, depth_);
-    size_t first_leaf = nodes_.size() - number_of_leaves;
+    //size_t first_leaf = nodes_.size() - number_of_leaves;
 
     // check own node
 
@@ -789,7 +789,7 @@ get_nearest_neighbours(
 
 
 void bvh::
-Upsweep(const reduction_strategy& reduction_strtgy)
+upsweep(const reduction_strategy& reduction_strtgy)
 {
     LOGGER_TRACE("create level temp files");
 

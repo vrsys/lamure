@@ -40,7 +40,7 @@ public:
         rep_radius_algorithm          rep_radius_algo;
         reduction_algorithm           reduction_algo;
         radius_computation_algorithm  radius_computation_algo;
-        normal_computation_Algorithm  normal_computation_algo;
+        normal_computation_algorithm  normal_computation_algo;
     };
 
     explicit            builder(const descriptor& desc);

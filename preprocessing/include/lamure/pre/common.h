@@ -27,7 +27,7 @@ enum class radius_computation_algorithm {
 };
 
 enum class reduction_algorithm {
-    ncd            = 0,
+    ndc            = 0,
     constant       = 1,
     every_second   = 2,
     random         = 3

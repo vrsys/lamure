@@ -513,7 +513,7 @@ dispatchKeyboardInput(unsigned char key)
 
 
 #if 1 /*INTERPOLATION PICK*/
-                if (intersection_ray.Intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
+                if (intersection_ray.Intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersectn)) {
 #ifdef LAMURE_ENABLE_INFO
                     std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
                     std::cout << "intersection position: " << intersectn.position_ << std::endl;
@@ -540,7 +540,7 @@ dispatchKeyboardInput(unsigned char key)
                scm::math::mat4f model_transform = database->get_model(model_id)->transform();
                lamure::ren::ray::Intersection temp;
                if (intersection_ray.IntersectModel(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
-                  intersection = temp;
+                  intersectn = temp;
                }
             }
 

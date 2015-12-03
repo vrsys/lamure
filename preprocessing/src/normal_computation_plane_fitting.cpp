@@ -7,26 +7,27 @@
 
 #include <iostream>
 
+#include <lamure/pre/bvh.h>
 #include <lamure/pre/normal_computation_plane_fitting.h>
 
 namespace lamure {
 namespace pre{
 	
-vec3f NormalComputationPlaneFitting::
-compute_normal(Bvh& tree,
+vec3f normal_computation_plane_fitting::
+compute_normal(bvh& tree,
 			   const size_t node_id,
 			   const size_t surfel_id,
 			   const uint16_t number_of_neighbours) const {
 
 	// find nearest neighbours
-    std::vector<std::pair<Surfel, real>> const& neighbours = tree.GetNearestNeighbours(node_id, surfel_id, number_of_neighbours);
+    std::vector<std::pair<surfel, real>> const& neighbours = tree.get_nearest_neighbours(node_id, surfel_id, number_of_neighbours);
 
     auto& bvh_nodes = (tree.nodes());
-    Surfel surfel = bvh_nodes[node_id].mem_array().ReadSurfel(surfel_id);
+    surfel surf = bvh_nodes[node_id].mem_array().read_surfel(surfel_id);
 
     // compute normal
     // see: http://missingbytes.blogspot.com/2012/06/fitting-plane-to-point-cloud.html
-    vec3r center = surfel.pos();
+    vec3r center = surf.pos();
     vec3f normal(1.0, 0.0 , 0.0);
 
     real sum_x_x = 0.0, sum_x_y = 0.0, sum_x_z = 0.0;

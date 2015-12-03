@@ -125,7 +125,7 @@ construct()
     radius_computation_strategy *radius_comp_strategy;
     switch (desc_.radius_computation_algo) {
         case radius_computation_algorithm::average_distance:
-            radius_comp_strategy = new radiusComputationAverageDistance();
+            radius_comp_strategy = new radius_computation_average_distance();
             break;
         default:
             LOGGER_ERROR("Non-implemented radius computation algorithm");

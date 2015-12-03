@@ -15,12 +15,12 @@
 namespace lamure{
 namespace pre {
 
-class Bvh;
+class bvh;
 
-class RadiusComputationStrategy {
+class radius_computation_strategy {
 public:
-	virtual ~RadiusComputationStrategy() {};
-	virtual real compute_radius(Bvh& tree,
+	virtual ~radius_computation_strategy() {};
+	virtual real compute_radius(bvh& tree,
 								const size_t node_id,
 								const size_t surfel_id, 
 								const uint16_t number_of_neighbours) const = 0;

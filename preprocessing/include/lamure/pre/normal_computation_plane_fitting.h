@@ -14,12 +14,14 @@
 #include <vector>
 
 namespace lamure {
-namespace pre{
-	
-class NormalComputationPlaneFitting: public NormalComputationStrategy
+namespace pre {
+
+class bvh;
+
+class normal_computation_plane_fitting: public normal_computation_strategy
 {
 public:
-	vec3f  compute_normal(Bvh& tree,
+	vec3f  compute_normal(bvh& tree,
 						  const size_t node_id,
 						  const size_t surfel_id,
 						  const uint16_t number_of_neighbours) const override;

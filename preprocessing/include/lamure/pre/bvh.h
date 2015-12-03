@@ -33,11 +33,11 @@ class PREPROCESSING_DLL bvh
 public:
 
     enum class state_type {
-        null           = 0, // null tree
-        empty          = 1, // initialized, but empty tree
+        null            = 0, // null tree
+        empty           = 1, // initialized, but empty tree
         after_downsweep = 2, // after downsweep
         after_upsweep   = 3, // after upsweep
-        serialized     = 4  // serialized surfel data
+        serialized      = 4  // serialized surfel data
     };
 
     explicit            bvh(const size_t memory_limit,  // in bytes
@@ -81,6 +81,13 @@ public:
      * \return                    Pair that contains first node id and number of nodes
      */
     std::pair<node_id_type, node_id_type> get_node_ranges(const uint32_t depth) const;
+
+    std::vector<std::pair<surfel, real>>
+                        get_nearest_neighbours(
+                            const size_t node_id,
+                            const size_t surfel_id,
+                            const uint32_t num_neighbours) const;
+
     void                print_tree_properties() const;
     const node_id_type    first_leaf() const { return first_leaf_; }
 
@@ -96,7 +103,7 @@ public:
                                                   const radius_computation_strategy&  radius_computation_strategy);
 
     void                upsweep(const reduction_strategy& strategy);
-    void                upsweep_new(const reduction_strategy& strategy, const normal_radii_strategy& normal_radii_strategy);
+    //void                upsweep_new(const reduction_strategy& strategy, const normal_radii_strategy& normal_radii_strategy);
 
     void                serialize_tree_to_file(const std::string& output_file,
                                             bool write_intermediate_data);
@@ -156,12 +163,6 @@ private:
                             uint32_t& processed_nodes,
                             uint8_t& percent_processed,
                             shared_file leaf_level_access);
-
-    std::vector<std::pair<surfel, real>>
-                        get_nearest_neighbours(
-                            const size_t node_id,
-                            const size_t surfel_id,
-                            const uint32_t num_neighbours) const;
 
     void                get_descendant_leaves(
                             const size_t node,
