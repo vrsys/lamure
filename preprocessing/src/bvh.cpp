@@ -120,6 +120,21 @@ get_parent_id(const uint32_t node_id) const
                / fan_factor_ - 1;
 }
 
+const node_t bvh::
+get_first_node_id_of_depth(uint32_t depth) const {
+    node_t id = 0;
+    for (uint32_t i = 0; i < depth; ++i) {
+        id += (node_t)pow((double)fan_factor_, (double)i);
+    }
+
+    return id;
+}
+
+const uint32_t bvh::
+get_length_of_depth(uint32_t depth) const {
+    return pow((double)fan_factor_, (double)depth);
+}
+
 std::pair<node_id_type, node_id_type> bvh::
 get_node_ranges(const uint32_t depth) const
 {
@@ -842,37 +857,31 @@ upsweep_new(const reduction_strategy& reduction_strategy,
             const normal_computation_strategy& normal_strategy, 
             const radius_computation_strategy& radius_strategy)
 {
-    // Create level temp files
-    std::vector<shared_file> level_temp_files;
-    for (uint32_t i = 0; i <= depth_; ++i)
-    {
-        level_temp_files.push_back(std::make_shared<file>());
-        std::string ext = ".lv" + std::to_string(i);
-        level_temp_files.back()->open(add_to_path(base_path_, ext).string(), i != depth_);
-    }
-
     // Start at bottom level and move up towards root.
-    for (int16_t level = depth_; level >= 0; --level)
+    for (int32_t level = depth_; level >= 0; --level)
     {
         std::cout << "entering level " << level << std::endl;
     
-        // Collect nodes of current level.
-        std::vector<bvh_node*> current_level_nodes;
-        for (int16_t node_index = 0; node_index < (int16_t)nodes_.size(); ++node_index)
+        // Load nodes of current level (if possible).
+        uint32_t first_node_of_level = get_first_node_id_of_depth(level);
+        uint32_t last_node_of_level = get_first_node_id_of_depth(level) + get_length_of_depth(level);
+
+        for (int16_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
-            bvh_node* node = &(nodes_.at(node_index));
-            if ((int16_t)node->depth() == level)
+            bvh_node* current_node = &nodes_.at(node_index);
+
+            // Loading is not thread safe, so load everything before starting parallel operations.
+            if (current_node->is_out_of_core())
             {
-                current_level_nodes.push_back(node);
+                current_node->load_from_disk();
             }
         }
     
         // Iterate over nodes of current tree level.
-        //for (std::vector<bvh_node>::iterator node_iter = nodes_.begin(); node_iter != nodes_.end(); ++node_iter)
         #pragma omp parallel for
-        for(uint16_t node_index = 0; node_index < current_level_nodes.size(); ++node_index)
+        for(uint16_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
-            bvh_node* current_node = current_level_nodes.at(node_index);
+            bvh_node* current_node = &nodes_.at(node_index);
         
             // If a node has no data yet, calculate it based on child nodes.
             if (!current_node->is_in_core() && !current_node->is_out_of_core())
@@ -886,11 +895,6 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                     {
                         if (child_iter->node_id() == child_id)
                         {
-                            if (child_iter->is_out_of_core())
-                            {
-                                child_iter->load_from_disk();
-                            }
-                        
                             child_mem_arrays.push_back(&child_iter->mem_array());
                             
                             child_iter = nodes_.end();
@@ -904,13 +908,8 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->reset(reduction);
             }
             
-            if (current_node->is_out_of_core())
-            {
-                current_node->load_from_disk();
-            }
-            
             // Do attribute calculation per sufel in current node.
-            for (uint16_t surfel_index = 0; surfel_index < current_node->mem_array().length(); ++surfel_index)
+            for (uint32_t surfel_index = 0; surfel_index < current_node->mem_array().length(); ++surfel_index)
             {   
                 surfel current_surfel = current_node->mem_array().read_surfel(surfel_index);
                 
@@ -920,17 +919,32 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->mem_array().write_surfel(current_surfel, surfel_index);
                 
                 //compute_normal_and_radius(current_node->node_id(), surfel_index, normal_strategy, radius_strategy);
-                
-                // compute node offset in file
-                int32_t lid = current_node->node_id();
-                for (uint32_t i = 0; i < current_node->depth(); ++i)
-                    lid -= uint32_t(pow(fan_factor_, i));
-                lid = std::max(0, lid);
-
-                // save computed node to disk
-                current_node->flush_to_disk(level_temp_files[current_node->depth()], size_t(lid) * max_surfels_per_node_, false);
             }
         }
+    }
+
+    // Create level temp files
+    std::vector<shared_file> level_temp_files;
+    for (uint32_t level = 0; level <= depth_; ++level)
+    {
+        level_temp_files.push_back(std::make_shared<file>());
+        std::string ext = ".lv" + std::to_string(level);
+        level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
+    }
+
+    // Save node data in proper order (from zero to last).
+    for (uint32_t node_index = 0; node_index < nodes_.size(); ++node_index)
+    {
+        bvh_node* current_node = &nodes_.at(node_index);
+
+        // compute node offset in file
+        int32_t nid = current_node->node_id();
+        for (uint32_t level = 0; level < current_node->depth(); ++level)
+            nid -= uint32_t(pow(fan_factor_, level));
+        nid = std::max(0, nid);
+
+        // save computed node to disk
+        current_node->flush_to_disk(level_temp_files[current_node->depth()], size_t(nid) * max_surfels_per_node_, false);
     }
     
     state_ = state_type::after_upsweep;
