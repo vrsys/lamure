@@ -73,6 +73,8 @@ public:
     // helper funtions
     uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
     uint32_t            get_parent_id(const uint32_t node_id) const;
+    const node_t        get_first_node_id_of_depth(uint32_t depth) const;
+    const uint32_t      get_length_of_depth(uint32_t depth) const;
 
     /**
      * Get id for the first node at given depth and total number of nodes at this depth.
