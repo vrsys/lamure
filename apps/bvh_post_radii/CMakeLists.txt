@@ -9,9 +9,11 @@ include_directories(${REND_INCLUDE_DIR}
                     ${COMMON_INCLUDE_DIR} 
                     ${CGAL_INCLUDE_DIR} 
                     ${GMP_INCLUDE_DIR} 
-                    ${MPFR_INCLUDE_DIR}
-                    ${SCHISM_INCLUDE_DIRS}
-                    ${Boost_INCLUDE_DIR})
+                    ${MPFR_INCLUDE_DIR})
+
+include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
+                           ${Boost_INCLUDE_DIR})
+
 
 InitApp(${CMAKE_PROJECT_NAME}_bvh_post_radii)
 
