@@ -63,7 +63,7 @@ create_lod(real& reduction_error,
             }
         }
 
-        auto surfel = input[node_id]->mem_data()->at(point_id);
+        auto surfel = input[node_id]->mem_data()->at(point_id + input[node_id]->offset());
         mem_array.mem_data()->push_back(surfel);            
     }
 
