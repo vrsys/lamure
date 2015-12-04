@@ -401,7 +401,7 @@ inline bool ply_parser::parse_scalar_property(format_type format, std::istream& 
   using namespace io_operators;
   typedef ScalarType scalar_type;
   if (format == ascii_format) {
-    scalar_type value;
+    scalar_type value = 0;
     char space = ' ';
     istream >> value;
     if (!istream.eof()) {
@@ -419,7 +419,7 @@ inline bool ply_parser::parse_scalar_property(format_type format, std::istream& 
     return true;
   }
   else {
-    scalar_type value;
+    scalar_type value = 0;
     istream.read(reinterpret_cast<char*>(&value), sizeof(scalar_type));
     if (!istream) {
       if (error_callback_) {
@@ -427,7 +427,7 @@ inline bool ply_parser::parse_scalar_property(format_type format, std::istream& 
       }
       return false;
     }
-    if ((format == binary_big_endian_format) && (host_byte_order == little_endian_byte_order) || ((format == binary_little_endian_format) && (host_byte_order == big_endian_byte_order))) {
+    if (((format == binary_big_endian_format) && (host_byte_order == little_endian_byte_order)) || ((format == binary_little_endian_format) && (host_byte_order == big_endian_byte_order))) {
       swap_byte_order(value);
     }
     if (scalar_property_callback) {
@@ -486,7 +486,7 @@ inline bool ply_parser::parse_list_property(format_type format, std::istream& is
   else {
     size_type size;
     istream.read(reinterpret_cast<char*>(&size), sizeof(size_type));
-    if ((format == binary_big_endian_format) && (host_byte_order == little_endian_byte_order) || ((format == binary_little_endian_format) && (host_byte_order == big_endian_byte_order))) {
+    if (((format == binary_big_endian_format) && (host_byte_order == little_endian_byte_order)) || ((format == binary_little_endian_format) && (host_byte_order == big_endian_byte_order))) {
       swap_byte_order(size);
     }
     if (!istream) {
@@ -507,7 +507,7 @@ inline bool ply_parser::parse_list_property(format_type format, std::istream& is
         }
         return false;
       }
-      if ((format == binary_big_endian_format) && (host_byte_order == little_endian_byte_order) || ((format == binary_little_endian_format) && (host_byte_order == big_endian_byte_order))) {
+      if (((format == binary_big_endian_format) && (host_byte_order == little_endian_byte_order)) || ((format == binary_little_endian_format) && (host_byte_order == big_endian_byte_order))) {
         swap_byte_order(value);
       }
       if (list_property_element_callback) {
