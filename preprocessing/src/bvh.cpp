@@ -860,17 +860,16 @@ upsweep_new(const reduction_strategy& reduction_strategy,
     // Start at bottom level and move up towards root.
     for (int32_t level = depth_; level >= 0; --level)
     {
-        std::cout << "entering level " << level << std::endl;
+        std::cout << "Entering level: " << level << std::endl;
     
-        // Load nodes of current level (if possible).
         uint32_t first_node_of_level = get_first_node_id_of_depth(level);
         uint32_t last_node_of_level = get_first_node_id_of_depth(level) + get_length_of_depth(level);
 
-        for (int16_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+        // Loading is not thread-safe, so load everything before starting parallel operations.
+        for (uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
             bvh_node* current_node = &nodes_.at(node_index);
 
-            // Loading is not thread safe, so load everything before starting parallel operations.
             if (current_node->is_out_of_core())
             {
                 current_node->load_from_disk();
@@ -879,7 +878,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
     
         // Iterate over nodes of current tree level.
         #pragma omp parallel for
-        for(uint16_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
             bvh_node* current_node = &nodes_.at(node_index);
         
@@ -903,9 +902,11 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                     }
                 }
             
-                real reduction_error = current_node->reduction_error();
+                real reduction_error;
                 surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, max_surfels_per_node_);
+                
                 current_node->reset(reduction);
+                current_node->set_reduction_error(reduction_error);
             }
             
             // Do attribute calculation per sufel in current node.
@@ -920,6 +921,15 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 
                 //compute_normal_and_radius(current_node->node_id(), surfel_index, normal_strategy, radius_strategy);
             }
+
+            auto props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
+            
+            bounding_box new_bounding_box;
+            new_bounding_box.expand(props.bbox);
+            
+            current_node->set_avg_surfel_radius(props.rep_radius);
+            current_node->set_centroid(props.centroid);
+            current_node->set_bounding_box(new_bounding_box);
         }
     }
 
