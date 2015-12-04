@@ -14,8 +14,7 @@
 #include <lamure/bounding_box.h>
 
 namespace lamure {
-namespace pre
-{
+namespace pre {
 
 /**
 * A group of basic algorithms, which are used during tree construction.
