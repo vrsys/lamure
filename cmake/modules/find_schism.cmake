@@ -86,7 +86,8 @@ IF ( SCHISM_INCLUDE_DIRS AND ( NOT SCHISM_LIBRARY_DIRS OR NOT SCHISM_LIBRARIES))
 		    IF (UNIX)
 			    FIND_PATH(_CUR_SEARCH
 					    NAMES libscm_gl_core.so libscm_gl_core.a
-					    PATHS ${_SEARCH_DIR}
+					    PATHS ${_SEARCH_DIR} 
+              PATH_SUFFIXES linux_x86
 					    NO_DEFAULT_PATH)
 		    ELSEIF(WIN32)
 			    FIND_PATH(_CUR_SEARCH
