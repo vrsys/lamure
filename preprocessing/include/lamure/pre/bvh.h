@@ -103,6 +103,10 @@ public:
     void                compute_normal_and_radius(const normal_computation_strategy&  normal_computation_strategy,
                                                   const radius_computation_strategy&  radius_computation_strategy);
 
+    void                compute_normal_and_radius(const bvh_node* source_node,
+                                                  const normal_computation_strategy& normal_computation_strategy,
+                                                  const radius_computation_strategy& radius_computation_strategy);
+
     void                upsweep(const reduction_strategy& strategy);
     void                upsweep_new(const reduction_strategy& reduction_strategy, 
                                     const normal_computation_strategy& normal_comp_strategy, 
