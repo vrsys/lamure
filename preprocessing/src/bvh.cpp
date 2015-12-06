@@ -656,6 +656,32 @@ void bvh::compute_normal_and_radius(
     }
 }
 
+void bvh::compute_normal_and_radius(
+    const bvh_node* source_node,
+    const normal_computation_strategy& normal_computation_strategy,
+    const radius_computation_strategy& radius_computation_strategy)
+{
+    for (size_t k = 0; k < max_surfels_per_node_; ++k)
+    {
+        if (k < source_node->mem_array().length())
+        {
+            // read surfel
+            surfel surf = source_node->mem_array().read_surfel(k);
+
+            // compute radius
+            real avg_distance = radius_computation_strategy.compute_radius(*this, source_node->node_id(), k);                
+
+            // compute normal
+            vec3f normal = normal_computation_strategy.compute_normal(*this, source_node->node_id(), k);            
+
+            // write surfel
+            surf.radius() = avg_distance * 0.8;
+            surf.normal() = normal;
+            source_node->mem_array().write_surfel(surf, k);
+        }
+    }
+}
+
 void bvh::get_descendant_leaves(
      const size_t node,
      std::vector<size_t>& result,
@@ -889,17 +915,9 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
                 {
                     size_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                    
-                    for (std::vector<bvh_node>::iterator child_iter = nodes_.begin(); child_iter != nodes_.end(); ++child_iter)
-                    {
-                        if (child_iter->node_id() == child_id)
-                        {
-                            child_mem_arrays.push_back(&child_iter->mem_array());
-                            
-                            child_iter = nodes_.end();
-                            --child_iter;
-                        }
-                    }
+                    bvh_node* child_node = &nodes_.at(child_id);
+
+                    child_mem_arrays.push_back(&child_node->mem_array());
                 }
             
                 real reduction_error;
@@ -909,27 +927,27 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->set_reduction_error(reduction_error);
             }
             
-            // Do attribute calculation per sufel in current node.
-            for (uint32_t surfel_index = 0; surfel_index < current_node->mem_array().length(); ++surfel_index)
-            {   
-                surfel current_surfel = current_node->mem_array().read_surfel(surfel_index);
-                
-                current_surfel.normal() = normal_strategy.compute_normal(*this, current_node->node_id(), surfel_index);
-                current_surfel.radius() = radius_strategy.compute_radius(*this, current_node->node_id(), surfel_index);
-                
-                current_node->mem_array().write_surfel(current_surfel, surfel_index);
-                
-                //compute_normal_and_radius(current_node->node_id(), surfel_index, normal_strategy, radius_strategy);
+            // Calculate and set node properties.
+            compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+            basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
+            
+            bounding_box node_bounding_box;
+            node_bounding_box.expand(props.bbox);
+
+            if (level < depth_)
+            {
+                for (int child_index = 0; child_index < fan_factor_; ++child_index)
+                {
+                    uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                    bvh_node* child_node = &nodes_.at(child_id);
+
+                    node_bounding_box.expand(child_node->get_bounding_box());
+                }
             }
 
-            auto props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
-            
-            bounding_box new_bounding_box;
-            new_bounding_box.expand(props.bbox);
-            
             current_node->set_avg_surfel_radius(props.rep_radius);
             current_node->set_centroid(props.centroid);
-            current_node->set_bounding_box(new_bounding_box);
+            current_node->set_bounding_box(node_bounding_box);
         }
     }
 
