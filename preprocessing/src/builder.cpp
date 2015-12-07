@@ -105,7 +105,10 @@ construct()
             break;
         case reduction_algorithm::random:
             reduction_strategy = new reduction_random();
-            break;          
+            break;
+         case reduction_algorithm::entropy:
+            reduction_strategy = new reduction_random();
+            break;               
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return false;

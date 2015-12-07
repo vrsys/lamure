@@ -105,7 +105,8 @@ int main(int argc, const char *argv[])
          "  ndc - normal deviation clustering (ndc)\n"
          "  const - ndc with constant radius\n"
          "  everysecond - take every fanout-factor's surfel\n"
-         "  random - randomly select points with possible duplicates")
+         "  random - randomly select points with possible duplicates\n"
+         "  entropy - take sufels with min entropy")
 
         ("normal-computation-algo",
          po::value<std::string>()->default_value("planefitting"),
@@ -253,6 +254,8 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::reduction_algorithm::every_second;
         else if (reduction_algo == "random") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::random;
+        else if (reduction_algo == "entropy") 
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::entropy;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;

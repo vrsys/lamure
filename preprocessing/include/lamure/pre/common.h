@@ -30,7 +30,8 @@ enum class reduction_algorithm {
     ndc            = 0,
     constant       = 1,
     every_second   = 2,
-    random         = 3
+    random         = 3,
+    entropy		   = 4
 };
 
 }}
