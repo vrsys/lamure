@@ -23,6 +23,7 @@
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
 #include <lamure/pre/reduction_random.h>
+#include <lamure/pre/reduction_entropy.h>
 
 #include <cstdio>
 
@@ -107,7 +108,7 @@ construct()
             reduction_strategy = new reduction_random();
             break;
          case reduction_algorithm::entropy:
-            reduction_strategy = new reduction_random();
+            reduction_strategy = new reduction_entropy(desc_.number_of_neighbours);
             break;               
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
