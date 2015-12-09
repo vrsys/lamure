@@ -901,6 +901,10 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->load_from_disk();
             }
         }
+
+        // Used for progress visualization.
+        size_t counter = 0;
+        uint16_t percentage = 0;
     
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
@@ -935,11 +939,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
             bvh_node* current_node = &nodes_.at(node_index);
 
             // Calculate and set node properties.
-            //if(level == depth_)
-            //{
-                compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
-            //}
-
+            compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
             basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
             
             bounding_box node_bounding_box;
@@ -959,7 +959,16 @@ upsweep_new(const reduction_strategy& reduction_strategy,
             current_node->set_avg_surfel_radius(props.rep_radius);
             current_node->set_centroid(props.centroid);
             current_node->set_bounding_box(node_bounding_box);
+
+            ++counter;
+            uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
+            if (percentage + 1 == new_percentage)
+            {
+                percentage = new_percentage;
+                std::cout << "\r" << percentage << "% processed" << std::flush;
+            }
         }
+        std::cout << std::endl;
     }
 
     // Create level temp files
