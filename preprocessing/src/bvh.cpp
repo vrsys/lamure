@@ -751,7 +751,7 @@ get_nearest_neighbours(
     {
         if (i != surf)
         {
-            surfel const& current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            const surfel& current_surfel = nodes_[current_node].mem_array().read_surfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -765,9 +765,7 @@ get_nearest_neighbours(
                 {
                     if (candidates[k].second < candidates[k - 1].second)
                     {
-                        std::pair<surfel, real> temp = candidates [k - 1];
-                        candidates[k - 1] = candidates[k];
-                        candidates[k] = temp;
+                        std::swap(candidates[k], candidates[k - 1]);
                     }
                     else
                         break;
@@ -806,7 +804,7 @@ get_nearest_neighbours(
                 {
                     if (!(leaf == node && i == surf))
                     {
-                        surfel current_surfel = nodes_[leaf].mem_array().read_surfel(i);
+                        const surfel& current_surfel = nodes_[leaf].mem_array().read_surfel(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
                         if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -820,9 +818,7 @@ get_nearest_neighbours(
                             {
                                 if (candidates[k].second < candidates[k - 1].second)
                                 {
-                                    std::pair<surfel, real> temp = candidates [k - 1];
-                                    candidates[k - 1] = candidates[k];
-                                    candidates[k] = temp;
+                                    std::swap(candidates[k], candidates[k - 1]);
                                 }
                                 else
                                     break;
