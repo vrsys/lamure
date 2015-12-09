@@ -792,7 +792,7 @@ get_nearest_neighbours(
 
         std::vector<size_t> unvisited_descendant_leaves;
 
-        get_descendant_nodes(current_node, unvisited_descendant_leaves, depth_, processed_leaves);
+        get_descendant_nodes(current_node, unvisited_descendant_leaves, nodes_[node].depth(), processed_leaves);
 
         for (auto leaf : unvisited_descendant_leaves)
         {
@@ -903,6 +903,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         }
     
         // Iterate over nodes of current tree level.
+        // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
         #pragma omp parallel for
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
@@ -926,9 +927,19 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->reset(reduction);
                 current_node->set_reduction_error(reduction_error);
             }
-            
+        }
+
+        #pragma omp parallel for
+        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+        {   
+            bvh_node* current_node = &nodes_.at(node_index);
+
             // Calculate and set node properties.
-            compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+            //if(level == depth_)
+            //{
+                compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+            //}
+
             basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
             
             bounding_box node_bounding_box;

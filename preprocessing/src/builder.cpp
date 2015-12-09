@@ -276,7 +276,7 @@ construct()
 
 
         // perform upsweep
-        bvh.upsweep(*reduction_strategy);
+        bvh.upsweep_new(*reduction_strategy, *normal_comp_strategy, *radius_comp_strategy);
         delete reduction_strategy;
 
         auto bvhu_file = add_to_path(base_path_, ".bvhu");
