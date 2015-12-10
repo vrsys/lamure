@@ -438,7 +438,7 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
             {
 
                 // find nearest neighbours
-                std::vector<std::pair<surfel, real>> neighbours = get_nearest_neighbours(i, k, number_of_neighbours);
+                std::vector<std::pair<surfel_id, real>> neighbours = get_nearest_neighbours(i, k, number_of_neighbours);
                 surfel surf = nodes_[i].mem_array().read_surfel(k);
 
                 // compute radius
@@ -463,7 +463,8 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
 
                 for (auto const& neighbour : neighbours)
                 {
-                    vec3r neighbour_pos = neighbour.first.pos();
+                    vec3r neighbour_pos = nodes_[neighbour.first.node_idx].mem_array().read_surfel(neighbour.first.surfel_idx).pos();
+                    // vec3r neighbour_pos = neighbour.first.pos();
 
                     real diff_x = neighbour_pos.x - center.x;
                     real diff_y = neighbour_pos.y - center.y;
@@ -728,7 +729,7 @@ void bvh::get_descendant_nodes(
     }
 }
 
-std::vector<std::pair<surfel, real>> bvh::
+std::vector<std::pair<surfel_id, real>> bvh::
 get_nearest_neighbours(
     const size_t node,
     const size_t surf,
@@ -738,7 +739,7 @@ get_nearest_neighbours(
     std::unordered_set<size_t> processed_leaves;
     vec3r center = nodes_[node].mem_array().read_surfel(surf).pos();
 
-    std::vector<std::pair<surfel, real>> candidates;
+    std::vector<std::pair<surfel_id, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
     sphere candidates_sphere;
 
@@ -759,7 +760,7 @@ get_nearest_neighbours(
                 if (candidates.size() == number_of_neighbours)
                     candidates.pop_back();
 
-                candidates.push_back(std::make_pair(current_surfel, distance_to_center));
+                candidates.push_back(std::make_pair(surfel_id(current_node, i), distance_to_center));
 
                 for (uint16_t k = candidates.size() - 1; k > 0; --k)
                 {
@@ -812,7 +813,7 @@ get_nearest_neighbours(
                             if (candidates.size() == number_of_neighbours)
                                 candidates.pop_back();
 
-                            candidates.push_back(std::make_pair(current_surfel, distance_to_center));
+                            candidates.push_back(std::make_pair(surfel_id(leaf, i), distance_to_center));
 
                             for (uint16_t k = candidates.size() - 1; k > 0; --k)
                             {

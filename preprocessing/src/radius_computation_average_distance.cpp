@@ -16,12 +16,12 @@ namespace pre{
 real radius_computation_average_distance::
 compute_radius(const bvh& tree,
 			   const size_t node_id,
-			   const size_t surfel_id) const {
+			   const size_t target_surfel) const {
 	
 	const uint16_t num = number_of_neighbours_;
 
 	// find nearest neighbours
-	std::vector<std::pair<surfel, real>> const& neighbours = tree.get_nearest_neighbours(node_id, surfel_id, num);
+	std::vector<std::pair<surfel_id, real>> const& neighbours = tree.get_nearest_neighbours(node_id, target_surfel, num);
     
     real avg_distance = 0.0;
 
@@ -37,6 +37,3 @@ compute_radius(const bvh& tree,
 
 }// namespace pre
 }// namespace lamure
-
-
-

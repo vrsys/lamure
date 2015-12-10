@@ -28,6 +28,16 @@ namespace pre {
 class normal_computation_strategy;
 class radius_computation_strategy;
 
+struct surfel_id {
+    lamure::node_t node_idx;
+    size_t surfel_idx;
+
+    surfel_id(lamure::node_t node_i, size_t surfel_i)
+     :node_idx(node_i)
+     ,surfel_idx(surfel_i)
+    {}
+};
+
 class PREPROCESSING_DLL bvh
 {
 public:
@@ -84,7 +94,7 @@ public:
      */
     std::pair<node_id_type, node_id_type> get_node_ranges(const uint32_t depth) const;
 
-    std::vector<std::pair<surfel, real>>
+    std::vector<std::pair<surfel_id, real>>
                         get_nearest_neighbours(
                             const size_t node_id,
                             const size_t surfel_id,
