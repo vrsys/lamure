@@ -15,7 +15,6 @@
 #include <vector>
 #include <queue>
 
-
 namespace lamure {
 namespace pre {
 
@@ -39,17 +38,27 @@ private:
 	uint16_t  number_of_neighbours_;
 
 
+	struct neighbour_with_id{
+		surfel neighbour_surfel;
+		real distance_to_neighbour;
+		uint32_t id;
+	};
+
 	uint16_t update_level(uint16_t level) {return level+1;}
 	float compute_entropy(uint16_t level, vec3f own_normal, std::vector<std::pair<surfel, real>> neighbours);
 	void initialize_queue(const std::vector<surfel_mem_array*>& input, const bvh& tree);
-	vec3r average_position(std::vector<std::pair<surfel, real>> neighbours);
-	vec3f average_normal(std::vector<std::pair<surfel, real>> neighbours);    
-	real average_radius(std::vector<std::pair<surfel, real>> neighbours);
+	vec3r average_position(std::vector<neighbour_with_id> neighbours);
+	vec3f average_normal(std::vector<neighbour_with_id> neighbours);    
+	real average_radius(std::vector<neighbour_with_id> neighbours);
+
+
+
+	
 
 	  struct entropy_surfel{
 		surfel current_surfel;
-		int id;
-		std::vector<std::pair<surfel, real>> neighbours;
+		uint32_t id;
+		std::vector<neighbour_with_id> neighbours;
 		bool validity;
 		uint16_t level;
 		float entropy;
@@ -61,11 +70,25 @@ private:
 		}
 	};
 
+
 	void merge(entropy_surfel& current_entropy_struct, 
       		   std:: priority_queue <reduction_entropy::entropy_surfel, std::vector<reduction_entropy::entropy_surfel>, min_entropy_order>& pq);
 	
 
 };
+
+// solution for accessing underlying priority-queue container taken from:
+// http://stackoverflow.com/questions/1185252/
+//        is-there-a-way-to-access-the-underlying-container-of-stl-container-adaptors
+template <class T, class S, class C>
+    S& Container(std::priority_queue<T, S, C>& q) {
+        struct HackedQueue : private std::priority_queue<T, S, C> {
+            static S& Container(std::priority_queue<T, S, C>& q) {
+                return q.*&HackedQueue::c;
+            }
+        };
+    return HackedQueue::Container(q);
+}
 
 } // namespace pre
 } // namespace lamure
