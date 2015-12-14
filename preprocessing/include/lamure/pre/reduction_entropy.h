@@ -20,6 +20,18 @@ namespace pre {
 
 class bvh;
 
+struct neighbour_distance_t{
+	surfel const* surfel_ptr;
+	real neighbour_distance;
+	surfel_id_t surfel_node_id;
+
+	neighbour_distance_t(surfel const* surf_ptr, real const distance, surfel_id_t const& s_n_id)
+	  :surfel_ptr(surf_ptr)
+	  ,neighbour_distance(distance)
+	  ,surfel_node_id(s_n_id)
+	  {}
+};
+
 class reduction_entropy: public reduction_strategy
 {
 public:
@@ -37,28 +49,23 @@ private:
 
 	uint16_t  number_of_neighbours_;
 
+	uint16_t update_level(uint16_t level) const {return level+1;}
+	float compute_entropy(uint16_t level, vec3f own_normal, std::vector<neighbour_distance_t> neighbours) const;
+	vec3r average_position(std::vector<neighbour_distance_t> neighbours) const;
+	vec3f average_normal(std::vector<neighbour_distance_t> neighbours) const;    
+	real average_radius(std::vector<neighbour_distance_t> neighbours) const;
 
-	struct neighbour_with_id{
-		surfel neighbour_surfel;
-		real distance_to_neighbour;
-		uint32_t id;
-	};
-
-	uint16_t update_level(uint16_t level) {return level+1;}
-	float compute_entropy(uint16_t level, vec3f own_normal, std::vector<std::pair<surfel, real>> neighbours);
-	void initialize_queue(const std::vector<surfel_mem_array*>& input, const bvh& tree);
-	vec3r average_position(std::vector<neighbour_with_id> neighbours);
-	vec3f average_normal(std::vector<neighbour_with_id> neighbours);    
-	real average_radius(std::vector<neighbour_with_id> neighbours);
-
-
+	std::vector<std::pair<surfel_id_t, real>>
+	get_local_nearest_neighbours (const std::vector<surfel_mem_array*>& input,
+                             	  size_t num_local_neighbours,
+                             	  surfel_id_t const& target_surfel) const;
 
 	
 
 	  struct entropy_surfel{
 		surfel current_surfel;
 		uint32_t id;
-		std::vector<neighbour_with_id> neighbours;
+		std::vector<neighbour_distance_t> neighbours;
 		bool validity;
 		uint16_t level;
 		float entropy;
@@ -72,7 +79,7 @@ private:
 
 
 	void merge(entropy_surfel& current_entropy_struct, 
-      		   std:: priority_queue <reduction_entropy::entropy_surfel, std::vector<reduction_entropy::entropy_surfel>, min_entropy_order>& pq);
+      		   std:: priority_queue <reduction_entropy::entropy_surfel, std::vector<reduction_entropy::entropy_surfel>, min_entropy_order>& pq) const;
 	
 
 };
