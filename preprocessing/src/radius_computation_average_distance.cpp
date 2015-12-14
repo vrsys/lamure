@@ -7,6 +7,7 @@
 
 #include <iostream>
 
+#include <lamure/pre/bvh.h>
 #include <lamure/pre/radius_computation_average_distance.h>
 
 namespace lamure {
@@ -15,13 +16,12 @@ namespace pre{
 
 real radius_computation_average_distance::
 compute_radius(const bvh& tree,
-			   const size_t node_id,
-			   const size_t target_surfel) const {
+			   const surfel_id_t target_surfel) const {
 	
 	const uint16_t num = number_of_neighbours_;
 
 	// find nearest neighbours
-	std::vector<std::pair<surfel_id, real>> const& neighbours = tree.get_nearest_neighbours(node_id, target_surfel, num);
+	std::vector<std::pair<surfel_id_t, real>> const& neighbours = tree.get_nearest_neighbours(target_surfel.node_idx, target_surfel.surfel_idx, num);
     
     real avg_distance = 0.0;
 

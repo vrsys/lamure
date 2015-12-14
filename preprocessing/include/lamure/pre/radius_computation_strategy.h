@@ -9,7 +9,6 @@
 #ifndef RADIUS_COMPUTATION_STRATEGY_H_
 #define RADIUS_COMPUTATION_STRATEGY_H_
 
-#include <lamure/pre/bvh.h>
 #include <lamure/pre/surfel.h>
 
 namespace lamure{
@@ -21,8 +20,7 @@ class radius_computation_strategy {
 public:
 	virtual ~radius_computation_strategy() {};
 	virtual real compute_radius(const bvh& tree,
-								const size_t node_id,
-								const size_t surfel_id) const = 0;
+								const surfel_id_t surfel) const = 0;
 
 };
 

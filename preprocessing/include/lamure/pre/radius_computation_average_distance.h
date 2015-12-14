@@ -26,8 +26,7 @@ public:
 
 
 	real  compute_radius(const bvh& tree, 
-	 					 const size_t node_id,
-	 					 const size_t surfel_id) const override;
+	 					 const surfel_id_t surfel) const override;
 
 
 private:

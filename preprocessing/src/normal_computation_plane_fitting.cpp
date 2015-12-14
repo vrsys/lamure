@@ -15,15 +15,14 @@ namespace pre{
 
 vec3f normal_computation_plane_fitting::
 compute_normal(const bvh& tree,
-			   const size_t node_id,
-			   const size_t target_surfel) const {
+			   const surfel_id_t target_surfel) const {
 
     const uint16_t num = number_of_neighbours_;
 	// find nearest neighbours
-    std::vector<std::pair<surfel_id, real>> neighbours = tree.get_nearest_neighbours(node_id, target_surfel, num);
+    std::vector<std::pair<surfel_id_t, real>> neighbours = tree.get_nearest_neighbours(target_surfel.node_idx, target_surfel.surfel_idx, num);
 
     auto& bvh_nodes = (tree.nodes());
-    surfel surf = bvh_nodes[node_id].mem_array().read_surfel(target_surfel);
+    surfel surf = bvh_nodes[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx);
 
     // compute normal
     // see: http://missingbytes.blogspot.com/2012/06/fitting-plane-to-point-cloud.html

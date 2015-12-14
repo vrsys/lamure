@@ -25,8 +25,7 @@ public:
 		: number_of_neighbours_(number_of_neighbours){}
 
 	vec3f  compute_normal(const bvh& tree,
-						  const size_t node_id,
-						  const size_t surfel_id) const override;
+						  const surfel_id_t surfel) const override;
 
 private:
 	const uint16_t number_of_neighbours_;

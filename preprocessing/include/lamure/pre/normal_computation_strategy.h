@@ -9,7 +9,7 @@
 #ifndef NORMAL_COMPUTATION_STRATEGY_H_
 #define NORMAL_COMPUTATION_STRATEGY_H_
 
-#include <lamure/pre/bvh.h>
+// #include <lamure/pre/bvh.h>
 #include <lamure/pre/surfel.h>
 
 namespace lamure{
@@ -21,8 +21,7 @@ class normal_computation_strategy {
 public:
 	virtual ~normal_computation_strategy() {};
 	virtual vec3f compute_normal(const bvh& tree,
-								 const size_t node_id,
-								 const size_t surfel_id) const = 0;
+								 const surfel_id_t surfel) const = 0;
 };
 
 } // namespace pre
