@@ -15,8 +15,19 @@ namespace lamure {
 // default type for storing coordinates
 using real = double; //< for surfel position and radius
 
-// tree types
+// tree node index types
 using node_id_type = uint32_t;
+
+// global identifier of surfel
+struct surfel_id_t {
+    node_id_type node_idx;
+    size_t surfel_idx;
+
+    surfel_id_t(node_id_type node_i, size_t surfel_i)
+     :node_idx(node_i)
+     ,surfel_idx(surfel_i)
+    {}
+};
 
 // math
 using vec3r  = scm::math::vec<real, 3>; //< for surfel position

@@ -438,7 +438,7 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
             {
 
                 // find nearest neighbours
-                std::vector<std::pair<surfel_id, real>> neighbours = get_nearest_neighbours(i, k, number_of_neighbours);
+                std::vector<std::pair<surfel_id_t, real>> neighbours = get_nearest_neighbours(i, k, number_of_neighbours);
                 surfel surf = nodes_[i].mem_array().read_surfel(k);
 
                 // compute radius
@@ -630,10 +630,10 @@ void bvh::compute_normal_and_radius(
                 surfel surf = nodes_[i].mem_array().read_surfel(k);
 
                 // compute radius
-                real avg_distance = radius_computation_strategy.compute_radius(*this, i, k);                
+                real avg_distance = radius_computation_strategy.compute_radius(*this, surfel_id_t(i, k));                
 
                 // compute normal
-                vec3f normal = normal_computation_strategy.compute_normal(*this, i, k);            
+                vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(i, k));            
 
                 // write surfel
                 surf.radius() = avg_distance * 0.8;
@@ -670,10 +670,10 @@ void bvh::compute_normal_and_radius(
             surfel surf = source_node->mem_array().read_surfel(k);
 
             // compute radius
-            real avg_distance = radius_computation_strategy.compute_radius(*this, source_node->node_id(), k);                
+            real avg_distance = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k));                
 
             // compute normal
-            vec3f normal = normal_computation_strategy.compute_normal(*this, source_node->node_id(), k);            
+            vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k));            
 
             // write surfel
             surf.radius() = avg_distance * 0.8;
@@ -729,7 +729,7 @@ void bvh::get_descendant_nodes(
     }
 }
 
-std::vector<std::pair<surfel_id, real>> bvh::
+std::vector<std::pair<surfel_id_t, real>> bvh::
 get_nearest_neighbours(
     const size_t node,
     const size_t surf,
@@ -739,7 +739,7 @@ get_nearest_neighbours(
     std::unordered_set<size_t> processed_leaves;
     vec3r center = nodes_[node].mem_array().read_surfel(surf).pos();
 
-    std::vector<std::pair<surfel_id, real>> candidates;
+    std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
     sphere candidates_sphere;
 
@@ -760,7 +760,7 @@ get_nearest_neighbours(
                 if (candidates.size() == number_of_neighbours)
                     candidates.pop_back();
 
-                candidates.push_back(std::make_pair(surfel_id(current_node, i), distance_to_center));
+                candidates.push_back(std::make_pair(surfel_id_t(current_node, i), distance_to_center));
 
                 for (uint16_t k = candidates.size() - 1; k > 0; --k)
                 {
@@ -813,7 +813,7 @@ get_nearest_neighbours(
                             if (candidates.size() == number_of_neighbours)
                                 candidates.pop_back();
 
-                            candidates.push_back(std::make_pair(surfel_id(leaf, i), distance_to_center));
+                            candidates.push_back(std::make_pair(surfel_id_t(leaf, i), distance_to_center));
 
                             for (uint16_t k = candidates.size() - 1; k > 0; --k)
                             {
