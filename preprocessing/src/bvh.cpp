@@ -438,7 +438,7 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
             {
 
                 // find nearest neighbours
-                std::vector<std::pair<surfel_id_t, real>> neighbours = get_nearest_neighbours(i, k, number_of_neighbours);
+                std::vector<std::pair<surfel_id_t, real>> neighbours = get_nearest_neighbours(surfel_id_t(i, k), number_of_neighbours);
                 surfel surf = nodes_[i].mem_array().read_surfel(k);
 
                 // compute radius
@@ -731,13 +731,12 @@ void bvh::get_descendant_nodes(
 
 std::vector<std::pair<surfel_id_t, real>> bvh::
 get_nearest_neighbours(
-    const size_t node,
-    const size_t surf,
+    const surfel_id_t target_surfel,
     const uint32_t number_of_neighbours) const
 {
-    size_t current_node = node;
+    size_t current_node = target_surfel.node_idx;
     std::unordered_set<size_t> processed_leaves;
-    vec3r center = nodes_[node].mem_array().read_surfel(surf).pos();
+    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
@@ -750,7 +749,7 @@ get_nearest_neighbours(
 
     for (size_t i = 0; i < nodes_[current_node].mem_array().length(); ++i)
     {
-        if (i != surf)
+        if (i != target_surfel.surfel_idx)
         {
             const surfel& current_surfel = nodes_[current_node].mem_array().read_surfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
@@ -791,7 +790,7 @@ get_nearest_neighbours(
 
         std::vector<size_t> unvisited_descendant_leaves;
 
-        get_descendant_nodes(current_node, unvisited_descendant_leaves, nodes_[node].depth(), processed_leaves);
+        get_descendant_nodes(current_node, unvisited_descendant_leaves, nodes_[target_surfel.node_idx].depth(), processed_leaves);
 
         for (auto leaf : unvisited_descendant_leaves)
         {
@@ -803,7 +802,7 @@ get_nearest_neighbours(
 
                 for (size_t i = 0; i < nodes_[leaf].mem_array().length(); ++i)
                 {
-                    if (!(leaf == node && i == surf))
+                    if (!(leaf == target_surfel.node_idx && i == target_surfel.surfel_idx))
                     {
                         const surfel& current_surfel = nodes_[leaf].mem_array().read_surfel(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());

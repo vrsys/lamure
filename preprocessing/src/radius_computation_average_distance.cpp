@@ -21,7 +21,7 @@ compute_radius(const bvh& tree,
 	const uint16_t num = number_of_neighbours_;
 
 	// find nearest neighbours
-	std::vector<std::pair<surfel_id_t, real>> const& neighbours = tree.get_nearest_neighbours(target_surfel.node_idx, target_surfel.surfel_idx, num);
+	std::vector<std::pair<surfel_id_t, real>> const& neighbours = tree.get_nearest_neighbours(target_surfel, num);
     
     real avg_distance = 0.0;
 
