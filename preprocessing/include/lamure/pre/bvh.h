@@ -110,7 +110,8 @@ public:
     void                upsweep(const reduction_strategy& strategy);
     void                upsweep_new(const reduction_strategy& reduction_strategy, 
                                     const normal_computation_strategy& normal_comp_strategy, 
-                                    const radius_computation_strategy& radius_comp_strategy);
+                                    const radius_computation_strategy& radius_comp_strategy,
+                                    bool recompute_leaf_level = true);
 
     void                serialize_tree_to_file(const std::string& output_file,
                                             bool write_intermediate_data);

@@ -177,10 +177,11 @@ construct()
         LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }
 
+/*
     // (re)compute normals and radii
     if ((1 >= start_stage) && (1 <= final_stage) && desc_.compute_normals_and_radii) {
         std::cout << "--------------------------------" << std::endl;
-        std::cout << "compute normals and radii" << std::endl;
+        std::cout << "downsweep" << std::endl;
         std::cout << "--------------------------------" << std::endl;
 
         const std::string input_file_type = input_file.extension().string();
@@ -203,17 +204,8 @@ construct()
 
         bvh.downsweep(false, input_file.string(), true);
 
-        // compute normals and radii
-        LOGGER_TRACE("compute normals and radii");
-
-        CPU_TIMER;
-        bvh.compute_normals_and_radii(desc_.number_of_neighbours);
-        //bvh.compute_normal_and_radius(*normal_computation_strategy, *radius_computation_strategy);
-
-        // set new input file name
-        //fs::path input_file_path = fs::path(input_file);
-        input_file = add_to_path(base_path_, ".bin_all");
     }
+*/
 
     // downsweep (create bvh)
     if ((2 >= start_stage) && (2 <= final_stage)) {
@@ -276,8 +268,14 @@ construct()
 
 
         // perform upsweep
-        bvh.upsweep_new(*reduction_strategy, *normal_comp_strategy, *radius_comp_strategy);
+        bvh.upsweep_new(*reduction_strategy, 
+                        *normal_comp_strategy, 
+                        *radius_comp_strategy,
+                        desc_.compute_normals_and_radii);
+
         delete reduction_strategy;
+        delete normal_comp_strategy;
+        delete radius_comp_strategy;
 
         auto bvhu_file = add_to_path(base_path_, ".bvhu");
         bvh.serialize_tree_to_file(bvhu_file.string(), true);
