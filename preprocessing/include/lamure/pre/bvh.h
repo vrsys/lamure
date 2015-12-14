@@ -86,8 +86,7 @@ public:
 
     std::vector<std::pair<surfel_id_t, real>>
                         get_nearest_neighbours(
-                            const size_t node_id,
-                            const size_t surf,
+                            const surfel_id_t target_surfel,
                             const uint32_t num_neighbours) const;
 
     void                print_tree_properties() const;
