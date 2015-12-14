@@ -110,16 +110,21 @@ initialize_queue(const std::vector<surfel_mem_array*>& input, const bvh& tree){
     std:: priority_queue <reduction_entropy::entropy_surfel, std::vector<reduction_entropy::entropy_surfel>, min_entropy_order> min_pq;
     entropy_surfel current_entropy_struct {};
     surfel current_surfel; //
-    std::vector<neighbour_with_id> neighbours_struct_vec; //
+    std::vector<neighbour_with_id> neighbours_struct_vec; 
+    neighbour_with_id current_neighbour_with_id;//
 
     for (size_t i = 0; i < input.size(); ++i){
         for (size_t j = 0; j < input[0]->length(); ++j){
             uint32_t counter = 0;
             std::vector<std::pair<surfel, real>> nearest_neighbours = tree.get_nearest_neighbours(i, j, number_of_neighbours_);
-            neighbours_struct_vec.neighbour_surfel = nearest_neighbours.first;
-            neighbours_struct_vec.distance_to_neighbour = nearest_neighbours.second;
-            neighbours_struct_vec.id = counter;
+            for (auto const& neighbour : nearest_neighbours){
+                current_neighbour_with_id.neighbour_surfel = neighbour.first;
+                current_neighbour_with_id.distance_to_neighbour = neighbour.second;
+                current_neighbour_with_id.id = counter;
 
+                neighbours_struct_vec.push_back(current_neighbour_with_id);
+            };
+         
             current_surfel = input[i]->mem_data()->at(j);
             current_entropy_struct.current_surfel = current_surfel;
             current_entropy_struct.id = counter;
