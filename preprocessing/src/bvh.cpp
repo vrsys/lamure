@@ -881,7 +881,8 @@ upsweep(const reduction_strategy& reduction_strtgy)
 void bvh::
 upsweep_new(const reduction_strategy& reduction_strategy, 
             const normal_computation_strategy& normal_strategy, 
-            const radius_computation_strategy& radius_strategy)
+            const radius_computation_strategy& radius_strategy,
+            bool recompute_leaf_level)
 {
     // Start at bottom level and move up towards root.
     for (int32_t level = depth_; level >= 0; --level)
@@ -931,6 +932,11 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->reset(reduction);
                 current_node->set_reduction_error(reduction_error);
             }
+        }
+
+        // skip the leaf level attribute computation if it was not requested or necessary
+        if(level == depth_ && !recompute_leaf_level) {
+            continue;
         }
 
         #pragma omp parallel for
