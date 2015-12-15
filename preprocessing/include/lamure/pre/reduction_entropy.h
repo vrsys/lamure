@@ -50,10 +50,10 @@ private:
 	uint16_t  number_of_neighbours_;
 
 	uint16_t update_level(uint16_t level) const {return level+1;}
-	float compute_entropy(uint16_t level, vec3f own_normal, std::vector<neighbour_distance_t> neighbours) const;
-	vec3r average_position(std::vector<neighbour_distance_t> neighbours) const;
-	vec3f average_normal(std::vector<neighbour_distance_t> neighbours) const;    
-	real average_radius(std::vector<neighbour_distance_t> neighbours) const;
+	float compute_entropy(uint16_t level, vec3f const& own_normal, std::vector<neighbour_distance_t> const& neighbours) const;
+	vec3r average_position(std::vector<neighbour_distance_t> const& neighbours) const;
+	vec3f average_normal(std::vector<neighbour_distance_t> const& neighbours) const;    
+	real average_radius(std::vector<neighbour_distance_t> const& neighbours) const;
 
 	std::vector<std::pair<surfel_id_t, real>>
 	get_local_nearest_neighbours (const std::vector<surfel_mem_array*>& input,
@@ -63,7 +63,7 @@ private:
 	
 
 	  struct entropy_surfel{
-		surfel current_surfel;
+		surfel* current_surfel;
 		uint32_t id;
 		std::vector<neighbour_distance_t> neighbours;
 		bool validity;
