@@ -43,7 +43,7 @@ wait() {
 }
 
 void semaphore::
-Signal(const size_t signal_count) {
+signal(const size_t signal_count) {
     {
         std::lock_guard<std::mutex> ulock(mutex_);
         if (signal_count_+signal_count <= max_signal_count_) {
@@ -55,7 +55,7 @@ Signal(const size_t signal_count) {
 }
 
 const size_t semaphore::
-NumSignals() {
+num_signals() {
     std::lock_guard<std::mutex> lock(mutex_);
     return signal_count_;
 }

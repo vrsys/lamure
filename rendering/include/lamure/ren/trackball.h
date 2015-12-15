@@ -14,9 +14,9 @@ public:
     trackball();
     ~trackball();
 
-    void Rotate(double fx, double fy, double tx, double ty);
-    void Translate(double x, double y);
-    void Dolly(double y);
+    void rotate(double fx, double fy, double tx, double ty);
+    void translate(double x, double y);
+    void dolly(double y);
 
     const scm::math::mat4d& transform() const { return transform_; };
     void set_transform(const scm::math::mat4d& transform) { transform_ = transform; };

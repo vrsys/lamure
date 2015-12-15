@@ -72,7 +72,7 @@ void process_node(lamure::ren::bvh* bvh,
                   surfel* in_surfels, 
                   surfel* out_surfels, 
                   lamure::node_t node_id, 
-                  lamure::ren::LodStream* in_lod_access) {
+                  lamure::ren::lod_stream* in_lod_access) {
 
 
    for (size_t splat_id = 0; splat_id < bvh->surfels_per_node(); ++splat_id) {
@@ -162,8 +162,8 @@ void process_node(lamure::ren::bvh* bvh,
    }
 }
 
-unsigned process_tree(lamure::ren::bvh* bvh, lamure::ren::LodStream* in_lod_access, 
-    lamure::ren::LodStream* out_lod_access, std::vector<lamure::node_t> wishlist) {
+unsigned process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access, 
+    lamure::ren::lod_stream* out_lod_access, std::vector<lamure::node_t> wishlist) {
 
 
     size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
@@ -317,12 +317,12 @@ int main(int argc, char *argv[]) {
     std::cout << "loading tree from " << input_bvh_file << std::endl;
     lamure::ren::bvh* bvh = new lamure::ren::bvh(input_bvh_file);
     
-    lamure::ren::LodStream* in_lod_access = new lamure::ren::LodStream();
+    lamure::ren::lod_stream* in_lod_access = new lamure::ren::lod_stream();
     in_lod_access->open(input_lod_file);
 
 #ifdef RECOMPUTE_NORMALS
-    lamure::ren::LodStream* out_lod_access = new lamure::ren::LodStream();
-    out_lod_access->openForWriting(output_lod_file);
+    lamure::ren::lod_stream* out_lod_access = new lamure::ren::lod_stream();
+    out_lod_access->open_for_writing(output_lod_file);
 #endif
 
     std::cout << "tree has " << bvh->num_nodes() << " nodes" << std::endl;

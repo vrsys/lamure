@@ -31,8 +31,8 @@ public:
     const size_t size_of_surfel() const { return size_of_surfel_; };
     const size_t size_of_slot() const { return size_of_slot_; };
 
-    char* Map(scm::gl::render_device_ptr const& device);
-    void Unmap(scm::gl::render_device_ptr const& device);
+    char* map(scm::gl::render_device_ptr const& device);
+    void unmap(scm::gl::render_device_ptr const& device);
     const bool is_mapped() const { return is_mapped_; };
     const bool has_layout() const { return has_layout_; };
 

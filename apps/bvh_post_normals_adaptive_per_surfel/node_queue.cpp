@@ -38,7 +38,7 @@ void node_queue_t::
 push_job(const node_queue_t::job_t& job) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push(job);
-    semaphore_.Signal(1);
+    semaphore_.signal(1);
 
 }
 

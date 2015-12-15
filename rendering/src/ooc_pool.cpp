@@ -88,13 +88,13 @@ run() {
     model_database* database = model_database::get_instance();
     model_t num_models = database->num_models();
 
-    std::vector<LodStream*> lod_streams;
+    std::vector<lod_stream*> lod_streams;
 
     for (model_t model_id = 0; model_id < num_models; ++model_id) {
         std::string bvh_filename = database->get_model(model_id)->get_bvh()->filename();
         std::string lod_file_name = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
 
-        LodStream* access = new LodStream();
+        lod_stream* access = new lod_stream();
         access->open(lod_file_name);
         lod_streams.push_back(access);
     }
@@ -107,7 +107,7 @@ run() {
         if (is_shutdown())
             break;
 
-        cache_queue::job job = priority_queue_.Topjob();
+        cache_queue::job job = priority_queue_.top_job();
 
         if (job.node_id_ != invalid_node_t) {
             assert(job.slot_mem_ != nullptr);
@@ -131,7 +131,7 @@ run() {
 
     {
         for (model_t model_id = 0; model_id < num_models; ++model_id) {
-            LodStream* lod_stream = lod_streams[model_id];
+            lod_stream* lod_stream = lod_streams[model_id];
             if (lod_stream != nullptr) {
                 lod_stream->close();
                 delete lod_stream;
@@ -148,11 +148,11 @@ run() {
 }
 
 void ooc_pool::
-resolve_cache_histogramory(cache_index* index) {
+resolve_cache_history(cache_index* index) {
     assert(locked_);
 
     for (auto entry : history_) {
-        index->applySlot(entry.slot_id_, entry.model_id_, entry.node_id_);
+        index->apply_slot(entry.slot_id_, entry.model_id_, entry.node_id_);
         priority_queue_.pop_job(entry);
     }
 
@@ -164,9 +164,9 @@ void ooc_pool::
 perform_queue_maintenance(cache_index* index) {
     assert(locked_);
 
-    size_t num_jobs = priority_queue_.Numjobs();
+    size_t num_jobs = priority_queue_.num_jobs();
     for (size_t i = 0; i < num_jobs; ++i) {
-        cache_queue::job job = priority_queue_.Topjob();
+        cache_queue::job job = priority_queue_.top_job();
 
         assert(job.slot_id_ != invalid_slot_t);
 
@@ -181,7 +181,7 @@ acknowledge_request(cache_queue::job job) {
     bool success = priority_queue_.push_job(job);
 
     if (success) {
-        semaphore_.Signal(1);
+        semaphore_.signal(1);
     }
 
     return success;
@@ -189,12 +189,12 @@ acknowledge_request(cache_queue::job job) {
 
 cache_queue::query_result ooc_pool::
 acknowledge_query(const model_t model_id, const node_t node_id) {
-    return priority_queue_.IsNodeIndexed(model_id, node_id);
+    return priority_queue_.is_node_indexed(model_id, node_id);
 }
 
 void ooc_pool::
 acknowledge_update(const model_t model_id, const node_t node_id, int32_t priority) {
-    priority_queue_.Updatejob(model_id, node_id, priority);
+    priority_queue_.update_job(model_id, node_id, priority);
 }
 
 

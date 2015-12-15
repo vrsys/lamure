@@ -69,7 +69,7 @@ static void get_all_descendant_leafs(const lamure::ren::bvh* bvh, const lamure::
 
 static scm::math::vec3f get_point_of_interest(
     const lamure::ren::bvh* bvh,
-    const lamure::ren::LodStream* lod_access,
+    const lamure::ren::lod_stream* lod_access,
     lamure::node_t node_id, 
     size_t splat_id) {
     
@@ -82,7 +82,7 @@ static scm::math::vec3f get_point_of_interest(
 }
 
 static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
-    const lamure::ren::LodStream* lod_access,
+    const lamure::ren::lod_stream* lod_access,
     const NodeSplatId& splat_of_interest,
     unsigned int num_neighbours,
     std::vector<std::pair<surfel, float>>& neighbours,

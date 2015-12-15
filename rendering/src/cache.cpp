@@ -34,7 +34,7 @@ cache::
 
 const bool cache::
 is_node_resident(const model_t model_id, const node_t node_id) {
-    return index_->IsNodeIndexed(model_id, node_id);
+    return index_->is_node_indexed(model_id, node_id);
 }
 
 const slot_t cache::
@@ -49,26 +49,26 @@ slot_id(const model_t model_id, const node_t node_id) {
 
 void cache::
 aquire_node(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
-    if (index_->IsNodeIndexed(model_id, node_id)) {
+    if (index_->is_node_indexed(model_id, node_id)) {
         uint32_t hash_id = ((((uint32_t)context_id) & 0xFFFF) << 16) | (((uint32_t)view_id) & 0xFFFF);
-        index_->AquireSlot(hash_id, model_id, node_id);
+        index_->aquire_slot(hash_id, model_id, node_id);
     }
 }
 
 void cache::
 release_node(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
-    if (index_->IsNodeIndexed(model_id, node_id)) {
+    if (index_->is_node_indexed(model_id, node_id)) {
         uint32_t hash_id = ((((uint32_t)context_id) & 0xFFFF) << 16) | (((uint32_t)view_id) & 0xFFFF);
-        index_->ReleaseSlot(hash_id, model_id, node_id);
+        index_->release_slot(hash_id, model_id, node_id);
     }
 
 }
 
 const bool cache::
 release_node_invalidate(const context_t context_id, const view_t view_id, const model_t model_id, const node_t node_id) {
-    if (index_->IsNodeIndexed(model_id, node_id)) {
+    if (index_->is_node_indexed(model_id, node_id)) {
         uint32_t hash_id = ((((uint32_t)context_id) & 0xFFFF) << 16) | (((uint32_t)view_id) & 0xFFFF);
-        return index_->ReleaseSlotinvalidate(hash_id, model_id, node_id);
+        return index_->release_slot_invalidate(hash_id, model_id, node_id);
     }
 
     return false;

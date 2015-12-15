@@ -126,7 +126,7 @@ is_node_resident_and_aquired(const model_t model_id, const node_t node_id) {
 void ooc_cache::
 refresh() {
     pool_->lock();
-    pool_->resolve_cache_histogramory(index_);
+    pool_->resolve_cache_history(index_);
 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_CACHE_MAINTENANCE
@@ -148,7 +148,7 @@ refresh() {
 void ooc_cache::
 lock_pool() {
     pool_->lock();
-    pool_->resolve_cache_histogramory(index_);
+    pool_->resolve_cache_history(index_);
 }
 
 void ooc_cache::

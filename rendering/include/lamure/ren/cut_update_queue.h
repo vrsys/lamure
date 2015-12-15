@@ -51,9 +51,9 @@ public:
     virtual             ~cut_update_queue();
 
     void                push_job(const job& job);
-    const job           pop_frontjob();
+    const job           pop_front_job();
 
-    const size_t        Numjobs();
+    const size_t        num_jobs();
 
 
 private:

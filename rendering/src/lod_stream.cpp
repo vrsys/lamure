@@ -13,21 +13,21 @@
 namespace lamure {
 namespace ren {
 
-LodStream::
-LodStream()
+lod_stream::
+lod_stream()
 : is_file_open_(false) {
 
 }
 
-LodStream::
-~LodStream() {
+lod_stream::
+~lod_stream() {
     try {
         close();
     }
     catch (...) {}
 }
 
-void LodStream::
+void lod_stream::
 open(const std::string& file_name) {
     file_name_ = file_name;
     std::ios::openmode mode = std::ios::in |
@@ -45,15 +45,15 @@ open(const std::string& file_name) {
 
     if (!stream_.is_open()) {
         throw std::runtime_error(
-            "LodStream::Unable to open file: " + file_name_);
+            "lod_stream::Unable to open file: " + file_name_);
     }
 
     is_file_open_ = true;
 }
 
 
-void LodStream::
-openForWriting(const std::string& file_name) {
+void lod_stream::
+open_for_writing(const std::string& file_name) {
     file_name_ = file_name;
     std::ios::openmode mode = std::ios::out |
                               std::ios::binary;
@@ -62,13 +62,13 @@ openForWriting(const std::string& file_name) {
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     if (!stream_.is_open()) {
         throw std::runtime_error(
-            "LodStream::Unable to open file for writing: " + file_name_);
+            "lod_stream::Unable to open file for writing: " + file_name_);
     }
 
     is_file_open_ = true;
 }
 
-void LodStream::
+void lod_stream::
 close() {
     if (is_file_open_) {
         stream_.close();
@@ -79,7 +79,7 @@ close() {
     }
 }
 
-void LodStream::
+void lod_stream::
 read(char* const data,
      const size_t offset_in_bytes,
      const size_t length_in_bytes) const {
@@ -93,7 +93,7 @@ read(char* const data,
 }
 
                             
-void LodStream::
+void lod_stream::
 write(char* const data,
       const size_t start_in_file,
       const size_t length_in_bytes) {

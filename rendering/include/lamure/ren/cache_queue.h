@@ -76,14 +76,14 @@ public:
     virtual             ~cache_queue();
 
     bool                push_job(const job& job);
-    const job           Topjob();
+    const job           top_job();
     void                pop_job(const job& job);
-    void                Updatejob(const model_t model_id, const node_t node_id, int32_t priority);
-    const abort_result   Abortjob(const job& job);
+    void                update_job(const model_t model_id, const node_t node_id, int32_t priority);
+    const abort_result  abort_job(const job& job);
 
-    const size_t        Numjobs();
+    const size_t        num_jobs();
     void                initialize(const update_mode mode, const model_t num_models);
-    const query_result   IsNodeIndexed(const model_t model_id, const node_t node_id);
+    const query_result  is_node_indexed(const model_t model_id, const node_t node_id);
 
 private:
     void                swap(const size_t slot_id_0, const size_t slot_id_1);
@@ -93,7 +93,7 @@ private:
     size_t              num_slots_;
     model_t             num_models_;
     std::mutex          mutex_;
-    update_mode          mode_;
+    update_mode         mode_;
     bool                initialized_;
 
     std::vector<job>    slots_;

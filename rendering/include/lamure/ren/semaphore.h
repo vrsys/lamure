@@ -25,7 +25,7 @@ public:
     virtual             ~semaphore();
 
     void                wait();
-    void                Signal(const size_t signal_count);
+    void                signal(const size_t signal_count);
     void                lock();
     void                unlock();
     void                shutdown();
@@ -35,7 +35,7 @@ public:
     inline void         set_max_signal_count(size_t max_signal_count) { max_signal_count_ = max_signal_count; };
     inline void         set_min_signal_count(size_t min_signal_count) { min_signal_count_ = min_signal_count; };
 
-    const size_t        NumSignals();
+    const size_t        num_signals();
 
 private:
     /* data */

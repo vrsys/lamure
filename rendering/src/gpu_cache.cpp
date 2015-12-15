@@ -25,7 +25,7 @@ gpu_cache::
 }
 
 void gpu_cache::
-resetTransferList() {
+reset_transfer_list() {
     model_database* database = model_database::get_instance();
     transfer_list_.clear();
     transfer_list_.resize(database->num_models());
@@ -43,7 +43,7 @@ register_node(const model_t model_id, const node_t node_id) {
 
     node_t least_recently_used_slot = index_->reserve_slot();
 
-    index_->applySlot(least_recently_used_slot, model_id, node_id);
+    index_->apply_slot(least_recently_used_slot, model_id, node_id);
 
     transfer_list_[model_id].insert(node_id);
 
@@ -52,7 +52,7 @@ register_node(const model_t model_id, const node_t node_id) {
 
 
 void gpu_cache::
-RemoveFromTransferList(const model_t model_id, const node_t node_id) {
+remove_from_transfer_list(const model_t model_id, const node_t node_id) {
     if (transfer_list_[model_id].find(node_id) != transfer_list_[model_id].end()) {
         transfer_list_[model_id].erase(node_id);
         ++transfer_budget_;

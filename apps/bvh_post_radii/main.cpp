@@ -47,7 +47,7 @@ struct s_surfel {
     float nx, ny, nz;
 };
 
-void process_tree(lamure::ren::bvh* bvh, lamure::ren::LodStream* in_lod_access, lamure::ren::LodStream* out_lod_access) {
+void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access, lamure::ren::lod_stream* out_lod_access) {
 
     size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
     surfel* in_surfels;
@@ -285,10 +285,10 @@ int main(int argc, char *argv[]) {
     std::cout << "loading tree from " << input_bvh_file << std::endl;
     lamure::ren::bvh* bvh = new lamure::ren::bvh(input_bvh_file);
     
-    lamure::ren::LodStream* in_lod_access = new lamure::ren::LodStream();
+    lamure::ren::lod_stream* in_lod_access = new lamure::ren::lod_stream();
     in_lod_access->open(input_lod_file);
-    lamure::ren::LodStream* out_lod_access = new lamure::ren::LodStream();
-    out_lod_access->openForWriting(output_lod_file);
+    lamure::ren::lod_stream* out_lod_access = new lamure::ren::lod_stream();
+    out_lod_access->open_for_writing(output_lod_file);
     
     std::cout << "tree has " << bvh->num_nodes() << " nodes" << std::endl;
     

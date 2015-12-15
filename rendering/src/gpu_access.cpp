@@ -68,7 +68,7 @@ gpu_access::
 }
 
 char* gpu_access::
-Map(scm::gl::render_device_ptr const& device) {
+map(scm::gl::render_device_ptr const& device) {
     if (!is_mapped_) {
         assert(device);
         is_mapped_ = true;
@@ -78,7 +78,7 @@ Map(scm::gl::render_device_ptr const& device) {
 }
 
 void gpu_access::
-Unmap(scm::gl::render_device_ptr const& device) {
+unmap(scm::gl::render_device_ptr const& device) {
     if (is_mapped_) {
         assert(device);
         device->main_context()->unmap_buffer(buffer_);

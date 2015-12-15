@@ -33,7 +33,7 @@ ray::~ray() {
 
 }
 
-const bool ray::Intersect(
+const bool ray::intersect(
     const float aabb_scale,
     scm::math::vec3f& ray_up_vector,
     const float bundle_radius,
@@ -803,7 +803,7 @@ relaunch() {
 }
 
 const unsigned int ray_queue::
-Numjobs() {
+num_jobs() {
     return (unsigned int)queue_.size();
 }
 
@@ -811,7 +811,7 @@ void ray_queue::
 push_job(const ray_queue::ray_job& job) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push(job);
-    semaphore_.Signal(1);
+    semaphore_.signal(1);
 
 }
 

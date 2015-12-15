@@ -86,7 +86,7 @@ public:
 
     //this is a interpolation picking interface,
     //(all models, splat-based, fits a plane)
-    const bool Intersect(const float aabb_scale,
+    const bool intersect(const float aabb_scale,
                          scm::math::vec3f& ray_up_vector,
                          const float cone_diameter,
                          const unsigned int max_depth,
@@ -168,7 +168,7 @@ public:
     void wait();
     void relaunch();
     const bool is_shutdown();
-    const unsigned int Numjobs();
+    const unsigned int num_jobs();
 
 private:
     std::queue<ray_job> queue_;

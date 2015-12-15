@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
               << "to: " << out_lod_file << std::endl;
        
     //prepare lod output file
-    lamure::ren::LodStream* out_lod_access = new lamure::ren::LodStream();
-    out_lod_access->openForWriting(out_lod_file);
+    lamure::ren::lod_stream* out_lod_access = new lamure::ren::lod_stream();
+    out_lod_access->open_for_writing(out_lod_file);
 
     file_handler knobi_file_handler;
     

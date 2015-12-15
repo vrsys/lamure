@@ -29,7 +29,7 @@ project_to_sphere(double x, double y) const {
 }
 
 void trackball::
-Rotate(double fx, double fy, double tx, double ty) {
+rotate(double fx, double fy, double tx, double ty) {
     scm::math::vec3d start(fx, fy, project_to_sphere(fx, fy));
     scm::math::vec3d end(tx, ty, project_to_sphere(tx, ty));
 
@@ -54,7 +54,7 @@ Rotate(double fx, double fy, double tx, double ty) {
 
 
 void trackball::
-Translate(double x, double y) {
+translate(double x, double y) {
     double dolly_abs = abs(dolly_);
     double near_dist = 1.0;
 
@@ -75,7 +75,7 @@ Translate(double x, double y) {
 
 
 void trackball::
-Dolly(double y) {
+dolly(double y) {
     scm::math::mat4d tmp_dolly(scm::math::mat4d::identity());
     scm::math::mat4d tmp_dolly_inv(scm::math::mat4d::identity());
     scm::math::translate(tmp_dolly, 0.0, 0.0, dolly_);

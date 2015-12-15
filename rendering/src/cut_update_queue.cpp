@@ -31,7 +31,7 @@ push_job(const job& job) {
 }
 
 const cut_update_queue::job cut_update_queue::
-pop_frontjob() {
+pop_front_job() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     job job;
@@ -45,7 +45,7 @@ pop_frontjob() {
 }
 
 const size_t cut_update_queue::
-Numjobs() {
+num_jobs() {
     std::lock_guard<std::mutex> lock(mutex_);
     return job_queue_.size();
 }

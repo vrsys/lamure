@@ -140,7 +140,7 @@ dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B) {
             cut_update_queue::job(
                 cut_update_queue::task_t::CUT_MASTER_TASK, invalid_view_t, invalid_model_t));
 
-        semaphore_.Signal(1);
+        semaphore_.signal(1);
 
     }
 
@@ -155,7 +155,7 @@ run() {
         if (is_shutdown()) break;
 
         //dequeue job
-        cut_update_queue::job job = job_queue_.pop_frontjob();
+        cut_update_queue::job job = job_queue_.pop_front_job();
 
         if (job.task_ != cut_update_queue::task_t::CUT_INVALID_TASK) {
             switch (job.task_) {
@@ -191,7 +191,7 @@ prepare() {
     transfer_list_.clear();
     render_list_.clear();
 
-    gpu_cache_->resetTransferList();
+    gpu_cache_->reset_transfer_list();
     gpu_cache_->set_transfer_budget(upload_budget_in_nodes_);
     gpu_cache_->set_transfer_slots_written(0);
 
@@ -332,8 +332,8 @@ cut_master() {
     //swap cut index
     index_->swap_cuts();
 
-    assert(semaphore_.NumSignals() == 0);
-    assert(master_semaphore_.NumSignals() == 0);
+    assert(semaphore_.num_signals() == 0);
+    assert(master_semaphore_.num_signals() == 0);
 
     //re-configure semaphores
     master_semaphore_.lock();
@@ -353,14 +353,14 @@ cut_master() {
         }
     }
 
-    semaphore_.Signal(index_->num_models() * index_->num_views());
+    semaphore_.signal(index_->num_models() * index_->num_views());
 
     master_semaphore_.wait();
     if (is_shutdown())
         return;
 
-    assert(semaphore_.NumSignals() == 0);
-    assert(master_semaphore_.NumSignals() == 0);
+    assert(semaphore_.num_signals() == 0);
+    assert(master_semaphore_.num_signals() == 0);
 
     index_->sort();
 
@@ -376,7 +376,7 @@ cut_master() {
     semaphore_.unlock();
 
     job_queue_.push_job(cut_update_queue::job(cut_update_queue::task_t::CUT_UPDATE_TASK, 0, 0));
-    semaphore_.Signal(1);
+    semaphore_.signal(1);
 
     master_semaphore_.wait();
     if (is_shutdown())
@@ -605,7 +605,7 @@ cut_analysis(view_t view_id, model_t model_id) {
 
     }
 
-    master_semaphore_.Signal(1);
+    master_semaphore_.signal(1);
 
 
 }
@@ -979,7 +979,7 @@ cut_update() {
     compile_render_list();
     compile_transfer_list();
 
-    master_semaphore_.Signal(1);
+    master_semaphore_.signal(1);
 
 }
 
@@ -1124,7 +1124,7 @@ compile_transfer_list() {
 
     }
 
-    gpu_cache_->resetTransferList();
+    gpu_cache_->reset_transfer_list();
     gpu_cache_->set_transfer_slots_written(slot_count);
 
 

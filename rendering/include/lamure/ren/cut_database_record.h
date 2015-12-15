@@ -87,8 +87,8 @@ public:
 
 protected:
 
-    void                expandfrontA(const view_t view_id, const model_t model_id);
-    void                expandfrontB(const view_t view_id, const model_t model_id);
+    void                expand_front_a(const view_t view_id, const model_t model_id);
+    void                expand_front_b(const view_t view_id, const model_t model_id);
 
 private:
     /* data */

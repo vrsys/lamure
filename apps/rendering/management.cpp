@@ -494,7 +494,7 @@ dispatchKeyboardInput(unsigned char key)
 
 
 #if 1 /*INTERPOLATION PICK*/
-                if (ray.Intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
+                if (ray.intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
 #ifdef LAMURE_ENABLE_INFO
                     std::cout << "intersection distance: " << intersection.distance_ << std::endl;
                     std::cout << "intersection position: " << intersection.position_ << std::endl;
@@ -520,7 +520,7 @@ dispatchKeyboardInput(unsigned char key)
             for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
                scm::math::mat4f model_transform = database->get_model(model_id)->transform();
                lamure::ren::ray::Intersection temp;
-               if (ray.IntersectModel(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
+               if (ray.intersect_model(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
                   intersection = temp;
                }
             }
@@ -531,7 +531,7 @@ dispatchKeyboardInput(unsigned char key)
             for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
                scm::math::mat4f model_transform = database->get_model(model_id)->transform();
                lamure::ren::ray::Intersectionbvh temp;
-               if (ray.IntersectModelbvh(model_id, model_transform, 1.0f, temp)) {
+               if (ray.intersect_model_bvh(model_id, model_transform, 1.0f, temp)) {
                   //std::cout << "hit i model id " << model_id << " distance: " << temp.tmin_ << std::endl;
                   intersection.position_ = temp.position_;
                   intersection.normal_ = scm::math::vec3f(0.0f, 1.0f, 0.f);

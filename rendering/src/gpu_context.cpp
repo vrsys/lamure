@@ -101,9 +101,9 @@ test_video_memory(scm::gl::render_device_ptr device) {
     gpu_access* test_main = new gpu_access(device, 1, database->surfels_per_node(), true);
     LodPointCloud::serializedsurfel* node_data = (LodPointCloud::serializedsurfel*)new char[size_of_node_in_bytes];
     memset((char*)node_data, 0, size_of_node_in_bytes);
-    char* mapped_temp = test_temp->Map(device);
+    char* mapped_temp = test_temp->map(device);
     memcpy(mapped_temp, node_data, size_of_node_in_bytes);
-    test_temp->Unmap(device);
+    test_temp->unmap(device);
 
     auto frame_duration_in_ns = boost::timer::nanosecond_type(16.0 * 1000 * 1000);
 
@@ -186,14 +186,14 @@ map_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::
     switch (buffer) {
         case cut_database_record::temporary_buffer::BUFFER_A:
             if (!temp_buffer_a_->is_mapped()) {
-                temporary_storages_.storage_a_ = temp_buffer_a_->Map(device);
+                temporary_storages_.storage_a_ = temp_buffer_a_->map(device);
             }
             return;
             break;
 
         case cut_database_record::temporary_buffer::BUFFER_B:
             if (!temp_buffer_b_->is_mapped()) {
-                temporary_storages_.storage_b_ = temp_buffer_b_->Map(device);
+                temporary_storages_.storage_b_ = temp_buffer_b_->map(device);
             }
             return;
             break;
@@ -216,13 +216,13 @@ unmap_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm
     switch (buffer) {
         case cut_database_record::temporary_buffer::BUFFER_A:
             if (temp_buffer_a_->is_mapped()) {
-                temp_buffer_a_->Unmap(device);
+                temp_buffer_a_->unmap(device);
             }
             break;
 
         case cut_database_record::temporary_buffer::BUFFER_B:
             if (temp_buffer_b_->is_mapped()) {
-                temp_buffer_b_->Unmap(device);
+                temp_buffer_b_->unmap(device);
             }
             break;
 
