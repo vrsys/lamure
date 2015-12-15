@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     unsigned int video_memory_budget ;
     unsigned int max_upload_budget;
 
-    std::string resource_file_path = "auto_generated.rsc";
+    std::string resource_file_path = "";
     std::string measurement_file_path = "";
 
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
@@ -157,15 +157,18 @@ int main(int argc, char** argv)
       std::vector<std::string> to_pass_further = po::collect_unrecognized(parsed_options.options, po::include_positional);
       bool no_input = !vm.count("input") && to_pass_further.empty();
 
-      if (vm.count("help") || no_input)
-      {
-        std::cout << desc;
-        return 0;
+      if (resource_file_path == "") {
+        if (vm.count("help") || no_input)
+        {
+          std::cout << desc;
+          return 0;
+        }
       }
 
       // no explicit input -> use unknown options
-      if (!vm.count("input")) 
+      if (!vm.count("input") && resource_file_path == "") 
       {
+        resource_file_path = "auto_generated.rsc";
         std::fstream ofstr(resource_file_path, std::ios::out);
         if (ofstr.good()) 
         {
@@ -178,6 +181,8 @@ int main(int argc, char** argv)
         }
         ofstr.close();
       }
+
+
     } catch (std::exception& e) {
       std::cout << "Warning: No input file specified. \n" << desc;
       return 0;
@@ -202,15 +207,19 @@ int main(int argc, char** argv)
     std::vector<scm::math::mat4f> & model_transformations = model_attributes.second;
     std::vector<std::string> const& model_filenames = model_attributes.first;
 
+    for (auto trans : model_transformations) {
+       std::cout << trans << std::endl;
+
+    }
+
     lamure::ren::policy* policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(max_upload_budget); //8
     policy->set_render_budget_in_mb(video_memory_budget); //2048
     policy->set_out_of_core_budget_in_mb(main_memory_budget); //4096, 8192
+    policy->set_window_width(window_width);
+    policy->set_window_height(window_height);
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-    database->set_window_width(window_width);
-    database->set_window_height(window_height);
-
 
     std::vector<scm::math::mat4d> parsed_views = std::vector<scm::math::mat4d>();
 

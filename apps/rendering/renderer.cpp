@@ -42,10 +42,10 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       model_transformations_(model_transformations),
       radius_scale_(1.f)
 {
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
-    win_x_ = database->window_width();
-    win_y_ = database->window_height();
+    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
+    win_x_ = policy->window_width();
+    win_y_ = policy->window_height();
 
     initialize_schism_device_and_shaders(win_x_, win_y_);
     initialize_VBOs();
@@ -134,7 +134,7 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
     scm::math::mat4f    model_view_matrix   = view_matrix * model_matrix;
 #endif
 
-    float total_radius_scale = radius_scale_ * radius_scale_per_model_[model_id];
+    float total_radius_scale = radius_scale_;// * radius_scale_per_model_[model_id];
 
     switch(pass) {
         case RenderPass::DEPTH:

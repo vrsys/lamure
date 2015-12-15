@@ -143,8 +143,10 @@ get_model(const model_t model_id) {
         return models_[model_id];
     }
 
+    std::cout << "attempt to locate model " << model_id << std::endl;
+
     throw std::runtime_error(
-        "PLOD: model_database::Model was not found:" + model_id);
+        "PLOD: model_database::Model was not found:" + std::to_string(model_id));
 
     return nullptr;
 }

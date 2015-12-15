@@ -56,17 +56,11 @@ management(std::vector<std::string> const& model_filenames,
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
-#ifdef LAMURE_RENDERING_ENABLE_LAZY_MODELS_TEST
-    assert(model_filenames_.size() > 0);
-    lamure::model_t model_id = database->add_model(model_filenames_[0], std::to_string(num_models_));
-    ++num_models_;
-#else
     for (const auto& filename : model_filenames_)
     {
         lamure::model_t model_id = database->add_model(filename, std::to_string(num_models_));
         ++num_models_;
     }
-#endif
 
     {
 
@@ -136,6 +130,7 @@ MainLoop()
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     lamure::ren::controller* controller = lamure::ren::controller::get_instance();
     lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
 
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
@@ -228,7 +223,7 @@ MainLoop()
 
             std::vector<scm::math::vec3d> corner_values = cam->get_frustum_corners();
             double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
-            float height_divided_by_top_minus_bottom = database->window_height() / top_minus_bottom;
+            float height_divided_by_top_minus_bottom = policy->window_height() / top_minus_bottom;
 
             cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
         }
@@ -640,13 +635,12 @@ dispatchResize(int w, int h)
 #endif
 
     renderer_->reset_viewport(w,h);
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-    database->set_window_width(w);
-    database->set_window_height(h);
+    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
+    policy->set_window_width(w);
+    policy->set_window_height(h);
 
 
-    for (auto& cam : cameras_)
-    {
+    for (auto& cam : cameras_) {
         cam->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
     }
 

@@ -40,12 +40,6 @@ public:
     const size_t        size_of_surfel() const { std::lock_guard<std::mutex> lock(mutex_); return size_of_surfel_; };
     const size_t        surfels_per_node() const { std::lock_guard<std::mutex> lock(mutex_); return surfels_per_node_; };
 
-    void                set_window_width(const int32_t window_width) { window_width_ = window_width; };
-    void                set_window_height(const int32_t window_height) { window_height_ = window_height; };
-    const int32_t       window_width() const { return window_width_; };
-    const int32_t       window_height() const { return window_height_; };
-
-
 protected:
 
                         model_database();
@@ -62,11 +56,7 @@ private:
     size_t              surfels_per_node_;
     size_t              surfels_per_node_pending_;
     size_t              size_of_surfel_;
-    
-    int32_t             window_width_;
-    int32_t             window_height_;
 
-    std::vector<scm::gl::timer_query_ptr> _time_queries;
 };
 
 

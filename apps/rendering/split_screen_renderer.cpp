@@ -30,10 +30,10 @@ split_screen_renderer(std::vector<scm::math::mat4f> const& model_transformations
       current_cam_id_right_(0),
       model_transformations_(model_transformations)
 {
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
-    win_x_ = database->window_width();
-    win_y_ = database->window_height();
+    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
+    win_x_ = policy->window_width();
+    win_y_ = policy->window_height();
 
     initialize_device_and_shaders(win_x_, win_y_);
     initialize_vbos();
