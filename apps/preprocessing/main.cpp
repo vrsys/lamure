@@ -257,6 +257,8 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::reduction_algorithm::random;
         else if (reduction_algo == "entropy") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::entropy;
+        else if (reduction_algo == "regiongrowing") 
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::region_growing;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;
