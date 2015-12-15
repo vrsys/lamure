@@ -735,23 +735,18 @@ get_nearest_neighbours(
     const uint32_t number_of_neighbours) const
 {
     size_t current_node = target_surfel.node_idx;
-    std::unordered_set<size_t> processed_leaves;
+    std::unordered_set<size_t> processed_nodes;
     vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
-    sphere candidates_sphere;
-
-    size_t number_of_leaves = pow(fan_factor_, depth_);
-    //size_t first_leaf = nodes_.size() - number_of_leaves;
 
     // check own node
-
     for (size_t i = 0; i < nodes_[current_node].mem_array().length(); ++i)
     {
         if (i != target_surfel.surfel_idx)
         {
-            const surfel& current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            const surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -779,32 +774,31 @@ get_nearest_neighbours(
 
     }
 
-    processed_leaves.insert(current_node);
-    candidates_sphere = sphere(center, sqrt(max_candidate_distance));
+    processed_nodes.insert(current_node);
 
     // check rest of kd-bvh
+    sphere candidates_sphere = sphere(center, sqrt(max_candidate_distance));
     while ( (!nodes_[current_node].get_bounding_box().contains(candidates_sphere)) &&
             (current_node != 0) )
     {
         current_node = get_parent_id(current_node);
 
-        std::vector<size_t> unvisited_descendant_leaves;
+        std::vector<size_t> unvisited_descendant_nodes;
 
-        get_descendant_nodes(current_node, unvisited_descendant_leaves, nodes_[target_surfel.node_idx].depth(), processed_leaves);
+        get_descendant_nodes(current_node, unvisited_descendant_nodes, nodes_[target_surfel.node_idx].depth(), processed_nodes);
 
-        for (auto leaf : unvisited_descendant_leaves)
+        for (auto adjacent_node : unvisited_descendant_nodes)
         {
 
-            if (candidates_sphere.is_inside(nodes_[leaf].get_bounding_box()))
+            if (candidates_sphere.is_inside(nodes_[adjacent_node].get_bounding_box()))
             {
+                assert(nodes_[adjacent_node].is_out_of_core());
 
-                assert(nodes_[leaf].is_out_of_core());
-
-                for (size_t i = 0; i < nodes_[leaf].mem_array().length(); ++i)
+                for (size_t i = 0; i < nodes_[adjacent_node].mem_array().length(); ++i)
                 {
-                    if (!(leaf == target_surfel.node_idx && i == target_surfel.surfel_idx))
+                    if (!(adjacent_node == target_surfel.node_idx && i == target_surfel.surfel_idx))
                     {
-                        const surfel& current_surfel = nodes_[leaf].mem_array().read_surfel(i);
+                        const surfel current_surfel = nodes_[adjacent_node].mem_array().read_surfel(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
                         if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -812,7 +806,7 @@ get_nearest_neighbours(
                             if (candidates.size() == number_of_neighbours)
                                 candidates.pop_back();
 
-                            candidates.push_back(std::make_pair(surfel_id_t(leaf, i), distance_to_center));
+                            candidates.push_back(std::make_pair(surfel_id_t(adjacent_node, i), distance_to_center));
 
                             for (uint16_t k = candidates.size() - 1; k > 0; --k)
                             {
@@ -831,7 +825,7 @@ get_nearest_neighbours(
 
                 }
 
-                processed_leaves.insert(leaf);
+                processed_nodes.insert(adjacent_node);
                 candidates_sphere = sphere(center, sqrt(max_candidate_distance));
 
             }
@@ -843,7 +837,93 @@ get_nearest_neighbours(
     return candidates;
 }
 
+std::vector<std::pair<surfel_id_t, real>> bvh::
+get_nearest_neighbours_in_nodes(
+    const surfel_id_t target_surfel,
+    const std::vector<node_id_type> target_nodes,
+    const uint32_t number_of_neighbours) const
+{
+    size_t current_node = target_surfel.node_idx;
+    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
 
+    std::vector<std::pair<surfel_id_t, real>> candidates;
+    real max_candidate_distance = std::numeric_limits<real>::infinity();
+
+    // check own node
+    for (size_t i = 0; i < nodes_[current_node].mem_array().length(); ++i)
+    {
+        if (i != target_surfel.surfel_idx)
+        {
+            const surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
+
+            if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
+            {
+                if (candidates.size() == number_of_neighbours)
+                    candidates.pop_back();
+
+                candidates.push_back(std::make_pair(surfel_id_t(current_node, i), distance_to_center));
+
+                for (uint16_t k = candidates.size() - 1; k > 0; --k)
+                {
+                    if (candidates[k].second < candidates[k - 1].second)
+                    {
+                        std::swap(candidates[k], candidates[k - 1]);
+                    }
+                    else
+                        break;
+                }
+
+                max_candidate_distance = candidates.back().second;
+            }
+        }
+    }
+
+    // check remaining nodes in vector
+    sphere candidates_sphere = sphere(center, sqrt(max_candidate_distance));
+    for (auto adjacent_node: target_nodes)
+    {
+        if (adjacent_node != current_node)
+        {
+            if (candidates_sphere.is_inside(nodes_[adjacent_node].get_bounding_box()))
+            {
+                assert(nodes_[adjacent_node].is_out_of_core());
+
+                for (size_t i = 0; i < nodes_[adjacent_node].mem_array().length(); ++i)
+                {
+                    if (!(adjacent_node == target_surfel.node_idx && i == target_surfel.surfel_idx))
+                    {
+                        const surfel current_surfel = nodes_[adjacent_node].mem_array().read_surfel(i);
+                        real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
+
+                        if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
+                        {
+                            if (candidates.size() == number_of_neighbours)
+                                candidates.pop_back();
+
+                            candidates.push_back(std::make_pair(surfel_id_t(adjacent_node, i), distance_to_center));
+
+                            for (uint16_t k = candidates.size() - 1; k > 0; --k)
+                            {
+                                if (candidates[k].second < candidates[k - 1].second)
+                                {
+                                    std::swap(candidates[k], candidates[k - 1]);
+                                }
+                                else
+                                    break;
+                            }
+
+                            max_candidate_distance = candidates.back().second;
+                        }
+                    }
+                }
+            }
+
+            candidates_sphere = sphere(center, sqrt(max_candidate_distance));
+        }
+    }
+    return candidates;
+}
 
 void bvh::
 upsweep(const reduction_strategy& reduction_strtgy)
