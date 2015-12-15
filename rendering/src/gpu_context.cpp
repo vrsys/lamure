@@ -8,7 +8,6 @@
 #include <lamure/ren/gpu_context.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/policy.h>
-#include <lamure/ren/raw_point_cloud.h>
 #include <lamure/ren/cut_database.h>
 #include <lamure/ren/config.h>
 
