@@ -14,16 +14,31 @@ namespace pre {
 
 struct edge
 {
-  edge(size_t p1, size_t p2) 
-   :a{p1 < p2 ? p1 : p2}
-   ,b{p1 > p2 ? p1 : p2}
+  edge(surfel_id_t p1, surfel_id_t p2) 
+   :a{p1.surfel_idx < p2.surfel_idx ? p1 : p2}
+   ,b{p1.surfel_idx >= p2.surfel_idx ? p1 : p2}
    {};
 
-  size_t a;
-  size_t b;
+   // operator<(const edge& e) const {
+   //  return 
+   // }
+
+  surfel_id_t a;
+  surfel_id_t b;
 };
 
-size_t num_neighbours =20;
+// namespace std {
+//   template <>
+//   struct hash<edge>
+//   {
+//     size_t operator()(edge const & e) const noexcept
+//     {
+//       return (e.a. * 100000 + e.b);
+//     }
+//   };
+// }
+
+size_t num_neighbours = 20;
 
 surfel_mem_array reduction_pair_contraction::
 create_lod(bvh* tree,
@@ -34,33 +49,34 @@ create_lod(bvh* tree,
   surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
   const uint32_t fan_factor = input.size();
-  size_t surfel_id = 0;
-
   size_t num_points = 0;
 
   //compute max total number of surfels from all nodes
-  for ( size_t node_id = 0; node_id < fan_factor; ++node_id) {
-    num_points += input[node_id]->length();
+  for ( size_t node_idx = 0; node_idx < fan_factor; ++node_idx) {
+    num_points += input[node_idx]->length();
   }
 
   std::vector<mat4r> quadrics{num_points};
   std::vector<std::vector<size_t>> neighbours{num_points, std::vector<size_t>{num_neighbours}};
-  std::set<edge> edges{};
+  // std::unordered_set<edge> edges{};
 
   size_t offset = 0;
-  for (size_t node_id = 0; node_id < fan_factor; ++node_id) {
-    for (size_t surfel_id = 0; surfel_id < input[node_id]->length(); ++surfel_id) {
-      std::vector<std::pair<surfel, real>> neighbours = tree->get_nearest_neighbours(
-                            node_id,
-                            surfel_id,
-                            num_neighbours);
-      for( auto const& neighbour : neighbours) {
-        // if (edges.find(edge(surfel_id + input[node_id]->length(), neighbour.first)))
-          
+  for (node_id_type node_idx = 0; node_idx < fan_factor; ++node_idx) {
+    for (size_t surfel_idx = 0; surfel_idx < input[node_idx]->length(); ++surfel_idx) {
+      
+      surfel curr_surfel = tree->nodes()[node_idx].mem_array().read_surfel(surfel_idx);
+      surfel_id_t curr_id = surfel_id_t{node_idx, surfel_idx};
+
+      auto nearest_neighbours = tree->get_nearest_neighbours(curr_id, num_neighbours);
+
+      for (auto const& neighbour : nearest_neighbours) {
+        edge curr_edge = edge(curr_id, neighbour.first); 
+        // if (edges.find(curr_edge) == edges.end()) {
+        //   edges.insert(curr_edge);
         // }
       }
     }
-    offset += input[node_id]->length();
+    offset += input[node_idx]->length();
   }
 
   mem_array.set_length(mem_array.mem_data()->size());
