@@ -92,7 +92,7 @@ public:
     std::vector<std::pair<surfel_id_t, real>>
                         get_nearest_neighbours_in_nodes(
                             const surfel_id_t target_surfel,
-                            const std::vector<node_id_type> target_nodes,
+                            const std::vector<node_id_type>& target_nodes,
                             const uint32_t num_neighbours) const;
 
     void                print_tree_properties() const;
@@ -104,9 +104,6 @@ public:
                                   bool bin_all_file_extension = false);
 
     void                compute_normals_and_radii(const uint16_t number_of_neighbours);
-
-    void                compute_normal_and_radius(const normal_computation_strategy&  normal_computation_strategy,
-                                                  const radius_computation_strategy&  radius_computation_strategy);
 
     void                compute_normal_and_radius(const bvh_node* source_node,
                                                   const normal_computation_strategy& normal_computation_strategy,

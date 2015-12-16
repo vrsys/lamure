@@ -589,75 +589,6 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
 }
 
 void bvh::compute_normal_and_radius(
-    const normal_computation_strategy& normal_computation_strategy,
-    const radius_computation_strategy& radius_computation_strategy){
-    size_t number_of_leaves = std::pow(fan_factor_, depth_);
-
-    // load from disk
-    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
-    {
-        nodes_[i].load_from_disk();
-    }
-
-    size_t counter = 0;
-    uint16_t percentage = 0;
-
-    size_t old_i = first_leaf_;
-    real average_radius = 0.0;
-    real average_radius_for_node = 0.0;
-
-    std::cout << std::endl << "compute normals and radii" << std::endl;
-
-    // compute normals and radii
-    #pragma omp parallel for firstprivate(old_i, average_radius_for_node) shared(average_radius) collapse(2)
-    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
-    {
-        for (size_t k = 0; k < max_surfels_per_node_; ++k)
-        {
-
-            ++counter;
-            uint16_t new_percentage = int(float(counter)/(number_of_leaves*max_surfels_per_node_) * 100);
-            if (percentage + 1 == new_percentage)
-            {
-                percentage = new_percentage;
-                std::cout << "\r" << percentage << "% processed" << std::flush;
-            }
-
-            if (k < nodes_[i].mem_array().length())
-            {
-
-                // read surfel
-                surfel surf = nodes_[i].mem_array().read_surfel(k);
-
-                // compute radius
-                real avg_distance = radius_computation_strategy.compute_radius(*this, surfel_id_t(i, k));                
-
-                // compute normal
-                vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(i, k));            
-
-                // write surfel
-                surf.radius() = avg_distance * 0.8;
-                surf.normal() = normal;
-                nodes_[i].mem_array().write_surfel(surf, k);
-
-                // update average node radius
-                if (i != old_i)
-                {
-                    average_radius += average_radius_for_node/nodes_[old_i].mem_array().length();
-                    average_radius_for_node = 0.0;
-                    old_i = i;
-                }
-                else
-                {
-                    average_radius_for_node += avg_distance * 0.8;
-                }
-            }
-        }
-
-    }
-}
-
-void bvh::compute_normal_and_radius(
     const bvh_node* source_node,
     const normal_computation_strategy& normal_computation_strategy,
     const radius_computation_strategy& radius_computation_strategy)
@@ -840,7 +771,7 @@ get_nearest_neighbours(
 std::vector<std::pair<surfel_id_t, real>> bvh::
 get_nearest_neighbours_in_nodes(
     const surfel_id_t target_surfel,
-    const std::vector<node_id_type> target_nodes,
+    const std::vector<node_id_type>& target_nodes,
     const uint32_t number_of_neighbours) const
 {
     size_t current_node = target_surfel.node_idx;
