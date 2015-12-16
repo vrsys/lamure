@@ -86,8 +86,14 @@ load(const std::string& filename)
 
     #pragma omp parallel for
     for (size_t i = 0; i < m.textures.size(); ++i) {
+#if 1
+        //for relative path in mtl:
         unsigned slashPos = std::string(filename).find_last_of("/\\");
         std::string textureFileName = std::string(filename).substr(0, slashPos+1) + m.textures[i];
+#else
+        //for absolute path in mtl:
+        std::string textureFileName = m.textures[i];
+#endif
         textures[i].load(textureFileName);
     }
 
@@ -242,6 +248,8 @@ sample_face(face_pointer facePtr,
     }
 
     // calculate 2D vertex positions [0, tex_width-1][0, tex_height-1] in ints
+#if 1
+    //flip of texcoord v
     float tax = face.WT(0).U() * (tex.width() - 1) + 0.5f;
     float tay = (1.0 - face.WT(0).V()) * (tex.height() - 1) + 0.5f;
 
@@ -250,6 +258,18 @@ sample_face(face_pointer facePtr,
 
     float tcx = face.WT(2).U() * (tex.width() - 1) + 0.5f;
     float tcy = (1.0 - face.WT(2).V()) * (tex.height() - 1) + 0.5f;
+#else
+    //do not flip texcoord v
+    float tax = face.WT(0).U() * (tex.width() - 1) + 0.5f;
+    float tay = face.WT(0).V() * (tex.Height() - 1) + 0.5f;
+
+    float tbx = face.WT(1).U() * (tex.width() - 1) + 0.5f;
+    float tby = face.WT(1).V() * (tex.height() - 1) + 0.5f;
+
+    float tcx = face.WT(2).U() * (tex.width() - 1) + 0.5f;
+    float tcy = face.WT(2).V() * (tex.height() - 1) + 0.5f;
+
+#endif
 
     vcg::Triangle2<double> T(vcg::Point2d(tax,tay), vcg::Point2d(tbx, tby), vcg::Point2d(tcx, tcy));
 
