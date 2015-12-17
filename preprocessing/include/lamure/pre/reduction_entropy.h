@@ -47,39 +47,71 @@ public:
 
 private:
 
-	uint16_t  number_of_neighbours_;
-
-	uint16_t update_level(uint16_t level) const {return level+1;}
-	float compute_entropy(uint16_t level, vec3f const& own_normal, std::vector<neighbour_distance_t> const& neighbours) const;
-	vec3r average_position(std::vector<neighbour_distance_t> const& neighbours) const;
-	vec3f average_normal(std::vector<neighbour_distance_t> const& neighbours) const;    
-	real average_radius(std::vector<neighbour_distance_t> const& neighbours) const;
-
-	std::vector<std::pair<surfel_id_t, real>>
-	get_local_nearest_neighbours (const std::vector<surfel_mem_array*>& input,
-                             	  size_t num_local_neighbours,
-                             	  surfel_id_t const& target_surfel) const;
-
-	
-
 	  struct entropy_surfel{
 		surfel* current_surfel;
-		uint32_t id;
-		std::vector<neighbour_distance_t> neighbours;
+		uint32_t surfel_id;
+		uint32_t node_id;
+		std::vector<entropy_surfel*> neighbours;
 		bool validity;
 		uint16_t level;
 		float entropy;
 	};
 
+	uint16_t  number_of_neighbours_;
+
+	std::vector<entropy_surfel*> const
+	get_locally_overlapping_neighbours(entropy_surfel const& target_entropy_surfel,
+                                   std::vector<entropy_surfel>& entropy_surfel_array) const;
+
+	vec3r compute_center_of_mass(std::vector<entropy_surfel*>& neighbour_ptrs) const;
+	real compute_enclosing_sphere_radius(vec3r const& surfel_pos, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
+
+	uint16_t update_level(uint16_t level) const {return level+1;}
+	float compute_entropy(uint16_t level,  vec3f const& own_normal, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
+	//vec3r average_position(std::vector<neighbour_distance_t> const& neighbours) const;
+	vec3f average_normal(std::vector<entropy_surfel*> const& neighbour_ptrs) const;
+	//real average_radius(std::vector<neighbour_distance_t> const& neighbours) const;
+
+	/*std::vector<std::pair<surfel_id_t, real>>
+	get_local_nearest_neighbours (const std::vector<surfel_mem_array*>& input,
+                             	  size_t num_local_neighbours,
+                             	  surfel_id_t const& target_surfel) const;
+	*/
+	
+
+
+
 	struct min_entropy_order{
-		bool operator ()(const entropy_surfel& entropy_struct_l, entropy_surfel& entropy_struct_r){
-			return entropy_struct_l.entropy > entropy_struct_r.entropy;
+		bool operator ()(entropy_surfel* const entropy_first, entropy_surfel* const entropy_second){
+
+			// true  : first goes to the front, second to the back
+			// false : first goes to the back, first to the front 
+
+			// if first is not valid, sort it to the front
+			if ( entropy_first->validity == false ) {
+				return true;
+			} else {
+				//if first is valid, but second not, sort second to the front
+				if( entropy_second->validity == false) {
+					return false;
+				} else {
+
+					//if both are valid, sort the one with the lowest entropy to the back (such that we can easily pop it)
+					if(entropy_first->entropy > entropy_second->entropy) {
+						return true;
+					} else {
+						return false;
+					}
+				}
+			}
+
 		}
 	};
 
-
-	void merge(entropy_surfel& current_entropy_struct, 
-      		   std:: priority_queue <reduction_entropy::entropy_surfel, std::vector<reduction_entropy::entropy_surfel>, min_entropy_order>& pq) const;
+    void
+	merge(entropy_surfel* current_entropy_surfel,
+      std::vector<entropy_surfel*>& entropy_surfel_array,
+      size_t num_remaining_valid_surfel, size_t num_desired_surfel) const;
 	
 
 };
