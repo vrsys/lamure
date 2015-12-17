@@ -20,8 +20,8 @@ model_database* model_database::single_ = nullptr;
 
 model_database::
 model_database()
-: num_models_(0),
-  num_models_pending_(0),
+: num_datasets_(0),
+  num_datasets_pending_(0),
   surfels_per_node_(0),
   surfels_per_node_pending_(0),
   size_of_surfel_(0) {
@@ -34,15 +34,15 @@ model_database::
 
     is_instanced_ = false;
 
-    for (const auto& model_it : models_) {
-        lod_point_cloud* model = model_it.second;
+    for (const auto& model_it : datasets_) {
+        dataset* model = model_it.second;
         if (model != nullptr) {
             delete model;
             model = nullptr;
         }
     }
 
-    models_.clear();
+    datasets_.clear();
 }
 
 model_database* model_database::
@@ -66,7 +66,7 @@ void model_database::
 apply() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    num_models_ = num_models_pending_;
+    num_datasets_ = num_datasets_pending_;
     surfels_per_node_ = surfels_per_node_pending_;
 }
 
@@ -77,14 +77,14 @@ add_model(const std::string& filepath, const std::string& model_key) {
         return controller::get_instance()->deduce_model_id(model_key);
     }
 
-    lod_point_cloud* model = new lod_point_cloud(filepath);
+    dataset* model = new dataset(filepath);
 
     if (model->is_loaded()) {
         const bvh* bvh = model->get_bvh();
 
-        if (num_models_ == 0) {
+        if (num_datasets_ == 0) {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (num_models_ == 0) {
+            if (num_datasets_ == 0) {
                 size_of_surfel_ = bvh->size_of_surfel();
                 surfels_per_node_pending_ = bvh->surfels_per_node();
                 surfels_per_node_ = surfels_per_node_pending_;
@@ -112,11 +112,11 @@ add_model(const std::string& filepath, const std::string& model_key) {
             model_id = controller::get_instance()->deduce_model_id(model_key);
 
             model->model_id_ = model_id;
-            models_[model_id] = model;
+            datasets_[model_id] = model;
 
-            ++num_models_pending_;
+            ++num_datasets_pending_;
 
-            num_models_ = num_models_pending_;
+            num_datasets_ = num_datasets_pending_;
             surfels_per_node_ = surfels_per_node_pending_;
 
             controller::get_instance()->signal_system_reset();
@@ -155,10 +155,10 @@ add_model(const std::string& filepath, const std::string& model_key) {
 
 }
 
-lod_point_cloud* model_database::
+dataset* model_database::
 get_model(const model_t model_id) {
-    if (models_.find(model_id) != models_.end()) {
-        return models_[model_id];
+    if (datasets_.find(model_id) != datasets_.end()) {
+        return datasets_[model_id];
     }
 
     std::cout << "attempt to locate model " << model_id << std::endl;

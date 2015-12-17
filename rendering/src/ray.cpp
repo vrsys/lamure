@@ -400,9 +400,9 @@ const bool ray::intersect_model_unsafe(
 
                 float object_to_world_scale = max_distance_ / object_ray_max_distance;
 
-                lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->node_data(model_id, node_id);
+                dataset::serialized_surfel* surfels = (dataset::serialized_surfel*)ooc_cache->node_data(model_id, node_id);
                 for (unsigned int k = 0; k < num_surfels_per_node; k += valid_surfel_skip) {
-                    lod_point_cloud::serialized_surfel& surfel = surfels[k];
+                    dataset::serialized_surfel& surfel = surfels[k];
 
 		    if (surfel.size >= std::numeric_limits<float>::min()) {
 
@@ -460,9 +460,9 @@ const bool ray::intersect_model_unsafe(
 
            float object_to_world_scale = max_distance_ / object_ray_max_distance;
 
-           lod_point_cloud::serialized_surfel* surfels = (lod_point_cloud::serialized_surfel*)ooc_cache->node_data(model_id, node_id);
+           dataset::serialized_surfel* surfels = (dataset::serialized_surfel*)ooc_cache->node_data(model_id, node_id);
            for (unsigned int k = 0; k < num_surfels_per_node; k += valid_surfel_skip) {
-              lod_point_cloud::serialized_surfel& surfel = surfels[k];
+              dataset::serialized_surfel& surfel = surfels[k];
 
               if (surfel.size >= std::numeric_limits<float>::min()) {
 
@@ -735,7 +735,7 @@ intersect_aabb(const scm::gl::boxf& bb,
 
 
 const bool ray::
-intersect_surfel(const lod_point_cloud::serialized_surfel& surfel,
+intersect_surfel(const dataset::serialized_surfel& surfel,
                 const scm::math::vec3f& ray_origin,
                 const scm::math::vec3f& ray_direction,
                 float& t) {

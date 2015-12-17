@@ -23,7 +23,7 @@
 #include <lamure/ren/config.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/cut_database.h>
-#include <lamure/ren/lod_point_cloud.h>
+#include <lamure/ren/dataset.h>
 #include <lamure/ren/policy.h>
 
 #include <scm/core/math.h>
@@ -206,11 +206,6 @@ int main(int argc, char** argv)
     //create_scene_name_from_vector(model_attributes.first, scene_name);
     std::vector<scm::math::mat4f> & model_transformations = model_attributes.second;
     std::vector<std::string> const& model_filenames = model_attributes.first;
-
-    for (auto trans : model_transformations) {
-       std::cout << trans << std::endl;
-
-    }
 
     lamure::ren::policy* policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(max_upload_budget); //8

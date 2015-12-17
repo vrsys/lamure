@@ -20,7 +20,7 @@
 #include <lamure/ren/bvh.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/ooc_cache.h>
-#include <lamure/ren/lod_point_cloud.h>
+#include <lamure/ren/dataset.h>
 #include <lamure/ren/semaphore.h>
 
 #include <scm/core/math.h>
@@ -129,7 +129,7 @@ protected:
                                     const scm::math::vec3f& ray_origin,
                                     const scm::math::vec3f& ray_direction,
                                     scm::math::vec2f& t);
-    static const bool intersect_surfel(const lod_point_cloud::serialized_surfel& surfel,
+    static const bool intersect_surfel(const dataset::serialized_surfel& surfel,
                                       const scm::math::vec3f& ray_origin,
                                       const scm::math::vec3f& ray_direction,
                                       float& t);
