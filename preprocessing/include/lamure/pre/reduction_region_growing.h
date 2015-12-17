@@ -26,11 +26,13 @@ public:
 
 private:
 
-	bool reached_maximum_bound(const std::vector<surfel*>& input_cluster) const;
+	real find_maximum_bound(const std::vector<surfel*>& input_cluster) const;
+
+	bool reached_maximum_bound(const std::vector<surfel*>& input_cluster, const real& maximum_bound) const;
 
 	surfel* sample_point_from_cluster(const std::vector<surfel*>& input_cluster) const;
 
-	real maximum_bound_;
+	std::vector<std::pair<surfel*, real>> find_neighbours(const std::vector<surfel*>& cluster, const surfel* core_surfel, const uint32_t& number_neighbours) const;
 
 	uint32_t neighbour_growth_rate_;
 };
