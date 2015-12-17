@@ -9,12 +9,12 @@
 
 #include <limits>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #if WIN32
   #include <io.h>
 #endif
- 
-#include <sys/stat.h>
-#include <fcntl.h>
 
 #include <lamure/ren/bvh_stream.h>
 
@@ -31,7 +31,8 @@ bvh()
   surfels_per_node_(0),
   size_of_surfel_(0),
   filename_(""),
-  translation_(scm::math::vec3f(0.f)) {
+  translation_(scm::math::vec3f(0.f)),
+  primitive_(primitive_type::POINTCLOUD) {
 
 
 } 

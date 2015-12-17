@@ -300,8 +300,8 @@ write_bvh(const std::string& filename, bvh& bvh) {
    file_.seekp(0, std::ios::beg);
 
    bvh_file_seg seg;
-   seg.major_version_ = 0;
-   seg.minor_version_ = 1;
+   seg.major_version_ = 1;
+   seg.minor_version_ = 0;
    seg.reserved_ = 0;
 
    write(seg);
@@ -315,6 +315,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
    tree.fan_factor_ = bvh.fan_factor();
    tree.max_surfels_per_node_ = bvh.surfels_per_node();
    tree.serialized_surfel_size_ = bvh.size_of_surfel();
+   tree.primitive_ = (bvh_primitive_type)bvh.get_primitive();
    tree.reserved_0_ = 0;
    tree.state_ = bvh_tree_state::BVH_STATE_SERIALIZED;
    tree.reserved_1_ = 0;

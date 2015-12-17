@@ -15,8 +15,8 @@
 #include <vector>
 
 #include <lamure/ren/platform.h>
-#include <lamure/bounding_box.h>
 #include <lamure/types.h>
+#include <lamure/bounding_box.h>
 
 #include <scm/gl_core/primitives/box.h>
 
@@ -28,6 +28,10 @@ class RENDERING_DLL bvh
 
 
 public:
+    enum primitive_type {
+       POINTCLOUD = 0,
+       TRIMESH = 1
+    };
     enum node_visibility {
        NODE_VISIBLE = 0,
        NODE_INVISIBLE = 1
@@ -78,6 +82,9 @@ public:
     const node_visibility get_visibility(const node_t node_id) const;
     void                set_visibility(const node_t node_id, const node_visibility visibility);
 
+    const primitive_type get_primitive() const { return primitive_; };
+    void                set_primitive(const primitive_type primitive) { primitive_ = primitive; };
+
     void                write_bvh_file(const std::string& filename);
 
 protected:
@@ -100,6 +107,8 @@ private:
     std::string         filename_;
 
     vec3f               translation_;
+   
+    primitive_type      primitive_;
 
 };
 
