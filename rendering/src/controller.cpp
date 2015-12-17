@@ -181,7 +181,7 @@ deduce_context_id(const gua_context_desc_t context_desc) {
 
             gpu_contexts_.insert(std::make_pair(num_contexts_registered_, new gpu_context(num_contexts_registered_)));
 #ifdef LAMURE_ENABLE_INFO
-            std::cout << "PLOD: registered context id " << num_contexts_registered_ << std::endl;
+            std::cout << "lamure: registered context id " << num_contexts_registered_ << std::endl;
 #endif
             ++num_contexts_registered_;
         }
@@ -204,7 +204,7 @@ deduce_view_id(const gua_context_desc_t context_desc, const gua_view_desc_t view
 
             view_map_[context_id][view_desc] = num_views_registered_[context_id];
 #ifdef LAMURE_ENABLE_INFO
-            std::cout << "PLOD: registered view id " << num_views_registered_[context_id] << " on context id " << context_id << std::endl;
+            std::cout << "lamure: registered view id " << num_views_registered_[context_id] << " on context id " << context_id << std::endl;
 #endif
             ++num_views_registered_[context_id];
         }
@@ -227,7 +227,7 @@ deduce_model_id(const gua_model_desc_t& model_desc) {
 
             model_map_[model_desc] = num_models_registered_;
 #ifdef LAMURE_ENABLE_INFO
-            std::cout << "PLOD: registered model id " << num_models_registered_ << std::endl;
+            std::cout << "lamure: registered model id " << num_models_registered_ << std::endl;
 #endif
             ++num_models_registered_;
         }
@@ -243,7 +243,7 @@ is_cut_update_in_progress(const context_t context_id) {
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: controller::Gpu Context not found for context: " + context_id);
+            "lamure: controller::Gpu Context not found for context: " + context_id);
     }
 
     auto cut_update_it = cut_update_pools_.find(context_id);
@@ -255,7 +255,7 @@ is_cut_update_in_progress(const context_t context_id) {
         gpu_context* ctx = gpu_context_it->second;
         if (!ctx->is_created()) {
             throw std::runtime_error(
-                "PLOD: controller::Gpu Context not created for context: " + context_id);
+                "lamure: controller::Gpu Context not created for context: " + context_id);
         }
         cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
         return is_cut_update_in_progress(context_id);
@@ -270,7 +270,7 @@ dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: controller::Gpu Context not found for context: " + context_id);
+            "lamure: controller::Gpu Context not found for context: " + context_id);
     }
 
     auto cut_update_it = cut_update_pools_.find(context_id);
@@ -304,7 +304,7 @@ dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
         gpu_context* ctx = gpu_context_it->second;
         if (!ctx->is_created()) {
             //throw std::runtime_error(
-            //    "PLOD: controller::Gpu Context not created for context: " + context_id);
+            //    "lamure: controller::Gpu Context not created for context: " + context_id);
 
             //fix for gua:
             ctx->create(device);
@@ -336,7 +336,7 @@ get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: controller::Gpu Context not found for context: " + context_id);
+            "lamure: controller::Gpu Context not found for context: " + context_id);
     }
 
     return gpu_context_it->second->get_context_buffer(device);
@@ -350,7 +350,7 @@ get_context_memory(const context_t context_id, scm::gl::render_device_ptr device
 
     if (gpu_context_it == gpu_contexts_.end()) {
         throw std::runtime_error(
-            "PLOD: controller::Gpu Context not found for context: " + context_id);
+            "lamure: controller::Gpu Context not found for context: " + context_id);
     }
 
     return gpu_context_it->second->get_context_memory(device);

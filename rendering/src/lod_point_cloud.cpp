@@ -37,13 +37,13 @@ load(const std::string& filename) {
 
     std::string extension = filename.substr(filename.size()-3);
     
-    if (extension.compare("kdn") == 0 || extension.compare("bvh") == 0) {
+    if (extension.compare("bvh") == 0) {
         bvh_ = new bvh(filename);
         is_loaded_ = true;
     }
     else {
         throw std::runtime_error(
-            "lod_point_cloud::Incompatible input file: " + filename);
+            "lamure: lod_point_cloud::Incompatible input file: " + filename);
     }
     
 }

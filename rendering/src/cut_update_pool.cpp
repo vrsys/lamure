@@ -79,8 +79,8 @@ initialize() {
     semaphore_.set_min_signal_count(1);
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "PLOD: num models: " << index_->num_models() << std::endl;
-    std::cout << "PLOD: ooc-cache size (MB): " << policy->out_of_core_budget_in_mb() << std::endl;
+    std::cout << "lamure: num models: " << index_->num_models() << std::endl;
+    std::cout << "lamure: ooc-cache size (MB): " << policy->out_of_core_budget_in_mb() << std::endl;
 #endif
 
 }
@@ -289,11 +289,11 @@ cut_master() {
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SHOW_GPU_CACHE_USAGE
-    std::cout << "PLOD: free slots gpu : " << gpu_cache_->num_free_slots() << "\t\t( " << gpu_cache_->num_slots()-gpu_cache_->num_free_slots() << " occupied)" << std::endl;
+    std::cout << "lamure: free slots gpu : " << gpu_cache_->num_free_slots() << "\t\t( " << gpu_cache_->num_slots()-gpu_cache_->num_free_slots() << " occupied)" << std::endl;
 #endif
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SHOW_OOC_CACHE_USAGE
-    std::cout << "PLOD: free slots cpu: " << ooc_cache_->num_free_slots() << "\t\t( " << ooc_cache_->num_slots()-ooc_cache_->num_free_slots() << " occupied)" << std::endl << std::endl;
+    std::cout << "lamure: free slots cpu: " << ooc_cache_->num_free_slots() << "\t\t( " << ooc_cache_->num_slots()-ooc_cache_->num_free_slots() << " occupied)" << std::endl << std::endl;
 #endif
 
     //swap and use temporary buffer
@@ -1089,7 +1089,7 @@ prefetch_routine() {
    pending_prefetch_set_.clear();
 
 #if 0
-   std::cout << "PLOD: num prefetched: " << num_prefetched << std::endl;
+   std::cout << "lamure: num prefetched: " << num_prefetched << std::endl;
 #endif
 
 
@@ -1309,7 +1309,7 @@ calculate_node_error(const view_t view_id, const model_t model_id, const node_t 
     scm::math::vec4 view_position = view_projection * position;
     scm::math::vec4 view_perimeter = view_projection * perimeter;
     float error = scm::math::length(view_position/view_position.w - view_perimeter/view_perimeter.w);
-    //std::cout << "PLOD: " << view_position << "  ----  " << view_perimeter << " ,,,, " << error << std::endl;
+    //std::cout << "lamure: " << view_position << "  ----  " << view_perimeter << " ,,,, " << error << std::endl;
 #endif
 
     return error;

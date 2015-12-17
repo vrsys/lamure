@@ -47,7 +47,7 @@ open_stream(const std::string& bvh_filename,
 
     if (!file_.is_open()) {
         throw std::runtime_error(
-            "PLOD: bvh_stream::Unable to open stream: " + filename_);
+            "lamure: bvh_stream::Unable to open stream: " + filename_);
     }
    
 }
@@ -62,14 +62,14 @@ close_stream(const bool remove_file) {
         file_.close();
         if (file_.fail()) {
             throw std::runtime_error(
-                "PLOD: bvh_stream::Unable to close stream: " + filename_);
+                "lamure: bvh_stream::Unable to close stream: " + filename_);
         }
 
         if (type_ == bvh_stream_type::BVH_STREAM_OUT) {
             if (remove_file) {
                 if (std::remove(filename_.c_str())) {
                     throw std::runtime_error(
-                        "PLOD: bvh_stream::Unable to delete file: " + filename_);
+                        "lamure: bvh_stream::Unable to delete file: " + filename_);
                 }
 
             }
@@ -84,7 +84,7 @@ write(bvh_stream::bvh_serializable& serializable) {
 
     if (!file_.is_open()) {
         throw std::runtime_error(
-            "PLOD: bvh_stream::Unable to serialize: " + filename_);
+            "lamure: bvh_stream::Unable to serialize: " + filename_);
     }
 
     bvh_sig sig;
@@ -122,11 +122,11 @@ read_bvh(const std::string& filename, bvh& bvh) {
 
     if (type_ != BVH_STREAM_IN) {
         throw std::runtime_error(
-            "PLOD: bvh_stream::Failed to read bvh from: " + filename_);
+            "lamure: bvh_stream::Failed to read bvh from: " + filename_);
     }
     if (!file_.is_open()) {
          throw std::runtime_error(
-            "PLOD: bvh_stream::Failed to read bvh from: " + filename_);
+            "lamure: bvh_stream::Failed to read bvh from: " + filename_);
     }
    
     //scan stream
@@ -155,7 +155,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
             sig.signature_[2] != 'H' ||
             sig.signature_[3] != 'X') {
              throw std::runtime_error(
-                 "PLOD: bvh_stream::Invalid magic encountered: " + filename_);
+                 "lamure: bvh_stream::Invalid magic encountered: " + filename_);
         }
             
         size_t anchor = (size_t)file_.tellg();
@@ -181,7 +181,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
                     }
                     default: {
                         throw std::runtime_error(
-                            "PLOD: bvh_stream::Stream corrupt -- Invalid segment encountered");
+                            "lamure: bvh_stream::Stream corrupt -- Invalid segment encountered");
                         break;
                     }
                 }
@@ -195,7 +195,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
                         nodes.push_back(node);
                         if (node_id != node.node_id_) {
                             throw std::runtime_error(
-                                "PLOD: bvh_stream::Stream corrupt -- Invalid node order");
+                                "lamure: bvh_stream::Stream corrupt -- Invalid node order");
                         }
                         ++node_id;
                         break;
@@ -206,14 +206,14 @@ read_bvh(const std::string& filename, bvh& bvh) {
                         nodes_ext.push_back(node_ext);
                         if (node_ext_id != node_ext.node_id_) {
                             throw std::runtime_error(
-                                "PLOD: bvh_stream::Stream corrupt -- Invalid node extension order");
+                                "lamure: bvh_stream::Stream corrupt -- Invalid node extension order");
                         }
                         ++node_ext_id;
                         break;
                     }
                     default: {
                         throw std::runtime_error(
-                            "PLOD: bvh_stream::Stream corrupt -- Invalid segment encountered");
+                            "lamure: bvh_stream::Stream corrupt -- Invalid segment encountered");
                         break;
                     }
                 }
@@ -221,7 +221,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
             }
             default: {
                 throw std::runtime_error(
-                    "PLOD: bvh_stream::file corrupt -- Invalid segment encountered");
+                    "lamure: bvh_stream::file corrupt -- Invalid segment encountered");
                 break;
             }
         }
@@ -239,12 +239,12 @@ read_bvh(const std::string& filename, bvh& bvh) {
 
     if (tree_id != 1) {
        throw std::runtime_error(
-           "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh segments");
+           "lamure: bvh_stream::Stream corrupt -- Invalid number of bvh segments");
     }   
 
     if (tree_ext_id > 1) {
        throw std::runtime_error(
-           "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh extensions");
+           "lamure: bvh_stream::Stream corrupt -- Invalid number of bvh extensions");
     }    
 
     //Note: this is the rendering library version of the file reader!
@@ -261,7 +261,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
 
     if (bvh.num_nodes() != node_id) {
        throw std::runtime_error(
-           "PLOD: bvh_stream::Stream corrupt -- Ivalid number of node segments");
+           "lamure: bvh_stream::Stream corrupt -- Ivalid number of node segments");
     }
 
     for (const auto& node : nodes) {
@@ -290,11 +290,11 @@ write_bvh(const std::string& filename, bvh& bvh) {
 
    if (type_ != BVH_STREAM_OUT) {
        throw std::runtime_error(
-           "PLOD: bvh_stream::Failed to append tree to: " + filename_);
+           "lamure: bvh_stream::Failed to append tree to: " + filename_);
    }
    if (!file_.is_open()) {
        throw std::runtime_error(
-           "PLOD: bvh_stream::Failed to append tree to: " + filename_);
+           "lamure: bvh_stream::Failed to append tree to: " + filename_);
    }
    
    file_.seekp(0, std::ios::beg);

@@ -30,7 +30,7 @@ ooc_cache(const slot_t num_slots)
                         database->surfels_per_node() * database->size_of_surfel());
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "PLOD: ooc-cache init" << std::endl;
+    std::cout << "lamure: ooc-cache init" << std::endl;
 #endif
 
 }
@@ -51,7 +51,7 @@ ooc_cache::
         cache_data_ = nullptr;
 
 #ifdef LAMURE_ENABLE_INFO
-        std::cout << "PLOD: ooc-cache shutdown" << std::endl;
+        std::cout << "lamure: ooc-cache shutdown" << std::endl;
 #endif
     }
 

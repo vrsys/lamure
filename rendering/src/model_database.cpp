@@ -93,7 +93,7 @@ add_model(const std::string& filepath, const std::string& model_key) {
         else {
             if (size_of_surfel_ != bvh->size_of_surfel()) {
                 throw std::runtime_error(
-                    "PLOD: model_database::Incompatible surfel size");
+                    "lamure: model_database::Incompatible surfel size");
             }
         }
 
@@ -122,15 +122,33 @@ add_model(const std::string& filepath, const std::string& model_key) {
             controller::get_instance()->signal_system_reset();
         }
 
+        switch (bvh->get_primitive()) {
+
+          case bvh::primitive_type::POINTCLOUD:
 #ifdef LAMURE_ENABLE_INFO
-        std::cout << "PLOD: model " << model_id << ": " << filepath << std::endl;
+            std::cout << "lamure: pointcloud " << model_id << ": " << filepath << std::endl;
 #endif
+            break;
+
+          case bvh::primitive_type::TRIMESH:
+#ifdef LAMURE_ENABLE_INFO
+            std::cout << "lamure: trimesh " << model_id << ": " << filepath << std::endl;
+#endif
+            break;
+
+          default:
+            throw std::runtime_error(
+                "lamure: unknwown primitive type");
+            break; 
+
+        }
+
         return model_id;
 
     }
     else {
         throw std::runtime_error(
-            "PLOD: model_database::Model was not loaded");
+            "lamure: model_database::Model was not loaded");
     }
 
     return invalid_model_t;
@@ -146,7 +164,7 @@ get_model(const model_t model_id) {
     std::cout << "attempt to locate model " << model_id << std::endl;
 
     throw std::runtime_error(
-        "PLOD: model_database::Model was not found:" + std::to_string(model_id));
+        "lamure: model_database::Model was not found:" + std::to_string(model_id));
 
     return nullptr;
 }

@@ -149,8 +149,8 @@ test_video_memory(scm::gl::render_device_ptr device) {
 #endif
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "PLOD: context " << context_id_ << " render budget (MB): " << render_budget_in_mb << std::endl;
-    std::cout << "PLOD: context " << context_id_ << " upload budget (MB): " << max_upload_budget_in_mb << std::endl;
+    std::cout << "lamure: context " << context_id_ << " render budget (MB): " << render_budget_in_mb << std::endl;
+    std::cout << "lamure: context " << context_id_ << " upload budget (MB): " << max_upload_budget_in_mb << std::endl;
 #endif
 
 }
@@ -201,7 +201,7 @@ map_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::
     }
 
     throw std::runtime_error(
-       "PLOD: Failed to map temporary buffer on context: " + context_id_);
+       "lamure: Failed to map temporary buffer on context: " + context_id_);
 
 }
 
@@ -250,7 +250,7 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
         {
             if (temp_buffer_a_->is_mapped()) {
                 throw std::runtime_error(
-                   "PLOD: gpu_context::Failed to transfer nodes into main memory on context: " + context_id_);
+                   "lamure: gpu_context::Failed to transfer nodes into main memory on context: " + context_id_);
             }
             std::vector<cut_database_record::slot_update_desc>& transfer_descr_list = cuts->get_updated_set(context_id_);
             if (!transfer_descr_list.empty()) {
@@ -270,7 +270,7 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
         {
             if (temp_buffer_b_->is_mapped()) {
                 throw std::runtime_error(
-                   "PLOD: gpu_context::Failed to transfer nodes into main memory on context: " + context_id_);
+                   "lamure: gpu_context::Failed to transfer nodes into main memory on context: " + context_id_);
             }
             std::vector<cut_database_record::slot_update_desc>& transfer_descr_list = cuts->get_updated_set(context_id_);
             if (!transfer_descr_list.empty()) {

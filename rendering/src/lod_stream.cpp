@@ -45,7 +45,7 @@ open(const std::string& file_name) {
 
     if (!stream_.is_open()) {
         throw std::runtime_error(
-            "lod_stream::Unable to open file: " + file_name_);
+            "lamure: lod_stream::Unable to open file: " + file_name_);
     }
 
     is_file_open_ = true;
@@ -62,7 +62,7 @@ open_for_writing(const std::string& file_name) {
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     if (!stream_.is_open()) {
         throw std::runtime_error(
-            "lod_stream::Unable to open file for writing: " + file_name_);
+            "lamure: lod_stream::Unable to open file for writing: " + file_name_);
     }
 
     is_file_open_ = true;

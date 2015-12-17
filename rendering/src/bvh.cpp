@@ -53,7 +53,7 @@ bvh(const std::string& filename)
     }
     else {
        throw std::runtime_error(
-          "PLOD: bvh::Invalid file extension encountered.");
+          "lamure: bvh::Invalid file extension encountered.");
     }
 
 };

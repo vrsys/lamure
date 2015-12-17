@@ -54,7 +54,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
     device->main_context()->apply();
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "PLOD: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << std::endl;
+    std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << std::endl;
 #endif
 
 }
