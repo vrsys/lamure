@@ -6,8 +6,8 @@
 // http://www.uni-weimar.de/medien/vr
 
 
-#ifndef  NORMAL_COMPUTATION_PLANE_FITTINGH_H_
-#define  NORMAL_COMPUTATION_PLANE_FITTINGH_H_
+#ifndef  NORMAL_COMPUTATION_PLANE_FITTING_H_
+#define  NORMAL_COMPUTATION_PLANE_FITTING_H_
 
 #include <lamure/pre/normal_computation_strategy.h>
 
@@ -24,6 +24,15 @@ public:
 	explicit normal_computation_plane_fitting(const uint16_t number_of_neighbours)
 		: number_of_neighbours_(number_of_neighbours){}
 
+	void eigsrt_jacobi(
+	    int dim,
+	    double* eigenvalues, 
+	    double** eigenvectors) const;
+
+	void jacobi_rotation(const scm::math::mat3d& _matrix,
+	                     double* eigenvalues,
+	                     double** eigenvectors) const;
+
 	vec3f  compute_normal(const bvh& tree,
 						  const surfel_id_t surfel) const override;
 
@@ -34,4 +43,4 @@ private:
 }// namespace pre
 }// namespace lamure
 
-#endif // NORMAL_COMPUTATION_PLANE_FITTINGH_H_
+#endif // NORMAL_COMPUTATION_PLANE_FITTING_COVAR_H_
