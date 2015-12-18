@@ -88,9 +88,16 @@ private:
 			// false : first goes to the back, first to the front 
 
 			// if first is not valid, sort it to the front
-			if ( entropy_first->validity == false ) {
+			if ( entropy_first->validity == false && entropy_second->validity == true) {
 				return true;
-			} else {
+			} else if (entropy_first->validity == true && entropy_second->validity == true){
+				if(entropy_first->entropy > entropy_second->entropy) {
+					return true;
+				}
+			}
+
+			return false;
+			/*else {
 				//if first is valid, but second not, sort second to the front
 				if( entropy_second->validity == false) {
 					return false;
@@ -105,6 +112,8 @@ private:
 				}
 			}
 
+			std::cout << "Waiting...\n";
+			*/
 		}
 	};
 

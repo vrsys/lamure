@@ -27,7 +27,7 @@ get_locally_overlapping_neighbours(entropy_surfel const& target_entropy_surfel,
     for ( auto& array_entr_surfel : entropy_surfel_array ) {
         
 	// avoid overlaps with the surfel itself
-        if (target_entropy_surfel.surfel_id != array_entr_surfel.surfel_id && 
+        if (target_entropy_surfel.surfel_id != array_entr_surfel.surfel_id || 
 	    target_entropy_surfel.node_id   != array_entr_surfel.node_id) {
 
 	    surfel* current_surfel = array_entr_surfel.current_surfel;
@@ -176,53 +176,67 @@ merge(entropy_surfel* current_entropy_surfel,
       //std::priority_queue<reduction_entropy::entropy_surfel*, std::vector<reduction_entropy::entropy_surfel*>, min_entropy_surfel_ptr_order>& pq,
       size_t num_remaining_valid_surfel, size_t num_desired_surfel) const{
 
+    size_t num_invalidated_surfels = 0;
+
+    bool reached_simplification_limit = false;
+
+
+    std::vector<entropy_surfel*> neighbours_to_merge;// = current_entropy_surfel->neighbours;
+
+    std::cout << "Neighbour size: " << current_entropy_surfel->neighbours.size() << "\n";
+       for (auto const actual_neighbour_ptr : current_entropy_surfel->neighbours){
+            
+            //if (
+              //   actual_neighbour_ptr->validity){
+                
+                 std::cout << "Setting neighbour: " << actual_neighbour_ptr->node_id << " --- " << actual_neighbour_ptr->surfel_id << "to false\n";
+                 actual_neighbour_ptr->validity = false;
+
+                 neighbours_to_merge.push_back(actual_neighbour_ptr);
+
+                 if( num_remaining_valid_surfel - (++num_invalidated_surfels) <= num_desired_surfel ) {
+
+                    reached_simplification_limit = true;
+                    break;
+                 }
+            //}
+        }
+
+
     //recompute values for merged surfel
     current_entropy_surfel->level += 1;
 
     surfel* current_surfel = current_entropy_surfel->current_surfel;
     //current_entropy_surfel.current_surfel->pos() = average_position(current_entropy_surfel.neighbours);
 
-    vec3r center_of_neighbour_masses = compute_center_of_mass(current_entropy_surfel->neighbours);
+    vec3r center_of_neighbour_masses = compute_center_of_mass(neighbours_to_merge);
     current_surfel->pos() = center_of_neighbour_masses;
-    current_surfel->normal() = average_normal(current_entropy_surfel->neighbours);
+    current_surfel->normal() = average_normal(neighbours_to_merge);
     //current_entropy_surfel.current_surfel->radius() = average_radius(current_entropy_surfel.neighbours);
-    current_surfel->radius() = compute_enclosing_sphere_radius(center_of_neighbour_masses, current_entropy_surfel->neighbours); 
+    current_surfel->radius() = compute_enclosing_sphere_radius(center_of_neighbour_masses, neighbours_to_merge); 
     
     //std::vector<reduction_entropy::entropy_surfel*>& pq_entr_surfel_ptrs = Container(pq);
 
     //mark neighbours as invalid
     //reduction_entropy::entropy_surfel potential_neighbour;
 
-    size_t num_invalidated_surfels = 0;
-
-    bool reached_simplification_limit = false;
 
     //std::vector<
-    for(auto potential_neighbour_ptr : entropy_surfel_array){
-       for (auto const& actual_neighbour_ptr : current_entropy_surfel->neighbours){
-            
-            if ((potential_neighbour_ptr->surfel_id == actual_neighbour_ptr->surfel_id) &&
-                 potential_neighbour_ptr->node_id   == actual_neighbour_ptr->node_id && 
-                 potential_neighbour_ptr->validity){
-                
-                 potential_neighbour_ptr->validity = false;
+    //for(auto& potential_neighbour_ptr : entropy_surfel_array){
 
-                 if( num_remaining_valid_surfel - (--num_invalidated_surfels) <= num_desired_surfel ) {
 
-                    reached_simplification_limit = true;
-                    break;
-                 }
-            }
-        }
+        //if(reached_simplification_limit)
+          //  break;
+    //}
 
-        if(reached_simplification_limit)
-            break;
-    }
 
-    //current_entropy_surfel.entropy = compute_entropy(current_entropy_surfel.level, current_entropy_surfel.current_surfel->normal(), current_entropy_surfel.neighbours);
+
+    current_entropy_surfel->entropy = compute_entropy(current_entropy_surfel->level, current_entropy_surfel->current_surfel->normal(), neighbours_to_merge);
     //update entropy
     //pq.push(current_entropy_surfel);
     entropy_surfel_array.push_back(current_entropy_surfel);
+
+    std::cout << "Amount invalidated surfels: " << num_invalidated_surfels << "\n";
 }
 
 surfel_mem_array reduction_entropy::
@@ -237,7 +251,9 @@ create_lod(real& reduction_error,
     std::vector<entropy_surfel*> min_entropy_surfel_ptr_queue;
 
     for (size_t node_id = 0; node_id < input.size(); ++node_id){
-        for (size_t surfel_id = 0; surfel_id < input[node_id-1]->length()-1; ++surfel_id){
+        for (size_t surfel_id = input[node_id]->offset();
+                    surfel_id < input[node_id]->offset() + input[node_id]->length();
+                    ++surfel_id){
             
 	        auto& current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
             
@@ -249,26 +265,29 @@ create_lod(real& reduction_error,
             current_entropy_surfel.level = 0;
             
 	    entropy_surfel_array.push_back(current_entropy_surfel);
-	    //min_pq.push(current_entropy_surfel);
 	   }
     }	
+
 
     for ( auto& current_entropy_surfel : entropy_surfel_array ){
             
             std::vector<reduction_entropy::entropy_surfel*> overlapping_neighbour_ptrs = get_locally_overlapping_neighbours(current_entropy_surfel, entropy_surfel_array);
-
+            std::cout << "Locally overlapping neighbours: " << overlapping_neighbour_ptrs.size() <<  "\n\n";
             current_entropy_surfel.neighbours = overlapping_neighbour_ptrs;
             current_entropy_surfel.validity = true;
             current_entropy_surfel.level = 0;
             current_entropy_surfel.entropy = compute_entropy(current_entropy_surfel.level, current_entropy_surfel.current_surfel->normal(), overlapping_neighbour_ptrs);
             min_entropy_surfel_ptr_queue.push_back(&current_entropy_surfel);
     }
-
+    std::cout << "Before first sort\n";
+    std::sort(min_entropy_surfel_ptr_queue.begin(), min_entropy_surfel_ptr_queue.end(), min_entropy_order());
+    std::cout << "After first sort\n";
     size_t num_valid_surfels = min_entropy_surfel_ptr_queue.size();
 
+    size_t counter = 0;
     while(true) {
         //the back element is still valid, so we still got something to do
-        if( min_entropy_surfel_ptr_queue.back()->validity ){
+        if( min_entropy_surfel_ptr_queue.back()->validity && ++counter < surfels_per_node){
             entropy_surfel* current_entropy_surfel = min_entropy_surfel_ptr_queue.back();
             
             min_entropy_surfel_ptr_queue.pop_back();
@@ -276,13 +295,22 @@ create_lod(real& reduction_error,
             if(current_entropy_surfel->validity){
                 /*num_valid_surfels -=*/merge(current_entropy_surfel, min_entropy_surfel_ptr_queue, num_valid_surfels, surfels_per_node);
                 //min_pq.push(current_entropy_surfel);
+
+                std::cout << "Merging " << current_entropy_surfel->node_id << " : " << current_entropy_surfel->surfel_id << "\n";
             }    
+            
+            std::cout << "Begun sorting\n";
+            std::sort(min_entropy_surfel_ptr_queue.begin(), min_entropy_surfel_ptr_queue.end(), min_entropy_order());
+            std::cout << "Finished sorting\n";
         } else {
+            std::cout << "Breaking!\n";
             break;
         }
         
+        std::cout << "Looping\n";
     }
 
+    std::cout << "Done merging everything\n";
     //end of entropy simplification
     while( (!min_entropy_surfel_ptr_queue.empty()) && min_entropy_surfel_ptr_queue.back()->validity ) {
         entropy_surfel* en_surfel_to_push = min_entropy_surfel_ptr_queue.back();
@@ -297,6 +325,7 @@ create_lod(real& reduction_error,
 
     reduction_error = 0.0;
 
+    std::cout << "Done Simplifying\n";
     return mem_array;
 };
 
