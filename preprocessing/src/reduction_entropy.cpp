@@ -18,7 +18,7 @@
 namespace lamure {
 namespace pre {
  
-std::vector<reduction_entropy::entropy_surfel*> const reduction_entropy::
+std::vector<entropy_surfel*> const reduction_entropy::
 get_locally_overlapping_neighbours(entropy_surfel const& target_entropy_surfel,
                                    std::vector<entropy_surfel>& entropy_surfel_array) const {
     surfel* target_surfel = target_entropy_surfel.current_surfel; 
@@ -168,7 +168,8 @@ average_normal(surfel* current_surfel, std::vector<entropy_surfel*> const& neigh
         new_normal = vec3r(0.0, 0.0, 0.0);
     }
 
-    return new_normal;
+
+    return scm::math::normalize(new_normal);
 } 
 
 /*
@@ -277,21 +278,6 @@ merge(entropy_surfel* current_entropy_surfel,
     //current_entropy_surfel.current_surfel->radius() = average_radius(current_entropy_surfel.neighbours);
     current_surfel->radius() = compute_enclosing_sphere_radius(center_of_neighbour_masses, current_surfel, invalidated_neighbours); 
 
-    //std::vector<reduction_entropy::entropy_surfel*>& pq_entr_surfel_ptrs = Container(pq);
-
-    //mark neighbours as invalid
-    //reduction_entropy::entropy_surfel potential_neighbour;
-
-
-    //std::vector<
-    //for(auto& potential_neighbour_ptr : entropy_surfel_array){
-
-
-        //if(reached_simplification_limit)
-          //  break;
-    //}
-
-
 
     current_entropy_surfel->entropy = compute_entropy(current_entropy_surfel, invalidated_neighbours);
     //update entropy
@@ -347,7 +333,7 @@ create_lod(real& reduction_error,
 
     for ( auto& current_entropy_surfel : entropy_surfel_array ){
             
-            std::vector<reduction_entropy::entropy_surfel*> overlapping_neighbour_ptrs = get_locally_overlapping_neighbours(current_entropy_surfel, entropy_surfel_array);
+            std::vector<entropy_surfel*> overlapping_neighbour_ptrs = get_locally_overlapping_neighbours(current_entropy_surfel, entropy_surfel_array);
             std::cout << "Locally overlapping neighbours: " << overlapping_neighbour_ptrs.size() <<  "\n\n";
 
             //assign/compute missing attributes
@@ -357,7 +343,7 @@ create_lod(real& reduction_error,
             if( !overlapping_neighbour_ptrs.empty() ) {
                 min_entropy_surfel_ptr_queue.push_back(&current_entropy_surfel);
             } else {
-                //finalized_surfels.push_back(&current_entropy_surfel);
+                finalized_surfels.push_back(&current_entropy_surfel);
                 std::cout << "Skipping...\n";
             }
     }
@@ -387,10 +373,10 @@ create_lod(real& reduction_error,
 
                 if( merge(current_entropy_surfel, num_valid_surfels, surfels_per_node) ) {
                     std::cout << "repushing\n";
-                    //min_entropy_surfel_ptr_queue.push_back(current_entropy_surfel);
+                    min_entropy_surfel_ptr_queue.push_back(current_entropy_surfel);
                 } else {
                     std::cout << "no neighbours left\n";
-                    //finalized_surfels.push_back(current_entropy_surfel);
+                    finalized_surfels.push_back(current_entropy_surfel);
                 }
                 //min_pq.push(current_entropy_surfel);
                 std::sort(min_entropy_surfel_ptr_queue.begin(), min_entropy_surfel_ptr_queue.end(), min_entropy_order());
@@ -435,6 +421,7 @@ create_lod(real& reduction_error,
     reduction_error = 0.0;
 
     std::cout << "Done Simplifying\n";
+    std::cout << "Size of array " << mem_array.mem_data()->size() << " \n";
     return mem_array;
 };
 
