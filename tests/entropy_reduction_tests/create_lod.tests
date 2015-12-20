@@ -1,0 +1,89 @@
+#ifndef CREATE_LOD_TESTS
+#define CREATE_LOD_TESTS
+#include "catch/catch.hpp" // includes catch from the third party folder
+
+// include all headers needed for your tests below here
+#include <lamure/pre/reduction_entropy.h>
+#include <vector>
+
+/*
+surfel_mem_array reduction_entropy::
+create_lod(real& reduction_error,
+          const std::vector<surfel_mem_array*>& input,
+          const uint32_t surfels_per_node) const
+*/
+
+TEST_CASE( "Check if attributes are computed correctly for two overlapping surfels",
+		   "[create_lod]" ) {
+	using namespace lamure;
+	using namespace pre;
+
+	std::vector<surfel_mem_array*> input_mem_arrays;
+   	surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	surfel mem_array_surfel_1;
+   	mem_array_surfel_1.pos() = vec3r(0.0, 0.0, 0.0);
+   	mem_array_surfel_1.normal() = vec3f(1.0, 0.0, 0.0);
+   	mem_array_surfel_1.color() = vec3b(255, 0, 0);
+   	mem_array_surfel_1.radius() = 1.0;
+
+   	mem_array_one.mem_data()->push_back(mem_array_surfel_1);
+    mem_array_one.set_length(mem_array_one.mem_data()->size());
+
+    surfel_mem_array mem_array_two(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	
+   	surfel mem_array_surfel_2;
+   	mem_array_surfel_2.pos() = vec3r(1.0, 0.0, 0.0);
+   	mem_array_surfel_2.normal() = vec3f(0.0, 0.0, 1.0);
+   	mem_array_surfel_2.color() = vec3b(0, 0, 255);
+   	mem_array_surfel_2.radius() = 1.0;
+
+   	mem_array_two.mem_data()->push_back(mem_array_surfel_2);
+    mem_array_two.set_length(mem_array_two.mem_data()->size());
+
+    reduction_entropy test_entropy_reduction(1);
+
+    real reduction_error = 0.0;
+    uint32_t surfels_per_node = 1;
+
+    input_mem_arrays.push_back(&mem_array_one);
+    input_mem_arrays.push_back(&mem_array_two);
+
+    surfel_mem_array simplified_mem_array 
+    	= test_entropy_reduction.create_lod(reduction_error,
+    										input_mem_arrays,
+    										surfels_per_node);
+
+    std::cout << "Size of returned array: " << simplified_mem_array.mem_data()->size()<<"\n";
+    surfel result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
+
+
+    unsigned char average_red = (double(mem_array_surfel_1.color()[0]) + mem_array_surfel_2.color()[0]) / 2.0;
+    unsigned char average_green = (double(mem_array_surfel_1.color()[1]) + mem_array_surfel_2.color()[1]) / 2.0;
+    unsigned char average_blue = (double(mem_array_surfel_1.color()[2]) + mem_array_surfel_2.color()[2]) / 2.0;	
+    //make sure that the color was averaged, should be 127,0,127
+    REQUIRE(result_surfel.color()[0] == average_red);
+    REQUIRE(result_surfel.color()[1] == 0);
+    REQUIRE(result_surfel.color()[2] == 127);
+
+    //make sure that the normal was averaged 
+    REQUIRE(result_surfel.normal()[0] > 0.7);
+    REQUIRE(result_surfel.normal()[0] < 0.71);
+    REQUIRE(result_surfel.normal()[1] == 0.0);
+    REQUIRE(result_surfel.normal()[2] > 0.7);
+    REQUIRE(result_surfel.normal()[2] < 0.71);
+
+    //make sure that the position was set to the center of mass between both surfels
+    REQUIRE(result_surfel.pos()[0] > 0.499);
+    REQUIRE(result_surfel.pos()[0] < 0.501);
+    REQUIRE(result_surfel.pos()[1] == 0.0);
+    REQUIRE(result_surfel.pos()[2] == 0.0);
+
+    //make sure that the radius at the center of mass
+    REQUIRE(result_surfel.radius() > 1.499);
+    REQUIRE(result_surfel.radius() < 1.501);   
+
+}
+
+
+
+#endif

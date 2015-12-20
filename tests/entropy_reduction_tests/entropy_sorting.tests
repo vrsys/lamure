@@ -1,5 +1,5 @@
-#ifndef ENTROPY_SORTING_TESTS_H
-#define ENTROPY_SORTING_TESTS_H
+#ifndef ENTROPY_SORTING_TESTS
+#define ENTROPY_SORTING_TESTS
 #include "catch/catch.hpp" // includes catch from the third party folder
 
 // include all headers needed for your tests below here
@@ -12,11 +12,11 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	using namespace lamure;
 	using namespace pre;
 
-	reduction_entropy::entropy_surfel* invalid_entropy_surfel 
-		= new reduction_entropy::entropy_surfel;
+	entropy_surfel* invalid_entropy_surfel 
+		= new entropy_surfel;
 
-	reduction_entropy::entropy_surfel* valid_entropy_surfel 
-		= new reduction_entropy::entropy_surfel;
+	entropy_surfel* valid_entropy_surfel 
+		= new entropy_surfel;
 
 	valid_entropy_surfel->validity = true;
 	valid_entropy_surfel->node_id = 5;
@@ -28,7 +28,7 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	invalid_entropy_surfel->surfel_id = 7;
 	invalid_entropy_surfel->entropy = 0;
 
-	std::vector<reduction_entropy::entropy_surfel*> entropy_surfel_ptr_vector;
+	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
 
 	entropy_surfel_ptr_vector.push_back(valid_entropy_surfel);
 	entropy_surfel_ptr_vector.push_back(invalid_entropy_surfel);
@@ -36,10 +36,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	SECTION( "PRECONDITION: invalid surfel is at the back,"\
 		     "valid surfel at the front") {
 
-		reduction_entropy::entropy_surfel* back_surfel_ptr 
+		entropy_surfel* back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		reduction_entropy::entropy_surfel* front_surfel_ptr 
+		entropy_surfel* front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( back_surfel_ptr->validity == false);
@@ -59,15 +59,15 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	   and valid surfels are at the back                      */
 	std::sort(entropy_surfel_ptr_vector.begin(), 
 			  entropy_surfel_ptr_vector.end(),
-			  reduction_entropy::min_entropy_order()) ;
+			  min_entropy_order()) ;
 
 	SECTION( "POSTCONDITION: invalid surfel is at the front,"\
 		     "valid surfel at the back") {
 
-		reduction_entropy::entropy_surfel* back_surfel_ptr 
+		entropy_surfel* back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		reduction_entropy::entropy_surfel* front_surfel_ptr 
+		entropy_surfel* front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( front_surfel_ptr->validity == false);
@@ -94,11 +94,11 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	using namespace lamure;
 	using namespace pre;
 
-	reduction_entropy::entropy_surfel* high_entropy_surfel
-		= new reduction_entropy::entropy_surfel;
+	entropy_surfel* high_entropy_surfel
+		= new entropy_surfel;
 
-	reduction_entropy::entropy_surfel* low_entropy_surfel 
-		= new reduction_entropy::entropy_surfel;
+	entropy_surfel* low_entropy_surfel 
+		= new entropy_surfel;
 
 	low_entropy_surfel->validity = true;
 	low_entropy_surfel->node_id = 4;
@@ -110,7 +110,7 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	high_entropy_surfel->surfel_id = 2;
 	high_entropy_surfel->entropy = 9123.2143;
 
-	std::vector<reduction_entropy::entropy_surfel*> entropy_surfel_ptr_vector;
+	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
 
 	entropy_surfel_ptr_vector.push_back(low_entropy_surfel);
 	entropy_surfel_ptr_vector.push_back(high_entropy_surfel);
@@ -120,10 +120,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	SECTION( "PRECONDITION: high entropy surfel is at the back,"\
 		     "low entropy surfel at the front") {
 
-		reduction_entropy::entropy_surfel* back_surfel_ptr 
+		entropy_surfel* back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		reduction_entropy::entropy_surfel* front_surfel_ptr 
+		entropy_surfel* front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( back_surfel_ptr->validity == true);
@@ -147,14 +147,14 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	//   and valid surfels are at the back
 	std::sort(entropy_surfel_ptr_vector.begin(), 
 			  entropy_surfel_ptr_vector.end(),
-			  reduction_entropy::min_entropy_order()) ;
+			  min_entropy_order()) ;
 
 	SECTION( "POSTCONDITION: low entropy surfel is at the front,"\
 		     "high entropy surfel at the back") {
-		reduction_entropy::entropy_surfel* back_surfel_ptr 
+		entropy_surfel* back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		reduction_entropy::entropy_surfel* front_surfel_ptr 
+		entropy_surfel* front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( front_surfel_ptr->validity == true);
@@ -188,11 +188,11 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	using namespace lamure;
 	using namespace pre;
 
-	reduction_entropy::entropy_surfel* valid_high_entropy_surfel
-		= new reduction_entropy::entropy_surfel;
+	entropy_surfel* valid_high_entropy_surfel
+		= new entropy_surfel;
 
-	reduction_entropy::entropy_surfel* invalid_low_entropy_surfel 
-		= new reduction_entropy::entropy_surfel;
+	entropy_surfel* invalid_low_entropy_surfel 
+		= new entropy_surfel;
 
 	invalid_low_entropy_surfel->validity = false;
 	invalid_low_entropy_surfel->node_id = 4;
@@ -204,7 +204,7 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	valid_high_entropy_surfel->surfel_id = 2;
 	valid_high_entropy_surfel->entropy = 9123.2143;
 
-	std::vector<reduction_entropy::entropy_surfel*> entropy_surfel_ptr_vector;
+	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
 
 	entropy_surfel_ptr_vector.push_back(valid_high_entropy_surfel);
 	entropy_surfel_ptr_vector.push_back(invalid_low_entropy_surfel);
@@ -215,10 +215,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	SECTION( "PRECONDITION: valid high entropy surfel is at the front,"\
 		     "invalid low entropy surfel at the back") {
 
-		reduction_entropy::entropy_surfel* back_surfel_ptr 
+		entropy_surfel* back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		reduction_entropy::entropy_surfel* front_surfel_ptr 
+		entropy_surfel* front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( front_surfel_ptr->validity == true);
@@ -242,14 +242,14 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	//   and valid surfels are at the back
 	std::sort(entropy_surfel_ptr_vector.begin(), 
 			  entropy_surfel_ptr_vector.end(),
-			  reduction_entropy::min_entropy_order()) ;
+			  min_entropy_order()) ;
 
 	SECTION( "POSTCONDITION: invalid low entropy surfel is at the front,"\
 		     "valid high entropy surfel at the back") {
-		reduction_entropy::entropy_surfel* back_surfel_ptr 
+		entropy_surfel* back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		reduction_entropy::entropy_surfel* front_surfel_ptr 
+		entropy_surfel* front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( back_surfel_ptr->validity == true);
