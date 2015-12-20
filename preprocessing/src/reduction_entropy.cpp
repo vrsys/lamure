@@ -138,6 +138,8 @@ average_color(surfel* current_surfel, std::vector<entropy_surfel*> const& neighb
         accumulated_color += curr_neighbour_ptr->current_surfel->color();
     }
 
+    std::cout << "Accumulated blue component: " << accumulated_color[0] << "\n";
+
     vec3b normalized_color = vec3b(accumulated_color[0] / accumulated_weight,
                                    accumulated_color[1] / accumulated_weight,
                                    accumulated_color[2] / accumulated_weight );
@@ -201,6 +203,26 @@ merge(entropy_surfel* current_entropy_surfel,
 
     //**replace own invalid neighbours by valid neighbours of invalid neighbours**
     std::map<size_t, std::set<size_t> > added_neighbours_during_merge;
+
+
+    //sort neighbours by increasing size to current neighbour
+    std::sort(current_entropy_surfel->neighbours.begin(),
+              current_entropy_surfel->neighbours.end(),
+              [&](entropy_surfel* const& left_entropy_surfel,
+                 entropy_surfel* const& right_entropy_surfel){
+
+                    if(scm::math::length(current_entropy_surfel->current_surfel->pos()-
+                       left_entropy_surfel->current_surfel->pos()) 
+                        < 
+                       scm::math::length(current_entropy_surfel->current_surfel->pos()-
+                       right_entropy_surfel->current_surfel->pos())
+                    ) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+              );
 
     for (auto const actual_neighbour_ptr : current_entropy_surfel->neighbours) {
         // collect the invalid neighbours of our current node (invalidated in the last iteration
@@ -323,6 +345,7 @@ create_lod(real& reduction_error,
             current_entropy_surfel.node_id   = node_id;
             current_entropy_surfel.validity = true;
             current_entropy_surfel.level = 0;
+            current_entropy_surfel.entropy = 0.0;
             
 	    entropy_surfel_array.push_back(current_entropy_surfel);
 	   }
@@ -410,9 +433,19 @@ create_lod(real& reduction_error,
         //std::sort(min_entropy_surfel_ptr_queue.begin(), min_entropy_surfel_ptr_queue.end(), min_entropy_order());
     }
 
+    std::sort(finalized_surfels.begin(), finalized_surfels.end(), max_entropy_order());
+
+    size_t chosen_surfels = 0;
     for(auto const& en_surf : finalized_surfels) {
-        std::cout << "Pushing Surfel\n";
-        mem_array.mem_data()->push_back(*(en_surf->current_surfel));      
+
+        if(chosen_surfels++ < surfels_per_node) {
+            mem_array.mem_data()->push_back(*(en_surf->current_surfel));
+            std::cout << "Pushed surfel with color:"<<
+            (unsigned)en_surf->current_surfel->color()[0] << "\n\n";
+        } else {
+            std::cout << "Discarding a Surfel\n";
+            break;
+        }
     }
 
 

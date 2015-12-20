@@ -52,6 +52,27 @@ struct min_entropy_order{
 	}
 };
 
+struct max_entropy_order{
+	bool operator ()(entropy_surfel* const entropy_first, entropy_surfel* const entropy_second){
+
+		// true  : first goes to the front, second to the back
+		// false : first goes to the back, first to the front 
+
+		// if first is not valid, sort it to the front
+
+		bool is_rightmost = false;
+		if ( entropy_first->validity == false && entropy_second->validity == true) {
+
+			is_rightmost = true;
+		} else if (entropy_first->validity == true && entropy_second->validity == true){
+			if(entropy_first->entropy < entropy_second->entropy) {
+				is_rightmost = true;
+			}
+		}
+
+		return is_rightmost;
+	}
+};
 
 class reduction_entropy: public reduction_strategy
 {
