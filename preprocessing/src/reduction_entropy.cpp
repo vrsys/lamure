@@ -69,7 +69,7 @@ compute_center_of_mass(surfel* current_surfel, std::vector<entropy_surfel*>& nei
         real neighbour_mass = (4.0/3.0) * M_PI * 
                                 neighbour_radius * neighbour_radius * neighbour_radius;
 
-        center_of_mass_enumerator += neighbour_mass * current_surfel->pos();
+        center_of_mass_enumerator += neighbour_mass * current_neighbour_surfel->pos();
 
         center_of_mass_denominator += neighbour_mass;
     }
