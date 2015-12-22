@@ -45,7 +45,7 @@ open_stream(const std::string& bvh_filename,
 
     file_.open(filename_, mode);
 
-    if (!file_.is_open()) {
+    if (!file_.is_open() || !file_.good()) {
         throw std::runtime_error(
             "lamure: bvh_stream::Unable to open stream: " + filename_);
     }
@@ -252,14 +252,15 @@ read_bvh(const std::string& filename, bvh& bvh) {
     bvh.set_depth(tree.depth_);
     bvh.set_num_nodes(tree.num_nodes_);
     bvh.set_fan_factor(tree.fan_factor_);
-    bvh.set_surfels_per_node(tree.max_surfels_per_node_);
-    bvh.set_size_of_surfel(tree.serialized_surfel_size_);
+    bvh.set_primitives_per_node(tree.max_surfels_per_node_);
+    bvh.set_size_of_primitive(tree.serialized_surfel_size_);
+    bvh.set_primitive((bvh::primitive_type)tree.primitive_);
     scm::math::vec3f translation(tree.translation_.x_,
                                 tree.translation_.y_,
                                 tree.translation_.z_);
     bvh.set_translation(translation);
 
-    if (bvh.num_nodes() != node_id) {
+    if (bvh.get_num_nodes() != node_id) {
        throw std::runtime_error(
            "lamure: bvh_stream::Stream corrupt -- Ivalid number of node segments");
     }
@@ -269,7 +270,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
                                  node.centroid_.y_,
                                  node.centroid_.z_);
        bvh.set_centroid(node.node_id_, centroid);
-       bvh.set_average_surfel_radius(node.node_id_, node.avg_surfel_radius_);
+       bvh.set_avg_primitive_extent(node.node_id_, node.avg_surfel_radius_);
        bvh.set_visibility(node.node_id_, (bvh::node_visibility)node.visibility_);
        scm::math::vec3f box_min(node.bounding_box_.min_.x_,
                                 node.bounding_box_.min_.y_,
@@ -310,24 +311,24 @@ write_bvh(const std::string& filename, bvh& bvh) {
    
    bvh_tree_seg tree;
    tree.segment_id_ = num_segments_++;
-   tree.depth_ = bvh.depth();
-   tree.num_nodes_ = bvh.num_nodes();
-   tree.fan_factor_ = bvh.fan_factor();
-   tree.max_surfels_per_node_ = bvh.surfels_per_node();
-   tree.serialized_surfel_size_ = bvh.size_of_surfel();
+   tree.depth_ = bvh.get_depth();
+   tree.num_nodes_ = bvh.get_num_nodes();
+   tree.fan_factor_ = bvh.get_fan_factor();
+   tree.max_surfels_per_node_ = bvh.get_primitives_per_node();
+   tree.serialized_surfel_size_ = bvh.get_size_of_primitive();
    tree.primitive_ = (bvh_primitive_type)bvh.get_primitive();
    tree.reserved_0_ = 0;
    tree.state_ = bvh_tree_state::BVH_STATE_SERIALIZED;
    tree.reserved_1_ = 0;
    tree.reserved_2_ = 0;
-   tree.translation_.x_ = bvh.translation().x;
-   tree.translation_.y_ = bvh.translation().y;
-   tree.translation_.z_ = bvh.translation().z;
+   tree.translation_.x_ = bvh.get_translation().x;
+   tree.translation_.y_ = bvh.get_translation().y;
+   tree.translation_.z_ = bvh.get_translation().z;
    tree.reserved_3_ = 0;
 
    write(tree);
 
-   for (uint32_t node_id = 0; node_id < bvh.num_nodes(); ++node_id) {
+   for (uint32_t node_id = 0; node_id < bvh.get_num_nodes(); ++node_id) {
        bvh_node_seg node;
        node.segment_id_ = num_segments_++;
        node.node_id_ = node_id;
@@ -337,7 +338,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
        node.centroid_.z_ = centroid.z;
        node.depth_ = bvh.get_depth_of_node(node_id);
        node.reduction_error_ = 0.f;
-       node.avg_surfel_radius_ = bvh.get_average_surfel_radius(node_id);
+       node.avg_surfel_radius_ = bvh.get_avg_primitive_extent(node_id);
        node.visibility_ = (bvh_node_visibility)bvh.get_visibility(node_id);
        node.reserved_ = 0;
        const scm::gl::boxf box = bvh.get_bounding_box(node_id);

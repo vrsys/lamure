@@ -66,13 +66,13 @@ management(std::vector<std::string> const& model_filenames,
 
         float scene_diameter = far_plane_;
         for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-            const auto& bb = database->get_model(model_id)->get_bvh()->bounding_boxes()[0];
+            const auto& bb = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
             scene_diameter = std::max(scm::math::length(bb.max_vertex()-bb.min_vertex()), scene_diameter);
-            model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(database->get_model(model_id)->get_bvh()->translation());
+            model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(database->get_model(model_id)->get_bvh()->get_translation());
         }
         far_plane_ = 2.0f * scene_diameter;
 
-        auto root_bb = database->get_model(0)->get_bvh()->bounding_boxes()[0];
+        auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
         scm::math::vec3 center = model_transformations_[0] * root_bb.center();
         reset_matrix_ = scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f,-0.01f), center, scm::math::vec3f(0.f, 1.f,0.f));
         reset_diameter_ = scm::math::length(root_bb.max_vertex()-root_bb.min_vertex());
@@ -132,15 +132,6 @@ MainLoop()
     lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
     lamure::ren::policy* policy = lamure::ren::policy::get_instance();
 
-#if 0
-    for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
-       model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(28.f, -389.f, -58.f);
-       renderer_->send_model_transform(model_id, model_transformations_[model_id]);
-    }
-
-#endif
-
-
     controller->reset_system();
 
     lamure::context_t context_id = controller->deduce_context_id(0);
@@ -159,11 +150,11 @@ MainLoop()
     
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->get_context_memory(context_id, renderer_->device()), num_recorded_camera_positions_);
-    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->get_context_memory(context_id, renderer_->device()), num_recorded_camera_positions_);
+    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, num_recorded_camera_positions_);
+    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, num_recorded_camera_positions_);
 #else
     renderer_->set_radius_scale(importance_);
-    renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, renderer_->device()), num_recorded_camera_positions_);
+    renderer_->render(context_id, *active_camera_, view_id, num_recorded_camera_positions_);
 #endif
 
     renderer_->display_status("Current_camera_Session");
@@ -467,7 +458,7 @@ dispatchKeyboardInput(unsigned char key)
            override_center_of_rotation = true;
 
         }
-
+#if 0
     case 'v':
         {
             scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
@@ -593,6 +584,8 @@ dispatchKeyboardInput(unsigned char key)
         }
 
         break;
+
+#endif
 
 #endif
 

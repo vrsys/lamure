@@ -49,15 +49,15 @@ struct s_surfel {
 
 void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access, lamure::ren::lod_stream* out_lod_access) {
 
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    size_t node_size_in_bytes = bvh->get_primitives_per_node() * sizeof(surfel);
     surfel* in_surfels;
     
     //read all nodes
-    in_surfels = new surfel[bvh->num_nodes() * bvh->surfels_per_node()];
-    in_lod_access->read((char*)in_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
+    in_surfels = new surfel[bvh->get_num_nodes() * bvh->get_primitives_per_node()];
+    in_lod_access->read((char*)in_surfels, 0, bvh->get_num_nodes() * node_size_in_bytes);
     
     unsigned int num_threads = NUM_THREADS;
-    surfel* out_surfels = new surfel[num_threads * bvh->surfels_per_node()];
+    surfel* out_surfels = new surfel[num_threads * bvh->get_primitives_per_node()];
     
     unsigned int num_nodes_done = 0; 
     node_queue_t job_queue;
@@ -65,7 +65,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
     while (true) {
         
         if (true) {
-            unsigned int progress = (unsigned int)(((float)(num_nodes_done) / (float)bvh->num_nodes()) * 25);
+            unsigned int progress = (unsigned int)(((float)(num_nodes_done) / (float)bvh->get_num_nodes()) * 25);
             std::cout << "\rLOG: [";
             for (unsigned int p = 0; p < 25; p++) {
                 if (p < progress)
@@ -80,7 +80,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
         for (unsigned int i = 0; i < num_threads; ++i) {
             unsigned int current = num_nodes_done + i;
             
-            if (current < bvh->num_nodes()) {
+            if (current < bvh->get_num_nodes()) {
                 in_lod_access->read(((char*)out_surfels)+i*node_size_in_bytes, 
                     (size_t)current * node_size_in_bytes, node_size_in_bytes);
                 
@@ -107,9 +107,9 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
                     
                     if (job.job_id_ != -1) {
                         
-                        for (size_t splat_id = 0; splat_id < bvh->surfels_per_node(); ++splat_id) {
+                        for (size_t splat_id = 0; splat_id < bvh->get_primitives_per_node(); ++splat_id) {
                             
-                            surfel soi = in_surfels[job.node_id_*bvh->surfels_per_node()+splat_id];
+                            surfel soi = in_surfels[job.node_id_*bvh->get_primitives_per_node()+splat_id];
                             NodeSplatId splat_of_interest = NodeSplatId(job.node_id_, splat_id);
                             std::vector<std::pair<surfel, float>> nearest_neighbours;
                            
@@ -135,7 +135,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
 #endif                           
 
 #ifdef ON_FAIL_SET_ZERO
-                                 out_surfels[job.job_id_*bvh->surfels_per_node() + splat_id].size = 0.f;
+                                 out_surfels[job.job_id_*bvh->get_primitives_per_node() + splat_id].size = 0.f;
 #endif
                                  continue;
                             }
@@ -154,7 +154,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
                                                          poi, 
                                                          natural_neighbours);
                             if (natural_neighbours.size() < min_num_natural_neighbours) {
-                                 //out_surfels[job.job_id_*bvh->surfels_per_node() + splat_id].size = 0.f;
+                                 //out_surfels[job.job_id_*bvh->get_primitives_per_node() + splat_id].size = 0.f;
                                  nearest_neighbours.clear();
                                  natural_neighbours.clear();
 #ifdef MAIN_VERBOSE
@@ -163,7 +163,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
 #endif
 
 #ifdef ON_FAIL_SET_ZERO
-                                 out_surfels[job.job_id_*bvh->surfels_per_node() + splat_id].size = 0.f;
+                                 out_surfels[job.job_id_*bvh->get_primitives_per_node() + splat_id].size = 0.f;
 #endif
                                  continue;
                             }
@@ -182,12 +182,12 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
 
                             if (max_distance >= std::numeric_limits<float>::min()) {
                                 max_distance = scm::math::sqrt(max_distance);
-                                out_surfels[job.job_id_*bvh->surfels_per_node() + splat_id].size = 0.5f*max_distance;
+                                out_surfels[job.job_id_*bvh->get_primitives_per_node() + splat_id].size = 0.5f*max_distance;
                             }
 
 #ifdef ON_FAIL_SET_ZERO
                             else { 
-                                out_surfels[job.job_id_*bvh->surfels_per_node() + splat_id].size = 0.f;
+                                out_surfels[job.job_id_*bvh->get_primitives_per_node() + splat_id].size = 0.f;
                             }
 #endif
 
@@ -214,7 +214,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
         
             unsigned int current = num_nodes_done + i;
             
-            if (current < bvh->num_nodes()) {
+            if (current < bvh->get_num_nodes()) {
                 out_lod_access->write(((char*)out_surfels)+i*node_size_in_bytes, 
                     (size_t)current * node_size_in_bytes, node_size_in_bytes);
                     
@@ -222,10 +222,10 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
                 //compute representative radius
                 float representative_radius = 0.f;
                 unsigned int num_valid_splats = 0;
-                for (unsigned int splat_id = 0; splat_id < bvh->surfels_per_node(); ++splat_id) {
+                for (unsigned int splat_id = 0; splat_id < bvh->get_primitives_per_node(); ++splat_id) {
                     
-                    if (out_surfels[i*bvh->surfels_per_node() + splat_id].size > 0.f) {
-                        representative_radius += out_surfels[i*bvh->surfels_per_node() + splat_id].size;
+                    if (out_surfels[i*bvh->get_primitives_per_node() + splat_id].size > 0.f) {
+                        representative_radius += out_surfels[i*bvh->get_primitives_per_node() + splat_id].size;
                         ++num_valid_splats;
                     }
                     
@@ -234,7 +234,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
                     representative_radius /= (float)num_valid_splats;
                 }
         
-                bvh->set_average_surfel_radius(current, representative_radius);
+                bvh->set_avg_primitive_extent(current, representative_radius);
 #endif
             }
         }
@@ -242,7 +242,7 @@ void process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_access,
         num_nodes_done += num_jobs;
         job_queue.relaunch();
         
-        if (num_nodes_done >= bvh->num_nodes()) {
+        if (num_nodes_done >= bvh->get_num_nodes()) {
             break;
         }
 
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
     lamure::ren::lod_stream* out_lod_access = new lamure::ren::lod_stream();
     out_lod_access->open_for_writing(output_lod_file);
     
-    std::cout << "tree has " << bvh->num_nodes() << " nodes" << std::endl;
+    std::cout << "tree has " << bvh->get_num_nodes() << " nodes" << std::endl;
     
     process_tree(bvh, in_lod_access, out_lod_access);
     

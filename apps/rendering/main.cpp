@@ -236,29 +236,12 @@ int main(int argc, char** argv)
 
     if (management_ != nullptr)
     {
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "memory cleanup...(1)" << std::endl;
-#endif
         delete lamure::ren::cut_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted cut database" << std::endl;
-#endif
         delete lamure::ren::controller::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted controller" << std::endl;
-#endif
         delete lamure::ren::model_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted model database" << std::endl;
-#endif
         delete lamure::ren::policy::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted policy" << std::endl;
-#endif
         delete lamure::ren::ooc_cache::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted ooc cache" << std::endl;
-#endif
+
     }
 
     return 0;
@@ -322,30 +305,11 @@ void Cleanup()
     {
         delete management_;
         management_ = nullptr;
-
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "memory cleanup...(1)" << std::endl;
-#endif
         delete lamure::ren::cut_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted cut database" << std::endl;
-#endif
         delete lamure::ren::controller::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted controller" << std::endl;
-#endif
         delete lamure::ren::model_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted model database" << std::endl;
-#endif
         delete lamure::ren::policy::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted policy" << std::endl;
-#endif
         delete lamure::ren::ooc_cache::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted ooc cache" << std::endl;
-#endif
     }
 
 }
@@ -357,30 +321,11 @@ void glut_close()
     {
         delete management_;
         management_ = nullptr;
-
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "memory cleanup...(1)" << std::endl;
-#endif
         delete lamure::ren::cut_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted cut database" << std::endl;
-#endif
         delete lamure::ren::controller::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted controller" << std::endl;
-#endif
         delete lamure::ren::model_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted model database" << std::endl;
-#endif
         delete lamure::ren::policy::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted policy" << std::endl;
-#endif
         delete lamure::ren::ooc_cache::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted ooc cache" << std::endl;
-#endif
     }
 }
 

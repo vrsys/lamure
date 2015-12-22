@@ -22,9 +22,8 @@ model_database::
 model_database()
 : num_datasets_(0),
   num_datasets_pending_(0),
-  surfels_per_node_(0),
-  surfels_per_node_pending_(0),
-  size_of_surfel_(0) {
+  primitives_per_node_(0),
+  primitives_per_node_pending_(0) {
 
 }
 
@@ -67,7 +66,7 @@ apply() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     num_datasets_ = num_datasets_pending_;
-    surfels_per_node_ = surfels_per_node_pending_;
+    primitives_per_node_ = primitives_per_node_pending_;
 }
 
 const model_t model_database::
@@ -85,22 +84,15 @@ add_model(const std::string& filepath, const std::string& model_key) {
         if (num_datasets_ == 0) {
             std::lock_guard<std::mutex> lock(mutex_);
             if (num_datasets_ == 0) {
-                size_of_surfel_ = bvh->size_of_surfel();
-                surfels_per_node_pending_ = bvh->surfels_per_node();
-                surfels_per_node_ = surfels_per_node_pending_;
-            }
-        }
-        else {
-            if (size_of_surfel_ != bvh->size_of_surfel()) {
-                throw std::runtime_error(
-                    "lamure: model_database::Incompatible surfel size");
+                primitives_per_node_pending_ = bvh->get_primitives_per_node();
+                primitives_per_node_ = primitives_per_node_pending_;
             }
         }
 
-        if (bvh->surfels_per_node() > surfels_per_node_pending_) {
+        if (bvh->get_primitives_per_node() > primitives_per_node_pending_) {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (bvh->surfels_per_node() > surfels_per_node_pending_) {
-                surfels_per_node_pending_ = bvh->surfels_per_node();
+            if (bvh->get_primitives_per_node() > primitives_per_node_pending_) {
+                primitives_per_node_pending_ = bvh->get_primitives_per_node();
             }
         }
 
@@ -117,7 +109,7 @@ add_model(const std::string& filepath, const std::string& model_key) {
             ++num_datasets_pending_;
 
             num_datasets_ = num_datasets_pending_;
-            surfels_per_node_ = surfels_per_node_pending_;
+            primitives_per_node_ = primitives_per_node_pending_;
 
             controller::get_instance()->signal_system_reset();
         }
@@ -138,7 +130,7 @@ add_model(const std::string& filepath, const std::string& model_key) {
 
           default:
             throw std::runtime_error(
-                "lamure: unknwown primitive type");
+                "lamure: unknwown primitive type: " + std::to_string(bvh->get_primitive()));
             break; 
 
         }
@@ -160,15 +152,53 @@ get_model(const model_t model_id) {
     if (datasets_.find(model_id) != datasets_.end()) {
         return datasets_[model_id];
     }
-
-    std::cout << "attempt to locate model " << model_id << std::endl;
-
     throw std::runtime_error(
         "lamure: model_database::Model was not found:" + std::to_string(model_id));
-
     return nullptr;
 }
 
+const size_t model_database::
+get_primitive_size(const bvh::primitive_type type) const {
+
+    switch (type) {
+        case bvh::primitive_type::POINTCLOUD:
+            return sizeof(dataset::serialized_surfel);
+        case bvh::primitive_type::TRIMESH:
+            return sizeof(dataset::serialized_triangle);
+        default: break;
+    }
+    throw std::runtime_error(
+        "lamure: model_database::Invalid primitive type has size 0");
+    return 0;
+}
+
+const size_t model_database::
+get_node_size(const model_t model_id) const {
+    auto model_it = datasets_.find(model_id);
+    if (model_it != datasets_.end()) {
+        const bvh* bvh = model_it->second->get_bvh();
+        return sizeof(dataset::serialized_surfel) * bvh->get_primitives_per_node();
+    }
+    throw std::runtime_error(
+        "lamure: model_database::Model was not found:" + std::to_string(model_id));
+    return 0;
+
+}
+
+const size_t model_database::
+get_slot_size() const {
+    //return the combined slot size in bytes for both trimeshes and pointclouds
+    std::lock_guard<std::mutex> lock(mutex_);
+    return primitives_per_node_ * sizeof(dataset::serialized_surfel);
+
+}
+
+const size_t model_database::
+get_primitives_per_node() const {
+    //return the combined primitives per node for both trimeshes and pointclouds
+    std::lock_guard<std::mutex> lock(mutex_);
+    return primitives_per_node_;
+}
 
 } // namespace ren
 

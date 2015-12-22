@@ -66,10 +66,8 @@ initialize() {
     assert(policy->render_budget_in_mb() > 0);
     assert(policy->out_of_core_budget_in_mb() > 0);
 
-    size_t size_of_node_in_bytes = database->size_of_surfel() * database->surfels_per_node();
-
     out_of_core_budget_in_nodes_ =
-        (policy->out_of_core_budget_in_mb()*1024*1024) / size_of_node_in_bytes;
+        (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();;
 
     index_ = new cut_update_index();
     index_->update_policy(0);
@@ -1104,7 +1102,6 @@ compile_transfer_list() {
     const std::vector<std::unordered_set<node_t>>& transfer_list = gpu_cache_->transfer_list();
 
     slot_t slot_count = gpu_cache_->transfer_slots_written();
-    size_t stride_in_bytes = database->size_of_surfel() * database->surfels_per_node();
 
     for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
         for (const auto& node_id : transfer_list[model_id]) {
@@ -1114,7 +1111,7 @@ compile_transfer_list() {
 
             char* node_data = ooc_cache->node_data(model_id, node_id);
 
-            memcpy(current_gpu_storage_ + slot_count*stride_in_bytes, node_data, stride_in_bytes);
+            memcpy(current_gpu_storage_ + slot_count*database->get_slot_size(), node_data, database->get_slot_size());
 
             transfer_list_.push_back(cut_database_record::slot_update_desc(slot_count, slot_id));
 
@@ -1251,7 +1248,7 @@ is_all_nodes_in_cut(const model_t model_id, const std::vector<node_t>& node_ids,
 const bool cut_update_pool::
 is_node_in_frustum(const view_t view_id, const model_t model_id, const node_t node_id, const scm::gl::frustum& frustum) {
     model_database* database = model_database::get_instance();
-    return 1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->bounding_boxes()[node_id]);
+    return 1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->get_bounding_boxes()[node_id]);
 }
 
 const bool cut_update_pool::
@@ -1264,7 +1261,7 @@ is_no_node_in_frustum(const view_t view_id, const model_t model_id, const std::v
             return false;
 
         model_database* database = model_database::get_instance();
-        if (1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->bounding_boxes()[node_id]))
+        if (1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->get_bounding_boxes()[node_id]))
             return false;
     }
 
@@ -1282,15 +1279,15 @@ calculate_node_error(const view_t view_id, const model_t model_id, const node_t 
     const scm::math::mat4f& view_matrix = user_cameras_[view_id].get_view_matrix();
 
     float radius_scaling = scm::math::length(model_matrix * scm::math::vec4f(1.0f,0.f,0.f,0.f));
-    float representative_radius = bvh->get_average_surfel_radius(node_id) * radius_scaling;
+    float representative_radius = bvh->get_avg_primitive_extent(node_id) * radius_scaling;
 
-    auto bb = bvh->bounding_boxes()[node_id];
+    auto bb = bvh->get_bounding_boxes()[node_id];
 
 
 #if 1
  
     //original error computation
-    scm::math::vec3f view_position = view_matrix * model_matrix * bvh->centroids()[node_id];
+    scm::math::vec3f view_position = view_matrix * model_matrix * bvh->get_centroids()[node_id];
     float near_plane = user_cameras_[view_id].near_plane_value();
     float height_divided_by_top_minus_bottom = height_divided_by_top_minus_bottoms_[view_id];
     float error = std::abs(2.0f * representative_radius * (near_plane/-view_position.z) * height_divided_by_top_minus_bottom);

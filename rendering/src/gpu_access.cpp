@@ -40,7 +40,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
                                     0);
 
     if (has_layout_) {
-        memory_ = device->create_vertex_array(scm::gl::vertex_format
+        pcl_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
             (0, 1, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)
             (0, 2, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)
@@ -48,6 +48,11 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
             (0, 4, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)
             (0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_)
             (0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_),
+            boost::assign::list_of(buffer_));
+        tri_memory_ = device->create_vertex_array(scm::gl::vertex_format
+            (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
+            (0, 1, scm::gl::TYPE_VEC3F, size_of_surfel_)
+            (0, 2, scm::gl::TYPE_VEC2F, size_of_surfel_),
             boost::assign::list_of(buffer_));
     }
 
@@ -63,7 +68,8 @@ gpu_access::
 ~gpu_access() {
     buffer_.reset();
     if (has_layout_) {
-        memory_.reset();
+        pcl_memory_.reset();
+        tri_memory_.reset();
     }
 }
 
@@ -85,6 +91,21 @@ unmap(scm::gl::render_device_ptr const& device) {
         is_mapped_ = false;
     }
 }
+
+scm::gl::vertex_array_ptr gpu_access::
+get_memory(bvh::primitive_type type) {
+  switch (type) {
+    case bvh::primitive_type::POINTCLOUD:
+      return pcl_memory_;
+    case bvh::primitive_type::TRIMESH:
+      return tri_memory_;
+    default: break;
+  }
+  throw std::runtime_error(
+    "lamure: gpu_access::Invalid primitive type");
+  return scm::gl::vertex_array_ptr(nullptr);
+
+};
 
 const size_t gpu_access::
 query_video_memory_in_mb(scm::gl::render_device_ptr const& device) {

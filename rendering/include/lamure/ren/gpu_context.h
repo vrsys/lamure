@@ -11,6 +11,7 @@
 #include <lamure/types.h>
 #include <lamure/ren/gpu_access.h>
 #include <lamure/ren/cut_database_record.h>
+#include <lamure/ren/bvh.h>
 
 namespace lamure
 {
@@ -40,7 +41,7 @@ public:
     temporary_storages get_temporary_storages() { return temporary_storages_; };
 
     scm::gl::buffer_ptr get_context_buffer(scm::gl::render_device_ptr device);
-    scm::gl::vertex_array_ptr get_context_memory(scm::gl::render_device_ptr device);
+    scm::gl::vertex_array_ptr get_context_memory(bvh::primitive_type type, scm::gl::render_device_ptr device);
 
     const node_t upload_budget_in_nodes() const { return upload_budget_in_nodes_; };
     const node_t render_budget_in_nodes() const { return render_budget_in_nodes_; };

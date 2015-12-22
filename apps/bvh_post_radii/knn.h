@@ -60,7 +60,7 @@ static void get_all_descendant_leafs(const lamure::ren::bvh* bvh, const lamure::
     descendant_leafs.push_back(node_id);
   }
   else {
-    for (unsigned int i = 0; i < bvh->fan_factor(); ++i) {
+    for (unsigned int i = 0; i < bvh->get_fan_factor(); ++i) {
       get_all_descendant_leafs(bvh, bvh->get_child_id(node_id, i), leaf_depth, descendant_leafs);
     }
   }
@@ -74,7 +74,7 @@ static scm::math::vec3f get_point_of_interest(
     size_t splat_id) {
     
     surfel* surfl = new surfel();
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    size_t node_size_in_bytes = bvh->get_primitives_per_node() * sizeof(surfel);
     lod_access->read((char*)surfl, (size_t)node_id * node_size_in_bytes + (splat_id*sizeof(surfel)), sizeof(surfel));
 
     return scm::math::vec3f(surfl->x, surfl->y, surfl->z);
@@ -91,7 +91,7 @@ static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
 
     lamure::node_t current_node_id = splat_of_interest.node_id_;
     unsigned int knn_leaf_depth = bvh->get_depth_of_node(current_node_id);
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    size_t node_size_in_bytes = bvh->get_primitives_per_node() * sizeof(surfel);
 
     size_t node_offset_in_splats = 0;
     if (out_of_core) {
@@ -99,7 +99,7 @@ static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
         lod_access->read((char*)surfels, (size_t)current_node_id * node_size_in_bytes, node_size_in_bytes);
     }
     else {
-        node_offset_in_splats = current_node_id * bvh->surfels_per_node();
+        node_offset_in_splats = current_node_id * bvh->get_primitives_per_node();
     }
     
     surfel center_splat = surfels[node_offset_in_splats + splat_of_interest.splat_id_];
@@ -110,7 +110,7 @@ static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
     float max_distance_squared = 0.f;
 
     //check initial node
-    for (size_t i = 0; i < bvh->surfels_per_node(); ++i) {
+    for (size_t i = 0; i < bvh->get_primitives_per_node(); ++i) {
         if (i != splat_of_interest.splat_id_) {
             const surfel& surfl = surfels[node_offset_in_splats + i];
             float distance_squared = scm::math::length_sqr(center - scm::math::vec3f(surfl.x, surfl.y, surfl.z));
@@ -153,7 +153,7 @@ static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
     sphere knn_sphere = sphere(center, scm::math::sqrt(max_distance_squared));
 
     //traverse rest of tree
-    while (!contains_sphere(bvh->bounding_boxes()[current_node_id], knn_sphere)) {
+    while (!contains_sphere(bvh->get_bounding_boxes()[current_node_id], knn_sphere)) {
 
         if (current_node_id == 0) {
             break;
@@ -179,17 +179,17 @@ static void find_nearest_neighbours(const lamure::ren::bvh* bvh,
 
 
             //check if leaf relevant
-            if (intersects(knn_sphere, bvh->bounding_boxes()[leaf_id])) {
+            if (intersects(knn_sphere, bvh->get_bounding_boxes()[leaf_id])) {
 
                 if (out_of_core) {
                     //load leaf data
                     lod_access->read((char*)surfels, (size_t)leaf_id * node_size_in_bytes, node_size_in_bytes);
                 }
                 else {
-                    node_offset_in_splats = leaf_id * bvh->surfels_per_node();
+                    node_offset_in_splats = leaf_id * bvh->get_primitives_per_node();
                 }
                 
-                for (size_t i = 0; i < bvh->surfels_per_node(); ++i) {
+                for (size_t i = 0; i < bvh->get_primitives_per_node(); ++i) {
 
                     const surfel& surfl = surfels[node_offset_in_splats + i];
                     float distance_squared = scm::math::length_sqr(center - scm::math::vec3f(surfl.x, surfl.y, surfl.z));

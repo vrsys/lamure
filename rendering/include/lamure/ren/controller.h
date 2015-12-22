@@ -48,7 +48,7 @@ public:
     const bool          is_cut_update_in_progress(const context_t context_id);
 
     scm::gl::buffer_ptr get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device);
-    scm::gl::vertex_array_ptr get_context_memory(const context_t context_id, scm::gl::render_device_ptr device);
+    scm::gl::vertex_array_ptr get_context_memory(const context_t context_id, bvh::primitive_type type, scm::gl::render_device_ptr device);
 
     size_t              ms_since_last_node_upload() {return ms_since_last_node_upload_; };
     void                reset_ms_since_last_node_upload() { ms_since_last_node_upload_ = 0;};

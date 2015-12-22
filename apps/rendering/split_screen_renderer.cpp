@@ -210,7 +210,7 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
 
 
 void split_screen_renderer::
-render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO)
+render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, const uint32_t target)
 {
     using namespace lamure;
     using namespace lamure::ren;
@@ -223,13 +223,12 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
     using namespace scm::math;
 
 
+    controller* controller = controller::get_instance();
     model_database* database = model_database::get_instance();
     cut_database* cuts = cut_database::get_instance();
 
 
     model_t models_count = database->num_models();
-
-    int32_t NumbersOfsurfelsPerNode = database->surfels_per_node();
 
 
     std::vector<uint32_t>  frustum_culling_results;
@@ -270,8 +269,8 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
                     context_->set_rasterizer_state(change_point_size_in_shader_state_);
 
-                    context_->bind_vertex_array(render_VAO);
-                    context_->apply();
+                    scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, bvh::primitive_type::POINTCLOUD, device_);
+                    context_->bind_vertex_array(memory);
 
 
                     pass1_visibility_shader_program_->uniform("minsurfelsize", 1.0f);
@@ -282,49 +281,53 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
                     for (model_t model_id = 0; model_id < models_count; ++model_id)
                     {
-                        cut& cut = cuts->get_cut(context_id, view_id, model_id);
-
-                        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
                         const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-                        uint32_t surfels_per_node_of_model = bvh->surfels_per_node();
-                        //store culling result and push it back for second pass#
+                        if (bvh->get_primitive() == bvh::primitive_type::POINTCLOUD) {
 
-                        std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
+                            cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
+                            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
 
-                        upload_transformation_matrices(camera, model_id, 1);
+                            uint32_t surfels_per_node_of_model = bvh->get_primitives_per_node();
+                            //store culling result and push it back for second pass#
 
-                        scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
-
-
-                        unsigned int leaf_level_start_index = bvh->get_first_node_id_of_depth(bvh->depth());
-
-                        for(std::vector<cut::node_slot_aggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
-                        {
-
-                         //   uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ k->node_id_ ] );
-                           uint32_t node_culling_result = 0;
-                           //frustum_culling_results.push_back(node_culling_result);
-
-                             frustum_culling_results[node_counter] = node_culling_result;
+                            std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
 
 
-                            if( (node_culling_result != 1) )
+                            upload_transformation_matrices(camera, model_id, 1);
+
+                            scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
+
+
+                            unsigned int leaf_level_start_index = bvh->get_first_node_id_of_depth(bvh->get_depth());
+
+                            for(std::vector<cut::node_slot_aggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
                             {
 
+                             //   uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ k->node_id_ ] );
+                               uint32_t node_culling_result = 0;
+                               //frustum_culling_results.push_back(node_culling_result);
 
-                                bool is_leaf = (leaf_level_start_index <= k->node_id_);
+                                 frustum_culling_results[node_counter] = node_culling_result;
 
 
-                                pass1_visibility_shader_program_->uniform("is_leaf", is_leaf);
+                                if( (node_culling_result != 1) )
+                                {
 
-                                context_->apply();
 
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfsurfelsPerNode, surfels_per_node_of_model);
+                                    bool is_leaf = (leaf_level_start_index <= k->node_id_);
+
+
+                                    pass1_visibility_shader_program_->uniform("is_leaf", is_leaf);
+
+                                    context_->apply();
+
+                                    context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * database->get_primitives_per_node(), surfels_per_node_of_model);
+                                }
+
+
                             }
-
 
                         }
 
@@ -355,7 +358,8 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
                     context_->bind_texture( gaussian_texture_  ,  filter_linear_,   1);
 
-                    context_->bind_vertex_array(render_VAO);
+                    scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, bvh::primitive_type::POINTCLOUD, device_);
+                    context_->bind_vertex_array(memory);
                     context_->apply();
 
 
@@ -372,43 +376,47 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
                     for (model_t model_id = 0; model_id < models_count; ++model_id)
                     {
-                        cut& cut = cuts->get_cut(context_id, view_id, model_id);
-
-                        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
                         const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-                        uint32_t surfels_per_node_of_model = bvh->surfels_per_node();
-                        //store culling result and push it back for second pass#
+                        if (bvh->get_primitive() == bvh::primitive_type::POINTCLOUD) {
+
+                            cut& cut = cuts->get_cut(context_id, view_id, model_id);
+
+                            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+
+                            uint32_t surfels_per_node_of_model = bvh->get_primitives_per_node();
+                            //store culling result and push it back for second pass#
 
 
-                        upload_transformation_matrices(camera, model_id, 2);
+                            upload_transformation_matrices(camera, model_id, 2);
 
-                        unsigned int leaf_level_start_index = bvh->get_first_node_id_of_depth(bvh->depth());
+                            unsigned int leaf_level_start_index = bvh->get_first_node_id_of_depth(bvh->get_depth());
 
-                        for(std::vector<cut::node_slot_aggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
-                        {
-
-                            if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
+                            for(std::vector<cut::node_slot_aggregate>::const_iterator k = renderable.begin(); k != renderable.end(); ++k, ++node_counter)
                             {
 
-                                bool is_leaf = (leaf_level_start_index <= k->node_id_);
+                                if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
+                                {
+
+                                    bool is_leaf = (leaf_level_start_index <= k->node_id_);
 
 
-                                pass2_accumulation_shader_program_->uniform("is_leaf", is_leaf);
+                                    pass2_accumulation_shader_program_->uniform("is_leaf", is_leaf);
 
-                                context_->apply();
+                                    context_->apply();
 
 
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * NumbersOfsurfelsPerNode, surfels_per_node_of_model);
+                                    context_->draw_arrays(PRIMITIVE_POINT_LIST, (k->slot_id_) * database->get_primitives_per_node(), surfels_per_node_of_model);
 
-                                ++actually_rendered_nodes;
+                                    ++actually_rendered_nodes;
+                                }
                             }
+
                         }
 
 
                    }
-                    rendered_splats_ = actually_rendered_nodes * database->surfels_per_node();
+                    rendered_splats_ = actually_rendered_nodes * database->get_primitives_per_node();
 
                 }
 

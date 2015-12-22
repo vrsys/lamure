@@ -91,7 +91,7 @@ run() {
     std::vector<lod_stream*> lod_streams;
 
     for (model_t model_id = 0; model_id < num_models; ++model_id) {
-        std::string bvh_filename = database->get_model(model_id)->get_bvh()->filename();
+        std::string bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
         std::string lod_file_name = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
 
         lod_stream* access = new lod_stream();
@@ -112,8 +112,7 @@ run() {
         if (job.node_id_ != invalid_node_t) {
             assert(job.slot_mem_ != nullptr);
 
-            size_t stride_in_bytes = database->size_of_surfel() * 
-               database->get_model(job.model_id_)->get_bvh()->surfels_per_node();
+            size_t stride_in_bytes = database->get_node_size(job.model_id_);
             size_t offset_in_bytes = job.node_id_ * stride_in_bytes;
 
             lod_streams[job.model_id_]->read(local_cache, offset_in_bytes, stride_in_bytes);

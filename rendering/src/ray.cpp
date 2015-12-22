@@ -4,7 +4,7 @@
 // Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
-
+#if 0
 #include <lamure/ren/ray.h>
 
 namespace lamure
@@ -266,8 +266,8 @@ const bool ray::intersect_model_unsafe(
     ooc_cache* ooc_cache = ooc_cache::get_instance();
 
     const bvh* tree = database->get_model(model_id)->get_bvh();
-    unsigned int fan_factor = tree->fan_factor();
-    node_t num_nodes = tree->num_nodes();
+    unsigned int fan_factor = tree->get_fan_factor();
+    node_t num_nodes = tree->get_num_nodes();
     uint32_t num_surfels_per_node = database->surfels_per_node();
 
     scm::math::mat4f inverse_model_transform = scm::math::inverse(model_transform);
@@ -316,7 +316,7 @@ const bool ray::intersect_model_unsafe(
             no_child_available = false;
 
             scm::math::vec2f t = scm::math::vec2f::zero();
-            if (!intersect_aabb(tree->bounding_boxes()[node_id], 
+            if (!intersect_aabb(tree->get_bounding_boxes()[node_id], 
                                object_ray_origin, object_ray_direction,  
                                t)) {
                 continue;
@@ -364,7 +364,7 @@ const bool ray::intersect_model_unsafe(
                     }
 
                     scm::math::vec2f t1 = scm::math::vec2f::zero();
-                    if (intersect_aabb(tree->bounding_boxes()[child_id], 
+                    if (intersect_aabb(tree->get_bounding_boxes()[child_id], 
                                       object_ray_origin, object_ray_direction, 
                                       t1)) {
                         we_do_not_intersect_either_child = false;
@@ -528,7 +528,7 @@ const bool ray::intersect_bvh(const std::set<std::string>& model_filenames,
     //iterate the models, intersect the onces that the user wants
     for (model_t model_id = 0; model_id < database->num_models(); ++model_id) {
 
-       std::string bvh_filename = database->get_model(model_id)->get_bvh()->filename();
+       std::string bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
        ray::intersection_bvh temp;
 
        if (model_filenames.find(bvh_filename) != model_filenames.end()) {
@@ -623,8 +623,8 @@ const bool ray::intersect_model_bvh(const model_t model_id,
     }
 
     const bvh* tree = database->get_model(model_id)->get_bvh();
-    unsigned int fan_factor = tree->fan_factor();
-    node_t num_nodes = tree->num_nodes();
+    unsigned int fan_factor = tree->get_fan_factor();
+    node_t num_nodes = tree->get_num_nodes();
 
     scm::math::mat4f inverse_model_transform = scm::math::inverse(model_transform);
     scm::math::vec3f object_ray_origin = inverse_model_transform * origin_;
@@ -654,15 +654,15 @@ const bool ray::intersect_model_bvh(const model_t model_id,
             }
 
             if (tree->get_visibility(node_id) == bvh::node_visibility::NODE_INVISIBLE) {
-               if (tree->get_depth_of_node(node_id) == tree->depth()) {
+               if (tree->get_depth_of_node(node_id) == tree->get_depth()) {
                   continue;
                }
             }
 
-            auto bb = tree->bounding_boxes()[node_id];
+            auto bb = tree->get_bounding_boxes()[node_id];
 
             scm::math::vec2f t = scm::math::vec2f::zero();
-            if (!intersect_aabb(tree->bounding_boxes()[node_id], 
+            if (!intersect_aabb(tree->get_bounding_boxes()[node_id], 
                                object_ray_origin, object_ray_direction,  
                                t)) {
                continue;
@@ -674,7 +674,7 @@ const bool ray::intersect_model_bvh(const model_t model_id,
             }
 
             bool hit_now = false;
-            if (tree->get_depth_of_node(node_id) == tree->depth()) {
+            if (tree->get_depth_of_node(node_id) == tree->get_depth()) {
                hit_now = true;
             }
             else {
@@ -692,8 +692,8 @@ const bool ray::intersect_model_bvh(const model_t model_id,
                   intersection.tmin_ = world_tmin;
                   intersection.tmax_ = world_tmax;
                   intersection.position_ = origin_ + direction_ * world_tmin;
-                  intersection.representative_radius_ = tree->get_average_surfel_radius(node_id);
-                  intersection.bvh_filename_ = tree->filename();
+                  intersection.representative_radius_ = tree->get_avg_primitive_extent(node_id);
+                  intersection.bvh_filename_ = tree->get_filename();
                   has_hit = true;
                }
               
@@ -842,3 +842,4 @@ pop_job() {
 }
 
 
+#endif

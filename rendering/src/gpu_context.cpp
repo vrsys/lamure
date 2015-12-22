@@ -63,9 +63,9 @@ create(scm::gl::render_device_ptr device) {
 
     model_database* database = model_database::get_instance();
 
-    temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
-    temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->surfels_per_node(), false);
-    primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->surfels_per_node(), true);
+    temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), false);
+    temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), false);
+    primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->get_primitives_per_node(), true);
 
     map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_A, device);
     map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device);
@@ -76,18 +76,17 @@ test_video_memory(scm::gl::render_device_ptr device) {
     model_database* database = model_database::get_instance();
     policy* policy = policy::get_instance();
 
-    size_t size_of_node_in_bytes = database->size_of_surfel() * database->surfels_per_node();
     size_t render_budget_in_mb = policy->render_budget_in_mb();
 
     size_t video_ram_in_mb = gpu_access::query_video_memory_in_mb(device);
     render_budget_in_mb = render_budget_in_mb < LAMURE_MIN_VIDEO_MEMORY_BUDGET ? LAMURE_MIN_VIDEO_MEMORY_BUDGET : render_budget_in_mb;
     render_budget_in_mb = render_budget_in_mb > video_ram_in_mb * 0.75 ? video_ram_in_mb * 0.75 : render_budget_in_mb;
-    render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / size_of_node_in_bytes;
+    render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / database->get_slot_size();
 
     size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
     max_upload_budget_in_mb = max_upload_budget_in_mb < LAMURE_MIN_UPLOAD_BUDGET ? LAMURE_MIN_UPLOAD_BUDGET : max_upload_budget_in_mb;
     max_upload_budget_in_mb = max_upload_budget_in_mb > video_ram_in_mb * 0.125 ? video_ram_in_mb * 0.125 : max_upload_budget_in_mb;
-    size_t max_upload_budget_in_nodes = (max_upload_budget_in_mb * 1024u * 1024u) / size_of_node_in_bytes;
+    size_t max_upload_budget_in_nodes = (max_upload_budget_in_mb * 1024u * 1024u) / database->get_slot_size();
 
     upload_budget_in_nodes_ = max_upload_budget_in_nodes;
     
@@ -162,17 +161,17 @@ get_context_buffer(scm::gl::render_device_ptr device) {
 
     assert(device);
 
-    return primary_buffer_->buffer();
+    return primary_buffer_->get_buffer();
 }
 
 scm::gl::vertex_array_ptr gpu_context::
-get_context_memory(scm::gl::render_device_ptr device) {
+get_context_memory(bvh::primitive_type type, scm::gl::render_device_ptr device) {
     if (!is_created_)
         create(device);
 
     assert(device);
 
-    return primary_buffer_->memory();
+    return primary_buffer_->get_memory(type);
 }
 
 void gpu_context::
@@ -239,8 +238,6 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
 
     model_database* database = model_database::get_instance();
 
-    size_t size_of_node_in_bytes = database->surfels_per_node() * database->size_of_surfel();
-
     cut_database* cuts = cut_database::get_instance();
 
     size_t uploaded_nodes = 0;
@@ -258,9 +255,10 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
 
                 for (const auto& transfer_desc : transfer_descr_list)
                 {
-                    size_t offset_in_temp_VBO = transfer_desc.src_ * size_of_node_in_bytes;
-                    size_t offset_in_render_VBO = transfer_desc.dst_ * size_of_node_in_bytes;
-                    device->main_context()->copy_buffer_data(primary_buffer_->buffer(), temp_buffer_a_->buffer(), offset_in_render_VBO, offset_in_temp_VBO, size_of_node_in_bytes);
+                    size_t offset_in_temp_VBO = transfer_desc.src_ * database->get_slot_size();
+                    size_t offset_in_render_VBO = transfer_desc.dst_ * database->get_slot_size();
+                    device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), 
+                        temp_buffer_a_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
                 }
             }
             break;
@@ -277,9 +275,10 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
                 uploaded_nodes += transfer_descr_list.size();
 
                 for (const auto& transfer_desc : transfer_descr_list) {
-                    size_t offset_in_temp_VBO = transfer_desc.src_ * size_of_node_in_bytes;
-                    size_t offset_in_render_VBO = transfer_desc.dst_ * size_of_node_in_bytes;
-                    device->main_context()->copy_buffer_data(primary_buffer_->buffer(), temp_buffer_b_->buffer(), offset_in_render_VBO, offset_in_temp_VBO, size_of_node_in_bytes);
+                    size_t offset_in_temp_VBO = transfer_desc.src_ * database->get_slot_size();
+                    size_t offset_in_render_VBO = transfer_desc.dst_ * database->get_slot_size();
+                    device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), 
+                        temp_buffer_b_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
                 }
             }
             break;

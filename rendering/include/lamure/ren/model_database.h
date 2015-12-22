@@ -33,13 +33,17 @@ public:
     static model_database* get_instance();
 
     const model_t       add_model(const std::string& filepath, const std::string& model_key);
-    dataset*    get_model(const model_t model_id);
+    dataset*            get_model(const model_t model_id);
     void                apply();
 
     const model_t       num_models() const { std::lock_guard<std::mutex> lock(mutex_); return num_datasets_; };
-    const size_t        size_of_surfel() const { std::lock_guard<std::mutex> lock(mutex_); return size_of_surfel_; };
-    const size_t        surfels_per_node() const { std::lock_guard<std::mutex> lock(mutex_); return surfels_per_node_; };
+    //const size_t        surfels_per_node() const { std::lock_guard<std::mutex> lock(mutex_); return primitives_per_node_; };
 
+    const size_t        get_primitive_size(const bvh::primitive_type type) const;
+    const size_t        get_node_size(const model_t model_id) const;
+
+    const size_t        get_slot_size() const;
+    const size_t        get_primitives_per_node() const;
 protected:
 
                         model_database();
@@ -53,9 +57,9 @@ private:
 
     model_t             num_datasets_;
     model_t             num_datasets_pending_;
-    size_t              surfels_per_node_;
-    size_t              surfels_per_node_pending_;
-    size_t              size_of_surfel_;
+    size_t              primitives_per_node_;
+    size_t              primitives_per_node_pending_;
+
 
 };
 

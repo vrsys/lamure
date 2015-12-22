@@ -10,6 +10,7 @@
 
 #include <lamure/types.h>
 #include <lamure/ren/config.h>
+#include <lamure/ren/bvh.h>
 
 #include <boost/assign/list_of.hpp>
 #include <memory>
@@ -36,8 +37,8 @@ public:
     const bool is_mapped() const { return is_mapped_; };
     const bool has_layout() const { return has_layout_; };
 
-    scm::gl::buffer_ptr buffer() { return buffer_; };
-    scm::gl::vertex_array_ptr memory() { return memory_; };
+    scm::gl::buffer_ptr get_buffer() { return buffer_; };
+    scm::gl::vertex_array_ptr get_memory(bvh::primitive_type type);
 
     static const size_t query_video_memory_in_mb(scm::gl::render_device_ptr const& device);
 
@@ -50,7 +51,8 @@ private:
     bool is_mapped_;
     bool has_layout_;
 
-    scm::gl::vertex_array_ptr memory_;
+    scm::gl::vertex_array_ptr pcl_memory_;
+    scm::gl::vertex_array_ptr tri_memory_;
     scm::gl::buffer_ptr buffer_;
 };
 

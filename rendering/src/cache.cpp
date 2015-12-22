@@ -19,8 +19,7 @@ cache(const slot_t num_slots)
     : num_slots_(num_slots), slot_size_(0) {
     model_database* database = model_database::get_instance();
 
-    slot_size_ = (size_t)(database->size_of_surfel() * database->surfels_per_node());
-
+    slot_size_ = database->get_slot_size();
     index_ = new cache_index(database->num_models(), num_slots_);
 }
 

@@ -345,7 +345,7 @@ get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device
 
 
 scm::gl::vertex_array_ptr controller::
-get_context_memory(const context_t context_id, scm::gl::render_device_ptr device) {
+get_context_memory(const context_t context_id, bvh::primitive_type type, scm::gl::render_device_ptr device) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 
     if (gpu_context_it == gpu_contexts_.end()) {
@@ -353,7 +353,7 @@ get_context_memory(const context_t context_id, scm::gl::render_device_ptr device
             "lamure: controller::Gpu Context not found for context: " + context_id);
     }
 
-    return gpu_context_it->second->get_context_memory(device);
+    return gpu_context_it->second->get_context_memory(type, device);
 
 }
 

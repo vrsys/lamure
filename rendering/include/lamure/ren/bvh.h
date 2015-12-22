@@ -47,42 +47,31 @@ public:
     const uint32_t      get_length_of_depth(uint32_t depth) const;
     const uint32_t      get_depth_of_node(const node_t node_id) const;
 
-    const std::string   filename() const { return filename_; }
-    
-    const uint32_t      num_nodes() const { return num_nodes_; }
-    void                set_num_nodes(const uint32_t num_nodes) { num_nodes_ = num_nodes; }
-
-    const uint32_t      fan_factor() const { return fan_factor_; }
-    void                set_fan_factor(const uint32_t fan_factor) { fan_factor_ = fan_factor; }
-
-    const uint32_t      depth() const { return depth_; }
-    void                set_depth(const uint32_t depth) { depth_ = depth; }
-
-    const uint32_t      surfels_per_node() const { return surfels_per_node_; }
-    void                set_surfels_per_node(const uint32_t surfels_per_node) { surfels_per_node_ = surfels_per_node; }
-
-    const uint32_t      size_of_surfel() const { return size_of_surfel_; }
-    void                set_size_of_surfel(const uint32_t size_of_surfel) { size_of_surfel_ = size_of_surfel; }
-
-    const vec3f         translation() const { return translation_; }
-    void                set_translation(const scm::math::vec3f& translation) { translation_ = translation; }
-
-    const std::vector<scm::gl::boxf>& bounding_boxes() const { return bounding_boxes_; }
-    const std::vector<vec3f>& centroids() const { return centroids_; };
-
-    const scm::gl::boxf& get_bounding_box(const node_t node_id) const;
-    void                set_bounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box);
-
+    const std::string   get_filename() const { return filename_; }
+    const uint32_t      get_num_nodes() const { return num_nodes_; }
+    const uint32_t      get_fan_factor() const { return fan_factor_; }
+    const uint32_t      get_depth() const { return depth_; }
+    const uint32_t      get_primitives_per_node() const { return primitives_per_node_; }
+    const uint32_t      get_size_of_primitive() const { return size_of_primitive_; }
+    const vec3f         get_translation() const { return translation_; }
+    const std::vector<scm::gl::boxf>& get_bounding_boxes() const { return bounding_boxes_; }
+    const std::vector<vec3f>& get_centroids() const { return centroids_; };
+    const scm::gl::boxf& get_bounding_box(const node_t node_id) const; 
     const scm::math::vec3f& get_centroid(const node_t node_id) const;
-    void                set_centroid(const lamure::node_t node_id, const scm::math::vec3f& centroid);
-
-    const float         get_average_surfel_radius(const node_t node_id) const;
-    void                set_average_surfel_radius(const lamure::node_t node_id, const float radius);
-
+    const float         get_avg_primitive_extent(const node_t node_id) const;
     const node_visibility get_visibility(const node_t node_id) const;
+    const primitive_type get_primitive() const { return primitive_; }
+    
+    void                set_num_nodes(const uint32_t num_nodes) { num_nodes_ = num_nodes; }
+    void                set_fan_factor(const uint32_t fan_factor) { fan_factor_ = fan_factor; }
+    void                set_depth(const uint32_t depth) { depth_ = depth; }
+    void                set_primitives_per_node(const uint32_t primitives_per_node) { primitives_per_node_ = primitives_per_node; }
+    void                set_size_of_primitive(const uint32_t size_of_primitive) { size_of_primitive_ = size_of_primitive; }
+    void                set_translation(const scm::math::vec3f& translation) { translation_ = translation; }
+    void                set_bounding_box(const node_t node_id, const scm::gl::boxf& bounding_box);
+    void                set_centroid(const node_t node_id, const scm::math::vec3f& centroid);
+    void                set_avg_primitive_extent(const node_t node_id, const float radius);
     void                set_visibility(const node_t node_id, const node_visibility visibility);
-
-    const primitive_type get_primitive() const { return primitive_; };
     void                set_primitive(const primitive_type primitive) { primitive_ = primitive; };
 
     void                write_bvh_file(const std::string& filename);
@@ -96,14 +85,14 @@ private:
     uint32_t            num_nodes_;
     uint32_t            fan_factor_;
     uint32_t            depth_;
-    uint32_t            surfels_per_node_;
-    uint32_t            size_of_surfel_;
+    uint32_t            primitives_per_node_;
+    uint32_t            size_of_primitive_;
 
     std::vector<scm::gl::boxf> bounding_boxes_;
     std::vector<vec3f>  centroids_;
     std::vector<node_visibility> visibility_;
 
-    std::vector<float>  avg_surfel_radii_;
+    std::vector<float>  avg_primitive_extent_;
     std::string         filename_;
 
     vec3f               translation_;

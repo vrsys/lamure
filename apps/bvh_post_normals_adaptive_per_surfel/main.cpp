@@ -51,7 +51,7 @@ float calc_noise(lamure::ren::bvh* bvh, surfel* data) {
   Statistic x_stat;
   Statistic y_stat;
   Statistic z_stat;
-  for (unsigned int surfel_id = 0; surfel_id < bvh->surfels_per_node(); ++surfel_id) {
+  for (unsigned int surfel_id = 0; surfel_id < bvh->get_primitives_per_node(); ++surfel_id) {
     if (data[surfel_id].size >= std::numeric_limits<float>::min()) {
       x_stat.add(data[surfel_id].nx);
       y_stat.add(data[surfel_id].ny);
@@ -75,9 +75,9 @@ void process_node(lamure::ren::bvh* bvh,
                   lamure::ren::lod_stream* in_lod_access) {
 
 
-   for (size_t splat_id = 0; splat_id < bvh->surfels_per_node(); ++splat_id) {
+   for (size_t splat_id = 0; splat_id < bvh->get_primitives_per_node(); ++splat_id) {
 
-       surfel soi = in_surfels[node_id*bvh->surfels_per_node()+splat_id];
+       surfel soi = in_surfels[node_id*bvh->get_primitives_per_node()+splat_id];
        NodeSplatId splat_of_interest = NodeSplatId(node_id, splat_id);
 
        //find initial 40 neighbours
@@ -96,7 +96,7 @@ void process_node(lamure::ren::bvh* bvh,
          std::cout << "WARNING! could not find enough initial neighbours ("
              << initial_neighbours.size() << "/" << desired_num_initial_neighbours << ")" << std::endl;
          //set to zero  
-         out_surfels[node_id*bvh->surfels_per_node() + splat_id].size = 0.0f;
+         out_surfels[node_id*bvh->get_primitives_per_node() + splat_id].size = 0.0f;
          initial_neighbours.clear();
          continue;
        }
@@ -106,7 +106,7 @@ void process_node(lamure::ren::bvh* bvh,
 #endif
 
        //estimate noise
-       float per_surfel_noise = calc_noise(bvh, (surfel*)(in_surfels + node_id * bvh->surfels_per_node())); 
+       float per_surfel_noise = calc_noise(bvh, (surfel*)(in_surfels + node_id * bvh->get_primitives_per_node())); 
  
        //compute filter size
        float normalized_noise = (per_surfel_noise - MIN_NOISE_THRESHOLD) / (MAX_NOISE_THRESHOLD - MIN_NOISE_THRESHOLD);
@@ -129,7 +129,7 @@ void process_node(lamure::ren::bvh* bvh,
          std::cout << "WARNING! could not find enough filter neighbours ("
              << filter_neighbours.size() << "/" << desired_num_filter_neighbours << ")" << std::endl;
          //set to zero  
-         out_surfels[node_id*bvh->surfels_per_node() + splat_id].size = 0.0f; 
+         out_surfels[node_id*bvh->get_primitives_per_node() + splat_id].size = 0.0f; 
          filter_neighbours.clear();
          continue;
        }
@@ -147,14 +147,14 @@ void process_node(lamure::ren::bvh* bvh,
        
        if (scm::math::length(knn_normal) >= std::numeric_limits<float>::min()) {
           knn_normal = scm::math::normalize(knn_normal);
-          out_surfels[node_id*bvh->surfels_per_node() + splat_id].nx = knn_normal.x;
-          out_surfels[node_id*bvh->surfels_per_node() + splat_id].ny = knn_normal.y;
-          out_surfels[node_id*bvh->surfels_per_node() + splat_id].nz = knn_normal.z;
+          out_surfels[node_id*bvh->get_primitives_per_node() + splat_id].nx = knn_normal.x;
+          out_surfels[node_id*bvh->get_primitives_per_node() + splat_id].ny = knn_normal.y;
+          out_surfels[node_id*bvh->get_primitives_per_node() + splat_id].nz = knn_normal.z;
        }
        else {
           std::cout << "WARNING! zero-length normal encountered" << std::endl;
           //set to zero  
-          out_surfels[node_id*bvh->surfels_per_node() + splat_id].size = 0.0f; 
+          out_surfels[node_id*bvh->get_primitives_per_node() + splat_id].size = 0.0f; 
           filter_neighbours.clear();
           continue; 
        }
@@ -166,17 +166,17 @@ unsigned process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_acc
     lamure::ren::lod_stream* out_lod_access, std::vector<lamure::node_t> wishlist) {
 
 
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    size_t node_size_in_bytes = bvh->get_primitives_per_node() * sizeof(surfel);
     surfel* in_surfels;
     
     //read all nodes
-    in_surfels = new surfel[bvh->num_nodes() * bvh->surfels_per_node()];
-    in_lod_access->read((char*)in_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
+    in_surfels = new surfel[bvh->get_num_nodes() * bvh->get_primitives_per_node()];
+    in_lod_access->read((char*)in_surfels, 0, bvh->get_num_nodes() * node_size_in_bytes);
 
 
-    surfel* out_surfels = new surfel[bvh->num_nodes() * bvh->surfels_per_node()];
+    surfel* out_surfels = new surfel[bvh->get_num_nodes() * bvh->get_primitives_per_node()];
     memcpy((unsigned char*)out_surfels, (unsigned char*)in_surfels, 
-           bvh->num_nodes() * bvh->surfels_per_node() * sizeof(surfel));
+           bvh->get_num_nodes() * bvh->get_primitives_per_node() * sizeof(surfel));
   
     unsigned int num_nodes_done = 0; 
     unsigned int num_nodes_todo = wishlist.size();
@@ -251,7 +251,7 @@ unsigned process_tree(lamure::ren::bvh* bvh, lamure::ren::lod_stream* in_lod_acc
     }
 
     //write to disk
-    out_lod_access->write((char*)out_surfels, 0, bvh->num_nodes() * node_size_in_bytes);
+    out_lod_access->write((char*)out_surfels, 0, bvh->get_num_nodes() * node_size_in_bytes);
 
     delete[] in_surfels;
     delete[] out_surfels;
@@ -325,13 +325,13 @@ int main(int argc, char *argv[]) {
     out_lod_access->open_for_writing(output_lod_file);
 #endif
 
-    std::cout << "tree has " << bvh->num_nodes() << " nodes" << std::endl;
+    std::cout << "tree has " << bvh->get_num_nodes() << " nodes" << std::endl;
     
-    size_t node_size_in_bytes = bvh->surfels_per_node() * sizeof(surfel);
+    size_t node_size_in_bytes = bvh->get_primitives_per_node() * sizeof(surfel);
 
     //fill wishlist (entire tree)	    
     std::vector<lamure::node_t> wishlist;
-    for (lamure::node_t node_id = 0; node_id < bvh->num_nodes(); ++node_id) {
+    for (lamure::node_t node_id = 0; node_id < bvh->get_num_nodes(); ++node_id) {
        wishlist.push_back(node_id);
     }
 
@@ -350,7 +350,7 @@ int main(int argc, char *argv[]) {
     logfile.open(output_log_file.c_str());
     
     logfile << "input file: " << input_bvh_file << std::endl; 
-    logfile << "nodes procesed: " << node_processed << " from " << bvh->num_nodes() << std::endl;
+    logfile << "nodes procesed: " << node_processed << " from " << bvh->get_num_nodes() << std::endl;
     logfile << "duration in seconds: " << std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() << std::endl;
     logfile << "parameters: " << std::endl;
     logfile << "MIN_NOISE_THRESHOLD: " << MIN_NOISE_THRESHOLD << std::endl;
