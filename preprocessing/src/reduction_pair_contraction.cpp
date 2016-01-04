@@ -8,10 +8,15 @@
 #include <lamure/pre/reduction_pair_contraction.h>
 #include <lamure/pre/surfel.h>
 #include <set>
+#include <functional>
 
 namespace lamure {
-namespace pre {
 
+bool operator==(const surfel_id_t& a, const surfel_id_t& b) {
+  return a.node_idx == b.node_idx && a.surfel_idx == b.surfel_idx;
+}
+
+namespace pre {
 struct edge
 {
   edge(surfel_id_t p1, surfel_id_t p2) 
@@ -23,20 +28,38 @@ struct edge
    //  return 
    // }
 
+
   surfel_id_t a;
   surfel_id_t b;
 };
 
-// namespace std {
-//   template <>
-//   struct hash<edge>
-//   {
-//     size_t operator()(edge const & e) const noexcept
-//     {
-//       return (e.a. * 100000 + e.b);
-//     }
-//   };
-// }
+bool operator==(const edge& e1, const edge& e2) {
+  if(e1.a == e2.a)   {
+    return e1.b == e2.b;
+  }
+  return false;
+}
+}
+}
+
+const size_t num_surfels_per_node = 3000;
+const size_t num_nodes_per_level = 14348907;
+namespace std {
+template <> struct hash<lamure::pre::edge>
+{
+  size_t operator()(lamure::pre::edge const & e) const noexcept
+  {
+    uint16_t h1 = e.a.node_idx * num_surfels_per_node + e.a.surfel_idx;  
+    uint16_t h2 = e.b.node_idx * num_surfels_per_node + e.b.surfel_idx;  
+    size_t hash = h1;
+    hash += h2 >> 16;
+    return hash;
+  }
+};
+}
+namespace lamure {
+namespace pre {
+
 
 size_t num_neighbours = 20;
 
@@ -58,7 +81,7 @@ create_lod(bvh* tree,
 
   std::vector<mat4r> quadrics{num_points};
   std::vector<std::vector<size_t>> neighbours{num_points, std::vector<size_t>{num_neighbours}};
-  // std::unordered_set<edge> edges{};
+  std::unordered_set<edge> edges{};
 
   size_t offset = 0;
   for (node_id_type node_idx = 0; node_idx < fan_factor; ++node_idx) {
@@ -71,9 +94,9 @@ create_lod(bvh* tree,
 
       for (auto const& neighbour : nearest_neighbours) {
         edge curr_edge = edge(curr_id, neighbour.first); 
-        // if (edges.find(curr_edge) == edges.end()) {
-        //   edges.insert(curr_edge);
-        // }
+        if (edges.find(curr_edge) == edges.end()) {
+          edges.insert(curr_edge);
+        }
       }
     }
     offset += input[node_idx]->length();
