@@ -914,33 +914,37 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         size_t counter = 0;
         uint16_t percentage = 0;
     
+
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
         #pragma omp parallel for
-        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
-        {
+        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
             bvh_node* current_node = &nodes_.at(node_index);
-        
-            // If a node has no data yet, calculate it based on child nodes.
-            if (!current_node->is_in_core() && !current_node->is_out_of_core())
-            {
-                std::vector<surfel_mem_array*> child_mem_arrays;
-                for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
-                {
-                    size_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                    bvh_node* child_node = &nodes_.at(child_id);
-
-                    child_mem_arrays.push_back(&child_node->mem_array());
-                }
             
-                real reduction_error;
-                surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, max_surfels_per_node_);
-                
-                current_node->reset(reduction);
-                current_node->set_reduction_error(reduction_error);
+            if(level != depth_) {
+                // If a node has no data yet, calculate it based on child nodes.
+                if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
+
+                    std::vector<surfel_mem_array*> child_mem_arrays;
+                    for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                        size_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                        bvh_node* child_node = &nodes_.at(child_id);
+
+                        child_mem_arrays.push_back(&child_node->mem_array());
+                    }
+                    
+                    real reduction_error;
+
+                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, max_surfels_per_node_);
+                        
+                    current_node->reset(reduction);
+                    current_node->set_reduction_error(reduction_error);
+                }
             }
+            current_node->calculate_statistics();
         }
 
+        
         // skip the leaf level attribute computation if it was not requested or necessary
         if(level == depth_ && !recompute_leaf_level) {
             continue;
@@ -951,35 +955,36 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         {   
             bvh_node* current_node = &nodes_.at(node_index);
 
-            // Calculate and set node properties.
-            compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
-            basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
-            
-            bounding_box node_bounding_box;
-            node_bounding_box.expand(props.bbox);
 
-            if (level < depth_)
-            {
-                for (int child_index = 0; child_index < fan_factor_; ++child_index)
-                {
-                    uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                    bvh_node* child_node = &nodes_.at(child_id);
+                // Calculate and set node properties.
+                compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+                basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
 
-                    node_bounding_box.expand(child_node->get_bounding_box());
+
+                bounding_box node_bounding_box;
+                node_bounding_box.expand(props.bbox);
+
+                if (level < depth_) {
+                    for (int child_index = 0; child_index < fan_factor_; ++child_index)
+                    {
+                        uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                        bvh_node* child_node = &nodes_.at(child_id);
+
+                        node_bounding_box.expand(child_node->get_bounding_box());
+                    }
                 }
-            }
 
-            current_node->set_avg_surfel_radius(props.rep_radius);
-            current_node->set_centroid(props.centroid);
-            current_node->set_bounding_box(node_bounding_box);
+                current_node->set_avg_surfel_radius(props.rep_radius);
+                current_node->set_centroid(props.centroid);
+                current_node->set_bounding_box(node_bounding_box);
 
-            ++counter;
-            uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
-            if (percentage + 1 == new_percentage)
-            {
-                percentage = new_percentage;
-                std::cout << "\r" << percentage << "% processed" << std::flush;
-            }
+                ++counter;
+                uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
+                if (percentage + 1 == new_percentage)
+                {
+                    percentage = new_percentage;
+                    std::cout << "\r" << percentage << "% processed" << std::flush;
+                }
         }
         std::cout << std::endl;
     }

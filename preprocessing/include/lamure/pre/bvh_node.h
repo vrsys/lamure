@@ -14,6 +14,7 @@
 
 #include <lamure/pre/surfel_mem_array.h>
 #include <lamure/pre/surfel_disk_array.h>
+#include <lamure/pre/node_statistics.h>
 
 #include <typeinfo>
 #include <iostream>
@@ -86,6 +87,8 @@ public:
     const node_visibility visibility() const { return visibility_; }
     void                set_visibility(const node_visibility visibility)
                             { visibility_ = visibility; }
+
+    void calculate_statistics();
 
     surfel_mem_array&     mem_array() { return mem_array_; }
     const surfel_mem_array&
@@ -169,6 +172,8 @@ private:
 
     surfel_mem_array     mem_array_;
     surfel_disk_array    disk_array_;
+
+    node_statistics      node_stats_;
 };
 
 } } // namespace lamure
