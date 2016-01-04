@@ -21,7 +21,7 @@ namespace pre {
 class bvh;
 
  struct entropy_surfel{
-	surfel* current_surfel;
+	std::shared_ptr<surfel> current_surfel;
 	uint32_t surfel_id;
 	uint32_t node_id;
 	std::vector<entropy_surfel*> neighbours;
@@ -94,15 +94,15 @@ private:
 	get_locally_overlapping_neighbours(entropy_surfel const& target_entropy_surfel,
                                    std::vector<entropy_surfel>& entropy_surfel_array) const;
 
-	vec3r compute_center_of_mass(surfel* current_surfel, std::vector<entropy_surfel*>& neighbour_ptrs) const;
-	real compute_enclosing_sphere_radius(vec3r const& center_of_mass, surfel* current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
+	vec3r compute_center_of_mass(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*>& neighbour_ptrs) const;
+	real compute_enclosing_sphere_radius(vec3r const& center_of_mass, std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
 
 	uint16_t update_level(uint16_t level) const {return level+1;}
 	float compute_entropy(entropy_surfel* current_en_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
 	//vec3r average_position(std::vector<neighbour_distance_t> const& neighbours) const;
-	vec3f average_normal(surfel* current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
+	vec3f average_normal(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
 
-	vec3b average_color(surfel* current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
+	vec3b average_color(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
 	//real average_radius(std::vector<neighbour_distance_t> const& neighbours) const;
 
 	/*std::vector<std::pair<surfel_id_t, real>>
