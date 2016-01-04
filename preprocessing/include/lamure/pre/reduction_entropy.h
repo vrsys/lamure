@@ -21,13 +21,28 @@ namespace pre {
 class bvh;
 
  struct entropy_surfel{
-	std::shared_ptr<surfel> current_surfel;
 	uint32_t surfel_id;
 	uint32_t node_id;
-	std::vector<entropy_surfel*> neighbours;
 	bool validity;
-	uint16_t level;
 	float entropy;
+	uint16_t level;
+	std::vector<entropy_surfel*> neighbours;
+	std::shared_ptr<surfel> contained_surfel;
+
+	entropy_surfel(surfel const&  in_surfel, 
+				   uint32_t const in_surfel_id, 
+				   uint32_t const in_node_id,
+				   bool in_validity = true,
+				   float in_entropy = 0.0) : 
+												surfel_id(in_surfel_id),
+												node_id(in_node_id),
+												validity(in_validity),
+												entropy(in_entropy),
+												level(0),
+												neighbours(std::vector<entropy_surfel*>())
+												 {
+		contained_surfel = std::make_shared<surfel>(in_surfel);
+	}
 };
 
 struct min_entropy_order{
