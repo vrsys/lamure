@@ -9,6 +9,8 @@
 #include <lamure/pre/surfel.h>
 #include <set>
 #include <functional>
+#include <queue>
+#include <map>
 
 namespace lamure {
 
@@ -16,15 +18,27 @@ bool operator==(const surfel_id_t& a, const surfel_id_t& b) {
   return a.node_idx == b.node_idx && a.surfel_idx == b.surfel_idx;
 }
 
+bool operator<(const surfel_id_t& a, const surfel_id_t& b) {
+  if(a.node_idx < b.node_idx) {
+    return true;
+  }
+  else {
+    if(a.node_idx == b.node_idx) {
+      return a.surfel_idx < b.surfel_idx;
+    }
+    else return false;
+  }
+}
+
 namespace pre {
-struct edge
+struct edge_t
 {
-  edge(surfel_id_t p1, surfel_id_t p2) 
+  edge_t(surfel_id_t p1, surfel_id_t p2) 
    :a{p1.surfel_idx < p2.surfel_idx ? p1 : p2}
    ,b{p1.surfel_idx >= p2.surfel_idx ? p1 : p2}
    {};
 
-   // operator<(const edge& e) const {
+   // operator<(const edge_t& e) const {
    //  return 
    // }
 
@@ -33,11 +47,29 @@ struct edge
   surfel_id_t b;
 };
 
-bool operator==(const edge& e1, const edge& e2) {
+bool operator==(const edge_t& e1, const edge_t& e2) {
   if(e1.a == e2.a)   {
     return e1.b == e2.b;
   }
   return false;
+}
+
+struct contraction {
+  contraction(edge_t e, mat4r quad, real err, surfel surf)
+   :edge{e}
+   ,quadric{quad}
+   ,error{err}
+   ,new_surfel{surf}
+  {}
+
+  edge_t edge;
+  mat4r quadric;
+  real error;
+  surfel new_surfel;
+};
+
+bool operator<(const contraction& c1, const contraction& c2) {
+  return c1.error < c2.error;
 }
 }
 }
@@ -45,9 +77,9 @@ bool operator==(const edge& e1, const edge& e2) {
 const size_t num_surfels_per_node = 3000;
 const size_t num_nodes_per_level = 14348907;
 namespace std {
-template <> struct hash<lamure::pre::edge>
+template <> struct hash<lamure::pre::edge_t>
 {
-  size_t operator()(lamure::pre::edge const & e) const noexcept
+  size_t operator()(lamure::pre::edge_t const & e) const noexcept
   {
     uint16_t h1 = e.a.node_idx * num_surfels_per_node + e.a.surfel_idx;  
     uint16_t h2 = e.b.node_idx * num_surfels_per_node + e.b.surfel_idx;  
@@ -69,38 +101,88 @@ create_lod(bvh* tree,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node) const
 {
-  surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+  std::list<surfel> output_surfels{};
 
   const uint32_t fan_factor = input.size();
   size_t num_points = 0;
-
+  size_t min_num_surfels = input[0]->length(); 
   //compute max total number of surfels from all nodes
-  for ( size_t node_idx = 0; node_idx < fan_factor; ++node_idx) {
+  for (size_t node_idx = 0; node_idx < fan_factor; ++node_idx) {
     num_points += input[node_idx]->length();
+
+    if (input[node_idx]->length() < min_num_surfels) {
+      min_num_surfels = input[node_idx]->length();
+    }
   }
 
-  std::vector<mat4r> quadrics{num_points};
-  std::vector<std::vector<size_t>> neighbours{num_points, std::vector<size_t>{num_neighbours}};
-  std::unordered_set<edge> edges{};
+  std::map<surfel_id_t, mat4r> quadrics{};
+  std::map<surfel_id_t, std::vector<surfel_id_t>> neighbours{};
+  std::unordered_set<edge_t> edges{};
 
+  // accumulate edges and point quadrics
   size_t offset = 0;
   for (node_id_type node_idx = 0; node_idx < fan_factor; ++node_idx) {
     for (size_t surfel_idx = 0; surfel_idx < input[node_idx]->length(); ++surfel_idx) {
       
-      surfel curr_surfel = tree->nodes()[node_idx].mem_array().read_surfel(surfel_idx);
+      surfel curr_surfel = input[node_idx]->read_surfel(surfel_idx);
       surfel_id_t curr_id = surfel_id_t{node_idx, surfel_idx};
+      assert(node_idx < num_nodes_per_level && surfel_idx < num_surfels_per_node);
+      // get and store neighbours
+      auto nearest_neighbours = get_local_nearest_neighbours(input, num_neighbours, curr_id);
+      std::vector<surfel_id_t> neighbour_ids{};
+      for(size_t i = 0; i < nearest_neighbours.size(); ++i) {
+        const auto& pair = nearest_neighbours[i];
+        neighbour_ids.push_back(pair.first);
+      }
+      neighbours[curr_id] = neighbour_ids;
 
-      auto nearest_neighbours = tree->get_nearest_neighbours(curr_id, num_neighbours);
-
+      mat4r curr_quadric = mat4r::zero();
       for (auto const& neighbour : nearest_neighbours) {
-        edge curr_edge = edge(curr_id, neighbour.first); 
+        // store edge
+        edge_t curr_edge = edge_t(curr_id, neighbour.first); 
         if (edges.find(curr_edge) == edges.end()) {
+          assert(neighbour.first.node_idx < num_nodes_per_level && neighbour.first.surfel_idx <num_surfels_per_node);
           edges.insert(curr_edge);
         }
+        // accumulate quadric
+        surfel neighbour_surfel = input[neighbour.first.node_idx]->read_surfel(neighbour.first.surfel_idx);
+        curr_quadric += edge_quadric(curr_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
       }
+      quadrics[curr_id] = curr_quadric;
     }
     offset += input[node_idx]->length();
   }
+
+  // fill queue with collapses
+  std::priority_queue<contraction> contractions{};
+  for(const auto& edge : edges) {
+    surfel surfel1 = input[edge.a.node_idx]->read_surfel(edge.a.surfel_idx);
+    surfel surfel2 = input[edge.b.node_idx]->read_surfel(edge.b.surfel_idx);
+    // new surfel is mean of both old surfels
+    surfel new_surfel = surfel{(surfel1.pos() + surfel2.pos()) * 0.5f,
+                          (surfel1.color() + surfel2.color()) * 0.5f,
+                          (surfel1.radius() + surfel2.radius()) * 0.5f,
+                          (surfel1.normal() + surfel2.normal()) * 0.5f
+                          };
+    mat4r new_quadric = quadrics.at(edge.a) + quadrics.at(edge.b);
+    real error = quadric_error(new_surfel.pos(), new_quadric);
+
+    contractions.push(contraction{edge, new_quadric, error, new_surfel});
+  }
+
+  // work off queue until target num of surfels is reached
+  size_t new_num_points = num_points;
+  while(new_num_points > min_num_surfels) {
+    // get next contraction
+    contraction curr_contraction = contractions.top();
+    contractions.pop();
+
+    // save new surfel
+
+    // update connected edges/contractions
+  }
+  
+  surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
   mem_array.set_length(mem_array.mem_data()->size());
 
@@ -110,10 +192,10 @@ create_lod(bvh* tree,
 }
 
 
-lamure::mat4r edge_quadric(const vec3r& normal_p1, const vec3r& p1, const vec3r& p2)
+lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3r& p1, const vec3r& p2)
 {
     vec3r edge_dir = normalize(p2 - p1);
-    vec3r tangent = normalize(cross(normal_p1, edge_dir));
+    vec3r tangent = normalize(cross(vec3r(normal_p1), edge_dir));
 
     vec3r normal = normalize(cross(tangent, edge_dir));
     vec4r hessian = vec4r{normal, dot(p1, normal)}; 
@@ -126,10 +208,51 @@ lamure::mat4r edge_quadric(const vec3r& normal_p1, const vec3r& p1, const vec3r&
     return quadric;
 }
 
-lamure::real error(const vec3r& p, const mat4r& quadric)
+lamure::real quadric_error(const vec3r& p, const mat4r& quadric)
 {
   vec4r p_transformed = quadric * p;
   return dot(p, vec3r{p_transformed} / p_transformed.w);
+}
+
+// get k nearest neighbours in simplification nodes
+std::vector<std::pair<surfel_id_t, real>> 
+get_local_nearest_neighbours(const std::vector<surfel_mem_array*>& input,
+                             size_t num_local_neighbours,
+                             surfel_id_t const& target_surfel) {
+
+    //size_t current_node = target_surfel.node_idx;
+    vec3r center = input[target_surfel.node_idx]->read_surfel(target_surfel.surfel_idx).pos();
+
+    std::vector<std::pair<surfel_id_t, real>> candidates;
+    real max_candidate_distance = std::numeric_limits<real>::infinity();
+
+    for (size_t local_node_id = 0; local_node_id < input.size(); ++local_node_id) {
+        for (size_t surfel_id = 0; surfel_id < input[local_node_id]->length(); ++surfel_id) {
+            if (surfel_id != target_surfel.surfel_idx) {
+                const surfel& current_surfel = input[local_node_id]->read_surfel(surfel_id);
+                real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
+
+                if (candidates.size() < num_local_neighbours || (distance_to_center < max_candidate_distance)) {
+                    if (candidates.size() == num_local_neighbours)
+                        candidates.pop_back();
+
+                    candidates.push_back(std::make_pair(surfel_id_t(local_node_id, surfel_id), distance_to_center));
+
+                    for (uint16_t k = candidates.size() - 1; k > 0; --k) {
+                        if (candidates[k].second < candidates[k - 1].second) {
+                            std::swap(candidates[k], candidates[k - 1]);
+                        }
+                        else
+                            break;
+                    }
+
+                    max_candidate_distance = candidates.back().second;
+                }
+            }
+        }
+    }
+
+    return candidates;
 }
 
 } // namespace pre

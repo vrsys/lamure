@@ -27,7 +27,17 @@ public:
                                   real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node) const;
+
+
 };
+
+lamure::real quadric_error(const vec3r& p, const mat4r& quadric);
+mat4r edge_quadric(const vec3f& normal_p1, const vec3r& p1, const vec3r& p2);
+
+std::vector<std::pair<surfel_id_t, real>>
+get_local_nearest_neighbours(const std::vector<surfel_mem_array*>& input,
+                             size_t num_local_neighbours,
+                             surfel_id_t const& target_surfel);
 
 } // namespace pre
 } // namespace lamure
