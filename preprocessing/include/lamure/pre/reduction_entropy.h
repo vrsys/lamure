@@ -99,17 +99,9 @@ private:
 
 	uint16_t update_level(uint16_t level) const {return level+1;}
 	float compute_entropy(entropy_surfel* current_en_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
-	//vec3r average_position(std::vector<neighbour_distance_t> const& neighbours) const;
+
 	vec3f average_normal(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
-
 	vec3b average_color(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const;
-	//real average_radius(std::vector<neighbour_distance_t> const& neighbours) const;
-
-	/*std::vector<std::pair<surfel_id_t, real>>
-	get_local_nearest_neighbours (const std::vector<surfel_mem_array*>& input,
-                             	  size_t num_local_neighbours,
-                             	  surfel_id_t const& target_surfel) const;
-	*/
 
     bool
 	merge(entropy_surfel* current_entropy_surfel,
