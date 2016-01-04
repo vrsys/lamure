@@ -12,21 +12,11 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	using namespace lamure;
 	using namespace pre;
 
-	entropy_surfel* invalid_entropy_surfel 
-		= new entropy_surfel;
-
 	entropy_surfel* valid_entropy_surfel 
-		= new entropy_surfel;
+		= new entropy_surfel(surfel(), 2, 5, true);
 
-	valid_entropy_surfel->validity = true;
-	valid_entropy_surfel->node_id = 5;
-	valid_entropy_surfel->surfel_id = 2;
-	valid_entropy_surfel->entropy = 0;
-
-	invalid_entropy_surfel->validity = false;
-	invalid_entropy_surfel->node_id = 4;
-	invalid_entropy_surfel->surfel_id = 7;
-	invalid_entropy_surfel->entropy = 0;
+	entropy_surfel* invalid_entropy_surfel 
+		= new entropy_surfel(surfel(), 7, 4, false);
 
 	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
 
@@ -94,21 +84,12 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	using namespace lamure;
 	using namespace pre;
 
-	entropy_surfel* high_entropy_surfel
-		= new entropy_surfel;
 
-	entropy_surfel* low_entropy_surfel 
-		= new entropy_surfel;
+	entropy_surfel* high_entropy_surfel 
+		= new entropy_surfel(surfel(), 2,5, true, 9123.2143);
 
-	low_entropy_surfel->validity = true;
-	low_entropy_surfel->node_id = 4;
-	low_entropy_surfel->surfel_id = 7;
-	low_entropy_surfel->entropy = 2.118;
-
-	high_entropy_surfel->validity = true;
-	high_entropy_surfel->node_id = 5;
-	high_entropy_surfel->surfel_id = 2;
-	high_entropy_surfel->entropy = 9123.2143;
+	entropy_surfel* low_entropy_surfel
+		= new entropy_surfel(surfel(), 7,4, true, 2.118);
 
 	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
 
@@ -189,21 +170,21 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	using namespace pre;
 
 	entropy_surfel* valid_high_entropy_surfel
-		= new entropy_surfel;
+		= new entropy_surfel(surfel(), 2,5, true, 9123.2143);
 
 	entropy_surfel* invalid_low_entropy_surfel 
-		= new entropy_surfel;
-
-	invalid_low_entropy_surfel->validity = false;
-	invalid_low_entropy_surfel->node_id = 4;
-	invalid_low_entropy_surfel->surfel_id = 7;
-	invalid_low_entropy_surfel->entropy = 2.118;
-
+		= new entropy_surfel(surfel(), 7,4, false, 2.118);
+/*
 	valid_high_entropy_surfel->validity = true;
 	valid_high_entropy_surfel->node_id = 5;
 	valid_high_entropy_surfel->surfel_id = 2;
 	valid_high_entropy_surfel->entropy = 9123.2143;
 
+	invalid_low_entropy_surfel->validity = false;
+	invalid_low_entropy_surfel->node_id = 4;
+	invalid_low_entropy_surfel->surfel_id = 7;
+	invalid_low_entropy_surfel->entropy = 2.118;
+*/
 	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
 
 	entropy_surfel_ptr_vector.push_back(valid_high_entropy_surfel);
