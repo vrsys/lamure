@@ -21,7 +21,7 @@ namespace pre {
 std::vector<entropy_surfel*> const reduction_entropy::
 get_locally_overlapping_neighbours(entropy_surfel const& target_entropy_surfel,
                                    std::vector<entropy_surfel>& entropy_surfel_array) const {
-    surfel* target_surfel = target_entropy_surfel.current_surfel; 
+    std::shared_ptr<surfel> target_surfel = target_entropy_surfel.current_surfel; 
     real target_surfel_radius = target_surfel->radius();
 
     std::vector<entropy_surfel*> overlapping_neighbour_ptrs;
@@ -32,7 +32,7 @@ get_locally_overlapping_neighbours(entropy_surfel const& target_entropy_surfel,
         if (target_entropy_surfel.surfel_id != array_entr_surfel.surfel_id || 
 	    target_entropy_surfel.node_id   != array_entr_surfel.node_id) {
 
-	    surfel* current_surfel = array_entr_surfel.current_surfel;
+	    std::shared_ptr<surfel> current_surfel = array_entr_surfel.current_surfel;
             real distance_to_target_surfel = scm::math::length(target_surfel->pos() - current_surfel->pos());
                 
             real neighbour_radius = current_surfel->radius();
@@ -50,7 +50,7 @@ get_locally_overlapping_neighbours(entropy_surfel const& target_entropy_surfel,
 
 // to verify: the center of mass is the point that allows for the minimal enclosing sphere
 vec3r reduction_entropy::
-compute_center_of_mass(surfel* current_surfel, std::vector<entropy_surfel*>& neighbour_ptrs) const {
+compute_center_of_mass(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*>& neighbour_ptrs) const {
 
     //volume of a sphere (4/3) * pi * r^3
     real current_surfel_radius = current_surfel->radius();
@@ -62,7 +62,7 @@ compute_center_of_mass(surfel* current_surfel, std::vector<entropy_surfel*>& nei
     //center of mass equation: c_o_m = ( sum_of( m_i*x_i) ) / ( sum_of(m_i) )
     for (auto curr_neighbour_ptr : neighbour_ptrs) {
 
-	surfel* current_neighbour_surfel = curr_neighbour_ptr->current_surfel;
+	std::shared_ptr<surfel> current_neighbour_surfel = curr_neighbour_ptr->current_surfel;
 
         real neighbour_radius = current_neighbour_surfel->radius();
 
@@ -78,7 +78,7 @@ compute_center_of_mass(surfel* current_surfel, std::vector<entropy_surfel*>& nei
 }
 
 real reduction_entropy::
-compute_enclosing_sphere_radius(vec3r const& center_of_mass, surfel* current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const {
+compute_enclosing_sphere_radius(vec3r const& center_of_mass, std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const {
 
     real enclosing_radius = 0.0;
 
@@ -86,7 +86,7 @@ compute_enclosing_sphere_radius(vec3r const& center_of_mass, surfel* current_sur
 
     for (auto const curr_neighbour_ptr : neighbour_ptrs) {
 
-	surfel* current_neighbour_surfel = curr_neighbour_ptr->current_surfel;
+	std::shared_ptr<surfel> current_neighbour_surfel = curr_neighbour_ptr->current_surfel;
         real neighbour_enclosing_radius = scm::math::length(center_of_mass - current_neighbour_surfel->pos()) + current_neighbour_surfel->radius();
         
         if(neighbour_enclosing_radius > enclosing_radius) {
@@ -105,7 +105,7 @@ compute_entropy(entropy_surfel* current_en_surfel, std::vector<entropy_surfel*> 
     vec3b const& current_color = current_en_surfel->current_surfel->color();
 
     for(auto const curr_neighbour_ptr : neighbour_ptrs){
-	   surfel* current_neighbour_surfel = curr_neighbour_ptr->current_surfel;
+	   std::shared_ptr<surfel> current_neighbour_surfel = curr_neighbour_ptr->current_surfel;
 
         vec3f neighbour_normal = current_neighbour_surfel->normal();  
 
@@ -125,7 +125,7 @@ compute_entropy(entropy_surfel* current_en_surfel, std::vector<entropy_surfel*> 
 }
 
 vec3b reduction_entropy::
-average_color(surfel* current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const{
+average_color(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const{
 
     vec3r accumulated_color(0.0, 0.0, 0.0);
     double accumulated_weight = 0.0;
@@ -147,7 +147,7 @@ average_color(surfel* current_surfel, std::vector<entropy_surfel*> const& neighb
 }
 
 vec3f reduction_entropy::
-average_normal(surfel* current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const{
+average_normal(std::shared_ptr<surfel> current_surfel, std::vector<entropy_surfel*> const& neighbour_ptrs) const{
     vec3f new_normal(0.0, 0.0, 0.0);
 
     real weight_sum = 0.f;
@@ -156,7 +156,7 @@ average_normal(surfel* current_surfel, std::vector<entropy_surfel*> const& neigh
     weight_sum = 1.0;   
 
     for(auto const neighbour_ptr : neighbour_ptrs){
-	surfel* current_surfel = neighbour_ptr->current_surfel;
+	std::shared_ptr<surfel> current_surfel = neighbour_ptr->current_surfel;
 
         real weight = 1.0; //surfel.radius();
         weight_sum += weight;
@@ -290,7 +290,7 @@ merge(entropy_surfel* current_entropy_surfel,
     //recompute values for merged surfel
     current_entropy_surfel->level += 1;
 
-    surfel* current_surfel = current_entropy_surfel->current_surfel;
+    std::shared_ptr<surfel> current_surfel = current_entropy_surfel->current_surfel;
     //current_entropy_surfel.current_surfel->pos() = average_position(current_entropy_surfel.neighbours);
 
     vec3r center_of_neighbour_masses = compute_center_of_mass(current_surfel, invalidated_neighbours);
@@ -340,7 +340,8 @@ create_lod(real& reduction_error,
             
             //assign default attributes
             entropy_surfel current_entropy_surfel;
-            current_entropy_surfel.current_surfel = &current_surfel;
+
+            current_entropy_surfel.current_surfel = std::make_shared<surfel>(current_surfel);
             current_entropy_surfel.surfel_id = surfel_id;
             current_entropy_surfel.node_id   = node_id;
             current_entropy_surfel.validity = true;
