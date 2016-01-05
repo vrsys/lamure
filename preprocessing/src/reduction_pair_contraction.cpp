@@ -11,6 +11,7 @@
 #include <functional>
 #include <queue>
 #include <map>
+#include <unordered_map>
 
 namespace lamure {
 
@@ -175,9 +176,9 @@ create_lod(bvh* tree,
     offset += input[node_idx]->length();
   }
 
-  auto create_contraction = [&input, &quadrics](const edge_t& edge)->contraction {
-    surfel surfel1 = input[edge.a.node_idx]->read_surfel(edge.a.surfel_idx);
-    surfel surfel2 = input[edge.b.node_idx]->read_surfel(edge.b.surfel_idx);
+  auto create_contraction = [&surfels, &quadrics](const edge_t& edge)->contraction {
+    surfel surfel1 = surfels[edge.a.node_idx][edge.a.surfel_idx];
+    surfel surfel2 = surfels[edge.b.node_idx][edge.b.surfel_idx];
     // new surfel is mean of both old surfels
     surfel new_surfel = surfel{(surfel1.pos() + surfel2.pos()) * 0.5f,
                           (surfel1.color() + surfel2.color()) * 0.5f,
@@ -189,41 +190,59 @@ create_lod(bvh* tree,
     return contraction{edge, new_quadric, error, new_surfel};
   };
 
-  // store contractions and queue
-  std::vector<std::shared_ptr<contraction>> contractions{};
+  // store contractions and operations in queue
+  std::unordered_map<edge_t, std::shared_ptr<contraction>> contractions{};
   std::vector<std::shared_ptr<contraction_op>> contraction_queue{};
   for(const auto& edge : edges) {
-    contractions.push_back(std::make_shared<contraction>(create_contraction(edge)));
+    contractions[edge] = std::make_shared<contraction>(create_contraction(edge));
     
-    contraction_op op{std::addressof(*contractions.back())};
+    contraction_op op{std::addressof(*contractions.at(edge))};
     contraction_queue.push_back(std::make_shared<contraction_op>(op));  
 
-    contractions.back()->cont_op = std::addressof(*contraction_queue.back());  
+    contractions.at(edge)->cont_op = std::addressof(*contraction_queue.back());  
   }
 
-  // std::list<
   // work off queue until target num of surfels is reached
   size_t new_num_points = num_points;
   while(new_num_points > min_num_surfels) {
     // get next contraction
     contraction curr_contraction = *(contraction_queue.back()->cont);
-    // contractions.pop();
-
+    const edge_t& curr_edge = curr_contraction.edge;
     // save new surfel
+    surfel_id_t new_id = surfel_id_t{fan_factor + 1, surfels[fan_factor + 1].size()};
     const surfel& new_surfel = curr_contraction.new_surfel;
-    size_t idx = surfels[fan_factor + 1].size();
-    surfels[fan_factor + 1].push_back(new_surfel);
+    surfels[new_id.node_idx].push_back(new_surfel);
+    
+    // delete old point quadrics
+    quadrics.erase(curr_contraction.edge.a);
+    quadrics.erase(curr_contraction.edge.b);
+    // add new point quadric
+    quadrics[new_id] = curr_contraction.quadric;
     
     // invalidate old surfels
     surfels[curr_contraction.edge.a.node_idx][curr_contraction.edge.a.surfel_idx].radius() = 0.0f;
     surfels[curr_contraction.edge.b.node_idx][curr_contraction.edge.b.surfel_idx].radius() = 0.0f;
 
-
-    for(const auto& neighbour : neighbours[curr_contraction.edge.a]) {
-    // get neighbours
+    auto update_contraction = [&contractions, &contraction_queue](const edge_t& old_edge, const edge_t& new_edge){
+      // get contraction
+      contraction cont = *(contractions.at(old_edge));
+      cont.edge = new_edge;
     // remove edge quadric from them
     // add new edge quadric
-    // recalculate contractions for neighbours      
+      // remove old contraction
+      contractions.erase(old_edge);
+      // insert new one
+      contractions[new_edge] = std::make_shared<contraction>(cont);
+      // update attached operation
+      contraction_op& operation = *cont.cont_op;
+      operation.cont = std::addressof(*(contractions.at(new_edge)));
+    };
+
+    for(const auto& neighbour : neighbours[curr_contraction.edge.a]) {
+      update_contraction(edge_t{curr_contraction.edge.a, neighbour}, curr_edge);    
+    }
+    for(const auto& neighbour : neighbours[curr_contraction.edge.b]) {
+      update_contraction(edge_t{curr_contraction.edge.b, neighbour}, curr_edge);    
     }
     // update queue, cheapest contraction at the back
     std::sort(contraction_queue.begin(), contraction_queue.end());
