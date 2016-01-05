@@ -120,8 +120,6 @@ create_lod(bvh* tree,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node) const
 {
-  std::list<surfel> output_surfels{};
-
   const uint32_t fan_factor = input.size();
   size_t num_points = 0;
   size_t min_num_surfels = input[0]->length(); 
@@ -153,7 +151,7 @@ create_lod(bvh* tree,
       // get and store neighbours
       auto nearest_neighbours = get_local_nearest_neighbours(input, num_neighbours, curr_id);
       std::vector<surfel_id_t> neighbour_ids{};
-      for(size_t i = 0; i < nearest_neighbours.size(); ++i) {
+      for (size_t i = 0; i < nearest_neighbours.size(); ++i) {
         const auto& pair = nearest_neighbours[i];
         neighbour_ids.push_back(pair.first);
       }
@@ -193,7 +191,7 @@ create_lod(bvh* tree,
   // store contractions and operations in queue
   std::unordered_map<edge_t, std::shared_ptr<contraction>> contractions{};
   std::vector<std::shared_ptr<contraction_op>> contraction_queue{};
-  for(const auto& edge : edges) {
+  for (const auto& edge : edges) {
     contractions[edge] = std::make_shared<contraction>(create_contraction(edge));
     
     contraction_op op{std::addressof(*contractions.at(edge))};
@@ -204,15 +202,16 @@ create_lod(bvh* tree,
 
   // work off queue until target num of surfels is reached
   size_t new_num_points = num_points;
-  while(new_num_points > min_num_surfels) {
+  while (new_num_points > min_num_surfels) {
     // get next contraction
     contraction curr_contraction = *(contraction_queue.back()->cont);
-    const edge_t& curr_edge = curr_contraction.edge;
+    contraction_queue.pop_back();
+
     // save new surfel
     surfel_id_t new_id = surfel_id_t{fan_factor + 1, surfels[fan_factor + 1].size()};
     const surfel& new_surfel = curr_contraction.new_surfel;
     surfels[new_id.node_idx].push_back(new_surfel);
-    
+
     // delete old point quadrics
     quadrics.erase(curr_contraction.edge.a);
     quadrics.erase(curr_contraction.edge.b);
@@ -223,12 +222,14 @@ create_lod(bvh* tree,
     surfels[curr_contraction.edge.a.node_idx][curr_contraction.edge.a.surfel_idx].radius() = 0.0f;
     surfels[curr_contraction.edge.b.node_idx][curr_contraction.edge.b.surfel_idx].radius() = 0.0f;
 
-    auto update_contraction = [&contractions, &contraction_queue](const edge_t& old_edge, const edge_t& new_edge){
+    auto update_contraction = [&contractions, &contraction_queue, &surfels, &create_contraction]
+      (const surfel_id_t& new_s, const surfel_id_t& old_s, const surfel_id_t& neigh_s) {
+      edge_t old_edge = edge_t{old_s, neigh_s};
+      edge_t new_edge = edge_t{new_s, neigh_s};
       // get contraction
       contraction cont = *(contractions.at(old_edge));
-      cont.edge = new_edge;
-    // remove edge quadric from them
-    // add new edge quadric
+      // calculate new contraction
+      cont = create_contraction(new_edge);
       // remove old contraction
       contractions.erase(old_edge);
       // insert new one
@@ -238,11 +239,11 @@ create_lod(bvh* tree,
       operation.cont = std::addressof(*(contractions.at(new_edge)));
     };
 
-    for(const auto& neighbour : neighbours[curr_contraction.edge.a]) {
-      update_contraction(edge_t{curr_contraction.edge.a, neighbour}, curr_edge);    
+    for (const auto& neighbour : neighbours[curr_contraction.edge.a]) {
+      update_contraction(new_id, curr_contraction.edge.a, neighbour);    
     }
-    for(const auto& neighbour : neighbours[curr_contraction.edge.b]) {
-      update_contraction(edge_t{curr_contraction.edge.b, neighbour}, curr_edge);    
+    for (const auto& neighbour : neighbours[curr_contraction.edge.b]) {
+      update_contraction(new_id, curr_contraction.edge.b, neighbour);    
     }
     // update queue, cheapest contraction at the back
     std::sort(contraction_queue.begin(), contraction_queue.end());
