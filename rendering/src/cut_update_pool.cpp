@@ -471,6 +471,8 @@ cut_analysis(view_t view_id, model_t model_id) {
         assert(node_id != invalid_node_t);
         assert(node_id < index_->num_nodes(model_id));
 
+
+
         if (node_id > 0 && node_id < index_->num_nodes(model_id)) {
             parent_id = index_->get_parent_id(model_id, node_id);
             parent_error = calculate_node_error(view_id, model_id, parent_id);
@@ -602,7 +604,7 @@ cut_analysis(view_t view_id, model_t model_id) {
         }
 
     }
-
+    
     master_semaphore_.signal(1);
 
 

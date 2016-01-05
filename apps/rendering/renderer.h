@@ -64,7 +64,8 @@ enum class RenderPass {
     ACCUMULATION       = 1,
     NORMALIZATION      = 2,
     BOUNDING_BOX       = 100,
-    LINE               = 101  
+    LINE               = 101,
+    TRIMESH            = 300,
 };
 
 class Renderer
@@ -136,7 +137,6 @@ private:
         scm::gl::texture_2d_ptr                     pass3_normalization_color_texture_;
         scm::gl::texture_2d_ptr                     pass3_normalization_normal_texture_;
 
-
         scm::shared_ptr<scm::gl::quad_geometry>     screen_quad_;
 
 
@@ -172,6 +172,7 @@ private:
         scm::gl::vertex_array_ptr line_memory_;
         scm::gl::buffer_ptr line_buffer_;
         scm::gl::program_ptr line_shader_program_;
+        scm::gl::program_ptr trimesh_shader_program_;
         std::vector<scm::math::vec3f> line_begin_;
         std::vector<scm::math::vec3f> line_end_;
         unsigned int max_lines_;

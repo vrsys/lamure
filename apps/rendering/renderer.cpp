@@ -66,6 +66,8 @@ Renderer::
     pass2_accumulation_shader_program_.reset();
     pass3_pass_through_shader_program_.reset();
 
+    trimesh_shader_program_.reset();
+
     bounding_box_vis_shader_program_.reset();
 
     pass1_depth_buffer_.reset();
@@ -162,6 +164,10 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
             line_shader_program_->uniform("view_matrix", view_matrix );
             break;
 #endif
+        case RenderPass::TRIMESH:
+            trimesh_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
+            break;
+
         default:
             //LOGGER_ERROR("Unknown Pass ID used in function 'upload_transformation_matrices'");
             std::cout << "Unknown Pass ID used in function 'upload_transformation_matrices'\n";
@@ -317,7 +323,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
                 }
 
 
-
                 /***************************************************************************************
                 *******************************BEGIN ACCUMULATION PASS**********************************
                 ****************************************************************************************/
@@ -435,8 +440,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
                     context_->bind_program(pass_filling_program_);
 
-
-
                     context_->bind_texture(pass3_normalization_color_texture_, filter_nearest_,   0);
                     context_->bind_texture(pass1_depth_buffer_, filter_nearest_,   1);
                     context_->apply();
@@ -455,6 +458,42 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
                 }
 
 
+
+    //TRIMESH PASS
+    context_->set_default_frame_buffer();
+    context_->bind_program(trimesh_shader_program_);
+           
+    scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, bvh::primitive_type::TRIMESH, device_);
+    context_->bind_vertex_array(memory);
+    context_->apply();
+
+    for (auto& model_id : current_set) {
+
+        const bvh* bvh = database->get_model(model_id)->get_bvh();
+
+        if (bvh->get_primitive() == bvh::primitive_type::TRIMESH) {
+           cut& cut = cuts->get_cut(context_id, view_id, model_id);
+           std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+
+           upload_transformation_matrices(camera, model_id, RenderPass::TRIMESH);
+           
+           size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
+
+           std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
+
+           scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
+
+           for (auto const& node_slot_aggregate : renderable) {
+              uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
+
+              if( node_culling_result != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
+              {
+                  context_->apply();
+                  context_->draw_arrays(PRIMITIVE_TRIANGLE_LIST, (node_slot_aggregate.slot_id_) * database->get_primitives_per_node(), surfels_per_node_of_model);
+              }
+           }
+        }
+    }
 
 
         if(render_bounding_boxes_)
@@ -482,6 +521,8 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
 
                             upload_transformation_matrices(camera, model_id, RenderPass::BOUNDING_BOX);
+
+                            scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
 
                             for( auto const& node_slot_aggregate : renderable ) {
 
@@ -565,6 +606,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
     device_->opengl_api().glEnable(GL_DEPTH_TEST);
 #endif
+
 
     //if(display_info_)
       //display_status(current_camera_session);
@@ -651,9 +693,8 @@ initialize_VBOs()
     pass3_normalization_fbo_->attach_color_buffer(0, pass3_normalization_color_texture_);
     pass3_normalization_fbo_->attach_color_buffer(1, pass3_normalization_normal_texture_);
 
-
+   
     screen_quad_.reset(new quad_geometry(device_, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
-
 
 
     color_blending_state_ = device_->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
@@ -698,6 +739,9 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string bounding_box_vs_source;
     std::string bounding_box_fs_source;
 
+    std::string trimesh_vs_source;
+    std::string trimesh_fs_source;
+
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
     std::string line_vs_source;
     std::string line_fs_source;
@@ -718,6 +762,8 @@ initialize_schism_device_and_shaders(int resX, int resY)
             || !read_text_file(root_path + "/pass_reconstruction.glslf", filling_fs_source)
             || !read_text_file(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
             || !read_text_file(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
+            || !read_text_file(root_path + "/trimesh.glslv", trimesh_vs_source)
+            || !read_text_file(root_path + "/trimesh.glslf", trimesh_fs_source)
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
             || !read_text_file(root_path + "/lines_shader.glslv", line_vs_source)
             || !read_text_file(root_path + "/lines_shader.glslf", line_fs_source)
@@ -768,8 +814,14 @@ initialize_schism_device_and_shaders(int resX, int resY)
                                                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, line_fs_source)));
 #endif
 
+    trimesh_shader_program_ = device_->create_program(
+       boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, trimesh_vs_source))
+                             (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, trimesh_fs_source)) );
 
-    if (!pass1_visibility_shader_program_ || !pass2_accumulation_shader_program_ || !pass3_pass_through_shader_program_ || !pass_filling_program_ || !bounding_box_vis_shader_program_
+
+
+
+    if (!pass1_visibility_shader_program_ || !pass2_accumulation_shader_program_ || !pass3_pass_through_shader_program_ || !pass_filling_program_ || !bounding_box_vis_shader_program_ || !trimesh_shader_program_
 
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
         || !line_shader_program_
@@ -838,7 +890,6 @@ void Renderer::reset_viewport(int w, int h)
 
     pass3_normalization_fbo_->attach_color_buffer(0, pass3_normalization_color_texture_);
     pass3_normalization_fbo_->attach_color_buffer(1, pass3_normalization_normal_texture_);
-
 
     //reset orthogonal projection matrix for text rendering
     scm::math::mat4f   fs_projection = scm::math::make_ortho_matrix(0.0f, static_cast<float>(win_x_),
