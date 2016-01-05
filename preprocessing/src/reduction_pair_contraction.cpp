@@ -54,6 +54,8 @@ bool operator==(const edge_t& e1, const edge_t& e2) {
   return false;
 }
 
+struct contraction_op;
+
 struct contraction {
   contraction(edge_t e, mat4r quad, real err, surfel surf)
    :edge{e}
@@ -66,11 +68,27 @@ struct contraction {
   mat4r quadric;
   real error;
   surfel new_surfel;
+
+  contraction_op* cont_op;
 };
 
 bool operator<(const contraction& c1, const contraction& c2) {
   return c1.error < c2.error;
 }
+
+struct contraction_op {
+  contraction_op(contraction* c)
+   :cont{c}
+  {};
+
+  contraction* cont;
+};
+
+bool operator<(const contraction_op& c1, const contraction_op& c2) {
+  // return c1.cont->error < c2.cont->error;
+  return c1.cont->error > c2.cont->error;
+}
+
 }
 }
 
@@ -117,6 +135,7 @@ create_lod(bvh* tree,
 
   std::map<surfel_id_t, mat4r> quadrics{};
   std::map<surfel_id_t, std::vector<surfel_id_t>> neighbours{};
+  std::vector<std::vector<surfel>> surfels{input.size() + 1, std::vector<surfel>{}};
   std::unordered_set<edge_t> edges{};
 
   // accumulate edges and point quadrics
@@ -125,6 +144,9 @@ create_lod(bvh* tree,
     for (size_t surfel_idx = 0; surfel_idx < input[node_idx]->length(); ++surfel_idx) {
       
       surfel curr_surfel = input[node_idx]->read_surfel(surfel_idx);
+      // save surfel
+      surfels[node_idx].push_back(curr_surfel);
+
       surfel_id_t curr_id = surfel_id_t{node_idx, surfel_idx};
       assert(node_idx < num_nodes_per_level && surfel_idx < num_surfels_per_node);
       // get and store neighbours
@@ -153,9 +175,7 @@ create_lod(bvh* tree,
     offset += input[node_idx]->length();
   }
 
-  // fill queue with collapses
-  std::priority_queue<contraction> contractions{};
-  for(const auto& edge : edges) {
+  auto create_contraction = [&input, &quadrics](const edge_t& edge)->contraction {
     surfel surfel1 = input[edge.a.node_idx]->read_surfel(edge.a.surfel_idx);
     surfel surfel2 = input[edge.b.node_idx]->read_surfel(edge.b.surfel_idx);
     // new surfel is mean of both old surfels
@@ -166,24 +186,58 @@ create_lod(bvh* tree,
                           };
     mat4r new_quadric = quadrics.at(edge.a) + quadrics.at(edge.b);
     real error = quadric_error(new_surfel.pos(), new_quadric);
+    return contraction{edge, new_quadric, error, new_surfel};
+  };
 
-    contractions.push(contraction{edge, new_quadric, error, new_surfel});
+  // store contractions and queue
+  std::vector<std::shared_ptr<contraction>> contractions{};
+  std::vector<std::shared_ptr<contraction_op>> contraction_queue{};
+  for(const auto& edge : edges) {
+    contractions.push_back(std::make_shared<contraction>(create_contraction(edge)));
+    
+    contraction_op op{std::addressof(*contractions.back())};
+    contraction_queue.push_back(std::make_shared<contraction_op>(op));  
+
+    contractions.back()->cont_op = std::addressof(*contraction_queue.back());  
   }
 
+  // std::list<
   // work off queue until target num of surfels is reached
   size_t new_num_points = num_points;
   while(new_num_points > min_num_surfels) {
     // get next contraction
-    contraction curr_contraction = contractions.top();
-    contractions.pop();
+    contraction curr_contraction = *(contraction_queue.back()->cont);
+    // contractions.pop();
 
     // save new surfel
+    const surfel& new_surfel = curr_contraction.new_surfel;
+    size_t idx = surfels[fan_factor + 1].size();
+    surfels[fan_factor + 1].push_back(new_surfel);
+    
+    // invalidate old surfels
+    surfels[curr_contraction.edge.a.node_idx][curr_contraction.edge.a.surfel_idx].radius() = 0.0f;
+    surfels[curr_contraction.edge.b.node_idx][curr_contraction.edge.b.surfel_idx].radius() = 0.0f;
 
-    // update connected edges/contractions
+
+    for(const auto& neighbour : neighbours[curr_contraction.edge.a]) {
+    // get neighbours
+    // remove edge quadric from them
+    // add new edge quadric
+    // recalculate contractions for neighbours      
+    }
+    // update queue, cheapest contraction at the back
+    std::sort(contraction_queue.begin(), contraction_queue.end());
   }
-  
-  surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
+  // save valid surfels in mem array
+  surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+  for (const auto& node : surfels) {
+    for (const auto& surfel : node) {
+      if (surfel.radius() > 0.0f) {
+        mem_array.mem_data()->push_back(surfel);
+      }
+    }
+  }
   mem_array.set_length(mem_array.mem_data()->size());
 
   reduction_error = 0.0;
