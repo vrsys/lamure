@@ -25,6 +25,7 @@ get_locally_overlapping_neighbours(std::shared_ptr<entropy_surfel> target_entrop
     std::shared_ptr<surfel> target_surfel = target_entropy_surfel_ptr->contained_surfel; 
     real target_surfel_radius = target_surfel->radius() * overlap_radius_factor;
 
+    //std::cout << "target_surfel_radius: " << target_surfel_radius << "\n";
     std::vector< std::shared_ptr<entropy_surfel> > overlapping_neighbour_ptrs;
 
     for ( auto& array_entr_surfel_ptr : entropy_surfel_ptr_array ) {
@@ -37,7 +38,13 @@ get_locally_overlapping_neighbours(std::shared_ptr<entropy_surfel> target_entrop
             real distance_to_target_surfel = scm::math::length(target_surfel->pos() - current_surfel->pos());
                 
             real neighbour_radius = current_surfel->radius() * overlap_radius_factor;
+            /*std::cout << "neighbour surfel radius: " << neighbour_radius << "\n";
+            std::cout << "Distance to target surfel: " << distance_to_target_surfel << "\n";
 
+            std::cout << "Target surfel pos: " << target_surfel->pos() << "\n";
+            std::cout << "Neighbour surfel pos: " << current_surfel->pos() << "\n";
+            std::cout << "subtraction: " << target_surfel->pos() - current_surfel->pos() << "\n";
+            */
             if( distance_to_target_surfel <= target_surfel_radius + neighbour_radius ) {
                 // keep address of entropy surfel in vector
                 overlapping_neighbour_ptrs.push_back( array_entr_surfel_ptr );                    
@@ -122,7 +129,7 @@ compute_entropy(std::shared_ptr<entropy_surfel> current_en_surfel, std::vector<s
         entropy += (1 + current_en_surfel->level) * (color_diff) ;
     };    
     
-    std::cout << "Entropy for " << " to entropy surfel (ids: ["<< current_en_surfel->node_id << "]["<<current_en_surfel->surfel_id<<"]: "<< entropy <<"\n";
+    //std::cout << "Entropy for " << " to entropy surfel (ids: ["<< current_en_surfel->node_id << "]["<<current_en_surfel->surfel_id<<"]: "<< entropy <<"\n";
 
     return entropy;
 }
@@ -216,9 +223,9 @@ merge(std::shared_ptr<entropy_surfel> current_entropy_surfel,
         
         if (actual_neighbour_ptr->validity) {
             actual_neighbour_ptr->validity = false;
-            std::cout << "Invalidated: " << "[" << actual_neighbour_ptr->node_id << "]["
+            /*std::cout << "Invalidated: " << "[" << actual_neighbour_ptr->node_id << "]["
                                                 << actual_neighbour_ptr->surfel_id << "]\n";
-
+            */
             invalidated_neighbours.push_back(actual_neighbour_ptr);
             ++num_invalidated_surfels;
             if( --num_remaining_valid_surfel == num_desired_surfel ) {
@@ -318,10 +325,10 @@ create_lod(real& reduction_error,
             //create new entropy surfel
             entropy_surfel current_entropy_surfel(current_surfel, surfel_id, node_id);
             
-            std::cout << "made surfel with color: " << (int)current_surfel.color()[0] << ", "
+            /*std::cout << "made surfel with color: " << (int)current_surfel.color()[0] << ", "
                                                     << (int)current_surfel.color()[1] << ", "
                                                     << (int)current_surfel.color()[2] << " to entropy surfel (ids: ["<< node_id << "]["<<surfel_id<<"]\n";
-
+            */
         // only place where shared pointers should be created
 	    entropy_surfel_array.push_back( std::make_shared<entropy_surfel>(current_entropy_surfel) );
 	   }
@@ -330,22 +337,23 @@ create_lod(real& reduction_error,
     double overlap_radius_factor = 1.0;
 
     //iterate as long as we did not create the right number of surfels
-    //while(true) { 
+    while(true) {
 
         // iterate all wrapped surfels 
         for ( auto& current_entropy_surfel_ptr : entropy_surfel_array ){
-            std::cout << "Fetching surfel [" << current_entropy_surfel_ptr->node_id << "][" << current_entropy_surfel_ptr->surfel_id << "]\n";
+            //std::cout << "Fetching surfel [" << current_entropy_surfel_ptr->node_id << "][" << current_entropy_surfel_ptr->surfel_id << "]\n";
 
 
             std::vector< std::shared_ptr<entropy_surfel> > overlapping_neighbour_ptrs 
                 = get_locally_overlapping_neighbours(current_entropy_surfel_ptr, entropy_surfel_array, overlap_radius_factor);
 
-            std::cout << "with neighbours: \n";
+            //std::cout << "with neighbours: \n";
 
             for (auto const& sesp : overlapping_neighbour_ptrs) {
-                std::cout << (int)sesp->contained_surfel->color()[0] << ", "
+                /*std::cout << (int)sesp->contained_surfel->color()[0] << ", "
                           << (int)sesp->contained_surfel->color()[1] << ", "
                           << (int)sesp->contained_surfel->color()[2] << " to entropy surfel (ids: ["<< sesp->node_id << "]["<<sesp->surfel_id<<"]\n";
+                */
             }
 
             //assign/compute missing attributes
@@ -372,23 +380,23 @@ create_lod(real& reduction_error,
         while(true) {
 
             if( !min_entropy_surfel_ptr_queue.empty() ){
-                std::cout << min_entropy_surfel_ptr_queue.size() << "\n";
+                //std::cout << min_entropy_surfel_ptr_queue.size() << "\n";
                 std::shared_ptr<entropy_surfel> current_entropy_surfel = min_entropy_surfel_ptr_queue.back();
                 
                 min_entropy_surfel_ptr_queue.pop_back();
 
-                std::cout << "!!!Surfel with lowest_entropy: " << "[" << current_entropy_surfel->node_id << "][" << current_entropy_surfel->surfel_id << "]" << "\n";
+                //std::cout << "!!!Surfel with lowest_entropy: " << "[" << current_entropy_surfel->node_id << "][" << current_entropy_surfel->surfel_id << "]" << "\n";
 
                 //the back element is still valid, so we still got something to do
                 if(current_entropy_surfel->validity){
-                    std::cout << "Working on the surfel\n";
+                    //std::cout << "Working on the surfel\n";
                     // if merge returns true, the surfel still has neighbours
 
                     
                     if( merge(current_entropy_surfel, num_valid_surfels, surfels_per_node) ) {
                         min_entropy_surfel_ptr_queue.push_back(current_entropy_surfel);
 
-                        std::cout << "Pushing back into min_entropy_surfel_ptr_queue: " << (int)current_entropy_surfel->contained_surfel->color()[0] << "\n";
+                        //std::cout << "Pushing back into min_entropy_surfel_ptr_queue: " << (int)current_entropy_surfel->contained_surfel->color()[0] << "\n";
                     } else { //otherwise we can push it directly into the finalized surfel list
                         finalized_surfels.push_back(current_entropy_surfel);
                     }
@@ -409,14 +417,14 @@ create_lod(real& reduction_error,
             //std::cout << "Loop 1\n";
         }
 
-        if (num_valid_surfels > surfels_per_node) {
-            min_entropy_surfel_ptr_queue.reserve(min_entropy_surfel_ptr_queue.size() + finalized_surfels.size() );
-            min_entropy_surfel_ptr_queue.insert(min_entropy_surfel_ptr_queue.end(), 
-                                                finalized_surfels.begin(), 
-                                                finalized_surfels.end());
 
+        if (num_valid_surfels > surfels_per_node) {
+
+
+            //std::cout << "num valid surfels still bigger (" << num_valid_surfels << ")\n";
             //finalized_surfels.clear();
             //std::cout << "Size: " << finalized_surfels.size() << "\n";
+
 
             entropy_surfel_array.clear();
 
@@ -433,33 +441,27 @@ create_lod(real& reduction_error,
             for (auto const& entr_surfel_ptr : finalized_surfels) {
                 next_iteration_entropy_surfel_array.push_back( entr_surfel_ptr );
             }
-/*
-            entropy_surfel_array.insert(entropy_surfel_array.end(), 
-                                        min_entropy_surfel_ptr_queue.begin(), 
-                                        min_entropy_surfel_ptr_queue.end());
 
-            entropy_surfel_array.insert(entropy_surfel_array.end(),
-                                        finalized_surfels.begin(),
-                                        finalized_surfels.end());
-*/
+
             entropy_surfel_array = next_iteration_entropy_surfel_array;
 
             min_entropy_surfel_ptr_queue.clear();
             finalized_surfels.clear();
 
             overlap_radius_factor *= 1.2;
+
         } else { // we are done with the simplification
-            //break;
+            break;
         }
 
-    //}
+    }
 
     //end of entropy simplification
     while( (!min_entropy_surfel_ptr_queue.empty()) /*&& min_entropy_surfel_ptr_queue.back()->validity*/ ) {
         std::shared_ptr<entropy_surfel> en_surfel_to_push = min_entropy_surfel_ptr_queue.back();
 
         if(en_surfel_to_push->validity == true) {
-            std::cout << "Pushing surfel to fin queue: " << "[" << en_surfel_to_push->node_id << "][" << en_surfel_to_push->surfel_id << "]\n";
+            //std::cout << "Pushing surfel to fin queue: " << "[" << en_surfel_to_push->node_id << "][" << en_surfel_to_push->surfel_id << "]\n";
             finalized_surfels.push_back(en_surfel_to_push);
         }
         //else
@@ -477,16 +479,16 @@ create_lod(real& reduction_error,
 
         if(chosen_surfels++ < surfels_per_node) {
             mem_array.mem_data()->push_back(*(en_surf->contained_surfel));
-            std::cout << "Pushing surfel: [" << en_surf->node_id << "][" << en_surf->surfel_id << "]\n";
+            //std::cout << "Pushing surfel: [" << en_surf->node_id << "][" << en_surf->surfel_id << "]\n";
         } else {   
             // discarding a surfel
             break;
         }
     }
 
-    std::cout << "Mem data size: " << mem_array.mem_data()->size() << "\n";
-    std::cout << "Chosen Surfel: " << chosen_surfels << "\n";
-    std::cout << "Rest length: " << finalized_surfels.size() << "/" <<  surfels_per_node <<  "\n";
+    //std::cout << "Mem data size: " << mem_array.mem_data()->size() << "\n";
+    //std::cout << "Chosen Surfel: " << chosen_surfels << "\n";
+    //std::cout << "Rest length: " << finalized_surfels.size() << "/" <<  surfels_per_node <<  "\n";
     //std::cout << "End with surfel array size " << mem_array.mem_data()->size() << "/" << surfels_per_node << "\n"; 
     mem_array.set_length(mem_array.mem_data()->size());
 
