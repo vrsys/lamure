@@ -37,7 +37,8 @@ enum class reduction_algorithm {
     hierarchical_clustering = 6,
     k_clustering            = 7,
     avg_nearest_neighbour_distance = 8,
-    sorted_every_second     = 9
+    sorted_every_second     = 9,
+    pair		            = 10
 };
 
 }}

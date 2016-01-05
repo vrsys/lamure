@@ -34,10 +34,15 @@ struct surfel_id_t {
     }
 
     friend bool operator<(surfel_id_t const& lhs, surfel_id_t const& rhs) {
-        if(lhs.node_idx == rhs.node_idx)
-            return lhs.surfel_idx < rhs.surfel_idx;
-
-        return lhs.node_idx < rhs.node_idx;
+      if(lhs.node_idx < rhs.node_idx) {
+        return true;
+      }
+      else {
+        if(lhs.node_idx == rhs.node_idx) {
+          return lhs.surfel_idx < rhs.surfel_idx;
+        }
+        else return false;
+      }
     }
 };
 

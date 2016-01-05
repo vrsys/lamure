@@ -122,6 +122,7 @@ int main(int argc, const char *argv[])
          "  particlesim - perform particle simulation\n"
          "  hierarchical - create clusters by binary splitting of the point cloud\n"
          "  kclustering - hash-based k-clustering\n"
+         "  pair - use iterative point-pair contractions\n"
          "  avgnearestneighbour - do local outlier removal until the desired number of surfels is reached")
 
         ("normal-computation-algo",
@@ -283,6 +284,8 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::reduction_algorithm::avg_nearest_neighbour_distance;
         else if (reduction_algo == "sortedeverysecond")
             desc.reduction_algo        = lamure::pre::reduction_algorithm::sorted_every_second;
+        else if (reduction_algo == "pair") 
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::pair;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;

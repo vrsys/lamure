@@ -15,22 +15,6 @@
 
 namespace lamure {
 
-bool operator==(const surfel_id_t& a, const surfel_id_t& b) {
-  return a.node_idx == b.node_idx && a.surfel_idx == b.surfel_idx;
-}
-
-bool operator<(const surfel_id_t& a, const surfel_id_t& b) {
-  if(a.node_idx < b.node_idx) {
-    return true;
-  }
-  else {
-    if(a.node_idx == b.node_idx) {
-      return a.surfel_idx < b.surfel_idx;
-    }
-    else return false;
-  }
-}
-
 namespace pre {
 struct edge_t
 {
@@ -39,9 +23,9 @@ struct edge_t
    ,b{p1.surfel_idx >= p2.surfel_idx ? p1 : p2}
    {};
 
-   // operator<(const edge_t& e) const {
-   //  return 
-   // }
+   bool operator<(const edge_t& e) const {
+    return a.node_idx < e.a.node_idx;
+   }
 
 
   surfel_id_t a;
@@ -115,10 +99,11 @@ namespace pre {
 size_t num_neighbours = 20;
 
 surfel_mem_array reduction_pair_contraction::
-create_lod(bvh* tree,
-          real& reduction_error,
+create_lod(real& reduction_error,
           const std::vector<surfel_mem_array*>& input,
-          const uint32_t surfels_per_node) const
+          const uint32_t surfels_per_node,
+          const bvh& tree,
+          const size_t start_node_id) const
 {
   const uint32_t fan_factor = input.size();
   size_t num_points = 0;
@@ -135,7 +120,7 @@ create_lod(bvh* tree,
   std::map<surfel_id_t, mat4r> quadrics{};
   std::map<surfel_id_t, std::vector<surfel_id_t>> neighbours{};
   std::vector<std::vector<surfel>> surfels{input.size() + 1, std::vector<surfel>{}};
-  std::unordered_set<edge_t> edges{};
+  std::set<edge_t> edges{};
 
   // accumulate edges and point quadrics
   size_t offset = 0;

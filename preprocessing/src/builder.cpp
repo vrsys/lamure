@@ -30,6 +30,7 @@
 #include <lamure/pre/reduction_k_clustering.h>
 #include <lamure/pre/reduction_avg_nearest_neighbour_distance.h>
 #include <lamure/pre/reduction_sorted_every_second.h>
+#include <lamure/pre/reduction_pair_contraction.h>
 
 #include <cstdio>
 
@@ -134,6 +135,9 @@ construct()
         case reduction_algorithm::sorted_every_second:
             reduction_strategy = new reduction_sorted_every_second();
             break;
+         case reduction_algorithm::pair:
+            reduction_strategy = new reduction_pair_contraction(desc_.number_of_neighbours);
+            break;               
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return false;

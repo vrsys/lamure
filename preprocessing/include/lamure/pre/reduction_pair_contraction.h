@@ -5,8 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef PRE_REDUCTION_RANDOM_H_
-#define PRE_REDUCTION_RANDOM_H_
+#ifndef PRE_REDUCTION_PAIR_H_
+#define PRE_REDUCTION_PAIR_H_
 
 #include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/bvh.h>
@@ -17,18 +17,17 @@ namespace pre {
 class reduction_pair_contraction : public reduction_strategy
 {
 public:
+  explicit reduction_pair_contraction(const uint16_t number_of_neighbours)
+      : number_of_neighbours_(number_of_neighbours){}
 
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
-                                  const uint32_t surfels_per_node) const override;
+                                  const uint32_t surfels_per_node,
+                                  const bvh& tree,
+                                  const size_t start_node_id) const override;
 
-
-    surfel_mem_array      create_lod(bvh* tree,
-                                  real& reduction_error,
-                                  const std::vector<surfel_mem_array*>& input,
-                                  const uint32_t surfels_per_node) const;
-
-
+private:
+  uint16_t  number_of_neighbours_;
 };
 
 lamure::real quadric_error(const vec3r& p, const mat4r& quadric);
@@ -42,4 +41,4 @@ get_local_nearest_neighbours(const std::vector<surfel_mem_array*>& input,
 } // namespace pre
 } // namespace lamure
 
-#endif // PRE_REDUCTION_RANDOM_H_
+#endif // PRE_REDUCTION_PAIR_H_
