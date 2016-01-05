@@ -28,7 +28,7 @@ public:
                                       return mean_pos_;}
 	vec3r const mean_color() const {assert(is_dirty_ == false);
 					return mean_color_;}
-	vec3r const mean_normal() const {assert(is_dirty == false);
+	vec3r const mean_normal() const {assert(is_dirty_ == false);
 					 return mean_normal_;}
 	real  const mean_radius() const {assert(is_dirty_ == false);
 	                                 return mean_radius_;}
