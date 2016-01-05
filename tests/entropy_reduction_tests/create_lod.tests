@@ -179,7 +179,7 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed",
    	surfel mem_array_surfel_2_1;
    	mem_array_surfel_2_1.pos() = vec3r(0.0, 2.0, 0.0);
    	mem_array_surfel_2_1.normal() = vec3f(0.0, 0.0, 1.0);
-   	mem_array_surfel_2_1.color() = vec3b(10, 10, 10); //create a small difference w.r.t. to first surfel
+   	mem_array_surfel_2_1.color() = vec3b(9, 9, 9); //create a small difference w.r.t. to first surfel
    	mem_array_surfel_2_1.radius() = 1.001;
 
    	surfel mem_array_surfel_2_2;
@@ -204,8 +204,6 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed",
     	= test_entropy_reduction.create_lod(reduction_error,
     										input_mem_arrays,
     										surfels_per_node);
-
-    surfel unmerged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
 
     REQUIRE(simplified_mem_array.mem_data()->size() == 2);
 
@@ -286,9 +284,9 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed",
     REQUIRE(original_surfel_2_1.normal()[2] <  1.001);
 
     //color
-    REQUIRE(original_surfel_2_1.color()[0] == 10);
-    REQUIRE(original_surfel_2_1.color()[1] == 10);
-    REQUIRE(original_surfel_2_1.color()[2] == 10);
+    REQUIRE(original_surfel_2_1.color()[0] == 9);
+    REQUIRE(original_surfel_2_1.color()[1] == 9);
+    REQUIRE(original_surfel_2_1.color()[2] == 9);
 
     //radius
     REQUIRE(original_surfel_2_1.radius() > 1.000);
@@ -324,6 +322,8 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed",
     /***************************************************************************
     make sure that the first surfel was not touched, it is the 255, 255, 255 one
     ***************************************************************************/
+    surfel unmerged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 1);
+
     REQUIRE(unmerged_result_surfel.color()[0] == 255);
     REQUIRE(unmerged_result_surfel.color()[1] == 255);
     REQUIRE(unmerged_result_surfel.color()[2] == 255);
@@ -357,7 +357,7 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed",
      make sure that the second result surfel is merged out of the 3 
      original surfels remaining surfels with lowest entropy
     *****************************************************************/
-    surfel merged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 1);
+    surfel merged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
 
     /******************************************
      ... the color was averaged 

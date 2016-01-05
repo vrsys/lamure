@@ -12,13 +12,13 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	using namespace lamure;
 	using namespace pre;
 
-	entropy_surfel* valid_entropy_surfel 
-		= new entropy_surfel(surfel(), 2, 5, true);
+	std::shared_ptr<entropy_surfel> valid_entropy_surfel 
+		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 2, 5, true) );
 
-	entropy_surfel* invalid_entropy_surfel 
-		= new entropy_surfel(surfel(), 7, 4, false);
+	std::shared_ptr<entropy_surfel> invalid_entropy_surfel 
+		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 7, 4, false) );
 
-	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
+	std::vector<std::shared_ptr<entropy_surfel> > entropy_surfel_ptr_vector;
 
 	entropy_surfel_ptr_vector.push_back(valid_entropy_surfel);
 	entropy_surfel_ptr_vector.push_back(invalid_entropy_surfel);
@@ -26,10 +26,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	SECTION( "PRECONDITION: invalid surfel is at the back,"\
 		     "valid surfel at the front") {
 
-		entropy_surfel* back_surfel_ptr 
+		std::shared_ptr<entropy_surfel> back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		entropy_surfel* front_surfel_ptr 
+		std::shared_ptr<entropy_surfel> front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( back_surfel_ptr->validity == false);
@@ -54,10 +54,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 	SECTION( "POSTCONDITION: invalid surfel is at the front,"\
 		     "valid surfel at the back") {
 
-		entropy_surfel* back_surfel_ptr 
+		std::shared_ptr<entropy_surfel> back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		entropy_surfel* front_surfel_ptr 
+		std::shared_ptr<entropy_surfel> front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( front_surfel_ptr->validity == false);
@@ -73,8 +73,6 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 		REQUIRE( entropy_surfel_ptr_vector.size() == 2);		
 	}
 
-	delete invalid_entropy_surfel;
-	delete valid_entropy_surfel;
 }
 
 
@@ -85,13 +83,13 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	using namespace pre;
 
 
-	entropy_surfel* high_entropy_surfel 
-		= new entropy_surfel(surfel(), 2,5, true, 9123.2143);
+	std::shared_ptr<entropy_surfel> high_entropy_surfel 
+		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 2,5, true, 9123.2143));
 
-	entropy_surfel* low_entropy_surfel
-		= new entropy_surfel(surfel(), 7,4, true, 2.118);
+	std::shared_ptr<entropy_surfel> low_entropy_surfel
+		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 7,4, true, 2.118) );
 
-	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
+	std::vector<std::shared_ptr<entropy_surfel> > entropy_surfel_ptr_vector;
 
 	entropy_surfel_ptr_vector.push_back(low_entropy_surfel);
 	entropy_surfel_ptr_vector.push_back(high_entropy_surfel);
@@ -101,10 +99,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	SECTION( "PRECONDITION: high entropy surfel is at the back,"\
 		     "low entropy surfel at the front") {
 
-		entropy_surfel* back_surfel_ptr 
+		std::shared_ptr<entropy_surfel> back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		entropy_surfel* front_surfel_ptr 
+		std::shared_ptr<entropy_surfel> front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( back_surfel_ptr->validity == true);
@@ -132,10 +130,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 
 	SECTION( "POSTCONDITION: low entropy surfel is at the front,"\
 		     "high entropy surfel at the back") {
-		entropy_surfel* back_surfel_ptr 
+		std::shared_ptr<entropy_surfel> back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		entropy_surfel* front_surfel_ptr 
+		std::shared_ptr<entropy_surfel> front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( front_surfel_ptr->validity == true);
@@ -156,9 +154,6 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 	SECTION( "POSTCONDITION: size of surfel ptr vector is 2") {
 		REQUIRE( entropy_surfel_ptr_vector.size() == 2);		
 	}
-
-	delete low_entropy_surfel;
-	delete high_entropy_surfel;
 }
 
 
@@ -169,11 +164,11 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	using namespace lamure;
 	using namespace pre;
 
-	entropy_surfel* valid_high_entropy_surfel
-		= new entropy_surfel(surfel(), 2,5, true, 9123.2143);
+	std::shared_ptr<entropy_surfel> valid_high_entropy_surfel
+		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 2,5, true, 9123.2143));
 
-	entropy_surfel* invalid_low_entropy_surfel 
-		= new entropy_surfel(surfel(), 7,4, false, 2.118);
+	std::shared_ptr<entropy_surfel> invalid_low_entropy_surfel 
+		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 7,4, false, 2.118));
 /*
 	valid_high_entropy_surfel->validity = true;
 	valid_high_entropy_surfel->node_id = 5;
@@ -185,7 +180,7 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	invalid_low_entropy_surfel->surfel_id = 7;
 	invalid_low_entropy_surfel->entropy = 2.118;
 */
-	std::vector<entropy_surfel*> entropy_surfel_ptr_vector;
+	std::vector<std::shared_ptr<entropy_surfel> > entropy_surfel_ptr_vector;
 
 	entropy_surfel_ptr_vector.push_back(valid_high_entropy_surfel);
 	entropy_surfel_ptr_vector.push_back(invalid_low_entropy_surfel);
@@ -196,10 +191,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 	SECTION( "PRECONDITION: valid high entropy surfel is at the front,"\
 		     "invalid low entropy surfel at the back") {
 
-		entropy_surfel* back_surfel_ptr 
+		std::shared_ptr<entropy_surfel> back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		entropy_surfel* front_surfel_ptr 
+		std::shared_ptr<entropy_surfel> front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( front_surfel_ptr->validity == true);
@@ -227,10 +222,10 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 
 	SECTION( "POSTCONDITION: invalid low entropy surfel is at the front,"\
 		     "valid high entropy surfel at the back") {
-		entropy_surfel* back_surfel_ptr 
+		std::shared_ptr<entropy_surfel> back_surfel_ptr 
 			= entropy_surfel_ptr_vector.back();
 
-		entropy_surfel* front_surfel_ptr 
+		std::shared_ptr<entropy_surfel> front_surfel_ptr 
 			= entropy_surfel_ptr_vector.front();
 
 		REQUIRE( back_surfel_ptr->validity == true);
@@ -251,8 +246,6 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 		REQUIRE( entropy_surfel_ptr_vector.size() == 2);		
 	}
 
-	delete invalid_low_entropy_surfel;
-	delete valid_high_entropy_surfel;
 }
 
 #endif
