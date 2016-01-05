@@ -24,7 +24,7 @@ calculate_statistics(surfel_mem_array const& mem_array) {
     for(int color_comp_idx = 0;
             color_comp_idx < 3;
 	    ++color_comp_idx) {
-        color_histogram_[color_comp_idx].resize(255, 0);
+        color_histogram_[color_comp_idx].resize(256, 0);
     }
 
     size_t num_contributed_surfels(0);
