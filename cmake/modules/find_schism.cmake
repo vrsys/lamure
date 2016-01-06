@@ -85,7 +85,7 @@ IF ( SCHISM_INCLUDE_DIRS AND ( NOT SCHISM_LIBRARY_DIRS OR NOT SCHISM_LIBRARIES))
 
 		    IF (UNIX)
 			    FIND_PATH(_CUR_SEARCH
-					    NAMES libscm_gl_core.so libscm_gl_core.a
+					    NAMES libscm_gl_core.so
 					    PATHS ${_SEARCH_DIR} 
               PATH_SUFFIXES linux_x86
 					    NO_DEFAULT_PATH)
@@ -115,7 +115,7 @@ IF ( SCHISM_INCLUDE_DIRS AND ( NOT SCHISM_LIBRARY_DIRS OR NOT SCHISM_LIBRARIES))
 
     FOREACH(_LIB_DIR ${_SCHISM_FOUND_LIB_DIR})
 		    IF (UNIX)
-          file(GLOB _SCHISM_LIBRARIES ${_LIB_DIR}/libscm*)
+          file(GLOB _SCHISM_LIBRARIES ${_LIB_DIR}/libscm*.so)
 		    ELSEIF(WIN32)
 			    file(GLOB _SCHISM_LIBRARY_ABSOLUTE_PATHS ${_LIB_DIR}/release/scm*.lib)
 			    FOREACH (_SCHISM_LIB_PATH ${_SCHISM_LIBRARY_ABSOLUTE_PATHS})
