@@ -119,9 +119,10 @@ create_lod(real& reduction_error,
 
   std::map<surfel_id_t, mat4r> quadrics{};
   std::map<surfel_id_t, std::vector<surfel_id_t>> neighbours{};
-  std::vector<std::vector<surfel>> surfels{input.size() + 1, std::vector<surfel>{}};
+  std::vector<std::vector<surfel>> node_surfels{input.size() + 1, std::vector<surfel>{}};
   std::set<edge_t> edges{};
 
+  std::cout << "creating quadrics" << std::endl;
   // accumulate edges and point quadrics
   size_t offset = 0;
   for (node_id_type node_idx = 0; node_idx < fan_factor; ++node_idx) {
@@ -129,7 +130,7 @@ create_lod(real& reduction_error,
       
       surfel curr_surfel = input[node_idx]->read_surfel(surfel_idx);
       // save surfel
-      surfels[node_idx].push_back(curr_surfel);
+      node_surfels[node_idx].push_back(curr_surfel);
 
       surfel_id_t curr_id = surfel_id_t{node_idx, surfel_idx};
       assert(node_idx < num_nodes_per_level && surfel_idx < num_surfels_per_node);
@@ -158,10 +159,10 @@ create_lod(real& reduction_error,
     }
     offset += input[node_idx]->length();
   }
-
-  auto create_contraction = [&surfels, &quadrics](const edge_t& edge)->contraction {
-    surfel surfel1 = surfels[edge.a.node_idx][edge.a.surfel_idx];
-    surfel surfel2 = surfels[edge.b.node_idx][edge.b.surfel_idx];
+  std::cout << "creating contractions" << std::endl;
+  auto create_contraction = [&node_surfels, &quadrics](const edge_t& edge)->contraction {
+    surfel surfel1 = node_surfels[edge.a.node_idx][edge.a.surfel_idx];
+    surfel surfel2 = node_surfels[edge.b.node_idx][edge.b.surfel_idx];
     // new surfel is mean of both old surfels
     surfel new_surfel = surfel{(surfel1.pos() + surfel2.pos()) * 0.5f,
                           (surfel1.color() + surfel2.color()) * 0.5f,
@@ -185,6 +186,7 @@ create_lod(real& reduction_error,
     contractions.at(edge)->cont_op = std::addressof(*contraction_queue.back());  
   }
 
+  std::cout << "doing contractions" << std::endl;
   // work off queue until target num of surfels is reached
   size_t new_num_points = num_points;
   while (new_num_points > min_num_surfels) {
@@ -192,10 +194,11 @@ create_lod(real& reduction_error,
     contraction curr_contraction = *(contraction_queue.back()->cont);
     contraction_queue.pop_back();
 
-    // save new surfel
-    surfel_id_t new_id = surfel_id_t{fan_factor + 1, surfels[fan_factor + 1].size()};
+    // save new surfels in vector at back
+    surfel_id_t new_id = surfel_id_t{fan_factor, node_surfels[fan_factor].size()};
     const surfel& new_surfel = curr_contraction.new_surfel;
-    surfels[new_id.node_idx].push_back(new_surfel);
+    // save new surfel
+    node_surfels[new_id.node_idx].push_back(new_surfel);
 
     // delete old point quadrics
     quadrics.erase(curr_contraction.edge.a);
@@ -204,10 +207,10 @@ create_lod(real& reduction_error,
     quadrics[new_id] = curr_contraction.quadric;
     
     // invalidate old surfels
-    surfels[curr_contraction.edge.a.node_idx][curr_contraction.edge.a.surfel_idx].radius() = 0.0f;
-    surfels[curr_contraction.edge.b.node_idx][curr_contraction.edge.b.surfel_idx].radius() = 0.0f;
+    node_surfels[curr_contraction.edge.a.node_idx][curr_contraction.edge.a.surfel_idx].radius() = 0.0f;
+    node_surfels[curr_contraction.edge.b.node_idx][curr_contraction.edge.b.surfel_idx].radius() = 0.0f;
 
-    auto update_contraction = [&contractions, &contraction_queue, &surfels, &create_contraction]
+    auto update_contraction = [&contractions, &contraction_queue, &node_surfels, &create_contraction]
       (const surfel_id_t& new_s, const surfel_id_t& old_s, const surfel_id_t& neigh_s) {
       edge_t old_edge = edge_t{old_s, neigh_s};
       edge_t new_edge = edge_t{new_s, neigh_s};
@@ -234,9 +237,10 @@ create_lod(real& reduction_error,
     std::sort(contraction_queue.begin(), contraction_queue.end());
   }
 
+  std::cout << "copying surfels" << std::endl;
   // save valid surfels in mem array
   surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
-  for (const auto& node : surfels) {
+  for (const auto& node : node_surfels) {
     for (const auto& surfel : node) {
       if (surfel.radius() > 0.0f) {
         mem_array.mem_data()->push_back(surfel);
