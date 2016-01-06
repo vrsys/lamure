@@ -203,11 +203,16 @@ merge(std::shared_ptr<entropy_surfel> current_entropy_surfel,
               [&](std::shared_ptr<entropy_surfel> const& left_entropy_surfel,
                   std::shared_ptr<entropy_surfel> const& right_entropy_surfel){
 
-                    if(scm::math::length(current_entropy_surfel->contained_surfel->pos()-
-                       left_entropy_surfel->contained_surfel->pos()) 
+                    //double distance_to_left_surfel 
+
+                    if(/*scm::math::length(current_entropy_surfel->contained_surfel->pos()-
+                       left_entropy_surfel->contained_surfel->pos()) */
+                        left_entropy_surfel->entropy
                         < 
+                       /*
                        scm::math::length(current_entropy_surfel->contained_surfel->pos()-
-                       right_entropy_surfel->contained_surfel->pos())
+                       right_entropy_surfel->contained_surfel->pos())*/
+                        right_entropy_surfel->entropy
                     ) {
                         return true;
                     } else {
@@ -302,6 +307,7 @@ create_lod(real& reduction_error,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node) const
 {
+    std::cout << "Started new LOD creation\n";
     //create output array
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
@@ -348,12 +354,12 @@ create_lod(real& reduction_error,
                 = get_locally_overlapping_neighbours(current_entropy_surfel_ptr, entropy_surfel_array, overlap_radius_factor);
 
             //std::cout << "with neighbours: \n";
-
+            std::cout << "\n";
             for (auto const& sesp : overlapping_neighbour_ptrs) {
-                /*std::cout << (int)sesp->contained_surfel->color()[0] << ", "
+                std::cout << (int)sesp->contained_surfel->color()[0] << ", "
                           << (int)sesp->contained_surfel->color()[1] << ", "
                           << (int)sesp->contained_surfel->color()[2] << " to entropy surfel (ids: ["<< sesp->node_id << "]["<<sesp->surfel_id<<"]\n";
-                */
+                
             }
 
             //assign/compute missing attributes
@@ -396,7 +402,7 @@ create_lod(real& reduction_error,
                     if( merge(current_entropy_surfel, num_valid_surfels, surfels_per_node) ) {
                         min_entropy_surfel_ptr_queue.push_back(current_entropy_surfel);
 
-                        //std::cout << "Pushing back into min_entropy_surfel_ptr_queue: " << (int)current_entropy_surfel->contained_surfel->color()[0] << "\n";
+                        std::cout << "Pushing back into min_entropy_surfel_ptr_queue: " << (int)current_entropy_surfel->contained_surfel->color()[0] << "\n";
                     } else { //otherwise we can push it directly into the finalized surfel list
                         finalized_surfels.push_back(current_entropy_surfel);
                     }
