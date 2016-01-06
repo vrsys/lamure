@@ -647,13 +647,13 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     mem_array_surfel_1_1.pos() = vec3r(0.0, 0.0, 0.0);
     mem_array_surfel_1_1.normal() = vec3f(1.0, 0.0, 0.0);
     mem_array_surfel_1_1.color() = vec3b(0, 0, 0);
-    mem_array_surfel_1_1.radius() = 1.001;
+    mem_array_surfel_1_1.radius() = 0.901;
 
     surfel mem_array_surfel_1_2;
     mem_array_surfel_1_2.pos() = vec3r(2.0, 0.0, 0.0);
     mem_array_surfel_1_2.normal() = vec3f(1.0, 0.0, 0.0);
     mem_array_surfel_1_2.color() = vec3b(255, 255, 255); //create a small difference w.r.t. first surfel = low entropy
-    mem_array_surfel_1_2.radius() = 1.001;
+    mem_array_surfel_1_2.radius() = 0.901;
 
     mem_array_one.mem_data()->push_back(mem_array_surfel_1_1);
     mem_array_one.mem_data()->push_back(mem_array_surfel_1_2);
@@ -665,13 +665,13 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     mem_array_surfel_2_1.pos() = vec3r(4.0, 0.0, 0.0);
     mem_array_surfel_2_1.normal() = vec3f(0.0, 0.0, 1.0);
     mem_array_surfel_2_1.color() = vec3b(0, 0, 0); //create a small difference w.r.t. to first surfel
-    mem_array_surfel_2_1.radius() = 1.001;
+    mem_array_surfel_2_1.radius() = 0.901;
 
     surfel mem_array_surfel_2_2;
     mem_array_surfel_2_2.pos() = vec3r(20.0, 0.0, 0.0);
     mem_array_surfel_2_2.normal() = vec3f(0.0, 1.0, 0.0);
     mem_array_surfel_2_2.color() = vec3b(0, 0, 0); //create a small difference w.r.t. to first surfel
-    mem_array_surfel_2_2.radius() = 1.001;
+    mem_array_surfel_2_2.radius() = 0.901;
 
     mem_array_two.mem_data()->push_back(mem_array_surfel_2_1);
     mem_array_two.mem_data()->push_back(mem_array_surfel_2_2);
@@ -726,8 +726,8 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     REQUIRE(original_surfel_1_1.color()[2] == 0);
 
     //radius
-    REQUIRE(original_surfel_1_1.radius() > 1.000);
-    REQUIRE(original_surfel_1_1.radius() < 1.002);
+    REQUIRE(original_surfel_1_1.radius() > 0.900);
+    REQUIRE(original_surfel_1_1.radius() < 0.902);
 
 
     //surfel 1_2
@@ -751,8 +751,8 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     REQUIRE(original_surfel_1_2.color()[2] == 255);
 
     //radius
-    REQUIRE(original_surfel_1_2.radius() > 1.000);
-    REQUIRE(original_surfel_1_2.radius() < 1.002);
+    REQUIRE(original_surfel_1_2.radius() > 0.900);
+    REQUIRE(original_surfel_1_2.radius() < 0.902);
 
 
     //surfel 2_1
@@ -776,8 +776,8 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     REQUIRE(original_surfel_2_1.color()[2] == 0);
 
     //radius
-    REQUIRE(original_surfel_2_1.radius() > 1.000);
-    REQUIRE(original_surfel_2_1.radius() < 1.002);
+    REQUIRE(original_surfel_2_1.radius() > 0.900);
+    REQUIRE(original_surfel_2_1.radius() < 0.902);
 
 
     //surfel 2_2
@@ -802,8 +802,8 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     REQUIRE(original_surfel_2_2.color()[2] == 0);
 
     //radius
-    REQUIRE(original_surfel_2_2.radius() > 1.000);
-    REQUIRE(original_surfel_2_2.radius() < 1.002);
+    REQUIRE(original_surfel_2_2.radius() > 0.900);
+    REQUIRE(original_surfel_2_2.radius() < 0.902);
 
 
     /***************************************************************************
@@ -819,11 +819,11 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     /******************************************
      ... the normal was not averaged 
     *******************************************/
-/*    REQUIRE(unmerged_result_surfel.normal()[0] == 0.0);
+    REQUIRE(unmerged_result_surfel.normal()[0] == 0.0);
     REQUIRE(unmerged_result_surfel.normal()[1] >  0.999);
     REQUIRE(unmerged_result_surfel.normal()[1] <  1.001);
     REQUIRE(unmerged_result_surfel.normal()[2] == 0.0);
-*/
+
     /***************************************
       ... the position was not changed
     ****************************************/
@@ -835,8 +835,8 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     /***************************************
      ... the radius was not changed
     ****************************************/
-    REQUIRE(unmerged_result_surfel.radius() > 1.000);
-    REQUIRE(unmerged_result_surfel.radius() < 1.002);  
+    REQUIRE(unmerged_result_surfel.radius() > 0.900);
+    REQUIRE(unmerged_result_surfel.radius() < 0.902);  
 
 
 
@@ -847,35 +847,35 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     surfel merged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 1);
 
     /******************************************
-     ... the color was averaged 
+     ... the color was iteratively averaged 
     *******************************************/
-    REQUIRE(merged_result_surfel.color()[0] == 64);
-    REQUIRE(merged_result_surfel.color()[1] == 64);
-    REQUIRE(merged_result_surfel.color()[2] == 64);
+    REQUIRE(merged_result_surfel.color()[0] == 63);
+    REQUIRE(merged_result_surfel.color()[1] == 63);
+    REQUIRE(merged_result_surfel.color()[2] == 63);
 
     /******************************************
-     ... the normal was averaged 
+     ... the normal was iteratively averaged 
     *******************************************/
-    REQUIRE(merged_result_surfel.normal()[0] > 0.893);
-    REQUIRE(merged_result_surfel.normal()[0] < 0.895);
+    REQUIRE(merged_result_surfel.normal()[0] > 0.70);
+    REQUIRE(merged_result_surfel.normal()[0] < 0.71);
     REQUIRE(merged_result_surfel.normal()[1] == 0.0);
-    REQUIRE(merged_result_surfel.normal()[2] > 0.446);
-    REQUIRE(merged_result_surfel.normal()[2] < 0.448);
+    REQUIRE(merged_result_surfel.normal()[2] > 0.70);
+    REQUIRE(merged_result_surfel.normal()[2] < 0.71);
 
     /******************************************
-     ... the position was averaged 
+     ... the position was iteratively averaged 
     *******************************************/
-    REQUIRE(merged_result_surfel.pos()[0] > 0.199);
-    REQUIRE(merged_result_surfel.pos()[0] < 0.201);
+    REQUIRE(merged_result_surfel.pos()[0] > 1.28);
+    REQUIRE(merged_result_surfel.pos()[0] < 1.29);
     REQUIRE(merged_result_surfel.pos()[1] == 0.0);
     REQUIRE(merged_result_surfel.pos()[2] == 0.0);
 
     /******************************************
-     ... the radius was increased
+     ... the radius was iteratively increased
     *******************************************/
 
-    REQUIRE(merged_result_surfel.radius() > 3.001);
-    REQUIRE(merged_result_surfel.radius() < 3.005);
+    REQUIRE(merged_result_surfel.radius() > 3.601);
+    REQUIRE(merged_result_surfel.radius() < 3.701);
 }
 
 
