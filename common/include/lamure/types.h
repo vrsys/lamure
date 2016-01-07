@@ -32,6 +32,11 @@ struct surfel_id_t {
         return lhs.node_idx == rhs.node_idx &&
                lhs.surfel_idx == rhs.surfel_idx;
     }
+ 
+    friend bool operator!=(surfel_id_t const& lhs, surfel_id_t const& rhs) {
+        return lhs.node_idx != rhs.node_idx ||
+               lhs.surfel_idx != rhs.surfel_idx;
+    }
 
     friend bool operator<(surfel_id_t const& lhs, surfel_id_t const& rhs) {
       if(lhs.node_idx < rhs.node_idx) {
@@ -43,6 +48,11 @@ struct surfel_id_t {
         }
         else return false;
       }
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const surfel_id_t& s) {
+      os << "(" << s.node_idx << "," << s.surfel_idx << ")";
+      return os;
     }
 };
 
