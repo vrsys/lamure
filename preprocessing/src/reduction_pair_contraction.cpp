@@ -258,8 +258,7 @@ create_lod(real& reduction_error,
   };
 
   // store contractions and operations in queue
-  // std::unordered_map<edge_t, std::shared_ptr<contraction>> contractions{};
-  std::unordered_map<surfel_id_t, std::map<surfel_id_t,std::shared_ptr<contraction>>> contractions{};
+  std::map<surfel_id_t, std::map<surfel_id_t,std::shared_ptr<contraction>>> contractions{};
   std::vector<std::shared_ptr<contraction_op>> contraction_queue{};
   i = 0;
   for (const auto& edge : edges) {
@@ -323,8 +322,8 @@ create_lod(real& reduction_error,
    
     auto update_contraction = [&create_contraction, &contractions]
       (const surfel_id_t& new_id, const surfel_id_t& old_id, const std::pair<const surfel_id_t, std::shared_ptr<contraction>>& cont) {
-        std::cout << "replacing " << edge_t{old_id, cont.first} << " with " << edge_t{new_id, cont.first} << std::endl;
         edge_t new_edge = edge_t{new_id, cont.first};
+        std::cout << "replacing " << edge_t{old_id, cont.first} << " with " << new_edge << std::endl;
         // store new contraction
         contractions[new_id][cont.first] = std::make_shared<contraction>(create_contraction(new_edge));
         // update contractions of neighbour
@@ -348,23 +347,29 @@ create_lod(real& reduction_error,
    
     for(const auto& cont : contractions.at(old_id_1)) {
       if (cont.first != old_id_2) {
-        update_contraction(new_id, old_id_2, cont);
+        update_contraction(new_id, old_id_1, cont);
+        assert(contractions.at(cont.first).find(old_id_1) == contractions.at(cont.first).end());
       }
       else {
         // invalidate operation
         cont.second->cont_op->cont = nullptr;
       }
     }
+
+    contractions.at(old_id_2);
     for(const auto& cont : contractions.at(old_id_2)) {
       if (cont.first != old_id_1) {
         if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end()) {
-          update_contraction(new_id, old_id_1, cont);
+          update_contraction(new_id, old_id_2, cont);
         }
         else {
+          // already added -> remove duplicate contractions
           contractions.at(cont.first).erase(old_id_2);
+          cont.second->cont_op->cont = nullptr;
           // contractions.at(cont.first)[new_id] = new_contractions.at(cont.first);
           std::cout << "skip " << edge_t{old_id_2, cont.first} << " with " << edge_t{new_id, cont.first} << std::endl;
         }
+        assert(contractions.at(cont.first).find(old_id_2) == contractions.at(cont.first).end());
       }
       else {
         // invalidate operation
@@ -373,9 +378,31 @@ create_lod(real& reduction_error,
     }
     // add new surfel mapping
     // remove old mapping
+    std::cout << "removing " << old_id_1 << " and " << old_id_2 << std::endl;
     contractions.erase(old_id_1);
     contractions.erase(old_id_2);
+    // check for remaining surfels
+    for(const auto& pair : contractions) {
+      if(pair.second.find(old_id_1) != pair.second.end()) {
+        std::cout << "found 1 " << edge_t{old_id_1, pair.first} << " at " << pair.first << std::endl;
+        throw std::exception();
+      }
+      if(pair.second.find(old_id_2) != pair.second.end()) {
+        std::cout << "found 2 " << edge_t{old_id_2, pair.first} << " at " << pair.first << std::endl;
+        throw std::exception();
+      }
 
+      for(const auto& pair2 : pair.second) {
+        if(pair2.second->edge.a == old_id_1 || pair2.second->edge.b == old_id_1) {
+          std::cout << "found edge " << pair2.second->edge << " at " << pair.first << "::::" << pair2.first << std::endl;
+          throw std::exception();
+        }
+        if(pair2.second->edge.a == old_id_2 || pair2.second->edge.b == old_id_2) {
+          std::cout << "found edge " << pair2.second->edge << " at " << pair.first << "::::" << pair2.first << std::endl;
+          throw std::exception();
+        }
+      }
+    }
     // update queue, cheapest contraction at the back
     std::sort(contraction_queue.begin(), contraction_queue.end());
   }
