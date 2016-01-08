@@ -54,9 +54,11 @@ public:
     bool                operator!=(const surfel& rhs) const
                             { return !(operator==(rhs)); }
 
-    static bool         compare_x(const surfel &left, const surfel &right);
-    static bool         compare_y(const surfel &left, const surfel &right);
-    static bool         compare_z(const surfel &left, const surfel &right);
+    static bool         intersect(const surfel &left_surfel, const surfel &right_surfel);
+    
+    static bool         compare_x(const surfel &left_surfel, const surfel &right_surfel);
+    static bool         compare_y(const surfel &left_surfel, const surfel &right_surfel);
+    static bool         compare_z(const surfel &left_surfel, const surfel &right_surfel);
 
     static compare_function compare(const uint8_t axis);
 
