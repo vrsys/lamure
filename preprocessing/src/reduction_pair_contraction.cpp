@@ -234,9 +234,9 @@ create_lod(real& reduction_error,
   i = 0;
   for (const auto& edge : edges) {
     // std::cout << edge << std::endl;
-    if(edge.a == F_SURFEL || edge.b == F_SURFEL) {
-      std::cout << "contraction for " << edge << " found "<< std::endl;
-    }
+    // if(edge.a == F_SURFEL || edge.b == F_SURFEL) {
+    //   std::cout << "contraction for " << edge << " found "<< std::endl;
+    // }
     contractions[edge] = std::make_shared<contraction>(create_contraction(edge));
     assert(edge.a.node_idx < num_nodes_per_level && edge.a.surfel_idx <num_surfels_per_node);
     assert(edge.b.node_idx < num_nodes_per_level && edge.b.surfel_idx <num_surfels_per_node);
@@ -248,9 +248,9 @@ create_lod(real& reduction_error,
     // for now check pointer correctness
     assert(contraction_queue.back().get() == contraction_queue.back()->cont->cont_op.get());
     assert(contractions[edge].get() == contractions[edge].get()->cont_op->cont.get());
-    if(edge == F_EDGE) {
-      std::cout << "created contraction ----------------------" << F_EDGE << std::endl;
-    }
+    // if(edge == F_EDGE) {
+    //   std::cout << "created contraction ----------------------" << F_EDGE << std::endl;
+    // }
     ++i;
   }
   std::cout << "contractions " << i << std::endl; 
@@ -261,13 +261,14 @@ create_lod(real& reduction_error,
     // get next contraction
     if(contraction_queue.back()->cont == nullptr) {
       contraction_queue.pop_back();
+      --i;
       continue;
     }
     contraction curr_contraction = *(contraction_queue.back()->cont);
     contraction_queue.pop_back();
-    std::cout << " execute contraction of " << curr_contraction.edge << "--------------------------------------------------" << std::endl;
-    // save new surfels in vector at back
     surfel_id_t new_id = surfel_id_t{node_surfels.size()-1, i};
+    std::cout << " contraction of " << curr_contraction.edge << " to " << new_id << "--------------------------------------------------" << std::endl;
+    // save new surfels in vector at back
     const surfel& new_surfel = curr_contraction.new_surfel;
     // save new surfel
     node_surfels.back()[i] = new_surfel;
@@ -304,7 +305,7 @@ create_lod(real& reduction_error,
       std::shared_ptr<contraction_op> operation = contractions.at(old_edge)->cont_op;
 
       try {
-        std::cout << "setting to op from" << operation->cont->edge << " to "<< new_edge << std::endl;
+        // std::cout << "setting to op from" << operation->cont->edge << " to "<< new_edge << std::endl;
         operation->cont = contractions.at(new_edge);
       }
       catch (std::exception& e) {
@@ -312,14 +313,14 @@ create_lod(real& reduction_error,
         throw std::runtime_error("missing edge");
       }
       // remove old contraction
-      std::cout << "erasing" << old_edge << std::endl;
+      // std::cout << "erasing" << old_edge << std::endl;
       contractions.erase(old_edge);
     };
 
     std::vector<surfel_id_t> new_neighbours{};
     for (const auto& neighbour : neighbours[old_id_1]) {
       if(neighbour != old_id_2) {
-        std::cout<< "new " << new_id << " old " << old_id_1 << " and" << neighbour << std::endl;
+        std::cout<< "new " << edge_t{new_id, neighbour} << " old " << edge_t{old_id_1, neighbour} << std::endl;
         update_contraction(new_id, old_id_1, neighbour);
         new_neighbours.push_back(neighbour);  
         *(std::find(neighbours[neighbour].begin(), neighbours[neighbour].end(), old_id_1)) = new_id;  
@@ -328,7 +329,7 @@ create_lod(real& reduction_error,
     for (const auto& neighbour : neighbours[old_id_2]) {
       if(neighbour != old_id_1) {
         if(std::find(new_neighbours.begin(), new_neighbours.end(), neighbour) == new_neighbours.end()) {
-          std::cout<< "new " << new_id << " old " << old_id_2 << " and" << neighbour << std::endl;
+          std::cout<< "new " << edge_t{new_id, neighbour} << " old " << edge_t{old_id_2, neighbour} << std::endl;
           update_contraction(new_id, old_id_2, neighbour);    
           new_neighbours.push_back(neighbour);    
           *(std::find(neighbours[neighbour].begin(), neighbours[neighbour].end(), old_id_2)) = new_id;  
@@ -336,13 +337,17 @@ create_lod(real& reduction_error,
         // neighbour is also neighbour of old_id_1
         else {
           edge_t old_edge = edge_t{old_id_2, neighbour};
-          std::cout<< "skipping " << old_edge << std::endl;
+          std::cout<< "skipping new " << edge_t{new_id, neighbour} << " old " << old_edge << std::endl;
           //invalidate op 
           contractions.at(old_edge)->cont_op->cont = nullptr;
           // erase old contraction
           contractions.erase(old_edge);
         }  
+        // remove duplicate neighbour entry
+        neighbours[neighbour].erase(std::find(neighbours[neighbour].begin(), neighbours[neighbour].end(), old_id_2));  
       }
+      neighbours.erase(old_id_1);
+      neighbours.erase(old_id_2);
     }
     // insert new neighbours
     neighbours[new_id] = new_neighbours;
