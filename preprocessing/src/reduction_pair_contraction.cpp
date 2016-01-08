@@ -89,6 +89,26 @@ bool operator<(const contraction_op& c1, const contraction_op& c2) {
   return c1.cont->error > c2.cont->error;
 }
 
+struct surfel_alias {
+
+  surfel_alias(surfel_id_t i)
+   :id{i}
+   ,alias{}
+  {}
+
+  surfel_id_t id;
+  std::shared_ptr<surfel_alias> alias;
+};
+
+surfel_id_t get_alias(const surfel_alias& alias) {
+  if(alias.alias == nullptr) {
+    return alias.id;
+  }
+  else {
+    return get_alias(*(alias.alias));
+  }
+}
+
 }
 }
 
@@ -138,6 +158,7 @@ create_lod(real& reduction_error,
   std::map<surfel_id_t, mat4r> quadrics{};
   std::map<surfel_id_t, std::vector<surfel_id_t>> neighbours{};
   std::vector<std::vector<surfel>> node_surfels{input.size() + 1, std::vector<surfel>{}};
+  std::map<surfel_id_t, std::shared_ptr<surfel_alias>> surfel_mapping{};
   std::set<edge_t> edges{};
   size_t i = 0;
   std::cout << "creating quadrics" << std::endl;
@@ -148,8 +169,9 @@ create_lod(real& reduction_error,
       surfel curr_surfel = input[node_idx]->read_surfel(surfel_idx);
       // save surfel
       node_surfels[node_idx].push_back(curr_surfel);
-
       surfel_id_t curr_id = surfel_id_t{node_idx, surfel_idx};
+      surfel_mapping[curr_id] = std::make_shared<surfel_alias>(surfel_alias{curr_id});
+
       assert(node_idx < num_nodes_per_level && surfel_idx < num_surfels_per_node);
       // get and store neighbours
       auto nearest_neighbours = get_local_nearest_neighbours(input, number_of_neighbours_, curr_id);
@@ -284,7 +306,7 @@ create_lod(real& reduction_error,
     // add new point quadric
     quadrics[new_id] = curr_contraction.quadric;
 
-    auto update_contraction = [&edges, &contractions, &contraction_queue, &node_surfels, &create_contraction]
+    auto update_contraction = [&edges, &contractions, &contraction_queue, &node_surfels, &create_contraction, &neighbours]
       (const surfel_id_t& new_s, const surfel_id_t& old_s, const surfel_id_t& neigh_s) {
       edge_t old_edge = edge_t{old_s, neigh_s};
       edge_t new_edge = edge_t{new_s, neigh_s};
@@ -318,21 +340,38 @@ create_lod(real& reduction_error,
     };
 
     std::vector<surfel_id_t> new_neighbours{};
-    for (const auto& neighbour : neighbours[old_id_1]) {
-      if(neighbour != old_id_2) {
-        std::cout<< "new " << edge_t{new_id, neighbour} << " old " << edge_t{old_id_1, neighbour} << std::endl;
-        update_contraction(new_id, old_id_1, neighbour);
-        new_neighbours.push_back(neighbour);  
-        *(std::find(neighbours[neighbour].begin(), neighbours[neighbour].end(), old_id_1)) = new_id;  
+    for (const auto& neighbour_old : neighbours[old_id_1]) {
+      surfel_id_t neighbour = get_alias(*(surfel_mapping.at(neighbour_old)));
+      if(neighbour != neighbour_old) {
+        std::cout << " replacing " << neighbour_old << " with " << neighbour << std::endl;
+      }
+      if(neighbour != old_id_1) {
+        if(std::find(new_neighbours.begin(), new_neighbours.end(), neighbour) == new_neighbours.end()) {
+          std::cout<< "new " << edge_t{new_id, neighbour} << " old " << edge_t{old_id_1, neighbour} << std::endl;
+          update_contraction(new_id, old_id_1, neighbour);    
+          new_neighbours.push_back(neighbour);    
+        }
+        // neighbour is also neighbour of old_id_1
+        else {
+          edge_t old_edge = edge_t{old_id_1, neighbour};
+          std::cout<< "skipping new " << edge_t{new_id, neighbour} << " old " << old_edge << std::endl;
+          //invalidate op 
+          contractions.at(old_edge)->cont_op->cont = nullptr;
+          // erase old contraction
+          contractions.erase(old_edge);
+        }  
       }
     }
-    for (const auto& neighbour : neighbours[old_id_2]) {
+    for (const auto& neighbour_old : neighbours[old_id_2]) {
+      surfel_id_t neighbour = get_alias(*(surfel_mapping.at(neighbour_old)));
+      if(neighbour != neighbour_old) {
+        std::cout << " replacing " << neighbour_old << " with " << neighbour << std::endl;
+      }
       if(neighbour != old_id_1) {
         if(std::find(new_neighbours.begin(), new_neighbours.end(), neighbour) == new_neighbours.end()) {
           std::cout<< "new " << edge_t{new_id, neighbour} << " old " << edge_t{old_id_2, neighbour} << std::endl;
           update_contraction(new_id, old_id_2, neighbour);    
           new_neighbours.push_back(neighbour);    
-          *(std::find(neighbours[neighbour].begin(), neighbours[neighbour].end(), old_id_2)) = new_id;  
         }
         // neighbour is also neighbour of old_id_1
         else {
@@ -343,12 +382,12 @@ create_lod(real& reduction_error,
           // erase old contraction
           contractions.erase(old_edge);
         }  
-        // remove duplicate neighbour entry
-        neighbours[neighbour].erase(std::find(neighbours[neighbour].begin(), neighbours[neighbour].end(), old_id_2));  
       }
-      neighbours.erase(old_id_1);
-      neighbours.erase(old_id_2);
     }
+   // update surfel aliases
+    surfel_mapping[new_id] = std::make_shared<surfel_alias>(surfel_alias{new_id});
+    surfel_mapping.at(old_id_1)->alias = surfel_mapping.at(new_id);
+    surfel_mapping.at(old_id_2)->alias = surfel_mapping.at(new_id);
     // insert new neighbours
     neighbours[new_id] = new_neighbours;
     // update queue, cheapest contraction at the back
