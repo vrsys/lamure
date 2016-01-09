@@ -15,6 +15,7 @@
 #include <vector>
 #include <queue>
 
+
 namespace lamure {
 namespace pre {
 
@@ -24,7 +25,7 @@ class bvh;
 	uint32_t surfel_id;
 	uint32_t node_id;
 	bool validity;
-	float entropy;
+	double entropy;
 	uint16_t level;
 	std::vector<std::shared_ptr<entropy_surfel> > neighbours;
 	std::shared_ptr<surfel> contained_surfel;
@@ -33,7 +34,7 @@ class bvh;
 				   uint32_t const in_surfel_id, 
 				   uint32_t const in_node_id,
 				   bool in_validity = true,
-				   float in_entropy = 0.0) : 
+				   double in_entropy = 0.0) : 
 												surfel_id(in_surfel_id),
 												node_id(in_node_id),
 												validity(in_validity),
@@ -59,9 +60,17 @@ struct min_entropy_order{
 		} else if (entropy_first->validity == true && entropy_second->validity == true){
 			if(entropy_first->entropy > entropy_second->entropy) {
 				is_rightmost = true;
+			} else if (entropy_first->entropy == entropy_second->entropy) {
+				if(entropy_first->contained_surfel->radius() > entropy_second->contained_surfel->radius() ) {
+					is_rightmost = true;
+					// both entropies are the same, but the one with the larger radius is considered later
+				}
 			}
 		}
 
+
+		// note that, since in the end we want to discard outlier surfels with minimal size, we not only sort according to entropy,
+		// but for ambiguous cases also according to radius
 		return is_rightmost;
 	}
 };
@@ -104,6 +113,9 @@ private:
 
 	uint16_t  number_of_neighbours_;
 
+	void add_neighbours(std::shared_ptr<entropy_surfel> entropy_surfel_to_add_neighbours,
+                        std::vector<std::shared_ptr<entropy_surfel> > const& neighbour_ptrs_to_add) const;
+
 	std::vector<std::shared_ptr<entropy_surfel> > const
 	get_locally_overlapping_neighbours(std::shared_ptr<entropy_surfel> target_entropy_surfel_ptr,
                                    std::vector<std::shared_ptr<entropy_surfel> >& entropy_surfel_ptr_array,
@@ -120,7 +132,8 @@ private:
 
     bool
 	merge(std::shared_ptr<entropy_surfel> current_entropy_surfel,
-      size_t& num_remaining_valid_surfel, size_t num_desired_surfel) const;
+		  std::vector<std::shared_ptr<entropy_surfel> > const& complete_entropy_surfel_array,
+          size_t& num_remaining_valid_surfel, size_t num_desired_surfel) const;
 	
 
 };
