@@ -23,7 +23,8 @@ enum class normal_computation_algorithm {
 };
 
 enum class radius_computation_algorithm {
-	average_distance = 0
+	average_distance = 0,
+    natural_neighbours = 1
 };
 
 enum class reduction_algorithm {

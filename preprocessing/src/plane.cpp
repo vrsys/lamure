@@ -5,16 +5,21 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include "plane.h"
+#include <lamure/pre/plane.h>
+
+#include <iostream>
+
+namespace lamure {
+namespace pre {
 
 plane_t::plane_t()
-    : a_(0.0f), b_(0.0f), c_(0.0f), d_(0.0f), origin_(scm::math::vec3f(0.f, 0.f, 0.f)) {
+    : a_(0.0f), b_(0.0f), c_(0.0f), d_(0.0f), origin_(vec3r(0.f, 0.f, 0.f)) {
 
 }
 
-plane_t::plane_t(const scm::math::vec3f& _normal, const scm::math::vec3f& _origin)
+plane_t::plane_t(const vec3r& _normal, const vec3r& _origin)
     : origin_(_origin) {
-    scm::math::vec3f n = scm::math::normalize(_normal);
+    vec3r n = vec3r(scm::math::normalize(_normal));
     a_ = n.x;
     b_ = n.y;
     c_ = n.z;
@@ -56,10 +61,14 @@ scm::math::vec3f plane_t::get_right() const {
     return right;
 }
 
-scm::math::vec2f plane_t::project(const plane_t& _p, const scm::math::vec3f& _right, const scm::math::vec3f& _v) {
-    scm::math::vec3f r = scm::math::normalize(_right);
-    float s = scm::math::dot(_v - _p.origin_, r);
-    float t = scm::math::dot(_v - _p.origin_, scm::math::cross(_p.get_normal(), r));
-    return scm::math::vec2f(s, t);
+vec2r plane_t::project(const plane_t& _p, const scm::math::vec3f& _right, const vec3r& _v) {
+    vec3r r = vec3r( scm::math::normalize(_right) );
+    real s = scm::math::dot(_v - _p.origin_, r);
+    real t = scm::math::dot(_v - _p.origin_, scm::math::cross(vec3r(_p.get_normal()), r));
+
+    return vec2r(s, t);
 }
 
+}
+
+}

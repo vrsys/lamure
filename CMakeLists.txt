@@ -143,7 +143,7 @@ include(find_mpfr)
 add_subdirectory(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
-add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
+#add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
