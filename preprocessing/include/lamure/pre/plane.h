@@ -8,13 +8,19 @@
 #ifndef PLANE_H_INCLUDED
 #define PLANE_H_INCLUDED
 
+#include <lamure/types.h>
+
 #include <scm/core/math.h>
 #include <complex>
+
+
+namespace lamure {
+namespace pre {
 
 class plane_t {
 public:
     plane_t();
-    plane_t(const scm::math::vec3f& _normal, const scm::math::vec3f& _origin);
+    plane_t(const vec3r& _normal, const vec3r& _origin);
     plane_t(float _a, float _b, float _c, float _d);
     plane_t(const plane_t& _p);
     ~plane_t();
@@ -24,7 +30,7 @@ public:
     scm::math::vec3f get_right() const;
 
     static float signed_distance(const plane_t& _p, const scm::math::vec3f& _v);
-    static scm::math::vec2f project(const plane_t& _p, const scm::math::vec3f& _right, const scm::math::vec3f& _v);
+    static vec2r project(const plane_t& _p, const scm::math::vec3f& _right, const vec3r& _v);
 
     float a_;
     float b_;
@@ -33,5 +39,8 @@ public:
 
     scm::math::vec3f origin_;
 };
+
+}
+}
 
 #endif

@@ -19,6 +19,7 @@
 
 #include <lamure/pre/normal_computation_plane_fitting.h>
 #include <lamure/pre/radius_computation_average_distance.h>
+#include <lamure/pre/radius_computation_natural_neighbours.h>
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
@@ -130,6 +131,9 @@ construct()
     switch (desc_.radius_computation_algo) {
         case radius_computation_algorithm::average_distance:
             radius_comp_strategy = new radius_computation_average_distance(desc_.number_of_neighbours);
+            break;
+        case radius_computation_algorithm::natural_neighbours:
+            radius_comp_strategy = new radius_computation_natural_neighbours(20, 10, 3);
             break;
         default:
             LOGGER_ERROR("Non-implemented radius computation algorithm");

@@ -30,10 +30,14 @@ struct surfel_id_t {
 };
 
 // math
+
+using vec2r  = scm::math::vec<real, 2>;
+using vec2f  = scm::math::vec2f;
 using vec3r  = scm::math::vec<real, 3>; //< for surfel position
 using vec3f  = scm::math::vec3f;
 using vec3ui = scm::math::vec<uint32_t, 3>;
 using vec3b  = scm::math::vec<uint8_t, 3>;
+using mat3r  = scm::math::mat<real, 3, 3>;
 using mat4r  = scm::math::mat<real, 4, 4>;
 using mat4f  = scm::math::mat4f;
 

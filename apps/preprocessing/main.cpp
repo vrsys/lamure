@@ -114,7 +114,7 @@ int main(int argc, const char *argv[])
          "  planefitting ")
 
          ("radius-computation-algo",
-         po::value<std::string>()->default_value("averagedistance"),
+         po::value<std::string>()->default_value("naturalneighbours"),
          "Algorithm for computing surfel radius. Possible values:\n"
          "  averagedistance ")
  
@@ -270,6 +270,8 @@ int main(int argc, const char *argv[])
 
         if (radius_computation_algo == "averagedistance")
             desc.radius_computation_algo      = lamure::pre::radius_computation_algorithm::average_distance;
+        if (radius_computation_algo == "naturalneighbours")
+            desc.radius_computation_algo      = lamure::pre::radius_computation_algorithm::natural_neighbours;
         else {
             std::cerr << "Unknown algorithm for computing surfel radius" << details_msg;
             return EXIT_FAILURE;

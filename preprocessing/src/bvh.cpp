@@ -601,13 +601,13 @@ void bvh::compute_normal_and_radius(
             surfel surf = source_node->mem_array().read_surfel(k);
 
             // compute radius
-            real avg_distance = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k));                
+            real radius = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k));
 
             // compute normal
             vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k));            
 
             // write surfel
-            surf.radius() = avg_distance * 0.8;
+            surf.radius() = radius;
             surf.normal() = normal;
             source_node->mem_array().write_surfel(surf, k);
         }
