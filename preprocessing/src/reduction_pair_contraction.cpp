@@ -81,9 +81,10 @@ struct contraction_op {
   std::shared_ptr<contraction> cont;
 };
 
-bool operator<(const contraction_op& c1, const contraction_op& c2) {
-  // invalid op -> sort to front
-  if (c1.cont == nullptr) {
+bool operator>(const contraction_op& c1, const contraction_op& c2) {
+  // invalid op -> must return false to form strict-weak ordering
+  // otherwise undefined behaviour for sort
+  if (!c1.cont || !c2.cont) {
     return false;
   }
   return c1.cont->error > c2.cont->error;
@@ -175,13 +176,14 @@ create_lod(real& reduction_error,
       quadrics[curr_id] = curr_quadric;
     }
   }
+
   // allocate space for new surfels that will be created
   node_surfels.back() = std::vector<surfel>{num_surfels - surfels_per_node};
 
   std::cout << "creating contractions" << std::endl;
   auto create_contraction = [&node_surfels, &quadrics](const edge_t& edge)->contraction {
-    surfel surfel1 = node_surfels[edge.a.node_idx][edge.a.surfel_idx];
-    surfel surfel2 = node_surfels[edge.b.node_idx][edge.b.surfel_idx];
+    const surfel& surfel1 = node_surfels[edge.a.node_idx][edge.a.surfel_idx];
+    const surfel& surfel2 = node_surfels[edge.b.node_idx][edge.b.surfel_idx];
     // new surfel is mean of both old surfels
     surfel new_surfel = surfel{(surfel1.pos() + surfel2.pos()) * 0.5f,
                           (surfel1.color() + surfel2.color()) * 0.5f,
@@ -221,6 +223,14 @@ create_lod(real& reduction_error,
   std::cout << "doing contractions" << std::endl;
   // work off queue until target num of surfels is reached
   for (size_t i = 0; i < num_surfels - surfels_per_node; ++i) {
+    // update queue, cheapest contraction at the back
+    contraction_queue.erase(std::remove_if(contraction_queue.begin(), contraction_queue.end(), [](const std::shared_ptr<contraction_op>& op){return op->cont == nullptr;}), contraction_queue.end());
+    std::sort(contraction_queue.begin(), contraction_queue.end(), 
+      [](const std::shared_ptr<contraction_op>& a, const std::shared_ptr<contraction_op>& b){
+         return *a > *b;
+       }
+      );
+
     // get next contraction
     if(contraction_queue.back()->cont == nullptr) {
       contraction_queue.pop_back();
@@ -252,6 +262,7 @@ create_lod(real& reduction_error,
         // store new contraction
         contractions[new_id][cont.first] = std::make_shared<contraction>(create_contraction(new_edge));
         // update contractions of neighbour
+        assert(contractions.find(cont.first) != contractions.end());
         contractions.at(cont.first).erase(old_id);
         contractions.at(cont.first)[new_id] = contractions.at(new_id).at(cont.first);
         // get attached operation
@@ -274,7 +285,12 @@ create_lod(real& reduction_error,
         cont.second->cont_op->cont = nullptr;
       }
     }
-
+    // in case no new contractions were created yet
+    if(contractions.find(new_id) == contractions.end()) {
+      std::cout << old_id_1 << std::endl;
+      contractions[new_id];
+      // throw std::exception{};
+    }
     for(const auto& cont : contractions.at(old_id_2)) {
       if (cont.first != old_id_1) {
         if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end()) {
@@ -297,8 +313,6 @@ create_lod(real& reduction_error,
     // remove old mapping
     contractions.erase(old_id_1);
     contractions.erase(old_id_2);
-    // update queue, cheapest contraction at the back
-    std::sort(contraction_queue.begin(), contraction_queue.end());
   }
 
   std::cout << "copying surfels" << std::endl;
@@ -337,8 +351,9 @@ lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3r& p1, const vec3r&
 
 lamure::real quadric_error(const vec3r& p, const mat4r& quadric)
 {
-  vec4r p_transformed = quadric * p;
-  return dot(p, vec3r{p_transformed} / p_transformed.w);
+  vec4r p_h = vec4r{p, 1.0f};
+  vec4r p_transformed = quadric * p_h;
+  return dot(p_h, p_transformed);
 }
 
 // get k nearest neighbours in simplification nodes
