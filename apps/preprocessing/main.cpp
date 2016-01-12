@@ -116,7 +116,8 @@ int main(int argc, const char *argv[])
          ("radius-computation-algo",
          po::value<std::string>()->default_value("naturalneighbours"),
          "Algorithm for computing surfel radius. Possible values:\n"
-         "  averagedistance ")
+         "  averagedistance \n"
+         "  naturalneighbours")
  
         ("rep-radius-algo",
          po::value<std::string>()->default_value("gmean"),
@@ -270,7 +271,7 @@ int main(int argc, const char *argv[])
 
         if (radius_computation_algo == "averagedistance")
             desc.radius_computation_algo      = lamure::pre::radius_computation_algorithm::average_distance;
-        if (radius_computation_algo == "naturalneighbours")
+        else if (radius_computation_algo == "naturalneighbours")
             desc.radius_computation_algo      = lamure::pre::radius_computation_algorithm::natural_neighbours;
         else {
             std::cerr << "Unknown algorithm for computing surfel radius" << details_msg;
