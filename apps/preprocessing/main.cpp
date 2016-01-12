@@ -109,6 +109,7 @@ int main(int argc, const char *argv[])
          "  entropy - take sufels with min entropy\n"
          "  particlesim - perform particle simulation\n"
          "  hierarchical - create clusters by binary splitting of the point cloud")
+         "  kclustering - hash-based k-clustering")
 
         ("normal-computation-algo",
          po::value<std::string>()->default_value("planefitting"),
@@ -263,6 +264,8 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::reduction_algorithm::particle_sim;
         else if (reduction_algo == "hierarchical") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::hierarchical_clustering;
+        else if (reduction_algo == "kclustering")
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::k_clustering;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;

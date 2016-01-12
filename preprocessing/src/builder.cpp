@@ -27,6 +27,7 @@
 #include <lamure/pre/reduction_entropy.h>
 #include <lamure/pre/reduction_particle_simulation.h>
 #include <lamure/pre/reduction_hierarchical_clustering.h>
+#include <lamure/pre/reduction_k_clustering.h>
 
 #include <cstdio>
 
@@ -118,6 +119,9 @@ construct()
             break;
         case reduction_algorithm::hierarchical_clustering:
             reduction_strategy = new reduction_hierarchical_clustering();
+            break;
+        case reduction_algorithm::k_clustering:
+            reduction_strategy = new reduction_k_clustering();
             break;
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
