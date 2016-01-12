@@ -33,7 +33,7 @@ enum class reduction_algorithm {
     every_second   = 2,
     random         = 3,
     entropy		   = 4,
-    region_growing = 5
+    hierarchical_clustering = 5
 };
 
 }}

@@ -106,7 +106,8 @@ int main(int argc, const char *argv[])
          "  const - ndc with constant radius\n"
          "  everysecond - take every fanout-factor's surfel\n"
          "  random - randomly select points with possible duplicates\n"
-         "  entropy - take sufels with min entropy")
+         "  entropy - take sufels with min entropy\n"
+         "  hierarchical - create clusters by binary splitting of the point cloud")
 
         ("normal-computation-algo",
          po::value<std::string>()->default_value("planefitting"),
@@ -257,8 +258,8 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::reduction_algorithm::random;
         else if (reduction_algo == "entropy") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::entropy;
-        else if (reduction_algo == "regiongrowing") 
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::region_growing;
+        else if (reduction_algo == "hierarchical") 
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::hierarchical_clustering;
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;
