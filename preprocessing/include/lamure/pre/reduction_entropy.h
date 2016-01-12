@@ -75,65 +75,56 @@ struct min_entropy_order{
 	}
 };
 
-struct max_entropy_order{
-	bool operator ()(std::shared_ptr<entropy_surfel> const entropy_first, std::shared_ptr<entropy_surfel> const entropy_second){
 
-		// true  : first goes to the front, second to the back
-		// false : first goes to the back, first to the front 
-
-		// if first is not valid, sort it to the front
-
-		bool is_rightmost = false;
-		if ( entropy_first->validity == false && entropy_second->validity == true) {
-
-			is_rightmost = true;
-		} else if (entropy_first->validity == true && entropy_second->validity == true){
-			if(entropy_first->entropy < entropy_second->entropy) {
-				is_rightmost = true;
-			}
-		}
-
-		return is_rightmost;
-	}
-};
+using shared_entropy_surfel = std::shared_ptr<entropy_surfel>;
+using shared_entropy_surfel_vector = std::vector<shared_entropy_surfel>;
 
 class reduction_entropy: public reduction_strategy
 {
 public:
 
-    explicit  reduction_entropy(const uint16_t number_of_neighbours)
-    	: number_of_neighbours_(number_of_neighbours){}
+    explicit  reduction_entropy() {}
 
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node) const override;
 private:
 
+	void add_neighbours(shared_entropy_surfel entropy_surfel_to_add_neighbours,
+                        shared_entropy_surfel_vector const& neighbour_ptrs_to_add) const;
 
 
-	uint16_t  number_of_neighbours_;
 
-	void add_neighbours(std::shared_ptr<entropy_surfel> entropy_surfel_to_add_neighbours,
-                        std::vector<std::shared_ptr<entropy_surfel> > const& neighbour_ptrs_to_add) const;
-
-	std::vector<std::shared_ptr<entropy_surfel> > const
-	get_locally_overlapping_neighbours(std::shared_ptr<entropy_surfel> target_entropy_surfel_ptr,
-                                   std::vector<std::shared_ptr<entropy_surfel> >& entropy_surfel_ptr_array,
-                                   float overlap_radius_factor) const;
-
-	vec3r compute_center_of_mass(std::shared_ptr<surfel> current_surfel, std::vector<std::shared_ptr<entropy_surfel> >& neighbour_ptrs) const;
-	real compute_enclosing_sphere_radius(vec3r const& center_of_mass, std::shared_ptr<surfel> current_surfel, std::vector<std::shared_ptr<entropy_surfel> > const& neighbour_ptrs) const;
-
-	uint16_t update_level(uint16_t level) const {return level+1;}
-	float compute_entropy(std::shared_ptr<entropy_surfel> current_en_surfel, std::vector<std::shared_ptr<entropy_surfel> > const& neighbour_ptrs) const;
-
-	vec3f average_normal(std::shared_ptr<surfel> current_surfel, std::vector<std::shared_ptr<entropy_surfel> > const& neighbour_ptrs) const;
-	vec3b average_color(std::shared_ptr<surfel> current_surfel, std::vector<std::shared_ptr<entropy_surfel> > const& neighbour_ptrs) const;
+	vec3r compute_center_of_mass(shared_surfel current_surfel_ptr, 
+								shared_entropy_surfel_vector const& neighbour_ptrs) const;
+	real compute_enclosing_sphere_radius(vec3r const& center_of_mass, 
+										 shared_surfel current_surfel, 
+										 shared_entropy_surfel_vector const neighbour_ptrs) const;
+	
+	shared_entropy_surfel_vector const
+	get_locally_overlapping_neighbours(shared_entropy_surfel target_entropy_surfel_ptr,
+                                   	   shared_entropy_surfel_vector& entropy_surfel_ptr_array) const;
 
     bool
-	merge(std::shared_ptr<entropy_surfel> current_entropy_surfel,
-		  std::vector<std::shared_ptr<entropy_surfel> > const& complete_entropy_surfel_array,
+	merge(shared_entropy_surfel current_entropy_surfel,
+		  shared_entropy_surfel_vector const& complete_entropy_surfel_array,
           size_t& num_remaining_valid_surfel, size_t num_desired_surfel) const;
+
+	void update_color(shared_surfel current_surfel_ptr, shared_entropy_surfel_vector const& neighbour_ptrs) const;
+
+	void update_entropy(shared_entropy_surfel current_en_surfel, 
+						shared_entropy_surfel_vector const neighbour_ptrs) const;
+	void update_entropy_surfel_level(shared_entropy_surfel target_surfel_ptr, 
+                         		     shared_entropy_surfel_vector const& invalidated_neighbours) const;
+	void update_normal(shared_surfel current_surfel_ptr, 
+		               shared_entropy_surfel_vector const neighbour_ptrs) const;
+	void update_position(shared_surfel current_surfel_ptr, 
+					   shared_entropy_surfel_vector const neighbour_ptrs) const;
+	void update_radius(shared_surfel current_surfel_ptr, 
+					   shared_entropy_surfel_vector const neighbour_ptrs) const;
+
+	void update_surfel_attributes(shared_surfel target_surfel_ptr, 
+                         		  shared_entropy_surfel_vector const invalidated_neighbours) const;
 	
 
 };

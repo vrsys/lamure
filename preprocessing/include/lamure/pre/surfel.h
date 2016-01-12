@@ -54,6 +54,9 @@ public:
     bool                operator!=(const surfel& rhs) const
                             { return !(operator==(rhs)); }
 
+
+
+
     static bool         intersect(const surfel &left_surfel, const surfel &right_surfel);
     
     static bool         compare_x(const surfel &left_surfel, const surfel &right_surfel);
@@ -64,6 +67,9 @@ public:
 
 private:
 
+    /*static CGAL::Simple_cartesian<double>::Plane_3 
+                        create_surfel_plane(const surfel& target_surfel, bool is_left);*/
+
     vec3r               pos_;
     vec3b               color_;
     real                radius_;
@@ -72,6 +78,7 @@ private:
 };
 
 using surfel_vector = std::vector<surfel>;
+using shared_surfel = std::shared_ptr<surfel>;
 using shared_surfel_vector = std::shared_ptr<surfel_vector>;
 
 } } // namespace lamure
