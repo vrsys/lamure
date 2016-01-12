@@ -33,7 +33,7 @@ TEST_CASE( "Check if attributes are computed correctly for two overlapping surfe
    	mem_array_two.mem_data()->push_back(mem_array_surfel_2);
     mem_array_two.set_length(mem_array_two.mem_data()->size());
 
-    reduction_entropy test_entropy_reduction(1);
+    reduction_entropy test_entropy_reduction;
 
     real reduction_error = 0.0;
     uint32_t surfels_per_node = 1;
@@ -108,7 +108,7 @@ TEST_CASE( "For Non Overlapping Surfels, Entropy Based Reduction Gives Us One En
     mem_array_two.set_length(mem_array_two.mem_data()->size());
 
 
-    reduction_entropy test_entropy_reduction(1);
+    reduction_entropy test_entropy_reduction;
 
     real reduction_error = 0.0;
     uint32_t surfels_per_node = 1;
@@ -129,26 +129,24 @@ TEST_CASE( "For Non Overlapping Surfels, Entropy Based Reduction Gives Us One En
     unsigned char average_green = (double(mem_array_surfel_1.color()[1]) + mem_array_surfel_2.color()[1]) / 2.0;
     unsigned char average_blue = (double(mem_array_surfel_1.color()[2]) + mem_array_surfel_2.color()[2]) / 2.0;	
     //make sure that the color was averaged, should be 127,0,127
-    REQUIRE(result_surfel.color()[0] == 127);
+    REQUIRE(result_surfel.color()[0] == 255);
     REQUIRE(result_surfel.color()[1] == 0);
-    REQUIRE(result_surfel.color()[2] == 127);
+    REQUIRE(result_surfel.color()[2] == 0);
 
     //make sure that the normal was averaged 
-    REQUIRE(result_surfel.normal()[0] > 0.700);
-    REQUIRE(result_surfel.normal()[0] < 0.710);
+    REQUIRE(result_surfel.normal()[0] > 0.999);
+    REQUIRE(result_surfel.normal()[0] < 1.001);
     REQUIRE(result_surfel.normal()[1] == 0.0);
-    REQUIRE(result_surfel.normal()[2] > 0.700);
-    REQUIRE(result_surfel.normal()[2] < 0.710);
+    REQUIRE(result_surfel.normal()[2] == 0.0);
 
     //make sure that the position was set to the center of mass between both surfels
-    REQUIRE(result_surfel.pos()[0] > 1.499);
-    REQUIRE(result_surfel.pos()[0] < 1.501);
+    REQUIRE(result_surfel.pos()[0] == 0.0);
     REQUIRE(result_surfel.pos()[1] == 0.0);
     REQUIRE(result_surfel.pos()[2] == 0.0);
 
     //make sure that the radius at the center of mass
-    REQUIRE(result_surfel.radius() > 2.499);
-    REQUIRE(result_surfel.radius() < 2.501); 
+    REQUIRE(result_surfel.radius() > 0.999);
+    REQUIRE(result_surfel.radius() < 1.001); 
 
 }
 
@@ -193,7 +191,7 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfe
    	mem_array_two.mem_data()->push_back(mem_array_surfel_2_2);
     mem_array_two.set_length(mem_array_two.mem_data()->size());
 
-    reduction_entropy test_entropy_reduction(1);
+    reduction_entropy test_entropy_reduction;
 
     real reduction_error = 0.0;
     uint32_t surfels_per_node = 2;
@@ -434,7 +432,7 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfe
     mem_array_two.mem_data()->push_back(mem_array_surfel_2_2);
     mem_array_two.set_length(mem_array_two.mem_data()->size());
 
-    reduction_entropy test_entropy_reduction(1);
+    reduction_entropy test_entropy_reduction;
 
     real reduction_error = 0.0;
     uint32_t surfels_per_node = 2;
@@ -677,7 +675,7 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     mem_array_two.mem_data()->push_back(mem_array_surfel_2_2);
     mem_array_two.set_length(mem_array_two.mem_data()->size());
 
-    reduction_entropy test_entropy_reduction(1);
+    reduction_entropy test_entropy_reduction;
 
     real reduction_error = 0.0;
     uint32_t surfels_per_node = 2;
