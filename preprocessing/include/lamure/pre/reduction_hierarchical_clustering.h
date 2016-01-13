@@ -12,17 +12,8 @@
 #include <lamure/pre/surfel.h>
 #include <lamure/pre/bvh.h>
 
-#include <CGAL/Vector_3.h>
-#include <CGAL/Cartesian_matrix.h>
-#include <CGAL/Cartesian.h>
-#include <CGAL/Linear_algebraCd.h>
-
 namespace lamure {
 namespace pre {
-
-typedef CGAL::Cartesian<real>::Vector_3 Vector_3;
-typedef CGAL::Linear_algebraCd<real> Linear_Algebra;
-typedef Linear_Algebra::Matrix Matrix;
 
 class reduction_hierarchical_clustering : public reduction_strategy
 {
@@ -36,13 +27,17 @@ public:
 
 private:
 
-	std::vector<std::vector<surfel*>> split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size) const;
+	std::vector<std::vector<surfel*>> split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const uint32_t& max_clusters) const;
 
-	real calculate_variation(const Matrix& covariance_matrix) const;
+	real calculate_variation(const scm::math::mat3d& covariance_matrix) const;
 
-	Matrix calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample) const;
+	scm::math::mat3d calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample) const;
 
-	Vector_3 calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const;
+	vec3r calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const;
+
+	void jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const;
+
+	void eigsrt_jacobi(int dim, double* eigenvalues, double** eigenvectors) const;
 
 	real maximum_variation_ = 0;
 };

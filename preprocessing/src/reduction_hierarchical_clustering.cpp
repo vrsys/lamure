@@ -40,10 +40,7 @@ create_lod(real& reduction_error,
     // Set global parameters depending on input parameters.
     uint32_t maximum_cluster_size = (surfels_to_sample.size() / surfels_per_node) * 2;
 
-	std::vector<std::vector<surfel*>> clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size);
-	std::cout << "cluster count: " << clusters.size() << std::endl;
-
-
+	std::vector<std::vector<surfel*>> clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, surfels_per_node);
 
 	// TODO: what to do if #clusters < surfels_per_node or #clusters > surfels_per_node
 
@@ -60,20 +57,14 @@ create_lod(real& reduction_error,
 			break;
 		}
 
-		Vector_3 cluster_centroid = calculate_centroid(clusters.at(cluster_index));
-		
+		vec3r cluster_centroid = calculate_centroid(clusters.at(cluster_index));
 		surfel new_surfel;
-		
-		vec3r new_pos;
-		new_pos.x = cluster_centroid.x();
-		new_pos.y = cluster_centroid.y();
-		new_pos.z = cluster_centroid.z();
-
-		new_surfel.pos() = new_pos;
+		new_surfel.pos() = cluster_centroid;
 
 		surfels.mem_data()->push_back(new_surfel);
 	}
 	surfels.set_length(surfels.mem_data()->size());
+	std::cout << "new node surfel count: " << surfels.length() << std::endl;
 
 	reduction_error = 0;
 
@@ -83,14 +74,14 @@ create_lod(real& reduction_error,
 
 
 std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
-split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size) const
+split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const uint32_t& max_clusters) const
 {
-	Matrix covariance_matrix = calculate_covariance_matrix(input_surfels);
+	scm::math::mat3d covariance_matrix = calculate_covariance_matrix(input_surfels);
 	real variation = calculate_variation(covariance_matrix);
 
 	std::vector<std::vector<surfel*>> output_clusters;
 
-	if(input_surfels.size() > max_cluster_size || variation > maximum_variation_)
+	if((input_surfels.size() > max_cluster_size || variation > maximum_variation_) && output_clusters.size() < max_clusters)
 	{
 		std::vector<surfel*> new_surfels_one;
 		std::vector<surfel*> new_surfels_two;
@@ -109,8 +100,8 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max
 			}
 		}
 
-		std::vector<std::vector<surfel*>> result_one = split_point_cloud(new_surfels_one, max_cluster_size);
-		std::vector<std::vector<surfel*>> result_two = split_point_cloud(new_surfels_two, max_cluster_size);
+		std::vector<std::vector<surfel*>> result_one = split_point_cloud(new_surfels_one, max_cluster_size, max_clusters);
+		std::vector<std::vector<surfel*>> result_two = split_point_cloud(new_surfels_two, max_cluster_size, max_clusters);
 
 		output_clusters.insert(output_clusters.end(), result_one.begin(), result_one.end());
 		output_clusters.insert(output_clusters.end(), result_two.begin(), result_two.end());
@@ -126,63 +117,208 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max
 
 
 
-Matrix reduction_hierarchical_clustering::
+scm::math::mat3d reduction_hierarchical_clustering::
 calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample) const
 {
-	Vector_3 centroid = calculate_centroid(surfels_to_sample);
+    scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
+    vec3r centroid = calculate_centroid(surfels_to_sample);
 
-	Matrix covariance_matrix = Matrix((int)surfels_to_sample.size(), 3);
-	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
-	{
+    for (uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
+    {
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
-		Vector_3 current_point = Vector_3(current_surfel->pos().x, current_surfel->pos().y, current_surfel->pos().z);
-		Vector_3 covariance_input = current_point - centroid;
+        
+        covariance_mat.m00 += std::pow(current_surfel->pos().x-centroid.x, 2);
+        covariance_mat.m01 += (current_surfel->pos().x-centroid.x) * (current_surfel->pos().y - centroid.y);
+        covariance_mat.m02 += (current_surfel->pos().x-centroid.x) * (current_surfel->pos().z - centroid.z);
 
-		covariance_matrix(surfel_index, 0) = (real)covariance_input[0];
-		covariance_matrix(surfel_index, 1) = (real)covariance_input[1];
-		covariance_matrix(surfel_index, 2) = (real)covariance_input[2];
-	}
+        covariance_mat.m03 += (current_surfel->pos().y-centroid.y) * (current_surfel->pos().x - centroid.x);
+        covariance_mat.m04 += std::pow(current_surfel->pos().y-centroid.y, 2);
+        covariance_mat.m05 += (current_surfel->pos().y-centroid.y) * (current_surfel->pos().z - centroid.z);
 
-	covariance_matrix = Linear_Algebra::transpose(covariance_matrix) * covariance_matrix;
-	return covariance_matrix;
+        covariance_mat.m06 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().x - centroid.x);
+        covariance_mat.m07 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().y - centroid.y);
+        covariance_mat.m08 += std::pow(current_surfel->pos().z-centroid.z, 2);
+    }
+
+    return covariance_mat;
 }
 
 
 
 real reduction_hierarchical_clustering::
-calculate_variation(const Matrix& covariance_matrix) const
+calculate_variation(const scm::math::mat3d& covariance_matrix) const
 {
-	// For details, see:
-	// http://doc.cgal.org/latest/Point_set_processing_3/classVCMTraits.html
-	real cov[] = {
-		covariance_matrix(0, 0), 
-		covariance_matrix(0, 1), 
-		covariance_matrix(0, 2), 
-		covariance_matrix(1, 1), 
-		covariance_matrix(1, 2), 
-		covariance_matrix(2, 2)};
+	//solve for eigenvectors
+    real* eigenvalues = new real[3];
+    real** eigenvectors = new real*[3];
+    for (int i = 0; i < 3; ++i) {
+       eigenvectors[i] = new real[3];
+    }
 
-	real eigenvalues[3];
-	//diagonalize_selfadjoint_covariance_matrix(cov, eigenvalues);
-	return 0;
+    jacobi_rotation(covariance_matrix, eigenvalues, eigenvectors);
+
+    real variation = eigenvalues[0] / (eigenvalues[0] + eigenvalues[1] + eigenvalues[2]);
+
+    delete[] eigenvalues;
+    for (int i = 0; i < 3; ++i) {
+       delete[] eigenvectors[i];
+    }
+    delete[] eigenvectors;
+
+	return variation;
 }
 
 
 
-Vector_3 reduction_hierarchical_clustering::
+vec3r reduction_hierarchical_clustering::
 calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const
 {
-	Vector_3 centroid = Vector_3(0, 0, 0);
+	vec3r centroid = vec3r(0, 0, 0);
 
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
-		Vector_3 pos = Vector_3(current_surfel->pos().x, current_surfel->pos().y, current_surfel->pos().z);
-
-		centroid = centroid + pos;
+		centroid = centroid + current_surfel->pos();
 	}
 
 	return centroid / surfels_to_sample.size();
+}
+
+
+
+void reduction_hierarchical_clustering::
+jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const
+{
+    unsigned int max_iterations = 10;
+    double max_error = 0.00000001;
+    unsigned int dim = 3;
+
+    double iR1[3][3];
+    iR1[0][0] = _matrix[0];
+    iR1[0][1] = _matrix[1];
+    iR1[0][2] = _matrix[2];
+    iR1[1][0] = _matrix[3];
+    iR1[1][1] = _matrix[4];
+    iR1[1][2] = _matrix[5];
+    iR1[2][0] = _matrix[6];
+    iR1[2][1] = _matrix[7];
+    iR1[2][2] = _matrix[8];
+
+
+    for (uint32_t i = 0; i <= dim-1; ++i){
+        eigenvectors[i][i] = 1.0;
+        for (uint32_t j = 0; j <= dim-1; ++j){
+            if (i != j) {
+               eigenvectors[i][j] = 0.0;
+            }
+        }
+    }
+
+    uint32_t iteration = 0;
+    uint32_t p, q;
+
+    while (iteration < max_iterations){
+
+        double max_diff = 0.0;
+
+        for (uint32_t i = 0; i < dim-1 ; ++i){
+            for (uint32_t j = i+1; j < dim ; ++j){
+                long double diff = std::abs(iR1[i][j]);
+                if (i != j && diff >= max_diff){
+                    max_diff = diff;
+                    p = i;
+                    q = j;
+                }
+            }
+        }
+
+        if (max_diff < max_error){
+            for (uint32_t i = 0; i < dim; ++i){
+                eigenvalues[i] = iR1[i][i];
+            }
+            break;
+        }
+
+        long double x = -iR1[p][q];
+        long double y = (iR1[q][q] - iR1[p][p]) / 2.0;
+        long double omega = x / sqrt(x * x + y * y);
+
+        if (y < 0.0) {
+            omega = -omega;
+        }
+
+        long double sn = 1.0 + sqrt(1.0 - omega*omega);
+        sn = omega / sqrt(2.0 * sn);
+        long double cn = sqrt(1.0 - sn*sn);
+
+        max_diff = iR1[p][p];
+
+        iR1[p][p] = max_diff*cn*cn + iR1[q][q]*sn*sn + iR1[p][q]*omega;
+        iR1[q][q] = max_diff*sn*sn + iR1[q][q]*cn*cn - iR1[p][q]*omega;
+        iR1[p][q] = 0.0;
+        iR1[q][p] = 0.0;
+
+        for (uint32_t j = 0; j <= dim-1; ++j){
+            if (j != p && j != q){
+                max_diff = iR1[p][j];
+                iR1[p][j] = max_diff*cn + iR1[q][j]*sn;
+                iR1[q][j] = -max_diff*sn + iR1[q][j]*cn;
+            }
+        }
+
+        for (uint32_t i = 0; i <= dim-1; ++i){
+            if (i != p && i != q){
+                max_diff = iR1[i][p];
+                iR1[i][p] = max_diff*cn + iR1[i][q]*sn;
+                iR1[i][q] = -max_diff*sn + iR1[i][q]*cn;
+            }
+        }
+
+        for (uint32_t i = 0; i <= dim-1; ++i){
+            max_diff = eigenvectors[i][p];
+            eigenvectors[i][p] = max_diff*cn + eigenvectors[i][q]*sn;
+            eigenvectors[i][q] = -max_diff*sn + eigenvectors[i][q]*cn;
+        }
+
+        ++iteration;
+    }
+
+    
+    eigsrt_jacobi(dim, eigenvalues, eigenvectors);
+}
+
+
+
+void reduction_hierarchical_clustering::
+eigsrt_jacobi(int dim, double* eigenvalues, double** eigenvectors) const
+{
+    for (int i = 0; i < dim; ++i)
+    {
+        int k = i;
+        double v = eigenvalues[k];
+
+        for (int j = i + 1; j < dim; ++j)
+        {
+            if (eigenvalues[j] < v) // eigenvalues[j] <= v ?
+            { 
+                k = j;
+                v = eigenvalues[k];
+            }
+        }
+
+        if (k != i)
+        {
+            eigenvalues[k] = eigenvalues[i];
+            eigenvalues[i] = v;
+
+            for (int j = 0; j < dim; ++j)
+            {
+                v = eigenvectors[j][i];
+                eigenvectors[j][i] = eigenvectors[j][k];
+                eigenvectors[j][k] = v;
+            }
+        }
+    }
 }
 
 } // namespace pre
