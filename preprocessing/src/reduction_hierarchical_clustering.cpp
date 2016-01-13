@@ -15,7 +15,6 @@ namespace pre {
 reduction_hierarchical_clustering::
 reduction_hierarchical_clustering()
 {
-	maximum_variation_ = 1.0 / 3.0;
 }
 
 
@@ -38,33 +37,28 @@ create_lod(real& reduction_error,
     }
 
     // Set global parameters depending on input parameters.
+    // TODO: optimize chosen parameters
     uint32_t maximum_cluster_size = (surfels_to_sample.size() / surfels_per_node) * 2;
+    real maximum_variation = 0.1;
+	
+	std::vector<std::vector<surfel*>> clusters;
+	clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, maximum_variation, surfels_per_node);
 
-	std::vector<std::vector<surfel*>> clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, surfels_per_node);
-
-	// TODO: what to do if #clusters < surfels_per_node or #clusters > surfels_per_node
+	// TODO: what to do if #clusters < surfels_per_node
 
 
 
-	// Generate positions from clusters.
+	// Generate surfels from clusters.
 	surfel_mem_array surfels(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
 	for(uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index)
 	{
-		// TODO: This should never happen, just test code.
-		if(surfels.mem_data()->size() == surfels_per_node)
-		{
-			break;
-		}
-
-		vec3r cluster_centroid = calculate_centroid(clusters.at(cluster_index));
-		surfel new_surfel;
-		new_surfel.pos() = cluster_centroid;
-
+		surfel new_surfel = create_surfel_from_cluster(clusters.at(cluster_index));
 		surfels.mem_data()->push_back(new_surfel);
 	}
+
 	surfels.set_length(surfels.mem_data()->size());
-	std::cout << "new node surfel count: " << surfels.length() << std::endl;
+	std::cout << "new node surfel count: " << surfels.length() << " / " << surfels_per_node << std::endl;
 
 	reduction_error = 0;
 
@@ -74,42 +68,38 @@ create_lod(real& reduction_error,
 
 
 std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
-split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const uint32_t& max_clusters) const
+split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const real& max_variation, const uint32_t& max_clusters) const
 {
 	scm::math::mat3d covariance_matrix = calculate_covariance_matrix(input_surfels);
 	real variation = calculate_variation(covariance_matrix);
 
 	std::vector<std::vector<surfel*>> output_clusters;
+	output_clusters.push_back(input_surfels);
 
-	if((input_surfels.size() > max_cluster_size || variation > maximum_variation_) && output_clusters.size() < max_clusters)
+	while((input_surfels.size() > max_cluster_size || variation > max_variation) && output_clusters.size() < max_clusters)
 	{
+		std::vector<surfel*> current_surfels = output_clusters.front();
+		output_clusters.erase(output_clusters.begin());
+
 		std::vector<surfel*> new_surfels_one;
 		std::vector<surfel*> new_surfels_two;
 
 		// TODO: split current surfels into two subgroups, split again with two new subgroups
-		for(uint32_t surfel_index = 0; surfel_index < input_surfels.size(); ++surfel_index)
+		for(uint32_t surfel_index = 0; surfel_index < current_surfels.size(); ++surfel_index)
 		{
 			// Test code
-			if(surfel_index % 2 == 0)
+			if(surfel_index < current_surfels.size() / 2)
 			{
-				new_surfels_one.push_back(input_surfels.at(surfel_index));
+				new_surfels_one.push_back(current_surfels.at(surfel_index));
 			}
 			else
 			{
-				new_surfels_two.push_back(input_surfels.at(surfel_index));
+				new_surfels_two.push_back(current_surfels.at(surfel_index));
 			}
 		}
 
-		std::vector<std::vector<surfel*>> result_one = split_point_cloud(new_surfels_one, max_cluster_size, max_clusters);
-		std::vector<std::vector<surfel*>> result_two = split_point_cloud(new_surfels_two, max_cluster_size, max_clusters);
-
-		output_clusters.insert(output_clusters.end(), result_one.begin(), result_one.end());
-		output_clusters.insert(output_clusters.end(), result_two.begin(), result_two.end());
-	}
-	else
-	{
-		// If no split is necessary, the input points create a new cluster.
-		output_clusters.push_back(input_surfels);
+		output_clusters.push_back(new_surfels_one);
+		output_clusters.push_back(new_surfels_two);
 	}
 
 	return output_clusters;
@@ -185,6 +175,38 @@ calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const
 }
 
 
+
+surfel reduction_hierarchical_clustering::
+create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
+{
+	vec3r centroid = vec3r(0, 0, 0);
+	vec3f normal = vec3f(0, 0, 0);
+	vec3r color_overrun = vec3r(0, 0, 0);
+	real radius = 0;
+
+	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
+	{
+		surfel* current_surfel = surfels_to_sample.at(surfel_index);
+
+		centroid = centroid + current_surfel->pos();
+		normal = normal + current_surfel->normal();
+		color_overrun = color_overrun + current_surfel->color();
+		radius = radius + current_surfel->radius();
+	}
+
+	centroid = centroid / surfels_to_sample.size();
+	normal = normal / surfels_to_sample.size();
+	color_overrun = color_overrun / surfels_to_sample.size();
+	//radius = radius * 0.66666;	// TODO: proper radius calculation
+
+	surfel new_surfel;
+	new_surfel.pos() = centroid;
+	new_surfel.normal() = normal;
+	new_surfel.color() = vec3b(color_overrun.x, color_overrun.y, color_overrun.z);
+	new_surfel.radius() = radius;
+
+	return new_surfel;
+}
 
 void reduction_hierarchical_clustering::
 jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const

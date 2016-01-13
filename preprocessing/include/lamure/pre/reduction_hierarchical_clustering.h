@@ -27,7 +27,7 @@ public:
 
 private:
 
-	std::vector<std::vector<surfel*>> split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const uint32_t& max_clusters) const;
+	std::vector<std::vector<surfel*>> split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const real& max_variation, const uint32_t& max_clusters) const;
 
 	real calculate_variation(const scm::math::mat3d& covariance_matrix) const;
 
@@ -35,11 +35,11 @@ private:
 
 	vec3r calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const;
 
+	surfel create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const;
+
 	void jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const;
 
 	void eigsrt_jacobi(int dim, double* eigenvalues, double** eigenvectors) const;
-
-	real maximum_variation_ = 0;
 };
 
 } // namespace pre
