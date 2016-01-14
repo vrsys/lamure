@@ -45,6 +45,8 @@ public:
     const vec3f         normal() const { return normal_; }
     vec3f&              normal() { return normal_; }
 
+    const vec3r         random_point_on_surfel() const;      
+
     bool                operator==(const surfel& rhs) const
                             { return pos_    == rhs.pos_ &&
                                      color_  == rhs.color_ &&

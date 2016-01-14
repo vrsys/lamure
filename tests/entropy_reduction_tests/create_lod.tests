@@ -44,7 +44,8 @@ TEST_CASE( "Check if attributes are computed correctly for two overlapping surfe
     surfel_mem_array simplified_mem_array 
     	= test_entropy_reduction.create_lod(reduction_error,
     										input_mem_arrays,
-    										surfels_per_node);
+    										surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
 
     REQUIRE(simplified_mem_array.mem_data()->size() == 1);
 
@@ -119,7 +120,8 @@ TEST_CASE( "For Non Overlapping Surfels, Entropy Based Reduction Gives Us One En
     surfel_mem_array simplified_mem_array 
     	= test_entropy_reduction.create_lod(reduction_error,
     										input_mem_arrays,
-    										surfels_per_node);
+    										surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
 
     surfel result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
 
@@ -202,7 +204,8 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfe
     surfel_mem_array simplified_mem_array 
     	= test_entropy_reduction.create_lod(reduction_error,
     										input_mem_arrays,
-    										surfels_per_node);
+    										surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
 
     REQUIRE(simplified_mem_array.mem_data()->size() == 2);
 
@@ -443,7 +446,8 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfe
     surfel_mem_array simplified_mem_array 
         = test_entropy_reduction.create_lod(reduction_error,
                                             input_mem_arrays,
-                                            surfels_per_node);
+                                            surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
 
     // should have stopped after merging 2 of the overlapping neighbours, therefore
     // yielding 2 resulting surfels
@@ -686,7 +690,8 @@ TEST_CASE( "Check that four surfels in a row that do not overlap are merged base
     surfel_mem_array simplified_mem_array 
         = test_entropy_reduction.create_lod(reduction_error,
                                             input_mem_arrays,
-                                            surfels_per_node);
+                                            surfels_per_node,
+                                            bvh(0,0), 0); //create_lod
 
     // should have stopped after merging 2 of the overlapping neighbours, therefore
     // yielding 2 resulting surfels

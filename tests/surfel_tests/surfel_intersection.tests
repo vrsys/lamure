@@ -119,6 +119,17 @@ TEST_CASE( "Real Life Artificial Plane Example",
 
 	REQUIRE(did_intersect == true);
 
+
+	lamure::pre::surfel artificial_surfel;
+
+	artificial_surfel.pos() = lamure::vec3r(0.0, 10.0, 0.0);
+	artificial_surfel.normal() = scm::math::normalize(scm::math::vec3f(1.0, 1.0, 0.0));
+	artificial_surfel.radius() = 5;
+
+	for(int i = 0; i < 1000; ++i) {
+		std::cout << artificial_surfel.random_point_on_surfel() << "\n";
+	}
+
 }
 
 

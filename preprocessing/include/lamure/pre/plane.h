@@ -28,9 +28,14 @@ public:
     scm::math::vec3f get_normal() const;
     scm::math::vec3f get_origin() const;
     scm::math::vec3f get_right() const;
+    scm::math::vec3f get_up() const;
 
     static float signed_distance(const plane_t& _p, const scm::math::vec3f& _v);
     static vec2r project(const plane_t& _p, const scm::math::vec3f& _right, const vec3r& _v);
+
+    static void fit_plane(
+    std::vector<vec3r>& neighbour_pos_ptrs,
+    plane_t& plane);
 
     float a_;
     float b_;

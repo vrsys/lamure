@@ -21,6 +21,52 @@ namespace lamure {
 namespace pre
 {
 
+const vec3r surfel::
+random_point_on_surfel() const {
+
+    auto compute_orthogonal_vector = [] (scm::math::vec3f const& n) {
+
+        scm::math::vec3f  u(std::numeric_limits<float>::lowest(),
+                            std::numeric_limits<float>::lowest(),
+                            std::numeric_limits<float>::lowest());
+        if(n.z != 0.0) {
+            u = scm::math::vec3f( 1, 1, (-n.x - n.y) / n.z);
+        } else if (n.y != 0.0) {
+            u = scm::math::vec3f( 1, (-n.x - n.z) / n.y, 1);
+        } else {
+            u = scm::math::vec3f( (-n.y - n.z)/n.x, 1, 1);
+        }
+
+        return scm::math::normalize(u);
+    };
+
+    // implements the orthogonal method discussed here:
+    // http://math.stackexchange.com/questions/511370/how-to-rotate-one-vector-about-another
+    auto rotate_a_around_b_by_rad = [](vec3f const& a, vec3f const& b, double rad) {
+        vec3f a_comp_parallel_b = (scm::math::dot(a,b) / scm::math::dot(b,b) ) * b;
+        vec3f a_comp_orthogonal_b = a - a_comp_parallel_b;
+
+        vec3f w = scm::math::cross(b, a_comp_orthogonal_b);
+
+        double x_1 = std::cos(rad) / scm::math::length(a_comp_orthogonal_b);
+        double x_2 = std::sin(rad) / scm::math::length(w);
+
+        vec3f a_rot_by_rad_orthogonal_b = scm::math::length(a_comp_orthogonal_b) * (x_1 * a_comp_orthogonal_b + x_2 * w);
+
+        return a_rot_by_rad_orthogonal_b + a_comp_parallel_b;
+    };
+
+    real random_normalized_radius_extent    = ((double)std::rand()/RAND_MAX);
+    real random_angle_in_radians = 2.0 * M_PI * ((double)std::rand()/RAND_MAX);
+
+    vec3f random_direction_along_surfel        = scm::math::normalize(rotate_a_around_b_by_rad( compute_orthogonal_vector(normal_), 
+                                                                                                normal_, random_angle_in_radians));
+
+    // see http://mathworld.wolfram.com/DiskPointPicking.html for a short discussion about
+    // random sampling of disks
+    return (std::sqrt(random_normalized_radius_extent) * radius_) * vec3r(random_direction_along_surfel) + pos_;
+} 
+
 bool surfel::
 intersect(const surfel &left_surfel, const surfel &right_surfel) {
 
