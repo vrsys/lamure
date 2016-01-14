@@ -10,6 +10,7 @@
 #include <set>
 #include <functional>
 #include <queue>
+#include <deque>
 #include <map>
 #include <unordered_map>
 
@@ -66,7 +67,7 @@ struct contraction {
   real error;
   surfel new_surfel;
 
-  std::shared_ptr<contraction_op> cont_op;
+  contraction_op* cont_op;
 };
 
 bool operator<(const contraction& c1, const contraction& c2) {
@@ -74,18 +75,21 @@ bool operator<(const contraction& c1, const contraction& c2) {
 }
 
 struct contraction_op {
-  contraction_op(std::shared_ptr<contraction> c)
+  contraction_op(contraction* c)
    :cont{c}
   {};
 
-  std::shared_ptr<contraction> cont;
+  contraction* cont;
 };
 
 bool operator>(const contraction_op& c1, const contraction_op& c2) {
   // invalid op -> must return false to form strict-weak ordering
   // otherwise undefined behaviour for sort
-  if (!c1.cont || !c2.cont) {
+  if (!c1.cont) {
     return false;
+  }
+  if(!c2.cont) {
+    return true;
   }
   return c1.cont->error > c2.cont->error;
 }
@@ -118,7 +122,7 @@ template <> struct hash<lamure::surfel_id_t>
 namespace lamure {
 namespace pre {
 
-
+bool a = false;
 size_t num_neighbours = 20;
 
 surfel_mem_array reduction_pair_contraction::
@@ -171,7 +175,7 @@ create_lod(real& reduction_error,
         }
         // accumulate quadric
         surfel neighbour_surfel = input[neighbour.first.node_idx]->read_surfel(neighbour.first.surfel_idx);
-        curr_quadric += edge_quadric(curr_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
+        curr_quadric += edge_quadric(curr_surfel.normal(), neighbour_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
       }
       quadrics[curr_id] = curr_quadric;
     }
@@ -188,11 +192,12 @@ create_lod(real& reduction_error,
     surfel new_surfel = surfel{(surfel1.pos() + surfel2.pos()) * 0.5f,
                           (surfel1.color() + surfel2.color()) * 0.5f,
                           (surfel1.radius() + surfel2.radius()) * 0.5f,
-                          (surfel1.normal() + surfel2.normal()) * 0.5f
+                          (normalize(surfel1.normal() + surfel2.normal()))
                           };
-    mat4r new_quadric = quadrics.at(edge.a) + quadrics.at(edge.b);
-
+                          
+    mat4r new_quadric = (quadrics.at(edge.a) + quadrics.at(edge.b));
     real error = quadric_error(new_surfel.pos(), new_quadric);
+
     return contraction{edge, new_quadric, error, new_surfel};
   };
 
@@ -210,13 +215,13 @@ create_lod(real& reduction_error,
     assert(edge.a.node_idx < num_nodes_per_level && edge.a.surfel_idx <num_surfels_per_node);
     assert(edge.b.node_idx < num_nodes_per_level && edge.b.surfel_idx <num_surfels_per_node);
     // store contraction operation pointing to new contraction
-    contraction_op op{contractions.at(edge.a).at(edge.b)};
+    contraction_op op{contractions.at(edge.a).at(edge.b).get()};
     contraction_queue.push_back(std::make_shared<contraction_op>(op));  
     // let contraction point to related contraction_op
-    contractions.at(edge.a).at(edge.b)->cont_op = contraction_queue.back();  
+    contractions.at(edge.a).at(edge.b)->cont_op = contraction_queue.back().get();  
     //check pointer correctness
-    assert(contraction_queue.back().get() == contraction_queue.back()->cont->cont_op.get());
-    assert(contractions.at(edge.a).at(edge.b).get() == contractions.at(edge.a).at(edge.b).get()->cont_op->cont.get());
+    assert(contraction_queue.back().get() == contraction_queue.back()->cont->cont_op);
+    assert(contractions.at(edge.a).at(edge.b).get() == contractions.at(edge.a).at(edge.b).get()->cont_op->cont);
     assert(contractions.at(edge.a).at(edge.b).get() == contractions.at(edge.b).at(edge.a).get());
   }
 
@@ -224,19 +229,12 @@ create_lod(real& reduction_error,
   // work off queue until target num of surfels is reached
   for (size_t i = 0; i < num_surfels - surfels_per_node; ++i) {
     // update queue, cheapest contraction at the back
-    contraction_queue.erase(std::remove_if(contraction_queue.begin(), contraction_queue.end(), [](const std::shared_ptr<contraction_op>& op){return op->cont == nullptr;}), contraction_queue.end());
     std::sort(contraction_queue.begin(), contraction_queue.end(), 
       [](const std::shared_ptr<contraction_op>& a, const std::shared_ptr<contraction_op>& b){
          return *a > *b;
        }
       );
 
-    // get next contraction
-    if(contraction_queue.back()->cont == nullptr) {
-      contraction_queue.pop_back();
-      --i;
-      continue;
-    }
     contraction curr_contraction = *(contraction_queue.back()->cont);
     contraction_queue.pop_back();
     surfel_id_t new_id = surfel_id_t{node_surfels.size()-1, i};
@@ -266,15 +264,15 @@ create_lod(real& reduction_error,
         contractions.at(cont.first).erase(old_id);
         contractions.at(cont.first)[new_id] = contractions.at(new_id).at(cont.first);
         // get attached operation
-        const std::shared_ptr<contraction_op>& operation = cont.second->cont_op;
+        contraction_op* operation = cont.second->cont_op;
         // transfer contraction op
         contractions.at(new_id).at(cont.first)->cont_op = operation;
-        operation->cont = contractions.at(new_id).at(cont.first);
+        operation->cont = contractions.at(new_id).at(cont.first).get();
         // check for pointer correctness
-        assert(contractions.at(new_edge.a).at(new_edge.b).get() == contractions.at(new_edge.a).at(new_edge.b).get()->cont_op->cont.get());
+        assert(contractions.at(new_edge.a).at(new_edge.b).get() == contractions.at(new_edge.a).at(new_edge.b).get()->cont_op->cont);
         assert(contractions.at(new_edge.a).at(new_edge.b).get() == contractions.at(new_edge.b).at(new_edge.a).get());
     };
-   
+
     for(const auto& cont : contractions.at(old_id_1)) {
       if (cont.first != old_id_2) {
         update_contraction(new_id, old_id_1, cont);
@@ -299,7 +297,7 @@ create_lod(real& reduction_error,
         else {
           // already added -> remove duplicate contractions
           contractions.at(cont.first).erase(old_id_2);
-          // and invalidate respective operation
+          // // and invalidate respective operation
           cont.second->cont_op->cont = nullptr;
         }
         assert(contractions.at(cont.first).find(old_id_2) == contractions.at(cont.first).end());
@@ -309,10 +307,11 @@ create_lod(real& reduction_error,
         cont.second->cont_op->cont = nullptr;
       }
     }
-    // add new surfel mapping
     // remove old mapping
     contractions.erase(old_id_1);
     contractions.erase(old_id_2);
+    //remove invalid contraction operations
+    contraction_queue.erase(std::remove_if(contraction_queue.begin(), contraction_queue.end(), [](const std::shared_ptr<contraction_op>& op){return op->cont == nullptr;}), contraction_queue.end());
   }
 
   std::cout << "copying surfels" << std::endl;
@@ -333,14 +332,14 @@ create_lod(real& reduction_error,
 }
 
 
-lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3r& p1, const vec3r& p2)
+lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2)
 {
-    vec3r edge_dir = normalize(p2 - p1);
-    vec3r tangent = normalize(cross(vec3r(normal_p1), edge_dir));
+    vec3r edge_dir = normalize(scm::math::length_sqr(p2) > scm::math::length_sqr(p1) ? p2 - p1 : p1 - p2);
+    vec3r tangent = normalize(cross(normalize(vec3r(normal_p1 + normal_p2)), edge_dir));
 
-    vec3r normal = normalize(cross(tangent, edge_dir));
+    vec3r normal = cross(tangent, edge_dir);
+    normal /= normal.x + normal.y + normal.y;
     vec4r hessian = vec4r{normal, dot(p1, normal)}; 
-
     lamure::mat4r quadric = mat4r{hessian * hessian.x,
                                   hessian * hessian.y,
                                   hessian * hessian.z,
