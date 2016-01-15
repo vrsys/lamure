@@ -27,6 +27,18 @@ struct surfel_id_t {
      :node_idx(node_i)
      ,surfel_idx(surfel_i)
     {}
+
+    friend bool operator==(surfel_id_t const& lhs, surfel_id_t const& rhs) {
+        return lhs.node_idx == rhs.node_idx &&
+               lhs.surfel_idx == rhs.surfel_idx;
+    }
+
+    friend bool operator<(surfel_id_t const& lhs, surfel_id_t const& rhs) {
+        if(lhs.node_idx == rhs.node_idx)
+            return lhs.surfel_idx < rhs.surfel_idx;
+
+        return lhs.node_idx < rhs.node_idx;
+    }
 };
 
 // math

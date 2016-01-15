@@ -87,7 +87,9 @@ public:
 
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
-                                  const uint32_t surfels_per_node) const override;
+                                  const uint32_t surfels_per_node,
+                                  const bvh& tree,
+          						  const size_t start_node_id) const override;
 private:
 
 	void add_neighbours(shared_entropy_surfel entropy_surfel_to_add_neighbours,

@@ -25,7 +25,11 @@
 #include <lamure/pre/reduction_every_second.h>
 #include <lamure/pre/reduction_random.h>
 #include <lamure/pre/reduction_entropy.h>
+<<<<<<< HEAD
 #include <lamure/pre/reduction_hierarchical_clustering.h>
+=======
+#include <lamure/pre/reduction_particle_simulation.h>
+>>>>>>> 854657388c66988f955bef62e070cba461570326
 
 #include <cstdio>
 
@@ -109,8 +113,11 @@ construct()
         case reduction_algorithm::random:
             reduction_strategy = new reduction_random();
             break;
-         case reduction_algorithm::entropy:
-            reduction_strategy = new reduction_entropy(desc_.number_of_neighbours);
+        case reduction_algorithm::entropy:
+            reduction_strategy = new reduction_entropy();
+            break;
+        case reduction_algorithm::particle_sim:
+            reduction_strategy = new reduction_particle_simulation();
             break;
         case reduction_algorithm::hierarchical_clustering:
             reduction_strategy = new reduction_hierarchical_clustering();
@@ -256,6 +263,17 @@ construct()
         input_file = bvhd_file;
 
         LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
+
+/*
+        // statistical outlier removal
+        std::cout << "--------------------------------" << std::endl;
+        std::cout << "removing outliers" << std::endl;
+        std::cout << "--------------------------------" << std::endl;
+        bvh.remove_outliers_statistically(0.05);
+        std::cout << "--------------------------------" << std::endl;
+        std::cout << "DONE removing outliers" << std::endl;
+        std::cout << "--------------------------------" << std::endl;
+*/
     }
 
     // upsweep (create LOD)

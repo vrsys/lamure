@@ -935,7 +935,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                     
                     real reduction_error;
 
-                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, max_surfels_per_node_);
+                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0) );
                         
                     current_node->reset(reduction);
                     current_node->set_reduction_error(reduction_error);
@@ -1053,7 +1053,7 @@ upsweep_r(bvh_node& node,
     //LOGGER_TRACE("1. LOD " << node.node_id());
     // create LOD for current node
     real reduction_error;
-    node.reset(reduction_strtgy.create_lod(reduction_error, child_arrays, max_surfels_per_node_));
+    node.reset(reduction_strtgy.create_lod(reduction_error, child_arrays, max_surfels_per_node_, *this, get_child_id(node.node_id(), 0) ) );
 
     //LOGGER_TRACE("2. Error " << node.node_id());
     auto props = basic_algorithms::compute_properties(node.mem_array(), rep_radius_algo_);
