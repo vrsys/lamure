@@ -121,7 +121,7 @@ construct()
             reduction_strategy = new reduction_hierarchical_clustering();
             break;
         case reduction_algorithm::k_clustering:
-            reduction_strategy = new reduction_k_clustering();
+            reduction_strategy = new reduction_k_clustering(desc_.number_of_neighbours);
             break;
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
