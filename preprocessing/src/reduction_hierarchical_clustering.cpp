@@ -21,8 +21,10 @@ reduction_hierarchical_clustering()
 
 surfel_mem_array reduction_hierarchical_clustering::
 create_lod(real& reduction_error,
-          const std::vector<surfel_mem_array*>& input,
-          const uint32_t surfels_per_node) const
+			const std::vector<surfel_mem_array*>& input,
+            const uint32_t surfels_per_node,
+          	const bvh& tree,
+          	const size_t start_node_id) const
 {
 	// Create a single surfel vector to sample from.
 	std::vector<surfel*> surfels_to_sample;
@@ -44,10 +46,6 @@ create_lod(real& reduction_error,
 	std::vector<std::vector<surfel*>> clusters;
 	clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, maximum_variation, surfels_per_node);
 
-	// TODO: what to do if #clusters < surfels_per_node
-
-
-
 	// Generate surfels from clusters.
 	surfel_mem_array surfels(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
@@ -58,7 +56,7 @@ create_lod(real& reduction_error,
 	}
 
 	surfels.set_length(surfels.mem_data()->size());
-	std::cout << "new node surfel count: " << surfels.length() << " / " << surfels_per_node << std::endl;
+	//std::cout << "new node surfel count: " << surfels.length() << " / " << surfels_per_node << std::endl;
 
 	reduction_error = 0;
 
@@ -68,38 +66,70 @@ create_lod(real& reduction_error,
 
 
 std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
-split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const real& max_variation, const uint32_t& max_clusters) const
+split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const
 {
-	scm::math::mat3d covariance_matrix = calculate_covariance_matrix(input_surfels);
-	real variation = calculate_variation(covariance_matrix);
-
 	std::vector<std::vector<surfel*>> output_clusters;
 	output_clusters.push_back(input_surfels);
+	bool splitting = true;
 
-	while((input_surfels.size() > max_cluster_size || variation > max_variation) && output_clusters.size() < max_clusters)
+	// TODO: use of priority queue.
+	int repeat_counter = 0;
+
+	while(output_clusters.size() < max_clusters && splitting)
 	{
 		std::vector<surfel*> current_surfels = output_clusters.front();
 		output_clusters.erase(output_clusters.begin());
 
-		std::vector<surfel*> new_surfels_one;
-		std::vector<surfel*> new_surfels_two;
+		vec3r centroid;
+		scm::math::mat3d covariance_matrix = calculate_covariance_matrix(current_surfels, centroid);
+		vec3f normal;
+		real variation = calculate_variation(covariance_matrix, normal);
 
-		// TODO: split current surfels into two subgroups, split again with two new subgroups
-		for(uint32_t surfel_index = 0; surfel_index < current_surfels.size(); ++surfel_index)
+		if(current_surfels.size() > max_cluster_size || variation > max_variation)
 		{
-			// Test code
-			if(surfel_index < current_surfels.size() / 2)
+			std::vector<surfel*> new_surfels_one;
+			std::vector<surfel*> new_surfels_two;
+
+			// Split the surfels into two sub-groups along splitting plane defined by eigenvector.
+			for(uint32_t surfel_index = 0; surfel_index < current_surfels.size(); ++surfel_index)
 			{
-				new_surfels_one.push_back(current_surfels.at(surfel_index));
+				surfel* current_surfel = current_surfels.at(surfel_index);
+				real surfel_side = point_plane_distance(centroid, normal, current_surfel->pos());
+
+				if(surfel_side >= 0)
+				{
+					new_surfels_one.push_back(current_surfel);
+				}
+				else
+				{
+					new_surfels_two.push_back(current_surfel);
+				}
 			}
-			else
+
+			if(new_surfels_one.size() > 0)
 			{
-				new_surfels_two.push_back(current_surfels.at(surfel_index));
+				output_clusters.push_back(new_surfels_one);
+			}
+			if(new_surfels_two.size() > 0)
+			{
+				output_clusters.push_back(new_surfels_two);
+			}
+
+			//std::cout << new_surfels_one.size() << " / " << new_surfels_two.size() << " --- " << output_clusters.size() << std::endl;
+		}
+		else
+		{
+			output_clusters.push_back(current_surfels);
+
+			++repeat_counter;
+			if(repeat_counter > 10)
+			{
+				repeat_counter = 0;
+
+				max_cluster_size = max_cluster_size * 3 / 4;
+				max_variation = max_variation * 3 / 4;
 			}
 		}
-
-		output_clusters.push_back(new_surfels_one);
-		output_clusters.push_back(new_surfels_two);
 	}
 
 	return output_clusters;
@@ -108,10 +138,10 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max
 
 
 scm::math::mat3d reduction_hierarchical_clustering::
-calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample) const
+calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r& centroid) const
 {
     scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
-    vec3r centroid = calculate_centroid(surfels_to_sample);
+    centroid = calculate_centroid(surfels_to_sample);
 
     for (uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
     {
@@ -136,7 +166,7 @@ calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample) const
 
 
 real reduction_hierarchical_clustering::
-calculate_variation(const scm::math::mat3d& covariance_matrix) const
+calculate_variation(const scm::math::mat3d& covariance_matrix, vec3f& normal) const
 {
 	//solve for eigenvectors
     real* eigenvalues = new real[3];
@@ -148,6 +178,19 @@ calculate_variation(const scm::math::mat3d& covariance_matrix) const
     jacobi_rotation(covariance_matrix, eigenvalues, eigenvectors);
 
     real variation = eigenvalues[0] / (eigenvalues[0] + eigenvalues[1] + eigenvalues[2]);
+
+    // Use eigenvector with highest magnitude as splitting plane normal.
+    normal = scm::math::vec3f(eigenvectors[0][2], eigenvectors[1][2], eigenvectors[2][2]);
+
+    /*for(uint32_t eigen_index = 1; eigen_index <= 2; ++eigen_index)
+    {
+    	vec3f other_normal = scm::math::vec3f(eigenvectors[0][eigen_index], eigenvectors[1][eigen_index], eigenvectors[2][eigen_index]);
+    	
+    	if(scm::math::length(normal) < scm::math::length(other_normal))
+    	{
+    		normal = other_normal;
+    	}
+    }*/
 
     delete[] eigenvalues;
     for (int i = 0; i < 3; ++i) {
@@ -207,6 +250,23 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 
 	return new_surfel;
 }
+
+
+
+real reduction_hierarchical_clustering::
+point_plane_distance(const vec3r& centroid, const vec3f& normal, const vec3r& point) const
+{
+	vec3f normalized_normal = scm::math::normalize(normal);
+	vec3r w = centroid - point;
+	real a = normalized_normal.x;
+	real b = normalized_normal.y;
+	real c = normalized_normal.z;
+
+	real distance = (a * w.x + b * w.y + c * w.z) / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
+	return distance;
+}
+
+
 
 void reduction_hierarchical_clustering::
 jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const

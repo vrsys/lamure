@@ -20,8 +20,10 @@ reduction_region_growing()
 
 surfel_mem_array reduction_region_growing::
 create_lod(real& reduction_error,
-          const std::vector<surfel_mem_array*>& input,
-          const uint32_t surfels_per_node) const
+			const std::vector<surfel_mem_array*>& input,
+            const uint32_t surfels_per_node,
+          	const bvh& tree,
+          	const size_t start_node_id) const
 {
 	// Create a single surfel vector to sample from.
 	std::vector<surfel*> surfels_to_sample;

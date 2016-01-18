@@ -25,11 +25,8 @@
 #include <lamure/pre/reduction_every_second.h>
 #include <lamure/pre/reduction_random.h>
 #include <lamure/pre/reduction_entropy.h>
-<<<<<<< HEAD
-#include <lamure/pre/reduction_hierarchical_clustering.h>
-=======
 #include <lamure/pre/reduction_particle_simulation.h>
->>>>>>> 854657388c66988f955bef62e070cba461570326
+#include <lamure/pre/reduction_hierarchical_clustering.h>
 
 #include <cstdio>
 

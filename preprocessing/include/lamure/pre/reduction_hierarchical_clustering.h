@@ -22,20 +22,24 @@ public:
 	explicit reduction_hierarchical_clustering();
 
     surfel_mem_array create_lod(real& reduction_error,
-                                const std::vector<surfel_mem_array*>& input,
-                                const uint32_t surfels_per_node) const override;
+    							const std::vector<surfel_mem_array*>& input,
+                                const uint32_t surfels_per_node,
+          						const bvh& tree,
+          						const size_t start_node_id) const override;
 
 private:
 
-	std::vector<std::vector<surfel*>> split_point_cloud(const std::vector<surfel*>& input_surfels, const uint32_t& max_cluster_size, const real& max_variation, const uint32_t& max_clusters) const;
+	std::vector<std::vector<surfel*>> split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const;
 
-	real calculate_variation(const scm::math::mat3d& covariance_matrix) const;
+	real calculate_variation(const scm::math::mat3d& covariance_matrix, vec3f& normal) const;
 
-	scm::math::mat3d calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample) const;
+	scm::math::mat3d calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r& centroid) const;
 
 	vec3r calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const;
 
 	surfel create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const;
+
+	real point_plane_distance(const vec3r& centroid, const vec3f& normal, const vec3r& point) const;
 
 	void jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const;
 
