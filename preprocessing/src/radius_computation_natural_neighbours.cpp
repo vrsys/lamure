@@ -5,7 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/natural_neighbor_coordinates_2.h>
@@ -111,11 +110,15 @@ static void find_natural_neighbours(
     //cgal delaunay triangluation
     Dh2 delaunay_triangulation;
 
+
+    std::vector<scm::math::vec2f> neighbour_2d_coord_pairs;
+
     for (unsigned int i = 0; i < num_neighbours; ++i) {
         nni_sample_t sp;
         sp.xy_ = scm::math::vec2f(coords[2*i+0], coords[2*i+1]);
         Point2 p(sp.xy_.x, sp.xy_.y);
         delaunay_triangulation.insert(p);
+        neighbour_2d_coord_pairs.emplace_back(coords[2*i+0], coords[2*i+1]);
     }
     
     Point2 poi_2d(coord_poi.x, coord_poi.y);
@@ -128,20 +131,43 @@ static void find_natural_neighbours(
             std::back_inserter(sibson_coords));
 
 
-    if (!result.third) {
+    if (!result.third) {    
         natural_neighbours.clear();
         delete[] points;
         delete[] coords;
         return;
     }
 
-    std::map<unsigned int, double> nni_weights;
+    // first  := nearest_neighbour id
+    // second := natural_neighbour weight
+    std::vector<std::pair<unsigned int, double> > nni_weights;
 
     unsigned nn_counter = 0;
-    for (const auto& sibs_coord_instance : sibson_coords) {  
-        nni_weights[nn_counter++] = (double)sibs_coord_instance.second;
+
+    for (const auto& sibs_coord_instance : sibson_coords) {
+        uint32_t closest_nearest_neighbour_id = std::numeric_limits<uint32_t>::max();
+        double min_distance = std::numeric_limits<double>::max();
+
+        uint32_t current_neighbour_id = 0;
+        for( auto const& nearest_neighbour_2d : neighbour_2d_coord_pairs) {
+            double current_distance = scm::math::length(nearest_neighbour_2d - scm::math::vec2f(sibs_coord_instance.first.x(),
+                                                                                                sibs_coord_instance.first.y()) );
+            if( current_distance < min_distance ) {
+                min_distance = current_distance;
+                closest_nearest_neighbour_id = current_neighbour_id;
+            }
+
+            ++current_neighbour_id;
+        }
+
+        //invalidate the 2d coord pair by putting ridiculously large 2d coords that the model is unlikely to contain
+        neighbour_2d_coord_pairs[closest_nearest_neighbour_id] = scm::math::vec2f( std::numeric_limits<float>::max(), 
+                                                                                   std::numeric_limits<float>::lowest() );
+
+        nni_weights.emplace_back( closest_nearest_neighbour_id, (double) sibs_coord_instance.second );
     }
     
+
     
     for (const auto& it : nni_weights) {
         surfel const& curr_surfel = nearest_neighbour_copies[it.first] ;
