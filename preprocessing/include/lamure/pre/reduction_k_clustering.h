@@ -19,7 +19,7 @@ namespace lamure {
 namespace pre {
 
 
-//^naming inconstency - neighbor
+//^naming inconstency - neighbour
 //^needs better name
 struct cluster_surfel_with_neighbours{
     uint32_t surfel_id;
@@ -41,7 +41,7 @@ struct cluster_surfel_with_neighbours{
 
 };
 
-
+using cluster_surfel        = cluster_surfel_with_neighbours;
 using shared_cluster_surfel = std::shared_ptr<cluster_surfel_with_neighbours>;
 using shared_cluster_surfel_vector = std::vector<shared_cluster_surfel>;
 
@@ -85,51 +85,53 @@ class reduction_k_clustering: public reduction_strategy
 public:
 
 
-explicit reduction_k_clustering(size_t num_neighbors): //^change also in builder.cpp
-                                    number_of_neighbors_(num_neighbors)
+explicit reduction_k_clustering(size_t num_neighbours): //^change also in builder.cpp
+                                    number_of_neighbours_(num_neighbours)
                                     {}
 
 
-    surfel_mem_array  create_lod(real& reduction_error,
-                                 const std::vector<surfel_mem_array*>& input,
-                                 const uint32_t surfels_per_node) const override;
-
+    surfel_mem_array      create_lod(real& reduction_error,
+                                  const std::vector<surfel_mem_array*>& input,
+                                  const uint32_t surfels_per_node,
+                                  const bvh& tree,
+                                  const size_t start_node_id) const override;
 private:
 
 
-   size_t number_of_neighbors_;
+   size_t number_of_neighbours_;
 
   //hash_based algorithm to provide set of min-overlap surfels
   //^no currently no collision handling
-  shared_cluster_surfel_vector get_inital_cluster_seeds(vec3f const& avg_norlam, shared_cluster_surfel_vector input_cluster_surfels);
-  int get_largest_dim(vec3f const& avg_normal);
-  vec3f compute_avg_normal(shared_cluster_surfel_vector input_surfels); //^entropy reduction has similar function
+  shared_cluster_surfel_vector get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector const&  input_cluster_surfels) const;
+  int get_largest_dim(vec3f const& avg_normal) const;
+  vec3f compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const; //^entropy reduction has similar function
 
 
-  void assign_locally_overlaping_neighbors(shared_cluster_surfel current_surfel_ptr,
-                                           shared_cluster_surfel_vector& input_surfel_ptr_array); //functionality taken from entropy reduction strategy
+  void assign_locally_overlapping_neighbours(shared_cluster_surfel current_surfel_ptr,
+                                           shared_cluster_surfel_vector& input_surfel_ptr_array) const; //functionality taken from entropy reduction strategy
 
-  void compute_overlap(shared_cluster_surfel current_surfel_ptr); //use neighbors to compute overlap; [call only on set M ]
+  void compute_overlap(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute overlap; [call only on set M ]
 
-  void compute_deviation(shared_cluster_surfel current_surfel_ptr); //use neighbors to compute deviation
+  void compute_deviation(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute deviation
 
   uint32_t compute_distance(shared_cluster_surfel first_surfel_ptr,
-                            shared_cluster_surfel second_surfel_ptr);
+                            shared_cluster_surfel second_surfel_ptr) const;
 
-  void resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_M);
+  void resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
 
-  shared_cluster_surfel_vector resolve_undersampling(shared_cluster_surfel_vector& input_surfel_ptr_array);
+  void resolve_undersampling(shared_cluster_surfel_vector& input_surfel_ptr_array) const;
 
-  void update_cluster_membership(shared_cluster_surfel current_surfel_ptr, bool is_member);
+  void update_cluster_membership(shared_cluster_surfel current_surfel_ptr, bool is_member) const;
 
-  void assign_locally_nearest_neighbors(shared_cluster_surfel current_surfel_ptr,
-                                        const uint32_t number_of_neighbors,
+  /*void assign_locally_nearest_neighbours(shared_cluster_surfel current_surfel_ptr,
+                                        const uint32_t number_of_neighbours,
                                         shared_cluster_surfel_vector& input_surfel_ptr_array); //partially taken from get_nearest_neighbours();
+   */
 
-  void remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M);
+  void remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
 
   void add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
-                  shared_cluster_surfel_vector total_surfel_set);
+                  shared_cluster_surfel_vector total_surfel_set) const;
 
   //void merge(shared_cluster_surfel current_surfel_ptr){}
 

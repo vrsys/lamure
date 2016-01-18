@@ -32,7 +32,7 @@ enum class reduction_algorithm {
     constant                = 1,
     every_second            = 2,
     random                  = 3,
-    entropy	            = 4,
+    entropy	                = 4,
     particle_sim            = 5,
     hierarchical_clustering = 6,
     k_clustering            = 7

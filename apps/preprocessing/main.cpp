@@ -108,7 +108,7 @@ int main(int argc, const char *argv[])
          "  random - randomly select points with possible duplicates\n"
          "  entropy - take sufels with min entropy\n"
          "  particlesim - perform particle simulation\n"
-         "  hierarchical - create clusters by binary splitting of the point cloud")
+         "  hierarchical - create clusters by binary splitting of the point cloud\n"
          "  kclustering - hash-based k-clustering")
 
         ("normal-computation-algo",
