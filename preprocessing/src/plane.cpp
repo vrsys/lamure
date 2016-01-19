@@ -43,7 +43,7 @@ scm::math::vec3f plane_t::get_normal() const {
     return scm::math::vec3f(a_, b_, c_);
 }
 
-scm::math::vec3f plane_t::get_origin() const {
+vec3r plane_t::get_origin() const {
     return origin_;
 }
 
@@ -63,6 +63,12 @@ scm::math::vec3f plane_t::get_right() const {
 
 scm::math::vec3f plane_t::get_up() const {
     return scm::math::cross( get_normal(), get_right() );
+}
+
+vec3r plane_t::get_point_on_plane( vec2r const& plane_coords) const {
+    return  origin_ 
+          + vec3r(get_right()) * plane_coords[0] 
+          + vec3r(get_up()) * plane_coords[1];
 }
 
 vec2r plane_t::project(const plane_t& _p, const scm::math::vec3f& _right, const vec3r& _v) {

@@ -5,11 +5,16 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Delaunay_triangulation_2.h>
+#include <CGAL/natural_neighbor_coordinates_2.h>
+
 #include <lamure/pre/bvh.h>
 #include <lamure/pre/bvh_stream.h>
 #include <lamure/pre/basic_algorithms.h>
 #include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/serialized_surfel.h>
+#include <lamure/pre/plane.h>
 #include <lamure/utils.h>
 #include <lamure/sphere.h>
 
@@ -39,6 +44,16 @@ namespace fs = boost::filesystem;
 
 namespace lamure {
 namespace pre {
+
+using K       = CGAL::Exact_predicates_inexact_constructions_kernel;
+using Point2  = K::Point_2;
+using Vector2 = K::Vector_2;
+using Dh2     = CGAL::Delaunay_triangulation_2<K>;
+
+struct nni_sample_t {
+    scm::math::vec2f xy_;
+    scm::math::vec2f uv_;
+};
 
 void  bvh::
 init_tree(const std::string& surfels_input_file,
@@ -87,6 +102,8 @@ init_tree(const std::string& surfels_input_file,
     nodes_ = std::vector<bvh_node>(num_nodes);
     first_leaf_ = nodes_.size() - std::pow(fan_factor_, depth_);
     state_ = state_type::empty;
+
+    std::srand(613475635);
 }
 
 bool bvh::
@@ -856,6 +873,153 @@ get_nearest_neighbours_in_nodes(
     return candidates;
 }
 
+std::vector<std::pair<surfel_id_t, real>> bvh::
+get_natural_neighbours(const surfel_id_t& target_surfel,
+                       const uint32_t num_nearest_neighbours) const {
+
+
+    std::vector<std::pair<surfel_id_t, real>> natural_neighbour_ids;
+
+    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids =
+    get_nearest_neighbours(target_surfel, num_nearest_neighbours);
+
+    std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
+    
+
+    //compile points
+    double* points = new double[num_nearest_neighbours*3];
+
+    auto const& bvh_nodes = nodes_;
+
+    std::vector<vec3r> nn_positions;
+
+    nn_positions.reserve(nearest_neighbour_ids.size());
+
+    uint32_t point_counter = 0;
+
+    std::vector<surfel> nearest_neighbour_copies;
+    for (auto const& idx_pair : nearest_neighbour_ids) {
+
+        surfel const current_nearest_neighbour_surfel = 
+            bvh_nodes[idx_pair.first.node_idx].mem_array().read_surfel(idx_pair.first.surfel_idx);
+        auto const& neighbour_pos 
+            = current_nearest_neighbour_surfel.pos();
+
+        nearest_neighbour_copies.push_back(current_nearest_neighbour_surfel);
+
+
+        nn_positions.push_back( neighbour_pos );
+
+        points[3*point_counter+0] = neighbour_pos[0];
+        points[3*point_counter+1] = neighbour_pos[1];
+        points[3*point_counter+2] = neighbour_pos[2];
+
+        ++point_counter;
+    }
+    
+    //compute best fit plane
+    plane_t plane;
+    plane_t::fit_plane(nn_positions, plane);
+
+    bool is_projection_valid = true;
+
+    //project all points to the plane
+    double* coords = new double[2*num_nearest_neighbours];
+    scm::math::vec3f plane_right = plane.get_right();
+    for (unsigned int i = 0; i < num_nearest_neighbours; ++i) {
+        vec3r v = vec3r(points[3*i+0], points[3*i+1], points[3*i+2]);
+        vec2r c = plane_t::project(plane, plane_right, v);
+        coords[2*i+0] = c[0];
+        coords[2*i+1] = c[1];
+
+        if (c[0] != c[0] || c[1] != c[1]) { //is nan?
+            is_projection_valid = false;
+        }
+    }
+    
+    if (!is_projection_valid) {
+        delete[] points;
+        delete[] coords;
+
+        return natural_neighbour_ids;
+    }
+
+    //project point of interest
+    vec3r point_of_interest = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+    vec2r coord_poi = plane_t::project(plane, plane_right, point_of_interest);
+    
+
+    //cgal delaunay triangluation
+    Dh2 delaunay_triangulation;
+
+    std::vector<scm::math::vec2f> neighbour_2d_coord_pairs;
+
+    for (unsigned int i = 0; i < num_nearest_neighbours; ++i) {
+        nni_sample_t sp;
+        sp.xy_ = scm::math::vec2f(coords[2*i+0], coords[2*i+1]);
+        Point2 p(sp.xy_.x, sp.xy_.y);
+        delaunay_triangulation.insert(p);
+        neighbour_2d_coord_pairs.emplace_back(coords[2*i+0], coords[2*i+1]);
+    }
+    
+    Point2 poi_2d(coord_poi.x, coord_poi.y);
+    
+    std::vector<std::pair<K::Point_2, K::FT>> sibson_coords;
+    CGAL::Triple<std::back_insert_iterator<std::vector<std::pair<K::Point_2, K::FT>>>, K::FT, bool> result = 
+        natural_neighbor_coordinates_2(
+            delaunay_triangulation,
+            poi_2d,
+            std::back_inserter(sibson_coords));
+
+
+    if (!result.third) {
+        delete[] points;
+        delete[] coords;
+        return natural_neighbour_ids;
+    }
+
+    std::vector<std::pair<unsigned int, double> > nni_weights;
+
+    for (const auto& sibs_coord_instance : sibson_coords) {
+        uint32_t closest_nearest_neighbour_id = std::numeric_limits<uint32_t>::max();
+        double min_distance = std::numeric_limits<double>::max();
+
+        uint32_t current_neighbour_id = 0;
+        for( auto const& nearest_neighbour_2d : neighbour_2d_coord_pairs) {
+            double current_distance = scm::math::length(nearest_neighbour_2d - scm::math::vec2f(sibs_coord_instance.first.x(),
+                                                                                                sibs_coord_instance.first.y()) );
+            if( current_distance < min_distance ) {
+                min_distance = current_distance;
+                closest_nearest_neighbour_id = current_neighbour_id;
+            }
+
+            ++current_neighbour_id;
+        }
+
+        //invalidate the 2d coord pair by putting ridiculously large 2d coords that the model is unlikely to contain
+        neighbour_2d_coord_pairs[closest_nearest_neighbour_id] = scm::math::vec2f( std::numeric_limits<float>::max(), 
+                                                                                   std::numeric_limits<float>::lowest() );
+        nni_weights.emplace_back( closest_nearest_neighbour_id, (double) sibs_coord_instance.second );
+    }
+    
+    
+    for (const auto& it : nni_weights) {
+        surfel_id_t natural_neighbour_id_pair = nearest_neighbour_ids[it.first].first;
+
+        natural_neighbour_ids.emplace_back(natural_neighbour_id_pair, it.second);
+    }
+
+    delete[] points;
+    delete[] coords;
+    
+    sibson_coords.clear();
+    nni_weights.clear();
+
+
+
+    return natural_neighbour_ids;
+}
+
 void bvh::
 upsweep(const reduction_strategy& reduction_strtgy)
 {
@@ -1103,9 +1267,14 @@ serialize_tree_to_file(const std::string& output_file,
 {
     LOGGER_TRACE("Serialize bvh to file: \"" << output_file << "\"");
 
+    if(! write_intermediate_data) {
+        assert(state_type::after_upsweep == state_);
+        state_ = state_type::serialized;
+    }
+
+
     bvh_stream bvh_strm;
     bvh_strm.write_bvh(output_file, *this, write_intermediate_data);
-
 }
 
 

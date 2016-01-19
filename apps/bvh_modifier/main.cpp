@@ -139,8 +139,8 @@ int main(int argc, const char *argv[])
     for (const auto& s : inp_files) {
         auto tr = std::make_shared<lamure::pre::bvh>(0, 0);
         tr->load_tree(s);
-        if (tr->state() != lamure::pre::bvh::state_type::serialized) {
-            std::cerr << "file of wrong processing state" << std::endl;
+        if (tr->state() < lamure::pre::bvh::state_type::serialized) {
+            std::cerr << "file of wrong processing state: " << lamure::pre::bvh::state_to_string(tr->state()) << std::endl;
             return EXIT_FAILURE;
         }
         tr->print_tree_properties();

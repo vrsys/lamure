@@ -21,6 +21,33 @@
 namespace lamure {
 namespace pre {
 
+void expand_local_bb(vec3r& bb_min, vec3r& bb_max, vec3r const& surfel_pos) {
+
+    for( int axis_idx = 0; axis_idx < 3; ++axis_idx ) {
+        if(surfel_pos[axis_idx] < bb_min[axis_idx]) {
+            bb_min[axis_idx] = surfel_pos[axis_idx];
+        }
+
+        if(surfel_pos[axis_idx] > bb_max[axis_idx]) {
+            bb_max[axis_idx] = surfel_pos[axis_idx];
+        }
+
+    }
+}
+
+void clamp_surfel_to_bb(vec3r const& bb_min, vec3r const& bb_max, vec3r& surfel_pos){
+    for( int axis_idx = 0; axis_idx < 3; ++axis_idx ) {
+        if(surfel_pos[axis_idx] < bb_min[axis_idx]) {
+            surfel_pos[axis_idx] = bb_min[axis_idx];
+        }
+
+        if(surfel_pos[axis_idx] > bb_max[axis_idx]) {
+            surfel_pos[axis_idx] = bb_max[axis_idx];
+        }
+
+    }
+}
+
 surfel_mem_array reduction_particle_simulation::
 create_lod(real& reduction_error,
           const std::vector<surfel_mem_array*>& input,
@@ -31,12 +58,19 @@ create_lod(real& reduction_error,
     //create output array
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
-
     std::vector<std::pair<real, surfel_id_t> > surfel_lookup_vector;
 
     std::map<surfel_id_t, neighbours_t> surfels_k_nearest_neighbours;
 
     real accumulated_weights = 0.0;
+
+    vec3r bb_min = vec3r(std::numeric_limits<real>::max(),
+                         std::numeric_limits<real>::max(),
+                         std::numeric_limits<real>::max());
+
+    vec3r bb_max = vec3r(std::numeric_limits<real>::lowest(),
+                         std::numeric_limits<real>::lowest(),
+                         std::numeric_limits<real>::lowest());
 
     // wrap all surfels of the input array to entropy_surfels and push them in the ESA
     for (size_t node_id = 0; node_id < input.size(); ++node_id) {
@@ -47,6 +81,10 @@ create_lod(real& reduction_error,
             //this surfel will be referenced in the entropy surfel
             auto current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
             
+            vec3r const& curr_surf_pos = current_surfel.pos();
+            expand_local_bb(bb_min, bb_max, curr_surf_pos);
+
+
             // ignore outlier radii of any kind
             if (current_surfel.radius() == 0.0) {
                 continue;
@@ -79,14 +117,15 @@ create_lod(real& reduction_error,
         weight_entry.first /= accumulated_weights;
     }
 
+    std::vector<std::pair<surfel, real> > particle_repulsion_rad_pairs;
+
+    auto const& global_nodes = tree.nodes();
 
     //draw our surfels for the next level:
     for( uint32_t final_surfel_idx = 0; final_surfel_idx < surfels_per_node; ++final_surfel_idx ) {
 
         real rand_weighted_surfel_index = (double)std::rand()/ RAND_MAX;
-        //std::cout << "Rand num: " << rand_weighted_surfel_index << "\n";
         size_t surfel_vector_idx = surfel_lookup_vector.size() - 1;
-
 
         for( size_t vector_idx = 0; vector_idx < surfel_lookup_vector.size(); ++vector_idx) {
             if ( surfel_lookup_vector[vector_idx].first > rand_weighted_surfel_index ) {
@@ -95,12 +134,12 @@ create_lod(real& reduction_error,
             }
         }
 
-        //std::cout << "Final index: " << surfel_vector_idx << "/" << surfel_lookup_vector.size()-1<<"\n";
         surfel_id_t rand_drawn_indices = surfel_lookup_vector[surfel_vector_idx].second;
+        //////std::cout << "After drawing surfel idx\n";
 
-
-        auto surfel_to_sample = input[rand_drawn_indices.node_idx - start_node_id]->mem_data()->at(input[rand_drawn_indices.node_idx - start_node_id]->offset() + rand_drawn_indices.surfel_idx);
+        auto surfel_to_sample = global_nodes[rand_drawn_indices.node_idx].mem_array().read_surfel(rand_drawn_indices.surfel_idx);
     
+        //////std::cout << "Drawing surfel to sample\n";
 
         surfel surfel_to_push(surfel_to_sample);
 
@@ -110,14 +149,21 @@ create_lod(real& reduction_error,
 
         std::vector<surfel> neighbour_surfs_of_rand_surfel;
         std::vector<vec3r> neighbour_positions;
+
+        real max_neighbour_distance = std::numeric_limits<real>::lowest();
+
+
         for( auto const& neigh_of_rand : neighbours_of_rand_surfel ) {
 
             surfel neighbour_surf = 
-                input[neigh_of_rand.first.node_idx]->mem_data()->at(input[neigh_of_rand.first.node_idx]->offset() + neigh_of_rand.first.surfel_idx);
-
+                global_nodes[neigh_of_rand.first.node_idx].mem_array().read_surfel( neigh_of_rand.first.surfel_idx );
             neighbour_surfs_of_rand_surfel.push_back(neighbour_surf);
 
             neighbour_positions.push_back(neighbour_surf.pos());
+
+            real neighbour_distance = scm::math::length(neighbour_surf.pos() - surfel_to_push.pos());
+
+            max_neighbour_distance = std::max(max_neighbour_distance, neighbour_distance );
         }
 
 
@@ -127,22 +173,89 @@ create_lod(real& reduction_error,
         vec3r projected_surfel_pos = surfel_to_push.pos();
 
         vec2r plane_coords = plane_to_project_onto.project(plane_to_project_onto, plane_to_project_onto.get_right(), projected_surfel_pos);
-/*
-        surfel surfel_to_push;
-        surfel_to_push.pos() = vec3r(0.0, 0.0, 0.0);
-        surfel_to_push.color() = vec3b(255,255,255);
-        surfel_to_push.normal() = vec3f(0.0, 1.0, 0.0);
-        surfel_to_push.radius() = 1.0;
-*/
-        //std::cout << surfel_to_push.pos();
 
-        mem_array.mem_data()->push_back(surfel_to_push);
-        //mem_array.mem_data()->push_back()
-        //std::cout << "Executing\n";
+        surfel_to_push.pos() =  plane_to_project_onto.get_point_on_plane(plane_coords);
+
+
+        //determine color by natural neighbour interpolation (right now from the point of view of the current surfel)
+
+        vec3b old_color = surfel_to_push.color();
+
+        auto const nn_indices = tree.get_natural_neighbours(rand_drawn_indices, 24);
+
+        // interpolate colors of natural neighbours
+        if( nn_indices.size() > 2) {
+            vec3r new_temp_color = vec3r(0.0, 0.0, 0.0);
+            double accumulated_weights = 0.0;
+
+            for( auto const& nn_index : nn_indices ) {
+                surfel const natural_neighbour = 
+                    global_nodes[nn_index.first.node_idx].mem_array().read_surfel( nn_index.first.surfel_idx );
+                new_temp_color += natural_neighbour.color() * 1.0;// nn_index.second;
+
+                accumulated_weights += 1.0;//nn_index.second;
+            }
+
+            //add a little contribution of the surfel itself as well
+            double own_surfel_weight = accumulated_weights / nn_indices.size();
+
+            new_temp_color += old_color * own_surfel_weight;
+
+            accumulated_weights += own_surfel_weight;
+
+            surfel_to_push.color() = new_temp_color/accumulated_weights;
+        }
+
+
+        particle_repulsion_rad_pairs.push_back( std::pair<surfel, real>(surfel_to_push,  2 * max_neighbour_distance ) );
     }
 
+    // perform particle repulsion
 
-    //std::cout << "Done with " << mem_array.mem_data()->size() << " surfels\n";
+    //repulsion constant k
+    double k = 0.01;
+    {
+        std::vector<vec3r> particle_displacements;
+
+
+        particle_displacements.reserve( particle_repulsion_rad_pairs.size() );
+        for(auto const& part_rep_pair : particle_repulsion_rad_pairs) {
+            vec3r particle_displacement = vec3r(0.0, 0.0, 0.0);
+
+            double r = part_rep_pair.second;
+
+            for(auto const& potential_influence_pair : particle_repulsion_rad_pairs) {
+
+                if(potential_influence_pair.first == part_rep_pair.first)
+                    continue;
+
+                if(potential_influence_pair.first.radius() == 0.0)
+                    continue;
+
+                vec3r particle_neighbour_vec = part_rep_pair.first.pos() - potential_influence_pair.first.pos();
+                real neighbour_dist = scm::math::length(particle_neighbour_vec);
+
+                if (neighbour_dist < part_rep_pair.second) {
+                    particle_displacement += k * (r - neighbour_dist) * particle_neighbour_vec;
+                }
+            }
+
+            particle_displacements.push_back(particle_displacement);
+        }
+
+
+        size_t displacement_idx = 0;
+
+        for(auto& part_rep_pair : particle_repulsion_rad_pairs) {
+            part_rep_pair.first.pos() += particle_displacements[displacement_idx++];
+
+            clamp_surfel_to_bb(bb_min, bb_max, part_rep_pair.first.pos());
+
+            mem_array.mem_data()->push_back(part_rep_pair.first);
+        }
+
+    }
+
     mem_array.set_length(mem_array.mem_data()->size());
     reduction_error = 0.0;
 
