@@ -1267,9 +1267,14 @@ serialize_tree_to_file(const std::string& output_file,
 {
     LOGGER_TRACE("Serialize bvh to file: \"" << output_file << "\"");
 
+    if(! write_intermediate_data) {
+        assert(state_type::after_upsweep == state_);
+        state_ = state_type::serialized;
+    }
+
+
     bvh_stream bvh_strm;
     bvh_strm.write_bvh(output_file, *this, write_intermediate_data);
-
 }
 
 
