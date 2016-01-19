@@ -26,9 +26,11 @@ public:
     ~plane_t();
 
     scm::math::vec3f get_normal() const;
-    scm::math::vec3f get_origin() const;
+    vec3r get_origin() const;
     scm::math::vec3f get_right() const;
     scm::math::vec3f get_up() const;
+
+    vec3r get_point_on_plane( vec2r const& plane_coords) const;
 
     static float signed_distance(const plane_t& _p, const scm::math::vec3f& _v);
     static vec2r project(const plane_t& _p, const scm::math::vec3f& _right, const vec3r& _v);
@@ -42,7 +44,7 @@ public:
     float c_;
     float d_;
 
-    scm::math::vec3f origin_;
+    vec3r origin_;
 };
 
 }
