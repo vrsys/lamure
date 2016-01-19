@@ -46,9 +46,20 @@ using shared_cluster_surfel = std::shared_ptr<cluster_surfel_with_neighbours>;
 using shared_cluster_surfel_vector = std::vector<shared_cluster_surfel>;
 
 struct max_overlap_order {
-    bool operator() (shared_cluster_surfel const first_surfel, shared_cluster_surfel const second_surfel){
-
-        if(first_surfel->overlap >= second_surfel->overlap){
+    bool operator() (shared_cluster_surfel const& first_surfel, shared_cluster_surfel const& second_surfel){
+        if(!first_surfel || !second_surfel){
+            throw std::exception();
+        }
+        if(first_surfel->overlap == second_surfel->overlap){
+            if(first_surfel->node_id < second_surfel->node_id) {
+                if(first_surfel->surfel_id < second_surfel->surfel_id) {
+                    return true;
+                }
+                else return false;
+            }
+            else return false;
+        }
+        if(first_surfel->overlap > second_surfel->overlap){
            return false;
         }
         else
@@ -58,9 +69,20 @@ struct max_overlap_order {
 
 
 struct min_overlap_order {
-    bool operator() (shared_cluster_surfel const first_surfel, shared_cluster_surfel const second_surfel){
-
-        if(first_surfel->overlap <= second_surfel->overlap){
+    bool operator() (shared_cluster_surfel const& first_surfel, shared_cluster_surfel const& second_surfel){
+        if(!first_surfel || !second_surfel){
+            throw std::exception();
+        }
+        if(first_surfel->overlap == second_surfel->overlap){
+            if(first_surfel->node_id < second_surfel->node_id) {
+                if(first_surfel->surfel_id < second_surfel->surfel_id) {
+                    return true;
+                }
+                else return false;
+            }
+            else return false;
+        }
+        if(first_surfel->overlap < second_surfel->overlap){
            return false;
         }
         else
@@ -69,9 +91,20 @@ struct min_overlap_order {
 };
 
 struct min_deviation_order {
-    bool operator() (shared_cluster_surfel const first_surfel, shared_cluster_surfel const second_surfel){
-
-        if(first_surfel->deviation <= second_surfel->deviation){
+    bool operator() (shared_cluster_surfel const& first_surfel, shared_cluster_surfel const& second_surfel){
+        if(!first_surfel || !second_surfel){
+            throw std::exception();
+        }
+        if(first_surfel->overlap == second_surfel->overlap){
+            if(first_surfel->node_id < second_surfel->node_id) {
+                if(first_surfel->surfel_id < second_surfel->surfel_id) {
+                    return true;
+                }
+                else return false;
+            }
+            else return false;
+        }
+        if(first_surfel->deviation < second_surfel->deviation){
            return false;
         }
         else
@@ -131,7 +164,7 @@ private:
   void remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
 
   void add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
-                  shared_cluster_surfel_vector total_surfel_set) const;
+                  shared_cluster_surfel_vector& total_surfel_set) const;
 
   //void merge(shared_cluster_surfel current_surfel_ptr){}
 
