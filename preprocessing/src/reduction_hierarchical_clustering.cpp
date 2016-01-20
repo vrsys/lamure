@@ -6,7 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/reduction_hierarchical_clustering.h>
-//#include <CGAL/Eigen_vcm_traits.h>
+#include <queue>
 
 
 namespace lamure {
@@ -56,7 +56,6 @@ create_lod(real& reduction_error,
 	}
 
 	surfels.set_length(surfels.mem_data()->size());
-	//std::cout << "new node surfel count: " << surfels.length() << " / " << surfels_per_node << std::endl;
 
 	reduction_error = 0;
 
@@ -65,17 +64,16 @@ create_lod(real& reduction_error,
 
 
 
-std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
+/*std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
 split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const
 {
 	std::vector<std::vector<surfel*>> output_clusters;
 	output_clusters.push_back(input_surfels);
-	bool splitting = true;
 
 	// TODO: use of priority queue.
 	int repeat_counter = 0;
 
-	while(output_clusters.size() < max_clusters && splitting)
+	while(output_clusters.size() < max_clusters)
 	{
 		std::vector<surfel*> current_surfels = output_clusters.front();
 		output_clusters.erase(output_clusters.begin());
@@ -133,6 +131,89 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluste
 	}
 
 	return output_clusters;
+}*/
+
+
+
+std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
+split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const
+{
+	std::priority_queue<hierarchical_cluster, 
+						std::vector<hierarchical_cluster>, 
+						cluster_comparator> cluster_queue;
+	cluster_queue.push(calculate_cluster_data(input_surfels));
+
+	while(cluster_queue.size() < max_clusters)
+	{
+		hierarchical_cluster current_cluster = cluster_queue.top();
+		cluster_queue.pop();
+
+		if(current_cluster.surfels.size() > max_cluster_size || current_cluster.variation > max_variation)
+		{
+			std::vector<surfel*> new_surfels_one;
+			std::vector<surfel*> new_surfels_two;
+
+			// Split the surfels into two sub-groups along splitting plane defined by eigenvector.
+			for(uint32_t surfel_index = 0; surfel_index < current_cluster.surfels.size(); ++surfel_index)
+			{
+				surfel* current_surfel = current_cluster.surfels.at(surfel_index);
+				real surfel_side = point_plane_distance(current_cluster.centroid, current_cluster.normal, current_surfel->pos());
+
+				if(surfel_side >= 0)
+				{
+					new_surfels_one.push_back(current_surfel);
+				}
+				else
+				{
+					new_surfels_two.push_back(current_surfel);
+				}
+			}
+
+			if(new_surfels_one.size() > 0)
+			{
+				cluster_queue.push(calculate_cluster_data(new_surfels_one));
+			}
+			if(new_surfels_two.size() > 0)
+			{
+				cluster_queue.push(calculate_cluster_data(new_surfels_two));
+			}
+		}
+		else
+		{
+			cluster_queue.push(current_cluster);
+
+			max_cluster_size = max_cluster_size * 3 / 4;
+			max_variation = max_variation * 0.75;
+		}
+	}
+
+	std::vector<std::vector<surfel*>> output_clusters;
+	while(cluster_queue.size() > 0)
+	{
+		output_clusters.push_back(cluster_queue.top().surfels);
+		cluster_queue.pop();
+	}
+
+	return output_clusters;
+}
+
+
+
+hierarchical_cluster reduction_hierarchical_clustering::
+calculate_cluster_data(const std::vector<surfel*>& input_surfels) const
+{
+	vec3r centroid;
+	scm::math::mat3d covariance_matrix = calculate_covariance_matrix(input_surfels, centroid);
+	vec3f normal;
+	real variation = calculate_variation(covariance_matrix, normal);
+
+	hierarchical_cluster new_cluster;
+	new_cluster.surfels = input_surfels;
+	new_cluster.centroid = centroid;
+	new_cluster.normal = normal;
+	new_cluster.variation = variation;
+
+	return new_cluster;
 }
 
 

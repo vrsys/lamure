@@ -15,6 +15,33 @@
 namespace lamure {
 namespace pre {
 
+struct hierarchical_cluster
+{
+	std::vector<surfel*> surfels;
+	vec3r centroid;
+	vec3f normal;
+	real variation;
+};
+
+
+
+struct cluster_comparator
+{
+  bool operator()(const hierarchical_cluster& lhs, const hierarchical_cluster& rhs) const
+  {
+    if(lhs.surfels.size() != rhs.surfels.size())
+	{
+		return lhs.surfels.size() < rhs.surfels.size();
+	}
+	else
+	{
+		return lhs.variation < rhs.variation;
+	}
+  }
+};
+
+
+
 class reduction_hierarchical_clustering : public reduction_strategy
 {
 public:
@@ -30,6 +57,8 @@ public:
 private:
 
 	std::vector<std::vector<surfel*>> split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const;
+
+	hierarchical_cluster calculate_cluster_data(const std::vector<surfel*>& input_surfels) const;
 
 	real calculate_variation(const scm::math::mat3d& covariance_matrix, vec3f& normal) const;
 
