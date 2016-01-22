@@ -5,13 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Delaunay_triangulation_2.h>
-#include <CGAL/natural_neighbor_coordinates_2.h>
-
 #include <lamure/pre/bvh.h>
 #include <lamure/pre/radius_computation_natural_neighbours.h>
-#include <lamure/pre/plane.h>
 
 #include <iostream>
 

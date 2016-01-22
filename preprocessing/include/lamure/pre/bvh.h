@@ -71,6 +71,7 @@ public:
     std::vector<bvh_node>& nodes() { return nodes_; }
 
     // helper funtions
+    uint32_t            get_depth_of_node(const uint32_t node_id) const;
     uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
     uint32_t            get_parent_id(const uint32_t node_id) const;
     const node_t        get_first_node_id_of_depth(uint32_t depth) const;

@@ -119,6 +119,19 @@ load_tree(const std::string& kdn_input_file)
 }
 
 uint32_t bvh::
+get_depth_of_node(const uint32_t node_id) const{
+    uint32_t node_depth = 0;
+
+    uint32_t current_node_id = node_id;
+    while(current_node_id != 0) {
+        ++node_depth;
+        current_node_id = get_parent_id(current_node_id);
+    }
+
+    return node_depth;
+}
+
+uint32_t bvh::
 get_child_id(const uint32_t node_id, const uint32_t child_index) const
 {
     return node_id*fan_factor_ + 1 + child_index;
@@ -401,7 +414,7 @@ downsweep_subtree_in_core( const bvh_node& node,
     #pragma omp parallel for
     for (size_t nid = slice_left; nid <= slice_right; ++nid) {
         bvh_node& current_node = nodes_[nid];
-        auto props = basic_algorithms::compute_properties(current_node.mem_array(), rep_radius_algo_);
+        auto props = basic_algorithms::compute_properties(current_node.mem_array(), rep_radius_algo_, false);
         current_node.set_avg_surfel_radius(props.rep_radius);
         current_node.set_centroid(props.centroid);
         current_node.set_bounding_box(props.bbox);
@@ -677,6 +690,10 @@ void bvh::get_descendant_nodes(
     }
 }
 
+
+
+
+
 std::vector<std::pair<surfel_id_t, real>> bvh::
 get_nearest_neighbours(
     const surfel_id_t target_surfel,
@@ -726,19 +743,22 @@ get_nearest_neighbours(
 
     // check rest of kd-bvh
     sphere candidates_sphere = sphere(center, sqrt(max_candidate_distance));
+
     while ( (!nodes_[current_node].get_bounding_box().contains(candidates_sphere)) &&
             (current_node != 0) )
     {
+
         current_node = get_parent_id(current_node);
 
         std::vector<size_t> unvisited_descendant_nodes;
 
         get_descendant_nodes(current_node, unvisited_descendant_nodes, nodes_[target_surfel.node_idx].depth(), processed_nodes);
 
+
         for (auto adjacent_node : unvisited_descendant_nodes)
         {
 
-            if (candidates_sphere.is_inside(nodes_[adjacent_node].get_bounding_box()))
+            if (candidates_sphere.intersects_or_contains(nodes_[adjacent_node].get_bounding_box()))
             {
                 assert(nodes_[adjacent_node].is_out_of_core());
 
@@ -775,7 +795,6 @@ get_nearest_neighbours(
 
                 processed_nodes.insert(adjacent_node);
                 candidates_sphere = sphere(center, sqrt(max_candidate_distance));
-
             }
 
         }
@@ -784,6 +803,7 @@ get_nearest_neighbours(
 
     return candidates;
 }
+
 
 std::vector<std::pair<surfel_id_t, real>> bvh::
 get_nearest_neighbours_in_nodes(
@@ -833,7 +853,7 @@ get_nearest_neighbours_in_nodes(
     {
         if (adjacent_node != current_node)
         {
-            if (candidates_sphere.is_inside(nodes_[adjacent_node].get_bounding_box()))
+            if (candidates_sphere.intersects_or_contains(nodes_[adjacent_node].get_bounding_box()))
             {
                 assert(nodes_[adjacent_node].is_out_of_core());
 
@@ -958,7 +978,7 @@ get_natural_neighbours(const surfel_id_t& target_surfel,
         nni_sample_t sp;
         sp.xy_ = scm::math::vec2f(coords[2*i+0], coords[2*i+1]);
         Point2 p(sp.xy_.x, sp.xy_.y);
-        delaunay_triangulation.insert(p);
+        auto vertex_handle = delaunay_triangulation.insert(p);
         neighbour_2d_coord_pairs.emplace_back(coords[2*i+0], coords[2*i+1]);
     }
     
@@ -971,6 +991,8 @@ get_natural_neighbours(const surfel_id_t& target_surfel,
             poi_2d,
             std::back_inserter(sibson_coords));
 
+
+    //CGAL::sibson_natural_neighbor_coordinates_2();
 
     if (!result.third) {
         delete[] points;
@@ -1081,7 +1103,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
 
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
             bvh_node* current_node = &nodes_.at(node_index);
             
@@ -1114,16 +1136,41 @@ upsweep_new(const reduction_strategy& reduction_strategy,
             continue;
         }
 
-        #pragma omp parallel for
-        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
-        {   
-            bvh_node* current_node = &nodes_.at(node_index);
+
+        {
 
 
-                // Calculate and set node properties.
-                compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+            //std::vector<bounding_box> expanded_bounding_boxes;
+            //expanded_bounding_boxes.resize(last_node_of_level-first_node_of_level);
+
+            //#pragma omp parallel for
+            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+            {   
+                bvh_node* current_node = &nodes_.at(node_index);
+
+
+                    // Calculate and set node properties.
+                    compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+ 
+
+                    //expanded_bounding_boxes[node_index-first_node_of_level] = node_bounding_box;
+
+                    ++counter;
+                    uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
+                    if (percentage + 1 == new_percentage)
+                    {
+                        percentage = new_percentage;
+                        std::cout << "\r" << percentage << "% processed" << std::flush;
+                    }
+            }
+
+            //#pragma omp parallel for
+            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+            {   
+                bvh_node* current_node = &nodes_.at(node_index);
+
+
                 basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
-
 
                 bounding_box node_bounding_box;
                 node_bounding_box.expand(props.bbox);
@@ -1140,17 +1187,12 @@ upsweep_new(const reduction_strategy& reduction_strategy,
 
                 current_node->set_avg_surfel_radius(props.rep_radius);
                 current_node->set_centroid(props.centroid);
-                current_node->set_bounding_box(node_bounding_box);
 
-                ++counter;
-                uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
-                if (percentage + 1 == new_percentage)
-                {
-                    percentage = new_percentage;
-                    std::cout << "\r" << percentage << "% processed" << std::flush;
-                }
+                current_node->set_bounding_box(node_bounding_box);
+            }
+            std::cout << std::endl;
         }
-        std::cout << std::endl;
+
     }
 
     // Create level temp files

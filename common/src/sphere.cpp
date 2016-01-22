@@ -21,51 +21,35 @@ contains(const vec3r& point) const
     return distance_to_center <= sqrt(radius_);
 }
 
+real sphere::
+clamp_to_AABB_face(real actual_value, real min_BB_value, real max_BB_value) const {
+    return std::max(std::min(actual_value, max_BB_value), min_BB_value);
+}
+
+vec3r sphere::
+get_closest_point_on_AABB(const bounding_box& bounding_box) const {
+    const vec3r min = bounding_box.min();
+    const vec3r max = bounding_box.max();
+
+    vec3r closest_point_on_AABB(0.0, 0.0, 0.0);
+
+    for(int dim_idx = 0; dim_idx < 3; ++dim_idx) {
+        closest_point_on_AABB[dim_idx] 
+            = clamp_to_AABB_face(center_[dim_idx], min[dim_idx], max[dim_idx]);
+    }
+
+    return closest_point_on_AABB;
+}
+
 bool sphere::
-is_inside(const bounding_box& bounding_box) const
+intersects_or_contains(const bounding_box& bounding_box) const
 {
     const vec3r min = bounding_box.min();
     const vec3r max = bounding_box.max();
 
-    real dist_sqr = radius_ * radius_;
+    vec3r closest_point_on_AABB = get_closest_point_on_AABB(bounding_box);
 
-    if (center_.x < min.x)
-        dist_sqr -= pow((center_.x - min.x), 2);
-    else if (center_.x > max.x)
-        dist_sqr -= pow((center_.x - max.x), 2);
-
-    if (center_.y < min.y)
-        dist_sqr -= pow((center_.y - min.y), 2);
-    else if (center_.y > max.y)
-        dist_sqr -= pow((center_.y - max.y), 2);
-
-    if (center_.z < min.z)
-        dist_sqr -= pow((center_.z - min.z), 2);
-    else if (center_.z > max.z)
-        dist_sqr -= pow((center_.z - max.z), 2);
-
-    return dist_sqr > 0;
-
-    /*
-    const vec3r min = bounding_box.min();
-    const vec3r max = bounding_box.max();
-
-    std::vector<vec3r> corners;
-    corners.push_back(min);
-    corners.push_back(vec3r(min.x, min.y, max.z));
-    corners.push_back(vec3r(min.x, max.y, max.z));
-    corners.push_back(max);
-    corners.push_back(vec3r(max.x, max.y, min.z));
-    corners.push_back(vec3r(max.x, min.y, min.z));
-
-    for (auto corner : corners)
-    {
-        if (contains(corner))
-            return true;
-    }
-
-    return false;
-    */
+    return ( scm::math::length_sqr( center_ - closest_point_on_AABB ) <= radius_*radius_);
 }
 
 } // namespace lamure

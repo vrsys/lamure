@@ -39,7 +39,13 @@ public:
     const bounding_box   get_bounding_box() const;
 
     bool		        contains(const vec3r& point) const;
-    bool		        is_inside(const bounding_box& bounding_box) const;
+
+    real                clamp_to_AABB_face(real actual_value, 
+                                           real min_BB_value, real max_BB_value) const;
+
+    vec3r               get_closest_point_on_AABB(const bounding_box& bounding_box) const;
+
+    bool		        intersects_or_contains(const bounding_box& bounding_box) const;
 
 private:
 

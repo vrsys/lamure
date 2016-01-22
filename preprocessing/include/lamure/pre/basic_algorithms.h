@@ -50,7 +50,8 @@ public:
 
     static surfel_group_properties
                         compute_properties(const surfel_mem_array& sa,
-                                          const rep_radius_algorithm rep_radius_algo);
+                                          const rep_radius_algorithm rep_radius_algo,
+                                          bool use_radii_for_node_expansion = true);
 
     static void         sort_and_split(surfel_mem_array& sa,
                                      splitted_array<surfel_mem_array>& out,

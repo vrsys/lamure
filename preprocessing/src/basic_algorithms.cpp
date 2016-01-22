@@ -307,7 +307,8 @@ split_surfel_array(T& sa,
 
 basic_algorithms::surfel_group_properties basic_algorithms::
 compute_properties(const surfel_mem_array& sa,
-                  const rep_radius_algorithm rep_radius_algo)
+                   const rep_radius_algorithm rep_radius_algo,
+                   bool use_radii_for_node_expansion)
 {
     assert(!sa.is_empty());
     assert(rep_radius_algo == rep_radius_algorithm::arithmetic_mean ||
@@ -325,7 +326,11 @@ compute_properties(const surfel_mem_array& sa,
         surfel s = sa.read_surfel(i);
         
         // TODO: moved here to fix normal-radii computation
-        props.bbox.expand(s.pos(), s.radius());
+        if(use_radii_for_node_expansion) {
+            props.bbox.expand(s.pos(), s.radius());
+        } else {
+            props.bbox.expand(s.pos());
+        }
 
         if (s.radius() <= 0.0)
             continue;
