@@ -44,9 +44,6 @@ get_closest_point_on_AABB(const bounding_box& bounding_box) const {
 bool sphere::
 intersects_or_contains(const bounding_box& bounding_box) const
 {
-    const vec3r min = bounding_box.min();
-    const vec3r max = bounding_box.max();
-
     vec3r closest_point_on_AABB = get_closest_point_on_AABB(bounding_box);
 
     return ( scm::math::length_sqr( center_ - closest_point_on_AABB ) <= radius_*radius_);
