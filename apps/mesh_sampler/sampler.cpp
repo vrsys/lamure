@@ -382,8 +382,8 @@ sample_face(face_pointer facePtr,
         return A + CA*u + BA*v;
     };
     vcg::Point3d mapped[3] = {MapPoint(0, 0), MapPoint(1, 0), MapPoint(0, 1)};
-    double diam = std::max(vcg::Distance(mapped[0], mapped[1]), vcg::Distance(mapped[0], mapped[2]));
-    diam = std::min(diam, maxRadius)*2.1;
+    double rad = std::max(vcg::Distance(mapped[0], mapped[1]), vcg::Distance(mapped[0], mapped[2]));
+    rad = std::min(rad, maxRadius);
 
     for (int x = minXTri; x <= maxXTri; ++x) {
         for (int y = minYTri; y <= maxYTri; ++y) {
@@ -412,7 +412,7 @@ sample_face(face_pointer facePtr,
 
             //fetch color from texture
             texture::pixel texel = tex.get_pixel(x, y);
-            out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, diam});
+            out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, rad});
         }
     }
     return true;
