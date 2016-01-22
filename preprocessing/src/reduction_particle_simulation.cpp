@@ -135,11 +135,8 @@ create_lod(real& reduction_error,
         }
 
         surfel_id_t rand_drawn_indices = surfel_lookup_vector[surfel_vector_idx].second;
-        //////std::cout << "After drawing surfel idx\n";
 
         auto surfel_to_sample = global_nodes[rand_drawn_indices.node_idx].mem_array().read_surfel(rand_drawn_indices.surfel_idx);
-    
-        //////std::cout << "Drawing surfel to sample\n";
 
         surfel surfel_to_push(surfel_to_sample);
 
@@ -150,7 +147,7 @@ create_lod(real& reduction_error,
         std::vector<surfel> neighbour_surfs_of_rand_surfel;
         std::vector<vec3r> neighbour_positions;
 
-        real max_neighbour_distance = std::numeric_limits<real>::lowest();
+        real min_neighbour_distance = std::numeric_limits<real>::max();
 
 
         for( auto const& neigh_of_rand : neighbours_of_rand_surfel ) {
@@ -163,7 +160,7 @@ create_lod(real& reduction_error,
 
             real neighbour_distance = scm::math::length(neighbour_surf.pos() - surfel_to_push.pos());
 
-            max_neighbour_distance = std::max(max_neighbour_distance, neighbour_distance );
+            min_neighbour_distance = std::min(min_neighbour_distance, neighbour_distance );
         }
 
 
@@ -207,13 +204,13 @@ create_lod(real& reduction_error,
         }
 
 
-        particle_repulsion_rad_pairs.push_back( std::pair<surfel, real>(surfel_to_push,  2 * max_neighbour_distance ) );
+        particle_repulsion_rad_pairs.push_back( std::pair<surfel, real>(surfel_to_push,  5 * min_neighbour_distance ) );
     }
 
     // perform particle repulsion
 
     //repulsion constant k
-    double k = 0.01;
+    double k = 0.1;
     {
         std::vector<vec3r> particle_displacements;
 
