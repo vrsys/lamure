@@ -1,0 +1,885 @@
+#ifndef CREATE_LOD_TESTS
+#define CREATE_LOD_TESTS
+#include "catch/catch.hpp" // includes catch from the third party folder
+
+// include all headers needed for your tests below here
+#include <lamure/pre/reduction_entropy.h>
+#include <vector>
+
+TEST_CASE( "Check if attributes are computed correctly for two overlapping surfels",
+		   "[create_lod]" ) {
+	using namespace lamure;
+	using namespace pre;
+
+	std::vector<surfel_mem_array*> input_mem_arrays;
+   	surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	surfel mem_array_surfel_1;
+   	mem_array_surfel_1.pos() = vec3r(0.0, 0.0, 0.0);
+   	mem_array_surfel_1.normal() = vec3f(1.0, 0.0, 0.0);
+   	mem_array_surfel_1.color() = vec3b(255, 0, 0);
+   	mem_array_surfel_1.radius() = 1.0;
+
+   	mem_array_one.mem_data()->push_back(mem_array_surfel_1);
+    mem_array_one.set_length(mem_array_one.mem_data()->size());
+
+    surfel_mem_array mem_array_two(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	
+   	surfel mem_array_surfel_2;
+   	mem_array_surfel_2.pos() = vec3r(1.0, 0.0, 0.0);
+   	mem_array_surfel_2.normal() = vec3f(0.0, 0.0, 1.0);
+   	mem_array_surfel_2.color() = vec3b(0, 0, 255);
+   	mem_array_surfel_2.radius() = 1.0;
+
+   	mem_array_two.mem_data()->push_back(mem_array_surfel_2);
+    mem_array_two.set_length(mem_array_two.mem_data()->size());
+
+    reduction_entropy test_entropy_reduction;
+
+    real reduction_error = 0.0;
+    uint32_t surfels_per_node = 1;
+
+    input_mem_arrays.push_back(&mem_array_one);
+    input_mem_arrays.push_back(&mem_array_two);
+
+    surfel_mem_array simplified_mem_array 
+    	= test_entropy_reduction.create_lod(reduction_error,
+    										input_mem_arrays,
+    										surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
+
+    REQUIRE(simplified_mem_array.mem_data()->size() == 1);
+
+    surfel result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
+
+
+    unsigned char average_red = (double(mem_array_surfel_1.color()[0]) + mem_array_surfel_2.color()[0]) / 2.0;
+    unsigned char average_green = (double(mem_array_surfel_1.color()[1]) + mem_array_surfel_2.color()[1]) / 2.0;
+    unsigned char average_blue = (double(mem_array_surfel_1.color()[2]) + mem_array_surfel_2.color()[2]) / 2.0;	
+    //make sure that the color was averaged, should be 127,0,127
+    REQUIRE(result_surfel.color()[0] == average_red);
+    REQUIRE(result_surfel.color()[1] == 0);
+    REQUIRE(result_surfel.color()[2] == 127);
+
+    //make sure that the normal was averaged 
+    REQUIRE(result_surfel.normal()[0] > 0.7);
+    REQUIRE(result_surfel.normal()[0] < 0.71);
+    REQUIRE(result_surfel.normal()[1] == 0.0);
+    REQUIRE(result_surfel.normal()[2] > 0.7);
+    REQUIRE(result_surfel.normal()[2] < 0.71);
+
+    //make sure that the position was set to the center of mass between both surfels
+    REQUIRE(result_surfel.pos()[0] > 0.499);
+    REQUIRE(result_surfel.pos()[0] < 0.501);
+    REQUIRE(result_surfel.pos()[1] == 0.0);
+    REQUIRE(result_surfel.pos()[2] == 0.0);
+
+    //make sure that the radius at the center of mass
+    REQUIRE(result_surfel.radius() > 1.499);
+    REQUIRE(result_surfel.radius() < 1.501);   
+
+
+
+}
+
+TEST_CASE( "For Non Overlapping Surfels, Entropy Based Reduction Gives Us One Entire Surfel Back",
+		   "[create_lod]" ) {
+	using namespace lamure;
+	using namespace pre;
+
+	std::vector<surfel_mem_array*> input_mem_arrays;
+   	surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	surfel mem_array_surfel_1;
+   	mem_array_surfel_1.pos() = vec3r(0.0, 0.0, 0.0);
+   	mem_array_surfel_1.normal() = vec3f(1.0, 0.0, 0.0);
+   	mem_array_surfel_1.color() = vec3b(255, 0, 0);
+   	mem_array_surfel_1.radius() = 1.0;
+
+   	mem_array_one.mem_data()->push_back(mem_array_surfel_1);
+    mem_array_one.set_length(mem_array_one.mem_data()->size());
+
+    surfel_mem_array mem_array_two(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	
+   	surfel mem_array_surfel_2;
+   	mem_array_surfel_2.pos() = vec3r(3.0, 0.0, 0.0);
+   	mem_array_surfel_2.normal() = vec3f(0.0, 0.0, 1.0);
+   	mem_array_surfel_2.color() = vec3b(0, 0, 255);
+   	mem_array_surfel_2.radius() = 1.0;
+
+   	mem_array_two.mem_data()->push_back(mem_array_surfel_2);
+    mem_array_two.set_length(mem_array_two.mem_data()->size());
+
+
+    reduction_entropy test_entropy_reduction;
+
+    real reduction_error = 0.0;
+    uint32_t surfels_per_node = 1;
+
+    input_mem_arrays.push_back(&mem_array_one);
+    input_mem_arrays.push_back(&mem_array_two);
+
+    surfel_mem_array simplified_mem_array 
+    	= test_entropy_reduction.create_lod(reduction_error,
+    										input_mem_arrays,
+    										surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
+
+    surfel result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
+
+    REQUIRE(simplified_mem_array.mem_data()->size() == 1);
+
+    unsigned char average_red = (double(mem_array_surfel_1.color()[0]) + mem_array_surfel_2.color()[0]) / 2.0;
+    unsigned char average_green = (double(mem_array_surfel_1.color()[1]) + mem_array_surfel_2.color()[1]) / 2.0;
+    unsigned char average_blue = (double(mem_array_surfel_1.color()[2]) + mem_array_surfel_2.color()[2]) / 2.0;	
+    //make sure that the color was averaged, should be 127,0,127
+    REQUIRE(result_surfel.color()[0] == 255);
+    REQUIRE(result_surfel.color()[1] == 0);
+    REQUIRE(result_surfel.color()[2] == 0);
+
+    //make sure that the normal was averaged 
+    REQUIRE(result_surfel.normal()[0] > 0.999);
+    REQUIRE(result_surfel.normal()[0] < 1.001);
+    REQUIRE(result_surfel.normal()[1] == 0.0);
+    REQUIRE(result_surfel.normal()[2] == 0.0);
+
+    //make sure that the position was set to the center of mass between both surfels
+    REQUIRE(result_surfel.pos()[0] == 0.0);
+    REQUIRE(result_surfel.pos()[1] == 0.0);
+    REQUIRE(result_surfel.pos()[2] == 0.0);
+
+    //make sure that the radius at the center of mass
+    REQUIRE(result_surfel.radius() > 0.999);
+    REQUIRE(result_surfel.radius() < 1.001); 
+
+}
+
+TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfel Overlaps Two of the Three Remaining)",
+		   "[create_lod]" ) {
+	using namespace lamure;
+	using namespace pre;
+
+	std::vector<surfel_mem_array*> input_mem_arrays;
+   	surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	surfel mem_array_surfel_1_1;
+   	mem_array_surfel_1_1.pos() = vec3r(0.0, 0.0, 0.0);
+   	mem_array_surfel_1_1.normal() = vec3f(1.0, 0.0, 0.0);
+   	mem_array_surfel_1_1.color() = vec3b(0, 0, 0);
+   	mem_array_surfel_1_1.radius() = 1.001;
+
+   	surfel mem_array_surfel_1_2;
+   	mem_array_surfel_1_2.pos() = vec3r(2.0, 0.0, 0.0);
+   	mem_array_surfel_1_2.normal() = vec3f(1.0, 0.0, 0.0);
+   	mem_array_surfel_1_2.color() = vec3b(10, 10, 10); //create a small difference w.r.t. first surfel = low entropy
+   	mem_array_surfel_1_2.radius() = 1.001;
+
+   	mem_array_one.mem_data()->push_back(mem_array_surfel_1_1);
+    mem_array_one.mem_data()->push_back(mem_array_surfel_1_2);
+    mem_array_one.set_length(mem_array_one.mem_data()->size());
+
+    surfel_mem_array mem_array_two(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+   	
+   	surfel mem_array_surfel_2_1;
+   	mem_array_surfel_2_1.pos() = vec3r(0.0, 2.0, 0.0);
+   	mem_array_surfel_2_1.normal() = vec3f(0.0, 0.0, 1.0);
+   	mem_array_surfel_2_1.color() = vec3b(9, 9, 9); //create a small difference w.r.t. to first surfel
+   	mem_array_surfel_2_1.radius() = 1.001;
+
+   	surfel mem_array_surfel_2_2;
+   	mem_array_surfel_2_2.pos() = vec3r(2.0, 2.0, 0.0);
+   	mem_array_surfel_2_2.normal() = vec3f(0.0, 0.0, 1.0);
+   	mem_array_surfel_2_2.color() = vec3b(255, 255, 255); //create a small difference w.r.t. to first surfel
+   	mem_array_surfel_2_2.radius() = 1.001;
+
+   	mem_array_two.mem_data()->push_back(mem_array_surfel_2_1);
+   	mem_array_two.mem_data()->push_back(mem_array_surfel_2_2);
+    mem_array_two.set_length(mem_array_two.mem_data()->size());
+
+    reduction_entropy test_entropy_reduction;
+
+    real reduction_error = 0.0;
+    uint32_t surfels_per_node = 2;
+
+    input_mem_arrays.push_back(&mem_array_one);
+    input_mem_arrays.push_back(&mem_array_two);
+
+    surfel_mem_array simplified_mem_array 
+    	= test_entropy_reduction.create_lod(reduction_error,
+    										input_mem_arrays,
+    										surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
+
+    REQUIRE(simplified_mem_array.mem_data()->size() == 2);
+
+
+    /********************************************************************
+       make sure that the surfels of the input mem arrays are unchanged
+    *********************************************************************/
+    
+    //retrieve the surfels from the mem arrays
+    surfel original_surfel_1_1 = mem_array_one.mem_data()->at(mem_array_one.offset() + 0);
+    surfel original_surfel_1_2 = mem_array_one.mem_data()->at(mem_array_one.offset() + 1);
+
+    surfel original_surfel_2_1 = mem_array_two.mem_data()->at(mem_array_two.offset() + 0);
+    surfel original_surfel_2_2 = mem_array_two.mem_data()->at(mem_array_two.offset() + 1);
+
+    //surfel 1_1
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_1_1.pos()[0] == 0.0);
+    REQUIRE(original_surfel_1_1.pos()[1] == 0.0);
+    REQUIRE(original_surfel_1_1.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_1_1.normal()[0] > 0.999);
+    REQUIRE(original_surfel_1_1.normal()[0] < 1.001);
+    REQUIRE(original_surfel_1_1.normal()[1] == 0.0);
+    REQUIRE(original_surfel_1_1.normal()[2] == 0.0);
+
+    //color
+    REQUIRE(original_surfel_1_1.color()[0] == 0);
+    REQUIRE(original_surfel_1_1.color()[1] == 0);
+    REQUIRE(original_surfel_1_1.color()[2] == 0);
+
+    //radius
+    REQUIRE(original_surfel_1_1.radius() > 1.000);
+    REQUIRE(original_surfel_1_1.radius() < 1.002);
+
+
+    //surfel 1_2
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_1_2.pos()[0] >  1.999);
+    REQUIRE(original_surfel_1_2.pos()[0] <  2.001);
+    REQUIRE(original_surfel_1_2.pos()[1] == 0.0);
+    REQUIRE(original_surfel_1_2.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_1_2.normal()[0] > 0.999);
+    REQUIRE(original_surfel_1_2.normal()[0] < 1.001);
+    REQUIRE(original_surfel_1_2.normal()[1] == 0.0);
+    REQUIRE(original_surfel_1_2.normal()[2] == 0.0);
+
+    //color
+    REQUIRE(original_surfel_1_2.color()[0] == 10);
+    REQUIRE(original_surfel_1_2.color()[1] == 10);
+    REQUIRE(original_surfel_1_2.color()[2] == 10);
+
+    //radius
+    REQUIRE(original_surfel_1_2.radius() > 1.000);
+    REQUIRE(original_surfel_1_2.radius() < 1.002);
+
+
+    //surfel 2_1
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_2_1.pos()[0] == 0.0);
+    REQUIRE(original_surfel_2_1.pos()[1] >  1.999);
+    REQUIRE(original_surfel_2_1.pos()[1] <  2.001);
+    REQUIRE(original_surfel_2_1.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_2_1.normal()[0] == 0.0);
+    REQUIRE(original_surfel_2_1.normal()[1] == 0.0);
+    REQUIRE(original_surfel_2_1.normal()[2] >  0.999);
+    REQUIRE(original_surfel_2_1.normal()[2] <  1.001);
+
+    //color
+    REQUIRE(original_surfel_2_1.color()[0] == 9);
+    REQUIRE(original_surfel_2_1.color()[1] == 9);
+    REQUIRE(original_surfel_2_1.color()[2] == 9);
+
+    //radius
+    REQUIRE(original_surfel_2_1.radius() > 1.000);
+    REQUIRE(original_surfel_2_1.radius() < 1.002);
+
+
+    //surfel 2_2
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_2_2.pos()[0] >  1.999);
+    REQUIRE(original_surfel_2_2.pos()[0] <  2.001);
+    REQUIRE(original_surfel_2_2.pos()[1] >  1.999);
+    REQUIRE(original_surfel_2_2.pos()[1] <  2.001);
+    REQUIRE(original_surfel_2_2.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_2_2.normal()[0] == 0.0);
+    REQUIRE(original_surfel_2_2.normal()[1] == 0.0);
+    REQUIRE(original_surfel_2_2.normal()[2] >  0.999);
+    REQUIRE(original_surfel_2_2.normal()[2] <  1.001);
+
+    //color
+    REQUIRE(original_surfel_2_2.color()[0] == 255);
+    REQUIRE(original_surfel_2_2.color()[1] == 255);
+    REQUIRE(original_surfel_2_2.color()[2] == 255);
+
+    //radius
+    REQUIRE(original_surfel_2_2.radius() > 1.000);
+    REQUIRE(original_surfel_2_2.radius() < 1.002);
+
+
+    /***************************************************************************
+    make sure that the first surfel was not touched, it is the 255, 255, 255 one
+    ***************************************************************************/
+    surfel unmerged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 1);
+
+    REQUIRE(unmerged_result_surfel.color()[0] == 255);
+    REQUIRE(unmerged_result_surfel.color()[1] == 255);
+    REQUIRE(unmerged_result_surfel.color()[2] == 255);
+
+    /******************************************
+     ... the normal was not averaged 
+    *******************************************/
+    REQUIRE(unmerged_result_surfel.normal()[0] == 0.0);
+    REQUIRE(unmerged_result_surfel.normal()[1] == 0.0);
+    REQUIRE(unmerged_result_surfel.normal()[2] > 0.999);
+    REQUIRE(unmerged_result_surfel.normal()[2] < 1.001);
+
+    /***************************************
+      ... the position was not changed
+    ****************************************/
+    REQUIRE(unmerged_result_surfel.pos()[0] > 1.999);
+    REQUIRE(unmerged_result_surfel.pos()[0] < 2.001);
+    REQUIRE(unmerged_result_surfel.pos()[1] > 1.999);
+    REQUIRE(unmerged_result_surfel.pos()[1] < 2.001);
+    REQUIRE(unmerged_result_surfel.pos()[2] == 0.0);
+
+    /***************************************
+     ... the radius was not changed
+    ****************************************/
+    REQUIRE(unmerged_result_surfel.radius() > 1.000);
+    REQUIRE(unmerged_result_surfel.radius() < 1.002);  
+
+
+
+    /****************************************************************
+     make sure that the second result surfel is merged out of the 3 
+     original surfels remaining surfels with lowest entropy
+    *****************************************************************/
+    surfel merged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
+
+    /******************************************
+     ... the color was averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.color()[0] == 6);
+    REQUIRE(merged_result_surfel.color()[1] == 6);
+    REQUIRE(merged_result_surfel.color()[2] == 6);
+
+    /******************************************
+     ... the normal was averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.normal()[0] > 0.893);
+    REQUIRE(merged_result_surfel.normal()[0] < 0.895);
+    REQUIRE(merged_result_surfel.normal()[1] == 0.0);
+    REQUIRE(merged_result_surfel.normal()[2] > 0.446);
+    REQUIRE(merged_result_surfel.normal()[2] < 0.448);
+
+    /******************************************
+     ... the position was averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.pos()[0] > 0.666);
+    REQUIRE(merged_result_surfel.pos()[0] < 0.667);
+    REQUIRE(merged_result_surfel.pos()[1] > 0.666);
+    REQUIRE(merged_result_surfel.pos()[1] < 0.667);
+    REQUIRE(merged_result_surfel.pos()[2] == 0.0);
+
+    /******************************************
+     ... the radius was increased
+    *******************************************/
+
+    REQUIRE(merged_result_surfel.radius() > 1.002);
+}
+
+
+TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfel Overlaps all of the three remaining)",
+           "[create_lod]" ) {
+    using namespace lamure;
+    using namespace pre;
+
+    std::vector<surfel_mem_array*> input_mem_arrays;
+    surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+    surfel mem_array_surfel_1_1;
+    mem_array_surfel_1_1.pos() = vec3r(0.0, 0.0, 0.0);
+    mem_array_surfel_1_1.normal() = vec3f(1.0, 0.0, 0.0);
+    mem_array_surfel_1_1.color() = vec3b(0, 0, 0);
+    mem_array_surfel_1_1.radius() = 1.801;
+
+    surfel mem_array_surfel_1_2;
+    mem_array_surfel_1_2.pos() = vec3r(2.0, 0.0, 0.0);
+    mem_array_surfel_1_2.normal() = vec3f(1.0, 0.0, 0.0);
+    mem_array_surfel_1_2.color() = vec3b(10, 10, 10); //create a small difference w.r.t. first surfel = low entropy
+    mem_array_surfel_1_2.radius() = 1.801;
+
+    mem_array_one.mem_data()->push_back(mem_array_surfel_1_1);
+    mem_array_one.mem_data()->push_back(mem_array_surfel_1_2);
+    mem_array_one.set_length(mem_array_one.mem_data()->size());
+
+    surfel_mem_array mem_array_two(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+    
+    surfel mem_array_surfel_2_1;
+    mem_array_surfel_2_1.pos() = vec3r(0.0, 2.0, 0.0);
+    mem_array_surfel_2_1.normal() = vec3f(0.0, 0.0, 1.0);
+    mem_array_surfel_2_1.color() = vec3b(9, 9, 9); //create a small difference w.r.t. to first surfel
+    mem_array_surfel_2_1.radius() = 1.801;
+
+    surfel mem_array_surfel_2_2;
+    mem_array_surfel_2_2.pos() = vec3r(2.0, 2.0, 0.0);
+    mem_array_surfel_2_2.normal() = vec3f(0.0, 0.0, 1.0);
+    mem_array_surfel_2_2.color() = vec3b(255, 255, 255); //create a small difference w.r.t. to first surfel
+    mem_array_surfel_2_2.radius() = 1.801;
+
+    mem_array_two.mem_data()->push_back(mem_array_surfel_2_1);
+    mem_array_two.mem_data()->push_back(mem_array_surfel_2_2);
+    mem_array_two.set_length(mem_array_two.mem_data()->size());
+
+    reduction_entropy test_entropy_reduction;
+
+    real reduction_error = 0.0;
+    uint32_t surfels_per_node = 2;
+
+    input_mem_arrays.push_back(&mem_array_one);
+    input_mem_arrays.push_back(&mem_array_two);
+
+    surfel_mem_array simplified_mem_array 
+        = test_entropy_reduction.create_lod(reduction_error,
+                                            input_mem_arrays,
+                                            surfels_per_node,
+                                            bvh(0,0), 0); //dummy line, not needed in this strategy
+
+    // should have stopped after merging 2 of the overlapping neighbours, therefore
+    // yielding 2 resulting surfels
+    REQUIRE(simplified_mem_array.mem_data()->size() == 2);
+
+
+    /********************************************************************
+       make sure that the surfels of the input mem arrays are unchanged
+    *********************************************************************/
+    
+    //retrieve the surfels from the mem arrays
+    surfel original_surfel_1_1 = mem_array_one.mem_data()->at(mem_array_one.offset() + 0);
+    surfel original_surfel_1_2 = mem_array_one.mem_data()->at(mem_array_one.offset() + 1);
+
+    surfel original_surfel_2_1 = mem_array_two.mem_data()->at(mem_array_two.offset() + 0);
+    surfel original_surfel_2_2 = mem_array_two.mem_data()->at(mem_array_two.offset() + 1);
+
+    //surfel 1_1
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_1_1.pos()[0] == 0.0);
+    REQUIRE(original_surfel_1_1.pos()[1] == 0.0);
+    REQUIRE(original_surfel_1_1.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_1_1.normal()[0] > 0.999);
+    REQUIRE(original_surfel_1_1.normal()[0] < 1.001);
+    REQUIRE(original_surfel_1_1.normal()[1] == 0.0);
+    REQUIRE(original_surfel_1_1.normal()[2] == 0.0);
+
+    //color
+    REQUIRE(original_surfel_1_1.color()[0] == 0);
+    REQUIRE(original_surfel_1_1.color()[1] == 0);
+    REQUIRE(original_surfel_1_1.color()[2] == 0);
+
+    //radius
+    REQUIRE(original_surfel_1_1.radius() > 1.800);
+    REQUIRE(original_surfel_1_1.radius() < 1.802);
+
+
+    //surfel 1_2
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_1_2.pos()[0] >  1.999);
+    REQUIRE(original_surfel_1_2.pos()[0] <  2.001);
+    REQUIRE(original_surfel_1_2.pos()[1] == 0.0);
+    REQUIRE(original_surfel_1_2.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_1_2.normal()[0] > 0.999);
+    REQUIRE(original_surfel_1_2.normal()[0] < 1.001);
+    REQUIRE(original_surfel_1_2.normal()[1] == 0.0);
+    REQUIRE(original_surfel_1_2.normal()[2] == 0.0);
+
+    //color
+    REQUIRE(original_surfel_1_2.color()[0] == 10);
+    REQUIRE(original_surfel_1_2.color()[1] == 10);
+    REQUIRE(original_surfel_1_2.color()[2] == 10);
+
+    //radius
+    REQUIRE(original_surfel_1_2.radius() > 1.800);
+    REQUIRE(original_surfel_1_2.radius() < 1.802);
+
+
+    //surfel 2_1
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_2_1.pos()[0] == 0.0);
+    REQUIRE(original_surfel_2_1.pos()[1] >  1.999);
+    REQUIRE(original_surfel_2_1.pos()[1] <  2.001);
+    REQUIRE(original_surfel_2_1.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_2_1.normal()[0] == 0.0);
+    REQUIRE(original_surfel_2_1.normal()[1] == 0.0);
+    REQUIRE(original_surfel_2_1.normal()[2] >  0.999);
+    REQUIRE(original_surfel_2_1.normal()[2] <  1.001);
+
+    //color
+    REQUIRE(original_surfel_2_1.color()[0] == 9);
+    REQUIRE(original_surfel_2_1.color()[1] == 9);
+    REQUIRE(original_surfel_2_1.color()[2] == 9);
+
+    //radius
+    REQUIRE(original_surfel_2_1.radius() > 1.800);
+    REQUIRE(original_surfel_2_1.radius() < 1.802);
+
+
+    //surfel 2_2
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_2_2.pos()[0] >  1.999);
+    REQUIRE(original_surfel_2_2.pos()[0] <  2.001);
+    REQUIRE(original_surfel_2_2.pos()[1] >  1.999);
+    REQUIRE(original_surfel_2_2.pos()[1] <  2.001);
+    REQUIRE(original_surfel_2_2.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_2_2.normal()[0] == 0.0);
+    REQUIRE(original_surfel_2_2.normal()[1] == 0.0);
+    REQUIRE(original_surfel_2_2.normal()[2] >  0.999);
+    REQUIRE(original_surfel_2_2.normal()[2] <  1.001);
+
+    //color
+    REQUIRE(original_surfel_2_2.color()[0] == 255);
+    REQUIRE(original_surfel_2_2.color()[1] == 255);
+    REQUIRE(original_surfel_2_2.color()[2] == 255);
+
+    //radius
+    REQUIRE(original_surfel_2_2.radius() > 1.800);
+    REQUIRE(original_surfel_2_2.radius() < 1.802);
+
+
+    /***************************************************************************
+    make sure that the first surfel was not touched, it is the 255, 255, 255 one
+    ***************************************************************************/
+    surfel unmerged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 1);
+
+    REQUIRE(unmerged_result_surfel.color()[0] == 255);
+    REQUIRE(unmerged_result_surfel.color()[1] == 255);
+    REQUIRE(unmerged_result_surfel.color()[2] == 255);
+
+    /******************************************
+     ... the normal was not averaged 
+    *******************************************/
+    REQUIRE(unmerged_result_surfel.normal()[0] == 0.0);
+    REQUIRE(unmerged_result_surfel.normal()[1] == 0.0);
+    REQUIRE(unmerged_result_surfel.normal()[2] >  0.999);
+    REQUIRE(unmerged_result_surfel.normal()[2] <  1.001);
+
+    /***************************************
+      ... the position was not changed
+    ****************************************/
+    REQUIRE(unmerged_result_surfel.pos()[0] > 1.999);
+    REQUIRE(unmerged_result_surfel.pos()[0] < 2.001);
+    REQUIRE(unmerged_result_surfel.pos()[1] > 1.999);
+    REQUIRE(unmerged_result_surfel.pos()[1] < 2.001);
+    REQUIRE(unmerged_result_surfel.pos()[2] == 0.0);
+
+    /***************************************
+     ... the radius was not changed
+    ****************************************/
+    REQUIRE(unmerged_result_surfel.radius() > 1.800);
+    REQUIRE(unmerged_result_surfel.radius() < 1.802);  
+
+
+
+    /****************************************************************
+     make sure that the second result surfel is merged out of the 3 
+     original surfels remaining surfels with lowest entropy
+    *****************************************************************/
+    surfel merged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
+
+    /******************************************
+     ... the color was averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.color()[0] == 6);
+    REQUIRE(merged_result_surfel.color()[1] == 6);
+    REQUIRE(merged_result_surfel.color()[2] == 6);
+
+    /******************************************
+     ... the normal was averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.normal()[0] > 0.893);
+    REQUIRE(merged_result_surfel.normal()[0] < 0.895);
+    REQUIRE(merged_result_surfel.normal()[1] == 0.0);
+    REQUIRE(merged_result_surfel.normal()[2] > 0.446);
+    REQUIRE(merged_result_surfel.normal()[2] < 0.448);
+
+    /******************************************
+     ... the position was averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.pos()[0] > 0.666);
+    REQUIRE(merged_result_surfel.pos()[0] < 0.667);
+    REQUIRE(merged_result_surfel.pos()[1] > 0.666);
+    REQUIRE(merged_result_surfel.pos()[1] < 0.667);
+    REQUIRE(merged_result_surfel.pos()[2] == 0.0);
+
+    /******************************************
+     ... the radius was increased
+    *******************************************/
+
+    REQUIRE(merged_result_surfel.radius() > 1.802);
+}
+
+
+TEST_CASE( "Check that four surfels in a row that do not overlap are merged based on relative distance to each other",
+           "[create_lod]" ) {
+    using namespace lamure;
+    using namespace pre;
+
+    std::vector<surfel_mem_array*> input_mem_arrays;
+    surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+    surfel mem_array_surfel_1_1;
+    mem_array_surfel_1_1.pos() = vec3r(0.0, 0.0, 0.0);
+    mem_array_surfel_1_1.normal() = vec3f(1.0, 0.0, 0.0);
+    mem_array_surfel_1_1.color() = vec3b(0, 0, 0);
+    mem_array_surfel_1_1.radius() = 0.901;
+
+    surfel mem_array_surfel_1_2;
+    mem_array_surfel_1_2.pos() = vec3r(2.0, 0.0, 0.0);
+    mem_array_surfel_1_2.normal() = vec3f(1.0, 0.0, 0.0);
+    mem_array_surfel_1_2.color() = vec3b(255, 255, 255); //create a small difference w.r.t. first surfel = low entropy
+    mem_array_surfel_1_2.radius() = 0.901;
+
+    mem_array_one.mem_data()->push_back(mem_array_surfel_1_1);
+    mem_array_one.mem_data()->push_back(mem_array_surfel_1_2);
+    mem_array_one.set_length(mem_array_one.mem_data()->size());
+
+    surfel_mem_array mem_array_two(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+    
+    surfel mem_array_surfel_2_1;
+    mem_array_surfel_2_1.pos() = vec3r(4.0, 0.0, 0.0);
+    mem_array_surfel_2_1.normal() = vec3f(0.0, 0.0, 1.0);
+    mem_array_surfel_2_1.color() = vec3b(0, 0, 0); //create a small difference w.r.t. to first surfel
+    mem_array_surfel_2_1.radius() = 0.901;
+
+    surfel mem_array_surfel_2_2;
+    mem_array_surfel_2_2.pos() = vec3r(20.0, 0.0, 0.0);
+    mem_array_surfel_2_2.normal() = vec3f(0.0, 1.0, 0.0);
+    mem_array_surfel_2_2.color() = vec3b(0, 0, 0); //create a small difference w.r.t. to first surfel
+    mem_array_surfel_2_2.radius() = 0.901;
+
+    mem_array_two.mem_data()->push_back(mem_array_surfel_2_1);
+    mem_array_two.mem_data()->push_back(mem_array_surfel_2_2);
+    mem_array_two.set_length(mem_array_two.mem_data()->size());
+
+    reduction_entropy test_entropy_reduction;
+
+    real reduction_error = 0.0;
+    uint32_t surfels_per_node = 2;
+
+    input_mem_arrays.push_back(&mem_array_one);
+    input_mem_arrays.push_back(&mem_array_two);
+
+    surfel_mem_array simplified_mem_array 
+        = test_entropy_reduction.create_lod(reduction_error,
+                                            input_mem_arrays,
+                                            surfels_per_node,
+                                            bvh(0,0), 0); //create_lod
+
+    // should have stopped after merging 2 of the overlapping neighbours, therefore
+    // yielding 2 resulting surfels
+    REQUIRE(simplified_mem_array.mem_data()->size() == 2);
+
+
+    /********************************************************************
+       make sure that the surfels of the input mem arrays are unchanged
+    *********************************************************************/
+    
+    //retrieve the surfels from the mem arrays
+    surfel original_surfel_1_1 = mem_array_one.mem_data()->at(mem_array_one.offset() + 0);
+    surfel original_surfel_1_2 = mem_array_one.mem_data()->at(mem_array_one.offset() + 1);
+
+    surfel original_surfel_2_1 = mem_array_two.mem_data()->at(mem_array_two.offset() + 0);
+    surfel original_surfel_2_2 = mem_array_two.mem_data()->at(mem_array_two.offset() + 1);
+
+    //surfel 1_1
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_1_1.pos()[0] == 0.0);
+    REQUIRE(original_surfel_1_1.pos()[1] == 0.0);
+    REQUIRE(original_surfel_1_1.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_1_1.normal()[0] > 0.999);
+    REQUIRE(original_surfel_1_1.normal()[0] < 1.001);
+    REQUIRE(original_surfel_1_1.normal()[1] == 0.0);
+    REQUIRE(original_surfel_1_1.normal()[2] == 0.0);
+
+    //color
+    REQUIRE(original_surfel_1_1.color()[0] == 0);
+    REQUIRE(original_surfel_1_1.color()[1] == 0);
+    REQUIRE(original_surfel_1_1.color()[2] == 0);
+
+    //radius
+    REQUIRE(original_surfel_1_1.radius() > 0.900);
+    REQUIRE(original_surfel_1_1.radius() < 0.902);
+
+
+    //surfel 1_2
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_1_2.pos()[0] >  1.999);
+    REQUIRE(original_surfel_1_2.pos()[0] <  2.001);
+    REQUIRE(original_surfel_1_2.pos()[1] == 0.0);
+    REQUIRE(original_surfel_1_2.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_1_2.normal()[0] > 0.999);
+    REQUIRE(original_surfel_1_2.normal()[0] < 1.001);
+    REQUIRE(original_surfel_1_2.normal()[1] == 0.0);
+    REQUIRE(original_surfel_1_2.normal()[2] == 0.0);
+
+    //color
+    REQUIRE(original_surfel_1_2.color()[0] == 255);
+    REQUIRE(original_surfel_1_2.color()[1] == 255);
+    REQUIRE(original_surfel_1_2.color()[2] == 255);
+
+    //radius
+    REQUIRE(original_surfel_1_2.radius() > 0.900);
+    REQUIRE(original_surfel_1_2.radius() < 0.902);
+
+
+    //surfel 2_1
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_2_1.pos()[0] > 3.999);
+    REQUIRE(original_surfel_2_1.pos()[0] < 4.001);
+    REQUIRE(original_surfel_2_1.pos()[1] == 0.0);
+    REQUIRE(original_surfel_2_1.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_2_1.normal()[0] == 0.0);
+    REQUIRE(original_surfel_2_1.normal()[1] == 0.0);
+    REQUIRE(original_surfel_2_1.normal()[2] >  0.999);
+    REQUIRE(original_surfel_2_1.normal()[2] <  1.001);
+
+    //color
+    REQUIRE(original_surfel_2_1.color()[0] == 0);
+    REQUIRE(original_surfel_2_1.color()[1] == 0);
+    REQUIRE(original_surfel_2_1.color()[2] == 0);
+
+    //radius
+    REQUIRE(original_surfel_2_1.radius() > 0.900);
+    REQUIRE(original_surfel_2_1.radius() < 0.902);
+
+
+    //surfel 2_2
+    /***********/
+
+    //position
+    REQUIRE(original_surfel_2_2.pos()[0] >  19.999);
+    REQUIRE(original_surfel_2_2.pos()[0] <  20.001);
+    REQUIRE(original_surfel_2_2.pos()[1] ==  0.0);
+    REQUIRE(original_surfel_2_2.pos()[1] ==  0.0);
+    REQUIRE(original_surfel_2_2.pos()[2] == 0.0);
+
+    //normal
+    REQUIRE(original_surfel_2_2.normal()[0] == 0.0);
+    REQUIRE(original_surfel_2_2.normal()[1] > 0.999);
+    REQUIRE(original_surfel_2_2.normal()[1] < 1.001);
+    REQUIRE(original_surfel_2_2.normal()[2] == 0.0);
+
+    //color
+    REQUIRE(original_surfel_2_2.color()[0] == 0);
+    REQUIRE(original_surfel_2_2.color()[1] == 0);
+    REQUIRE(original_surfel_2_2.color()[2] == 0);
+
+    //radius
+    REQUIRE(original_surfel_2_2.radius() > 0.900);
+    REQUIRE(original_surfel_2_2.radius() < 0.902);
+
+
+    /***************************************************************************
+    make sure that the first surfel was not touched, it is the 255, 255, 255 one
+    ***************************************************************************/
+    surfel unmerged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 0);
+
+    REQUIRE(unmerged_result_surfel.color()[0] == 0);
+    REQUIRE(unmerged_result_surfel.color()[1] == 0);
+    REQUIRE(unmerged_result_surfel.color()[2] == 0);
+
+
+    /******************************************
+     ... the normal was not averaged 
+    *******************************************/
+    REQUIRE(unmerged_result_surfel.normal()[0] == 0.0);
+    REQUIRE(unmerged_result_surfel.normal()[1] >  0.999);
+    REQUIRE(unmerged_result_surfel.normal()[1] <  1.001);
+    REQUIRE(unmerged_result_surfel.normal()[2] == 0.0);
+
+    /***************************************
+      ... the position was not changed
+    ****************************************/
+    REQUIRE(unmerged_result_surfel.pos()[0] > 19.999);
+    REQUIRE(unmerged_result_surfel.pos()[0] < 20.001);
+    REQUIRE(unmerged_result_surfel.pos()[1] == 0.0);
+    REQUIRE(unmerged_result_surfel.pos()[2] == 0.0);
+
+    /***************************************
+     ... the radius was not changed
+    ****************************************/
+    REQUIRE(unmerged_result_surfel.radius() > 0.900);
+    REQUIRE(unmerged_result_surfel.radius() < 0.902);  
+
+
+
+    /****************************************************************
+     make sure that the second result surfel is merged out of the 3 
+     original surfels remaining surfels with lowest entropy
+    *****************************************************************/
+    surfel merged_result_surfel = simplified_mem_array.mem_data()->at(simplified_mem_array.offset() + 1);
+
+    /******************************************
+     ... the color was iteratively averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.color()[0] == 63);
+    REQUIRE(merged_result_surfel.color()[1] == 63);
+    REQUIRE(merged_result_surfel.color()[2] == 63);
+
+    /******************************************
+     ... the normal was iteratively averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.normal()[0] > 0.70);
+    REQUIRE(merged_result_surfel.normal()[0] < 0.71);
+    REQUIRE(merged_result_surfel.normal()[1] == 0.0);
+    REQUIRE(merged_result_surfel.normal()[2] > 0.70);
+    REQUIRE(merged_result_surfel.normal()[2] < 0.71);
+
+    /******************************************
+     ... the position was iteratively averaged 
+    *******************************************/
+    REQUIRE(merged_result_surfel.pos()[0] > 1.28);
+    REQUIRE(merged_result_surfel.pos()[0] < 1.29);
+    REQUIRE(merged_result_surfel.pos()[1] == 0.0);
+    REQUIRE(merged_result_surfel.pos()[2] == 0.0);
+
+    /******************************************
+     ... the radius was iteratively increased
+    *******************************************/
+
+    REQUIRE(merged_result_surfel.radius() > 3.601);
+    REQUIRE(merged_result_surfel.radius() < 3.701);
+}
+
+
+#endif

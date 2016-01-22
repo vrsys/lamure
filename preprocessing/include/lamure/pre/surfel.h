@@ -45,6 +45,8 @@ public:
     const vec3f         normal() const { return normal_; }
     vec3f&              normal() { return normal_; }
 
+    const vec3r         random_point_on_surfel() const;      
+
     bool                operator==(const surfel& rhs) const
                             { return pos_    == rhs.pos_ &&
                                      color_  == rhs.color_ &&
@@ -54,13 +56,21 @@ public:
     bool                operator!=(const surfel& rhs) const
                             { return !(operator==(rhs)); }
 
-    static bool         compare_x(const surfel &left, const surfel &right);
-    static bool         compare_y(const surfel &left, const surfel &right);
-    static bool         compare_z(const surfel &left, const surfel &right);
+
+
+
+    static bool         intersect(const surfel &left_surfel, const surfel &right_surfel);
+    
+    static bool         compare_x(const surfel &left_surfel, const surfel &right_surfel);
+    static bool         compare_y(const surfel &left_surfel, const surfel &right_surfel);
+    static bool         compare_z(const surfel &left_surfel, const surfel &right_surfel);
 
     static compare_function compare(const uint8_t axis);
 
 private:
+
+    /*static CGAL::Simple_cartesian<double>::Plane_3 
+                        create_surfel_plane(const surfel& target_surfel, bool is_left);*/
 
     vec3r               pos_;
     vec3b               color_;
@@ -70,6 +80,7 @@ private:
 };
 
 using surfel_vector = std::vector<surfel>;
+using shared_surfel = std::shared_ptr<surfel>;
 using shared_surfel_vector = std::shared_ptr<surfel_vector>;
 
 } } // namespace lamure

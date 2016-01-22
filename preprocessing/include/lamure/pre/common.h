@@ -18,15 +18,24 @@ enum class rep_radius_algorithm {
     harmonic_mean = 2
 };
 
-enum class normal_radius_algorithm {
+enum class normal_computation_algorithm {
 	plane_fitting = 0
 };
 
+enum class radius_computation_algorithm {
+	average_distance = 0,
+    natural_neighbours = 1
+};
+
 enum class reduction_algorithm {
-    ndc            = 0,
-    constant       = 1,
-    every_second   = 2,
-    random         = 3
+    ndc                     = 0,
+    constant                = 1,
+    every_second            = 2,
+    random                  = 3,
+    entropy	                = 4,
+    particle_sim            = 5,
+    hierarchical_clustering = 6,
+    k_clustering            = 7
 };
 
 }}

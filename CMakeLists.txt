@@ -26,6 +26,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 set(THIRD_PARTY_PROJECTS_DIR ${CMAKE_SOURCE_DIR}/third_party)
 set(GLOBAL_EXT_DIR ${CMAKE_SOURCE_DIR}/externals)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+set(TEST_OUTPUT_PATH ${CMAKE_BINARY_DIR}/test)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(LAMURE_CONFIG_DIR ${CMAKE_BINARY_DIR})
 
@@ -35,6 +36,7 @@ endif()
 
 
 file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+file(MAKE_DIRECTORY ${TEST_OUTPUT_PATH})
 file(MAKE_DIRECTORY ${LIBRARY_OUTPUT_PATH})
 
 ############################################################
@@ -141,7 +143,9 @@ include(find_mpfr)
 add_subdirectory(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
+add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
+add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
 add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_rendering lamure_common)

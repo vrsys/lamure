@@ -8,7 +8,9 @@
 #ifndef RENDERING_PLATFORM_H_
 #define RENDERING_PLATFORM_H_
 
-#pragma warning (disable: 4251) // needs to have dll-interface to be used by clients of class
+#ifdef _MSC_VER
+  #pragma warning (disable: 4251) // needs to have dll-interface to be used by clients of class
+#endif
 
 #if WIN32
   #if defined(LAMURE_RENDERING_LIBRARY)

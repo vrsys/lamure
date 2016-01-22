@@ -29,9 +29,10 @@ SOURCE_GROUP("shaders" FILES ${SHADERS})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR} 
-                    ${LAMURE_CONFIG_DIR}
-                    ${SCHISM_INCLUDE_DIRS}
-                    ${Boost_INCLUDE_DIR})
+                    ${LAMURE_CONFIG_DIR})
+
+include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
+                           ${Boost_INCLUDE_DIR})
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 

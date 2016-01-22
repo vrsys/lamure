@@ -14,7 +14,8 @@
 #include <lamure/pre/bvh_node.h>
 #include <lamure/pre/node_serializer.h>
 #include <lamure/pre/reduction_strategy.h>
-#include <lamure/pre/normal_radii_strategy.h>
+#include <lamure/pre/normal_computation_strategy.h>
+#include <lamure/pre/radius_computation_strategy.h>
 #include <lamure/pre/logger.h>
 
 #include <boost/filesystem.hpp>
@@ -24,23 +25,24 @@
 namespace lamure {
 namespace pre {
 
-class normal_radii_strategy;
+class normal_computation_strategy;
+class radius_computation_strategy;
+
 
 class PREPROCESSING_DLL bvh
 {
 public:
-
     enum class state_type {
-        null           = 0, // null tree
-        empty          = 1, // initialized, but empty tree
+        null            = 0, // null tree
+        empty           = 1, // initialized, but empty tree
         after_downsweep = 2, // after downsweep
         after_upsweep   = 3, // after upsweep
-        serialized     = 4  // serialized surfel data
+        serialized      = 4  // serialized surfel data
     };
 
     explicit            bvh(const size_t memory_limit,  // in bytes
-                                const size_t buffer_size,   // in bytes
-                                const rep_radius_algorithm rep_radius_algo = rep_radius_algorithm::geometric_mean)
+                            const size_t buffer_size,   // in bytes
+                            const rep_radius_algorithm rep_radius_algo = rep_radius_algorithm::geometric_mean)
         : memory_limit_(memory_limit),
           buffer_size_(buffer_size),
           rep_radius_algo_(rep_radius_algo) {}
@@ -48,7 +50,7 @@ public:
     virtual             ~bvh() {}
 
                         bvh(const bvh& other) = delete;
-    bvh&            operator=(const bvh& other) = delete;
+    bvh&                operator=(const bvh& other) = delete;
 
     void                init_tree(const std::string& surfels_input_file,
                                  const uint32_t max_fan_factor,
@@ -69,8 +71,11 @@ public:
     std::vector<bvh_node>& nodes() { return nodes_; }
 
     // helper funtions
+    uint32_t            get_depth_of_node(const uint32_t node_id) const;
     uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
     uint32_t            get_parent_id(const uint32_t node_id) const;
+    const node_t        get_first_node_id_of_depth(uint32_t depth) const;
+    const uint32_t      get_length_of_depth(uint32_t depth) const;
 
     /**
      * Get id for the first node at given depth and total number of nodes at this depth.
@@ -79,21 +84,42 @@ public:
      * \return                    Pair that contains first node id and number of nodes
      */
     std::pair<node_id_type, node_id_type> get_node_ranges(const uint32_t depth) const;
+
+    std::vector<std::pair<surfel_id_t, real>>
+                        get_nearest_neighbours(
+                            const surfel_id_t target_surfel,
+                            const uint32_t num_neighbours) const;
+
+    std::vector<std::pair<surfel_id_t, real>>
+                        get_nearest_neighbours_in_nodes(
+                            const surfel_id_t target_surfel,
+                            const std::vector<node_id_type>& target_nodes,
+                            const uint32_t num_neighbours) const;
+
+    std::vector<std::pair<surfel_id_t, real>>
+                        get_natural_neighbours(
+                            const surfel_id_t& target_surfel,
+                            const uint32_t num_neighbours) const;
+
     void                print_tree_properties() const;
-    const node_id_type    first_leaf() const { return first_leaf_; }
+    const node_id_type  first_leaf() const { return first_leaf_; }
 
     // processing functions
     void                downsweep(bool adjust_translation,
                                   const std::string& surfels_input_file,
                                   bool bin_all_file_extension = false);
+
     void                compute_normals_and_radii(const uint16_t number_of_neighbours);
 
-    void                compute_normal_and_radius(const size_t node, 
-                                                  const size_t surfel,
-                                                  const normal_radii_strategy&  normal_radii_strategy);
+    void                compute_normal_and_radius(const bvh_node* source_node,
+                                                  const normal_computation_strategy& normal_computation_strategy,
+                                                  const radius_computation_strategy& radius_computation_strategy);
 
     void                upsweep(const reduction_strategy& strategy);
-    void                upsweep_new(const reduction_strategy& strategy, const normal_radii_strategy& normal_radii_strategy);
+    void                upsweep_new(const reduction_strategy& reduction_strategy, 
+                                    const normal_computation_strategy& normal_comp_strategy, 
+                                    const radius_computation_strategy& radius_comp_strategy,
+                                    bool recompute_leaf_level = true);
 
     void                serialize_tree_to_file(const std::string& output_file,
                                             bool write_intermediate_data);
@@ -153,12 +179,6 @@ private:
                             uint32_t& processed_nodes,
                             uint8_t& percent_processed,
                             shared_file leaf_level_access);
-
-    std::vector<std::pair<surfel, real>>
-                        get_nearest_neighbours(
-                            const size_t node_id,
-                            const size_t surfel_id,
-                            const uint32_t num_neighbours) const;
 
     void                get_descendant_leaves(
                             const size_t node,
