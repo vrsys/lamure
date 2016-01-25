@@ -1131,37 +1131,37 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         }
 
         
-        // skip the leaf level attribute computation if it was not requested or necessary
-        if(level == depth_ && !recompute_leaf_level) {
-            continue;
-        }
+
+
+            
+
 
 
         {
+        // skip the leaf level attribute computation if it was not requested or necessary
+        if( !(level == depth_ && !recompute_leaf_level) ) {
+
+                #pragma omp parallel for
+                for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+                {   
+                    bvh_node* current_node = &nodes_.at(node_index);
 
 
-            //std::vector<bounding_box> expanded_bounding_boxes;
-            //expanded_bounding_boxes.resize(last_node_of_level-first_node_of_level);
+                        // Calculate and set node properties.
+                        compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+     
 
-            #pragma omp parallel for
-            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
-            {   
-                bvh_node* current_node = &nodes_.at(node_index);
+                        //expanded_bounding_boxes[node_index-first_node_of_level] = node_bounding_box;
 
+                        ++counter;
+                        uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
+                        if (percentage + 1 == new_percentage)
+                        {
+                            percentage = new_percentage;
+                            std::cout << "\r" << percentage << "% processed" << std::flush;
+                        }
+                }
 
-                    // Calculate and set node properties.
-                    compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
- 
-
-                    //expanded_bounding_boxes[node_index-first_node_of_level] = node_bounding_box;
-
-                    ++counter;
-                    uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
-                    if (percentage + 1 == new_percentage)
-                    {
-                        percentage = new_percentage;
-                        std::cout << "\r" << percentage << "% processed" << std::flush;
-                    }
             }
 
             #pragma omp parallel for
