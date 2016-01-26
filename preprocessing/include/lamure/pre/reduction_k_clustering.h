@@ -186,7 +186,7 @@ private:
 
   void remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
 
-  void add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
+  void add_surfel(shared_cluster_surfel_vector& complement_set_M,
                   shared_cluster_surfel_vector& total_surfel_set) const;
 
   void merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const;
