@@ -1149,9 +1149,6 @@ upsweep_new(const reduction_strategy& reduction_strategy,
 
                         // Calculate and set node properties.
                         compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
-     
-
-                        //expanded_bounding_boxes[node_index-first_node_of_level] = node_bounding_box;
 
                         ++counter;
                         uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
@@ -1301,6 +1298,143 @@ upsweep_r(bvh_node& node,
                                 << " (" << p <<"%), current node_id " << node.node_id());
         std::cout << "\r" << p << "% processed" << std::flush;
     }
+}
+
+surfel_vector bvh::
+remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
+
+    std::vector<std::vector< std::pair<surfel_id_t, real> > > intermediate_outliers;
+    std::vector<bool> already_resized;
+
+    intermediate_outliers.resize(omp_get_max_threads());
+    already_resized.resize(omp_get_max_threads());
+
+    for( unsigned i = 0; i < already_resized.size(); ++i ) {
+        already_resized[i] = false;
+    }
+
+    #pragma omp parallel for
+    for(uint32_t node_idx = first_leaf_; node_idx < nodes_.size(); ++node_idx) {
+
+        size_t thread_id = omp_get_thread_num();
+
+
+        if( !already_resized[thread_id] ) {
+            intermediate_outliers[thread_id].reserve(num_outliers);
+            already_resized[thread_id] = true;
+        }
+
+        bvh_node* current_node = &nodes_.at(node_idx);
+        
+        if (current_node->is_out_of_core())
+        {
+            current_node->load_from_disk();
+        }
+
+        for( size_t surfel_idx = 0; surfel_idx < current_node->mem_array().length(); ++surfel_idx){
+
+            auto const nearest_neighbour_vector = get_nearest_neighbours(surfel_id_t(node_idx, surfel_idx), num_neighbours);
+
+            double avg_dist = 0.0;
+
+            if( nearest_neighbour_vector.size() ) {
+                for( auto const& nearest_neighbour_pair : nearest_neighbour_vector ) {
+                    avg_dist += nearest_neighbour_pair.second;
+                }
+
+                avg_dist /= nearest_neighbour_vector.size();
+            }
+
+            bool insert_element = false;
+            if( intermediate_outliers[thread_id].size() < num_outliers ) {
+                insert_element = true;
+
+            } else if ( avg_dist > intermediate_outliers[thread_id].back().second ) {
+                intermediate_outliers[thread_id].pop_back();
+                insert_element = true;
+            }
+
+            if( insert_element ) {
+                intermediate_outliers[thread_id].push_back( std::make_pair(surfel_id_t(node_idx, surfel_idx), avg_dist) );
+
+                for (uint32_t k = intermediate_outliers[thread_id].size() - 1; k > 0; --k)
+                {
+                    if (intermediate_outliers[thread_id][k].second > intermediate_outliers[thread_id][k - 1].second)
+                    {
+                        std::swap(intermediate_outliers[thread_id][k], intermediate_outliers[thread_id][k - 1]);
+                    }
+                    else
+                        break;
+                }             
+            }
+        }
+
+
+    }
+
+
+    std::vector< std::pair<surfel_id_t, real> >  final_outliers;
+
+    for (auto const& ve : intermediate_outliers) {
+        //std::cout << "Vector in Slot: " << result_counter++ << " contains " << ve.size() << " elements\n";
+
+        for(auto const& element : ve) {
+            bool insert_element = false;
+            if( final_outliers.size() < num_outliers ) {
+                insert_element = true;
+            } else if( element.second > final_outliers.back().second ) {
+                final_outliers.pop_back();
+                insert_element = true;
+            }
+
+            if( insert_element ) {
+                final_outliers.push_back(element);
+
+                for (uint32_t k = final_outliers.size() - 1; k > 0; --k)
+                {
+                    if (final_outliers[k].second > final_outliers[k - 1].second)
+                    {
+                        std::swap(final_outliers[k], final_outliers[k - 1]);
+                    }
+                    else
+                        break;
+                }
+
+            }
+        }
+    }
+
+    intermediate_outliers.clear();
+
+    std::set<surfel_id_t> outlier_ids;
+    for(auto const& el : final_outliers) {
+        outlier_ids.insert(el.first);
+    }
+
+    surfel_vector cleaned_surfels;
+
+
+    for(uint32_t node_idx = first_leaf_; node_idx < nodes_.size(); ++node_idx) {
+
+
+        bvh_node* current_node = &nodes_.at(node_idx);
+        
+        if (current_node->is_out_of_core())
+        {
+            current_node->load_from_disk();
+        } 
+
+        for( uint32_t surfel_idx = 0; surfel_idx < current_node->mem_array().length(); ++surfel_idx) {
+
+            if( outlier_ids.end() == outlier_ids.find( surfel_id_t(node_idx, surfel_idx) ) ) {
+                cleaned_surfels.push_back(current_node->mem_array().read_surfel(surfel_idx) );
+
+            }
+        }
+
+    }
+
+    return cleaned_surfels;
 }
 
 void bvh::

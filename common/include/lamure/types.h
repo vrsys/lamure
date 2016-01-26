@@ -23,7 +23,7 @@ struct surfel_id_t {
     node_id_type node_idx;
     size_t surfel_idx;
 
-    surfel_id_t(node_id_type node_i, size_t surfel_i)
+    surfel_id_t(node_id_type node_i = -1, size_t surfel_i = -1)
      :node_idx(node_i)
      ,surfel_idx(surfel_i)
     {}

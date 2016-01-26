@@ -121,6 +121,8 @@ public:
                                     const radius_computation_strategy& radius_comp_strategy,
                                     bool recompute_leaf_level = true);
 
+    surfel_vector       remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
+
     void                serialize_tree_to_file(const std::string& output_file,
                                             bool write_intermediate_data);
 

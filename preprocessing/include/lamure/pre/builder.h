@@ -36,6 +36,8 @@ public:
         size_t          buffer_size;
         uint16_t        number_of_neighbours;
         bool            translate_to_origin;
+        uint16_t        number_of_outlier_neighbours;
+        float           outlier_ratio;
 
         rep_radius_algorithm          rep_radius_algo;
         reduction_algorithm           reduction_algo;

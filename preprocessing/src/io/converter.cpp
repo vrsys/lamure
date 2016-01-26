@@ -59,6 +59,56 @@ convert(const std::string& input_filename,
 }
 
 void converter::
+write_in_core_surfels_out(const surfel_vector& surf_vec,
+                          const std::string& output_filename)
+{
+    discarded_ = 0;
+    flush_ready_ = false;
+    flush_done_ = false;
+
+    std::string extended_output_filename = output_filename;
+
+    auto buf_callback = [&](surfel_vector& surfels) {
+        std::unique_lock<std::mutex> lk(mtx_);
+        cv_.wait(lk, [this]{return flush_ready_;});
+
+        surfels = buffer_;
+        flush_ready_ = false;
+        bool has_data = !buffer_.empty();
+
+        // notify main thread
+        flush_done_ = true;
+        lk.unlock();
+        cv_.notify_one();
+        return has_data;
+    };
+
+    // output thread
+    std::thread tr([&] {
+        out_format_.write(extended_output_filename, buf_callback);
+    });
+
+    // read input
+    for( auto const& surf : surf_vec ) {
+        this->append_surfel(surfel(surf.pos(), surf.color()) );
+    }
+
+
+    flush_buffer();
+    {
+        std::lock_guard<std::mutex> lk(mtx_);
+        flush_ready_ = true;
+    }
+    cv_.notify_one();
+    tr.join();
+
+    if (discarded_ > 0) {
+        LOGGER_WARN("Discarded degenerate surfels: " << 
+                                discarded_);
+    }
+}
+
+void converter::
 append_surfel(const surfel& surf)
 {
   if (is_degenerate(surf)) {

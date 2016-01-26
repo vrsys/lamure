@@ -51,13 +51,14 @@ int main(int argc, const char *argv[])
          " input file directory)")
 
         ("final-stage,s",
-         po::value<int>()->default_value(4),
+         po::value<int>()->default_value(5),
          "number of the stage to stop after.\n"
          "  0 - binary file creation\n"
          "  1 - surfel + radius computation\n"
          "  2 - downsweep/tree creation\n"
-         "  3 - upsweep/LOD creation\n"
-         "  4 - serialization.\n"
+         "  3 - statistical outlier removal\n"
+         "  4 - upsweep/LOD creation\n"
+         "  5 - serialization.\n"
          "make sure the final stage number is equal or higher than the start stage,"
          "which is implicitly defined by INPUT")
 
@@ -81,6 +82,17 @@ int main(int argc, const char *argv[])
         ("recompute,r",
          "recompute surfel normals and radii, even if they data is present in the "
          "input data")
+
+        ("outlier-ratio",
+          po::value<float>()->default_value(0.0f),
+          "the application will remove (<outlier-ratio> * total_num_surfels) points "
+          " with the max avg-distance to it's k-nearest neighbors from the input point "
+          "cloud before computing the LODs")
+
+        ("num-outlier-neighbours",
+          po::value<int>()->default_value(24),
+          "defines the number of nearest neighbours that are searched for the outlier "
+           "detection")
 
         ("neighbours",
          po::value<int>()->default_value(40),
@@ -233,7 +245,7 @@ int main(int argc, const char *argv[])
             std::cerr << "Provided working directory does not exist" << std::endl;
             return EXIT_FAILURE;
         }
-        if (vm["final-stage"].as<int>() < 0 || vm["final-stage"].as<int>() > 4) {
+        if (vm["final-stage"].as<int>() < 0 || vm["final-stage"].as<int>() > 5) {
             std::cerr << "Wrong final stage value" << details_msg;
             return EXIT_FAILURE;
         }
@@ -298,17 +310,19 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
 
-        desc.input_file                = fs::canonical(input_file).string();
-        desc.working_directory         = fs::canonical(wd).string();
-        desc.max_fan_factor            = std::min(std::max(vm["max-fanout"].as<int>(), 2), 8);
-        desc.surfels_per_node          = vm["desired"].as<int>();
-        desc.final_stage               = vm["final-stage"].as<int>();
-        desc.compute_normals_and_radii = vm.count("recompute");
-        desc.keep_intermediate_files   = vm.count("keep-interm");
-        desc.memory_ratio              = std::max(vm["mem-ratio"].as<float>(), 0.05f);
-        desc.buffer_size               = buffer_size;
-        desc.number_of_neighbours      = std::max(vm["neighbours"].as<int>(), 1);
-        desc.translate_to_origin       = !vm.count("no-translate-to-origin");
+        desc.input_file                   = fs::canonical(input_file).string();
+        desc.working_directory            = fs::canonical(wd).string();
+        desc.max_fan_factor               = std::min(std::max(vm["max-fanout"].as<int>(), 2), 8);
+        desc.surfels_per_node             = vm["desired"].as<int>();
+        desc.final_stage                  = vm["final-stage"].as<int>();
+        desc.compute_normals_and_radii    = vm.count("recompute");
+        desc.keep_intermediate_files      = vm.count("keep-interm");
+        desc.memory_ratio                 = std::max(vm["mem-ratio"].as<float>(), 0.05f);
+        desc.buffer_size                  = buffer_size;
+        desc.number_of_neighbours         = std::max(vm["neighbours"].as<int>(), 1);
+        desc.translate_to_origin          = !vm.count("no-translate-to-origin");
+        desc.outlier_ratio                = std::max(0.0f, vm["outlier-ratio"].as<float>() );
+        desc.number_of_outlier_neighbours = std::max(vm["num-outlier-neighbours"].as<int>(), 1);
 
         // preprocess
         lamure::pre::builder builder(desc);

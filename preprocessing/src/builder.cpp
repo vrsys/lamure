@@ -31,6 +31,7 @@
 
 #include <cstdio>
 
+
 #define CPU_TIMER auto_timer timer("CPU time: %ws wall, usr+sys = %ts CPU (%p%)\n")
 
 namespace fs = boost::filesystem;
@@ -87,10 +88,12 @@ construct()
         start_stage = 0;
     else if (input_file_type == ".bin" || input_file_type == ".bin_all")
         start_stage = 1;
-    else if (input_file_type == ".bvhd")
+    else if (input_file_type == ".bin_wo_outlier")
         start_stage = 3;
-    else if (input_file_type == ".bvhu")
+    else if (input_file_type == ".bvhd")
         start_stage = 4;
+    else if (input_file_type == ".bvhu")
+        start_stage = 5;
     else {
         LOGGER_ERROR("Unknown input file format");
         return false;
@@ -155,6 +158,7 @@ construct()
 
     // convert to binary file
     if ((0 >= start_stage) && (0 <= final_stage)) {
+        std::cout << std::endl;
         std::cout << "--------------------------------" << std::endl;
         std::cout << "convert input file" << std::endl;
         std::cout << "--------------------------------" << std::endl;
@@ -182,6 +186,7 @@ construct()
         }
 
         format_bin format_out;
+
         converter conv(*format_in, format_out, desc_.buffer_size);
 
         conv.set_surfel_callback([](surfel &s, bool& keep) { if (s.pos() == vec3r(0.0,0.0,0.0)) keep = false; });
@@ -190,95 +195,118 @@ construct()
 
         CPU_TIMER;
         conv.convert(input_file.string(), binary_file.string());
-        delete format_in;
 
         input_file = binary_file;
 
         LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }
 
-/*
-    // (re)compute normals and radii
-    if ((1 >= start_stage) && (1 <= final_stage) && desc_.compute_normals_and_radii) {
-        std::cout << "--------------------------------" << std::endl;
-        std::cout << "downsweep" << std::endl;
-        std::cout << "--------------------------------" << std::endl;
-
-        const std::string input_file_type = input_file.extension().string();
-
-        // rename input file if already in .bin_all format
-        if (input_file_type == ".bin_all")
-        {
-            auto orig_file = input_file.parent_path() / (input_file.stem().string() + "_orig" + input_file.extension().string());
-            fs::rename(input_file, orig_file);
-            input_file = orig_file;
-        }
-
-        // create kd-bvh
-        LOGGER_TRACE("create kd-bvh");
-
-        lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
-
-        bvh.init_tree(input_file.string(), 2, 1000, base_path_);
-        bvh.print_tree_properties();
-
-        bvh.downsweep(false, input_file.string(), true);
-
-    }
-*/
-
     // downsweep (create bvh)
-    if ((2 >= start_stage) && (2 <= final_stage)) {
-        std::cout << "--------------------------------" << std::endl;
-        std::cout << "bvh properties" << std::endl;
-        std::cout << "--------------------------------" << std::endl;
+    if ((3 >= start_stage) && (3 <= final_stage)) {
 
-        lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
+        bool performed_outlier_removal = false;
 
-        bvh.init_tree(input_file.string(),
-                          desc_.max_fan_factor,
-                          desc_.surfels_per_node,
-                          base_path_);
+        do {
+            std::string status_suffix = "";
+            if ( true == performed_outlier_removal ) {
+                status_suffix = " (after outlier removal)";
+            }
 
-        bvh.print_tree_properties();
-        std::cout << std::endl;
+            std::cout << std::endl;
+            std::cout << "--------------------------------" << std::endl;
+            std::cout << "bvh properties" << status_suffix << std::endl;
+            std::cout << "--------------------------------" << std::endl;
 
-        std::cout << "--------------------------------" << std::endl;
-        std::cout << "downsweep" << std::endl;
-        std::cout << "--------------------------------" << std::endl;
-        LOGGER_TRACE("downsweep stage");
+            lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
 
-        CPU_TIMER;
-        bvh.downsweep(desc_.translate_to_origin, input_file.string());
+            bvh.init_tree(input_file.string(),
+                              desc_.max_fan_factor,
+                              desc_.surfels_per_node,
+                              base_path_);
 
-        auto bvhd_file = add_to_path(base_path_, ".bvhd");
+            bvh.print_tree_properties();
+            std::cout << std::endl;
 
-        bvh.serialize_tree_to_file(bvhd_file.string(), true);
+            std::cout << "--------------------------------" << std::endl;
+            std::cout << "downsweep" << status_suffix << std::endl;
+            std::cout << "--------------------------------" << std::endl;
+            LOGGER_TRACE("downsweep stage");
 
-        if ((!desc_.keep_intermediate_files) && (start_stage < 1))
-        {
-            // do not remove input file
-            //std::remove(input_file.string().c_str());
+            CPU_TIMER;
+            bvh.downsweep(desc_.translate_to_origin, input_file.string());
+
+            auto bvhd_file = add_to_path(base_path_, ".bvhd");
+
+            bvh.serialize_tree_to_file(bvhd_file.string(), true);
+
+            if ((!desc_.keep_intermediate_files) && (start_stage < 1))
+            {
+                // do not remove input file
+                std::remove(input_file.string().c_str());
+            }
+
+            input_file = bvhd_file;
+
+            LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
+        
+            if ( 3 <= start_stage ) {
+                break;
+            }
+
+            if ( performed_outlier_removal ) {
+                break;
+            }
+
+            if(start_stage <= 2 ) {
+
+                if(desc_.outlier_ratio != 0.0) {
+
+                    size_t num_outliers = desc_.outlier_ratio * (bvh.nodes().size() - bvh.first_leaf()) * bvh.max_surfels_per_node();
+                    size_t ten_percent_of_surfels = std::max( size_t(0.1 * (bvh.nodes().size() - bvh.first_leaf()) * bvh.max_surfels_per_node()), size_t(1) );
+                    num_outliers = std::min(std::max(num_outliers, size_t(1) ), ten_percent_of_surfels); // remove at least 1 surfel, for any given ratio != 0.0
+
+                    std::cout << std::endl;
+                    std::cout << "--------------------------------" << std::endl;
+                    std::cout << "outlier removal ( " << int(desc_.outlier_ratio * 100) << " percent = " << num_outliers << " surfels)" << std::endl;
+                    std::cout << "--------------------------------" << std::endl;
+                    LOGGER_TRACE("outlier removal stage");
+
+                    surfel_vector kept_surfels = bvh.remove_outliers_statistically(num_outliers, desc_.number_of_outlier_neighbours);
+
+                    format_bin format_out;
+
+                    format_abstract* dummy_format_in;
+
+                    dummy_format_in = new format_xyz();
+
+                    converter conv(*dummy_format_in, format_out, desc_.buffer_size);
+
+                    conv.set_surfel_callback([](surfel &s, bool& keep) { if (s.pos() == vec3r(0.0,0.0,0.0)) keep = false; });
+
+                    auto binary_outlier_removed_file = add_to_path(base_path_, ".bin_wo_outlier");
+
+                    conv.write_in_core_surfels_out(kept_surfels, binary_outlier_removed_file.string());
+
+                    delete dummy_format_in;
+
+                    bvh.reset_nodes();
+
+                    input_file = fs::canonical(binary_outlier_removed_file);
+
+                    performed_outlier_removal = true;
+                } else {
+                    break;
+                }
+
+            }
+
+        } while( true );
+
         }
-
-        input_file = bvhd_file;
-
-        LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
-
-/*
-        // statistical outlier removal
-        std::cout << "--------------------------------" << std::endl;
-        std::cout << "removing outliers" << std::endl;
-        std::cout << "--------------------------------" << std::endl;
-        bvh.remove_outliers_statistically(0.05);
-        std::cout << "--------------------------------" << std::endl;
-        std::cout << "DONE removing outliers" << std::endl;
-        std::cout << "--------------------------------" << std::endl;
-*/
-    }
 
     // upsweep (create LOD)
-    if ((3 >= start_stage) && (3 <= final_stage)) {
+    if ((4 >= start_stage) && (4 <= final_stage)) {
+        std::cout << std::endl;
         std::cout << "--------------------------------" << std::endl;
         std::cout << "upsweep" << std::endl;
         std::cout << "--------------------------------" << std::endl;
@@ -320,7 +348,8 @@ construct()
     }
 
     // serialize to file
-    if ((4 >= start_stage) && (4 <= final_stage)) {
+    if ((5 >= start_stage) && (5 <= final_stage)) {
+        std::cout << std::endl;
         std::cout << "--------------------------------" << std::endl;
         std::cout << "serialize to file" << std::endl;
         std::cout << "--------------------------------" << std::endl;
