@@ -68,6 +68,29 @@ struct max_overlap_order {
 };
 
 
+struct  min_SN_id_order{
+    bool operator() (shared_cluster_surfel const& first_surfel, shared_cluster_surfel const& second_surfel) {
+        if(!first_surfel || !second_surfel){
+            throw std::exception();
+        }
+
+        if(first_surfel->node_id < second_surfel->node_id) {
+            return true;
+        } else if (first_surfel->node_id > second_surfel->node_id) {
+            return false;
+        } else if (first_surfel->node_id == second_surfel->node_id) {
+            if(first_surfel->surfel_id < second_surfel->surfel_id){
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else return false;
+    }
+    
+};
+
 struct min_overlap_order {
     bool operator() (shared_cluster_surfel const& first_surfel, shared_cluster_surfel const& second_surfel){
         if(!first_surfel || !second_surfel){
@@ -143,7 +166,7 @@ private:
   void assign_locally_overlapping_neighbours(shared_cluster_surfel current_surfel_ptr,
                                            shared_cluster_surfel_vector& input_surfel_ptr_array) const; //functionality taken from entropy reduction strategy
 
-  void compute_overlap(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute overlap; [call only on set M ]
+  void compute_overlap(shared_cluster_surfel current_surfel_ptr, bool look_in_M) const; //use neighbours to compute overlap; [call only on set M ]
 
   void compute_deviation(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute deviation
 
@@ -166,7 +189,7 @@ private:
   void add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
                   shared_cluster_surfel_vector& total_surfel_set) const;
 
-  //void merge(shared_cluster_surfel current_surfel_ptr){}
+  void merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const;
 
 
 };

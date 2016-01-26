@@ -17,6 +17,9 @@
 #include <math.h>  //floor
 #include <cmath> //std::fabs
 
+#include <forward_list>
+#include <iterator> 
+
 namespace lamure {
 namespace pre {
 
@@ -84,13 +87,17 @@ get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector 
             max_size_group_id = i;
         }
 
+        //std::cout << "Group: " << i << " contains " << cluster_array[i].size() << " surfels \n";
+
     }
 
+        std::cout << "Selected group is "  <<  max_size_group_id << "\n";   
+
     for(auto& current_surfel : cluster_array[max_size_group_id]){
+        current_surfel->contained_surfel->color() = vec3b (255, 255, 255);
         update_cluster_membership(current_surfel, true);
     }
-    
-   
+
     return cluster_array[max_size_group_id];
 
 }
@@ -133,7 +140,11 @@ assign_locally_overlapping_neighbours(shared_cluster_surfel current_surfel_ptr,
 
             shared_surfel contained_surfel_ptr = input_sufrel_ptr->contained_surfel;
 
-            if( surfel::intersect(*target_surfel, *contained_surfel_ptr) ) {
+            /*if( surfel::intersect(*target_surfel, *contained_surfel_ptr) ) {
+                neighbours_found.push_back( input_sufrel_ptr );
+            } */
+
+            if( scm::math::length(target_surfel->pos() - contained_surfel_ptr->pos()) <= (target_surfel->radius() + contained_surfel_ptr->radius()) ) {
                 neighbours_found.push_back( input_sufrel_ptr );
             }
         }
@@ -145,16 +156,19 @@ assign_locally_overlapping_neighbours(shared_cluster_surfel current_surfel_ptr,
 }
 
 void reduction_k_clustering::  //use neighbours to compute overlap
-compute_overlap(shared_cluster_surfel current_surfel_ptr) const {
+compute_overlap(shared_cluster_surfel current_surfel_ptr, bool look_in_M) const {
 
     real overlap = 0;
     shared_surfel target_neighbour_surfel;
     uint32_t distance = 0;
 
     for(auto current_neighbour : current_surfel_ptr->neighbours){
+        if (current_neighbour->cluster_seed == look_in_M){
         target_neighbour_surfel = current_neighbour->contained_surfel;
         distance = compute_distance(current_surfel_ptr, current_neighbour);
         overlap += ((target_neighbour_surfel->radius() + current_surfel_ptr->contained_surfel->radius()) - distance);
+        }
+        
     }
 
     current_surfel_ptr->overlap = overlap;
@@ -174,7 +188,7 @@ compute_deviation(shared_cluster_surfel current_surfel_ptr) const {
 
     for(auto current_neighbour : current_surfel_ptr->neighbours){
         target_neighbour_surfel = current_neighbour->contained_surfel;
-        deviation += std::fabs(scm::math::dot(current_surfel_ptr->contained_surfel->normal(), target_neighbour_surfel->normal()));
+        deviation += 1 - std::fabs( scm::math::dot(current_surfel_ptr->contained_surfel->normal(), target_neighbour_surfel->normal()));
     }
 
     current_surfel_ptr->deviation = deviation;
@@ -186,8 +200,10 @@ resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_m) const {
     real min_overlap = 0;
     shared_cluster_surfel_vector temp_neighbour_list;
 
-
-    //for (auto m_member : surfel_ptr_set_m){
+    //maxial overlap computed
+    shared_cluster_surfel m_member =  surfel_ptr_set_m.back();
+    
+    std::cout << "Max overlap value" << m_member->overlap << "\n";
 
     while( !surfel_ptr_set_m.empty() ) {
 
@@ -199,9 +215,9 @@ resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_m) const {
             update_cluster_membership(m_member, false);
             surfel_ptr_set_m.pop_back();
             for(auto current_temp_neighbour : temp_neighbour_list){
-                compute_overlap(current_temp_neighbour);
+                compute_overlap(current_temp_neighbour, true);
             }
-            //std::sort(surfel_ptr_set_m.begin(), surfel_ptr_set_m.end(), max_overlap_order());
+            std::sort(surfel_ptr_set_m.begin(), surfel_ptr_set_m.end(), max_overlap_order());
         } else {
             break;
         }
@@ -219,17 +235,27 @@ resolve_undersampling(shared_cluster_surfel_vector& input_surfel_ptr_array) cons
     for(auto const& current_surfel_ptr : input_surfel_ptr_array){
         shared_cluster_surfel_vector neighbours = current_surfel_ptr->neighbours;
 
-        bool is_member = false;
+        bool member_neighbours = false; //^confusing name :(
         if(current_surfel_ptr->cluster_seed == false){
             for(auto const& current_neighbour : neighbours){
-                if(current_neighbour->cluster_seed == true)
-                    is_member = true;
+                if(current_neighbour->cluster_seed == true){
+                     member_neighbours = true;
+                    /*if(current_neighbour->node_id != current_surfel_ptr->node_id){
+                        member_neighbours = true;
+                    }
+                    else if (current_neighbour->surfel_id != current_surfel_ptr->surfel_id){
+                         member_neighbours = true;
+                    }*/
+                }
+                    
                 }
 
         }  
 
-        if(!is_member){
+        if(!member_neighbours){
             new_set_m.push_back(current_surfel_ptr);
+            current_surfel_ptr->contained_surfel->color() = vec3b (0, 255, 0);
+            update_cluster_membership(current_surfel_ptr, true);
         }
     }
 
@@ -261,66 +287,142 @@ remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M) const {
     surfel_ptr_set_M.pop_back();
 }
 
-void reduction_k_clustering:: //
+void reduction_k_clustering:: //^ take complement set M assembly of this function
 add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
            shared_cluster_surfel_vector& total_surfel_set) const {
 
     shared_cluster_surfel_vector complement_set_with_neighbours_in_M;
+
+    shared_cluster_surfel_vector complement_set; //^temporal backup vector
    // bool has_neighbours_in_M = false; 
 
-    //^take only surfels that aren't in M but have at least one neighbour in M
+                                //test if all surfels in set M are already memberes of set M
+                                uint counter_M = 0; 
+                                for (auto& current_M : surfel_ptr_set_M){
+
+                                    if (current_M->cluster_seed == false)
+                                        std::cout << "ERROR: false membership in M"; 
+                                    else counter_M +=1;
+                                }
+
+                                uint counter_not_M = 0;  
+
+                                 for (auto& current: total_surfel_set){
+
+                                    if (current->cluster_seed == false)
+                                       counter_not_M += 1; 
+                                }
+
+
+                                //std::cout << "size of set M  " << surfel_ptr_set_M.size() << "\n"; 
+                                //std::cout << "size of set coplement set  " << counter_not_M << "\n"; 
+    
+
+    //take only surfels that aren't in M but have at least one neighbour in M
    
-    for (auto& current_surfel_ptr : total_surfel_set) {
-        //bool test = false; 
+  /*  for (auto& current_surfel_ptr : total_surfel_set) {
+        uint test = 0; 
         if (current_surfel_ptr->cluster_seed == false ){
             shared_cluster_surfel_vector cluster_surfel_neighbours =  current_surfel_ptr->neighbours; 
 
             //neighbor condition not regrded
 
-            /*for(auto& current_neighbour : cluster_surfel_neighbours){
-                if(current_neighbour->cluster_seed == true){
-                  // test = true; 
-                   break;  
+            for(auto& current_neighbour : cluster_surfel_neighbours){
+                if(current_neighbour->cluster_seed == true && current_neighbour->surfel_id != current_surfel_ptr->surfel_id){
+                   test = test + 1; 
                 }
-            }*/                     
-             complement_set_with_neighbours_in_M.push_back(current_surfel_ptr);     
+            } 
+
+            //std::cout << "test" << test << "\n";
+
+            if (test > 0){
+              complement_set_with_neighbours_in_M.push_back(current_surfel_ptr);  
+            }                   
+              else{
+                complement_set.push_back(current_surfel_ptr);
+              }    
         }
             
        
-    }
+    }*/
+
+        for (auto& current_surfel_ptr : total_surfel_set){
+            if(current_surfel_ptr->cluster_seed == false){
+                 complement_set.push_back(current_surfel_ptr);
+            }
+        }
+
+        shared_cluster_surfel cluster_surfel_to_add; 
+
+        std::sort(complement_set.begin(), 
+              complement_set.end(), 
+              min_overlap_order() );
+
+        
+        cluster_surfel_to_add = complement_set.back();
+        surfel_ptr_set_M.push_back(complement_set.back());
+         update_cluster_membership(cluster_surfel_to_add, true);
+         //cluster_surfel_to_add->contained_surfel->color() = vec3b(0, 0, 255);
+        complement_set.pop_back();    
 
    // std::cout<< "Size of complement_set_with_neighbours_in_M" << complement_set_with_neighbours_in_M.size()<< "\n";
 
-    shared_cluster_surfel cluster_surfel_to_add; 
+                   /* shared_cluster_surfel cluster_surfel_to_add; 
 
-    if(complement_set_with_neighbours_in_M.size() > 0){
-        std::sort(complement_set_with_neighbours_in_M.begin(), 
-              complement_set_with_neighbours_in_M.end(), 
-              min_overlap_order() );
+                    if(complement_set_with_neighbours_in_M.size() > 0){
+                        std::sort(complement_set_with_neighbours_in_M.begin(), 
+                              complement_set_with_neighbours_in_M.end(), 
+                              min_overlap_order() );
 
-        cluster_surfel_to_add = complement_set_with_neighbours_in_M.back();
-        complement_set_with_neighbours_in_M.pop_back();
-        
-    }
-    //in case no surfels fulfills neighbour membership, just take the complemet set as it is
-    else {
+                        cluster_surfel_to_add = complement_set_with_neighbours_in_M.back();
+                        surfel_ptr_set_M.push_back(complement_set_with_neighbours_in_M.back());
+                         update_cluster_membership(cluster_surfel_to_add, true);
+                        complement_set_with_neighbours_in_M.pop_back();
+                        
+                    }
+                    //in case no surfels fulfills neighbour membership
+                    else {
+                        //std::cout<< "Empty vector: complement_set_with_neighbours_in_M \n"; 
 
-        std::cout<< "Empty vector: complement_set_with_neighbours_in_M \n"; 
-        /*std::sort(total_surfel_set.begin(), 
-              total_surfel_set.end(), 
-              min_overlap_order() );
+                        std::sort(complement_set.begin(), 
+                              complement_set.end(), 
+                              min_overlap_order() );
 
-        cluster_surfel_to_add = total_surfel_set.back();
-        update_cluster_membership(current_surfel_ptr, true); */
-    }
-    update_cluster_membership(cluster_surfel_to_add, true);
-    surfel_ptr_set_M.push_back(cluster_surfel_to_add);
+                        
+                        cluster_surfel_to_add = complement_set.back();
+                        surfel_ptr_set_M.push_back(complement_set.back());
+                         update_cluster_membership(cluster_surfel_to_add, true);
+                        complement_set.pop_back();
+                        
+                        
+                    }
+                        */
+
 }
 
-/*void reduction_k_clustering::
-merge(shared_cluster_surfel current_surfel_ptr){
+void reduction_k_clustering::
+merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const
+{   
+    vec3r avg_position;    
+    vec3b avg_color;
 
-} */
+    shared_cluster_surfel_vector current_temp_neighbour_vector;
+    for(auto& current_surfel_ptr : final_cluster_surfel_set){
+        //avg_position = current_surfel_ptr->contained_surfel->pos();
+        //avg_color = current_surfel_ptr->contained_surfel->color();
+        current_temp_neighbour_vector = current_surfel_ptr->neighbours;
+
+        for(auto& current_neighbour : current_temp_neighbour_vector){
+            avg_position += current_neighbour->contained_surfel->pos();
+            avg_color += current_neighbour->contained_surfel->color();
+          
+        }
+        avg_position /= final_cluster_surfel_set.size();
+        current_surfel_ptr->contained_surfel->pos() = avg_position;
+         
+        //current_surfel_ptr->contained_surfel->color() = avg_color / final_cluster_surfel_set.size() ;
+    }
+} 
 
 
 surfel_mem_array reduction_k_clustering::
@@ -364,11 +466,26 @@ create_lod(real& reduction_error,
         cluster_surfel_array.push_back( std::make_shared<cluster_surfel>( cluster_surfel(current_surfel, surfel_id, node_id)  ) );
        }
     }
+
+
+
+                   /* std::vector<std::shared_ptr<cluster_surfel_with_neighbours> >::iterator it;
+
+                        std::sort(cluster_surfel_array.begin(), cluster_surfel_array.end(), min_SN_id_order() );
+
+                        unsigned surfel_count = 0;
+                        for (std::vector<std::shared_ptr<cluster_surfel_with_neighbours> >::iterator surf_it = cluster_surfel_array.begin(); surf_it != cluster_surfel_output_array.end(); ++surf_it)
+                        {
+                            if(++surfel_count == 100)
+                                break;
+                            std::cout << "n_id: " << (*surf_it)->node_id << "   s_id: " << (*surf_it)->surfel_id << "\n";
+                        }    */
+
    
     for (auto target_surfel : cluster_surfel_array ){
 
         assign_locally_overlapping_neighbours(target_surfel, cluster_surfel_array);
-        compute_overlap(target_surfel);
+        compute_overlap(target_surfel, false);
         compute_deviation(target_surfel);
     }
 
@@ -377,12 +494,24 @@ create_lod(real& reduction_error,
 
     cluster_surfel_output_array = get_initial_cluster_seeds (avg_normal, cluster_surfel_array);
 
+    for (auto target_surfel : cluster_surfel_output_array ){    
+        compute_overlap(target_surfel, true);       
+    }
+    
+    std::cout << "Before resolve_oversampling:" << cluster_surfel_output_array.size() << "\n";
+
     resolve_oversampling(cluster_surfel_output_array);
 
-        resolve_undersampling(cluster_surfel_output_array);
+    std::cout << "After resolve_oversampling:" << cluster_surfel_output_array.size() << "\n";
+    
+    resolve_undersampling(cluster_surfel_output_array);
 
+    
     //make sure desired number of output surfels is reached
-    while(cluster_surfel_output_array.size() > surfels_per_node) {
+   std::cout << "cluster_surfel_output_array - SIZE:" << cluster_surfel_output_array.size() << "\n";
+
+
+     while(cluster_surfel_output_array.size() > surfels_per_node) {
         remove_surfel(cluster_surfel_output_array);
     }
 
@@ -390,21 +519,51 @@ create_lod(real& reduction_error,
     while(cluster_surfel_output_array.size() < surfels_per_node) {
         add_surfel (cluster_surfel_output_array, cluster_surfel_array);
     }
+    
 
-    uint32_t zero_rad_surfels = 0;
+    
+    //merge(cluster_surfel_output_array);
+
+    //uint32_t zero_rad_surfels = 0;
+
     //write surfels for output
     for (auto const& final_cluster_surfel : cluster_surfel_output_array) {
 
         mem_array.mem_data()->push_back(*(final_cluster_surfel->contained_surfel) );
-
-
-        if( final_cluster_surfel->contained_surfel->radius() == 0.0 ) {
-            ++zero_rad_surfels;
-        }
+        
     }
 
+               /* std::vector<std::shared_ptr<cluster_surfel_with_neighbours> >::iterator it;
+
+                std::sort(cluster_surfel_output_array.begin(), cluster_surfel_output_array.end(), min_SN_id_order() );
+                it = std::unique(cluster_surfel_output_array.begin(), cluster_surfel_output_array.end(), min_SN_id_order() );
+               
+
+                if(it!=cluster_surfel_output_array.end()){
+                    std::cout << "Duplicates \n";   
+                }
+            */
+
+              /* std::sort(cluster_surfel_output_array.begin(), cluster_surfel_output_array.end(), min_SN_id_order());
+
+                unsigned surfel_count = 0;
+                for (std::vector<std::shared_ptr<cluster_surfel_with_neighbours> >::iterator surf_it = cluster_surfel_output_array.begin(); surf_it != cluster_surfel_output_array.end(); ++surf_it)
+                {
+                    if(++surfel_count == 200)
+                        break;
+                    std::cout << "Final  " << " n_id: " << (*surf_it)->node_id << "   s_id: " << (*surf_it)->surfel_id << "\n";
+                }    
+            */
+
+
+
+   /* for( std::vector<std::shared_ptr<cluster_surfel_with_neighbours> >::iterator surf_it = it; surf_it  != cluster_surfel_output_array.end(); ++it) {
+        std::cout << "n_id: " << (*surf_it)->node_id << "   s_id: " << (*surf_it)->surfel_id << "\n";
+    }*/
     mem_array.set_length(mem_array.mem_data()->size());
 
+    std::cout << "mem_array:" << mem_array.mem_data()->size() << "\n";
+    std::cout << "surfels_per_node" << surfels_per_node << "\n";
     
 
     return mem_array;
