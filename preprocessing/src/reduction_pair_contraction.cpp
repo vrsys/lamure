@@ -13,21 +13,50 @@
 #include <deque>
 #include <map>
 #include <cmath>
+#include <array>
 #include <unordered_map>
 
 namespace lamure {
 
 namespace pre {
-struct quadric {
-  quadric(vec4r const& hessian) 
+struct quadric_t {
+  quadric_t()
+   :values{0,0,0,0,0,0,0,0,0,0}
+   ,hess{0.0}
+  {}
+  quadric_t(vec4r const& hessian) 
    :values{hessian.x * hessian.x, hessian.y * hessian.x, hessian.z * hessian.x, hessian.w * hessian.x,
                                   hessian.y * hessian.y, hessian.z * hessian.y, hessian.w * hessian.y,
                                                          hessian.z * hessian.z, hessian.w * hessian.z,
                                                                                 hessian.w * hessian.w}
+   ,hess{hessian}
   {}
 
+  // real error(vec3r const& p) const {
+  //     return values[0] * p.x * p.x + 2 * values[1] * p.x * p.y  + 2 * values[2] * p.x * p.z + 2 * values[3] * p.x 
+  //                                   +    values[4] * p.y * p.y  + 2 * values[5] * p.y * p.z + 2 * values[6] * p.y 
+  //                                                               +     values[7] * p.z * p.z + 2 * values[8] * p.z 
+  //                                                                                           +     values[9];  
+  // }
+  real error(vec3r const& p) const {
+    real a = dot(hess, vec4r{p, 1});
+    return a * a;
+  }
+
   std::array<real, 10> values;
+  vec4r hess;
 };
+
+quadric_t operator+(const quadric_t& q1, const quadric_t& q2) {
+  quadric_t q;
+  // prevent cancelling out when quadrics point in opposite direction
+  real coeff = (dot(vec3r{q1.hess}, vec3r{q2.hess}) < 0) ? -1.0 : 1.0;
+  for(size_t i = 0; i < q.values.size(); ++i) {
+    q.values[i] = q1.values[i] + coeff * q2.values[i]; 
+  }
+  q.hess = q1.hess + coeff * q2.hess;
+  return q;
+}
 
 struct edge_t
 {
@@ -67,7 +96,7 @@ std::ostream& operator<<(std::ostream& os, const edge_t& e) {
 struct contraction_op;
 
 struct contraction {
-  contraction(edge_t e, mat4r quad, real err, surfel surf)
+  contraction(edge_t e, quadric_t quad, real err, surfel surf)
    :edge{e}
    ,quadric{quad}
    ,error{err}
@@ -75,7 +104,7 @@ struct contraction {
   {}
 
   edge_t edge;
-  mat4r quadric;
+  quadric_t quadric;
   real error;
   surfel new_surfel;
 
@@ -99,6 +128,10 @@ bool operator<(const contraction_op& c1, const contraction_op& c2) {
   // otherwise undefined behaviour for sort
   return c1.cont->error > c2.cont->error;
 }
+
+
+mat4r edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2);
+quadric_t surfel_quadric(const vec3f& normal, const vec3r& p);
 
 }
 }
@@ -189,18 +222,16 @@ create_lod(real& reduction_error,
           const bvh& tree,
           const size_t start_node_id) const
 {
-  vec3f n = vec3f{0,0,1};
-  vec3r p = vec3r{1,2,1};
-  vec3r p2 = vec3r{9,5,1};
-  vec3r p3 = vec3r{1,2,3};
-  // column major
-  mat4r q = surfel_quadric(n, p);
-  std::cout << q << std::endl;
-  std::cout << quadric_error(p2, q) << std::endl;
-  std::cout << quadric_error(p3, q) << std::endl;
+  // vec3f n = vec3f{0,0,1};
+  // vec3r p = vec3r{1,2,1};
+  // vec3r p2 = vec3r{9,5,1};
+  // vec3r p3 = vec3r{1,2,3};
+  // // column major
+  // auto q = surfel_quadric(n, p);
+  // // std::cout << q << std::endl;
+  // std::cout << q.error(p2) << std::endl;
+  // std::cout << q.error(p3) << std::endl;
   // exit(0); 
-
-
 
   const uint32_t fan_factor = input.size();
   size_t num_surfels = 0;
@@ -214,7 +245,7 @@ create_lod(real& reduction_error,
     }
   }
 
-  std::map<surfel_id_t, mat4r> quadrics{};
+  std::map<surfel_id_t, quadric_t> quadrics{};
   std::vector<std::vector<surfel>> node_surfels{input.size() + 1, std::vector<surfel>{}};
   std::set<edge_t> edges{};
   std::cout << "creating quadrics" << std::endl;
@@ -223,8 +254,6 @@ create_lod(real& reduction_error,
     for (size_t surfel_idx = 0; surfel_idx < input[node_idx]->length(); ++surfel_idx) {
       
       surfel curr_surfel = input[node_idx]->read_surfel(surfel_idx);
-      // curr_surfel.color() = n_to_c(curr_surfel.normal());
-      // input[node_idx]->write_surfel(curr_surfel, surfel_idx);
       // save surfel
       node_surfels[node_idx].push_back(curr_surfel);
       surfel_id_t curr_id = surfel_id_t{node_idx, surfel_idx};
@@ -248,13 +277,8 @@ create_lod(real& reduction_error,
         surfel neighbour_surfel = input[neighbour.first.node_idx]->read_surfel(neighbour.first.surfel_idx);
         curr_quadric += edge_quadric(curr_surfel.normal(), neighbour_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
       }
-      // curr_quadric[3] /= real(nearest_neighbours.size());
-      // curr_quadric[7] /= real(nearest_neighbours.size());
-      // curr_quadric[11] /= real(nearest_neighbours.size());
-      // curr_quadric[15] /= real(nearest_neighbours.size() * nearest_neighbours.size());
       // quadrics[curr_id] = curr_quadric;
       quadrics[curr_id] = surfel_quadric(curr_surfel.normal(), curr_surfel.pos());
-      // std::cout << sum(curr_quadric) << std::endl;
     }
   }
 
@@ -278,22 +302,12 @@ create_lod(real& reduction_error,
                           (surfel1.radius() + surfel2.radius()) * 0.5f,
                           (normalize(surfel1.normal() + surfel2.normal()))
                           };
-    mat4r q1 = quadrics.at(edge.a);
-    mat4r q2 = quadrics.at(edge.b);
-    if(dot(q1.column(0), q2.column(0)) < 0) {
-      q1 = q1 * -1.0;
-    }
-    mat4r new_quadric = (q1 + q2);
-    // vec3f n = vec3f{0,0,1};
-    // vec3r p = vec3r{1,2,1};
-    // mat4r q = surfel_quadric(n,p);
-    // std::cout << "diff " << quadric_error(surfel1.pos(), q) << " " << quadric_error(surfel2.pos(), q) << std::endl;
-    real error = quadric_error(new_surfel.pos(), new_quadric);
-    real length = qlength(new_quadric);
+    auto q1 = quadrics.at(edge.a);
+    auto q2 = quadrics.at(edge.b);
+    auto new_quadric = (q1 + q2);
+    real error = new_quadric.error(new_surfel.pos());
     if (error > error_max) error_max = error;
     if (error < error_min) error_min = error;
-    if (length > length_max) length_max = length;
-    if (length < length_min) length_min = length;
 
     return contraction{edge, std::move(new_quadric), error, std::move(new_surfel)};
   };
@@ -322,19 +336,7 @@ create_lod(real& reduction_error,
     assert(contractions.at(edge.a).at(edge.b).get() == contractions.at(edge.b).at(edge.a).get());
   }
 
-  real pd_max = 0;
-  real pd_min = 0;
-  for(const auto& qpair : quadrics)
- {
-    real d = qpair.second[15];
-    if (d > pd_max) pd_max = d;
-    if (d < pd_min) pd_min = d;
- }
   std::cout << "error min " << error_min << " max " << error_max << std::endl;
-  std::cout << "contraction d min " << d_min << " max " << d_max << std::endl;
-  std::cout << "surfel d min " << pd_min << " max " << pd_max << std::endl;
-  std::cout << "length min " << length_min << " max " << length_max << std::endl;
-  exit(0); 
 
   error_min = std::numeric_limits<real>::max();
   error_max = 0;
@@ -345,7 +347,6 @@ create_lod(real& reduction_error,
       for(const auto& pair : contractions.at(surfel_id_t{node_idx, surfel_idx})) {
         error += pair.second->error;
         ++i;
-      
       }
       error /= real(i);
       if (error > error_max) error_max = error;
@@ -357,18 +358,10 @@ create_lod(real& reduction_error,
       surfel& curr_surfel = node_surfels[node_idx][surfel_idx];
       real error = 0;
       real d = 0;
-      vec4r norm = vec4r{0};
       real length = 0;
       size_t i = 0;
       for(const auto& pair : contractions.at(surfel_id_t{node_idx, surfel_idx})) {
         error += pair.second->error;
-        real a = sqrt(pair.second->quadric[0]);
-        vec4r n = vec4r{pair.second->quadric[0], pair.second->quadric[1], pair.second->quadric[2], pair.second->quadric[3]};
-        n /= a;
-        // norm += n;
-        norm += pair.second->quadric.column(0);
-        length = qlength(pair.second->quadric);
-        d += pair.second->quadric[15];
         ++i;
       }
       error /= real(i);
@@ -561,32 +554,15 @@ lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const
     return quadric;
 }
 
-lamure::mat4r surfel_quadric(const vec3f& norm, const vec3r& p) {
+lamure::pre::quadric_t surfel_quadric(const vec3f& norm, const vec3r& p) {
   vec3r normal = vec3r{normalize(norm)};
   vec4r hessian = vec4r{normal, -dot(p, normal)}; 
-  lamure::mat4r quadric = mat4r{hessian,
-                                hessian,
-                                hessian,
-                                hessian};  
-  // lamure::mat4r quadric = mat4r{hessian * hessian.x,
-  //                               hessian * hessian.y,
-  //                               hessian * hessian.z,
-  //                               hessian * hessian.w};  
-  return quadric;
+  return quadric_t{hessian};
 }
 
-lamure::real quadric_error(const vec3r& p, const mat4r& quadric)
+lamure::real quadric_error(const vec3r& p, const quadric_t& quadric)
 {
-  // real a = sqrt(quadric[0]);
-  // vec4r n = vec4r{quadric[0], quadric[1], quadric[2], quadric[3]};
-  // n /= a;
-  // real a = dot(quadric.column(0), vec4r{p, 1});
-  // return a * a;
-  // return fabs(a);
-  return quadric[0] * p.x * p.x + 2 * quadric[4] * p.x * p.y  + 2 * quadric[8] * p.x * p.z + 2 * quadric[12] * p.x 
-                                +     quadric[5] * p.y * p.y  + 2 * quadric[9] * p.y * p.z + 2 * quadric[13] * p.y 
-                                                              +     quadric[10] * p.z * p.z+ 2 * quadric[14] * p.z 
-                                                                                           +     quadric[15];  
+  return quadric.error(p);
 }
 
 // get k nearest neighbours in simplification nodes
