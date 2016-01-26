@@ -16,6 +16,8 @@
 #include <array>
 #include <unordered_map>
 
+
+#define LEAF_REMOVAL
 namespace lamure {
 
 namespace pre {
@@ -32,12 +34,12 @@ struct quadric_t {
    ,hess{hessian}
   {}
 
-  // real error(vec3r const& p) const {
-  //     return values[0] * p.x * p.x + 2 * values[1] * p.x * p.y  + 2 * values[2] * p.x * p.z + 2 * values[3] * p.x 
-  //                                   +    values[4] * p.y * p.y  + 2 * values[5] * p.y * p.z + 2 * values[6] * p.y 
-  //                                                               +     values[7] * p.z * p.z + 2 * values[8] * p.z 
-  //                                                                                           +     values[9];  
-  // }
+  real error2(vec3r const& p) const {
+      return values[0] * p.x * p.x + 2.0 * values[1] * p.x * p.y  + 2.0 * values[2] * p.x * p.z + 2.0 * values[3] * p.x 
+                                   +       values[4] * p.y * p.y  + 2.0 * values[5] * p.y * p.z + 2.0 * values[6] * p.y 
+                                                                +         values[7] * p.z * p.z + 2.0 * values[8] * p.z 
+                                                                                                +       values[9];  
+  }
   real error(vec3r const& p) const {
     real a = dot(hess, vec4r{p, 1});
     return a * a;
@@ -51,6 +53,7 @@ quadric_t operator+(const quadric_t& q1, const quadric_t& q2) {
   quadric_t q;
   // prevent cancelling out when quadrics point in opposite direction
   real coeff = (dot(vec3r{q1.hess}, vec3r{q2.hess}) < 0) ? -1.0 : 1.0;
+  // coeff = 1;
   for(size_t i = 0; i < q.values.size(); ++i) {
     q.values[i] = q1.values[i] + coeff * q2.values[i]; 
   }
@@ -222,15 +225,23 @@ create_lod(real& reduction_error,
           const bvh& tree,
           const size_t start_node_id) const
 {
-  // vec3f n = vec3f{0,0,1};
-  // vec3r p = vec3r{1,2,1};
-  // vec3r p2 = vec3r{9,5,1};
-  // vec3r p3 = vec3r{1,2,3};
-  // // column major
-  // auto q = surfel_quadric(n, p);
-  // // std::cout << q << std::endl;
-  // std::cout << q.error(p2) << std::endl;
-  // std::cout << q.error(p3) << std::endl;
+  vec3f n = vec3f{0,0,1};
+  vec3r p = vec3r{1,2,1};
+  vec3r p2 = vec3r{9,5,1};
+  vec3r p3 = vec3r{1,2,3};
+  // column major
+  auto q = surfel_quadric(n, p);
+  // std::cout << q << std::endl;
+  real e1 = q.error(p3);
+  real e2 = q.error2(p3);
+  // while (fabs(e1 - e2) < 0.000000001) {
+  //   n.x += 0.1;
+  //   p.z += 0.1;
+  //   q = surfel_quadric(n, p);
+  //   e1 = q.error(p3);
+  //   e2 = q.error2(p3);
+  // std::cout << e1 << " - " << e2 << std::endl;
+  // }
   // exit(0); 
 
   const uint32_t fan_factor = input.size();
@@ -266,7 +277,7 @@ create_lod(real& reduction_error,
         neighbour_ids.push_back(pair.first);
       }
 
-      mat4r curr_quadric = mat4r::zero();
+      // mat4r curr_quadric = mat4r::zero();
       for (auto const& neighbour : nearest_neighbours) {
         edge_t curr_edge = edge_t{curr_id, neighbour.first}; 
         assert(neighbour.first.node_idx < num_nodes_per_level && neighbour.first.surfel_idx <num_surfels_per_node);
@@ -275,7 +286,7 @@ create_lod(real& reduction_error,
         }
         // accumulate quadric
         surfel neighbour_surfel = input[neighbour.first.node_idx]->read_surfel(neighbour.first.surfel_idx);
-        curr_quadric += edge_quadric(curr_surfel.normal(), neighbour_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
+        // curr_quadric += edge_quadric(curr_surfel.normal(), neighbour_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
       }
       // quadrics[curr_id] = curr_quadric;
       quadrics[curr_id] = surfel_quadric(curr_surfel.normal(), curr_surfel.pos());
@@ -288,12 +299,8 @@ create_lod(real& reduction_error,
 
   real error_min = std::numeric_limits<real>::max();
   real error_max = 0;
-  real d_max = 0;
-  real d_min = 0;
-  real length_min = 0;
-  real length_max = 0;
   std::cout << "creating contractions" << std::endl;
-  auto create_contraction = [&node_surfels, &quadrics, &error_max, &error_min, &d_max, &d_min, &length_max, &length_min](const edge_t& edge)->contraction {
+  auto create_contraction = [&node_surfels, &quadrics, &error_max, &error_min](const edge_t& edge)->contraction {
     const surfel& surfel1 = node_surfels[edge.a.node_idx][edge.a.surfel_idx];
     const surfel& surfel2 = node_surfels[edge.b.node_idx][edge.b.surfel_idx];
     // new surfel is mean of both old surfels
@@ -302,10 +309,25 @@ create_lod(real& reduction_error,
                           (surfel1.radius() + surfel2.radius()) * 0.5f,
                           (normalize(surfel1.normal() + surfel2.normal()))
                           };
-    auto q1 = quadrics.at(edge.a);
-    auto q2 = quadrics.at(edge.b);
-    auto new_quadric = (q1 + q2);
+    auto new_quadric = (quadrics.at(edge.a) + quadrics.at(edge.b));
     real error = new_quadric.error(new_surfel.pos());
+    real error1 = new_quadric.error(surfel1.pos());
+    real error2 = new_quadric.error(surfel2.pos());
+
+    if(error1 < error) {
+      if(error2 < error1) {
+        new_surfel = surfel2;
+        error = error2;
+      }
+      else {
+        new_surfel = surfel1;
+        error = error1;
+      }
+    }
+    else if(error2 < error) {
+      new_surfel = surfel2;
+      error = error2;
+    }
     if (error > error_max) error_max = error;
     if (error < error_min) error_min = error;
 
@@ -357,33 +379,19 @@ create_lod(real& reduction_error,
     for (size_t surfel_idx = 0; surfel_idx < input[node_idx]->length(); ++surfel_idx) {
       surfel& curr_surfel = node_surfels[node_idx][surfel_idx];
       real error = 0;
-      real d = 0;
-      real length = 0;
       size_t i = 0;
       for(const auto& pair : contractions.at(surfel_id_t{node_idx, surfel_idx})) {
         error += pair.second->error;
         ++i;
       }
       error /= real(i);
-      d /= real(i);
-      length /= real(i);
-      // magnitude of quadric
-      // curr_surfel.color() = heatmap((length - length_min) / (length_max - length_min));
-      // magnitude of quadric
-      // curr_surfel.color() = heatmap((length - length_min) / (length_max - length_min));
-      // offset of contraction quadric
-      // curr_surfel.color() = heatmap((d - d_min) / (d_max - d_min));
-      // offset of point quadric
-      // curr_surfel.color() = heatmap((quadrics.at(surfel_id_t{node_idx, surfel_idx})[15] - pd_min) / (pd_max - pd_min));
       // error of contraction
       curr_surfel.color() = heatmap((error - error_min) / (error_max - error_min));
       // binary dir of surfel normal
       // curr_surfel.color() = n_to_c(curr_surfel.normal());
-      // dir of contraction normal
-      // curr_surfel.color() = n_to_c(normalize(vec3f{norm.x, norm.y, norm.z}));
-      // curr_surfel.color() = vec3b{127, 127, 127};
       // write to orig data
       input[node_idx]->write_surfel(curr_surfel, surfel_idx);
+      curr_surfel.color() = vec3b{127, 127, 127};
     }
   }
 
@@ -411,24 +419,28 @@ create_lod(real& reduction_error,
     surfel& new_surfel = curr_contraction.new_surfel;
     // save new surfel
     // new_surfel.color() = vec3b{255,255,255};
-    // new_surfel.color() = heatmap((curr_contraction.error - error_min) / (error_max - error_min));
+    new_surfel.color() = heatmap((curr_contraction.error - error_min) / (error_max - error_min));
     node_surfels.back()[i] = new_surfel;
     // std::cout << node_surfels.back()[i].radius() << std::endl;
 
     const surfel_id_t& old_id_1 = curr_contraction.edge.a;
     const surfel_id_t& old_id_2 = curr_contraction.edge.b;
     // invalidate old surfels
-    // if (old_id_1.node_idx < fan_factor) {
-    //   surfel surf = node_surfels[old_id_1.node_idx][old_id_1.surfel_idx];
-    //   surf.color() = vec3b{255,255,255};
-    //   input[old_id_1.node_idx]->write_surfel(surf, old_id_1.surfel_idx);
-    // }
+    #ifdef LEAF_REMOVAL
+    if (old_id_1.node_idx < fan_factor) {
+      surfel surf = node_surfels[old_id_1.node_idx][old_id_1.surfel_idx];
+      surf.color() = vec3b{255,255,255};
+      input[old_id_1.node_idx]->write_surfel(surf, old_id_1.surfel_idx);
+    }
+    #endif
     node_surfels[old_id_1.node_idx][old_id_1.surfel_idx].radius() = -1.0f;
-    // if (old_id_2.node_idx < fan_factor) {
-    //   surfel surf = node_surfels[old_id_2.node_idx][old_id_2.surfel_idx];
-    //   surf.color() = vec3b{255,255,255};
-    //   input[old_id_2.node_idx]->write_surfel(surf, old_id_2.surfel_idx);
-    // }
+    #ifdef LEAF_REMOVAL
+    if (old_id_2.node_idx < fan_factor) {
+      surfel surf = node_surfels[old_id_2.node_idx][old_id_2.surfel_idx];
+      surf.color() = vec3b{255,255,255};
+      input[old_id_2.node_idx]->write_surfel(surf, old_id_2.surfel_idx);
+    }
+    #endif
     node_surfels[old_id_2.node_idx][old_id_2.surfel_idx].radius() = -1.0f;
     // add new point quadric
     quadrics[new_id] = curr_contraction.quadric;
@@ -507,9 +519,6 @@ create_lod(real& reduction_error,
   for (auto& node : node_surfels) {
     for (auto& surfel : node) {
       if (surfel.radius() > 0.0f) {
-        // if(node == node_surfels.back()) {
-        //   surfel.color() = vec3b{255};
-        // }
         mem_array.mem_data()->push_back(surfel);
       }
     }
@@ -555,7 +564,7 @@ lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const
 }
 
 lamure::pre::quadric_t surfel_quadric(const vec3f& norm, const vec3r& p) {
-  vec3r normal = vec3r{normalize(norm)};
+  vec3r normal = vec3r{(norm)};
   vec4r hessian = vec4r{normal, -dot(p, normal)}; 
   return quadric_t{hessian};
 }
