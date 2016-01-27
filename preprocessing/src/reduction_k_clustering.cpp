@@ -87,14 +87,14 @@ get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector 
             max_size_group_id = i;
         }
 
-        //std::cout << "Group: " << i << " contains " << cluster_array[i].size() << " surfels \n";
+        ////std::cout << "Group: " << i << " contains " << cluster_array[i].size() << " surfels \n";
 
     }
 
-        std::cout << "Selected group is "  <<  max_size_group_id << "\n";   
+        //std::cout << "Selected group is "  <<  max_size_group_id << "\n";   
 
     for(auto& current_surfel : cluster_array[max_size_group_id]){
-        current_surfel->contained_surfel->color() = vec3b (255, 255, 255);
+       // current_surfel->contained_surfel->color() = vec3b (255, 255, 255);
         update_cluster_membership(current_surfel, true);
     }
 
@@ -203,7 +203,7 @@ resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_m) const {
     //maxial overlap computed
     shared_cluster_surfel m_member =  surfel_ptr_set_m.back();
     
-    std::cout << "Max overlap value" << m_member->overlap << "\n";
+    //std::cout << "Max overlap value" << m_member->overlap << "\n";
 
     while( !surfel_ptr_set_m.empty() ) {
 
@@ -254,7 +254,7 @@ resolve_undersampling(shared_cluster_surfel_vector& input_surfel_ptr_array) cons
 
         if(!member_neighbours){
             new_set_m.push_back(current_surfel_ptr);
-            current_surfel_ptr->contained_surfel->color() = vec3b (0, 255, 0);
+            //current_surfel_ptr->contained_surfel->color() = vec3b (0, 255, 0);
             update_cluster_membership(current_surfel_ptr, true);
         }
     }
@@ -300,9 +300,12 @@ add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
                                 uint counter_M = 0; 
                                 for (auto& current_M : surfel_ptr_set_M){
 
-                                    if (current_M->cluster_seed == false)
-                                        std::cout << "ERROR: false membership in M"; 
-                                    else counter_M +=1;
+                                    if (current_M->cluster_seed == false) {
+                                        //std::cout << "ERROR: false membership in M"; 
+                                    }
+                                    else{
+                                        counter_M +=1;
+                                    }
                                 }
 
                                 uint counter_not_M = 0;  
@@ -315,11 +318,18 @@ add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
 
        
 
+                                
         for (auto& current_surfel_ptr : total_surfel_set){
             if(current_surfel_ptr->cluster_seed == false){
                  complement_set.push_back(current_surfel_ptr);
             }
         }
+
+        for (auto& complement_set_current_cluster_surfel : complement_set){
+
+            compute_overlap(complement_set_current_cluster_surfel, true);
+        }    
+         
 
         shared_cluster_surfel cluster_surfel_to_add; 
 
@@ -420,32 +430,27 @@ create_lod(real& reduction_error,
         compute_overlap(target_surfel, true);       
     }
     
-    std::cout << "Before resolve_oversampling:" << cluster_surfel_output_array.size() << "\n";
+    //std::cout << "Before resolve_oversampling:" << cluster_surfel_output_array.size() << "\n";
 
     resolve_oversampling(cluster_surfel_output_array);
 
-    std::cout << "After resolve_oversampling:" << cluster_surfel_output_array.size() << "\n";
+    //std::cout << "After resolve_oversampling:" << cluster_surfel_output_array.size() << "\n";
     
     resolve_undersampling(cluster_surfel_output_array);
 
     
     //make sure desired number of output surfels is reached
-   
-
-
      while(cluster_surfel_output_array.size() > surfels_per_node) {
         remove_surfel(cluster_surfel_output_array);
     }
-
 
     while(cluster_surfel_output_array.size() < surfels_per_node) {
         add_surfel (cluster_surfel_output_array, cluster_surfel_array);
     }
     
 
-    std::cout << "Merge - Before:" << cluster_surfel_output_array.size() << "\n";
     merge(cluster_surfel_output_array);
-    std::cout << "Merge - After" << cluster_surfel_output_array.size() << "\n";
+    
   
     //write surfels for output
     for (auto const& final_cluster_surfel : cluster_surfel_output_array) {
@@ -456,8 +461,8 @@ create_lod(real& reduction_error,
 
     mem_array.set_length(mem_array.mem_data()->size());
 
-    std::cout << "mem_array:" << mem_array.mem_data()->size() << "\n";
-    std::cout << "surfels_per_node" << surfels_per_node << "\n";
+    //std::cout << "mem_array:" << mem_array.mem_data()->size() << "\n";
+    //std::cout << "surfels_per_node" << surfels_per_node << "\n";
     
 
     return mem_array;
