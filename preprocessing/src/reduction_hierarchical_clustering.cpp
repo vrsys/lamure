@@ -38,10 +38,12 @@ create_lod(real& reduction_error,
     	}
     }
 
-    // Set global parameters depending on input parameters.
-    // TODO: optimize chosen parameters
+    // Set initial parameters depending on input parameters.
+    // These splitting thresholds adapt during the execution of the algorithm.
+    // Maximum possible variation is 1/3.
+    // First maximum variation is calculated during first splitting iteration.
     uint32_t maximum_cluster_size = (surfels_to_sample.size() / surfels_per_node) * 2;
-    real maximum_variation = 0.1;
+    real maximum_variation = -1;
 	
 	std::vector<std::vector<surfel*>> clusters;
 	clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, maximum_variation, surfels_per_node);
@@ -64,77 +66,6 @@ create_lod(real& reduction_error,
 
 
 
-/*std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
-split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const
-{
-	std::vector<std::vector<surfel*>> output_clusters;
-	output_clusters.push_back(input_surfels);
-
-	// TODO: use of priority queue.
-	int repeat_counter = 0;
-
-	while(output_clusters.size() < max_clusters)
-	{
-		std::vector<surfel*> current_surfels = output_clusters.front();
-		output_clusters.erase(output_clusters.begin());
-
-		vec3r centroid;
-		scm::math::mat3d covariance_matrix = calculate_covariance_matrix(current_surfels, centroid);
-		vec3f normal;
-		real variation = calculate_variation(covariance_matrix, normal);
-
-		if(current_surfels.size() > max_cluster_size || variation > max_variation)
-		{
-			std::vector<surfel*> new_surfels_one;
-			std::vector<surfel*> new_surfels_two;
-
-			// Split the surfels into two sub-groups along splitting plane defined by eigenvector.
-			for(uint32_t surfel_index = 0; surfel_index < current_surfels.size(); ++surfel_index)
-			{
-				surfel* current_surfel = current_surfels.at(surfel_index);
-				real surfel_side = point_plane_distance(centroid, normal, current_surfel->pos());
-
-				if(surfel_side >= 0)
-				{
-					new_surfels_one.push_back(current_surfel);
-				}
-				else
-				{
-					new_surfels_two.push_back(current_surfel);
-				}
-			}
-
-			if(new_surfels_one.size() > 0)
-			{
-				output_clusters.push_back(new_surfels_one);
-			}
-			if(new_surfels_two.size() > 0)
-			{
-				output_clusters.push_back(new_surfels_two);
-			}
-
-			//std::cout << new_surfels_one.size() << " / " << new_surfels_two.size() << " --- " << output_clusters.size() << std::endl;
-		}
-		else
-		{
-			output_clusters.push_back(current_surfels);
-
-			++repeat_counter;
-			if(repeat_counter > 10)
-			{
-				repeat_counter = 0;
-
-				max_cluster_size = max_cluster_size * 3 / 4;
-				max_variation = max_variation * 3 / 4;
-			}
-		}
-	}
-
-	return output_clusters;
-}*/
-
-
-
 std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
 split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const
 {
@@ -147,6 +78,12 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluste
 	{
 		hierarchical_cluster current_cluster = cluster_queue.top();
 		cluster_queue.pop();
+
+		// Initial maximum variation is defined by variation of first cluster.
+		if(max_variation < 0)
+		{
+			max_variation = current_cluster.variation;
+		}
 
 		if(current_cluster.surfels.size() > max_cluster_size || current_cluster.variation > max_variation)
 		{
@@ -315,19 +252,35 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 		centroid = centroid + current_surfel->pos();
 		normal = normal + current_surfel->normal();
 		color_overrun = color_overrun + current_surfel->color();
-		radius = radius + current_surfel->radius();
 	}
 
 	centroid = centroid / surfels_to_sample.size();
 	normal = normal / surfels_to_sample.size();
 	color_overrun = color_overrun / surfels_to_sample.size();
-	//radius = radius * 0.66666;	// TODO: proper radius calculation
+
+	// Compute raius by taking max radius of cluster surfels and max distance from centroid.
+	real highest_distance = 0;
+	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
+	{
+		surfel* current_surfel = surfels_to_sample.at(surfel_index);
+		real distance_centroid_surfel = scm::math::length(centroid - current_surfel->pos());
+
+		if(distance_centroid_surfel > highest_distance)
+		{
+			highest_distance = distance_centroid_surfel;
+		}
+
+		if(current_surfel->radius() > radius)
+		{
+			radius = current_surfel->radius();
+		}
+	}
 
 	surfel new_surfel;
 	new_surfel.pos() = centroid;
 	new_surfel.normal() = normal;
 	new_surfel.color() = vec3b(color_overrun.x, color_overrun.y, color_overrun.z);
-	new_surfel.radius() = radius;
+	new_surfel.radius() = (radius + highest_distance);
 
 	return new_surfel;
 }
