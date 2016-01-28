@@ -141,7 +141,7 @@ class reduction_k_clustering: public reduction_strategy
 public:
 
 
-explicit reduction_k_clustering(size_t num_neighbours): //^change also in builder.cpp
+explicit reduction_k_clustering(size_t num_neighbours): 
                                     number_of_neighbours_(num_neighbours)
                                     {}
 
@@ -170,7 +170,7 @@ private:
 
   void compute_deviation(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute deviation
 
-  uint32_t compute_distance(shared_cluster_surfel first_surfel_ptr,
+  real compute_distance(shared_cluster_surfel first_surfel_ptr,
                             shared_cluster_surfel second_surfel_ptr) const;
 
   void resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
@@ -181,7 +181,7 @@ private:
 
   /*void assign_locally_nearest_neighbours(shared_cluster_surfel current_surfel_ptr,
                                         const uint32_t number_of_neighbours,
-                                        shared_cluster_surfel_vector& input_surfel_ptr_array); //partially taken from get_nearest_neighbours();
+                                        shared_cluster_surfel_vector& input_surfel_ptr_array) const; //partially taken from get_nearest_neighbours();
    */
 
   void remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
