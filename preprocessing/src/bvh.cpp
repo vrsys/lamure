@@ -893,41 +893,24 @@ get_nearest_neighbours_in_nodes(
     return candidates;
 }
 
-std::vector<std::pair<surfel_id_t, real>> bvh::
-get_natural_neighbours(const surfel_id_t& target_surfel,
-                       const uint32_t num_nearest_neighbours) const {
-
+std::vector<std::pair<surfel_id_t, real> > bvh::
+extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vector< std::pair<surfel, real> > const& nearest_neighbours ) const {
 
     std::vector<std::pair<surfel_id_t, real>> natural_neighbour_ids;
 
-    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids =
-    get_nearest_neighbours(target_surfel, num_nearest_neighbours);
-
-    std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
-    
-
+    uint32_t num_nearest_neighbours = nearest_neighbours.size();
     //compile points
-    double* points = new double[num_nearest_neighbours*3];
-
-    auto const& bvh_nodes = nodes_;
-
-    std::vector<vec3r> nn_positions;
-
-    nn_positions.reserve(nearest_neighbour_ids.size());
+    double* points = new double[num_nearest_neighbours * 3];
 
     uint32_t point_counter = 0;
 
-    std::vector<surfel> nearest_neighbour_copies;
-    for (auto const& idx_pair : nearest_neighbour_ids) {
+    std::vector<vec3r> nn_positions;
 
-        surfel const current_nearest_neighbour_surfel = 
-            bvh_nodes[idx_pair.first.node_idx].mem_array().read_surfel(idx_pair.first.surfel_idx);
-        auto const& neighbour_pos 
-            = current_nearest_neighbour_surfel.pos();
+    nn_positions.reserve(num_nearest_neighbours);
 
-        nearest_neighbour_copies.push_back(current_nearest_neighbour_surfel);
+    for (auto const& near_neighbour : nearest_neighbours) {
 
-
+        auto const neighbour_pos = near_neighbour.first.pos();
         nn_positions.push_back( neighbour_pos );
 
         points[3*point_counter+0] = neighbour_pos[0];
@@ -936,7 +919,7 @@ get_natural_neighbours(const surfel_id_t& target_surfel,
 
         ++point_counter;
     }
-    
+
     //compute best fit plane
     plane_t plane;
     plane_t::fit_plane(nn_positions, plane);
@@ -964,10 +947,6 @@ get_natural_neighbours(const surfel_id_t& target_surfel,
         return natural_neighbour_ids;
     }
 
-    //project point of interest
-    vec3r point_of_interest = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
-    vec2r coord_poi = plane_t::project(plane, plane_right, point_of_interest);
-    
 
     //cgal delaunay triangluation
     Dh2 delaunay_triangulation;
@@ -982,6 +961,8 @@ get_natural_neighbours(const surfel_id_t& target_surfel,
         neighbour_2d_coord_pairs.emplace_back(coords[2*i+0], coords[2*i+1]);
     }
     
+    vec2r coord_poi = plane_t::project(plane, plane_right, point_of_interest);
+
     Point2 poi_2d(coord_poi.x, coord_poi.y);
     
     std::vector<std::pair<K::Point_2, K::FT>> sibson_coords;
@@ -1026,9 +1007,10 @@ get_natural_neighbours(const surfel_id_t& target_surfel,
     
     
     for (const auto& it : nni_weights) {
-        surfel_id_t natural_neighbour_id_pair = nearest_neighbour_ids[it.first].first;
+        surfel_id_t natural_neighbour_id_pair = surfel_id_t(it.first, it.first);
 
         natural_neighbour_ids.emplace_back(natural_neighbour_id_pair, it.second);
+
     }
 
     delete[] points;
@@ -1040,6 +1022,88 @@ get_natural_neighbours(const surfel_id_t& target_surfel,
 
 
     return natural_neighbour_ids;
+
+
+}
+
+std::vector<std::pair<surfel_id_t, real>> bvh::
+get_natural_neighbours(const surfel_id_t& target_surfel,
+                       const uint32_t num_nearest_neighbours) const {
+
+    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids =
+    get_nearest_neighbours(target_surfel, num_nearest_neighbours);
+
+    std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
+    
+    auto const& bvh_nodes = nodes_;
+
+    std::vector< std::pair<surfel, real>> nearest_neighbour_copies;
+    for (auto const& idx_pair : nearest_neighbour_ids) {
+
+        surfel const current_nearest_neighbour_surfel = 
+            bvh_nodes[idx_pair.first.node_idx].mem_array().read_surfel(idx_pair.first.surfel_idx);
+
+        nearest_neighbour_copies.push_back( std::make_pair(current_nearest_neighbour_surfel,0.0) );
+    }
+    
+    //project point of interest
+    vec3r point_of_interest = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+
+    std::vector<std::pair<surfel_id_t, real>> natural_neighbour_with_local_nearest_neighbour_ids = 
+        extract_approximate_natural_neighbours(point_of_interest, nearest_neighbour_copies);
+
+    for (auto& nn_entry : natural_neighbour_with_local_nearest_neighbour_ids ) {
+        nn_entry.first = nearest_neighbour_ids[nn_entry.first.surfel_idx].first;
+    }
+
+    return natural_neighbour_with_local_nearest_neighbour_ids;
+}
+
+std::vector<std::pair<surfel, real> > bvh::
+get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,
+                               vec3r const& poi,
+                               uint32_t num_nearest_neighbours) const {
+
+    num_nearest_neighbours = std::max(uint32_t(3), num_nearest_neighbours);
+
+    std::vector< std::pair<surfel,real>> k_nearest_neighbours;
+    
+    for (auto const& neigh : potential_neighbour_vec) {
+        double length_squared = scm::math::length_sqr(neigh.pos() - poi);
+
+        bool push_surfel = false;
+        if ( k_nearest_neighbours.size() < num_nearest_neighbours ) {
+            push_surfel = true;
+        } else if ( length_squared < k_nearest_neighbours.back().second ) {
+            k_nearest_neighbours.pop_back();
+            push_surfel = true;
+        }
+
+        if(push_surfel) {
+            k_nearest_neighbours.push_back(std::make_pair(neigh, length_squared) );
+
+            for (uint16_t k = k_nearest_neighbours.size() - 1; k > 0; --k)
+            {
+                if (k_nearest_neighbours[k].second < k_nearest_neighbours[k - 1].second)
+                {
+                    std::swap(k_nearest_neighbours[k], k_nearest_neighbours[k - 1]);
+                }
+                else
+                    break;
+            }
+        }
+    }
+
+    std::vector< std::pair<surfel_id_t, real>> local_nn_id_weight_pairs = 
+        extract_approximate_natural_neighbours(poi, k_nearest_neighbours);
+
+    std::vector< std::pair<surfel, real> > nni_weight_pairs;
+
+    for (auto const& entry : local_nn_id_weight_pairs) {
+        nni_weight_pairs.push_back(std::make_pair(k_nearest_neighbours[entry.first.surfel_idx].first, entry.second));
+    }
+
+    return nni_weight_pairs;
 }
 
 void bvh::

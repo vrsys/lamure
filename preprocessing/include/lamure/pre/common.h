@@ -35,7 +35,9 @@ enum class reduction_algorithm {
     entropy	                = 4,
     particle_sim            = 5,
     hierarchical_clustering = 6,
-    k_clustering            = 7
+    k_clustering            = 7,
+    avg_nearest_neighbour_distance = 8,
+    sorted_every_second     = 9
 };
 
 }}

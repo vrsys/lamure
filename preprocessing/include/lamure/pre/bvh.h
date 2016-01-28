@@ -101,6 +101,16 @@ public:
                             const surfel_id_t& target_surfel,
                             const uint32_t num_neighbours) const;
 
+    std::vector<std::pair<surfel, real> >
+                        get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,
+                                                       vec3r const& poi,
+                                                       uint32_t num_nearest_neighbours) const;
+
+    std::vector<std::pair<surfel_id_t, real>>
+                        extract_approximate_natural_neighbours(vec3r const& point_of_interest, 
+                            std::vector< std::pair<surfel, real> > const& nearest_neighbours ) const;
+
+
     void                print_tree_properties() const;
     const node_id_type  first_leaf() const { return first_leaf_; }
 
