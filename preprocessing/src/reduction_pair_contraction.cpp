@@ -16,9 +16,9 @@
 #include <array>
 #include <unordered_map>
 
+// #define DEBUG
 // #define ERROR_COLOR
 // #define LEAF_REMOVAL
-// #define SURFEL_QUADRIC
 #define LIMIT_NEIGHBOURS
 
 namespace lamure {
@@ -148,7 +148,6 @@ bool operator<(const contraction_op& c1, const contraction_op& c2) {
 
 
 quadric_t edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2);
-quadric_t surfel_quadric(const vec3f& normal, const vec3r& p);
 
 }
 }
@@ -179,7 +178,6 @@ namespace lamure {
 namespace pre {
 
 bool a = false;
-const size_t NUM_NEIGHBOURS = 40;
 
 real sum(const mat4r& quadric) {  
   real sum = 0;
@@ -239,25 +237,6 @@ create_lod(real& reduction_error,
           const bvh& tree,
           const size_t start_node_id) const
 {
-  vec3f n = vec3f{0,0,1};
-  vec3r p = vec3r{1,2,1};
-  vec3r p2 = vec3r{9,5,1};
-  vec3r p3 = vec3r{1,2,3};
-  // column major
-  auto q = surfel_quadric(n, p);
-  // std::cout << q << std::endl;
-  real e1 = q.error(p3);
-  real e2 = q.error2(p3);
-  // while (fabs(e1 - e2) < 0.000000001) {
-  //   n.x += 0.1;
-  //   p.z += 0.1;
-  //   q = surfel_quadric(n, p);
-  //   e1 = q.error(p3);
-  //   e2 = q.error2(p3);
-  // std::cout << e1 << " - " << e2 << std::endl;
-  // }
-  // exit(0); 
-
   const uint32_t fan_factor = input.size();
   size_t num_surfels = 0;
   size_t min_num_surfels = input[0]->length(); 
@@ -273,7 +252,6 @@ create_lod(real& reduction_error,
   std::map<surfel_id_t, quadric_t> quadrics{};
   std::vector<std::vector<surfel>> node_surfels{input.size() + 1, std::vector<surfel>{}};
   std::set<edge_t> edges{};
-  std::cout << "creating quadrics" << std::endl;
   // accumulate edges and point quadrics
   for (node_id_type node_idx = 0; node_idx < fan_factor; ++node_idx) {
     for (size_t surfel_idx = 0; surfel_idx < input[node_idx]->length(); ++surfel_idx) {
@@ -285,43 +263,39 @@ create_lod(real& reduction_error,
 
       assert(node_idx < num_nodes_per_level && surfel_idx < num_surfels_per_node);
       // get and store neighbours
-      auto nearest_neighbours = get_local_nearest_neighbours(input, NUM_NEIGHBOURS, curr_id);
+      auto nearest_neighbours = get_local_nearest_neighbours(input, number_of_neighbours_, curr_id);
       std::vector<surfel_id_t> neighbour_ids{};
       for (const auto& pair : nearest_neighbours) {
         neighbour_ids.push_back(pair.first);
       }
 
-      #ifndef SURFEL_QUADRIC
-        quadric_t curr_quadric{};
-      #endif
+      quadric_t curr_quadric{};
       for (auto const& neighbour : nearest_neighbours) {
         edge_t curr_edge = edge_t{curr_id, neighbour.first}; 
         assert(neighbour.first.node_idx < num_nodes_per_level && neighbour.first.surfel_idx <num_surfels_per_node);
         if (edges.find(curr_edge) == edges.end()) {
           edges.insert(curr_edge);
         }
-        #ifndef SURFEL_QUADRIC
           // accumulate quadric
           surfel neighbour_surfel = input[neighbour.first.node_idx]->read_surfel(neighbour.first.surfel_idx);
           curr_quadric += edge_quadric(curr_surfel.normal(), neighbour_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
-        #endif
       }
-      #ifdef SURFEL_QUADRIC
-        quadrics[curr_id] = surfel_quadric(curr_surfel.normal(), curr_surfel.pos());
-      #else
-        quadrics[curr_id] = curr_quadric;
-      #endif
+      quadrics[curr_id] = curr_quadric;
     }
   }
 
 
   // allocate space for new surfels that will be created
   node_surfels.back() = std::vector<surfel>{num_surfels - surfels_per_node};
-
+  #ifdef DEBUG
   real error_min = std::numeric_limits<real>::max();
   real error_max = 0;
   std::cout << "creating contractions" << std::endl;
-  auto create_contraction = [&node_surfels, &quadrics, &error_max, &error_min](const edge_t& edge)->contraction {
+  auto create_contraction = [&node_surfels, &quadrics, &error_max, &error_min](const edge_t& edge)->contraction
+  #else
+  auto create_contraction = [&node_surfels, &quadrics](const edge_t& edge)->contraction
+  #endif
+   {
     const surfel& surfel1 = node_surfels[edge.a.node_idx][edge.a.surfel_idx];
     const surfel& surfel2 = node_surfels[edge.b.node_idx][edge.b.surfel_idx];
     // new surfel is mean of both old surfels
@@ -349,9 +323,10 @@ create_lod(real& reduction_error,
       new_surfel = surfel2;
       error = error2;
     }
+    #ifdef DEBUG
     if (error > error_max) error_max = error;
     if (error < error_min) error_min = error;
-
+    #endif
     return contraction{edge, std::move(new_quadric), error, std::move(new_surfel)};
   };
 
@@ -378,7 +353,7 @@ create_lod(real& reduction_error,
     assert(contractions.at(edge.a).at(edge.b).get() == contractions.at(edge.a).at(edge.b).get()->cont_op->cont);
     assert(contractions.at(edge.a).at(edge.b).get() == contractions.at(edge.b).at(edge.a).get());
   }
-
+  #ifdef DEBUG
   std::cout << "error min " << error_min << " max " << error_max << std::endl;
 
   error_min = std::numeric_limits<real>::max();
@@ -417,10 +392,10 @@ create_lod(real& reduction_error,
       #endif
     }
   }
-
-  size_t n_min = NUM_NEIGHBOURS;
+  size_t n_min = number_of_neighbours_;
   size_t n_max = 0;
   std::cout << "doing contractions" << std::endl;
+  #endif
   // work off queue until target num of surfels is reached
   for (size_t i = 0; i < num_surfels - surfels_per_node; ++i) {
     // update queue, cheapest contraction at the back
@@ -443,11 +418,9 @@ create_lod(real& reduction_error,
     surfel& new_surfel = curr_contraction.new_surfel;
     // save new surfel
     #ifdef ERROR_COLOR
-    // new_surfel.color() = vec3b{255,255,255};
     new_surfel.color() = heatmap((curr_contraction.error - error_min) / (error_max - error_min));
     #endif
     node_surfels.back()[i] = new_surfel;
-    // std::cout << node_surfels.back()[i].radius() << std::endl;
 
     const surfel_id_t& old_id_1 = curr_contraction.edge.a;
     const surfel_id_t& old_id_2 = curr_contraction.edge.b;
@@ -480,7 +453,6 @@ create_lod(real& reduction_error,
         // store new contraction
         contractions[new_id][cont.first] = std::make_shared<contraction>(create_contraction(new_edge));
         // update contractions of neighbour
-        // contractions.at(new_id).at(cont.first)->error = curr_contraction.error + contractions.at(cont.first).at(old_id)->error;
         assert(contractions.find(cont.first) != contractions.end());
         contractions.at(cont.first).erase(old_id);
         contractions.at(cont.first)[new_id] = contractions.at(new_id).at(cont.first);
@@ -498,7 +470,7 @@ create_lod(real& reduction_error,
     for(const auto& cont : contractions.at(old_id_1)) {
       if (cont.first != old_id_2) {
         #ifdef LIMIT_NEIGHBOURS
-        if(neighbours >= NUM_NEIGHBOURS) {
+        if(neighbours >= number_of_neighbours_) {
           // already added -> remove duplicate contractions
           contractions.at(cont.first).erase(old_id_1);
           // // and invalidate respective operation
@@ -519,14 +491,13 @@ create_lod(real& reduction_error,
     }
     // in case no new contractions were created yet
     if(contractions.find(new_id) == contractions.end()) {
-      std::cout << old_id_1 << std::endl;
+      // std::cout << old_id_1 << std::endl;
       contractions[new_id];
-      // throw std::exception{};
     }
     for(const auto& cont : contractions.at(old_id_2)) {
       if (cont.first != old_id_1) {
         #ifdef LIMIT_NEIGHBOURS
-        if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end() && neighbours < NUM_NEIGHBOURS)
+        if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end() && neighbours < number_of_neighbours_)
         #else
         if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end()) 
         #endif
@@ -547,27 +518,24 @@ create_lod(real& reduction_error,
         cont.second->cont_op->cont = nullptr;
       }
     }
-
+    #ifdef DEBUG
     if(neighbours < n_min) {
       n_min = neighbours;
     }    
     if(neighbours > n_max) {
       n_max = neighbours;
     }
-
+    #endif
     // remove old mapping
     contractions.erase(old_id_1);
     contractions.erase(old_id_2);
     //remove invalid contraction operations
     contraction_queue.erase(std::remove_if(contraction_queue.begin(), contraction_queue.end(), [](const std::shared_ptr<contraction_op>& op){return op->cont == nullptr;}), contraction_queue.end());
   }
+  #ifdef DEBUG
   std::cout << "neighbours min " << n_min << " max " << n_max << std::endl;
   std::cout << "copying surfels" << std::endl;
-  // save valid surfels in mem array
-  // for(const auto& surf : node_surfels.back()) {
-  //   std::cout << surf.radius() << std::endl;
-  // }
-
+  #endif
   surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
   for (auto& node : node_surfels) {
     for (auto& surfel : node) {
@@ -594,12 +562,6 @@ lamure::pre::quadric_t edge_quadric(const vec3f& normal_p1, const vec3f& normal_
   normal /= normal.x * normal.x + normal.y * normal.y + normal.z * normal.z;
 
   vec4r hessian = vec4r{normal, -dot(p1, normal)}; 
-  return quadric_t{hessian};
-}
-
-lamure::pre::quadric_t surfel_quadric(const vec3f& norm, const vec3r& p) {
-  vec3r normal = vec3r{(norm)};
-  vec4r hessian = vec4r{normal, -dot(p, normal)}; 
   return quadric_t{hessian};
 }
 
