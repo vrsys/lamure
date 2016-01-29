@@ -52,7 +52,7 @@ get_largest_dim(vec3f const& avg_normal) const{
 }
 
 shared_cluster_surfel_vector reduction_k_clustering::
-get_initial_member_of_Ms(vec3f const& avg_normal, shared_cluster_surfel_vector const& input_surfels) const{
+get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector const& input_surfels) const{
     //hash-based grouping
     //reference: http://www.ifi.uzh.ch/vmml/publications/older-puclications/DeferredBlending.pdf 
 
@@ -217,7 +217,7 @@ void reduction_k_clustering::
 resolve_undersampling(shared_cluster_surfel_vector& input_surfel_ptr_array) const{
 
 
-    shared_cluster_surfel_vector new_set_m;
+    shared_cluster_surfel_vector new_set_M;
 
     for(auto const& current_surfel_ptr : input_surfel_ptr_array){
         shared_cluster_surfel_vector neighbours = current_surfel_ptr->neighbours;
@@ -234,12 +234,12 @@ resolve_undersampling(shared_cluster_surfel_vector& input_surfel_ptr_array) cons
         }  
 
         if(!member_neighbours){
-            new_set_m.push_back(current_surfel_ptr);
+            new_set_M.push_back(current_surfel_ptr);
             update_cluster_membership(current_surfel_ptr, true);
         }
     }
 
-    input_surfel_ptr_array.insert(input_surfel_ptr_array.end(), new_set_m.begin(), new_set_m.end());    
+    input_surfel_ptr_array.insert(input_surfel_ptr_array.end(), new_set_M.begin(), new_set_M.end());    
 }
 
 void reduction_k_clustering::
@@ -298,7 +298,7 @@ add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
     cluster_surfel_to_add = complement_set.back();
     surfel_ptr_set_M.push_back(complement_set.back());
     update_cluster_membership(cluster_surfel_to_add, true);
-    //complement_set.pop_back();    
+    //^complement_set.pop_back();    
 
 }
 
@@ -382,7 +382,7 @@ create_lod(real& reduction_error,
 //sort all surfels into 2 sets
     //- set M - bais for output resul
     //- the complement of set M - all surfel which will not contribute to output
-    cluster_surfel_output_array = get_initial_member_of_Ms (avg_normal, cluster_surfel_array);
+    cluster_surfel_output_array = get_initial_cluster_seeds (avg_normal, cluster_surfel_array);
 
     for (auto const& target_surfel : cluster_surfel_output_array ){    
         compute_overlap(target_surfel, true);       

@@ -157,15 +157,15 @@ private:
 
   //hash_based algorithm to provide set of min-overlap surfels
   //^no currently no collision handling
-  shared_cluster_surfel_vector get_initial_member_of_Ms(vec3f const& avg_normal, shared_cluster_surfel_vector const&  input_cluster_surfels) const;
+  shared_cluster_surfel_vector get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector const&  input_cluster_surfels) const;
   int get_largest_dim(vec3f const& avg_normal) const;
-  vec3f compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const; //^entropy reduction has similar function
+  vec3f compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const; 
 
 
   void assign_locally_overlapping_neighbours(shared_cluster_surfel current_surfel_ptr,
                                            shared_cluster_surfel_vector& input_surfel_ptr_array) const; //functionality taken from entropy reduction strategy
 
-  void compute_overlap(shared_cluster_surfel current_surfel_ptr, bool look_in_M) const; //use neighbours to compute overlap; [call only on set M ]
+  void compute_overlap(shared_cluster_surfel current_surfel_ptr, bool look_in_M) const; //use distance to neighbours to compute overlap
 
   void compute_deviation(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute deviation
 
