@@ -16,7 +16,7 @@
 #include <array>
 #include <unordered_map>
 
-
+// #define ERROR_COLOR
 // #define LEAF_REMOVAL
 // #define SURFEL_QUADRIC
 #define LIMIT_NEIGHBOURS
@@ -406,6 +406,7 @@ create_lod(real& reduction_error,
         ++i;
       }
       error /= real(i);
+      #ifdef ERROR_COLOR
       // error of contraction
       curr_surfel.color() = heatmap((error - error_min) / (error_max - error_min));
       // binary dir of surfel normal
@@ -413,6 +414,7 @@ create_lod(real& reduction_error,
       // write to orig data
       input[node_idx]->write_surfel(curr_surfel, surfel_idx);
       curr_surfel.color() = vec3b{127, 127, 127};
+      #endif
     }
   }
 
@@ -440,8 +442,10 @@ create_lod(real& reduction_error,
     // save new surfels in vector at back
     surfel& new_surfel = curr_contraction.new_surfel;
     // save new surfel
+    #ifdef ERROR_COLOR
     // new_surfel.color() = vec3b{255,255,255};
     new_surfel.color() = heatmap((curr_contraction.error - error_min) / (error_max - error_min));
+    #endif
     node_surfels.back()[i] = new_surfel;
     // std::cout << node_surfels.back()[i].radius() << std::endl;
 
@@ -522,10 +526,11 @@ create_lod(real& reduction_error,
     for(const auto& cont : contractions.at(old_id_2)) {
       if (cont.first != old_id_1) {
         #ifdef LIMIT_NEIGHBOURS
-        if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end() && neighbours < NUM_NEIGHBOURS) {
+        if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end() && neighbours < NUM_NEIGHBOURS)
         #else
-        if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end()) {
+        if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end()) 
         #endif
+        {
           update_contraction(new_id, old_id_2, cont);
           ++neighbours;
         }
@@ -581,25 +586,15 @@ create_lod(real& reduction_error,
 
 lamure::pre::quadric_t edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2)
 {
-    vec3f f = scm::math::length_sqr(normal_p1) > scm::math::length_sqr(normal_p2) ? normal_p1 : normal_p2; 
-    vec3f s = scm::math::length_sqr(normal_p1) > scm::math::length_sqr(normal_p2) ? normal_p2 : normal_p1; 
-    if (dot(f, s)< 0) {
-      s = -s;
-    }
-    vec3r edge_dir = normalize(scm::math::length_sqr(p2) > scm::math::length_sqr(p1) ? p2 - p1 : p1 - p2);
-    // vec3r tangent = normalize(cross(normalize(vec3r{normal_p1}), edge_dir));
-    vec3r tangent = normalize(cross(normalize(vec3r(s + f)), edge_dir));
+  vec3r edge_dir = p2 - p1;
+  vec3r tangent = cross(vec3r(normal_p1 + (dot(normal_p1, normal_p2) < 0.0 ? -1.0 : 1.0f) * normal_p2), edge_dir);
 
-    vec3r normal = cross(tangent, edge_dir);
-    // normal /= (normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-    normal = normalize(normal);
-    // normal = normalize(f + s);
-    // if (dot(p2, normal) < 0) {
-    //   normal = -normal;
-    //   // std::cout << "swap" << std::endl;
-    // }
-    vec4r hessian = vec4r{normal, -dot(p1, normal)}; 
-    return quadric_t{hessian};
+  vec3r normal = cross(tangent, edge_dir);
+  // dont take root for more smooth result
+  normal /= normal.x * normal.x + normal.y * normal.y + normal.z * normal.z;
+
+  vec4r hessian = vec4r{normal, -dot(p1, normal)}; 
+  return quadric_t{hessian};
 }
 
 lamure::pre::quadric_t surfel_quadric(const vec3f& norm, const vec3r& p) {
