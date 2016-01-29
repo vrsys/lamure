@@ -19,12 +19,11 @@ namespace lamure {
 namespace pre {
 
 
-//^naming inconstency - neighbour
-//^needs better name
+
 struct cluster_surfel_with_neighbours{
     uint32_t surfel_id;
     uint32_t node_id;
-    bool cluster_seed; //^ name choice
+    bool member_of_M; 
     real overlap;
     real deviation;
     std::vector<std::shared_ptr<cluster_surfel_with_neighbours> > neighbours;
@@ -32,7 +31,7 @@ struct cluster_surfel_with_neighbours{
     cluster_surfel_with_neighbours(surfel const&  in_surfel, uint32_t const in_surfel_id, uint32_t const in_node_id) :
                                                 surfel_id(in_surfel_id),
                                                 node_id(in_node_id),
-                                                cluster_seed(false),
+                                                member_of_M(false),
                                                 overlap(0),
                                                 deviation(0)
                                                  {
@@ -158,7 +157,7 @@ private:
 
   //hash_based algorithm to provide set of min-overlap surfels
   //^no currently no collision handling
-  shared_cluster_surfel_vector get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector const&  input_cluster_surfels) const;
+  shared_cluster_surfel_vector get_initial_member_of_Ms(vec3f const& avg_normal, shared_cluster_surfel_vector const&  input_cluster_surfels) const;
   int get_largest_dim(vec3f const& avg_normal) const;
   vec3f compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const; //^entropy reduction has similar function
 
@@ -186,7 +185,7 @@ private:
 
   void remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
 
-  void add_surfel(shared_cluster_surfel_vector& complement_set_M,
+  void add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
                   shared_cluster_surfel_vector& total_surfel_set) const;
 
   void merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const;
