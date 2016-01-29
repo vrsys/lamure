@@ -17,7 +17,10 @@
 #include <unordered_map>
 
 
-#define LEAF_REMOVAL
+// #define LEAF_REMOVAL
+// #define SURFEL_QUADRIC
+#define LIMIT_NEIGHBOURS
+
 namespace lamure {
 
 namespace pre {
@@ -44,6 +47,17 @@ struct quadric_t {
     real a = dot(hess, vec4r{p, 1});
     return a * a;
   }
+
+  quadric_t& operator+=(const quadric_t& q2) {
+  // prevent cancelling out when quadrics point in opposite direction
+  real coeff = (dot(vec3r{hess}, vec3r{q2.hess}) < 0) ? -1.0 : 1.0;
+  // coeff = 1;
+  for(size_t i = 0; i < values.size(); ++i) {
+    values[i] += coeff * q2.values[i]; 
+  }
+  hess += coeff * q2.hess;
+  return *this;
+}
 
   std::array<real, 10> values;
   vec4r hess;
@@ -133,7 +147,7 @@ bool operator<(const contraction_op& c1, const contraction_op& c2) {
 }
 
 
-mat4r edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2);
+quadric_t edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2);
 quadric_t surfel_quadric(const vec3f& normal, const vec3r& p);
 
 }
@@ -165,7 +179,7 @@ namespace lamure {
 namespace pre {
 
 bool a = false;
-size_t num_neighbours = 1;
+const size_t NUM_NEIGHBOURS = 40;
 
 real sum(const mat4r& quadric) {  
   real sum = 0;
@@ -271,25 +285,32 @@ create_lod(real& reduction_error,
 
       assert(node_idx < num_nodes_per_level && surfel_idx < num_surfels_per_node);
       // get and store neighbours
-      auto nearest_neighbours = get_local_nearest_neighbours(input, number_of_neighbours_, curr_id);
+      auto nearest_neighbours = get_local_nearest_neighbours(input, NUM_NEIGHBOURS, curr_id);
       std::vector<surfel_id_t> neighbour_ids{};
       for (const auto& pair : nearest_neighbours) {
         neighbour_ids.push_back(pair.first);
       }
 
-      // mat4r curr_quadric = mat4r::zero();
+      #ifndef SURFEL_QUADRIC
+        quadric_t curr_quadric{};
+      #endif
       for (auto const& neighbour : nearest_neighbours) {
         edge_t curr_edge = edge_t{curr_id, neighbour.first}; 
         assert(neighbour.first.node_idx < num_nodes_per_level && neighbour.first.surfel_idx <num_surfels_per_node);
         if (edges.find(curr_edge) == edges.end()) {
           edges.insert(curr_edge);
         }
-        // accumulate quadric
-        surfel neighbour_surfel = input[neighbour.first.node_idx]->read_surfel(neighbour.first.surfel_idx);
-        // curr_quadric += edge_quadric(curr_surfel.normal(), neighbour_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
+        #ifndef SURFEL_QUADRIC
+          // accumulate quadric
+          surfel neighbour_surfel = input[neighbour.first.node_idx]->read_surfel(neighbour.first.surfel_idx);
+          curr_quadric += edge_quadric(curr_surfel.normal(), neighbour_surfel.normal(), curr_surfel.pos(), neighbour_surfel.pos());
+        #endif
       }
-      // quadrics[curr_id] = curr_quadric;
-      quadrics[curr_id] = surfel_quadric(curr_surfel.normal(), curr_surfel.pos());
+      #ifdef SURFEL_QUADRIC
+        quadrics[curr_id] = surfel_quadric(curr_surfel.normal(), curr_surfel.pos());
+      #else
+        quadrics[curr_id] = curr_quadric;
+      #endif
     }
   }
 
@@ -395,7 +416,8 @@ create_lod(real& reduction_error,
     }
   }
 
-  
+  size_t n_min = NUM_NEIGHBOURS;
+  size_t n_max = 0;
   std::cout << "doing contractions" << std::endl;
   // work off queue until target num of surfels is reached
   for (size_t i = 0; i < num_surfels - surfels_per_node; ++i) {
@@ -468,10 +490,23 @@ create_lod(real& reduction_error,
         assert(contractions.at(new_edge.a).at(new_edge.b).get() == contractions.at(new_edge.b).at(new_edge.a).get());
     };
 
+    size_t neighbours = 0;
     for(const auto& cont : contractions.at(old_id_1)) {
       if (cont.first != old_id_2) {
-        update_contraction(new_id, old_id_1, cont);
-        assert(contractions.at(cont.first).find(old_id_1) == contractions.at(cont.first).end());
+        #ifdef LIMIT_NEIGHBOURS
+        if(neighbours >= NUM_NEIGHBOURS) {
+          // already added -> remove duplicate contractions
+          contractions.at(cont.first).erase(old_id_1);
+          // // and invalidate respective operation
+          cont.second->cont_op->cont = nullptr;
+        }
+        else
+        #endif
+        {
+          update_contraction(new_id, old_id_1, cont);
+          assert(contractions.at(cont.first).find(old_id_1) == contractions.at(cont.first).end());
+          ++neighbours;
+        }
       }
       else {
         // invalidate operation
@@ -486,8 +521,13 @@ create_lod(real& reduction_error,
     }
     for(const auto& cont : contractions.at(old_id_2)) {
       if (cont.first != old_id_1) {
+        #ifdef LIMIT_NEIGHBOURS
+        if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end() && neighbours < NUM_NEIGHBOURS) {
+        #else
         if(contractions.at(new_id).find(cont.first) == contractions.at(new_id).end()) {
+        #endif
           update_contraction(new_id, old_id_2, cont);
+          ++neighbours;
         }
         else {
           // already added -> remove duplicate contractions
@@ -502,13 +542,21 @@ create_lod(real& reduction_error,
         cont.second->cont_op->cont = nullptr;
       }
     }
+
+    if(neighbours < n_min) {
+      n_min = neighbours;
+    }    
+    if(neighbours > n_max) {
+      n_max = neighbours;
+    }
+
     // remove old mapping
     contractions.erase(old_id_1);
     contractions.erase(old_id_2);
     //remove invalid contraction operations
     contraction_queue.erase(std::remove_if(contraction_queue.begin(), contraction_queue.end(), [](const std::shared_ptr<contraction_op>& op){return op->cont == nullptr;}), contraction_queue.end());
   }
-
+  std::cout << "neighbours min " << n_min << " max " << n_max << std::endl;
   std::cout << "copying surfels" << std::endl;
   // save valid surfels in mem array
   // for(const auto& surf : node_surfels.back()) {
@@ -531,7 +579,7 @@ create_lod(real& reduction_error,
 }
 
 
-lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2)
+lamure::pre::quadric_t edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const vec3r& p1, const vec3r& p2)
 {
     vec3f f = scm::math::length_sqr(normal_p1) > scm::math::length_sqr(normal_p2) ? normal_p1 : normal_p2; 
     vec3f s = scm::math::length_sqr(normal_p1) > scm::math::length_sqr(normal_p2) ? normal_p2 : normal_p1; 
@@ -539,28 +587,19 @@ lamure::mat4r edge_quadric(const vec3f& normal_p1, const vec3f& normal_p2, const
       s = -s;
     }
     vec3r edge_dir = normalize(scm::math::length_sqr(p2) > scm::math::length_sqr(p1) ? p2 - p1 : p1 - p2);
+    // vec3r tangent = normalize(cross(normalize(vec3r{normal_p1}), edge_dir));
     vec3r tangent = normalize(cross(normalize(vec3r(s + f)), edge_dir));
 
     vec3r normal = cross(tangent, edge_dir);
-    normal /= (normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+    // normal /= (normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
     normal = normalize(normal);
-    normal = normalize(f + s);
+    // normal = normalize(f + s);
     // if (dot(p2, normal) < 0) {
     //   normal = -normal;
     //   // std::cout << "swap" << std::endl;
     // }
     vec4r hessian = vec4r{normal, -dot(p1, normal)}; 
-    // hessian /= hessian.w;
-    lamure::mat4r quadric = mat4r{hessian * hessian.x,
-                                  hessian * hessian.y,
-                                  hessian * hessian.z,
-                                  hessian * hessian.w};
-
-    // std::cout << quadric_error((p1 + p2) * 0.5, quadric) << std::endl;
-    if(sum(quadric) > 100) {
-      throw std::exception();
-    }
-    return quadric;
+    return quadric_t{hessian};
 }
 
 lamure::pre::quadric_t surfel_quadric(const vec3f& norm, const vec3r& p) {

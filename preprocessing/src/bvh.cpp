@@ -760,7 +760,7 @@ get_nearest_neighbours(
 
             if (candidates_sphere.intersects_or_contains(nodes_[adjacent_node].get_bounding_box()))
             {
-                assert(nodes_[adjacent_node].is_out_of_core());
+                // assert(nodes_[adjacent_node].is_out_of_core());
 
                 for (size_t i = 0; i < nodes_[adjacent_node].mem_array().length(); ++i)
                 {
@@ -855,7 +855,7 @@ get_nearest_neighbours_in_nodes(
         {
             if (candidates_sphere.intersects_or_contains(nodes_[adjacent_node].get_bounding_box()))
             {
-                assert(nodes_[adjacent_node].is_out_of_core());
+                // assert(nodes_[adjacent_node].is_out_of_core());
 
                 for (size_t i = 0; i < nodes_[adjacent_node].mem_array().length(); ++i)
                 {
@@ -1167,7 +1167,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
 
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
-        #pragma omp parallel for
+        // #pragma omp parallel for
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
             bvh_node* current_node = &nodes_.at(node_index);
             
