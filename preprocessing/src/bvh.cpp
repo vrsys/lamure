@@ -1167,7 +1167,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
 
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
-        // #pragma omp parallel for
+        #pragma omp parallel for
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
             bvh_node* current_node = &nodes_.at(node_index);
             
