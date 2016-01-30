@@ -26,23 +26,12 @@ namespace lamure {
 namespace pre {
 struct quadric_t {
   quadric_t()
-   :values{0,0,0,0,0,0,0,0,0,0}
-   ,hess{0.0}
+   :hess{0.0}
   {}
   quadric_t(vec4r const& hessian) 
-   :values{hessian.x * hessian.x, hessian.y * hessian.x, hessian.z * hessian.x, hessian.w * hessian.x,
-                                  hessian.y * hessian.y, hessian.z * hessian.y, hessian.w * hessian.y,
-                                                         hessian.z * hessian.z, hessian.w * hessian.z,
-                                                                                hessian.w * hessian.w}
-   ,hess{hessian}
+   :hess{hessian}
   {}
 
-  real error2(vec3r const& p) const {
-      return values[0] * p.x * p.x + 2.0 * values[1] * p.x * p.y  + 2.0 * values[2] * p.x * p.z + 2.0 * values[3] * p.x 
-                                   +       values[4] * p.y * p.y  + 2.0 * values[5] * p.y * p.z + 2.0 * values[6] * p.y 
-                                                                +         values[7] * p.z * p.z + 2.0 * values[8] * p.z 
-                                                                                                +       values[9];  
-  }
   real error(vec3r const& p) const {
     real a = dot(hess, vec4r{p, 1});
     return a * a;
@@ -51,15 +40,10 @@ struct quadric_t {
   quadric_t& operator+=(const quadric_t& q2) {
   // prevent cancelling out when quadrics point in opposite direction
   real coeff = (dot(vec3r{hess}, vec3r{q2.hess}) < 0) ? -1.0 : 1.0;
-  // coeff = 1;
-  for(size_t i = 0; i < values.size(); ++i) {
-    values[i] += coeff * q2.values[i]; 
-  }
   hess += coeff * q2.hess;
   return *this;
 }
 
-  std::array<real, 10> values;
   vec4r hess;
 };
 
@@ -67,10 +51,6 @@ quadric_t operator+(const quadric_t& q1, const quadric_t& q2) {
   quadric_t q;
   // prevent cancelling out when quadrics point in opposite direction
   real coeff = (dot(vec3r{q1.hess}, vec3r{q2.hess}) < 0) ? -1.0 : 1.0;
-  // coeff = 1;
-  for(size_t i = 0; i < q.values.size(); ++i) {
-    q.values[i] = q1.values[i] + coeff * q2.values[i]; 
-  }
   q.hess = q1.hess + coeff * q2.hess;
   return q;
 }
@@ -299,8 +279,8 @@ create_lod(real& reduction_error,
     const surfel& surfel1 = node_surfels[edge.a.node_idx][edge.a.surfel_idx];
     const surfel& surfel2 = node_surfels[edge.b.node_idx][edge.b.surfel_idx];
     // new surfel is mean of both old surfels
-    surfel new_surfel = surfel{(surfel1.pos() + surfel2.pos()) * 0.5f,
-                          (surfel1.color() + surfel2.color()) * 0.5f,
+    surfel new_surfel = surfel{(surfel1.pos() + surfel2.pos()) * 0.5,
+                          vec3b{(vec3r{surfel1.color()} + vec3r{surfel2.color()}) * 0.5},
                           (surfel1.radius() + surfel2.radius()) * 0.5f,
                           (normalize(surfel1.normal() + surfel2.normal()))
                           };
@@ -308,7 +288,6 @@ create_lod(real& reduction_error,
     real error = new_quadric.error(new_surfel.pos());
     real error1 = new_quadric.error(surfel1.pos());
     real error2 = new_quadric.error(surfel2.pos());
-
     if(error1 < error) {
       if(error2 < error1) {
         new_surfel = surfel2;
