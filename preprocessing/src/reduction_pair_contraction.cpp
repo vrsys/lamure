@@ -120,7 +120,7 @@ struct contraction_op {
   contraction* cont;
 };
 
-bool operator<(const contraction_op& c1, const contraction_op& c2) {
+bool operator>(const contraction_op& c1, const contraction_op& c2) {
   // invalid op -> must return false to form strict-weak ordering
   // otherwise undefined behaviour for sort
   return c1.cont->error > c2.cont->error;
@@ -375,23 +375,31 @@ create_lod(real& reduction_error,
   size_t n_max = 0;
   std::cout << "doing contractions" << std::endl;
   #endif
+
+  auto sort_func = [](const std::shared_ptr<contraction_op>& a,
+                      const std::shared_ptr<contraction_op>& b) {
+         return *a > *b;
+  };
+
   // work off queue until target num of surfels is reached
   for (size_t i = 0; i < num_surfels - surfels_per_node; ++i) {
     // update queue, cheapest contraction at the back
-    std::sort(contraction_queue.begin(), contraction_queue.end(), 
-      [](const std::shared_ptr<contraction_op>& a, const std::shared_ptr<contraction_op>& b){
-         return *a < *b;
-       }
-      );
+    std::sort(contraction_queue.begin(), contraction_queue.end(), sort_func);
 
     contraction curr_contraction = *(contraction_queue.back()->cont);
     contraction_queue.pop_back();
-    for (int i = contraction_queue.size() - 1; i > 0; --i) {
-      if (curr_contraction.error > contraction_queue[i]->cont-> error) {
-        throw std::exception();
+
+    #ifdef DEBUG
+    for (int i = contraction_queue.size() - 1; i >= 0; --i) {
+      if (curr_contraction.error > contraction_queue[i]->cont->error) {
+        std::cout << "size2 " << contraction_queue.size() << std::endl;
+        std::cout << contraction_queue[i-1]->cont->error << ", " << contraction_queue[i]->cont->error << ", " << contraction_queue[i+1]->cont->error << std::endl;
+        std::cout << "curr " << curr_contraction.error << ", smaller " << i << " with " << contraction_queue[i]->cont->error << std::endl;
+        throw std::runtime_error("curr " + std::to_string(curr_contraction.error) + ", smaller " + std::to_string(i) + " with " + std::to_string(contraction_queue[i]->cont->error));
       }
     }
-    
+    #endif
+
     surfel_id_t new_id = surfel_id_t{node_surfels.size()-1, i};
     // save new surfels in vector at back
     surfel& new_surfel = curr_contraction.new_surfel;
@@ -537,8 +545,14 @@ lamure::pre::quadric_t edge_quadric(const vec3f& normal_p1, const vec3f& normal_
   vec3r tangent = cross(vec3r(normal_p1 + (dot(normal_p1, normal_p2) < 0.0 ? -1.0 : 1.0f) * normal_p2), edge_dir);
 
   vec3r normal = cross(tangent, edge_dir);
-  // dont take root for more smooth result
-  normal /= normal.x * normal.x + normal.y * normal.y + normal.z * normal.z;
+  // check for degenerate surfels on same position to prevent NaN values
+  if(normal.x == 0 && normal.y == 0 && normal.z == 0) {
+    normal =  vec3r{0.0};
+  }
+  else {
+    // dont take root for more smooth result
+    normal /= normal.x * normal.x + normal.y * normal.y + normal.z * normal.z;
+  }
 
   vec4r hessian = vec4r{normal, -dot(p1, normal)}; 
   return quadric_t{hessian};
