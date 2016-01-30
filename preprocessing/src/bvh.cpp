@@ -12,7 +12,7 @@
 #include <lamure/pre/bvh.h>
 #include <lamure/pre/bvh_stream.h>
 #include <lamure/pre/basic_algorithms.h>
-#include <lamure/pre/reduction_strategy.h>
+//#include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/serialized_surfel.h>
 #include <lamure/pre/plane.h>
 #include <lamure/utils.h>
@@ -44,6 +44,8 @@ namespace fs = boost::filesystem;
 
 namespace lamure {
 namespace pre {
+
+class reduction_strategy;
 
 using K       = CGAL::Exact_predicates_inexact_constructions_kernel;
 using Point2  = K::Point_2;

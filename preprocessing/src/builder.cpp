@@ -28,8 +28,7 @@
 #include <lamure/pre/reduction_particle_simulation.h>
 #include <lamure/pre/reduction_hierarchical_clustering.h>
 #include <lamure/pre/reduction_k_clustering.h>
-#include <lamure/pre/reduction_avg_nearest_neighbour_distance.h>
-#include <lamure/pre/reduction_sorted_every_second.h>
+#include <lamure/pre/reduction_spatially_subdivided_random.h>
 #include <lamure/pre/reduction_pair_contraction.h>
 
 #include <cstdio>
@@ -129,11 +128,8 @@ construct()
         case reduction_algorithm::k_clustering:
             reduction_strategy = new reduction_k_clustering(desc_.number_of_neighbours);
             break;
-        case reduction_algorithm::avg_nearest_neighbour_distance:
-            reduction_strategy = new reduction_avg_nearest_neighbour_distance();
-            break;
-        case reduction_algorithm::sorted_every_second:
-            reduction_strategy = new reduction_sorted_every_second();
+        case reduction_algorithm::spatially_subdivided_random:
+            reduction_strategy = new reduction_spatially_subdivided_random();
             break;
          case reduction_algorithm::pair:
             reduction_strategy = new reduction_pair_contraction(desc_.number_of_neighbours);

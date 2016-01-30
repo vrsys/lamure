@@ -123,7 +123,7 @@ int main(int argc, const char *argv[])
          "  hierarchical - create clusters by binary splitting of the point cloud\n"
          "  kclustering - hash-based k-clustering\n"
          "  pair - use iterative point-pair contractions\n"
-         "  avgnearestneighbour - do local outlier removal until the desired number of surfels is reached")
+         "  spatiallyrandom - subdivide scene into equally sized cubes and choose random surfels from different cubes")
 
         ("normal-computation-algo",
          po::value<std::string>()->default_value("planefitting"),
@@ -280,10 +280,8 @@ int main(int argc, const char *argv[])
             desc.reduction_algo        = lamure::pre::reduction_algorithm::hierarchical_clustering;
         else if (reduction_algo == "kclustering")
             desc.reduction_algo        = lamure::pre::reduction_algorithm::k_clustering;
-        else if (reduction_algo == "avgnearestneighbour")
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::avg_nearest_neighbour_distance;
-        else if (reduction_algo == "sortedeverysecond")
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::sorted_every_second;
+        else if (reduction_algo == "spatiallyrandom")
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::spatially_subdivided_random;
         else if (reduction_algo == "pair") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::pair;
         else {

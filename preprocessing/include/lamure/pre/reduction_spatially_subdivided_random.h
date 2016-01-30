@@ -5,33 +5,26 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef PRE_REDUCTION_SORTED_EVERY_SECOND_H_
-#define PRE_REDUCTION_SORTED_EVERY_SECOND_H_
+#ifndef PRE_REDUCTION_OUTLIER_H
+#define PRE_REDUCTION_OUTLIER_H
 
 #include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/bvh.h>
-#include <lamure/pre/surfel.h>
-
-#include <vector>
-#include <queue>
-
-
 namespace lamure {
 namespace pre {
 
-class bvh;
 
 
-class reduction_sorted_every_second : public reduction_strategy
+class reduction_spatially_subdivided_random : public reduction_strategy
 {
 public:
 
-    explicit  reduction_sorted_every_second() {}
+    explicit            reduction_spatially_subdivided_random() { }
 
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node,
-          						  const bvh& tree,
+                                  const bvh& tree,
           						  const size_t start_node_id) const override;
 
 };
@@ -39,4 +32,4 @@ public:
 } // namespace pre
 } // namespace lamure
 
-#endif // PRE_REDUCTION_SORTED_EVERY_SECOND_H_
+#endif //PRE_REDUCTION_OUTLIER_H

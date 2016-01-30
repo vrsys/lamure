@@ -55,6 +55,8 @@ create_lod(real& reduction_error,
           const bvh& tree,
           const size_t start_node_id) const {
 
+    std::vector<surfel> original_surfels;
+
     //create output array
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
@@ -107,6 +109,7 @@ create_lod(real& reduction_error,
             accumulated_weights += current_weight;
 
             surfel_lookup_vector.push_back(std::make_pair(accumulated_weights, current_surfel_ids) );
+            original_surfels.push_back(current_surfel);
         // only place where shared pointers should be created
         //entropy_surfel_array.push_back( std::make_shared<entropy_surfel>(current_entropy_surfel) );
        }
@@ -210,7 +213,7 @@ create_lod(real& reduction_error,
     // perform particle repulsion
 
     //repulsion constant k
-    double k = 0.1;
+    double k = 0.001;
     {
         std::vector<vec3r> particle_displacements;
 
@@ -247,6 +250,8 @@ create_lod(real& reduction_error,
             part_rep_pair.first.pos() += particle_displacements[displacement_idx++];
 
             clamp_surfel_to_bb(bb_min, bb_max, part_rep_pair.first.pos());
+
+            interpolate_approx_natural_neighbours(part_rep_pair.first, original_surfels, tree);
 
             mem_array.mem_data()->push_back(part_rep_pair.first);
         }

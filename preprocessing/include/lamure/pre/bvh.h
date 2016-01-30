@@ -25,6 +25,8 @@
 namespace lamure {
 namespace pre {
 
+class reduction_strategy;
+
 class normal_computation_strategy;
 class radius_computation_strategy;
 

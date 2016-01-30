@@ -28,17 +28,16 @@ enum class radius_computation_algorithm {
 };
 
 enum class reduction_algorithm {
-    ndc                     = 0,
-    constant                = 1,
-    every_second            = 2,
-    random                  = 3,
-    entropy	                = 4,
-    particle_sim            = 5,
-    hierarchical_clustering = 6,
-    k_clustering            = 7,
-    avg_nearest_neighbour_distance = 8,
-    sorted_every_second     = 9,
-    pair		            = 10
+    ndc                         = 0,
+    constant                    = 1,
+    every_second                = 2,
+    random                      = 3,
+    entropy	                    = 4,
+    particle_sim                = 5,
+    hierarchical_clustering     = 6,
+    k_clustering                = 7,
+    spatially_subdivided_random = 8,
+    pair		                = 9
 };
 
 }}
