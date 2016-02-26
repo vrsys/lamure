@@ -79,7 +79,7 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluste
 		hierarchical_cluster_mk2 current_cluster = cluster_queue.top();
 		cluster_queue.pop();
 
-		real current_max_variation = std::max(current_cluster.variation_pos, current_cluster.variation_color);
+		real current_max_variation = std::max(current_cluster.variation_pos, std::max(current_cluster.variation_normal, current_cluster.variation_color));
 
 		if(current_cluster.surfels.size() > max_cluster_size || current_max_variation > max_variation)
 		{
