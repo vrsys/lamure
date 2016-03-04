@@ -15,6 +15,7 @@
 //#include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/serialized_surfel.h>
 #include <lamure/pre/plane.h>
+#include <lamure/atomic_counter.h>
 #include <lamure/utils.h>
 #include <lamure/sphere.h>
 
@@ -22,12 +23,15 @@
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <thread>
 #include <limits>
 #include <math.h>
 #include <memory>
 #include <map>
 #include <set>
 #include <unordered_set>
+
+#define USE_OMP_INSTEAD_OF_STD_THREADS 0
 
 #if WIN32
   #include <io.h>
@@ -450,7 +454,6 @@ void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
     real average_radius_for_node = 0.0;
 
     std::cout << std::endl << "compute normals and radii" << std::endl;
-
     // compute normals and radii
     #pragma omp parallel for firstprivate(old_i, average_radius_for_node) shared(average_radius) collapse(2)
     for (size_t i = first_leaf_; i < nodes_.size(); ++i)
@@ -1138,6 +1141,39 @@ upsweep(const reduction_strategy& reduction_strtgy)
 }
 
 void bvh::
+thread_compute_attributes(const unsigned int start_marker,
+                          const unsigned int end_marker,
+                          const bool update_percentage,
+                          const normal_computation_strategy& normal_strategy, 
+                          const radius_computation_strategy& radius_strategy) {
+
+    unsigned int node_index = working_queue_head_counter_.increment_head();
+    
+    uint16_t percentage = 0;
+    uint32_t length_of_level = (end_marker-start_marker) + 1;
+
+    while(node_index < end_marker) {
+        bvh_node* current_node = &nodes_.at(node_index);
+
+
+        // Calculate and set node properties.
+        compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+
+        if(update_percentage) {
+            uint16_t new_percentage = int(float(node_index-start_marker)/(length_of_level) * 100);
+            if (percentage < new_percentage)
+            {
+                percentage = new_percentage;
+                std::cout << "\r" << percentage << "% processed" << std::flush;
+            }
+        }
+        //++counter;
+
+        node_index = working_queue_head_counter_.increment_head();
+    }
+};
+
+void bvh::
 upsweep_new(const reduction_strategy& reduction_strategy, 
             const normal_computation_strategy& normal_strategy, 
             const radius_computation_strategy& radius_strategy,
@@ -1207,6 +1243,21 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         // skip the leaf level attribute computation if it was not requested or necessary
         if( !(level == depth_ && !recompute_leaf_level) ) {
 
+#ifndef USE_OMP_INSTEAD_OF_STD_THREADS
+
+                unsigned const num_threads = std::thread::hardware_concurrency();
+                //std::cout << "Using: " << std::thread::hardware_concurrency() << "# threads\n";
+                working_queue_head_counter_.initialize(first_node_of_level);
+
+
+                std::vector<std::thread> threads;
+
+                for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+                    bool update_percentage = (0 == thread_idx);
+                    threads.push_back(std::thread(&bvh::thread_compute_attributes, this, first_node_of_level, last_node_of_level, update_percentage, std::cref(normal_strategy), std::cref(radius_strategy)  ) );
+                }
+
+#else
                 #pragma omp parallel for
                 for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
                 {   
@@ -1224,7 +1275,13 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                             std::cout << "\r" << percentage << "% processed" << std::flush;
                         }
                 }
+#endif
 
+#ifndef USE_OMP_INSTEAD_OF_STD_THREADS
+                for(auto& thread : threads){
+                    thread.join();
+                }
+#endif
             }
 
             #pragma omp parallel for
@@ -1366,6 +1423,7 @@ upsweep_r(bvh_node& node,
     }
 }
 
+
 surfel_vector bvh::
 remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
 
@@ -1378,6 +1436,18 @@ remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
     for( unsigned i = 0; i < already_resized.size(); ++i ) {
         already_resized[i] = false;
     }
+
+    for(uint32_t node_idx = first_leaf_; node_idx < nodes_.size(); ++node_idx) {
+        bvh_node* current_node = &nodes_.at(node_idx);
+        
+        if (current_node->is_out_of_core())
+        {
+            current_node->load_from_disk();
+        }
+    }
+
+
+    working_queue_head_counter_.initialize(first_leaf_);
 
     #pragma omp parallel for
     for(uint32_t node_idx = first_leaf_; node_idx < nodes_.size(); ++node_idx) {
@@ -1392,10 +1462,7 @@ remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
 
         bvh_node* current_node = &nodes_.at(node_idx);
         
-        if (current_node->is_out_of_core())
-        {
-            current_node->load_from_disk();
-        }
+
 
         for( size_t surfel_idx = 0; surfel_idx < current_node->mem_array().length(); ++surfel_idx){
 

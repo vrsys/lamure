@@ -17,6 +17,7 @@
 #include <lamure/pre/normal_computation_strategy.h>
 #include <lamure/pre/radius_computation_strategy.h>
 #include <lamure/pre/logger.h>
+#include <lamure/atomic_counter.h>
 
 #include <boost/filesystem.hpp>
 #include <unordered_set>
@@ -147,6 +148,12 @@ public:
 
     static std::string  state_to_string(state_type state);
 
+    void                thread_compute_attributes(const unsigned int start_marker,
+                                                  const unsigned int end_marker,
+                                                  const bool update_percentage,
+                                                  const normal_computation_strategy& normal_strategy, 
+                                                  const radius_computation_strategy& radius_strategy);
+
 protected:
     friend class bvh_stream;
     void                set_depth(const uint32_t depth) { depth_ = depth; };
@@ -165,6 +172,8 @@ protected:
     void                set_state(const state_type state) { state_ = state; };
 
 private:
+    atomic_counter<unsigned int> working_queue_head_counter_;
+
     state_type          state_ = state_type::null;
 
     std::vector<bvh_node>
