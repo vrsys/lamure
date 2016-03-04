@@ -31,7 +31,7 @@
 #include <set>
 #include <unordered_set>
 
-#define USE_OMP_INSTEAD_OF_STD_THREADS 0
+//#define USE_OMP_INSTEAD_OF_STD_THREADS 0
 
 #if WIN32
   #include <io.h>
@@ -635,11 +635,15 @@ void bvh::compute_normal_and_radius(
             // read surfel
             surfel surf = source_node->mem_array().read_surfel(k);
 
+            uint16_t num_nearest_neighbours_to_search = std::max(radius_computation_strategy.number_of_neighbours(),
+                                                                 normal_computation_strategy.number_of_neighbours());
+
+            auto const& max_nearest_neighbours = get_nearest_neighbours(surfel_id_t(source_node->node_id(), k), num_nearest_neighbours_to_search);
             // compute radius
-            real radius = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k));
+            real radius = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);
 
             // compute normal
-            vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k));            
+            vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);            
 
             // write surfel
             surf.radius() = radius;
@@ -1032,11 +1036,21 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
 }
 
 std::vector<std::pair<surfel_id_t, real>> bvh::
-get_natural_neighbours(const surfel_id_t& target_surfel,
-                       const uint32_t num_nearest_neighbours) const {
+get_natural_neighbours(
+    const surfel_id_t& target_surfel,
+    const bool search_for_neighbours,
+    std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 
-    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids =
-    get_nearest_neighbours(target_surfel, num_nearest_neighbours);
+    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids;
+
+    if(search_for_neighbours) {
+        nearest_neighbour_ids = get_nearest_neighbours(target_surfel, 24);
+    } else {
+        for(int k = 0; k < 24; ++k) {
+            nearest_neighbour_ids.emplace_back(nearest_neighbours[k]);
+        }
+    }
+    //get_nearest_neighbours(target_surfel, num_nearest_neighbours);
 
     std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
     
@@ -1243,7 +1257,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         // skip the leaf level attribute computation if it was not requested or necessary
         if( !(level == depth_ && !recompute_leaf_level) ) {
 
-#ifndef USE_OMP_INSTEAD_OF_STD_THREADS
+
 
                 unsigned const num_threads = std::thread::hardware_concurrency();
                 //std::cout << "Using: " << std::thread::hardware_concurrency() << "# threads\n";
@@ -1257,7 +1271,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                     threads.push_back(std::thread(&bvh::thread_compute_attributes, this, first_node_of_level, last_node_of_level, update_percentage, std::cref(normal_strategy), std::cref(radius_strategy)  ) );
                 }
 
-#else
+/*
                 #pragma omp parallel for
                 for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
                 {   
@@ -1275,13 +1289,11 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                             std::cout << "\r" << percentage << "% processed" << std::flush;
                         }
                 }
-#endif
+*/
 
-#ifndef USE_OMP_INSTEAD_OF_STD_THREADS
                 for(auto& thread : threads){
                     thread.join();
                 }
-#endif
             }
 
             #pragma omp parallel for

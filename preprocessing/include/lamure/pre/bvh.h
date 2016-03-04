@@ -102,7 +102,8 @@ public:
     std::vector<std::pair<surfel_id_t, real>>
                         get_natural_neighbours(
                             const surfel_id_t& target_surfel,
-                            const uint32_t num_neighbours) const;
+                            const bool search_for_neighbours = true,
+                            std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours = std::vector<std::pair<surfel_id_t, real>>()) const;
 
     std::vector<std::pair<surfel, real> >
                         get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,

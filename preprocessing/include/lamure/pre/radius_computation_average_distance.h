@@ -21,16 +21,17 @@ class bvh;
 class radius_computation_average_distance: public radius_computation_strategy
 {
 public:
-	explicit radius_computation_average_distance(const uint16_t number_of_neighbours)
-		: number_of_neighbours_(number_of_neighbours){}
+	explicit radius_computation_average_distance(const uint16_t number_of_neighbours) {
+			number_of_neighbours_ = number_of_neighbours;
+		}
 
 
 	real  compute_radius(const bvh& tree, 
-	 					 const surfel_id_t surfel) const override;
+	 					 const surfel_id_t surfel,
+                       	 std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const override;
 
 
-private:
-	const uint16_t number_of_neighbours_;
+
 };
 
 }// namespace pre
