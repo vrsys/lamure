@@ -41,6 +41,12 @@ public:
 	                              return normal_sd_;}
 	real const radius_sd() const {assert(is_dirty_ == false);
 	                              return radius_sd_;}
+	                              
+	real const min_radius() const {assert(is_dirty_ == false);
+								  return min_radius_;}
+	real const max_radius() const {assert(is_dirty_ == false);
+								  return max_radius_;}
+
 
 	histogram_t const color_histogram() const {assert(is_dirty_ == false);						       return color_histogram_;}
 
