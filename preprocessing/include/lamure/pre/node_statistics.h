@@ -50,17 +50,20 @@ public:
 private:
 
 	bool is_dirty_;
+
 	vec3r mean_pos_;
 	real  pos_sd_;
 
 	vec3r mean_color_;
-	real color_sd_;
+	real  color_sd_;
 
 	vec3r mean_normal_;
 	real  normal_sd_;
 
 	real  mean_radius_;
 	real  radius_sd_;
+	real  max_radius_;
+	real  min_radius_;
 
 	histogram_t color_histogram_;
 
@@ -69,3 +72,4 @@ private:
 }
 }
 #endif
+
