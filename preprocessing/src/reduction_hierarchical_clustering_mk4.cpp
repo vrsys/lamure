@@ -100,7 +100,8 @@ split_point_cloud(const std::vector<surfel*>& input_surfels,
 				for(uint32_t surfel_index = 0; surfel_index < current_cluster.surfels.size(); ++surfel_index)
 				{
 					surfel* current_surfel = current_cluster.surfels.at(surfel_index);
-					real surfel_side = point_plane_distance(current_cluster.centroid_pos, current_cluster.normal_pos, current_surfel->pos());
+					vec3r color_rgb(current_surfel->color().x, current_surfel->color().y, current_surfel->color().z);
+					real surfel_side = point_plane_distance(current_cluster.centroid_color, current_cluster.normal_color, color_rgb);
 
 					if(surfel_side >= 0)
 					{
