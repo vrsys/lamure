@@ -1155,6 +1155,109 @@ upsweep(const reduction_strategy& reduction_strtgy)
 }
 
 void bvh::
+spawn_create_lod_jobs(const uint32_t first_node_of_level, 
+                      const uint32_t last_node_of_level,
+                      const reduction_strategy& reduction_strgy) {
+    unsigned const num_threads = std::thread::hardware_concurrency();
+
+    working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
+    std::vector<std::thread> threads;
+
+    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_create_lod, this, 
+                                      first_node_of_level, last_node_of_level, 
+                                      update_percentage, 
+                                      std::cref(reduction_strgy)  ) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
+}
+
+void bvh::
+spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
+                             const uint32_t last_node_of_level,
+                             const normal_computation_strategy& normal_strategy, 
+                             const radius_computation_strategy& radius_strategy) {
+    unsigned const num_threads = std::thread::hardware_concurrency();
+    working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
+    std::vector<std::thread> threads;
+
+    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_compute_attributes, this, 
+                                      first_node_of_level, last_node_of_level, 
+                                      update_percentage, 
+                                      std::cref(normal_strategy), std::cref(radius_strategy)  ) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
+}
+
+void bvh::
+spawn_compute_bounding_boxes_jobs(const uint32_t first_node_of_level, 
+                                  const uint32_t last_node_of_level,
+                                  const int32_t level) {
+    unsigned const num_threads = std::thread::hardware_concurrency();
+    working_queue_head_counter_.initialize(0); //let the threads fetch a local thread idx
+    std::vector<std::thread> threads;
+
+    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_compute_bounding_boxes, this, 
+                                      first_node_of_level, last_node_of_level, 
+                                      update_percentage,
+                                      level, num_threads) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
+}
+
+
+void bvh::
+thread_create_lod(const unsigned int start_marker,
+                  const unsigned int end_marker,
+                  const bool update_percentage,
+                  const reduction_strategy& reduction_strgy) {
+    unsigned int node_index = working_queue_head_counter_.increment_head();
+    
+    while(node_index < end_marker) {
+        bvh_node* current_node = &nodes_.at(node_index);
+    
+        // If a node has no data yet, calculate it based on child nodes.
+        if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
+
+            std::vector<surfel_mem_array*> child_mem_arrays;
+            for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                size_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                bvh_node* child_node = &nodes_.at(child_id);
+
+                child_mem_arrays.push_back(&child_node->mem_array());
+            }
+            
+            real reduction_error;
+
+            surfel_mem_array reduction = reduction_strgy.create_lod(reduction_error, 
+                                                                    child_mem_arrays, 
+                                                                    max_surfels_per_node_, 
+                                                                    (*this), get_child_id(current_node->node_id(), 0) );
+                
+            current_node->reset(reduction);
+            current_node->set_reduction_error(reduction_error);
+
+        }
+
+        node_index = working_queue_head_counter_.increment_head();
+    }
+}
+
+void bvh::
 thread_compute_attributes(const unsigned int start_marker,
                           const unsigned int end_marker,
                           const bool update_percentage,
@@ -1181,14 +1284,59 @@ thread_compute_attributes(const unsigned int start_marker,
                 std::cout << "\r" << percentage << "% processed" << std::flush;
             }
         }
-        //++counter;
-
         node_index = working_queue_head_counter_.increment_head();
     }
 };
 
 void bvh::
-upsweep_new(const reduction_strategy& reduction_strategy, 
+thread_compute_bounding_boxes(const unsigned int start_marker,
+                              const unsigned int end_marker,
+                              const bool update_percentage,
+                              const int32_t level,
+                              const uint32_t num_threads) {
+
+    uint32_t thread_idx = working_queue_head_counter_.increment_head();
+
+    uint32_t total_num_nodes = (end_marker-start_marker) + 1;
+    uint32_t num_nodes_per_thread = std::ceil(float(total_num_nodes) / num_threads);
+
+    uint32_t local_start_index = start_marker + thread_idx * num_nodes_per_thread;
+    uint32_t local_end_index   = start_marker + (thread_idx + 1) * num_nodes_per_thread;
+
+    for(uint32_t node_index = local_start_index; node_index < local_end_index; ++node_index) {
+        //early termination if number of nodes could not be evenly divided
+        if(node_index >= end_marker) {
+            break;
+        }
+
+        bvh_node* current_node = &nodes_.at(node_index);
+
+        basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), 
+                                                                                                rep_radius_algo_);
+
+        bounding_box node_bounding_box;
+        node_bounding_box.expand(props.bbox);
+
+        if (level < depth_) {
+            for (int child_index = 0; child_index < fan_factor_; ++child_index) {
+                uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                bvh_node* child_node = &nodes_.at(child_id);
+
+                node_bounding_box.expand(child_node->get_bounding_box());
+            }
+        }
+
+        current_node->set_avg_surfel_radius(props.rep_radius);
+        current_node->set_centroid(props.centroid);
+
+        current_node->set_bounding_box(node_bounding_box);
+        current_node->calculate_statistics();
+    }
+
+}
+
+void bvh::
+upsweep_new(const reduction_strategy& reduction_strgy, 
             const normal_computation_strategy& normal_strategy, 
             const radius_computation_strategy& radius_strategy,
             bool recompute_leaf_level)
@@ -1211,117 +1359,20 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->load_from_disk();
             }
         }
-
-        // Used for progress visualization.
-        size_t counter = 0;
-        uint16_t percentage = 0;
-    
-
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
-        #pragma omp parallel for
-        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
-            bvh_node* current_node = &nodes_.at(node_index);
-            
-            if(level != depth_) {
-                // If a node has no data yet, calculate it based on child nodes.
-                if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
-
-                    std::vector<surfel_mem_array*> child_mem_arrays;
-                    for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
-                        size_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                        bvh_node* child_node = &nodes_.at(child_id);
-
-                        child_mem_arrays.push_back(&child_node->mem_array());
-                    }
-                    
-                    real reduction_error;
-
-                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0) );
-                        
-                    current_node->reset(reduction);
-                    current_node->set_reduction_error(reduction_error);
-                }
-            }
-            current_node->calculate_statistics();
+        if(level != depth_) {
+            spawn_create_lod_jobs(first_node_of_level, last_node_of_level, reduction_strgy);
         }
 
-        
-
-
-            
-
-
-
         {
-        // skip the leaf level attribute computation if it was not requested or necessary
-        if( !(level == depth_ && !recompute_leaf_level) ) {
-
-
-
-                unsigned const num_threads = std::thread::hardware_concurrency();
-                //std::cout << "Using: " << std::thread::hardware_concurrency() << "# threads\n";
-                working_queue_head_counter_.initialize(first_node_of_level);
-
-
-                std::vector<std::thread> threads;
-
-                for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
-                    bool update_percentage = (0 == thread_idx);
-                    threads.push_back(std::thread(&bvh::thread_compute_attributes, this, first_node_of_level, last_node_of_level, update_percentage, std::cref(normal_strategy), std::cref(radius_strategy)  ) );
-                }
-
-/*
-                #pragma omp parallel for
-                for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
-                {   
-                    bvh_node* current_node = &nodes_.at(node_index);
-
-
-                        // Calculate and set node properties.
-                        compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
-
-                        ++counter;
-                        uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
-                        if (percentage + 1 == new_percentage)
-                        {
-                            percentage = new_percentage;
-                            std::cout << "\r" << percentage << "% processed" << std::flush;
-                        }
-                }
-*/
-
-                for(auto& thread : threads){
-                    thread.join();
-                }
+            // skip the leaf level attribute computation if it was not requested or necessary
+            if( !(level == depth_ && !recompute_leaf_level) ) {
+                spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy);
             }
 
-            #pragma omp parallel for
-            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
-            {   
-                bvh_node* current_node = &nodes_.at(node_index);
+            spawn_compute_bounding_boxes_jobs(first_node_of_level, last_node_of_level, level);
 
-
-                basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
-
-                bounding_box node_bounding_box;
-                node_bounding_box.expand(props.bbox);
-
-                if (level < depth_) {
-                    for (int child_index = 0; child_index < fan_factor_; ++child_index)
-                    {
-                        uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                        bvh_node* child_node = &nodes_.at(child_id);
-
-                        node_bounding_box.expand(child_node->get_bounding_box());
-                    }
-                }
-
-                current_node->set_avg_surfel_radius(props.rep_radius);
-                current_node->set_centroid(props.centroid);
-
-                current_node->set_bounding_box(node_bounding_box);
-            }
             std::cout << std::endl;
         }
 

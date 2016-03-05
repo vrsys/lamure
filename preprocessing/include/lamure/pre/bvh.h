@@ -149,11 +149,35 @@ public:
 
     static std::string  state_to_string(state_type state);
 
+    void                spawn_create_lod_jobs(const uint32_t first_node_of_level, 
+                                              const uint32_t last_node_of_level,
+                                              const reduction_strategy& reduction_strgy);
+
+    void                spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
+                                                     const uint32_t last_node_of_level,
+                                                     const normal_computation_strategy& normal_strategy, 
+                                                     const radius_computation_strategy& radius_strategy);
+
+    void                spawn_compute_bounding_boxes_jobs(const uint32_t first_node_of_level, 
+                                                          const uint32_t last_node_of_level,
+                                                          const int32_t level);
+
     void                thread_compute_attributes(const unsigned int start_marker,
                                                   const unsigned int end_marker,
                                                   const bool update_percentage,
                                                   const normal_computation_strategy& normal_strategy, 
                                                   const radius_computation_strategy& radius_strategy);
+
+    void                thread_create_lod(const unsigned int start_marker,
+                                          const unsigned int end_marker,
+                                          const bool update_percentage,
+                                          const reduction_strategy& reduction_strgy);
+
+    void                thread_compute_bounding_boxes(const unsigned int start_marker,
+                                                      const unsigned int end_marker,
+                                                      const bool update_percentage,
+                                                      const int32_t level, 
+                                                      const uint32_t num_threads);
 
 protected:
     friend class bvh_stream;
