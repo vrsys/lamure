@@ -189,21 +189,21 @@ protected:
                                                    const uint32_t num_outliers,
                                                    const uint16_t num_neighbours,
                                                    std::vector< std::pair<surfel_id_t, real> >&  intermediate_outliers_for_thread);
-    void                thread_compute_attributes(const unsigned int start_marker,
-                                                  const unsigned int end_marker,
+    void                thread_compute_attributes(const uint32_t start_marker,
+                                                  const uint32_t end_marker,
                                                   const bool update_percentage,
                                                   const normal_computation_strategy& normal_strategy, 
                                                   const radius_computation_strategy& radius_strategy);
-    void                thread_create_lod(const unsigned int start_marker,
-                                          const unsigned int end_marker,
+    void                thread_create_lod(const uint32_t start_marker,
+                                          const uint32_t end_marker,
                                           const bool update_percentage,
                                           const reduction_strategy& reduction_strgy);
-    void                thread_compute_bounding_boxes_downsweep(const unsigned int slice_left,
-                                                                const unsigned int slice_right,
+    void                thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
+                                                                const uint32_t slice_right,
                                                                 const bool update_percentage,
                                                                 const uint32_t num_threads);
-    void                thread_compute_bounding_boxes_upsweep(const unsigned int start_marker,
-                                                              const unsigned int end_marker,
+    void                thread_compute_bounding_boxes_upsweep(const uint32_t start_marker,
+                                                              const uint32_t end_marker,
                                                               const bool update_percentage,
                                                               const int32_t level, 
                                                               const uint32_t num_threads);
@@ -216,7 +216,7 @@ protected:
                                                const uint32_t num_threads);
 
 private:
-    atomic_counter<unsigned int> working_queue_head_counter_;
+    atomic_counter<uint32_t> working_queue_head_counter_;
 
     state_type          state_ = state_type::null;
 

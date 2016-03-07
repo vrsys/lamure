@@ -150,7 +150,6 @@ compute_normal(const bvh& tree,
 			   const surfel_id_t target_surfel,
                std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 
-    const uint16_t num = number_of_neighbours_;
 	// find nearest neighbours
     std::vector<std::pair<surfel_id_t, real>> nearest_neighbours_ids;// = tree.get_nearest_neighbours(target_surfel, num);
 

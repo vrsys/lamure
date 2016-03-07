@@ -335,11 +335,11 @@ update_entropy(shared_entropy_surfel target_en_surfel,
 
             float normal_angle = std::fabs(scm::math::dot(target_en_surfel->contained_surfel->normal(), neighbour_normal));
             entropy += (1 + target_en_surfel->level)/(1.0 + normal_angle);
-
+/*
             real color_diff = scm::math::length( vec3r((target_surfel_color[0] - neighbour_color[0]),
                                                        (target_surfel_color[1] - neighbour_color[1]),
                                                        (target_surfel_color[2] - neighbour_color[2]) ) ) ;
-
+*/
             //entropy += (1 + target_en_surfel->level) * (1 + (color_diff));
 
             //entropy += current_neighbour_surfel->radius();

@@ -184,7 +184,7 @@ get_node_ranges(const uint32_t depth) const
 void bvh::
 print_tree_properties() const
 {
-    LOGGER_INFO("Fan-out factor: " << int(fan_factor_));
+    LOGGER_INFO("Fan-out factor: " << int32_t(fan_factor_));
     LOGGER_INFO("Depth: " << depth_);
     LOGGER_INFO("Number of nodes: " << nodes_.size());
     LOGGER_INFO("Max surfels per node: " << max_surfels_per_node_);
@@ -315,11 +315,11 @@ downsweep(bool adjust_translation,
 
             // percent counter
             ++processed_nodes;
-            uint8_t new_percent_processed = (int)((float)(processed_nodes/first_leaf_ * 100));
+            uint8_t new_percent_processed = (uint8_t)((float)(processed_nodes/first_leaf_ * 100));
             if (percent_processed != new_percent_processed)
             {
                 percent_processed = new_percent_processed;
-                //std::cout << "\r" << (int)percent_processed << "% processed" << std::flush;
+                //std::cout << "\r" << (uint8_t)percent_processed << "% processed" << std::flush;
             }
 
         }
@@ -704,7 +704,7 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
     //project all points to the plane
     double* coords = new double[2*num_nearest_neighbours];
     scm::math::vec3f plane_right = plane.get_right();
-    for (unsigned int i = 0; i < num_nearest_neighbours; ++i) {
+    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
         vec3r v = vec3r(points[3*i+0], points[3*i+1], points[3*i+2]);
         vec2r c = plane_t::project(plane, plane_right, v);
         coords[2*i+0] = c[0];
@@ -728,11 +728,11 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
 
     std::vector<scm::math::vec2f> neighbour_2d_coord_pairs;
 
-    for (unsigned int i = 0; i < num_nearest_neighbours; ++i) {
+    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
         nni_sample_t sp;
         sp.xy_ = scm::math::vec2f(coords[2*i+0], coords[2*i+1]);
         Point2 p(sp.xy_.x, sp.xy_.y);
-        auto vertex_handle = delaunay_triangulation.insert(p);
+        delaunay_triangulation.insert(p);
         neighbour_2d_coord_pairs.emplace_back(coords[2*i+0], coords[2*i+1]);
     }
     
@@ -756,7 +756,7 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
         return natural_neighbour_ids;
     }
 
-    std::vector<std::pair<unsigned int, double> > nni_weights;
+    std::vector<std::pair<uint32_t, double> > nni_weights;
 
     for (const auto& sibs_coord_instance : sibson_coords) {
         uint32_t closest_nearest_neighbour_id = std::numeric_limits<uint32_t>::max();
@@ -812,7 +812,7 @@ get_natural_neighbours(
     if(search_for_neighbours) {
         nearest_neighbour_ids = get_nearest_neighbours(target_surfel, 24);
     } else {
-        for(int k = 0; k < 24; ++k) {
+        for(int32_t k = 0; k < 24; ++k) {
             nearest_neighbour_ids.emplace_back(nearest_neighbours[k]);
         }
     }
@@ -895,12 +895,12 @@ void bvh::
 spawn_create_lod_jobs(const uint32_t first_node_of_level, 
                       const uint32_t last_node_of_level,
                       const reduction_strategy& reduction_strgy) {
-    unsigned const num_threads = std::thread::hardware_concurrency();
+    uint32_t const num_threads = std::thread::hardware_concurrency();
 
     working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
     std::vector<std::thread> threads;
 
-    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
         bool update_percentage = (0 == thread_idx);
         threads.push_back(std::thread(&bvh::thread_create_lod, this, 
                                       first_node_of_level, last_node_of_level, 
@@ -918,11 +918,11 @@ spawn_compute_attribute_jobs(const uint32_t first_node_of_level,
                              const uint32_t last_node_of_level,
                              const normal_computation_strategy& normal_strategy, 
                              const radius_computation_strategy& radius_strategy) {
-    unsigned const num_threads = std::thread::hardware_concurrency();
+    uint32_t const num_threads = std::thread::hardware_concurrency();
     working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
     std::vector<std::thread> threads;
 
-    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
         bool update_percentage = (0 == thread_idx);
         threads.push_back(std::thread(&bvh::thread_compute_attributes, this, 
                                       first_node_of_level, last_node_of_level, 
@@ -938,11 +938,11 @@ spawn_compute_attribute_jobs(const uint32_t first_node_of_level,
 void bvh::
 spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left, 
                                             const uint32_t slice_right) {
-    unsigned const num_threads = std::thread::hardware_concurrency();
+    uint32_t const num_threads = std::thread::hardware_concurrency();
     working_queue_head_counter_.initialize(0); //let the threads fetch a local thread idx
     std::vector<std::thread> threads;
 
-    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
         bool update_percentage = (0 == thread_idx);
         threads.push_back(std::thread(&bvh::thread_compute_bounding_boxes_downsweep, this, 
                                       slice_left, slice_right, 
@@ -959,11 +959,11 @@ void bvh::
 spawn_compute_bounding_boxes_upsweep_jobs(const uint32_t first_node_of_level, 
                                           const uint32_t last_node_of_level,
                                           const int32_t level) {
-    unsigned const num_threads = std::thread::hardware_concurrency();
+    uint32_t const num_threads = std::thread::hardware_concurrency();
     working_queue_head_counter_.initialize(0); //let the threads fetch a local thread idx
     std::vector<std::thread> threads;
 
-    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
         bool update_percentage = (0 == thread_idx);
         threads.push_back(std::thread(&bvh::thread_compute_bounding_boxes_upsweep, this, 
                                       first_node_of_level, last_node_of_level, 
@@ -982,11 +982,11 @@ spawn_split_node_jobs(size_t& slice_left,
                       size_t& new_slice_left,
                       size_t& new_slice_right,
                       const uint32_t level) {
-    unsigned const num_threads = std::thread::hardware_concurrency();
+    uint32_t const num_threads = std::thread::hardware_concurrency();
     working_queue_head_counter_.initialize(0); //let the threads fetch a local thread idx
     std::vector<std::thread> threads;
 
-    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
         bool update_percentage = (0 == thread_idx);
         threads.push_back(std::thread(&bvh::thread_split_node_jobs, this, 
                                       std::ref(slice_left), std::ref(slice_right), 
@@ -1001,11 +1001,11 @@ spawn_split_node_jobs(size_t& slice_left,
 }
 
 void bvh::
-thread_create_lod(const unsigned int start_marker,
-                  const unsigned int end_marker,
+thread_create_lod(const uint32_t start_marker,
+                  const uint32_t end_marker,
                   const bool update_percentage,
                   const reduction_strategy& reduction_strgy) {
-    unsigned int node_index = working_queue_head_counter_.increment_head();
+    uint32_t node_index = working_queue_head_counter_.increment_head();
     
     while(node_index < end_marker) {
         bvh_node* current_node = &nodes_.at(node_index);
@@ -1038,13 +1038,13 @@ thread_create_lod(const unsigned int start_marker,
 }
 
 void bvh::
-thread_compute_attributes(const unsigned int start_marker,
-                          const unsigned int end_marker,
+thread_compute_attributes(const uint32_t start_marker,
+                          const uint32_t end_marker,
                           const bool update_percentage,
                           const normal_computation_strategy& normal_strategy, 
                           const radius_computation_strategy& radius_strategy) {
 
-    unsigned int node_index = working_queue_head_counter_.increment_head();
+    uint32_t node_index = working_queue_head_counter_.increment_head();
     
     uint16_t percentage = 0;
     uint32_t length_of_level = (end_marker-start_marker) + 1;
@@ -1057,7 +1057,7 @@ thread_compute_attributes(const unsigned int start_marker,
         compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
 
         if(update_percentage) {
-            uint16_t new_percentage = int(float(node_index-start_marker)/(length_of_level) * 100);
+            uint16_t new_percentage = int32_t(float(node_index-start_marker)/(length_of_level) * 100);
             if (percentage < new_percentage)
             {
                 percentage = new_percentage;
@@ -1069,8 +1069,8 @@ thread_compute_attributes(const unsigned int start_marker,
 };
 
 void bvh::
-thread_compute_bounding_boxes_downsweep(const unsigned int slice_left,
-                                        const unsigned int slice_right,
+thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
+                                        const uint32_t slice_right,
                                         const bool update_percentage,
                                         const uint32_t num_threads) {
 
@@ -1097,11 +1097,11 @@ thread_compute_bounding_boxes_downsweep(const unsigned int slice_left,
 }
 
 void bvh::
-thread_compute_bounding_boxes_upsweep(const unsigned int start_marker,
-                              const unsigned int end_marker,
-                              const bool update_percentage,
-                              const int32_t level,
-                              const uint32_t num_threads) {
+thread_compute_bounding_boxes_upsweep(const uint32_t start_marker,
+                                      const uint32_t end_marker,
+                                      const bool update_percentage,
+                                      const int32_t level,
+                                      const uint32_t num_threads) {
 
     uint32_t thread_idx = working_queue_head_counter_.increment_head();
 
@@ -1125,8 +1125,8 @@ thread_compute_bounding_boxes_upsweep(const unsigned int start_marker,
         bounding_box node_bounding_box;
         node_bounding_box.expand(props.bbox);
 
-        if (level < depth_) {
-            for (int child_index = 0; child_index < fan_factor_; ++child_index) {
+        if (level < int32_t(depth_) ) {
+            for (int32_t child_index = 0; child_index < fan_factor_; ++child_index) {
                 uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
                 bvh_node* child_node = &nodes_.at(child_id);
 
@@ -1253,8 +1253,6 @@ thread_split_node_jobs(size_t& slice_left,
         current_node.reset();
 
     }
-
-
 }
 
 
@@ -1284,13 +1282,13 @@ upsweep(const reduction_strategy& reduction_strgy,
         }
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
-        if(level != depth_) {
+        if(level != int32_t(depth_) ) {
             spawn_create_lod_jobs(first_node_of_level, last_node_of_level, reduction_strgy);
         }
 
         {
             // skip the leaf level attribute computation if it was not requested or necessary
-            if( !(level == depth_ && !recompute_leaf_level) ) {
+            if( !(level == int32_t(depth_) && !recompute_leaf_level ) ) {
                 spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy);
             }
 
@@ -1333,7 +1331,7 @@ remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
 
     std::vector<std::vector< std::pair<surfel_id_t, real> > > intermediate_outliers;
 
-    unsigned const num_threads = std::thread::hardware_concurrency();
+    uint32_t const num_threads = std::thread::hardware_concurrency();
     intermediate_outliers.resize(num_threads);
     //already_resized.resize(omp_get_max_threads())
 
@@ -1348,15 +1346,10 @@ remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
     }
 
 
-
     working_queue_head_counter_.initialize(first_leaf_);
-
-
-
     std::vector<std::thread> threads;
 
-    for(int thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
-        bool update_percentage = (0 == thread_idx);
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
         threads.push_back(std::thread(&bvh::thread_remove_outlier_jobs, this, 
                                       first_leaf_, nodes_.size(),
                                       num_outliers, num_neighbours,
