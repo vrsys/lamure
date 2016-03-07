@@ -1137,13 +1137,15 @@ upsweep(const reduction_strategy& reduction_strtgy)
     state_ = state_type::after_upsweep;
 }
 
+
+
 void bvh::
 upsweep_new(const reduction_strategy& reduction_strategy, 
             const normal_computation_strategy& normal_strategy, 
             const radius_computation_strategy& radius_strategy,
             bool recompute_leaf_level)
 {
-    // Start at bottom level and move up towards root.
+    // Start at bottom level and move up towards root. 
     for (int32_t level = depth_; level >= 0; --level)
     {
         std::cout << "Entering level: " << level << std::endl;
@@ -1165,6 +1167,8 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         // Used for progress visualization.
         size_t counter = 0;
         uint16_t percentage = 0;
+
+        
     
 
         // Iterate over nodes of current tree level.
@@ -1172,7 +1176,8 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         #pragma omp parallel for
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
             bvh_node* current_node = &nodes_.at(node_index);
-            
+            real avg_radius_all_input_nodes = 0.0; //^^ used to compute average of avg_radius for all nodes per level
+
             if(level != depth_) {
                 // If a node has no data yet, calculate it based on child nodes.
                 if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
@@ -1181,14 +1186,17 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                     for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
                         size_t child_id = this->get_child_id(current_node->node_id(), child_index);
                         bvh_node* child_node = &nodes_.at(child_id);
+                     
+                        avg_radius_all_input_nodes = avg_radius_all_input_nodes + child_node->avg_surfel_radius();  //^^
 
                         child_mem_arrays.push_back(&child_node->mem_array());
                     }
-                    
+                
                     real reduction_error;
 
-                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0) );
-                        
+                    avg_radius_all_input_nodes /= fan_factor_; //^^
+
+                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, avg_radius_all_input_nodes, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0) ); 
                     current_node->reset(reduction);
                     current_node->set_reduction_error(reduction_error);
                 }
@@ -1322,7 +1330,8 @@ upsweep_r(bvh_node& node,
     //LOGGER_TRACE("1. LOD " << node.node_id());
     // create LOD for current node
     real reduction_error;
-    node.reset(reduction_strtgy.create_lod(reduction_error, child_arrays, max_surfels_per_node_, *this, get_child_id(node.node_id(), 0) ) );
+    //^^third param: avg_radius_all_nodes not used
+    node.reset(reduction_strtgy.create_lod(reduction_error, child_arrays, 0.0, max_surfels_per_node_, *this, get_child_id(node.node_id(), 0) ) );
 
     //LOGGER_TRACE("2. Error " << node.node_id());
     auto props = basic_algorithms::compute_properties(node.mem_array(), rep_radius_algo_);

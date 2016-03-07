@@ -19,9 +19,14 @@ public:
 
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
+                                  const real avg_radius_all_nodes,
                                   const uint32_t surfels_per_node,
           						  const bvh& tree,
           						  const size_t start_node_id) const override;
+
+private:
+
+	void subsample(surfel_mem_array& joined_input, real const avg_radius) const;    
 
 };
 

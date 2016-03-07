@@ -21,6 +21,7 @@ reduction_hierarchical_clustering_mk3()
 surfel_mem_array reduction_hierarchical_clustering_mk3::
 create_lod(real& reduction_error,
 			const std::vector<surfel_mem_array*>& input,
+			const real avg_radius_all_nodes,
             const uint32_t surfels_per_node,
           	const bvh& tree,
           	const size_t start_node_id) const
