@@ -1137,7 +1137,91 @@ upsweep(const reduction_strategy& reduction_strtgy)
     state_ = state_type::after_upsweep;
 }
 
+void bvh::
+subsample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_array, real const avg_radius) const
+{
+    
+    for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i){
+        output_mem_array.mem_data()->push_back( joined_input.read_surfel(i) );
+    }
 
+    const real max_radius_difference = 0.0; //
+    //real avg_radius = node.avg_surfel_radius();
+
+    auto compute_new_position = [] (surfel const& plane_ref_surfel, real radius_offset, real rot_angle) {
+        vec3r new_position (0.0, 0.0, 0.0);
+
+        vec3f n = plane_ref_surfel.normal();
+
+        //from random_point_on_surfel() in surfe.cpp
+        //find a vector orthogonal to given normal vector
+        scm::math::vec3f  u(std::numeric_limits<float>::lowest(),
+                            std::numeric_limits<float>::lowest(),
+                            std::numeric_limits<float>::lowest());
+        if(n.z != 0.0) {
+            u = scm::math::vec3f( 1, 1, (-n.x - n.y) / n.z);
+        } else if (n.y != 0.0) {
+            u = scm::math::vec3f( 1, (-n.x - n.z) / n.y, 1);
+        } else {
+            u = scm::math::vec3f( (-n.y - n.z)/n.x, 1, 1);
+        }
+        scm::math::normalize(u);
+        vec3f p = scm::math::normalize(scm::math::cross(n,u)); //plane of rotation given by cross product of n and u
+        u = p; //^^
+
+        //vector rotation according to: https://en.wikipedia.org/wiki/Rodrigues'_rotation_formula
+        //rotation around the normal vector n
+        vec3f u_rotated = u*cos(rot_angle) + scm::math::normalize(scm::math::cross(u,n))*sin(rot_angle) + n*scm::math::dot(u,n)*(1-cos(rot_angle));
+
+        //extend vector  lenght to match desired radius 
+        u_rotated = scm::math::normalize(u_rotated)*radius_offset;
+        
+        new_position = plane_ref_surfel.pos() + u_rotated;
+        return new_position; 
+    };
+
+    //create new vector to store node surfels; unmodified + modified ones
+    surfel_mem_array modified_mem_array (std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+
+
+    for(uint32_t i = 0; i < output_mem_array.mem_data()->size(); ++i){
+
+        surfel current_surfel = output_mem_array.read_surfel(i);
+
+        //replace big surfels by collection of average-size surfels
+        //if (current_surfel.radius() - avg_radius > max_radius_difference){
+        if(false) {
+               
+            //how many times does average radius fit into big radius
+            int iteration_level = floor(current_surfel.radius()/(2*avg_radius));             
+
+            //keep all surfel properties but shrink its radius to the average radius
+            surfel new_surfel = current_surfel;
+            new_surfel.radius() = avg_radius;
+           // new_surfel.color() = vec3b(100, 120, 0); //^^change color for test reasons
+            output_mem_array.write_surfel(new_surfel, i);            
+            
+
+            //create new average-size surfels to fill up the area orininally covered by bigger surfel            
+            for(int k = 1; k <= (iteration_level - 1); ++k){
+               uint16_t num_new_surfels = 6*k; //^^ formula basis https://en.wikipedia.org/wiki/Circle_packing_in_a_circle
+               real angle_offset = (360.0) / num_new_surfels;
+               real angle = 0.0; //reset 
+               for(int j = 0; j < num_new_surfels; ++j){
+                    real radius_offset = k*2*avg_radius; 
+                    new_surfel.pos() = compute_new_position(current_surfel, radius_offset, angle);
+                    modified_mem_array.mem_data()->push_back(new_surfel);
+                    angle = angle + angle_offset;                    
+               }
+            }          
+        }
+    }
+
+    for(uint32_t i = 0; i < modified_mem_array.mem_data()->size(); ++i) {
+        output_mem_array.mem_data()->push_back( modified_mem_array.mem_data()->at(i) );
+    }
+
+}
 
 void bvh::
 upsweep_new(const reduction_strategy& reduction_strategy, 
@@ -1167,8 +1251,6 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         // Used for progress visualization.
         size_t counter = 0;
         uint16_t percentage = 0;
-
-        
     
 
         // Iterate over nodes of current tree level.
@@ -1176,27 +1258,46 @@ upsweep_new(const reduction_strategy& reduction_strategy,
         #pragma omp parallel for
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
             bvh_node* current_node = &nodes_.at(node_index);
-            real avg_radius_all_input_nodes = 0.0; //^^ used to compute average of avg_radius for all nodes per level
+            real avg_radius_all_input_nodes = 1.0; //^^ used to compute average of avg_radius for all nodes per level
+            //real avg_radius_current_node = 0.0;
+            std::vector<real> avg_radius_vector;
 
             if(level != depth_) {
                 // If a node has no data yet, calculate it based on child nodes.
                 if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
 
                     std::vector<surfel_mem_array*> child_mem_arrays;
+                    std::vector<surfel_mem_array*> subsampled_cild_mem_arrays;
                     for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
                         size_t child_id = this->get_child_id(current_node->node_id(), child_index);
                         bvh_node* child_node = &nodes_.at(child_id);
                      
-                        avg_radius_all_input_nodes = avg_radius_all_input_nodes + child_node->avg_surfel_radius();  //^^
+                        avg_radius_all_input_nodes = avg_radius_all_input_nodes + child_node->avg_surfel_radius();  
+
 
                         child_mem_arrays.push_back(&child_node->mem_array());
+                        avg_radius_vector.push_back(child_node->avg_surfel_radius());
+                    }
+
+                    std::vector<surfel_mem_array> mem_array_obj;
+                    for (unsigned i=0; i<child_mem_arrays.size(); ++i){
+                        mem_array_obj.emplace_back( std::make_shared<surfel_vector>(surfel_vector()), 0, 0 );
+                    }
+
+
+                    subsampled_cild_mem_arrays.reserve(child_mem_arrays.size());
+                    for (unsigned i=0; i<child_mem_arrays.size(); ++i){
+                        real current_avg_radius = avg_radius_vector.at(i);
+                        surfel_mem_array current_cild_node = *child_mem_arrays.at(i);
+                        subsample(current_cild_node,mem_array_obj[i], current_avg_radius);
+                        mem_array_obj[i].set_length(mem_array_obj[i].mem_data()->size());
+                        subsampled_cild_mem_arrays.push_back(&mem_array_obj.at(i));
                     }
                 
                     real reduction_error;
 
-                    avg_radius_all_input_nodes /= fan_factor_; //^^
 
-                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, child_mem_arrays, avg_radius_all_input_nodes, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0) ); 
+                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, subsampled_cild_mem_arrays, avg_radius_all_input_nodes, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0) ); 
                     current_node->reset(reduction);
                     current_node->set_reduction_error(reduction_error);
                 }
@@ -1204,12 +1305,7 @@ upsweep_new(const reduction_strategy& reduction_strategy,
             current_node->calculate_statistics();
         }
 
-        
-
-
-            
-
-
+    
 
         {
         // skip the leaf level attribute computation if it was not requested or necessary

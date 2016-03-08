@@ -79,6 +79,10 @@ public:
     const node_t        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
 
+    void/*surfel_mem_array*/    subsample(surfel_mem_array const&  child_mem_array,
+                                  surfel_mem_array& output_mem_array,
+                                  real const avg_radius) const;
+
     /**
      * Get id for the first node at given depth and total number of nodes at this depth.
      *
