@@ -16,21 +16,23 @@ namespace pre{
 
 real radius_computation_average_distance::
 compute_radius(const bvh& tree,
-			   const surfel_id_t target_surfel) const {
-	
-	const uint16_t num = number_of_neighbours_;
+			   const surfel_id_t target_surfel,
+			   std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 
-	// find nearest neighbours
-	std::vector<std::pair<surfel_id_t, real>> const& neighbours = tree.get_nearest_neighbours(target_surfel, num);
-    
     real avg_distance = 0.0;
 
+    unsigned processed_neighbour_counter = 0;
     // compute radius
-    for (auto const& neighbour : neighbours) {
-    	avg_distance += sqrt(neighbour.second);
+    for (auto const& neighbour : nearest_neighbours) {
+    	if( processed_neighbour_counter++ < number_of_neighbours_) {
+    		avg_distance += sqrt(neighbour.second);
+    	}
+    	else {
+    		break;
+    	}
     }
 
-    avg_distance /= neighbours.size();
+    avg_distance /= processed_neighbour_counter;
 
 	return avg_distance;
 	};

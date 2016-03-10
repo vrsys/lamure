@@ -335,10 +335,10 @@ construct()
 
 
         // perform upsweep
-        bvh.upsweep_new(*reduction_strategy, 
-                        *normal_comp_strategy, 
-                        *radius_comp_strategy,
-                        desc_.compute_normals_and_radii);
+        bvh.upsweep(*reduction_strategy, 
+                    *normal_comp_strategy, 
+                    *radius_comp_strategy,
+                    desc_.compute_normals_and_radii);
 
         delete reduction_strategy;
         delete normal_comp_strategy;

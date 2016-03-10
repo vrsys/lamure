@@ -12,9 +12,9 @@
 #include <lamure/pre/bvh.h>
 #include <lamure/pre/bvh_stream.h>
 #include <lamure/pre/basic_algorithms.h>
-//#include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/serialized_surfel.h>
 #include <lamure/pre/plane.h>
+#include <lamure/atomic_counter.h>
 #include <lamure/utils.h>
 #include <lamure/sphere.h>
 
@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <thread>
 #include <limits>
 #include <math.h>
 #include <memory>
@@ -183,7 +184,7 @@ get_node_ranges(const uint32_t depth) const
 void bvh::
 print_tree_properties() const
 {
-    LOGGER_INFO("Fan-out factor: " << int(fan_factor_));
+    LOGGER_INFO("Fan-out factor: " << int32_t(fan_factor_));
     LOGGER_INFO("Depth: " << depth_);
     LOGGER_INFO("Number of nodes: " << nodes_.size());
     LOGGER_INFO("Max surfels per node: " << max_surfels_per_node_);
@@ -314,11 +315,11 @@ downsweep(bool adjust_translation,
 
             // percent counter
             ++processed_nodes;
-            uint8_t new_percent_processed = (int)((float)(processed_nodes/first_leaf_ * 100));
+            uint8_t new_percent_processed = (uint8_t)((float)(processed_nodes/first_leaf_ * 100));
             if (percent_processed != new_percent_processed)
             {
                 percent_processed = new_percent_processed;
-                //std::cout << "\r" << (int)percent_processed << "% processed" << std::flush;
+                //std::cout << "\r" << (uint8_t)percent_processed << "% processed" << std::flush;
             }
 
         }
@@ -356,7 +357,7 @@ downsweep_subtree_in_core( const bvh_node& node,
                            uint8_t& percent_processed,
                            shared_file leaf_level_access)
 {
-    const size_t sort_parallelizm_thres = 2;
+
 
     size_t slice_left = node.node_id(),
            slice_right = node.node_id();
@@ -367,44 +368,7 @@ downsweep_subtree_in_core( const bvh_node& node,
         size_t new_slice_left = 0,
                new_slice_right = 0;
 
-        #pragma omp parallel for
-        for (size_t nid = slice_left; nid <= slice_right; ++nid) {
-            bvh_node& current_node = nodes_[nid];
-            // make sure that current node is in-core
-            assert(current_node.is_in_core());
-
-            // split and compute child bounding boxes
-            basic_algorithms::splitted_array<surfel_mem_array> surfel_arrays;
-            basic_algorithms::sort_and_split(current_node.mem_array(),
-                                            surfel_arrays,
-                                            current_node.get_bounding_box(),
-                                            current_node.get_bounding_box().get_longest_axis(),
-                                            fan_factor_,
-                                            (slice_right - slice_left) < sort_parallelizm_thres);
-
-            // iterate through children
-            for (size_t i = 0; i < surfel_arrays.size(); ++i) {
-                uint32_t child_id = get_child_id(nid, i);
-                nodes_[child_id] = bvh_node(child_id, level + 1,
-                                           surfel_arrays[i].second,
-                                           surfel_arrays[i].first);
-                if (nid == slice_left && i == 0)
-                    new_slice_left = child_id;
-                if (nid == slice_right && i == surfel_arrays.size() - 1)
-                    new_slice_right = child_id;
-            }
-
-            current_node.reset();
-
-            // percent counter
-            ++processed_nodes;
-            uint8_t new_percent_processed = (int)((float)(processed_nodes/(first_leaf_) * 100));
-            if (percent_processed != new_percent_processed)
-            {
-                percent_processed = new_percent_processed;
-                //std::cout << "\r" << (int)percent_processed << "% processed" << std::flush;
-            }
-        }
+        spawn_split_node_jobs(slice_left, slice_right, new_slice_left, new_slice_right, level);
 
         // expand the slice
         slice_left = new_slice_left;
@@ -412,15 +376,8 @@ downsweep_subtree_in_core( const bvh_node& node,
     }
 
     LOGGER_TRACE("Compute node properties for leaves");
-    // compute avg surfel radius for leaves
-    #pragma omp parallel for
-    for (size_t nid = slice_left; nid <= slice_right; ++nid) {
-        bvh_node& current_node = nodes_[nid];
-        auto props = basic_algorithms::compute_properties(current_node.mem_array(), rep_radius_algo_, false);
-        current_node.set_avg_surfel_radius(props.rep_radius);
-        current_node.set_centroid(props.centroid);
-        current_node.set_bounding_box(props.bbox);
-    }
+
+    spawn_compute_bounding_boxes_downsweep_jobs(slice_left, slice_right);
 
     LOGGER_TRACE("Save leaves to disk");
     // save leaves to disk
@@ -430,194 +387,6 @@ downsweep_subtree_in_core( const bvh_node& node,
                                  disk_leaf_destination, true);
         disk_leaf_destination += current_node.disk_array().length();
     }
-}
-
-void bvh::compute_normals_and_radii(const uint16_t number_of_neighbours)
-{
-    size_t number_of_leaves = std::pow(fan_factor_, depth_);
-
-    // load from disk
-    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
-    {
-        nodes_[i].load_from_disk();
-    }
-
-    size_t counter = 0;
-    uint16_t percentage = 0;
-
-    size_t old_i = first_leaf_;
-    real average_radius = 0.0;
-    real average_radius_for_node = 0.0;
-
-    std::cout << std::endl << "compute normals and radii" << std::endl;
-
-    // compute normals and radii
-    #pragma omp parallel for firstprivate(old_i, average_radius_for_node) shared(average_radius) collapse(2)
-    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
-    {
-        for (size_t k = 0; k < max_surfels_per_node_; ++k)
-        {
-
-            ++counter;
-            uint16_t new_percentage = int(float(counter)/(number_of_leaves*max_surfels_per_node_) * 100);
-            if (percentage + 1 == new_percentage)
-            {
-                percentage = new_percentage;
-                std::cout << "\r" << percentage << "% processed" << std::flush;
-            }
-
-            if (k < nodes_[i].mem_array().length())
-            {
-
-                // find nearest neighbours
-                std::vector<std::pair<surfel_id_t, real>> neighbours = get_nearest_neighbours(surfel_id_t(i, k), number_of_neighbours);
-                surfel surf = nodes_[i].mem_array().read_surfel(k);
-
-                // compute radius
-                real avg_distance = 0.0;
-
-                for (auto const& neighbour : neighbours)
-                {
-                    avg_distance += sqrt(neighbour.second);
-                }
-
-                avg_distance /= neighbours.size();
-
-                // compute normal
-                // see: http://missingbytes.blogspot.com/2012/06/fitting-plane-to-point-cloud.html
-
-                vec3r center = surf.pos();
-                vec3f normal(1.0, 0.0 , 0.0);
-
-                real sum_x_x = 0.0, sum_x_y = 0.0, sum_x_z = 0.0;
-                real sum_y_y = 0.0, sum_y_z = 0.0;
-                real sum_z_z = 0.0;
-
-                for (auto const& neighbour : neighbours)
-                {
-                    vec3r neighbour_pos = nodes_[neighbour.first.node_idx].mem_array().read_surfel(neighbour.first.surfel_idx).pos();
-                    // vec3r neighbour_pos = neighbour.first.pos();
-
-                    real diff_x = neighbour_pos.x - center.x;
-                    real diff_y = neighbour_pos.y - center.y;
-                    real diff_z = neighbour_pos.z - center.z;
-
-                    sum_x_x += diff_x * diff_x;
-                    sum_x_y += diff_x * diff_y;
-                    sum_x_z += diff_x * diff_z;
-                    sum_y_y += diff_y * diff_y;
-                    sum_y_z += diff_y * diff_z;
-                    sum_z_z += diff_z * diff_z;
-                }
-
-                scm::math::mat3f matrix;
-
-                matrix[0] = sum_x_x;
-                matrix[1] = sum_x_y;
-                matrix[2] = sum_x_z;
-
-                matrix[3] = sum_x_y;
-                matrix[4] = sum_y_y;
-                matrix[5] = sum_y_z;
-
-                matrix[6] = sum_x_z;
-                matrix[7] = sum_y_z;
-                matrix[8] = sum_z_z;
-
-                if (!(scm::math::determinant(matrix) == 0.0f))
-                {
-                    matrix = scm::math::inverse(matrix);
-
-                    float scale = fabs(matrix[0]);
-                    for (uint16_t i = 1; i < 9; ++i)
-                    {
-                        scale = std::max(scale, float(fabs(matrix[i])));
-                    }
-
-                    scm::math::mat3f matrix_c = matrix * (1.0f/scale);
-
-                    vec3f vector(1.0f, 1.0f, 1.0f);
-                    vec3f last_vector = vector;
-
-                    for (uint16_t i = 0; i < 100; i++)
-                    {
-                        vector = (matrix_c * vector);
-                        vector = scm::math::normalize(vector);
-
-                        if (pow(scm::math::length(vector - last_vector), 2) < 1e-16f)
-                        {
-                            break;
-                        }
-                        last_vector = vector;
-                    }
-
-                    normal = vector;
-                }
-
-                // write surfel
-                surf.radius() = avg_distance * 0.8;
-                surf.normal() = normal;
-                nodes_[i].mem_array().write_surfel(surf, k);
-
-                // update average node radius
-                if (i != old_i)
-                {
-                    average_radius += average_radius_for_node/nodes_[old_i].mem_array().length();
-                    average_radius_for_node = 0.0;
-                    old_i = i;
-                }
-                else
-                {
-                    average_radius_for_node += avg_distance * 0.8;
-                }
-            }
-        }
-    }
-
-    average_radius /= nodes_.size();
-
-    // filter outlier radii
-
-    std::cout << std::endl << std::endl << "filter outlier radii" << std::endl;
-
-    real max_radius = average_radius * 15.0;
-
-    counter = 0;
-    percentage = 0;
-
-    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
-    {
-        for (size_t k = 0; k < max_surfels_per_node_; ++k)
-        {
-            if (k < nodes_[i].mem_array().length())
-            {
-                ++counter;
-                uint16_t new_percentage = int(float(counter)/(number_of_leaves*max_surfels_per_node_) * 100);
-                if (percentage + 1 == new_percentage)
-                {
-                    percentage = new_percentage;
-                    std::cout << "\r" << percentage << "% processed" << std::flush;
-                }
-
-                surfel surf = nodes_[i].mem_array().read_surfel(k);
-
-                if (surf.radius() > max_radius)
-                {
-                    surf.radius() = max_radius;
-                    nodes_[i].mem_array().write_surfel(surf, k);
-                }
-            }
-        }
-    }
-
-
-    for (size_t i = first_leaf_; i < nodes_.size(); ++i)
-    {
-        nodes_[i].flush_to_disk(true);
-    }
-
-    std::cout << std::endl << std::endl;
-
 }
 
 void bvh::compute_normal_and_radius(
@@ -632,11 +401,15 @@ void bvh::compute_normal_and_radius(
             // read surfel
             surfel surf = source_node->mem_array().read_surfel(k);
 
+            uint16_t num_nearest_neighbours_to_search = std::max(radius_computation_strategy.number_of_neighbours(),
+                                                                 normal_computation_strategy.number_of_neighbours());
+
+            auto const& max_nearest_neighbours = get_nearest_neighbours(surfel_id_t(source_node->node_id(), k), num_nearest_neighbours_to_search);
             // compute radius
-            real radius = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k));
+            real radius = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);
 
             // compute normal
-            vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k));            
+            vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);            
 
             // write surfel
             surf.radius() = radius;
@@ -931,7 +704,7 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
     //project all points to the plane
     double* coords = new double[2*num_nearest_neighbours];
     scm::math::vec3f plane_right = plane.get_right();
-    for (unsigned int i = 0; i < num_nearest_neighbours; ++i) {
+    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
         vec3r v = vec3r(points[3*i+0], points[3*i+1], points[3*i+2]);
         vec2r c = plane_t::project(plane, plane_right, v);
         coords[2*i+0] = c[0];
@@ -955,11 +728,11 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
 
     std::vector<scm::math::vec2f> neighbour_2d_coord_pairs;
 
-    for (unsigned int i = 0; i < num_nearest_neighbours; ++i) {
+    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
         nni_sample_t sp;
         sp.xy_ = scm::math::vec2f(coords[2*i+0], coords[2*i+1]);
         Point2 p(sp.xy_.x, sp.xy_.y);
-        auto vertex_handle = delaunay_triangulation.insert(p);
+        delaunay_triangulation.insert(p);
         neighbour_2d_coord_pairs.emplace_back(coords[2*i+0], coords[2*i+1]);
     }
     
@@ -983,7 +756,7 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
         return natural_neighbour_ids;
     }
 
-    std::vector<std::pair<unsigned int, double> > nni_weights;
+    std::vector<std::pair<uint32_t, double> > nni_weights;
 
     for (const auto& sibs_coord_instance : sibson_coords) {
         uint32_t closest_nearest_neighbour_id = std::numeric_limits<uint32_t>::max();
@@ -1029,11 +802,21 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
 }
 
 std::vector<std::pair<surfel_id_t, real>> bvh::
-get_natural_neighbours(const surfel_id_t& target_surfel,
-                       const uint32_t num_nearest_neighbours) const {
+get_natural_neighbours(
+    const surfel_id_t& target_surfel,
+    const bool search_for_neighbours,
+    std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 
-    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids =
-    get_nearest_neighbours(target_surfel, num_nearest_neighbours);
+    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids;
+
+    if(search_for_neighbours) {
+        nearest_neighbour_ids = get_nearest_neighbours(target_surfel, 24);
+    } else {
+        for(int32_t k = 0; k < 24; ++k) {
+            nearest_neighbour_ids.emplace_back(nearest_neighbours[k]);
+        }
+    }
+    //get_nearest_neighbours(target_surfel, num_nearest_neighbours);
 
     std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
     
@@ -1109,32 +892,67 @@ get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_ve
 }
 
 void bvh::
-upsweep(const reduction_strategy& reduction_strtgy)
-{
-    LOGGER_TRACE("create level temp files");
+spawn_create_lod_jobs(const uint32_t first_node_of_level, 
+                      const uint32_t last_node_of_level,
+                      const reduction_strategy& reduction_strgy) {
+    uint32_t const num_threads = std::thread::hardware_concurrency();
 
-    std::vector<shared_file> level_temp_files;
-    for (uint32_t i = 0; i <= depth_; ++i) {
-        level_temp_files.push_back(std::make_shared<file>());
-        std::string ext = ".lv" + std::to_string(i);
-        level_temp_files.back()->open(add_to_path(base_path_, ext).string(),
-                                      i != depth_);
+    working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
+    std::vector<std::thread> threads;
+
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_create_lod, this, 
+                                      first_node_of_level, last_node_of_level, 
+                                      update_percentage, 
+                                      std::cref(reduction_strgy)  ) );
     }
 
-    LOGGER_TRACE("Compute LOD hierarchy");
-
-    std::atomic_uint ctr{ 0 };
-
-    #pragma omp parallel
-    {
-        #pragma omp single nowait
-        {
-            upsweep_r(nodes_[0], reduction_strtgy, level_temp_files, ctr);
-        }
+    for(auto& thread : threads){
+        thread.join();
     }
-    std::cout << std::endl << std::endl;
-    LOGGER_TRACE("Total processed nodes: " << ctr.load());
-    state_ = state_type::after_upsweep;
+}
+
+void bvh::
+spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
+                             const uint32_t last_node_of_level,
+                             const normal_computation_strategy& normal_strategy, 
+                             const radius_computation_strategy& radius_strategy) {
+    uint32_t const num_threads = std::thread::hardware_concurrency();
+    working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
+    std::vector<std::thread> threads;
+
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_compute_attributes, this, 
+                                      first_node_of_level, last_node_of_level, 
+                                      update_percentage, 
+                                      std::cref(normal_strategy), std::cref(radius_strategy)  ) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
+}
+
+void bvh::
+spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left, 
+                                            const uint32_t slice_right) {
+    uint32_t const num_threads = std::thread::hardware_concurrency();
+    working_queue_head_counter_.initialize(0); //let the threads fetch a local thread idx
+    std::vector<std::thread> threads;
+
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_compute_bounding_boxes_downsweep, this, 
+                                      slice_left, slice_right, 
+                                      update_percentage,
+                                      num_threads) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
 }
 
 void bvh::
@@ -1189,9 +1007,8 @@ subsample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_ar
         surfel current_surfel = output_mem_array.read_surfel(i);
 
         //replace big surfels by collection of average-size surfels
-        //if (current_surfel.radius() - avg_radius > max_radius_difference){
-        if(false) {
-               
+        if (current_surfel.radius() - avg_radius > max_radius_difference){
+       // if(false) {     
             //how many times does average radius fit into big radius
             int iteration_level = floor(current_surfel.radius()/(2*avg_radius));             
 
@@ -1224,12 +1041,332 @@ subsample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_ar
 }
 
 void bvh::
-upsweep_new(const reduction_strategy& reduction_strategy, 
-            const normal_computation_strategy& normal_strategy, 
-            const radius_computation_strategy& radius_strategy,
-            bool recompute_leaf_level)
-{
-    // Start at bottom level and move up towards root. 
+spawn_compute_bounding_boxes_upsweep_jobs(const uint32_t first_node_of_level, 
+                                          const uint32_t last_node_of_level,
+                                          const int32_t level) {
+    uint32_t const num_threads = std::thread::hardware_concurrency();
+    working_queue_head_counter_.initialize(0); //let the threads fetch a local thread idx
+    std::vector<std::thread> threads;
+
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_compute_bounding_boxes_upsweep, this, 
+                                      first_node_of_level, last_node_of_level, 
+                                      update_percentage,
+                                      level, num_threads) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
+}
+
+void bvh::
+spawn_split_node_jobs(size_t& slice_left,
+                      size_t& slice_right,
+                      size_t& new_slice_left,
+                      size_t& new_slice_right,
+                      const uint32_t level) {
+    uint32_t const num_threads = std::thread::hardware_concurrency();
+    working_queue_head_counter_.initialize(0); //let the threads fetch a local thread idx
+    std::vector<std::thread> threads;
+
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        bool update_percentage = (0 == thread_idx);
+        threads.push_back(std::thread(&bvh::thread_split_node_jobs, this, 
+                                      std::ref(slice_left), std::ref(slice_right), 
+                                      std::ref(new_slice_left), std::ref(new_slice_right),
+                                      update_percentage,
+                                      level, num_threads) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
+}
+
+void bvh::
+thread_create_lod(const uint32_t start_marker,
+                  const uint32_t end_marker,
+                  const bool update_percentage,
+                  const reduction_strategy& reduction_strgy) {
+    uint32_t node_index = working_queue_head_counter_.increment_head();
+    
+    while(node_index < end_marker) {
+        bvh_node* current_node = &nodes_.at(node_index);
+        std::vector<real> avg_radius_vector;
+        // If a node has no data yet, calculate it based on child nodes.
+        if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
+
+            std::vector<surfel_mem_array*> child_mem_arrays;
+            std::vector<surfel_mem_array*> subsampled_child_mem_arrays;
+            for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                size_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                bvh_node* child_node = &nodes_.at(child_id);
+
+                child_mem_arrays.push_back(&child_node->mem_array());
+                avg_radius_vector.push_back(child_node->avg_surfel_radius());
+            }
+            
+            real reduction_error;
+
+            std::vector<surfel_mem_array> mem_array_obj;
+            for (unsigned i=0; i<child_mem_arrays.size(); ++i){
+                mem_array_obj.emplace_back( std::make_shared<surfel_vector>(surfel_vector()), 0, 0 );
+            }
+
+
+            subsampled_child_mem_arrays.reserve(child_mem_arrays.size());
+            for (unsigned i=0; i<child_mem_arrays.size(); ++i){
+                real current_avg_radius = avg_radius_vector.at(i);
+                surfel_mem_array current_child_node = *child_mem_arrays.at(i);
+                subsample(current_child_node,mem_array_obj[i], current_avg_radius);
+                mem_array_obj[i].set_length(mem_array_obj[i].mem_data()->size());
+                subsampled_child_mem_arrays.push_back(&mem_array_obj.at(i));
+            }
+
+            surfel_mem_array reduction = reduction_strgy.create_lod(reduction_error, 
+                                                                    subsampled_child_mem_arrays, max_surfels_per_node_, 
+                                                                    (*this), get_child_id(current_node->node_id(), 0) );
+
+
+
+            current_node->reset(reduction);
+            current_node->set_reduction_error(reduction_error);
+
+        }
+
+        node_index = working_queue_head_counter_.increment_head();
+    }
+}
+
+void bvh::
+thread_compute_attributes(const uint32_t start_marker,
+                          const uint32_t end_marker,
+                          const bool update_percentage,
+                          const normal_computation_strategy& normal_strategy, 
+                          const radius_computation_strategy& radius_strategy) {
+
+    uint32_t node_index = working_queue_head_counter_.increment_head();
+    
+    uint16_t percentage = 0;
+    uint32_t length_of_level = (end_marker-start_marker) + 1;
+
+    while(node_index < end_marker) {
+        bvh_node* current_node = &nodes_.at(node_index);
+
+
+        // Calculate and set node properties.
+        compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+
+        if(update_percentage) {
+            uint16_t new_percentage = int32_t(float(node_index-start_marker)/(length_of_level) * 100);
+            if (percentage < new_percentage)
+            {
+                percentage = new_percentage;
+                std::cout << "\r" << percentage << "% processed" << std::flush;
+            }
+        }
+        node_index = working_queue_head_counter_.increment_head();
+    }
+};
+
+
+void bvh::
+thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
+                                        const uint32_t slice_right,
+                                        const bool update_percentage,
+                                        const uint32_t num_threads) {
+
+    uint32_t thread_idx = working_queue_head_counter_.increment_head();
+
+    uint32_t total_num_slices= (slice_right-slice_left) + 2;
+    uint32_t num_slices_per_thread = std::ceil(float(total_num_slices) / num_threads);
+
+    uint32_t local_start_index = slice_left + thread_idx * num_slices_per_thread;
+    uint32_t local_end_index   = slice_left + (thread_idx + 1) * num_slices_per_thread;
+
+    for(uint32_t slice_index = local_start_index; num_slices_per_thread < local_end_index; ++slice_index) {
+        //early termination if number of nodes could not be evenly divided
+        if(slice_index > slice_right) {
+            break;
+        }
+
+        bvh_node& current_node = nodes_[slice_index];
+        auto props = basic_algorithms::compute_properties(current_node.mem_array(), rep_radius_algo_, false);
+        current_node.set_avg_surfel_radius(props.rep_radius);
+        current_node.set_centroid(props.centroid);
+        current_node.set_bounding_box(props.bbox);
+    }
+}
+
+void bvh::
+thread_compute_bounding_boxes_upsweep(const uint32_t start_marker,
+                                      const uint32_t end_marker,
+                                      const bool update_percentage,
+                                      const int32_t level,
+                                      const uint32_t num_threads) {
+
+    uint32_t thread_idx = working_queue_head_counter_.increment_head();
+
+    uint32_t total_num_nodes = (end_marker-start_marker) + 1;
+    uint32_t num_nodes_per_thread = std::ceil(float(total_num_nodes) / num_threads);
+
+    uint32_t local_start_index = start_marker + thread_idx * num_nodes_per_thread;
+    uint32_t local_end_index   = start_marker + (thread_idx + 1) * num_nodes_per_thread;
+
+    for(uint32_t node_index = local_start_index; node_index < local_end_index; ++node_index) {
+        //early termination if number of nodes could not be evenly divided
+        if(node_index >= end_marker) {
+            break;
+        }
+
+        bvh_node* current_node = &nodes_.at(node_index);
+
+        basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), 
+                                                                                                rep_radius_algo_);
+
+        bounding_box node_bounding_box;
+        node_bounding_box.expand(props.bbox);
+
+        if (level < int32_t(depth_) ) {
+            for (int32_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                bvh_node* child_node = &nodes_.at(child_id);
+
+                node_bounding_box.expand(child_node->get_bounding_box());
+            }
+        }
+
+        current_node->set_avg_surfel_radius(props.rep_radius);
+        current_node->set_centroid(props.centroid);
+
+        current_node->set_bounding_box(node_bounding_box);
+        current_node->calculate_statistics();
+    }
+}
+
+void bvh::
+thread_remove_outlier_jobs(const uint32_t start_marker,
+                           const uint32_t end_marker,
+                           const uint32_t num_outliers,
+                           const uint16_t num_neighbours,
+                           std::vector< std::pair<surfel_id_t, real> >&  intermediate_outliers_for_thread) {
+
+    uint32_t node_idx = working_queue_head_counter_.increment_head();
+
+    while(node_idx < end_marker ) {
+
+        bvh_node* current_node = &nodes_.at(node_idx);
+        
+        for( size_t surfel_idx = 0; surfel_idx < current_node->mem_array().length(); ++surfel_idx) {
+
+            std::vector<std::pair<surfel_id_t, real>> const nearest_neighbour_vector 
+                = get_nearest_neighbours(surfel_id_t(node_idx, surfel_idx), num_neighbours);
+
+            double avg_dist = 0.0;
+
+            if( nearest_neighbour_vector.size() ) {
+                for( auto const& nearest_neighbour_pair : nearest_neighbour_vector ) {
+                    avg_dist += nearest_neighbour_pair.second;
+                }
+
+                avg_dist /= nearest_neighbour_vector.size();
+            }
+
+            bool insert_element = false;
+            if( intermediate_outliers_for_thread.size() < num_outliers ) {
+                insert_element = true;
+
+            } else if ( avg_dist > intermediate_outliers_for_thread.back().second ) {
+                intermediate_outliers_for_thread.pop_back();
+                insert_element = true;
+            }
+
+            if( insert_element ) {
+                intermediate_outliers_for_thread.push_back( std::make_pair(surfel_id_t(node_idx, surfel_idx), avg_dist) );
+
+                for (uint32_t k = intermediate_outliers_for_thread.size() - 1; k > 0; --k)
+                {
+                    if (intermediate_outliers_for_thread[k].second > intermediate_outliers_for_thread[k - 1].second)
+                    {
+                        std::swap(intermediate_outliers_for_thread[k], intermediate_outliers_for_thread[k - 1]);
+                    }
+                    else
+                        break;
+                }             
+            }
+        }
+
+        node_idx = working_queue_head_counter_.increment_head();
+    }
+
+}
+
+void bvh::
+thread_split_node_jobs(size_t& slice_left,
+                       size_t& slice_right,
+                       size_t& new_slice_left,
+                       size_t& new_slice_right,
+                       const bool update_percentage,
+                       const int32_t level,
+                       const uint32_t num_threads) {
+
+    const uint32_t sort_parallelizm_thres = 2;
+
+    uint32_t thread_idx = working_queue_head_counter_.increment_head();
+
+    uint32_t total_num_slices = (slice_right-slice_left) + 2;
+    uint32_t num_slices_per_thread = std::ceil(float(total_num_slices) / num_threads);
+
+    uint32_t local_start_index = slice_left + thread_idx * num_slices_per_thread;
+    uint32_t local_end_index   = slice_left + (thread_idx + 1) * num_slices_per_thread;
+
+    for(uint32_t slice_index = local_start_index; slice_index < local_end_index; ++slice_index) {
+
+        //early termination if number of nodes could not be evenly divided
+        if(slice_index > slice_right) {
+            break;
+        }
+
+        bvh_node& current_node = nodes_[slice_index];
+        // make sure that current node is in-core
+        assert(current_node.is_in_core());
+
+        // split and compute child bounding boxes
+        basic_algorithms::splitted_array<surfel_mem_array> surfel_arrays;
+        basic_algorithms::sort_and_split(current_node.mem_array(),
+                                        surfel_arrays,
+                                        current_node.get_bounding_box(),
+                                        current_node.get_bounding_box().get_longest_axis(),
+                                        fan_factor_,
+                                        (slice_right - slice_left) < sort_parallelizm_thres);
+
+        // iterate through children
+        for (size_t i = 0; i < surfel_arrays.size(); ++i) {
+            uint32_t child_id = get_child_id(slice_index, i);
+            nodes_[child_id] = bvh_node(child_id, level + 1,
+                                       surfel_arrays[i].second,
+                                       surfel_arrays[i].first);
+            if (slice_index == slice_left && i == 0)
+                new_slice_left = child_id;
+            if (slice_index == slice_right && i == surfel_arrays.size() - 1)
+                new_slice_right = child_id;
+        }
+
+        current_node.reset();
+
+    }
+}
+
+
+
+void bvh::
+upsweep(const reduction_strategy& reduction_strgy, 
+        const normal_computation_strategy& normal_strategy, 
+        const radius_computation_strategy& radius_strategy,
+        bool recompute_leaf_level) {
+    // Start at bottom level and move up towards root.
     for (int32_t level = depth_; level >= 0; --level)
     {
         std::cout << "Entering level: " << level << std::endl;
@@ -1247,116 +1384,20 @@ upsweep_new(const reduction_strategy& reduction_strategy,
                 current_node->load_from_disk();
             }
         }
-
-        // Used for progress visualization.
-        size_t counter = 0;
-        uint16_t percentage = 0;
-    
-
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
-        #pragma omp parallel for
-        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index) {
-            bvh_node* current_node = &nodes_.at(node_index);
-            real avg_radius_all_input_nodes = 1.0; //^^ used to compute average of avg_radius for all nodes per level
-            //real avg_radius_current_node = 0.0;
-            std::vector<real> avg_radius_vector;
-
-            if(level != depth_) {
-                // If a node has no data yet, calculate it based on child nodes.
-                if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
-
-                    std::vector<surfel_mem_array*> child_mem_arrays;
-                    std::vector<surfel_mem_array*> subsampled_cild_mem_arrays;
-                    for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
-                        size_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                        bvh_node* child_node = &nodes_.at(child_id);
-                     
-                        avg_radius_all_input_nodes = avg_radius_all_input_nodes + child_node->avg_surfel_radius();  
-
-
-                        child_mem_arrays.push_back(&child_node->mem_array());
-                        avg_radius_vector.push_back(child_node->avg_surfel_radius());
-                    }
-
-                    std::vector<surfel_mem_array> mem_array_obj;
-                    for (unsigned i=0; i<child_mem_arrays.size(); ++i){
-                        mem_array_obj.emplace_back( std::make_shared<surfel_vector>(surfel_vector()), 0, 0 );
-                    }
-
-
-                    subsampled_cild_mem_arrays.reserve(child_mem_arrays.size());
-                    for (unsigned i=0; i<child_mem_arrays.size(); ++i){
-                        real current_avg_radius = avg_radius_vector.at(i);
-                        surfel_mem_array current_cild_node = *child_mem_arrays.at(i);
-                        subsample(current_cild_node,mem_array_obj[i], current_avg_radius);
-                        mem_array_obj[i].set_length(mem_array_obj[i].mem_data()->size());
-                        subsampled_cild_mem_arrays.push_back(&mem_array_obj.at(i));
-                    }
-                
-                    real reduction_error;
-
-
-                    surfel_mem_array reduction = reduction_strategy.create_lod(reduction_error, subsampled_cild_mem_arrays, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0) ); 
-                    current_node->reset(reduction);
-                    current_node->set_reduction_error(reduction_error);
-                }
-            }
-            current_node->calculate_statistics();
+        if(level != int32_t(depth_) ) {
+            spawn_create_lod_jobs(first_node_of_level, last_node_of_level, reduction_strgy);
         }
 
-    
-
         {
-        // skip the leaf level attribute computation if it was not requested or necessary
-        if( !(level == depth_ && !recompute_leaf_level) ) {
-
-                #pragma omp parallel for
-                for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
-                {   
-                    bvh_node* current_node = &nodes_.at(node_index);
-
-
-                        // Calculate and set node properties.
-                        compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
-
-                        ++counter;
-                        uint16_t new_percentage = int(float(counter)/(get_length_of_depth(level)) * 100);
-                        if (percentage + 1 == new_percentage)
-                        {
-                            percentage = new_percentage;
-                            std::cout << "\r" << percentage << "% processed" << std::flush;
-                        }
-                }
-
+            // skip the leaf level attribute computation if it was not requested or necessary
+            if( !(level == int32_t(depth_) && !recompute_leaf_level ) ) {
+                spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy);
             }
 
-            #pragma omp parallel for
-            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
-            {   
-                bvh_node* current_node = &nodes_.at(node_index);
+            spawn_compute_bounding_boxes_upsweep_jobs(first_node_of_level, last_node_of_level, level);
 
-
-                basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), rep_radius_algo_);
-
-                bounding_box node_bounding_box;
-                node_bounding_box.expand(props.bbox);
-
-                if (level < depth_) {
-                    for (int child_index = 0; child_index < fan_factor_; ++child_index)
-                    {
-                        uint32_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                        bvh_node* child_node = &nodes_.at(child_id);
-
-                        node_bounding_box.expand(child_node->get_bounding_box());
-                    }
-                }
-
-                current_node->set_avg_surfel_radius(props.rep_radius);
-                current_node->set_centroid(props.centroid);
-
-                current_node->set_bounding_box(node_bounding_box);
-            }
             std::cout << std::endl;
         }
 
@@ -1389,165 +1430,44 @@ upsweep_new(const reduction_strategy& reduction_strategy,
     state_ = state_type::after_upsweep;
 }
 
-void bvh::
-upsweep_r(bvh_node& node,
-          const reduction_strategy& reduction_strtgy,
-          std::vector<shared_file>& level_temp_files,
-          std::atomic_uint& ctr)
-{
-    std::vector<surfel_mem_array*> child_arrays;
-
-    bounding_box new_bounding_box;
-
-    if (node.depth() == depth_ - 1) {
-        // leaf nodes
-        for (uint32_t j = 0; j < fan_factor_; ++j) {
-            const uint32_t id = get_child_id(node.node_id(), j);
-            assert(!nodes_[id].is_in_core());
-            nodes_[id].load_from_disk();
-            child_arrays.push_back(&nodes_[id].mem_array());
-            new_bounding_box.expand(nodes_[id].get_bounding_box());
-        }
-    }
-    else {
-        // inner nodes
-        for (uint32_t j = 0; j < fan_factor_; ++j) {
-            const uint32_t id = get_child_id(node.node_id(), j);
-            #pragma omp task shared(reduction_strtgy, level_temp_files, ctr)
-            upsweep_r(nodes_[id], reduction_strtgy, level_temp_files, ctr);
-        }
-        #pragma omp taskwait
-        for (uint32_t j = 0; j < fan_factor_; ++j) {
-            const uint32_t id = get_child_id(node.node_id(), j);
-            child_arrays.push_back(&nodes_[id].mem_array());
-            new_bounding_box.expand(nodes_[id].get_bounding_box());
-        }
-    }
-    //LOGGER_TRACE("1. LOD " << node.node_id());
-    // create LOD for current node
-    real reduction_error;
-
-    node.reset(reduction_strtgy.create_lod(reduction_error, child_arrays, max_surfels_per_node_, *this, get_child_id(node.node_id(), 0) ) );
-
-    //LOGGER_TRACE("2. Error " << node.node_id());
-    auto props = basic_algorithms::compute_properties(node.mem_array(), rep_radius_algo_);
-    new_bounding_box.expand(props.bbox);
-
-    // set reduction error, average radius, and new bounding box
-    node.set_reduction_error(reduction_error);
-    node.set_avg_surfel_radius(props.rep_radius);
-    node.set_centroid(props.centroid);
-    node.set_bounding_box(new_bounding_box);
-
-    // recompute bounding box
-    //const bounding_box bb = basic_algorithms::compute_aabb(node.mem_array(), false);
-    //node.set_bounding_box(bb);
-
-    //LOGGER_TRACE("3. Offset " << node.node_id());
-    // compute node offset in file
-    int32_t lid = node.node_id();
-    for (uint32_t i = 0; i < node.depth(); ++i)
-        lid -= uint32_t(pow(fan_factor_, i));
-    lid = std::max(0, lid);
-
-    //LOGGER_TRACE("4. Flush " << node.node_id());
-    // save computed node to disk
-    node.flush_to_disk(level_temp_files[node.depth()], size_t(lid) * max_surfels_per_node_, false);
-
-    //LOGGER_TRACE("5. Switch children " << node.node_id());
-    // switch children to out-of-core
-    for (uint32_t j = 0; j < fan_factor_; ++j) {
-        const uint32_t id = get_child_id(node.node_id(), j);
-        nodes_[id].mem_array().reset();
-    }
-
-    auto count = ctr.fetch_add(1u);
-
-    if (count % 50 == 0) {
-        const int p = 100 * (count + 1) / first_leaf_;
-        LOGGER_TRACE("Processed nodes so far: " << count + 1
-                                << " (" << p <<"%), current node_id " << node.node_id());
-        std::cout << "\r" << p << "% processed" << std::flush;
-    }
-}
 
 surfel_vector bvh::
 remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
 
     std::vector<std::vector< std::pair<surfel_id_t, real> > > intermediate_outliers;
-    std::vector<bool> already_resized;
 
-    intermediate_outliers.resize(omp_get_max_threads());
-    already_resized.resize(omp_get_max_threads());
+    uint32_t const num_threads = std::thread::hardware_concurrency();
+    intermediate_outliers.resize(num_threads);
+    //already_resized.resize(omp_get_max_threads())
 
-    for( unsigned i = 0; i < already_resized.size(); ++i ) {
-        already_resized[i] = false;
-    }
 
-    #pragma omp parallel for
     for(uint32_t node_idx = first_leaf_; node_idx < nodes_.size(); ++node_idx) {
-
-        size_t thread_id = omp_get_thread_num();
-
-
-        if( !already_resized[thread_id] ) {
-            intermediate_outliers[thread_id].reserve(num_outliers);
-            already_resized[thread_id] = true;
-        }
-
         bvh_node* current_node = &nodes_.at(node_idx);
         
         if (current_node->is_out_of_core())
         {
             current_node->load_from_disk();
         }
-
-        for( size_t surfel_idx = 0; surfel_idx < current_node->mem_array().length(); ++surfel_idx){
-
-            auto const nearest_neighbour_vector = get_nearest_neighbours(surfel_id_t(node_idx, surfel_idx), num_neighbours);
-
-            double avg_dist = 0.0;
-
-            if( nearest_neighbour_vector.size() ) {
-                for( auto const& nearest_neighbour_pair : nearest_neighbour_vector ) {
-                    avg_dist += nearest_neighbour_pair.second;
-                }
-
-                avg_dist /= nearest_neighbour_vector.size();
-            }
-
-            bool insert_element = false;
-            if( intermediate_outliers[thread_id].size() < num_outliers ) {
-                insert_element = true;
-
-            } else if ( avg_dist > intermediate_outliers[thread_id].back().second ) {
-                intermediate_outliers[thread_id].pop_back();
-                insert_element = true;
-            }
-
-            if( insert_element ) {
-                intermediate_outliers[thread_id].push_back( std::make_pair(surfel_id_t(node_idx, surfel_idx), avg_dist) );
-
-                for (uint32_t k = intermediate_outliers[thread_id].size() - 1; k > 0; --k)
-                {
-                    if (intermediate_outliers[thread_id][k].second > intermediate_outliers[thread_id][k - 1].second)
-                    {
-                        std::swap(intermediate_outliers[thread_id][k], intermediate_outliers[thread_id][k - 1]);
-                    }
-                    else
-                        break;
-                }             
-            }
-        }
-
-
     }
 
+
+    working_queue_head_counter_.initialize(first_leaf_);
+    std::vector<std::thread> threads;
+
+    for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+        threads.push_back(std::thread(&bvh::thread_remove_outlier_jobs, this, 
+                                      first_leaf_, nodes_.size(),
+                                      num_outliers, num_neighbours,
+                                      std::ref(intermediate_outliers[thread_idx]) ) );
+    }
+
+    for(auto& thread : threads){
+        thread.join();
+    }
 
     std::vector< std::pair<surfel_id_t, real> >  final_outliers;
 
     for (auto const& ve : intermediate_outliers) {
-        //std::cout << "Vector in Slot: " << result_counter++ << " contains " << ve.size() << " elements\n";
 
         for(auto const& element : ve) {
             bool insert_element = false;

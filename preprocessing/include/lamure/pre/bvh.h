@@ -17,6 +17,7 @@
 #include <lamure/pre/normal_computation_strategy.h>
 #include <lamure/pre/radius_computation_strategy.h>
 #include <lamure/pre/logger.h>
+#include <lamure/atomic_counter.h>
 
 #include <boost/filesystem.hpp>
 #include <unordered_set>
@@ -105,7 +106,8 @@ public:
     std::vector<std::pair<surfel_id_t, real>>
                         get_natural_neighbours(
                             const surfel_id_t& target_surfel,
-                            const uint32_t num_neighbours) const;
+                            const bool search_for_neighbours = true,
+                            std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours = std::vector<std::pair<surfel_id_t, real>>()) const;
 
     std::vector<std::pair<surfel, real> >
                         get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,
@@ -131,11 +133,10 @@ public:
                                                   const normal_computation_strategy& normal_computation_strategy,
                                                   const radius_computation_strategy& radius_computation_strategy);
 
-    void                upsweep(const reduction_strategy& strategy);
-    void                upsweep_new(const reduction_strategy& reduction_strategy, 
-                                    const normal_computation_strategy& normal_comp_strategy, 
-                                    const radius_computation_strategy& radius_comp_strategy,
-                                    bool recompute_leaf_level = true);
+    void                upsweep(const reduction_strategy& reduction_strategy, 
+                                const normal_computation_strategy& normal_comp_strategy, 
+                                const radius_computation_strategy& radius_comp_strategy,
+                                bool recompute_leaf_level = true);
 
     surfel_vector       remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
 
@@ -150,6 +151,7 @@ public:
     void                reset_nodes();
 
     static std::string  state_to_string(state_type state);
+
 
 protected:
     friend class bvh_stream;
@@ -168,7 +170,58 @@ protected:
     void                set_first_leaf(const node_id_type first_leaf) { first_leaf_ = first_leaf; };
     void                set_state(const state_type state) { state_ = state; };
 
+    void                spawn_create_lod_jobs(const uint32_t first_node_of_level, 
+                                              const uint32_t last_node_of_level,
+                                              const reduction_strategy& reduction_strgy);
+    void                spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
+                                                     const uint32_t last_node_of_level,
+                                                     const normal_computation_strategy& normal_strategy, 
+                                                     const radius_computation_strategy& radius_strategy);
+    void                spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left, 
+                                                                    const uint32_t slice_right);
+    void                spawn_compute_bounding_boxes_upsweep_jobs(const uint32_t first_node_of_level, 
+                                                                  const uint32_t last_node_of_level,
+                                                                  const int32_t level);
+    void                spawn_split_node_jobs(size_t& slice_left,
+                                              size_t& slice_right,
+                                              size_t& new_slice_left,
+                                              size_t& new_slice_right,
+                                              const uint32_t level);
+    
+    void                thread_remove_outlier_jobs(const uint32_t start_marker,
+                                                   const uint32_t end_marker,
+                                                   const uint32_t num_outliers,
+                                                   const uint16_t num_neighbours,
+                                                   std::vector< std::pair<surfel_id_t, real> >&  intermediate_outliers_for_thread);
+    void                thread_compute_attributes(const uint32_t start_marker,
+                                                  const uint32_t end_marker,
+                                                  const bool update_percentage,
+                                                  const normal_computation_strategy& normal_strategy, 
+                                                  const radius_computation_strategy& radius_strategy);
+    void                thread_create_lod(const uint32_t start_marker,
+                                          const uint32_t end_marker,
+                                          const bool update_percentage,
+                                          const reduction_strategy& reduction_strgy);
+    void                thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
+                                                                const uint32_t slice_right,
+                                                                const bool update_percentage,
+                                                                const uint32_t num_threads);
+    void                thread_compute_bounding_boxes_upsweep(const uint32_t start_marker,
+                                                              const uint32_t end_marker,
+                                                              const bool update_percentage,
+                                                              const int32_t level, 
+                                                              const uint32_t num_threads);
+    void                thread_split_node_jobs(      size_t& slice_left,
+                                                     size_t& slice_right,
+                                                     size_t& new_slice_left,
+                                                     size_t& new_slice_right,
+                                               const bool update_percentage,
+                                               const int32_t level,
+                                               const uint32_t num_threads);
+
 private:
+    atomic_counter<uint32_t> working_queue_head_counter_;
+
     state_type          state_ = state_type::null;
 
     std::vector<bvh_node>
@@ -208,13 +261,6 @@ private:
                             std::vector<size_t>& result,
                             const size_t desired_depth,
                             const std::unordered_set<size_t>& excluded_nodes) const;
-
-    void                upsweep_r(
-                            bvh_node& node,
-                            const reduction_strategy& reduction_strategy,
-                            std::vector<shared_file>& level_temp_files,
-                            std::atomic_uint& ctr);
-
 };
 
 using bvh_ptr = std::shared_ptr<bvh>;
