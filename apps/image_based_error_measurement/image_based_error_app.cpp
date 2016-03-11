@@ -376,8 +376,8 @@ compute_delta_E(std::string const& image_path_1,
     bool max_local_equals_max_global = (max_delta_E_errors_local[0] == max_global_error);
 
     //std::cout << "\n";
-    //std::cout << "min delta_E_erros_local: " << min_delta_E_errors_local[0] << "\n";
-    //std::cout << "max delta_E_erros_local: " << max_delta_E_errors_local[0] << "\n";
+    std::cout << "min delta_E_erros_local: " << min_delta_E_errors_local[0] << "\n";
+    std::cout << "max delta_E_erros_local: " << max_delta_E_errors_local[0] << "\n";
     std::cout << "\n";
     //std::cout << "De-Init FreeImage\n";
     FreeImage_DeInitialise();
