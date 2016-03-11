@@ -25,8 +25,8 @@ public:
 
     virtual surfel_mem_array create_lod(real& reduction_error, const std::vector<surfel_mem_array*>& input,
                                      	const uint32_t surfels_per_node,
-          								const bvh& tree,
-          								const size_t start_node_id) const = 0;
+          								            const bvh& tree,
+          								            const size_t start_node_id) const = 0;
 
     		void             interpolate_approx_natural_neighbours(surfel& surfel_to_update,
     															   std::vector<surfel> const& input_surfels,

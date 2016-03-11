@@ -327,6 +327,79 @@ merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const
 } 
 
 
+void reduction_k_clustering::
+subsample(surfel_mem_array& joined_input, real const avg_radius) const{
+    //std::cout<< "I should work on node with id: " << node.node_id() << "\n";
+    const real max_radius_difference = 0.0; //
+    //real avg_radius = node.avg_surfel_radius();
+
+    auto copute_new_postion = [] (surfel const& plane_ref_surfel, real radius_offset, real rot_angle) {
+        vec3r new_position (0.0, 0.0, 0.0);
+
+        vec3f n = plane_ref_surfel.normal();
+
+        //from random_point_on_surfel() in surfe.cpp
+        //find a vector orthogonal to given normal vector
+        scm::math::vec3f  u(std::numeric_limits<float>::lowest(),
+                            std::numeric_limits<float>::lowest(),
+                            std::numeric_limits<float>::lowest());
+        if(n.z != 0.0) {
+            u = scm::math::vec3f( 1, 1, (-n.x - n.y) / n.z);
+        } else if (n.y != 0.0) {
+            u = scm::math::vec3f( 1, (-n.x - n.z) / n.y, 1);
+        } else {
+            u = scm::math::vec3f( (-n.y - n.z)/n.x, 1, 1);
+        }
+        scm::math::normalize(u);
+
+        //vector rotation according to: https://en.wikipedia.org/wiki/Rodrigues'_rotation_formula
+        vec3f u_rotated = n*cos(rot_angle) + scm::math::cross(n,u)*sin(rot_angle) + u*scm::math::dot(n,u)*(1-cos(rot_angle));
+
+        //extend vector  lenght to match desired radius 
+        u_rotated = u_rotated*radius_offset;
+        
+        new_position = u_rotated - plane_ref_surfel.pos();
+        return new_position; 
+    };
+
+    //create new vector to store node surfels; unmodified + modified ones
+    surfel_mem_array modified_mem_array (std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+    for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i){
+
+        surfel current_surfel = joined_input.read_surfel(i);
+
+        //replace big surfels by collection of average-size surfels
+        if (current_surfel.radius() - avg_radius > max_radius_difference){
+            
+            //how many times does average radius fit into big radius
+            int itteration_level = floor(current_surfel.radius()/avg_radius);             
+
+            //keep all surfel properties but shrink its radius to the average radius
+            surfel new_surfel = current_surfel;
+            joined_input.mem_data()->pop_back(); //remove the big-radius surfel
+            new_surfel.radius() = avg_radius;
+            joined_input.mem_data()->push_back(new_surfel);            
+                    //modified_mem_array.mem_data()->push_back(new_surfel);
+
+            //create new average-size surfels to fill up the area orininally covered by bigger surfel            
+            for(int k = 1; k <= itteration_level; ++k){
+               uint16_t num_new_surfels = 6*k; //^^ formula basis https://en.wikipedia.org/wiki/Circle_packing_in_a_circle
+               for(int j = 0; j < num_new_surfels; ++j){
+                    real radius_offset = k*2*avg_radius; 
+                    real angle = 0.0;
+                    real angle_offset = 2*M_PI / num_new_surfels;
+                    new_surfel.color() = vec3b(1.0, 1.0, 1.0); 
+                    new_surfel.pos() = copute_new_postion(current_surfel, radius_offset, angle);
+                    joined_input.mem_data()->push_back(new_surfel);
+                            //modified_mem_array.mem_data()->push_back(new_surfel);
+                    angle += angle_offset;
+               }
+            }          
+        }
+    }
+
+}
+
 surfel_mem_array reduction_k_clustering::
 create_lod(real& reduction_error,
            const std::vector<surfel_mem_array*>& input,
@@ -337,6 +410,9 @@ create_lod(real& reduction_error,
     //create output array
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
+    //^^create surfel array for subsampling
+    surfel_mem_array mem_array_temp(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+
 
     //container for all input surfels including [total set S]
     shared_cluster_surfel_vector cluster_surfel_array;
@@ -345,10 +421,45 @@ create_lod(real& reduction_error,
     //cluster set M
     shared_cluster_surfel_vector cluster_surfel_output_array;
 
-    
+    //^^ interm. results: surfel + node_id
+    std::pair<surfel_mem_array, uint32_t> sufel_node_pair;
+
     uint32_t radius_discarded_surfels = 0;
 
-    // wrap all surfels of the input array to cluster_surfels
+    // pack all surfels of the input array in a vector to be subsampled
+    /*for (size_t node_id = 0; node_id < input.size(); ++node_id) {
+        for (size_t surfel_id = input[node_id]->offset();
+                    surfel_id < input[node_id]->offset() + input[node_id]->length();
+                    ++surfel_id){
+
+            //this surfel will be referenced in the cluster surfel
+            auto current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
+
+            // ignore outlier radii of any kind
+            if (current_surfel.radius() == 0.0) {
+                ++radius_discarded_surfels;
+                continue;
+            }
+
+            mem_array_temp.mem_data()->push_back(current_surfel);
+       }
+    }*/
+
+    //subsample
+    //subsample(mem_array_temp,avg_radius_all_nodes);
+
+    // wrap all surfels of the subsampled input array to cluster_surfels
+    /*for (uint32_t i = 0; i < mem_array_temp.mem_data()->size(); ++i) {
+        
+
+            //this surfel will be referenced in the cluster surfel
+            auto current_surfel = mem_array_temp.read_surfel(i);        
+
+            // only place where shared pointers should be created
+            cluster_surfel_array.push_back( std::make_shared<cluster_surfel>( cluster_surfel(current_surfel, i, node_id)  ) );
+    }*/
+
+       // wrap all surfels of the subsampled input array to cluster_surfels
     for (size_t node_id = 0; node_id < input.size(); ++node_id) {
         for (size_t surfel_id = input[node_id]->offset();
                     surfel_id < input[node_id]->offset() + input[node_id]->length();
@@ -369,7 +480,7 @@ create_lod(real& reduction_error,
     }
 
     //define basic features for every cluster_surfel   
-    for (auto const& target_surfel : cluster_surfel_array ){
+    for (auto const& target_surfel : cluster_surfel_array){
         assign_locally_overlapping_neighbours(target_surfel, cluster_surfel_array);
         compute_overlap(target_surfel, false);
         compute_deviation(target_surfel);

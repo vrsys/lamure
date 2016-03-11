@@ -150,6 +150,10 @@ explicit reduction_k_clustering(size_t num_neighbours):
                                   const uint32_t surfels_per_node,
                                   const bvh& tree,
                                   const size_t start_node_id) const override;
+    
+    
+
+
 private:
 
 
@@ -189,6 +193,8 @@ private:
                   shared_cluster_surfel_vector& total_surfel_set) const;
 
   void merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const;
+
+  void subsample(surfel_mem_array& joined_input, real const avg_radius) const;
 
 
 };
