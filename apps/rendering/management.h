@@ -126,6 +126,8 @@ private:
     scm::math::mat4f    reset_matrix_;
     float               reset_diameter_;
 
+    uint32_t            current_session_number_;
+
     lamure::model_t     num_models_;
 
     scm::math::vec3f    detail_translation_;

@@ -244,8 +244,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
 
             {
-
-
                 /***************************************************************************************
                 *******************************BEGIN DEPTH PASS*****************************************
                 ****************************************************************************************/
@@ -943,6 +941,7 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
 
         image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
+
 
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
 

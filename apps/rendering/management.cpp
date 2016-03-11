@@ -176,7 +176,14 @@ MainLoop()
 
     std::string status_string("");
 
+    if(camera_recording_enabled_) {
+        status_string += "Session recording (#"+std::to_string(current_session_number_) +") : ON\n";
+    } else {
+        status_string += "Session recording: OFF\n";
+    }
+
     if (! allow_user_input_) {
+
 
         status_string += std::to_string(measurement_session_descriptor_.recorded_view_vector_.size()+1) + " views left to write.\n";
 
@@ -779,7 +786,9 @@ create_quality_measurement_resources() {
                 return !boost::filesystem::is_directory(d.path());
             });
 
-        current_session_file_path_ = base_quality_measurement_path+session_file_prefix+std::to_string(num_existing_sessions+1)+".csn";
+        current_session_number_ = num_existing_sessions+1;
+
+        current_session_file_path_ = base_quality_measurement_path+session_file_prefix+std::to_string(current_session_number_)+".csn";
         
 
     }
@@ -787,4 +796,5 @@ create_quality_measurement_resources() {
     std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);
     active_camera_->write_view_matrix(camera_session_file);
     camera_session_file.close();
+
 }

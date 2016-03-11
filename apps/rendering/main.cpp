@@ -186,8 +186,8 @@ int main(int argc, char** argv)
     // set min and max
     window_width        = std::max(std::min(window_width, 4096), 1);
     window_height       = std::max(std::min(window_height, 2160), 1);
-    main_memory_budget  = std::max(int(main_memory_budget), 1024);
-    video_memory_budget = std::max(int(video_memory_budget), 512);
+    main_memory_budget  = std::max(int(main_memory_budget), 1);
+    video_memory_budget = std::max(int(video_memory_budget), 1);
     max_upload_budget   = std::max(int(max_upload_budget), 64);
 
     initialize_glut(argc, argv, window_width, window_height);

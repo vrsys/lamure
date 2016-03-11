@@ -246,7 +246,7 @@ write_delta_E_image(double* dE_arr, unsigned int im_w, unsigned im_h, double min
 
 
 bool image_based_error_app::
-compute_image_differences(std::string const& image_path_1, 
+compute_delta_E(std::string const& image_path_1, 
 						  std::string const& image_path_2, 
 						  std::string const& out_image_path) {
 
@@ -258,7 +258,7 @@ compute_image_differences(std::string const& image_path_1,
 	load_image_to_memory(image_path_2.c_str(), image_data_2_, image_width_2, image_height_2);
 
     if(image_width_1_ != image_width_2 || image_height_1_ != image_height_2) {
-        std::cout << "Dimensions of the images does not match\n";
+        std::cout << "Dimensions of the images do not match\n";
     }
 
     double** diff_values_local  = (double**) malloc( sizeof(double*));
@@ -285,7 +285,7 @@ compute_image_differences(std::string const& image_path_1,
 
     unsigned int valid_pixel_count = 0;
 
-    std::cout << "Reading & Converting\n";
+    //std::cout << "Reading & Converting\n";
 
     for( int i = 0; i < image_width_1_* image_height_1_; ++i ) {
         //std::cout << "Reading first component\n";
@@ -331,7 +331,7 @@ compute_image_differences(std::string const& image_path_1,
         ++valid_pixel_count;
     }
     
-    std::cout << "Read & Converted\n";
+    //std::cout << "Read & Converted\n";
 
     valid_pixel_array[0] = (double)valid_pixel_count / (image_width_1_*image_height_1_);
 
@@ -346,13 +346,14 @@ compute_image_differences(std::string const& image_path_1,
     min_delta_E_errors_local[0] = min_local_error;
     max_delta_E_errors_local[0] = max_local_error;
 
-    std::cout<<"Average pixel error sum of images ["<< out_image_path <<"]: "<<error_sum<<"\n";
+    std::cout << "\n";
+    std::cout<<"Average pixel deltaE sum of images ["<< out_image_path <<"]: "<<error_sum<<"\n";
 
     free_image_data(image_data_1_ );
     free_image_data(image_data_2_);
 
 
-    std::cout << "Write key\n";
+    //std::cout << "Write key\n";
     write_heatmap_key(1000, 30, out_image_path + "_key.png");
 
 
@@ -374,11 +375,11 @@ compute_image_differences(std::string const& image_path_1,
     bool min_local_equals_max_global = (min_delta_E_errors_local[0] == min_global_error);
     bool max_local_equals_max_global = (max_delta_E_errors_local[0] == max_global_error);
 
-
-    std::cout << "min delta_E_erros_local: " << min_delta_E_errors_local[0] << "\n";
-    std::cout << "max delta_E_erros_local: " << max_delta_E_errors_local[0] << "\n";
-
-    std::cout << "De-Init FreeImage\n";
+    //std::cout << "\n";
+    //std::cout << "min delta_E_erros_local: " << min_delta_E_errors_local[0] << "\n";
+    //std::cout << "max delta_E_erros_local: " << max_delta_E_errors_local[0] << "\n";
+    std::cout << "\n";
+    //std::cout << "De-Init FreeImage\n";
     FreeImage_DeInitialise();
 
 
@@ -392,9 +393,79 @@ compute_image_differences(std::string const& image_path_1,
     free(min_delta_E_errors_local);
     free(max_delta_E_errors_local);
     free(valid_pixel_array);
+}
+
+bool image_based_error_app::
+compute_normal_deviation(std::string const& image_path_1, 
+                         std::string const& image_path_2, 
+                         std::string const& out_image_path) {
+
+    load_image_to_memory(image_path_1.c_str(), image_data_1_, image_width_1_, image_height_1_);
+
+    int32_t image_width_2 = -1;
+    int32_t image_height_2 = -1;
+
+    load_image_to_memory(image_path_2.c_str(), image_data_2_, image_width_2, image_height_2);
+
+    if(image_width_1_ != image_width_2 || image_height_1_ != image_height_2) {
+        std::cout << "Dimensions of the images do not match\n";
+    }
 
 
 
+    //std::cout << "Reading & Converting\n";
+    unsigned pixel_difference = 0;
+    unsigned consistent_pixels = 0;
+
+    for( int i = 0; i < image_width_1_* image_height_1_; ++i ) {
+        //std::cout << "Reading first component\n";
+        unsigned char r1 = image_data_1_[i*4 + 0];
+        //std::cout << "Reading second component\n";
+        unsigned char g1 = image_data_1_[i*4 + 1];
+        unsigned char b1 = image_data_1_[i*4 + 2];
+
+        unsigned char r2 = image_data_2_[i*4 + 0];
+        unsigned char g2 = image_data_2_[i*4 + 1];
+        unsigned char b2 = image_data_2_[i*4 + 2];
+        //std::cout << "Read colors\n";
+/*
+        if( (r1 == 0 && g1 == 0 && b1 == 0) || (r2 == 0 && g2 == 0 && b2 == 0) ) {
+            continue;
+        }
+*/
+        bool pixel_1_is_bg = false;
+        bool pixel_2_is_bg = false;
+
+        if( (r1 == 0 && g1 == 0 && b1 == 0) ) {
+            pixel_1_is_bg = true;
+        }
+
+        if( (r2 == 0 && g2 == 0 && b2 == 0) ) {
+            pixel_2_is_bg = true;
+        }
+
+
+        if( (!pixel_2_is_bg) && (!pixel_1_is_bg) ) {
+            consistent_pixels++;
+        } else if(  ( (pixel_2_is_bg) && (!pixel_1_is_bg) ) || ( (!pixel_2_is_bg) && (pixel_1_is_bg) ) ) {
+            pixel_difference++;
+        }
+    }
+
+    free_image_data(image_data_1_ );
+    free_image_data(image_data_2_);
+
+
+    //std::cout << "Consistent pixels: " << consistent_pixels << "\n";
+    std::cout << "Image Based Geometric Error: " << pixel_difference << " pixels ("<<100*pixel_difference/float(image_width_1_*image_width_1_)<<" percent of the image ) \n\n";
+    //std::cout << "min normal_deviation_erros_local: " << min_delta_E_errors_local[0] << "\n";
+    //std::cout << "max normal_deviation_errors_local: " << max_delta_E_errors_local[0] << "\n";
+
+    //std::cout << "De-Init FreeImage\n";
+    FreeImage_DeInitialise();
+
+
+    return true;
 }
 
 bool image_based_error_app::
