@@ -15,41 +15,14 @@ namespace lamure {
 // default type for storing coordinates
 using real = double; //< for surfel position and radius
 
-// tree node index types
+// tree types
 using node_id_type = uint32_t;
 
-// global identifier of surfel
-struct surfel_id_t {
-    node_id_type node_idx;
-    size_t surfel_idx;
-
-    surfel_id_t(node_id_type node_i, size_t surfel_i)
-     :node_idx(node_i)
-     ,surfel_idx(surfel_i)
-    {}
-
-    friend bool operator==(surfel_id_t const& lhs, surfel_id_t const& rhs) {
-        return lhs.node_idx == rhs.node_idx &&
-               lhs.surfel_idx == rhs.surfel_idx;
-    }
-
-    friend bool operator<(surfel_id_t const& lhs, surfel_id_t const& rhs) {
-        if(lhs.node_idx == rhs.node_idx)
-            return lhs.surfel_idx < rhs.surfel_idx;
-
-        return lhs.node_idx < rhs.node_idx;
-    }
-};
-
 // math
-
-using vec2r  = scm::math::vec<real, 2>;
-using vec2f  = scm::math::vec2f;
 using vec3r  = scm::math::vec<real, 3>; //< for surfel position
 using vec3f  = scm::math::vec3f;
 using vec3ui = scm::math::vec<uint32_t, 3>;
 using vec3b  = scm::math::vec<uint8_t, 3>;
-using mat3r  = scm::math::mat<real, 3, 3>;
 using mat4r  = scm::math::mat<real, 4, 4>;
 using mat4f  = scm::math::mat4f;
 

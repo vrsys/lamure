@@ -14,7 +14,8 @@
 #include <lamure/bounding_box.h>
 
 namespace lamure {
-namespace pre {
+namespace pre
+{
 
 /**
 * A group of basic algorithms, which are used during tree construction.
@@ -50,8 +51,7 @@ public:
 
     static surfel_group_properties
                         compute_properties(const surfel_mem_array& sa,
-                                          const rep_radius_algorithm rep_radius_algo,
-                                          bool use_radii_for_node_expansion = true);
+                                          const rep_radius_algorithm rep_radius_algo);
 
     static void         sort_and_split(surfel_mem_array& sa,
                                      splitted_array<surfel_mem_array>& out,

@@ -426,6 +426,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
        write(node);
    }
 
+
    if (intermediate) {
        bvh_tree_extension_seg tree_ext;
        tree_ext.segment_id_ = num_segments_++;
@@ -483,6 +484,9 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
        }
 
        write(tree_ext);
+   }
+   else {
+       bvh.set_state(bvh::state_type::serialized);
    }
 
    close_stream(false);

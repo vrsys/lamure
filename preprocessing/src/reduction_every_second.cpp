@@ -13,9 +13,7 @@ namespace pre {
 surfel_mem_array reduction_every_second::
 create_lod(real& reduction_error,
           const std::vector<surfel_mem_array*>& input,
-          const uint32_t surfels_per_node,
-          const bvh& tree,
-          const size_t start_node_id) const
+          const uint32_t surfels_per_node) const
 {
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 

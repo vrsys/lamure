@@ -12,8 +12,6 @@
 #include <sstream>
 #include <iostream>
 
-#define DEFAULT_PRECISION 15
-
 namespace lamure {
 namespace pre {
 
@@ -80,7 +78,7 @@ write(const std::string& filename, buffer_callback_function callback)
             break;
 
         for (const auto s: buffer) {
-            xyz_file_stream << std::setprecision(DEFAULT_PRECISION) << s.pos().x << " " << s.pos().y << " " << s.pos().z << " "
+            xyz_file_stream << s.pos().x << " " << s.pos().y << " " << s.pos().z << " "
                             << int(s.color().r) << " " << int(s.color().g) << " " << int(s.color().b) << "\r\n";
         }
 

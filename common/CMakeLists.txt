@@ -23,10 +23,9 @@ SOURCE_GROUP("common" FILES ${PLATFORM_INCLUDE})
 
 include_directories(${PROJECT_INCLUDE_DIR}
                     ${PROJECT_BINARY_DIR}
-                    ${LAMURE_CONFIG_DIR})
-
-include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
-                           ${Boost_INCLUDE_DIR})
+                    ${LAMURE_CONFIG_DIR}
+                    ${SCHISM_INCLUDE_DIRS}
+                    ${Boost_INCLUDE_DIR})
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 

@@ -26,9 +26,7 @@ public:
 
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
-                                  const uint32_t surfels_per_node,
-                                  const bvh& tree,
-                                  const size_t start_node_id) const override;
+                                  const uint32_t surfels_per_node) const override;
 
 private:
 

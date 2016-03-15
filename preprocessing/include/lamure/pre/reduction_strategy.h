@@ -14,8 +14,6 @@
 namespace lamure {
 namespace pre {
 
-class bvh;
-
 class reduction_strategy
 {
 public:
@@ -23,9 +21,7 @@ public:
     virtual ~reduction_strategy() {}
 
     virtual surfel_mem_array create_lod(real& reduction_error, const std::vector<surfel_mem_array*>& input,
-                                     	const uint32_t surfels_per_node,
-          								const bvh& tree,
-          								const size_t start_node_id) const = 0;
+                                     const uint32_t surfels_per_node) const = 0;
 
 };
 

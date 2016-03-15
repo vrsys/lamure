@@ -17,17 +17,11 @@
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
 
-#include <lamure/pre/normal_computation_plane_fitting.h>
-#include <lamure/pre/radius_computation_average_distance.h>
-#include <lamure/pre/radius_computation_natural_neighbours.h>
+#include <lamure/pre/normal_radii_plane_fitting.h>
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
 #include <lamure/pre/reduction_random.h>
-#include <lamure/pre/reduction_entropy.h>
-#include <lamure/pre/reduction_particle_simulation.h>
-#include <lamure/pre/reduction_hierarchical_clustering.h>
-#include <lamure/pre/reduction_k_clustering.h>
 
 #include <cstdio>
 
@@ -110,45 +104,19 @@ construct()
             break;
         case reduction_algorithm::random:
             reduction_strategy = new reduction_random();
-            break;
-        case reduction_algorithm::entropy:
-            reduction_strategy = new reduction_entropy();
-            break;
-        case reduction_algorithm::particle_sim:
-            reduction_strategy = new reduction_particle_simulation();
-            break;
-        case reduction_algorithm::hierarchical_clustering:
-            reduction_strategy = new reduction_hierarchical_clustering();
-            break;
-        case reduction_algorithm::k_clustering:
-            reduction_strategy = new reduction_k_clustering(desc_.number_of_neighbours);
-            break;
+            break;          
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return false;
     };
 
-    normal_computation_strategy *normal_comp_strategy;
-    switch (desc_.normal_computation_algo) {
-        case normal_computation_algorithm::plane_fitting:
-            normal_comp_strategy = new normal_computation_plane_fitting(desc_.number_of_neighbours);
+    normal_radii_strategy *normal_radii_strategy;
+    switch (desc_.normal_radius_algo) {
+        case normal_radius_algorithm::plane_fitting:
+            normal_radii_strategy = new normal_radii_plane_fitting();
             break;       
         default:
-            LOGGER_ERROR("Non-implemented normal computation algorithm");
-            return false;
-    };
-
-
-    radius_computation_strategy *radius_comp_strategy;
-    switch (desc_.radius_computation_algo) {
-        case radius_computation_algorithm::average_distance:
-            radius_comp_strategy = new radius_computation_average_distance(desc_.number_of_neighbours);
-            break;
-        case radius_computation_algorithm::natural_neighbours:
-            radius_comp_strategy = new radius_computation_natural_neighbours(20, 10, 3);
-            break;
-        default:
-            LOGGER_ERROR("Non-implemented radius computation algorithm");
+            LOGGER_ERROR("Non-implemented atribute computation algorithm");
             return false;
     };
 
@@ -197,11 +165,10 @@ construct()
         LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }
 
-/*
     // (re)compute normals and radii
     if ((1 >= start_stage) && (1 <= final_stage) && desc_.compute_normals_and_radii) {
         std::cout << "--------------------------------" << std::endl;
-        std::cout << "downsweep" << std::endl;
+        std::cout << "compute normals and radii" << std::endl;
         std::cout << "--------------------------------" << std::endl;
 
         const std::string input_file_type = input_file.extension().string();
@@ -224,8 +191,16 @@ construct()
 
         bvh.downsweep(false, input_file.string(), true);
 
+        // compute normals and radii
+        LOGGER_TRACE("compute normals and radii");
+
+        CPU_TIMER;
+        bvh.compute_normals_and_radii(desc_.number_of_neighbours);
+
+        // set new input file name
+        //fs::path input_file_path = fs::path(input_file);
+        input_file = add_to_path(base_path_, ".bin_all");
     }
-*/
 
     // downsweep (create bvh)
     if ((2 >= start_stage) && (2 <= final_stage)) {
@@ -264,17 +239,6 @@ construct()
         input_file = bvhd_file;
 
         LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
-
-/*
-        // statistical outlier removal
-        std::cout << "--------------------------------" << std::endl;
-        std::cout << "removing outliers" << std::endl;
-        std::cout << "--------------------------------" << std::endl;
-        bvh.remove_outliers_statistically(0.05);
-        std::cout << "--------------------------------" << std::endl;
-        std::cout << "DONE removing outliers" << std::endl;
-        std::cout << "--------------------------------" << std::endl;
-*/
     }
 
     // upsweep (create LOD)
@@ -299,14 +263,8 @@ construct()
 
 
         // perform upsweep
-        bvh.upsweep_new(*reduction_strategy, 
-                        *normal_comp_strategy, 
-                        *radius_comp_strategy,
-                        desc_.compute_normals_and_radii);
-
+        bvh.upsweep(*reduction_strategy);
         delete reduction_strategy;
-        delete normal_comp_strategy;
-        delete radius_comp_strategy;
 
         auto bvhu_file = add_to_path(base_path_, ".bvhu");
         bvh.serialize_tree_to_file(bvhu_file.string(), true);

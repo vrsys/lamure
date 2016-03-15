@@ -306,9 +306,7 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
 surfel_mem_array reduction_normal_deviation_clustering::
 create_lod(real& reduction_error,
           const std::vector<surfel_mem_array*>& input,
-          const uint32_t surfels_per_node,
-          const bvh& tree,
-          const size_t start_node_id) const
+          const uint32_t surfels_per_node) const
 {
     // compute bounding box for actual surfels
     bounding_box bbox = basic_algorithms::compute_aabb(*input[0], true);

@@ -48,13 +48,6 @@ bvh_node::
 }
 
 void bvh_node::
-calculate_statistics()
-{ 
-  node_stats_.calculate_statistics(mem_array_);
-  node_stats_.set_dirty(false);
-}
-
-void bvh_node::
 reset()
 {
     mem_array_.reset();

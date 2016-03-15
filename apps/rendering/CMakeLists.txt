@@ -7,10 +7,10 @@ include_directories(${REND_INCLUDE_DIR}
                     ${COMMON_INCLUDE_DIR}
                     ${GLUT_INCLUDE_DIR}
                     ${FREEIMAGE_INCLUDE_DIR}
-			        ${LAMURE_CONFIG_DIR})
-
-include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
-                           ${Boost_INCLUDE_DIR})
+					          ${LAMURE_CONFIG_DIR}
+                    ${SCHISM_INCLUDE_DIRS}
+                    ${SCHISM_INCLUDE_DIRS}
+                    ${Boost_INCLUDE_DIR})
 
 InitApp(${CMAKE_PROJECT_NAME}_rendering)
 
