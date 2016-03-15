@@ -86,8 +86,6 @@ namespace ren {
 #define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE cache_queue::update_mode::UPDATE_ALWAYS
 //#define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE cache_queue::update_mode::UPDATE_INCREMENT_ONLY
 
-//#define LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
-
 //------------------------------
 //for bvh_stream: 
 //------------------------------
