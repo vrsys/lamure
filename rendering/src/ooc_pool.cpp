@@ -88,15 +88,24 @@ run() {
     model_database* database = model_database::get_instance();
     model_t num_models = database->num_models();
 
+#ifdef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
     std::vector<lod_stream*> lod_streams;
+#else
+    std::vector<std::string> lod_files;
+#endif
+
 
     for (model_t model_id = 0; model_id < num_models; ++model_id) {
         std::string bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
         std::string lod_file_name = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
 
+#ifdef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
         lod_stream* access = new lod_stream();
         access->open(lod_file_name);
         lod_streams.push_back(access);
+#else
+        lod_files.push_back(lod_file_name);
+#endif
     }
 
     char* local_cache = new char[size_of_slot_];
@@ -115,8 +124,13 @@ run() {
             size_t stride_in_bytes = database->get_node_size(job.model_id_);
             size_t offset_in_bytes = job.node_id_ * stride_in_bytes;
 
+#ifdef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
             lod_streams[job.model_id_]->read(local_cache, offset_in_bytes, stride_in_bytes);
-
+#else
+            lod_stream access;
+            access.open(lod_files[job.model_id_]);
+            access.read(local_cache, offset_in_bytes, stride_in_bytes);
+#endif
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 bytes_loaded_ += stride_in_bytes;
@@ -124,11 +138,16 @@ run() {
                 history_.push_back(job);
             }
 
+#ifndef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
+            access.close();
+#endif
+
         }
 
     }
 
     {
+#ifdef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
         for (model_t model_id = 0; model_id < num_models; ++model_id) {
             lod_stream* lod_stream = lod_streams[model_id];
             if (lod_stream != nullptr) {
@@ -138,6 +157,9 @@ run() {
             }
         }
         lod_streams.clear();
+#else
+        lod_files.clear();
+#endif
 
         if (local_cache != nullptr) {
             delete[] local_cache;
