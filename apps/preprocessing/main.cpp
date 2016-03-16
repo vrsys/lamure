@@ -101,6 +101,9 @@ int main(int argc, const char *argv[])
         ("keep-interm,k",
          "prevents deletion of intermediate files")
 
+        ("resample",
+         "resample to replace huge surfels by collection of smaller one")
+
         ("mem-ratio,m",
          po::value<float>()->default_value(0.6, "0.6"),
          "the ratio to the total amount of physical memory available on the "
@@ -323,6 +326,7 @@ int main(int argc, const char *argv[])
         desc.final_stage                  = vm["final-stage"].as<int>();
         desc.compute_normals_and_radii    = vm.count("recompute");
         desc.keep_intermediate_files      = vm.count("keep-interm");
+        desc.resample                     = vm.count("resample");
         desc.memory_ratio                 = std::max(vm["mem-ratio"].as<float>(), 0.05f);
         desc.buffer_size                  = buffer_size;
         desc.number_of_neighbours         = std::max(vm["neighbours"].as<int>(), 1);

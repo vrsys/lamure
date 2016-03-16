@@ -894,7 +894,8 @@ get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_ve
 void bvh::
 spawn_create_lod_jobs(const uint32_t first_node_of_level, 
                       const uint32_t last_node_of_level,
-                      const reduction_strategy& reduction_strgy) {
+                      const reduction_strategy& reduction_strgy,
+                      bool resample) {
     uint32_t const num_threads = std::thread::hardware_concurrency();
 
     working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
@@ -905,7 +906,8 @@ spawn_create_lod_jobs(const uint32_t first_node_of_level,
         threads.push_back(std::thread(&bvh::thread_create_lod, this, 
                                       first_node_of_level, last_node_of_level, 
                                       update_percentage, 
-                                      std::cref(reduction_strgy)  ) );
+                                      std::cref(reduction_strgy),
+                                      resample  ) );
     }
 
     for(auto& thread : threads){
@@ -956,7 +958,8 @@ spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left,
 }
 
 void bvh::
-subsample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_array, real const avg_radius) const
+resample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_array, 
+          real const avg_radius) const
 {
     
     for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i){
@@ -1008,14 +1011,14 @@ subsample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_ar
 
         //replace big surfels by collection of average-size surfels
         if (current_surfel.radius() - avg_radius > max_radius_difference){
-       // if(false) {     
+        //if(false) {     
             //how many times does average radius fit into big radius
             int iteration_level = floor(current_surfel.radius()/(2*avg_radius));             
 
             //keep all surfel properties but shrink its radius to the average radius
             surfel new_surfel = current_surfel;
             new_surfel.radius() = avg_radius;
-           // new_surfel.color() = vec3b(100, 120, 0); //^^change color for test reasons
+            //new_surfel.color() = vec3b(100, 120, 0); //^^change color for test reasons
             output_mem_array.write_surfel(new_surfel, i);            
             
 
@@ -1089,7 +1092,8 @@ void bvh::
 thread_create_lod(const uint32_t start_marker,
                   const uint32_t end_marker,
                   const bool update_percentage,
-                  const reduction_strategy& reduction_strgy) {
+                  const reduction_strategy& reduction_strgy,
+                  bool do_resample) {
     uint32_t node_index = working_queue_head_counter_.increment_head();
     
     while(node_index < end_marker) {
@@ -1109,26 +1113,40 @@ thread_create_lod(const uint32_t start_marker,
             }
             
             real reduction_error;
+            
+            //simplified data will be stored here
+            surfel_mem_array reduction (std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
-            std::vector<surfel_mem_array> mem_array_obj;
-            for (unsigned i=0; i<child_mem_arrays.size(); ++i){
+            if (!do_resample){
+
+            reduction = reduction_strgy.create_lod(reduction_error, 
+                                                   child_mem_arrays, max_surfels_per_node_, 
+                                                   (*this), get_child_id(current_node->node_id(), 0) );
+
+            }
+            else{
+                std::vector<surfel_mem_array> mem_array_obj;
+                for (unsigned i=0; i<child_mem_arrays.size(); ++i){
                 mem_array_obj.emplace_back( std::make_shared<surfel_vector>(surfel_vector()), 0, 0 );
+                }
+
+
+                subsampled_child_mem_arrays.reserve(child_mem_arrays.size());
+                for (unsigned i=0; i<child_mem_arrays.size(); ++i){
+                    real current_avg_radius = avg_radius_vector.at(i);
+                    surfel_mem_array current_child_node = *child_mem_arrays.at(i);
+                    resample(current_child_node,mem_array_obj[i], current_avg_radius);
+                    mem_array_obj[i].set_length(mem_array_obj[i].mem_data()->size());
+                    subsampled_child_mem_arrays.push_back(&mem_array_obj.at(i));
+                }
+
+
+                reduction = reduction_strgy.create_lod(reduction_error, 
+                                                       subsampled_child_mem_arrays, max_surfels_per_node_, 
+                                                       (*this), get_child_id(current_node->node_id(), 0) );
+
             }
-
-
-            subsampled_child_mem_arrays.reserve(child_mem_arrays.size());
-            for (unsigned i=0; i<child_mem_arrays.size(); ++i){
-                real current_avg_radius = avg_radius_vector.at(i);
-                surfel_mem_array current_child_node = *child_mem_arrays.at(i);
-                subsample(current_child_node,mem_array_obj[i], current_avg_radius);
-                mem_array_obj[i].set_length(mem_array_obj[i].mem_data()->size());
-                subsampled_child_mem_arrays.push_back(&mem_array_obj.at(i));
-            }
-
-            surfel_mem_array reduction = reduction_strgy.create_lod(reduction_error, 
-                                                                    subsampled_child_mem_arrays, max_surfels_per_node_, 
-                                                                    (*this), get_child_id(current_node->node_id(), 0) );
-
+            
 
 
             current_node->reset(reduction);
@@ -1365,7 +1383,8 @@ void bvh::
 upsweep(const reduction_strategy& reduction_strgy, 
         const normal_computation_strategy& normal_strategy, 
         const radius_computation_strategy& radius_strategy,
-        bool recompute_leaf_level) {
+        bool recompute_leaf_level,
+        bool resample) {
     // Start at bottom level and move up towards root.
     for (int32_t level = depth_; level >= 0; --level)
     {
@@ -1387,7 +1406,7 @@ upsweep(const reduction_strategy& reduction_strgy,
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
         if(level != int32_t(depth_) ) {
-            spawn_create_lod_jobs(first_node_of_level, last_node_of_level, reduction_strgy);
+            spawn_create_lod_jobs(first_node_of_level, last_node_of_level, reduction_strgy, resample);
         }
 
         {
@@ -1401,6 +1420,30 @@ upsweep(const reduction_strategy& reduction_strgy,
             std::cout << std::endl;
         }
 
+        //if(level < 3){
+              //std::fstream txtfile ("node_stats.txt");
+        real mean_radius_sd = 0.0;
+        uint counter = 1;
+        for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index){
+
+            bvh_node* current_node = &nodes_.at(node_index);
+
+            //std::cout<< "mean radius: "<< (*current_node).node_stats().mean_radius() << std::endl;
+            mean_radius_sd = mean_radius_sd + (*current_node).node_stats().radius_sd();
+            counter++;
+              /*if (txtfile.is_open())
+              {
+                txtfile << "Entering level: " << level << std::endl;
+                txtfile <<"mean radius: "<< (*current_node).node_stats().mean_radius() << std::endl;
+                txtfile.close();
+              }
+              else std::cout << "Unable to open file \n";*/
+              //std::cout<< "mean radius pro node: "<< (*current_node).node_stats().mean_radius() << "\n";
+        }
+        mean_radius_sd = mean_radius_sd/counter;
+        std::cout<< "average radius deviation pro level: "<< mean_radius_sd << "\n";
+
+        //}
     }
 
     // Create level temp files

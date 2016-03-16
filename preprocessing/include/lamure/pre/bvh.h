@@ -80,7 +80,7 @@ public:
     const node_t        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
 
-    void/*surfel_mem_array*/    subsample(surfel_mem_array const&  child_mem_array,
+    void                resample(surfel_mem_array const&  child_mem_array,
                                   surfel_mem_array& output_mem_array,
                                   real const avg_radius) const;
 
@@ -136,7 +136,8 @@ public:
     void                upsweep(const reduction_strategy& reduction_strategy, 
                                 const normal_computation_strategy& normal_comp_strategy, 
                                 const radius_computation_strategy& radius_comp_strategy,
-                                bool recompute_leaf_level = true);
+                                bool recompute_leaf_level = true,
+                                bool resample = false);
 
     surfel_vector       remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
 
@@ -172,7 +173,8 @@ protected:
 
     void                spawn_create_lod_jobs(const uint32_t first_node_of_level, 
                                               const uint32_t last_node_of_level,
-                                              const reduction_strategy& reduction_strgy);
+                                              const reduction_strategy& reduction_strgy,
+                                              bool resample);
     void                spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
                                                      const uint32_t last_node_of_level,
                                                      const normal_computation_strategy& normal_strategy, 
@@ -201,7 +203,8 @@ protected:
     void                thread_create_lod(const uint32_t start_marker,
                                           const uint32_t end_marker,
                                           const bool update_percentage,
-                                          const reduction_strategy& reduction_strgy);
+                                          const reduction_strategy& reduction_strgy,
+                                          bool resample);
     void                thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
                                                                 const uint32_t slice_right,
                                                                 const bool update_percentage,
