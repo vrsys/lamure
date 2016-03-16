@@ -93,6 +93,8 @@ public:
 
     void                expand(const bounding_box& bounding_box);
 
+    void                expand_by_disk(const vec3r& surfel_center, const scm::math::vec3f& surfel_normal, const real surfel_radius);
+
     void                shrink(const bounding_box& bounding_box);
 
     inline bool         operator==(const bounding_box& rhs) const

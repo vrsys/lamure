@@ -325,12 +325,7 @@ compute_properties(const surfel_mem_array& sa,
     for (size_t i = 0; i < sa.length(); ++i) {
         surfel s = sa.read_surfel(i);
         
-        // TODO: moved here to fix normal-radii computation
-        if(use_radii_for_node_expansion) {
-            props.bbox.expand(s.pos(), s.radius());
-        } else {
-            props.bbox.expand(s.pos());
-        }
+        props.bbox.expand_by_disk(s.pos(), s.normal(), s.radius());
 
         if (s.radius() <= 0.0)
             continue;
