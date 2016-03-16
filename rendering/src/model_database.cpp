@@ -159,7 +159,6 @@ get_model(const model_t model_id) {
 
 const size_t model_database::
 get_primitive_size(const bvh::primitive_type type) const {
-
     switch (type) {
         case bvh::primitive_type::POINTCLOUD:
             return sizeof(dataset::serialized_surfel);
@@ -188,7 +187,6 @@ get_node_size(const model_t model_id) const {
 const size_t model_database::
 get_slot_size() const {
     //return the combined slot size in bytes for both trimeshes and pointclouds
-    std::lock_guard<std::mutex> lock(mutex_);
     return primitives_per_node_ * sizeof(dataset::serialized_surfel);
 
 }
@@ -196,7 +194,6 @@ get_slot_size() const {
 const size_t model_database::
 get_primitives_per_node() const {
     //return the combined primitives per node for both trimeshes and pointclouds
-    std::lock_guard<std::mutex> lock(mutex_);
     return primitives_per_node_;
 }
 

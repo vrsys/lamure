@@ -36,8 +36,7 @@ public:
     dataset*            get_model(const model_t model_id);
     void                apply();
 
-    const model_t       num_models() const { std::lock_guard<std::mutex> lock(mutex_); return num_datasets_; };
-    //const size_t        surfels_per_node() const { std::lock_guard<std::mutex> lock(mutex_); return primitives_per_node_; };
+    const model_t       num_models() const { return num_datasets_; };
 
     const size_t        get_primitive_size(const bvh::primitive_type type) const;
     const size_t        get_node_size(const model_t model_id) const;
