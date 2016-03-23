@@ -35,10 +35,19 @@ struct snapshot_session_descriptor {
                                     {}
 
     //set_session_filename();
+
+    uint32_t get_num_taken_screenshots() {
+      return num_taken_screenshots;
+    }   
+
+    uint32_t increment_screenshot_counter() {
+        ++num_taken_screenshots;
+    }
+
     std::string get_screenshot_name() { 
 
         return
-          std::to_string(++num_taken_screenshots) 
+          std::to_string(num_taken_screenshots) 
         + "__" + std::to_string(snapshot_resolution_[0]) 
         + "_" + std::to_string(snapshot_resolution_[1]);}
 

@@ -33,7 +33,9 @@ public:
 	static void deinitialize();
 
 	static bool compute_delta_E(std::string const& image_path_1, 
-						  		std::string const& image_path_2, 
+						  		std::string const& image_path_2,
+						  		std::string const& normal_image_path_1,
+						  		std::string const& normal_image_path_2,
 						  		std::string const& out_image_path);
 
 	static bool compute_normal_deviation(std::string const& image_path_1, 
