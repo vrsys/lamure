@@ -829,26 +829,142 @@ get_natural_neighbours(
     
     auto const& bvh_nodes = nodes_;
 
-    std::vector< std::pair<surfel, real>> nearest_neighbour_copies;
+    std::vector< std::pair<surfel, real>> nearest_surfels;
     for (auto const& idx_pair : nearest_neighbour_ids) {
 
         surfel const current_nearest_neighbour_surfel = 
             bvh_nodes[idx_pair.first.node_idx].mem_array().read_surfel(idx_pair.first.surfel_idx);
 
-        nearest_neighbour_copies.push_back( std::make_pair(current_nearest_neighbour_surfel,0.0) );
+        nearest_surfels.push_back( std::make_pair(current_nearest_neighbour_surfel,0.0) );
     }
     
     //project point of interest
     vec3r point_of_interest = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> natural_neighbour_with_local_nearest_neighbour_ids = 
-        extract_approximate_natural_neighbours(point_of_interest, nearest_neighbour_copies);
+        extract_approximate_natural_neighbours(point_of_interest, nearest_surfels);
 
     for (auto& nn_entry : natural_neighbour_with_local_nearest_neighbour_ids ) {
         nn_entry.first = nearest_neighbour_ids[nn_entry.first.surfel_idx].first;
     }
 
     return natural_neighbour_with_local_nearest_neighbour_ids;
+}
+std::vector<std::pair<surfel_id_t, real> > bvh::
+extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours ) const {
+    //project point of interest
+    vec3r point_of_interest = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+
+    std::vector<std::pair<surfel_id_t, real>> natural_neighbour_ids;
+
+    uint32_t num_nearest_neighbours = nearest_neighbours.size();
+    std::vector<vec3r> nn_positions(num_nearest_neighbours);
+
+    std::size_t point_num = 0;
+    for (auto const& near_neighbour : nearest_neighbours) {
+        nn_positions[point_num] = nodes_[near_neighbour.first.node_idx].mem_array().read_surfel(near_neighbour.first.surfel_idx).pos();
+        ++point_num;
+    }
+
+    //compute best fit plane
+    plane_t plane;
+    plane_t::fit_plane(nn_positions, plane);
+
+    //project all points to the plane
+    std::vector<scm::math::vec2f> neighbour_2d_coord_pairs(num_nearest_neighbours);
+    scm::math::vec3f plane_right = plane.get_right();
+    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
+        vec2r c = plane_t::project(plane, plane_right, nn_positions[i]);
+        neighbour_2d_coord_pairs[i] = scm::math::vec2d{c[0], c[1]};
+        // projection invalid
+        if (c[0] != c[0] || c[1] != c[1]) { //is nan?
+            return natural_neighbour_ids;
+        }
+    }
+
+    //cgal delaunay triangluation
+    Dh2 delaunay_triangulation;
+
+    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
+        nni_sample_t sp;
+        sp.xy_ = neighbour_2d_coord_pairs[i];
+        Point2 p(sp.xy_.x, sp.xy_.y);
+        delaunay_triangulation.insert(p);
+    }
+    
+    vec2r coord_poi = plane_t::project(plane, plane_right, point_of_interest);
+
+    Point2 poi_2d(coord_poi.x, coord_poi.y);
+    
+    std::vector<std::pair<K::Point_2, K::FT>> sibson_coords;
+    CGAL::Triple<std::back_insert_iterator<std::vector<std::pair<K::Point_2, K::FT>>>, K::FT, bool> result = 
+        natural_neighbor_coordinates_2(
+            delaunay_triangulation,
+            poi_2d,
+            std::back_inserter(sibson_coords));
+
+
+    //CGAL::sibson_natural_neighbor_coordinates_2();
+
+    if (!result.third) {
+        return natural_neighbour_ids;
+    }
+
+    std::vector<std::pair<uint32_t, double> > nni_weights;
+
+    for (const auto& sibs_coord_instance : sibson_coords) {
+        uint32_t closest_nearest_neighbour_id = std::numeric_limits<uint32_t>::max();
+        double min_distance = std::numeric_limits<double>::max();
+
+        uint32_t current_neighbour_id = 0;
+        for( auto const& nearest_neighbour_2d : neighbour_2d_coord_pairs) {
+            double current_distance = scm::math::length(nearest_neighbour_2d - scm::math::vec2f(sibs_coord_instance.first.x(),
+                                                                                                sibs_coord_instance.first.y()) );
+            if( current_distance < min_distance ) {
+                min_distance = current_distance;
+                closest_nearest_neighbour_id = current_neighbour_id;
+            }
+
+            ++current_neighbour_id;
+        }
+
+        //invalidate the 2d coord pair by putting ridiculously large 2d coords that the model is unlikely to contain
+        neighbour_2d_coord_pairs[closest_nearest_neighbour_id] = scm::math::vec2f( std::numeric_limits<float>::max(), 
+                                                                                   std::numeric_limits<float>::lowest() );
+        nni_weights.emplace_back( closest_nearest_neighbour_id, (double) sibs_coord_instance.second );
+    }
+    
+    
+    for (const auto& it : nni_weights) {
+        natural_neighbour_ids.emplace_back(nearest_neighbours[it.first].first, it.second);
+    }
+
+    sibson_coords.clear();
+    nni_weights.clear();
+
+    return natural_neighbour_ids;
+}
+
+std::vector<std::pair<surfel_id_t, real>> bvh::
+get_natural_neighbours_2(
+    const surfel_id_t& target_surfel,
+    const bool search_for_neighbours,
+    std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
+    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids;
+
+    if(search_for_neighbours) {
+        nearest_neighbour_ids = get_nearest_neighbours(target_surfel, 24);
+    } else {
+        nearest_neighbour_ids = nearest_neighbours;
+        nearest_neighbour_ids.resize(24);
+    }
+
+    std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
+
+    std::vector<std::pair<surfel_id_t, real>> natural_neighbours = 
+        extract_approximate_natural_neighbours_2(target_surfel, nearest_neighbour_ids);
+
+    return natural_neighbours;
 }
 
 std::vector<std::pair<surfel, real> > bvh::
