@@ -80,9 +80,12 @@ public:
     const node_t        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
 
-    void                resample(surfel_mem_array const&  child_mem_array,
-                                  surfel_mem_array& output_mem_array,
-                                  real const avg_radius) const;
+    void                resample_based_on_overlap(surfel_mem_array const&  joined_input,
+                                                  surfel_mem_array& output_mem_array,
+                                                  std::vector<surfel_id_t> const& resample_candites) const;
+    std::vector<surfel_id_t>
+                       find_resample_candidates(surfel_mem_array const&  child_mem_array,
+                                                const uint32_t node_idx) const;
 
     /**
      * Get id for the first node at given depth and total number of nodes at this depth.
@@ -95,7 +98,8 @@ public:
     std::vector<std::pair<surfel_id_t, real>>
                         get_nearest_neighbours(
                             const surfel_id_t target_surfel,
-                            const uint32_t num_neighbours) const;
+                            const uint32_t num_neighbours,
+                            const bool do_local_search = false) const;
 
     std::vector<std::pair<surfel_id_t, real>>
                         get_nearest_neighbours_in_nodes(
@@ -174,11 +178,12 @@ protected:
     void                spawn_create_lod_jobs(const uint32_t first_node_of_level, 
                                               const uint32_t last_node_of_level,
                                               const reduction_strategy& reduction_strgy,
-                                              bool resample);
+                                              const bool resample);
     void                spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
                                                      const uint32_t last_node_of_level,
                                                      const normal_computation_strategy& normal_strategy, 
-                                                     const radius_computation_strategy& radius_strategy);
+                                                     const radius_computation_strategy& radius_strategy,
+                                                     const bool is_leaf_level);
     void                spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left, 
                                                                     const uint32_t slice_right);
     void                spawn_compute_bounding_boxes_upsweep_jobs(const uint32_t first_node_of_level, 
@@ -199,12 +204,13 @@ protected:
                                                   const uint32_t end_marker,
                                                   const bool update_percentage,
                                                   const normal_computation_strategy& normal_strategy, 
-                                                  const radius_computation_strategy& radius_strategy);
+                                                  const radius_computation_strategy& radius_strategy,
+                                                  const bool is_leaf_level);
     void                thread_create_lod(const uint32_t start_marker,
                                           const uint32_t end_marker,
                                           const bool update_percentage,
                                           const reduction_strategy& reduction_strgy,
-                                          bool resample);
+                                          const bool resample);
     void                thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
                                                                 const uint32_t slice_right,
                                                                 const bool update_percentage,

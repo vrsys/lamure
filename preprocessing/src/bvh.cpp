@@ -18,6 +18,9 @@
 #include <lamure/utils.h>
 #include <lamure/sphere.h>
 
+#include <lamure/pre/normal_computation_plane_fitting.h>
+#include <lamure/pre/radius_computation_average_distance.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -472,7 +475,8 @@ void bvh::get_descendant_nodes(
 std::vector<std::pair<surfel_id_t, real>> bvh::
 get_nearest_neighbours(
     const surfel_id_t target_surfel,
-    const uint32_t number_of_neighbours) const
+    const uint32_t number_of_neighbours,
+    const bool do_local_search) const
 {
     size_t current_node = target_surfel.node_idx;
     std::unordered_set<size_t> processed_nodes;
@@ -513,6 +517,8 @@ get_nearest_neighbours(
         }
 
     }
+
+    if (do_local_search){return candidates;}
 
     processed_nodes.insert(current_node);
 
@@ -621,6 +627,7 @@ get_nearest_neighbours_in_nodes(
             }
         }
     }
+
 
     // check remaining nodes in vector
     sphere candidates_sphere = sphere(center, sqrt(max_candidate_distance));
@@ -895,7 +902,7 @@ void bvh::
 spawn_create_lod_jobs(const uint32_t first_node_of_level, 
                       const uint32_t last_node_of_level,
                       const reduction_strategy& reduction_strgy,
-                      bool resample) {
+                      const bool resample) {
     uint32_t const num_threads = std::thread::hardware_concurrency();
 
     working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
@@ -919,7 +926,8 @@ void bvh::
 spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
                              const uint32_t last_node_of_level,
                              const normal_computation_strategy& normal_strategy, 
-                             const radius_computation_strategy& radius_strategy) {
+                             const radius_computation_strategy& radius_strategy,
+                             const bool is_leaf_level) {
     uint32_t const num_threads = std::thread::hardware_concurrency();
     working_queue_head_counter_.initialize(first_node_of_level); //let the threads fetch a node idx
     std::vector<std::thread> threads;
@@ -929,7 +937,8 @@ spawn_compute_attribute_jobs(const uint32_t first_node_of_level,
         threads.push_back(std::thread(&bvh::thread_compute_attributes, this, 
                                       first_node_of_level, last_node_of_level, 
                                       update_percentage, 
-                                      std::cref(normal_strategy), std::cref(radius_strategy)  ) );
+                                      std::cref(normal_strategy), std::cref(radius_strategy),
+                                      is_leaf_level  ) );
     }
 
     for(auto& thread : threads){
@@ -957,17 +966,16 @@ spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left,
     }
 }
 
+
 void bvh::
-resample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_array, 
-          real const avg_radius) const
+resample_based_on_overlap(surfel_mem_array const&  joined_input,
+                          surfel_mem_array& output_mem_array,
+                          std::vector<surfel_id_t> const& resample_candidates) const
 {
     
     for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i){
         output_mem_array.mem_data()->push_back( joined_input.read_surfel(i) );
     }
-
-    const real max_radius_difference = 0.0; //
-    //real avg_radius = node.avg_surfel_radius();
 
     auto compute_new_position = [] (surfel const& plane_ref_surfel, real radius_offset, real rot_angle) {
         vec3r new_position (0.0, 0.0, 0.0);
@@ -988,60 +996,96 @@ resample(surfel_mem_array const&  joined_input, surfel_mem_array& output_mem_arr
         }
         scm::math::normalize(u);
         vec3f p = scm::math::normalize(scm::math::cross(n,u)); //plane of rotation given by cross product of n and u
-        u = p; //^^
 
         //vector rotation according to: https://en.wikipedia.org/wiki/Rodrigues'_rotation_formula
         //rotation around the normal vector n
-        vec3f u_rotated = u*cos(rot_angle) + scm::math::normalize(scm::math::cross(u,n))*sin(rot_angle) + n*scm::math::dot(u,n)*(1-cos(rot_angle));
+        vec3f p_rotated = p*cos(rot_angle) + scm::math::normalize(scm::math::cross(p,n))*sin(rot_angle) + n*scm::math::dot(p,n)*(1-cos(rot_angle));
 
         //extend vector  lenght to match desired radius 
-        u_rotated = scm::math::normalize(u_rotated)*radius_offset;
+        p_rotated = scm::math::normalize(p_rotated)*radius_offset;
         
-        new_position = plane_ref_surfel.pos() + u_rotated;
+        new_position = plane_ref_surfel.pos() + p_rotated;
         return new_position; 
     };
 
     //create new vector to store node surfels; unmodified + modified ones
     surfel_mem_array modified_mem_array (std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
+    //parameter showing how many times smaller new surfels should be
+    uint16_t reduction_ratio = 3; //value to be determined empirically
 
-    for(uint32_t i = 0; i < output_mem_array.mem_data()->size(); ++i){
 
-        surfel current_surfel = output_mem_array.read_surfel(i);
+    for (auto const& target_id : resample_candidates){
+    //for(uint32_t i = 0; i < output_mem_array.mem_data()->size(); ++i){
 
-        //replace big surfels by collection of average-size surfels
-        if (current_surfel.radius() - avg_radius > max_radius_difference){
-        //if(false) {     
-            //how many times does average radius fit into big radius
-            int iteration_level = floor(current_surfel.radius()/(2*avg_radius));             
+        surfel current_surfel = output_mem_array.read_surfel(target_id.surfel_idx);
+
+            //how many times does reduced radius fit into big radius
+            real reduced_radius = current_surfel.radius()/reduction_ratio;
+            int iteration_level = round(current_surfel.radius()/(2*reduced_radius));//^^check again this formula
 
             //keep all surfel properties but shrink its radius to the average radius
             surfel new_surfel = current_surfel;
-            new_surfel.radius() = avg_radius;
-            //new_surfel.color() = vec3b(100, 120, 0); //^^change color for test reasons
-            output_mem_array.write_surfel(new_surfel, i);            
-            
+            new_surfel.radius() = reduced_radius;
+            //new_surfel.color() = vec3b(80, 20, 180); //change color for test reasons
+            output_mem_array.write_surfel(new_surfel, target_id.surfel_idx);
 
             //create new average-size surfels to fill up the area orininally covered by bigger surfel            
             for(int k = 1; k <= (iteration_level - 1); ++k){
-               uint16_t num_new_surfels = 6*k; //^^ formula basis https://en.wikipedia.org/wiki/Circle_packing_in_a_circle
+               uint16_t num_new_surfels = 6*k; //formula basis https://en.wikipedia.org/wiki/Circle_packing_in_a_circle
                real angle_offset = (360.0) / num_new_surfels;
                real angle = 0.0; //reset 
                for(int j = 0; j < num_new_surfels; ++j){
-                    real radius_offset = k*2*avg_radius; 
+                    real radius_offset = k*2*reduced_radius;
                     new_surfel.pos() = compute_new_position(current_surfel, radius_offset, angle);
                     modified_mem_array.mem_data()->push_back(new_surfel);
                     angle = angle + angle_offset;                    
                }
-            }          
+            }
         }
-    }
+
 
     for(uint32_t i = 0; i < modified_mem_array.mem_data()->size(); ++i) {
         output_mem_array.mem_data()->push_back( modified_mem_array.mem_data()->at(i) );
     }
 
 }
+
+std::vector<surfel_id_t> bvh::
+find_resample_candidates(surfel_mem_array const&  child_mem_array, const uint32_t node_idx) const {
+
+    const uint16_t num_neighbours = 10;
+    std::vector<surfel_id_t> surfel_id_vector;
+
+    for(size_t surfel_idx = 0; surfel_idx < child_mem_array.mem_data()->size(); ++surfel_idx){
+
+        std::vector<std::pair<surfel_id_t, real>> const nearest_neighbour_vector
+                = get_nearest_neighbours(surfel_id_t(node_idx, surfel_idx), num_neighbours, true);
+        int overlap_counter = 0;
+
+        real current_radius = child_mem_array.mem_data()->at(surfel_idx).radius();
+        //vec3r current_position = child_mem_array.mem_data()->at(surfel_idx).pos();
+        for (int i = 0; i < num_neighbours; ++i){
+            //surfel_id_t current_neighbour_id = nearest_neighbour_vector[i].first;
+            real squared_current_distance = nearest_neighbour_vector[i].second;
+
+            //real computed_distance = scm::math::length(current_position - child_mem_array.mem_data()->at(current_neighbour_id.surfel_idx).pos());
+            //real neighbour_rad = child_mem_array.mem_data()->at(current_neighbour_id.surfel_idx).radius();
+            if (std::sqrt(squared_current_distance)*1.6 - current_radius < 0) {
+                ++overlap_counter;
+            }
+        }
+
+        //try by using the n closests neighbours; in this case 2
+        const uint8_t n = 2;
+        if(overlap_counter > n){
+           surfel_id_vector.push_back(surfel_id_t(node_idx, surfel_idx));
+        }
+    }
+
+    return surfel_id_vector;
+}
+
 
 void bvh::
 spawn_compute_bounding_boxes_upsweep_jobs(const uint32_t first_node_of_level, 
@@ -1093,7 +1137,7 @@ thread_create_lod(const uint32_t start_marker,
                   const uint32_t end_marker,
                   const bool update_percentage,
                   const reduction_strategy& reduction_strgy,
-                  bool do_resample) {
+                  const bool do_resample) {
     uint32_t node_index = working_queue_head_counter_.increment_head();
     
     while(node_index < end_marker) {
@@ -1132,12 +1176,16 @@ thread_create_lod(const uint32_t start_marker,
 
 
                 subsampled_child_mem_arrays.reserve(child_mem_arrays.size());
-                for (unsigned i=0; i<child_mem_arrays.size(); ++i){
-                    real current_avg_radius = avg_radius_vector.at(i);
-                    surfel_mem_array current_child_node = *child_mem_arrays.at(i);
-                    resample(current_child_node,mem_array_obj[i], current_avg_radius);
-                    mem_array_obj[i].set_length(mem_array_obj[i].mem_data()->size());
-                    subsampled_child_mem_arrays.push_back(&mem_array_obj.at(i));
+                for (unsigned local_child_index=0; local_child_index<child_mem_arrays.size(); ++local_child_index){
+                    //real current_avg_radius = avg_radius_vector.at(local_child_index);
+                    surfel_mem_array current_child_node = *child_mem_arrays.at(local_child_index);
+                    //resample(current_child_node,mem_array_obj[local_child_index], current_avg_radius);
+
+                    size_t global_child_id = this->get_child_id(current_node->node_id(), local_child_index);
+                    std::vector<surfel_id_t> resample_candidates = find_resample_candidates(current_child_node, global_child_id);
+                    resample_based_on_overlap(current_child_node,mem_array_obj[local_child_index], resample_candidates);
+                    mem_array_obj[local_child_index].set_length(mem_array_obj[local_child_index].mem_data()->size());
+                    subsampled_child_mem_arrays.push_back(&mem_array_obj.at(local_child_index));
                 }
 
 
@@ -1163,7 +1211,8 @@ thread_compute_attributes(const uint32_t start_marker,
                           const uint32_t end_marker,
                           const bool update_percentage,
                           const normal_computation_strategy& normal_strategy, 
-                          const radius_computation_strategy& radius_strategy) {
+                          const radius_computation_strategy& radius_strategy,
+                          const bool is_leaf_level) {
 
     uint32_t node_index = working_queue_head_counter_.increment_head();
     
@@ -1175,7 +1224,17 @@ thread_compute_attributes(const uint32_t start_marker,
 
 
         // Calculate and set node properties.
-        compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+        if(is_leaf_level){
+            uint16_t number_of_neighbours = 100;
+            auto normal_comp_algo = normal_computation_plane_fitting(number_of_neighbours);
+            auto radius_comp_algo = radius_computation_average_distance(number_of_neighbours);
+            compute_normal_and_radius(current_node,
+                                      normal_comp_algo,
+                                      radius_comp_algo );
+        }
+        else{
+            compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+        }
 
         if(update_percentage) {
             uint16_t new_percentage = int32_t(float(node_index-start_marker)/(length_of_level) * 100);
@@ -1403,6 +1462,8 @@ upsweep(const reduction_strategy& reduction_strgy,
                 current_node->load_from_disk();
             }
         }
+
+
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
         if(level != int32_t(depth_) ) {
@@ -1411,9 +1472,14 @@ upsweep(const reduction_strategy& reduction_strgy,
 
         {
             // skip the leaf level attribute computation if it was not requested or necessary
-            if( !(level == int32_t(depth_) && !recompute_leaf_level ) ) {
-                spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy);
+
+            if( level == int32_t(depth_) && resample ){
+                spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, true);
             }
+            else if( (level != int32_t(depth_) || recompute_leaf_level  ) ) {
+                spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, false);
+            }
+
 
             spawn_compute_bounding_boxes_upsweep_jobs(first_node_of_level, last_node_of_level, level);
 

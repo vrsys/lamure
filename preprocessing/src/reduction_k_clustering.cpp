@@ -190,7 +190,7 @@ resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_m) const {
     real min_overlap = 0;
     shared_cluster_surfel_vector temp_neighbour_list;
 
-    //maxial overlap computed
+    //maximal overlap computed
     shared_cluster_surfel m_member =  surfel_ptr_set_m.back();
     
     while( !surfel_ptr_set_m.empty() ) {

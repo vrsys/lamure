@@ -43,5 +43,13 @@ void main() {
 
   VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz);
 
-  gl_Position = vec4(in_position, 1.0);
+/*
+  if( in_position.y > -2.5 || in_position.y < -4.0 || in_position.x < -1870.0 || in_position.x > -1826.0  ) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+  } else {
+*/
+    gl_Position = vec4(in_position, 1.0);
+//  }
+
+
 }
