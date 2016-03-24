@@ -195,11 +195,14 @@ MainLoop()
 
         if ( ms_since_update > 3000) {
             if ( screenshot_session_started_ )
-                ++num_taken_screenshots_;
+                
+                if(measurement_session_descriptor_.get_num_taken_screenshots() ) {
+                    auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
+                    renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
+                                                measurement_session_descriptor_.get_screenshot_name() );
+                }
 
-                auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
-                renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
-                                            measurement_session_descriptor_.get_screenshot_name() );
+                measurement_session_descriptor_.increment_screenshot_counter();
 
             if(! measurement_session_descriptor_.recorded_view_vector_.empty() ) {
                 if (! screenshot_session_started_ ) {

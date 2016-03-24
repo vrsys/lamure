@@ -247,8 +247,10 @@ write_delta_E_image(double* dE_arr, unsigned int im_w, unsigned im_h, double min
 
 bool image_based_error_app::
 compute_delta_E(std::string const& image_path_1, 
-						  std::string const& image_path_2, 
-						  std::string const& out_image_path) {
+                std::string const& image_path_2,
+                std::string const& normal_image_path_1,
+                std::string const& normal_image_path_2, 
+				std::string const& out_image_path) {
 
 	load_image_to_memory(image_path_1.c_str(), image_data_1_, image_width_1_, image_height_1_);
 
@@ -256,6 +258,12 @@ compute_delta_E(std::string const& image_path_1,
 	int32_t image_height_2 = -1;
 
 	load_image_to_memory(image_path_2.c_str(), image_data_2_, image_width_2, image_height_2);
+
+    BYTE* normal_image_data_1_;// = nullptr;
+    BYTE* normal_image_data_2_;// = nullptr;
+
+    load_image_to_memory(normal_image_path_1.c_str(), normal_image_data_1_, image_width_1_, image_height_1_);
+    load_image_to_memory(normal_image_path_2.c_str(), normal_image_data_2_, image_width_1_, image_height_1_);
 
     if(image_width_1_ != image_width_2 || image_height_1_ != image_height_2) {
         std::cout << "Dimensions of the images do not match\n";
@@ -284,10 +292,42 @@ compute_delta_E(std::string const& image_path_1,
 
 
     unsigned int valid_pixel_count = 0;
+    unsigned int silhouette_error_count = 0;
 
     //std::cout << "Reading & Converting\n";
 
     for( int i = 0; i < image_width_1_* image_height_1_; ++i ) {
+
+        //std::cout << "Reading first component\n";
+        unsigned char ni_r1 = normal_image_data_1_[i*4 + 0];
+        //std::cout << "Reading second component\n";
+        unsigned char ni_g1 = normal_image_data_1_[i*4 + 1];
+        unsigned char ni_b1 = normal_image_data_1_[i*4 + 2];
+
+        unsigned char ni_r2 = normal_image_data_2_[i*4 + 0];
+        unsigned char ni_g2 = normal_image_data_2_[i*4 + 1];
+        unsigned char ni_b2 = normal_image_data_2_[i*4 + 2];
+
+        bool pixel_1_is_bg = false;
+        bool pixel_2_is_bg = false;
+
+        if( (ni_r1 == 0 && ni_g1 == 0 && ni_b1 == 0) ) {
+            pixel_1_is_bg = true;
+        }
+
+        if( (ni_r2 == 0 && ni_g2 == 0 && ni_b2 == 0) ) {
+            pixel_2_is_bg = true;
+        }
+
+        if( pixel_1_is_bg || pixel_2_is_bg ) {
+
+            if( !pixel_1_is_bg || !pixel_2_is_bg ) {
+                ++silhouette_error_count;
+            }
+
+            continue;
+        }
+
         //std::cout << "Reading first component\n";
         unsigned char r1 = image_data_1_[i*4 + 0];
         //std::cout << "Reading second component\n";
@@ -378,6 +418,13 @@ compute_delta_E(std::string const& image_path_1,
     //std::cout << "\n";
     std::cout << "min delta_E_erros_local: " << min_delta_E_errors_local[0] << "\n";
     std::cout << "max delta_E_erros_local: " << max_delta_E_errors_local[0] << "\n";
+
+    std::cout << "\n";
+
+    std::cout << "# valid pixel comparisons: " << valid_pixel_count << "\n";
+    std::cout << "# silhoutte error pixels: " << silhouette_error_count << "\n";
+
+
     std::cout << "\n";
     //std::cout << "De-Init FreeImage\n";
     FreeImage_DeInitialise();

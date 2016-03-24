@@ -928,7 +928,9 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_color_texture_->object_id());
         device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
-        std::string filename = full_path + "color__" + screenshot_name + file_extension;
+        std::string ten_k_surfels = std::to_string((rendered_splats_ / 10000) );
+
+        std::string filename = full_path + "color__" + screenshot_name + "__surfels_" + ten_k_surfels  + "_tk" + file_extension;
 
         FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
@@ -937,7 +939,7 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_normal_texture_->object_id());
         device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
-        filename = full_path + "normal__" + screenshot_name + file_extension;
+        filename = full_path + "normal__" + screenshot_name + "__surfels_" + ten_k_surfels  + "_tk" + file_extension;
 
         image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
