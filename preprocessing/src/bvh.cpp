@@ -852,8 +852,6 @@ get_natural_neighbours(
 }
 std::vector<std::pair<surfel_id_t, real> > bvh::
 extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours ) const {
-    //project point of interest
-    vec3r point_of_interest = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> natural_neighbour_ids;
 
@@ -870,77 +868,58 @@ extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::
     plane_t plane;
     plane_t::fit_plane(nn_positions, plane);
 
-    //project all points to the plane
-    std::vector<scm::math::vec2f> neighbour_2d_coord_pairs(num_nearest_neighbours);
+    std::vector<scm::math::vec2f> projected_neighbours(num_nearest_neighbours);
     scm::math::vec3f plane_right = plane.get_right();
-    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
-        vec2r c = plane_t::project(plane, plane_right, nn_positions[i]);
-        neighbour_2d_coord_pairs[i] = scm::math::vec2d{c[0], c[1]};
-        // projection invalid
-        if (c[0] != c[0] || c[1] != c[1]) { //is nan?
-            return natural_neighbour_ids;
-        }
-    }
-
     //cgal delaunay triangluation
     Dh2 delaunay_triangulation;
-
+    
+    //project all points to the plane
     for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
-        nni_sample_t sp;
-        sp.xy_ = neighbour_2d_coord_pairs[i];
-        Point2 p(sp.xy_.x, sp.xy_.y);
-        delaunay_triangulation.insert(p);
+        projected_neighbours[i] = plane_t::project(plane, plane_right, nn_positions[i]);
+        // projection invalid
+        if (projected_neighbours[i][0] != projected_neighbours[i][0]
+         || projected_neighbours[i][1] != projected_neighbours[i][1]) { //is nan?
+            return natural_neighbour_ids;
+        }
+        delaunay_triangulation.insert(Point2{projected_neighbours[i].x, projected_neighbours[i].y});
     }
     
-    vec2r coord_poi = plane_t::project(plane, plane_right, point_of_interest);
-
-    Point2 poi_2d(coord_poi.x, coord_poi.y);
+    //project point of interest
+    vec2r projected_poi = plane_t::project(plane, plane_right, nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos());
     
-    std::vector<std::pair<K::Point_2, K::FT>> sibson_coords;
+    std::vector<std::pair<K::Point_2, K::FT>> sibson_coords{};
     CGAL::Triple<std::back_insert_iterator<std::vector<std::pair<K::Point_2, K::FT>>>, K::FT, bool> result = 
         natural_neighbor_coordinates_2(
             delaunay_triangulation,
-            poi_2d,
+            Point2 {projected_poi.x, projected_poi.y},
             std::back_inserter(sibson_coords));
-
-
-    //CGAL::sibson_natural_neighbor_coordinates_2();
 
     if (!result.third) {
         return natural_neighbour_ids;
     }
 
-    std::vector<std::pair<uint32_t, double> > nni_weights;
-
     for (const auto& sibs_coord_instance : sibson_coords) {
-        uint32_t closest_nearest_neighbour_id = std::numeric_limits<uint32_t>::max();
+        scm::math::vec2d coord_position{sibs_coord_instance.first.x(), sibs_coord_instance.first.y()};
+        uint32_t closest_neighbour_id = std::numeric_limits<uint32_t>::max();
         double min_distance = std::numeric_limits<double>::max();
 
-        uint32_t current_neighbour_id = 0;
-        for( auto const& nearest_neighbour_2d : neighbour_2d_coord_pairs) {
-            double current_distance = scm::math::length(nearest_neighbour_2d - scm::math::vec2f(sibs_coord_instance.first.x(),
-                                                                                                sibs_coord_instance.first.y()) );
-            if( current_distance < min_distance ) {
+        for(uint32_t i = 0; i < num_nearest_neighbours; ++i) {
+            double current_distance = scm::math::length(projected_neighbours[i] - coord_position);
+            if(current_distance < min_distance) {
                 min_distance = current_distance;
-                closest_nearest_neighbour_id = current_neighbour_id;
+                closest_neighbour_id = i;
             }
-
-            ++current_neighbour_id;
         }
 
+        natural_neighbour_ids.emplace_back(nearest_neighbours[closest_neighbour_id].first, (double)sibs_coord_instance.second);
         //invalidate the 2d coord pair by putting ridiculously large 2d coords that the model is unlikely to contain
-        neighbour_2d_coord_pairs[closest_nearest_neighbour_id] = scm::math::vec2f( std::numeric_limits<float>::max(), 
+        projected_neighbours[closest_neighbour_id] = scm::math::vec2f( std::numeric_limits<float>::max(), 
                                                                                    std::numeric_limits<float>::lowest() );
-        nni_weights.emplace_back( closest_nearest_neighbour_id, (double) sibs_coord_instance.second );
-    }
-    
-    
-    for (const auto& it : nni_weights) {
-        natural_neighbour_ids.emplace_back(nearest_neighbours[it.first].first, it.second);
     }
 
+    nn_positions.clear();
+    projected_neighbours.clear();
     sibson_coords.clear();
-    nni_weights.clear();
 
     return natural_neighbour_ids;
 }
