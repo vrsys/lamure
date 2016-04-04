@@ -811,19 +811,13 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
 std::vector<std::pair<surfel_id_t, real>> bvh::
 get_natural_neighbours(
     const surfel_id_t& target_surfel,
-    const bool search_for_neighbours,
     std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 
     std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids;
 
-    if(search_for_neighbours) {
-        nearest_neighbour_ids = get_nearest_neighbours(target_surfel, 24);
-    } else {
-        for(int32_t k = 0; k < 24; ++k) {
-            nearest_neighbour_ids.emplace_back(nearest_neighbours[k]);
-        }
+    for(int32_t k = 0; k < 24; ++k) {
+        nearest_neighbour_ids.emplace_back(nearest_neighbours[k]);
     }
-    //get_nearest_neighbours(target_surfel, num_nearest_neighbours);
 
     std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
     
@@ -927,16 +921,11 @@ extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::
 std::vector<std::pair<surfel_id_t, real>> bvh::
 get_natural_neighbours_2(
     const surfel_id_t& target_surfel,
-    const bool search_for_neighbours,
     std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
     std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids;
 
-    if(search_for_neighbours) {
-        nearest_neighbour_ids = get_nearest_neighbours(target_surfel, 24);
-    } else {
-        nearest_neighbour_ids = nearest_neighbours;
-        nearest_neighbour_ids.resize(24);
-    }
+    nearest_neighbour_ids = nearest_neighbours;
+    nearest_neighbour_ids.resize(24);
 
     std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
 

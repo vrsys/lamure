@@ -19,16 +19,11 @@ compute_radius(const bvh& tree,
 			   const surfel_id_t target_surfel,
                std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 	
-	// find nearest neighbours
-	//std::vector<std::pair<surfel_id_t, real>> nearest_neighbours 
-    //    = tree.get_nearest_neighbours(target_surfel, number_of_neighbours_);
-    
-                 
     if (nearest_neighbours.size() < min_num_nearest_neighbours_) {
          return 0.0f;
     }
     
-    auto const natural_neighbour_ids = tree.get_natural_neighbours(target_surfel, false, nearest_neighbours );
+    auto const natural_neighbour_ids = tree.get_natural_neighbours(target_surfel, nearest_neighbours );
 
     if (natural_neighbour_ids.size() < min_num_natural_neighbours_) {
         return 0.0;
