@@ -19,6 +19,8 @@
 #include <lamure/pre/logger.h>
 #include <lamure/atomic_counter.h>
 
+#include <lamure/pre/io/converter.h>
+
 #include <boost/filesystem.hpp>
 #include <unordered_set>
 #include <atomic>
@@ -80,6 +82,7 @@ public:
     const node_t        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
 
+    surfel_vector       get_resampled_leaf_lv_surfels() const {return resampled_leaf_level_;}
     void                resample_based_on_overlap(surfel_mem_array const&  joined_input,
                                                   surfel_mem_array& output_mem_array,
                                                   std::vector<surfel_id_t> const& resample_candites) const;
@@ -229,6 +232,9 @@ protected:
                                                const uint32_t num_threads);
 
 private:
+    surfel_vector resampled_leaf_level_;
+    std::mutex resample_mutex_;
+
     atomic_counter<uint32_t> working_queue_head_counter_;
 
     state_type          state_ = state_type::null;

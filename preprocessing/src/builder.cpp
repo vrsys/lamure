@@ -333,7 +333,6 @@ construct()
 
         CPU_TIMER;
 
-
         // perform upsweep
         bvh.upsweep(*reduction_strategy, 
                     *normal_comp_strategy, 
@@ -341,9 +340,21 @@ construct()
                     desc_.compute_normals_and_radii,
                     desc_.resample);
 
+
         delete reduction_strategy;
         delete normal_comp_strategy;
         delete radius_comp_strategy;
+
+        //write resampled leaf level out
+        format_xyz format_out;
+        format_abstract* dummy_format_in;
+        dummy_format_in = new format_xyz();
+        auto xyz_res_file = add_to_path(base_path_, ".xyz_res");
+        converter conv(*dummy_format_in, format_out, desc_.buffer_size);
+        surfel_vector resampled_ll = bvh.get_resampled_leaf_lv_surfels();
+        conv.write_in_core_surfels_out(resampled_ll, xyz_res_file.string());
+        delete dummy_format_in;
+
 
         auto bvhu_file = add_to_path(base_path_, ".bvhu");
         bvh.serialize_tree_to_file(bvhu_file.string(), true);

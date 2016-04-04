@@ -914,7 +914,7 @@ spawn_create_lod_jobs(const uint32_t first_node_of_level,
                                       first_node_of_level, last_node_of_level, 
                                       update_percentage, 
                                       std::cref(reduction_strgy),
-                                      resample  ) );
+                                      resample) );
     }
 
     for(auto& thread : threads){
@@ -1027,7 +1027,7 @@ resample_based_on_overlap(surfel_mem_array const&  joined_input,
             //keep all surfel properties but shrink its radius to the average radius
             surfel new_surfel = current_surfel;
             new_surfel.radius() = reduced_radius;
-            //new_surfel.color() = vec3b(80, 20, 180); //change color for test reasons
+           // new_surfel.color() = vec3b(80, 20, 180); //change color for test reasons
             output_mem_array.write_surfel(new_surfel, target_id.surfel_idx);
 
             //create new average-size surfels to fill up the area orininally covered by bigger surfel            
@@ -1184,15 +1184,25 @@ thread_create_lod(const uint32_t start_marker,
                     size_t global_child_id = this->get_child_id(current_node->node_id(), local_child_index);
                     std::vector<surfel_id_t> resample_candidates = find_resample_candidates(current_child_node, global_child_id);
                     resample_based_on_overlap(current_child_node,mem_array_obj[local_child_index], resample_candidates);
+                   // std::cout<<"I think I just resamoled something\n";
                     mem_array_obj[local_child_index].set_length(mem_array_obj[local_child_index].mem_data()->size());
                     subsampled_child_mem_arrays.push_back(&mem_array_obj.at(local_child_index));
                 }
 
+                //surfels after first resampling to be written in a file
+                resample_mutex_.lock();
+                for (const auto& current_mem_array : subsampled_child_mem_arrays){
+                    for (int index = 0; index < current_mem_array->mem_data()->size(); ++index){
+                       resampled_leaf_level_.push_back(current_mem_array->mem_data()->at(index));
+                    }
+                }
+                resample_mutex_.unlock();
 
+
+                //simplify
                 reduction = reduction_strgy.create_lod(reduction_error, 
                                                        subsampled_child_mem_arrays, max_surfels_per_node_, 
                                                        (*this), get_child_id(current_node->node_id(), 0) );
-
             }
             
 
@@ -1468,8 +1478,9 @@ upsweep(const reduction_strategy& reduction_strgy,
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
         if(level != int32_t(depth_) ) {
             spawn_create_lod_jobs(first_node_of_level, last_node_of_level, reduction_strgy, resample);
+            resample = false; //resample only for leaf level
         }
-
+        
         {
             // skip the leaf level attribute computation if it was not requested or necessary
 
@@ -1480,36 +1491,21 @@ upsweep(const reduction_strategy& reduction_strgy,
                 spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, false);
             }
 
-
             spawn_compute_bounding_boxes_upsweep_jobs(first_node_of_level, last_node_of_level, level);
 
             std::cout << std::endl;
         }
 
-        //if(level < 3){
-              //std::fstream txtfile ("node_stats.txt");
         real mean_radius_sd = 0.0;
         uint counter = 1;
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index){
 
             bvh_node* current_node = &nodes_.at(node_index);
-
-            //std::cout<< "mean radius: "<< (*current_node).node_stats().mean_radius() << std::endl;
             mean_radius_sd = mean_radius_sd + (*current_node).node_stats().radius_sd();
             counter++;
-              /*if (txtfile.is_open())
-              {
-                txtfile << "Entering level: " << level << std::endl;
-                txtfile <<"mean radius: "<< (*current_node).node_stats().mean_radius() << std::endl;
-                txtfile.close();
-              }
-              else std::cout << "Unable to open file \n";*/
-              //std::cout<< "mean radius pro node: "<< (*current_node).node_stats().mean_radius() << "\n";
         }
         mean_radius_sd = mean_radius_sd/counter;
         std::cout<< "average radius deviation pro level: "<< mean_radius_sd << "\n";
-
-        //}
     }
 
     // Create level temp files
