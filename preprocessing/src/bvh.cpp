@@ -713,13 +713,14 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
     plane_t::fit_plane(nn_positions, plane);
 
     std::vector<scm::math::vec2f> projected_neighbours(num_input_neighbours);
-    scm::math::vec3f plane_right = plane.get_right();
+    vec3r plane_right = plane.get_right();
+    vec3r plane_up = plane.get_up();
     //cgal delaunay triangluation
     Dh2 delaunay_triangulation;
     
     //project all points to the plane
     for (uint32_t i = 0; i < num_input_neighbours; ++i) {
-        projected_neighbours[i] = plane_t::project(plane, plane_right, nn_positions[i]);
+        projected_neighbours[i] = plane_t::project(plane, plane_right, plane_up, nn_positions[i]);
         // projection invalid
         if (projected_neighbours[i][0] != projected_neighbours[i][0]
          || projected_neighbours[i][1] != projected_neighbours[i][1]) { //is nan?
@@ -729,7 +730,7 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
     }
     
     //project point of interest
-    vec2r projected_poi = plane_t::project(plane, plane_right, point_of_interest);
+    vec2r projected_poi = plane_t::project(plane, plane_right, plane_up, point_of_interest);
     
     std::vector<std::pair<K::Point_2, K::FT>> sibson_coords{};
     CGAL::Triple<std::back_insert_iterator<std::vector<std::pair<K::Point_2, K::FT>>>, K::FT, bool> result = 
