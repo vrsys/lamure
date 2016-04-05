@@ -819,7 +819,7 @@ get_natural_neighbours(
         nearest_neighbour_ids.emplace_back(nearest_neighbours[k]);
     }
 
-    std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
+    // std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
     
     auto const& bvh_nodes = nodes_;
 
@@ -845,12 +845,16 @@ get_natural_neighbours(
     return natural_neighbour_with_local_nearest_neighbour_ids;
 }
 std::vector<std::pair<surfel_id_t, real> > bvh::
-extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours ) const {
+get_natural_neighbours_2(surfel_id_t const& target_surfel, std::vector<std::pair<surfel_id_t, real>> const& all_nearest_neighbours) const {
 
     std::vector<std::pair<surfel_id_t, real>> natural_neighbour_ids;
+    // limit to 24 closest neighbours
+    const uint32_t NUM_INPUT_NEIGHBOURS = 24;
+    auto nearest_neighbours = all_nearest_neighbours;
+    nearest_neighbours.resize(NUM_INPUT_NEIGHBOURS);
+    std::random_shuffle(nearest_neighbours.begin(), nearest_neighbours.end());
 
-    uint32_t num_nearest_neighbours = nearest_neighbours.size();
-    std::vector<vec3r> nn_positions(num_nearest_neighbours);
+    std::vector<vec3r> nn_positions(NUM_INPUT_NEIGHBOURS);
 
     std::size_t point_num = 0;
     for (auto const& near_neighbour : nearest_neighbours) {
@@ -862,13 +866,13 @@ extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::
     plane_t plane;
     plane_t::fit_plane(nn_positions, plane);
 
-    std::vector<scm::math::vec2f> projected_neighbours(num_nearest_neighbours);
+    std::vector<scm::math::vec2f> projected_neighbours(NUM_INPUT_NEIGHBOURS);
     scm::math::vec3f plane_right = plane.get_right();
     //cgal delaunay triangluation
     Dh2 delaunay_triangulation;
     
     //project all points to the plane
-    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
+    for (uint32_t i = 0; i < NUM_INPUT_NEIGHBOURS; ++i) {
         projected_neighbours[i] = plane_t::project(plane, plane_right, nn_positions[i]);
         // projection invalid
         if (projected_neighbours[i][0] != projected_neighbours[i][0]
@@ -897,8 +901,8 @@ extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::
         uint32_t closest_neighbour_id = std::numeric_limits<uint32_t>::max();
         double min_distance = std::numeric_limits<double>::max();
 
-        for(uint32_t i = 0; i < num_nearest_neighbours; ++i) {
-            double current_distance = scm::math::length(projected_neighbours[i] - coord_position);
+        for(uint32_t i = 0; i < NUM_INPUT_NEIGHBOURS; ++i) {
+            double current_distance = scm::math::length_sqr(projected_neighbours[i] - coord_position);
             if(current_distance < min_distance) {
                 min_distance = current_distance;
                 closest_neighbour_id = i;
@@ -916,23 +920,6 @@ extract_approximate_natural_neighbours_2(surfel_id_t const& target_surfel, std::
     sibson_coords.clear();
 
     return natural_neighbour_ids;
-}
-
-std::vector<std::pair<surfel_id_t, real>> bvh::
-get_natural_neighbours_2(
-    const surfel_id_t& target_surfel,
-    std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
-    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids;
-
-    nearest_neighbour_ids = nearest_neighbours;
-    nearest_neighbour_ids.resize(24);
-
-    std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
-
-    std::vector<std::pair<surfel_id_t, real>> natural_neighbours = 
-        extract_approximate_natural_neighbours_2(target_surfel, nearest_neighbour_ids);
-
-    return natural_neighbours;
 }
 
 std::vector<std::pair<surfel, real> > bvh::
