@@ -480,7 +480,7 @@ get_nearest_neighbours(
 {
     size_t current_node = target_surfel.node_idx;
     std::unordered_set<size_t> processed_nodes;
-    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+    vec3r const& center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
@@ -490,7 +490,7 @@ get_nearest_neighbours(
     {
         if (i != target_surfel.surfel_idx)
         {
-            const surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            const surfel& current_surfel = nodes_[current_node].mem_array().read_surfel_ref(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -547,7 +547,7 @@ get_nearest_neighbours(
                 {
                     if (!(adjacent_node == target_surfel.node_idx && i == target_surfel.surfel_idx))
                     {
-                        const surfel current_surfel = nodes_[adjacent_node].mem_array().read_surfel(i);
+                        const surfel& current_surfel = nodes_[adjacent_node].mem_array().read_surfel_ref(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
                         if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -593,7 +593,7 @@ get_nearest_neighbours_in_nodes(
     const uint32_t number_of_neighbours) const
 {
     size_t current_node = target_surfel.node_idx;
-    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+    vec3r const& center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
@@ -603,7 +603,7 @@ get_nearest_neighbours_in_nodes(
     {
         if (i != target_surfel.surfel_idx)
         {
-            const surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            const surfel& current_surfel = nodes_[current_node].mem_array().read_surfel_ref(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -643,7 +643,7 @@ get_nearest_neighbours_in_nodes(
                 {
                     if (!(adjacent_node == target_surfel.node_idx && i == target_surfel.surfel_idx))
                     {
-                        const surfel current_surfel = nodes_[adjacent_node].mem_array().read_surfel(i);
+                        const surfel& current_surfel = nodes_[adjacent_node].mem_array().read_surfel_ref(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
                         if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -688,11 +688,11 @@ get_natural_neighbours(surfel_id_t const& target_surfel, std::vector<std::pair<s
 
     std::size_t point_num = 0;
     for (auto const& near_neighbour : nearest_neighbours) {
-        nn_positions[point_num] = nodes_[near_neighbour.first.node_idx].mem_array().read_surfel(near_neighbour.first.surfel_idx).pos();
+        nn_positions[point_num] = nodes_[near_neighbour.first.node_idx].mem_array().read_surfel_ref(near_neighbour.first.surfel_idx).pos();
         ++point_num;
     }
 
-    auto natural_neighbour_ids = extract_approximate_natural_neighbours(nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos(), nn_positions);
+    auto natural_neighbour_ids = extract_approximate_natural_neighbours(nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos(), nn_positions);
 
     std::vector<std::pair<surfel_id_t, real>> natural_neighbours{};
     natural_neighbours.reserve(NUM_NATURAL_NEIGHBOURS);
@@ -899,7 +899,7 @@ resample_based_on_overlap(surfel_mem_array const&  joined_input,
 {
     
     for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i){
-        output_mem_array.mem_data()->push_back( joined_input.read_surfel(i) );
+        output_mem_array.mem_data()->emplace_back( joined_input.read_surfel(i) );
     }
 
     auto compute_new_position = [] (surfel const& plane_ref_surfel, real radius_offset, real rot_angle) {
@@ -941,7 +941,6 @@ resample_based_on_overlap(surfel_mem_array const&  joined_input,
 
 
     for (auto const& target_id : resample_candidates){
-    //for(uint32_t i = 0; i < output_mem_array.mem_data()->size(); ++i){
 
         surfel current_surfel = output_mem_array.read_surfel(target_id.surfel_idx);
 
@@ -1552,7 +1551,7 @@ remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
         for( uint32_t surfel_idx = 0; surfel_idx < current_node->mem_array().length(); ++surfel_idx) {
 
             if( outlier_ids.end() == outlier_ids.find( surfel_id_t(node_idx, surfel_idx) ) ) {
-                cleaned_surfels.push_back(current_node->mem_array().read_surfel(surfel_idx) );
+                cleaned_surfels.emplace_back(current_node->mem_array().read_surfel(surfel_idx) );
 
             }
         }
