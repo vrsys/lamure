@@ -498,7 +498,7 @@ get_nearest_neighbours(
                 if (candidates.size() == number_of_neighbours)
                     candidates.pop_back();
 
-                candidates.push_back(std::make_pair(surfel_id_t(current_node, i), distance_to_center));
+                candidates.emplace_back(surfel_id_t{current_node, i}, distance_to_center);
 
                 for (uint16_t k = candidates.size() - 1; k > 0; --k)
                 {
@@ -555,7 +555,7 @@ get_nearest_neighbours(
                             if (candidates.size() == number_of_neighbours)
                                 candidates.pop_back();
 
-                            candidates.push_back(std::make_pair(surfel_id_t(adjacent_node, i), distance_to_center));
+                            candidates.emplace_back(surfel_id_t{adjacent_node, i}, distance_to_center);
 
                             for (uint16_t k = candidates.size() - 1; k > 0; --k)
                             {
@@ -611,7 +611,7 @@ get_nearest_neighbours_in_nodes(
                 if (candidates.size() == number_of_neighbours)
                     candidates.pop_back();
 
-                candidates.push_back(std::make_pair(surfel_id_t(current_node, i), distance_to_center));
+                candidates.emplace_back(surfel_id_t{current_node, i}, distance_to_center);
 
                 for (uint16_t k = candidates.size() - 1; k > 0; --k)
                 {
@@ -651,7 +651,7 @@ get_nearest_neighbours_in_nodes(
                             if (candidates.size() == number_of_neighbours)
                                 candidates.pop_back();
 
-                            candidates.push_back(std::make_pair(surfel_id_t(adjacent_node, i), distance_to_center));
+                            candidates.emplace_back(surfel_id_t{adjacent_node, i}, distance_to_center);
 
                             for (uint16_t k = candidates.size() - 1; k > 0; --k)
                             {
@@ -790,7 +790,7 @@ get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_ve
         }
 
         if(push_surfel) {
-            k_nearest_neighbours.push_back(std::make_pair(neigh, length_squared) );
+            k_nearest_neighbours.emplace_back(neigh, length_squared);
 
             for (uint16_t k = k_nearest_neighbours.size() - 1; k > 0; --k)
             {
@@ -1286,7 +1286,7 @@ thread_remove_outlier_jobs(const uint32_t start_marker,
             }
 
             if( insert_element ) {
-                intermediate_outliers_for_thread.push_back( std::make_pair(surfel_id_t(node_idx, surfel_idx), avg_dist) );
+                intermediate_outliers_for_thread.emplace_back(surfel_id_t{node_idx, surfel_idx}, avg_dist);
 
                 for (uint32_t k = intermediate_outliers_for_thread.size() - 1; k > 0; --k)
                 {
