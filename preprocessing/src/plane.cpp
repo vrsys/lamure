@@ -81,7 +81,7 @@ vec2r plane_t::project(const plane_t& _p, const scm::math::vec3f& _right, const 
 
 
 void plane_t::fit_plane(
-    std::vector<vec3r>& neighbour_pos_ptrs,
+    std::vector<vec3r> const& neighbour_pos_ptrs,
     plane_t& plane) {
     
     unsigned int num_neighbours = neighbour_pos_ptrs.size();

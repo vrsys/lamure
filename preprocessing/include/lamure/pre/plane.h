@@ -36,7 +36,7 @@ public:
     static vec2r project(const plane_t& _p, const scm::math::vec3f& _right, const vec3r& _v);
 
     static void fit_plane(
-    std::vector<vec3r>& neighbour_pos_ptrs,
+    std::vector<vec3r> const& neighbour_pos_ptrs,
     plane_t& plane);
 
     float a_;
