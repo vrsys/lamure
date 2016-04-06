@@ -156,11 +156,11 @@ get_parent_id(const uint32_t node_id) const
                / fan_factor_ - 1;
 }
 
-const node_t bvh::
+const node_id_type bvh::
 get_first_node_id_of_depth(uint32_t depth) const {
-    node_t id = 0;
+    node_id_type id = 0;
     for (uint32_t i = 0; i < depth; ++i) {
-        id += (node_t)pow((double)fan_factor_, (double)i);
+        id += (node_id_type)pow((double)fan_factor_, (double)i);
     }
 
     return id;
@@ -423,9 +423,9 @@ void bvh::compute_normal_and_radius(
 }
 
 void bvh::get_descendant_leaves(
-     const size_t node,
-     std::vector<size_t>& result,
-     const size_t first_leaf,
+     const node_id_type node,
+     std::vector<node_id_type>& result,
+     const node_id_type first_leaf,
      const std::unordered_set<size_t>& excluded_leaves) const
 {
     if (node < first_leaf) // inner node
@@ -445,9 +445,9 @@ void bvh::get_descendant_leaves(
 }
 
 void bvh::get_descendant_nodes(
-     const size_t node,
-     std::vector<size_t>& result,
-     const size_t desired_depth,
+     const node_id_type node,
+     std::vector<node_id_type>& result,
+     const node_id_type desired_depth,
      const std::unordered_set<size_t>& excluded_nodes) const
 {
     size_t node_depth = std::log((node + 1) * (fan_factor_ - 1)) / std::log(fan_factor_);
@@ -478,7 +478,7 @@ get_nearest_neighbours(
     const uint32_t number_of_neighbours,
     const bool do_local_search) const
 {
-    size_t current_node = target_surfel.node_idx;
+    node_id_type current_node = target_surfel.node_idx;
     std::unordered_set<size_t> processed_nodes;
     vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
@@ -531,7 +531,7 @@ get_nearest_neighbours(
 
         current_node = get_parent_id(current_node);
 
-        std::vector<size_t> unvisited_descendant_nodes;
+        std::vector<node_id_type> unvisited_descendant_nodes;
 
         get_descendant_nodes(current_node, unvisited_descendant_nodes, nodes_[target_surfel.node_idx].depth(), processed_nodes);
 
@@ -592,7 +592,7 @@ get_nearest_neighbours_in_nodes(
     const std::vector<node_id_type>& target_nodes,
     const uint32_t number_of_neighbours) const
 {
-    size_t current_node = target_surfel.node_idx;
+    node_id_type current_node = target_surfel.node_idx;
     vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
@@ -899,7 +899,7 @@ resample_based_on_overlap(surfel_mem_array const&  joined_input,
 {
     
     for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i){
-        output_mem_array.mem_data()->emplace_back( joined_input.read_surfel(i) );
+        output_mem_array.mem_data()->emplace_back( joined_input.read_surfel(i));
     }
 
     auto compute_new_position = [] (surfel const& plane_ref_surfel, real radius_offset, real rot_angle) {

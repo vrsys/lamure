@@ -206,7 +206,7 @@ construct()
 
         input_file = binary_file;
 
-        LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
+        // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }
 
     // downsweep (create bvh)
@@ -255,7 +255,7 @@ construct()
 
             input_file = bvhd_file;
 
-            LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
+            // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
         
             if ( 3 <= start_stage ) {
                 break;
@@ -353,7 +353,7 @@ construct()
         }
 
         input_file = bvhu_file;
-        LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
+        // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }
 
     // serialize to file
@@ -386,7 +386,7 @@ construct()
             std::remove(input_file.string().c_str());
             bvh.reset_nodes();
         }
-        LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
+        // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     }
     return true;
 }

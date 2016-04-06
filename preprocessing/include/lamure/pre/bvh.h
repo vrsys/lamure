@@ -77,7 +77,7 @@ public:
     uint32_t            get_depth_of_node(const uint32_t node_id) const;
     uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
     uint32_t            get_parent_id(const uint32_t node_id) const;
-    const node_t        get_first_node_id_of_depth(uint32_t depth) const;
+    const node_id_type        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
 
     void                resample_based_on_overlap(surfel_mem_array const&  joined_input,
@@ -260,14 +260,14 @@ private:
                             shared_file leaf_level_access);
 
     void                get_descendant_leaves(
-                            const size_t node,
-                            std::vector<size_t>& result,
-                            const size_t first_leaf,
+                            const node_id_type node,
+                            std::vector<node_id_type>& result,
+                            const node_id_type first_leaf,
                             const std::unordered_set<size_t>& excluded_leaves) const;
     void                get_descendant_nodes(
-                            const size_t node,
-                            std::vector<size_t>& result,
-                            const size_t desired_depth,
+                            const node_id_type node,
+                            std::vector<node_id_type>& result,
+                            const node_id_type desired_depth,
                             const std::unordered_set<size_t>& excluded_nodes) const;
 };
 
