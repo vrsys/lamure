@@ -323,7 +323,7 @@ compute_properties(const surfel_mem_array& sa,
     size_t counter = 0;
 
     for (size_t i = 0; i < sa.length(); ++i) {
-        surfel const& s = sa.read_surfel_ref(i);
+        surfel s = sa.read_surfel_ref(i);
         
         props.bbox.expand_by_disk(s.pos(), s.normal(), s.radius());
 

@@ -182,7 +182,7 @@ compute_normal(const bvh& tree,
 
         
 
-        vec3r const& neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
+        vec3r neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
         if (neighbour_pos == poi) {
             continue;
         }
@@ -204,7 +204,7 @@ compute_normal(const bvh& tree,
     scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
 
     for (const auto& neighbour_ids : nearest_neighbours_ids) {
-        vec3r const& neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
+        vec3r neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
         if (neighbour_pos == poi) {
             continue;
         }

@@ -480,7 +480,7 @@ get_nearest_neighbours(
 {
     size_t current_node = target_surfel.node_idx;
     std::unordered_set<size_t> processed_nodes;
-    vec3r const& center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
+    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
@@ -593,7 +593,7 @@ get_nearest_neighbours_in_nodes(
     const uint32_t number_of_neighbours) const
 {
     size_t current_node = target_surfel.node_idx;
-    vec3r const& center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
+    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
