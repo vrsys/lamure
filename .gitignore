@@ -2,4 +2,4 @@ build
 install
 *.sublime-workspace
 *~
-*.nfs000
+*.nfs000*

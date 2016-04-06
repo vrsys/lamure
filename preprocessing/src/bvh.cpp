@@ -1360,14 +1360,22 @@ thread_split_node_jobs(size_t& slice_left,
     }
 }
 
-
-
 void bvh::
 upsweep(const reduction_strategy& reduction_strgy, 
         const normal_computation_strategy& normal_strategy, 
         const radius_computation_strategy& radius_strategy,
         bool recompute_leaf_level,
         bool resample) {
+
+    // Create level temp files
+    std::vector<shared_file> level_temp_files;
+    for (uint32_t level = 0; level <= depth_; ++level)
+    {
+        level_temp_files.push_back(std::make_shared<file>());
+        std::string ext = ".lv" + std::to_string(level);
+        level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
+    }
+
     // Start at bottom level and move up towards root.
     for (int32_t level = depth_; level >= 0; --level)
     {
@@ -1410,59 +1418,42 @@ upsweep(const reduction_strategy& reduction_strgy,
             std::cout << std::endl;
         }
 
-        //if(level < 3){
-              //std::fstream txtfile ("node_stats.txt");
         real mean_radius_sd = 0.0;
         uint counter = 1;
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index){
 
             bvh_node* current_node = &nodes_.at(node_index);
 
-            //std::cout<< "mean radius: "<< (*current_node).node_stats().mean_radius() << std::endl;
             mean_radius_sd = mean_radius_sd + (*current_node).node_stats().radius_sd();
             counter++;
-              /*if (txtfile.is_open())
-              {
-                txtfile << "Entering level: " << level << std::endl;
-                txtfile <<"mean radius: "<< (*current_node).node_stats().mean_radius() << std::endl;
-                txtfile.close();
-              }
-              else std::cout << "Unable to open file \n";*/
-              //std::cout<< "mean radius pro node: "<< (*current_node).node_stats().mean_radius() << "\n";
+
+            // compute node offset in file
+            int32_t nid = current_node->node_id();
+            for (uint32_t write_level = 0; write_level < uint32_t(level); ++write_level)
+                nid -= uint32_t(pow(fan_factor_, write_level));
+            nid = std::max(0, nid);
+
+            // save computed node to disk
+            current_node->flush_to_disk(level_temp_files[level], size_t(nid) * max_surfels_per_node_, false);
+
+             // Unload all child nodes on level, if not in leaf
+            if (level != int32_t(depth_)) {
+                for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                    size_t child_id = get_child_id(current_node->node_id(), child_index);
+                    bvh_node& child_node = nodes_.at(child_id);
+
+                    if (child_node.is_in_core()) {
+                        child_node.mem_array().reset();
+                    }
+                }
+            }
         }
         mean_radius_sd = mean_radius_sd/counter;
         std::cout<< "average radius deviation pro level: "<< mean_radius_sd << "\n";
-
-        //}
-    }
-
-    // Create level temp files
-    std::vector<shared_file> level_temp_files;
-    for (uint32_t level = 0; level <= depth_; ++level)
-    {
-        level_temp_files.push_back(std::make_shared<file>());
-        std::string ext = ".lv" + std::to_string(level);
-        level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
-    }
-
-    // Save node data in proper order (from zero to last).
-    for (uint32_t node_index = 0; node_index < nodes_.size(); ++node_index)
-    {
-        bvh_node* current_node = &nodes_.at(node_index);
-
-        // compute node offset in file
-        int32_t nid = current_node->node_id();
-        for (uint32_t level = 0; level < current_node->depth(); ++level)
-            nid -= uint32_t(pow(fan_factor_, level));
-        nid = std::max(0, nid);
-
-        // save computed node to disk
-        current_node->flush_to_disk(level_temp_files[current_node->depth()], size_t(nid) * max_surfels_per_node_, false);
     }
     
     state_ = state_type::after_upsweep;
 }
-
 
 surfel_vector bvh::
 remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
