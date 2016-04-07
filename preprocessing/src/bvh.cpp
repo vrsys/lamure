@@ -1118,11 +1118,21 @@ thread_create_lod(const uint32_t start_marker,
                                                        (*this), get_child_id(current_node->node_id(), 0) );
 
             }
-            
-
 
             current_node->reset(reduction);
             current_node->set_reduction_error(reduction_error);
+
+            // Unload all child nodes, if not in leaf level
+            if (get_depth_of_node(current_node->node_id()) != depth()) {
+                for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                    size_t child_id = get_child_id(current_node->node_id(), child_index);
+                    bvh_node& child_node = nodes_.at(child_id);
+
+                    if (child_node.is_in_core()) {
+                        child_node.mem_array().reset();
+                    }
+                }
+            }
 
         }
 
@@ -1388,9 +1398,8 @@ upsweep(const reduction_strategy& reduction_strgy,
         for (uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
             bvh_node* current_node = &nodes_.at(node_index);
-
-            if (current_node->is_out_of_core())
-            {
+            // if necessary, load leaf-level nodes from disk
+            if (level == int32_t(depth_) && current_node->is_out_of_core()) {
                 current_node->load_from_disk();
             }
         }
@@ -1435,18 +1444,6 @@ upsweep(const reduction_strategy& reduction_strgy,
 
             // save computed node to disk
             current_node->flush_to_disk(level_temp_files[level], size_t(nid) * max_surfels_per_node_, false);
-
-             // Unload all child nodes on level, if not in leaf
-            if (level != int32_t(depth_)) {
-                for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
-                    size_t child_id = get_child_id(current_node->node_id(), child_index);
-                    bvh_node& child_node = nodes_.at(child_id);
-
-                    if (child_node.is_in_core()) {
-                        child_node.mem_array().reset();
-                    }
-                }
-            }
         }
         mean_radius_sd = mean_radius_sd/counter;
         std::cout<< "average radius deviation pro level: "<< mean_radius_sd << "\n";
