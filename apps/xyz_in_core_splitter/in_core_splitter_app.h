@@ -11,9 +11,11 @@
 #include "xyz_file_formats.h"
 
 #include <map>
+#include <vector>
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <cstdint>
 
 #define DEFAULT_PRECISION 15
 
@@ -49,7 +51,8 @@ public:
 
 private:
 
-  std::map<std::string, std::pair<xyz_type, std::string> > format_map_ = {
+  typedef std::map<std::string, std::pair<xyz_type, std::string> > format_map_t;
+  format_map_t format_map_ = format_map_t{
     {".xyz",     {xyz_type::xyz_rgb, ".xyz"}},
     {".xyz_all", {xyz_type::xyz_all, ".xyz_all"}}
   };

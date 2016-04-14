@@ -250,95 +250,97 @@ compute_image_differences(std::string const& image_path_1,
 						  std::string const& image_path_2, 
 						  std::string const& out_image_path) {
 
-	load_image_to_memory(image_path_1.c_str(), image_data_1_, image_width_1_, image_height_1_);
+  try {
+    load_image_to_memory(image_path_1.c_str(), image_data_1_, image_width_1_, image_height_1_);
 
-	int32_t image_width_2 = -1;
-	int32_t image_height_2 = -1;
+    int32_t image_width_2 = -1;
+    int32_t image_height_2 = -1;
 
-	load_image_to_memory(image_path_2.c_str(), image_data_2_, image_width_2, image_height_2);
+    load_image_to_memory(image_path_2.c_str(), image_data_2_, image_width_2, image_height_2);
 
-    if(image_width_1_ != image_width_2 || image_height_1_ != image_height_2) {
-        std::cout << "Dimensions of the images does not match\n";
+    if (image_width_1_ != image_width_2 || image_height_1_ != image_height_2) {
+      std::cout << "Dimensions of the images does not match\n";
     }
 
-    double** diff_values_local  = (double**) malloc( sizeof(double*));
+    double** diff_values_local = (double**)malloc(sizeof(double*));
 
 
-    double* avg_delta_E_errors_local = (double*) malloc( sizeof(double) );
-    double* min_delta_E_errors_local = (double*) malloc( sizeof(double) );
-    double* max_delta_E_errors_local = (double*) malloc( sizeof(double) );
+    double* avg_delta_E_errors_local = (double*)malloc(sizeof(double));
+    double* min_delta_E_errors_local = (double*)malloc(sizeof(double));
+    double* max_delta_E_errors_local = (double*)malloc(sizeof(double));
 
-    double* valid_pixel_array      = (double*) malloc(  sizeof(double) );
+    double* valid_pixel_array = (double*)malloc(sizeof(double));
 
     double max_global_error = std::numeric_limits<double>::lowest();
     double min_global_error = std::numeric_limits<double>::max();
 
 
-    diff_values_local[0] = (double*)  malloc(image_width_1_ * image_height_1_ * sizeof(double) );
+    diff_values_local[0] = (double*)malloc(image_width_1_ * image_height_1_ * sizeof(double));
 
-   // double* diffValues = (double*) malloc(w_im_1*h_im_1 * sizeof(double));
+    // double* diffValues = (double*) malloc(w_im_1*h_im_1 * sizeof(double));
 
-    double error_sum       = 0.0;
-    double max_local_error =  std::numeric_limits<double>::lowest();
-    double min_local_error   =   std::numeric_limits<double>::max();
+    double error_sum = 0.0;
+    double max_local_error = std::numeric_limits<double>::lowest();
+    double min_local_error = std::numeric_limits<double>::max();
 
 
     unsigned int valid_pixel_count = 0;
 
     std::cout << "Reading & Converting\n";
 
-    for( int i = 0; i < image_width_1_* image_height_1_; ++i ) {
-        //std::cout << "Reading first component\n";
-        unsigned char r1 = image_data_1_[i*4 + 0];
-        //std::cout << "Reading second component\n";
-        unsigned char g1 = image_data_1_[i*4 + 1];
-        unsigned char b1 = image_data_1_[i*4 + 2];
+    for (int i = 0; i < image_width_1_* image_height_1_; ++i) {
+      //std::cout << "Reading first component\n";
+      unsigned char r1 = image_data_1_[i * 4 + 0];
+      //std::cout << "Reading second component\n";
+      unsigned char g1 = image_data_1_[i * 4 + 1];
+      unsigned char b1 = image_data_1_[i * 4 + 2];
 
-        unsigned char r2 = image_data_2_[i*4 + 0];
-        unsigned char g2 = image_data_2_[i*4 + 1];
-        unsigned char b2 = image_data_2_[i*4 + 2];
-        //std::cout << "Read colors\n";
+      unsigned char r2 = image_data_2_[i * 4 + 0];
+      unsigned char g2 = image_data_2_[i * 4 + 1];
+      unsigned char b2 = image_data_2_[i * 4 + 2];
+      //std::cout << "Read colors\n";
 
-        lamure::qm::col3 rgb1(r1,g1,b1);
-        lamure::qm::col3 rgb2(r2,g2,b2);
+      lamure::qm::col3 rgb1 = { r1, g1, b1 };
+      lamure::qm::col3 rgb2 = { r2, g2, b2 };
 
-        lamure::qm::col3 lab1 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb1));
-        lamure::qm::col3 lab2 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb2));
+      lamure::qm::col3 lab1 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb1));
+      lamure::qm::col3 lab2 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb2));
 
-        double delta_E = cc::calc_delta_E(lab1, lab2);
+      double delta_E = cc::calc_delta_E(lab1, lab2);
 
-        if(delta_E > max_local_error) {
-            max_local_error = delta_E;
-        }
-        if(delta_E < min_local_error) {
-            min_local_error = delta_E;
-        }
+      if (delta_E > max_local_error) {
+        max_local_error = delta_E;
+      }
+      if (delta_E < min_local_error) {
+        min_local_error = delta_E;
+      }
 
-        if(delta_E > max_global_error) {
-            max_global_error = delta_E;
-        }
+      if (delta_E > max_global_error) {
+        max_global_error = delta_E;
+      }
 
-        if(delta_E < min_global_error) {
-            min_global_error = delta_E;
-        }
+      if (delta_E < min_global_error) {
+        min_global_error = delta_E;
+      }
 
-        //std::cout << "About to write diff val\n";
-        diff_values_local[0][i] = delta_E;
+      //std::cout << "About to write diff val\n";
+      diff_values_local[0][i] = delta_E;
 
 
-        error_sum += delta_E;
+      error_sum += delta_E;
 
-        ++valid_pixel_count;
+      ++valid_pixel_count;
     }
-    
+
     std::cout << "Read & Converted\n";
 
     valid_pixel_array[0] = (double)valid_pixel_count / (image_width_1_*image_height_1_);
 
-    if(valid_pixel_count != 0) {
-        error_sum /= valid_pixel_count;//w_im_1*h_im_1;
-    } else {
-        error_sum = 0;
+    if (valid_pixel_count != 0) {
+      error_sum /= valid_pixel_count;//w_im_1*h_im_1;
+    }
+    else {
+      error_sum = 0;
     }
 
     avg_delta_E_errors_local[0] = error_sum;
@@ -346,9 +348,9 @@ compute_image_differences(std::string const& image_path_1,
     min_delta_E_errors_local[0] = min_local_error;
     max_delta_E_errors_local[0] = max_local_error;
 
-    std::cout<<"Average pixel error sum of images ["<< out_image_path <<"]: "<<error_sum<<"\n";
+    std::cout << "Average pixel error sum of images [" << out_image_path << "]: " << error_sum << "\n";
 
-    free_image_data(image_data_1_ );
+    free_image_data(image_data_1_);
     free_image_data(image_data_2_);
 
 
@@ -361,11 +363,11 @@ compute_image_differences(std::string const& image_path_1,
     std::string splat_count_high;
 
 
-    std::string currImFilename = ( (0 < 10) ? (std::string("000") ) : (0 < 100 ?  std::string("00") : (0 < 1000 ? std::string("0") : std::string("") ) ) ) + std::to_string(0)+".png";
+    std::string currImFilename = ((0 < 10) ? (std::string("000")) : (0 < 100 ? std::string("00") : (0 < 1000 ? std::string("0") : std::string("")))) + std::to_string(0) + ".png";
 
     double valid_pixel_in_percent = valid_pixel_array[0] * 100;
-    unsigned int valid_pixel_pre_point  = valid_pixel_in_percent;
-    unsigned int valid_pixel_after_point = ( (valid_pixel_in_percent - valid_pixel_pre_point) + 0.005) * 100;
+    unsigned int valid_pixel_pre_point = valid_pixel_in_percent;
+    unsigned int valid_pixel_after_point = ((valid_pixel_in_percent - valid_pixel_pre_point) + 0.005) * 100;
 
 
     write_delta_E_image(diff_values_local[0], image_width_1_, image_height_1_, min_delta_E_errors_local[0], max_delta_E_errors_local[0], 0, out_image_path);
@@ -393,6 +395,12 @@ compute_image_differences(std::string const& image_path_1,
     free(max_delta_E_errors_local);
     free(valid_pixel_array);
 
+    return true;
+  }
+  catch (std::exception& e) {
+    std::cerr << e.what() << std::endl;
+    return false;
+  }
 
 
 }
