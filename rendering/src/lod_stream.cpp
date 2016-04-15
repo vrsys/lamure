@@ -9,6 +9,7 @@
 
 #include <stdexcept>
 #include <cstdio>
+#include <iostream>
 
 namespace lamure {
 namespace ren {

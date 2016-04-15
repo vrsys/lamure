@@ -83,8 +83,6 @@ class PREPROCESSING_DLL reduction_entropy : public reduction_strategy
 {
 public:
 
-    explicit  reduction_entropy() {}
-
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node,
