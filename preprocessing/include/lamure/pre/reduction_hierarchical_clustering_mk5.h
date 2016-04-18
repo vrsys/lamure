@@ -107,9 +107,6 @@ private:
 	void eigsrt_jacobi(int dim, double* eigenvalues, double** eigenvectors) const;
 
 	int color_space_mode_;
-
-	scm::math::mat3d calculate_covariance_matrix_color_RGB(const std::vector<surfel*>& surfels_to_sample, vec3r& centroid) const;
-	vec3r calculate_centroid_color_RGB(const std::vector<surfel*>& surfels_to_sample) const;
 };
 
 } // namespace pre

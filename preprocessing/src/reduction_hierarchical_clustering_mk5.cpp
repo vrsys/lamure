@@ -44,7 +44,7 @@ create_lod(real& reduction_error,
     // TODO: optimize chosen parameters
     uint32_t maximum_cluster_size = (surfels_to_sample.size() / surfels_per_node) * 2;
     real maximum_variation_position = -1;
-    real maximum_variation_color = 0.010;
+    real maximum_variation_color = 0.025;
 
 	std::vector<std::vector<surfel*>> clusters;
 	clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, maximum_variation_position, maximum_variation_color, surfels_per_node);
@@ -59,7 +59,6 @@ create_lod(real& reduction_error,
 	}
 
 	surfels.set_length(surfels.mem_data()->size());
-
 	reduction_error = 0;
 
 	return surfels;
@@ -118,27 +117,6 @@ split_point_cloud(const std::vector<surfel*>& input_surfels,
 			{
 				split_cluster_by_position(calculate_cluster_data(new_surfels_one), max_cluster_size, max_variation_position, cluster_queue);
 			}
-			/*else
-			{
-				scm::math::mat3d covMat = calculate_covariance_matrix_color(current_cluster.surfels, current_cluster.centroid_color);
-
-				std::stringstream msg1;
-				msg1 << "------------------------" << std::endl;
-				msg1 << "variation: " << current_cluster.variation_color << std::endl;
-				msg1 << "covMat: " << covMat.m00 << " " << covMat.m01 << " " << covMat.m02 << covMat.m03 << " " << covMat.m04 << " " << covMat.m05 << covMat.m06 << " " << covMat.m07 << " " << covMat.m08 << std::endl;
-				msg1 << "covMat2: " << covMat2.m00 << " " << covMat2.m01 << " " << covMat2.m02 << covMat2.m03 << " " << covMat2.m04 << " " << covMat2.m05 << covMat2.m06 << " " << covMat2.m07 << " " << covMat2.m08 << std::endl;
-				msg1 << "centroid: " << current_cluster.centroid_color.x << " " << current_cluster.centroid_color.y << " " << current_cluster.centroid_color.z << std::endl;
-				msg1 << "normal: " << current_cluster.normal_color.x << " " << current_cluster.normal_color.y << " " << current_cluster.normal_color.z << std::endl;
-
-				for(uint32_t surfel_index = 0; surfel_index < current_cluster.surfels.size(); ++surfel_index)
-				{
-					surfel* current_surfel = current_cluster.surfels.at(surfel_index);
-					vec3r color_trans = transform_color(current_surfel->color());
-					msg1 << "point LAB: " << color_trans.x << " " << color_trans.y << " " << color_trans.z << std::endl;
-					msg1 << "point RGB: " << (double)current_surfel->color().x << " " << (double)current_surfel->color().y << " " << (double)current_surfel->color().z << std::endl; 
-				}
-				std::cout << msg1.str();
-			}*/
 			if(new_surfels_two.size() > 0)
 			{
 				split_cluster_by_position(calculate_cluster_data(new_surfels_two), max_cluster_size, max_variation_position, cluster_queue);
@@ -250,6 +228,9 @@ calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r
 {
     scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
     centroid = calculate_centroid(surfels_to_sample);
+    
+    // TODO: The rounding is only necessary for some models (infinite loop otherwise), it would be good to get rid of it completely though.
+    bool roundingNecessary = true;
 
     for (uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
     {
@@ -266,6 +247,15 @@ calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r
         covariance_mat.m06 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().x - centroid.x);
         covariance_mat.m07 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().y - centroid.y);
         covariance_mat.m08 += std::pow(current_surfel->pos().z-centroid.z, 2);
+    }
+
+    if (roundingNecessary)
+    {
+    	// Precision limitation because of rounding errors otherwise.
+	    for (int index = 0; index < 9; ++ index)
+	    {
+	    	covariance_mat[index] = round(covariance_mat[index] * std::pow(10.0, 9.0)) / std::pow(10.0, 9.0);
+	    }
     }
 
     return covariance_mat;
@@ -295,12 +285,12 @@ calculate_covariance_matrix_color(const std::vector<surfel*>& surfels_to_sample,
         covariance_mat.m06 += (color_trans.z-centroid.z) * (color_trans.x - centroid.x);
         covariance_mat.m07 += (color_trans.z-centroid.z) * (color_trans.y - centroid.y);
         covariance_mat.m08 += std::pow(color_trans.z - centroid.z, 2);
+    }
 
-        // Precision limitation because of rounding errors otherwise.
-        for (int index = 0; index < 9; ++ index)
-        {
-        	covariance_mat[index] = round(covariance_mat[index] * std::pow(10.0, 9.0)) / std::pow(10.0, 9.0);
-        }
+    // Precision limitation because of rounding errors otherwise.
+    for (int index = 0; index < 9; ++ index)
+    {
+    	covariance_mat[index] = round(covariance_mat[index] * std::pow(10.0, 9.0)) / std::pow(10.0, 9.0);
     }
 
     return covariance_mat;
@@ -386,7 +376,7 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 		color_overrun = color_overrun + current_surfel->color();
 	}
 
-	centroid = centroid / surfels_to_sample.size();
+	centroid = centroid / (double)surfels_to_sample.size();
 	normal = normal / surfels_to_sample.size();
 	color_overrun = color_overrun / surfels_to_sample.size();
 
