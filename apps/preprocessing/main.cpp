@@ -269,24 +269,36 @@ int main(int argc, const char *argv[])
 
         if (reduction_algo == "ndc")
             desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc;
-        else if (reduction_algo == "const")
+        else if (reduction_algo == "const") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::constant;
+        }
         else if (reduction_algo == "everysecond")
             desc.reduction_algo        = lamure::pre::reduction_algorithm::every_second;
         else if (reduction_algo == "random") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::random;
-        else if (reduction_algo == "entropy") 
+        else if (reduction_algo == "entropy")  {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::entropy;
-        else if (reduction_algo == "particlesim")
+        }
+        else if (reduction_algo == "particlesim") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::particle_sim;
+        }
         else if (reduction_algo == "hierarchical") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::hierarchical_clustering;
-        else if (reduction_algo == "kclustering")
+        else if (reduction_algo == "kclustering") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::k_clustering;
-        else if (reduction_algo == "spatiallyrandom")
+        }
+        else if (reduction_algo == "spatiallyrandom") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::spatially_subdivided_random;
-        else if (reduction_algo == "pair") 
+        }
+        else if (reduction_algo == "pair")  {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::pair;
+        }
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;
@@ -327,7 +339,13 @@ int main(int argc, const char *argv[])
         desc.compute_normals_and_radii    = vm.count("recompute");
         desc.keep_intermediate_files      = vm.count("keep-interm");
         desc.resample                     = vm.count("resample");
+        // manual check because typed_value doenst support check whether default is used
+        if(vm["mem-ratio"].as<float>() != 0.6f) {
+            std::cerr << "WARNING: \"mem-ratio\" flag deprecated" << std::endl;
+        }
+
         desc.memory_ratio                 = std::max(vm["mem-ratio"].as<float>(), 0.05f);
+
         desc.buffer_size                  = buffer_size;
         desc.number_of_neighbours         = std::max(vm["neighbours"].as<int>(), 1);
         desc.translate_to_origin          = !vm.count("no-translate-to-origin");
