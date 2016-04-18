@@ -180,8 +180,8 @@ create_lod(real& reduction_error,
         //determine color by natural neighbour interpolation (right now from the point of view of the current surfel)
 
         vec3b old_color = surfel_to_push.color();
-
-        auto const nn_indices = tree.get_natural_neighbours(rand_drawn_indices, 24);
+        auto nearest_neighbours = tree.get_nearest_neighbours(rand_drawn_indices, 24);
+        auto const nn_indices = tree.get_natural_neighbours(rand_drawn_indices, nearest_neighbours);
 
         // interpolate colors of natural neighbours
         if( nn_indices.size() > 2) {

@@ -26,42 +26,29 @@ plane_t::plane_t(const vec3r& _normal, const vec3r& _origin)
     d_ = -scm::math::dot(_origin, n);
 }
 
-plane_t::plane_t(float _a, float _b, float _c, float _d) 
-    : a_(_a), b_(_b), c_(_c), d_(_d) {
-
-}
-
-plane_t::plane_t(const plane_t& _p)
-    : a_(_p.a_), b_(_p.b_), c_(_p.c_), d_(_p.d_) {
-}
-
-plane_t::~plane_t() {
-
-}
-
-scm::math::vec3f plane_t::get_normal() const {
-    return scm::math::vec3f(a_, b_, c_);
+vec3r plane_t::get_normal() const {
+    return vec3r(a_, b_, c_);
 }
 
 vec3r plane_t::get_origin() const {
     return origin_;
 }
 
-float plane_t::signed_distance(const plane_t& _p, const scm::math::vec3f& _v) {
+real plane_t::signed_distance(const plane_t& _p, const vec3r& _v) {
     return std::abs(_p.a_ * _v.x + _p.b_ * _v.y + _p.c_ * _v.z + _p.d_) / sqrt(_p.a_*_p.a_ + _p.b_*_p.b_ + _p.c_*_p.c_);
 }
 
-scm::math::vec3f plane_t::get_right() const {
-    scm::math::vec3f normal = scm::math::normalize(get_normal());
-    scm::math::vec3f up = scm::math::vec3f(0.0f, 1.0f, 0.0f);
-    scm::math::vec3f right = scm::math::vec3f(1.0f, 0.0f, 0.0f);
+vec3r plane_t::get_right() const {
+    vec3r normal = get_normal();
+    vec3r up = vec3r(0.0f, 1.0f, 0.0f);
+    vec3r right = vec3r(1.0f, 0.0f, 0.0f);
     if (normal != up) {
         right = scm::math::normalize(scm::math::cross(normal, up));
     }
     return right;
 }
 
-scm::math::vec3f plane_t::get_up() const {
+vec3r plane_t::get_up() const {
     return scm::math::cross( get_normal(), get_right() );
 }
 
@@ -71,67 +58,59 @@ vec3r plane_t::get_point_on_plane( vec2r const& plane_coords) const {
           + vec3r(get_up()) * plane_coords[1];
 }
 
-vec2r plane_t::project(const plane_t& _p, const scm::math::vec3f& _right, const vec3r& _v) {
-    vec3r r = vec3r( scm::math::normalize(_right) );
-    real s = scm::math::dot(_v - _p.origin_, r);
-    real t = scm::math::dot(_v - _p.origin_, vec3r(_p.get_up()) );
-
+vec2r plane_t::project(const plane_t& _p, const vec3r& right, const vec3r& _v) {
+    real s = scm::math::dot(_v - _p.origin_, right);
+    real t = scm::math::dot(_v - _p.origin_, _p.get_up());
     return vec2r(s, t);
 }
 
+vec2r plane_t::project(const plane_t& _p, const vec3r& right, const vec3r& up, const vec3r& _v) {
+    real s = scm::math::dot(_v - _p.origin_, right);
+    real t = scm::math::dot(_v - _p.origin_, up);
+    return vec2r(s, t);
+}
 
 void plane_t::fit_plane(
-    std::vector<vec3r>& neighbour_pos_ptrs,
+    std::vector<vec3r> const& neighbour_positions,
     plane_t& plane) {
     
-    unsigned int num_neighbours = neighbour_pos_ptrs.size();
-
-    vec3r cen = vec3r(0.0, 0.0, 0.0);
-
-    for (const auto& pos_ptr : neighbour_pos_ptrs) {
-        vec3r neighbour_pos = pos_ptr;
-        cen.x += neighbour_pos[0];
-        cen.y += neighbour_pos[1];
-        cen.z += neighbour_pos[2];
+    vec3r centroid = vec3r{0.0};
+    for (const auto& neighbour_pos : neighbour_positions) {
+        centroid += neighbour_pos;
     }
     
-    vec3r centroid = cen * (1.0f/ (real)num_neighbours);
+    centroid /= (real)neighbour_positions.size();
 
     //calc covariance matrix
     mat3r covariance_mat = scm::math::mat3d::zero();
 
-    for (const auto& pos_ptr : neighbour_pos_ptrs) {
-        vec3r const& c = pos_ptr;
-
-        covariance_mat.m00 += std::pow(c[0]-centroid[0], 2);
+    for (const auto& c : neighbour_positions) {
+        covariance_mat.m00 += (c[0]-centroid[0]) * (c[0]-centroid[0]);
         covariance_mat.m01 += (c[0]-centroid[0]) * (c[1] - centroid[1]);
         covariance_mat.m02 += (c[0]-centroid[0]) * (c[2] - centroid[2]);
 
         covariance_mat.m03 += (c[1]-centroid[1]) * (c[0] - centroid[0]);
-        covariance_mat.m04 += std::pow(c[1]-centroid[1], 2);
+        covariance_mat.m04 += (c[1]-centroid[1]) * (c[1]-centroid[1]);
         covariance_mat.m05 += (c[1]-centroid[1]) * (c[2] - centroid[2]);
 
         covariance_mat.m06 += (c[2]-centroid[2]) * (c[0] - centroid[0]);
         covariance_mat.m07 += (c[2]-centroid[2]) * (c[1] - centroid[1]);
-        covariance_mat.m08 += std::pow(c[2]-centroid[2], 2);
-
+        covariance_mat.m08 += (c[2]-centroid[2]) * (c[2]-centroid[2]);
     }
 
     //calculate normal
     mat3r inv_covariance_mat = scm::math::inverse(covariance_mat);
 
-    vec3r first = vec3r(1.0f, 1.0f, 1.0f);
+    vec3r first = vec3r{1.0f};
     vec3r second = scm::math::normalize(first*inv_covariance_mat);
 
     unsigned int iteration = 0;
-    
-
     while (iteration++ < 512 && first != second) {
         first = second;
         second = scm::math::normalize(first*inv_covariance_mat);
     }
     
-    plane = plane_t(second, centroid);
+    plane = plane_t{second, centroid};
 }
 
 }

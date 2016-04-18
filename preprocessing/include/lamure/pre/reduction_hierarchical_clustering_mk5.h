@@ -92,11 +92,15 @@ private:
 
 	real point_plane_distance(const vec3r& centroid, const vec3f& normal, const vec3r& point) const;
 
-	vec3r transformRGBtoXYZ(const vec3b& color) const;
+	vec3r transform_RGB_to_XYZ(const vec3b& color) const;
 
-	vec3r transformRGBtoLAB(const vec3b& color) const;
+	real sRGB_to_linearRGB_channel(real color_value) const;
+
+	vec3r transform_RGB_to_LAB(const vec3b& color) const;
 
 	real LAB_helper(const real& t) const;
+
+	vec3r transform_color(const vec3b& color) const;
 
 	void jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const;
 

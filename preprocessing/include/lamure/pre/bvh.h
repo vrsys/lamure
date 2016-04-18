@@ -79,7 +79,7 @@ public:
     uint32_t            get_depth_of_node(const uint32_t node_id) const;
     uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
     uint32_t            get_parent_id(const uint32_t node_id) const;
-    const node_t        get_first_node_id_of_depth(uint32_t depth) const;
+    const node_id_type        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
 
     surfel_vector       get_resampled_leaf_lv_surfels() const {return resampled_leaf_level_;}
@@ -113,17 +113,16 @@ public:
     std::vector<std::pair<surfel_id_t, real>>
                         get_natural_neighbours(
                             const surfel_id_t& target_surfel,
-                            const bool search_for_neighbours = true,
-                            std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours = std::vector<std::pair<surfel_id_t, real>>()) const;
+                            std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const;
 
     std::vector<std::pair<surfel, real> >
                         get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,
                                                        vec3r const& poi,
                                                        uint32_t num_nearest_neighbours) const;
 
-    std::vector<std::pair<surfel_id_t, real>>
-                        extract_approximate_natural_neighbours(vec3r const& point_of_interest, 
-                            std::vector< std::pair<surfel, real> > const& nearest_neighbours ) const;
+    std::vector<std::pair<uint32_t, real>>
+                        extract_approximate_natural_neighbours(vec3r const& target_surfel,
+                        std::vector<vec3r> const& all_nearest_neighbours) const;
 
 
     void                print_tree_properties() const;
@@ -267,14 +266,14 @@ private:
                             shared_file leaf_level_access);
 
     void                get_descendant_leaves(
-                            const size_t node,
-                            std::vector<size_t>& result,
-                            const size_t first_leaf,
+                            const node_id_type node,
+                            std::vector<node_id_type>& result,
+                            const node_id_type first_leaf,
                             const std::unordered_set<size_t>& excluded_leaves) const;
     void                get_descendant_nodes(
-                            const size_t node,
-                            std::vector<size_t>& result,
-                            const size_t desired_depth,
+                            const node_id_type node,
+                            std::vector<node_id_type>& result,
+                            const node_id_type desired_depth,
                             const std::unordered_set<size_t>& excluded_nodes) const;
 };
 

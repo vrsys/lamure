@@ -19,16 +19,11 @@ compute_radius(const bvh& tree,
 			   const surfel_id_t target_surfel,
                std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 	
-	// find nearest neighbours
-	//std::vector<std::pair<surfel_id_t, real>> nearest_neighbours 
-    //    = tree.get_nearest_neighbours(target_surfel, number_of_neighbours_);
-    
-                 
     if (nearest_neighbours.size() < min_num_nearest_neighbours_) {
          return 0.0f;
     }
     
-    auto const natural_neighbour_ids = tree.get_natural_neighbours(target_surfel, false, nearest_neighbours );
+    auto const natural_neighbour_ids = tree.get_natural_neighbours(target_surfel, nearest_neighbours );
 
     if (natural_neighbour_ids.size() < min_num_natural_neighbours_) {
         return 0.0;
@@ -39,10 +34,10 @@ compute_radius(const bvh& tree,
     for (auto const& surf_id_pair : natural_neighbour_ids ) {
 
         auto const& current_node = tree.nodes()[surf_id_pair.first.node_idx];
-        natural_neighbours.emplace_back( current_node.mem_array().read_surfel(surf_id_pair.first.surfel_idx).pos() );
+        natural_neighbours.emplace_back( current_node.mem_array().read_surfel_ref(surf_id_pair.first.surfel_idx).pos() );
     }
 
-    vec3r point_of_interest = ((tree.nodes()[target_surfel.node_idx]).mem_array().read_surfel(target_surfel.surfel_idx)).pos();
+    vec3r point_of_interest = ((tree.nodes()[target_surfel.node_idx]).mem_array().read_surfel_ref(target_surfel.surfel_idx)).pos();
 
     //determine most distant natural neighbour
     real max_distance = 0.f;

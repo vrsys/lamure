@@ -682,13 +682,14 @@ dispatchResize(int w, int h)
 
     for (auto& cam : cameras_)
     {
-        cam->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
+        if(measurement_session_descriptor_.snapshot_session_enabled_ ) {
+            cam->set_projection_matrix(30.0f, float(measurement_session_descriptor_.snapshot_resolution_[0])/float(measurement_session_descriptor_.snapshot_resolution_[1]),  near_plane_, far_plane_);
+        }
+        else {
+            cam->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
+        }
     }
-
 }
-
-
-
 
 void management::
 Toggledispatching()

@@ -156,11 +156,11 @@ get_parent_id(const uint32_t node_id) const
                / fan_factor_ - 1;
 }
 
-const node_t bvh::
+const node_id_type bvh::
 get_first_node_id_of_depth(uint32_t depth) const {
-    node_t id = 0;
+    node_id_type id = 0;
     for (uint32_t i = 0; i < depth; ++i) {
-        id += (node_t)pow((double)fan_factor_, (double)i);
+        id += (node_id_type)pow((double)fan_factor_, (double)i);
     }
 
     return id;
@@ -423,9 +423,9 @@ void bvh::compute_normal_and_radius(
 }
 
 void bvh::get_descendant_leaves(
-     const size_t node,
-     std::vector<size_t>& result,
-     const size_t first_leaf,
+     const node_id_type node,
+     std::vector<node_id_type>& result,
+     const node_id_type first_leaf,
      const std::unordered_set<size_t>& excluded_leaves) const
 {
     if (node < first_leaf) // inner node
@@ -445,9 +445,9 @@ void bvh::get_descendant_leaves(
 }
 
 void bvh::get_descendant_nodes(
-     const size_t node,
-     std::vector<size_t>& result,
-     const size_t desired_depth,
+     const node_id_type node,
+     std::vector<node_id_type>& result,
+     const node_id_type desired_depth,
      const std::unordered_set<size_t>& excluded_nodes) const
 {
     size_t node_depth = std::log((node + 1) * (fan_factor_ - 1)) / std::log(fan_factor_);
@@ -478,9 +478,9 @@ get_nearest_neighbours(
     const uint32_t number_of_neighbours,
     const bool do_local_search) const
 {
-    size_t current_node = target_surfel.node_idx;
+    node_id_type current_node = target_surfel.node_idx;
     std::unordered_set<size_t> processed_nodes;
-    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
@@ -490,7 +490,7 @@ get_nearest_neighbours(
     {
         if (i != target_surfel.surfel_idx)
         {
-            const surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            const surfel& current_surfel = nodes_[current_node].mem_array().read_surfel_ref(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -498,7 +498,7 @@ get_nearest_neighbours(
                 if (candidates.size() == number_of_neighbours)
                     candidates.pop_back();
 
-                candidates.push_back(std::make_pair(surfel_id_t(current_node, i), distance_to_center));
+                candidates.emplace_back(surfel_id_t{current_node, i}, distance_to_center);
 
                 for (uint16_t k = candidates.size() - 1; k > 0; --k)
                 {
@@ -531,7 +531,7 @@ get_nearest_neighbours(
 
         current_node = get_parent_id(current_node);
 
-        std::vector<size_t> unvisited_descendant_nodes;
+        std::vector<node_id_type> unvisited_descendant_nodes;
 
         get_descendant_nodes(current_node, unvisited_descendant_nodes, nodes_[target_surfel.node_idx].depth(), processed_nodes);
 
@@ -547,7 +547,7 @@ get_nearest_neighbours(
                 {
                     if (!(adjacent_node == target_surfel.node_idx && i == target_surfel.surfel_idx))
                     {
-                        const surfel current_surfel = nodes_[adjacent_node].mem_array().read_surfel(i);
+                        const surfel& current_surfel = nodes_[adjacent_node].mem_array().read_surfel_ref(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
                         if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -555,7 +555,7 @@ get_nearest_neighbours(
                             if (candidates.size() == number_of_neighbours)
                                 candidates.pop_back();
 
-                            candidates.push_back(std::make_pair(surfel_id_t(adjacent_node, i), distance_to_center));
+                            candidates.emplace_back(surfel_id_t{adjacent_node, i}, distance_to_center);
 
                             for (uint16_t k = candidates.size() - 1; k > 0; --k)
                             {
@@ -592,8 +592,8 @@ get_nearest_neighbours_in_nodes(
     const std::vector<node_id_type>& target_nodes,
     const uint32_t number_of_neighbours) const
 {
-    size_t current_node = target_surfel.node_idx;
-    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+    node_id_type current_node = target_surfel.node_idx;
+    vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
     real max_candidate_distance = std::numeric_limits<real>::infinity();
@@ -603,7 +603,7 @@ get_nearest_neighbours_in_nodes(
     {
         if (i != target_surfel.surfel_idx)
         {
-            const surfel current_surfel = nodes_[current_node].mem_array().read_surfel(i);
+            const surfel& current_surfel = nodes_[current_node].mem_array().read_surfel_ref(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -611,7 +611,7 @@ get_nearest_neighbours_in_nodes(
                 if (candidates.size() == number_of_neighbours)
                     candidates.pop_back();
 
-                candidates.push_back(std::make_pair(surfel_id_t(current_node, i), distance_to_center));
+                candidates.emplace_back(surfel_id_t{current_node, i}, distance_to_center);
 
                 for (uint16_t k = candidates.size() - 1; k > 0; --k)
                 {
@@ -643,7 +643,7 @@ get_nearest_neighbours_in_nodes(
                 {
                     if (!(adjacent_node == target_surfel.node_idx && i == target_surfel.surfel_idx))
                     {
-                        const surfel current_surfel = nodes_[adjacent_node].mem_array().read_surfel(i);
+                        const surfel& current_surfel = nodes_[adjacent_node].mem_array().read_surfel_ref(i);
                         real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
                         if (candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
@@ -651,7 +651,7 @@ get_nearest_neighbours_in_nodes(
                             if (candidates.size() == number_of_neighbours)
                                 candidates.pop_back();
 
-                            candidates.push_back(std::make_pair(surfel_id_t(adjacent_node, i), distance_to_center));
+                            candidates.emplace_back(surfel_id_t{adjacent_node, i}, distance_to_center);
 
                             for (uint16_t k = candidates.size() - 1; k > 0; --k)
                             {
@@ -676,179 +676,97 @@ get_nearest_neighbours_in_nodes(
 }
 
 std::vector<std::pair<surfel_id_t, real> > bvh::
-extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vector< std::pair<surfel, real> > const& nearest_neighbours ) const {
+get_natural_neighbours(surfel_id_t const& target_surfel, std::vector<std::pair<surfel_id_t, real>> const& all_nearest_neighbours) const {
 
-    std::vector<std::pair<surfel_id_t, real>> natural_neighbour_ids;
+    // limit to 24 closest neighbours
+    const uint32_t NUM_NATURAL_NEIGHBOURS = 24;
+    auto nearest_neighbours = all_nearest_neighbours;
+    nearest_neighbours.resize(NUM_NATURAL_NEIGHBOURS);
+    std::random_shuffle(nearest_neighbours.begin(), nearest_neighbours.end());
 
-    uint32_t num_nearest_neighbours = nearest_neighbours.size();
-    //compile points
-    double* points = new double[num_nearest_neighbours * 3];
+    std::vector<vec3r> nn_positions(NUM_NATURAL_NEIGHBOURS);
 
-    uint32_t point_counter = 0;
-
-    std::vector<vec3r> nn_positions;
-
-    nn_positions.reserve(num_nearest_neighbours);
-
+    std::size_t point_num = 0;
     for (auto const& near_neighbour : nearest_neighbours) {
-
-        auto const neighbour_pos = near_neighbour.first.pos();
-        nn_positions.push_back( neighbour_pos );
-
-        points[3*point_counter+0] = neighbour_pos[0];
-        points[3*point_counter+1] = neighbour_pos[1];
-        points[3*point_counter+2] = neighbour_pos[2];
-
-        ++point_counter;
+        nn_positions[point_num] = nodes_[near_neighbour.first.node_idx].mem_array().read_surfel_ref(near_neighbour.first.surfel_idx).pos();
+        ++point_num;
     }
 
+    auto natural_neighbour_ids = extract_approximate_natural_neighbours(nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos(), nn_positions);
+
+    std::vector<std::pair<surfel_id_t, real>> natural_neighbours{};
+    natural_neighbours.reserve(NUM_NATURAL_NEIGHBOURS);
+    for (auto const& natural_neighbour_id : natural_neighbour_ids) {
+        natural_neighbours.emplace_back(nearest_neighbours[natural_neighbour_id.first].first, natural_neighbour_id.second);
+    }
+
+    nn_positions.clear();
+    return natural_neighbours;
+}
+
+std::vector<std::pair<uint32_t, real> > bvh::
+extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vector<vec3r> const& nn_positions) const {
+    std::vector<std::pair<uint32_t, real>> natural_neighbour_ids;
+    uint32_t num_input_neighbours = nn_positions.size();
     //compute best fit plane
     plane_t plane;
     plane_t::fit_plane(nn_positions, plane);
 
-    bool is_projection_valid = true;
-
-    //project all points to the plane
-    double* coords = new double[2*num_nearest_neighbours];
-    scm::math::vec3f plane_right = plane.get_right();
-    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
-        vec3r v = vec3r(points[3*i+0], points[3*i+1], points[3*i+2]);
-        vec2r c = plane_t::project(plane, plane_right, v);
-        coords[2*i+0] = c[0];
-        coords[2*i+1] = c[1];
-
-        if (c[0] != c[0] || c[1] != c[1]) { //is nan?
-            is_projection_valid = false;
-        }
-    }
-    
-    if (!is_projection_valid) {
-        delete[] points;
-        delete[] coords;
-
-        return natural_neighbour_ids;
-    }
-
-
+    std::vector<scm::math::vec2f> projected_neighbours(num_input_neighbours);
+    vec3r plane_right = plane.get_right();
+    vec3r plane_up = plane.get_up();
     //cgal delaunay triangluation
     Dh2 delaunay_triangulation;
-
-    std::vector<scm::math::vec2f> neighbour_2d_coord_pairs;
-
-    for (uint32_t i = 0; i < num_nearest_neighbours; ++i) {
-        nni_sample_t sp;
-        sp.xy_ = scm::math::vec2f(coords[2*i+0], coords[2*i+1]);
-        Point2 p(sp.xy_.x, sp.xy_.y);
-        delaunay_triangulation.insert(p);
-        neighbour_2d_coord_pairs.emplace_back(coords[2*i+0], coords[2*i+1]);
-    }
     
-    vec2r coord_poi = plane_t::project(plane, plane_right, point_of_interest);
-
-    Point2 poi_2d(coord_poi.x, coord_poi.y);
-    
-    std::vector<std::pair<K::Point_2, K::FT>> sibson_coords;
-    CGAL::Triple<std::back_insert_iterator<std::vector<std::pair<K::Point_2, K::FT>>>, K::FT, bool> result = 
-        natural_neighbor_coordinates_2(
-            delaunay_triangulation,
-            poi_2d,
-            std::back_inserter(sibson_coords));
-
-
-    //CGAL::sibson_natural_neighbor_coordinates_2();
-
-    if (!result.third) {
-        delete[] points;
-        delete[] coords;
-        return natural_neighbour_ids;
-    }
-
-    std::vector<std::pair<uint32_t, double> > nni_weights;
-
-    for (const auto& sibs_coord_instance : sibson_coords) {
-        uint32_t closest_nearest_neighbour_id = std::numeric_limits<uint32_t>::max();
-        double min_distance = std::numeric_limits<double>::max();
-
-        uint32_t current_neighbour_id = 0;
-        for( auto const& nearest_neighbour_2d : neighbour_2d_coord_pairs) {
-            double current_distance = scm::math::length(nearest_neighbour_2d - scm::math::vec2f(sibs_coord_instance.first.x(),
-                                                                                                sibs_coord_instance.first.y()) );
-            if( current_distance < min_distance ) {
-                min_distance = current_distance;
-                closest_nearest_neighbour_id = current_neighbour_id;
-            }
-
-            ++current_neighbour_id;
+    //project all points to the plane
+    for (uint32_t i = 0; i < num_input_neighbours; ++i) {
+        projected_neighbours[i] = plane_t::project(plane, plane_right, plane_up, nn_positions[i]);
+        // projection invalid
+        if (projected_neighbours[i][0] != projected_neighbours[i][0]
+         || projected_neighbours[i][1] != projected_neighbours[i][1]) { //is nan?
+            return natural_neighbour_ids;
         }
-
-        //invalidate the 2d coord pair by putting ridiculously large 2d coords that the model is unlikely to contain
-        neighbour_2d_coord_pairs[closest_nearest_neighbour_id] = scm::math::vec2f( std::numeric_limits<float>::max(), 
-                                                                                   std::numeric_limits<float>::lowest() );
-        nni_weights.emplace_back( closest_nearest_neighbour_id, (double) sibs_coord_instance.second );
-    }
-    
-    
-    for (const auto& it : nni_weights) {
-        surfel_id_t natural_neighbour_id_pair = surfel_id_t(it.first, it.first);
-
-        natural_neighbour_ids.emplace_back(natural_neighbour_id_pair, it.second);
-
-    }
-
-    delete[] points;
-    delete[] coords;
-    
-    sibson_coords.clear();
-    nni_weights.clear();
-
-
-
-    return natural_neighbour_ids;
-
-
-}
-
-std::vector<std::pair<surfel_id_t, real>> bvh::
-get_natural_neighbours(
-    const surfel_id_t& target_surfel,
-    const bool search_for_neighbours,
-    std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
-
-    std::vector<std::pair<surfel_id_t, real>> nearest_neighbour_ids;
-
-    if(search_for_neighbours) {
-        nearest_neighbour_ids = get_nearest_neighbours(target_surfel, 24);
-    } else {
-        for(int32_t k = 0; k < 24; ++k) {
-            nearest_neighbour_ids.emplace_back(nearest_neighbours[k]);
-        }
-    }
-    //get_nearest_neighbours(target_surfel, num_nearest_neighbours);
-
-    std::random_shuffle(nearest_neighbour_ids.begin(), nearest_neighbour_ids.end());
-    
-    auto const& bvh_nodes = nodes_;
-
-    std::vector< std::pair<surfel, real>> nearest_neighbour_copies;
-    for (auto const& idx_pair : nearest_neighbour_ids) {
-
-        surfel const current_nearest_neighbour_surfel = 
-            bvh_nodes[idx_pair.first.node_idx].mem_array().read_surfel(idx_pair.first.surfel_idx);
-
-        nearest_neighbour_copies.push_back( std::make_pair(current_nearest_neighbour_surfel,0.0) );
+        delaunay_triangulation.insert(Point2{projected_neighbours[i].x, projected_neighbours[i].y});
     }
     
     //project point of interest
-    vec3r point_of_interest = nodes_[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx).pos();
+    vec2r projected_poi = plane_t::project(plane, plane_right, plane_up, point_of_interest);
+    
+    std::vector<std::pair<K::Point_2, K::FT>> sibson_coords{};
+    CGAL::Triple<std::back_insert_iterator<std::vector<std::pair<K::Point_2, K::FT>>>, K::FT, bool> result = 
+        natural_neighbor_coordinates_2(
+            delaunay_triangulation,
+            Point2 {projected_poi.x, projected_poi.y},
+            std::back_inserter(sibson_coords));
 
-    std::vector<std::pair<surfel_id_t, real>> natural_neighbour_with_local_nearest_neighbour_ids = 
-        extract_approximate_natural_neighbours(point_of_interest, nearest_neighbour_copies);
-
-    for (auto& nn_entry : natural_neighbour_with_local_nearest_neighbour_ids ) {
-        nn_entry.first = nearest_neighbour_ids[nn_entry.first.surfel_idx].first;
+    if (!result.third) {
+        return natural_neighbour_ids;
     }
 
-    return natural_neighbour_with_local_nearest_neighbour_ids;
+    for (const auto& sibs_coord_instance : sibson_coords) {
+        scm::math::vec2d coord_position{sibs_coord_instance.first.x(), sibs_coord_instance.first.y()};
+        uint32_t closest_neighbour_id = std::numeric_limits<uint32_t>::max();
+        double min_distance = std::numeric_limits<double>::max();
+
+        for(uint32_t i = 0; i < num_input_neighbours; ++i) {
+            double current_distance = scm::math::length_sqr(projected_neighbours[i] - coord_position);
+            if(current_distance < min_distance) {
+                min_distance = current_distance;
+                closest_neighbour_id = i;
+            }
+        }
+
+        natural_neighbour_ids.emplace_back(closest_neighbour_id, (double)sibs_coord_instance.second);
+        //invalidate the 2d coord pair by putting ridiculously large 2d coords that the model is unlikely to contain
+        projected_neighbours[closest_neighbour_id] = scm::math::vec2f( std::numeric_limits<float>::max(), 
+                                                                                   std::numeric_limits<float>::lowest() );
+    }
+
+    // nn_positions.clear();
+    projected_neighbours.clear();
+    sibson_coords.clear();
+
+    return natural_neighbour_ids;
 }
 
 std::vector<std::pair<surfel, real> > bvh::
@@ -858,7 +776,7 @@ get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_ve
 
     num_nearest_neighbours = std::max(uint32_t(3), num_nearest_neighbours);
 
-    std::vector< std::pair<surfel,real>> k_nearest_neighbours;
+    std::vector<std::pair<surfel,real>> k_nearest_neighbours;
     
     for (auto const& neigh : potential_neighbour_vec) {
         double length_squared = scm::math::length_sqr(neigh.pos() - poi);
@@ -872,7 +790,7 @@ get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_ve
         }
 
         if(push_surfel) {
-            k_nearest_neighbours.push_back(std::make_pair(neigh, length_squared) );
+            k_nearest_neighbours.emplace_back(neigh, length_squared);
 
             for (uint16_t k = k_nearest_neighbours.size() - 1; k > 0; --k)
             {
@@ -886,13 +804,20 @@ get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_ve
         }
     }
 
-    std::vector< std::pair<surfel_id_t, real>> local_nn_id_weight_pairs = 
-        extract_approximate_natural_neighbours(poi, k_nearest_neighbours);
+    std::vector<vec3r> neighbour_surfels{};
+    neighbour_surfels.reserve(k_nearest_neighbours.size());
+    for (auto const& neigh : k_nearest_neighbours) {
+        neighbour_surfels.emplace_back(neigh.first.pos());
+    }
 
-    std::vector< std::pair<surfel, real> > nni_weight_pairs;
+    std::vector<std::pair<uint32_t, real>> local_nn_id_weight_pairs = 
+        extract_approximate_natural_neighbours(poi, neighbour_surfels);
+
+    std::vector< std::pair<surfel, real> > nni_weight_pairs{};
+    nni_weight_pairs.reserve(local_nn_id_weight_pairs.size());
 
     for (auto const& entry : local_nn_id_weight_pairs) {
-        nni_weight_pairs.push_back(std::make_pair(k_nearest_neighbours[entry.first.surfel_idx].first, entry.second));
+        nni_weight_pairs.emplace_back(k_nearest_neighbours[entry.first].first, entry.second);
     }
 
     return nni_weight_pairs;
@@ -974,7 +899,7 @@ resample_based_on_overlap(surfel_mem_array const&  joined_input,
 {
     
     for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i){
-        output_mem_array.mem_data()->push_back( joined_input.read_surfel(i) );
+        output_mem_array.mem_data()->emplace_back( joined_input.read_surfel(i));
     }
 
     auto compute_new_position = [] (surfel const& plane_ref_surfel, real radius_offset, real rot_angle) {
@@ -1016,7 +941,6 @@ resample_based_on_overlap(surfel_mem_array const&  joined_input,
 
 
     for (auto const& target_id : resample_candidates){
-    //for(uint32_t i = 0; i < output_mem_array.mem_data()->size(); ++i){
 
         surfel current_surfel = output_mem_array.read_surfel(target_id.surfel_idx);
 
@@ -1204,11 +1128,21 @@ thread_create_lod(const uint32_t start_marker,
                                                        subsampled_child_mem_arrays, max_surfels_per_node_, 
                                                        (*this), get_child_id(current_node->node_id(), 0) );
             }
-            
-
 
             current_node->reset(reduction);
             current_node->set_reduction_error(reduction_error);
+
+            // Unload all child nodes, if not in leaf level
+            if (get_depth_of_node(current_node->node_id()) != depth()) {
+                for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                    size_t child_id = get_child_id(current_node->node_id(), child_index);
+                    bvh_node& child_node = nodes_.at(child_id);
+
+                    if (child_node.is_in_core()) {
+                        child_node.mem_array().reset();
+                    }
+                }
+            }
 
         }
 
@@ -1371,7 +1305,7 @@ thread_remove_outlier_jobs(const uint32_t start_marker,
             }
 
             if( insert_element ) {
-                intermediate_outliers_for_thread.push_back( std::make_pair(surfel_id_t(node_idx, surfel_idx), avg_dist) );
+                intermediate_outliers_for_thread.emplace_back(surfel_id_t{node_idx, surfel_idx}, avg_dist);
 
                 for (uint32_t k = intermediate_outliers_for_thread.size() - 1; k > 0; --k)
                 {
@@ -1446,14 +1380,22 @@ thread_split_node_jobs(size_t& slice_left,
     }
 }
 
-
-
 void bvh::
 upsweep(const reduction_strategy& reduction_strgy, 
         const normal_computation_strategy& normal_strategy, 
         const radius_computation_strategy& radius_strategy,
         bool recompute_leaf_level,
         bool resample) {
+
+    // Create level temp files
+    std::vector<shared_file> level_temp_files;
+    for (uint32_t level = 0; level <= depth_; ++level)
+    {
+        level_temp_files.push_back(std::make_shared<file>());
+        std::string ext = ".lv" + std::to_string(level);
+        level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
+    }
+
     // Start at bottom level and move up towards root.
     for (int32_t level = depth_; level >= 0; --level)
     {
@@ -1466,9 +1408,8 @@ upsweep(const reduction_strategy& reduction_strgy,
         for (uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
             bvh_node* current_node = &nodes_.at(node_index);
-
-            if (current_node->is_out_of_core())
-            {
+            // if necessary, load leaf-level nodes from disk
+            if (level == int32_t(depth_) && current_node->is_out_of_core()) {
                 current_node->load_from_disk();
             }
         }
@@ -1501,40 +1442,25 @@ upsweep(const reduction_strategy& reduction_strgy,
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index){
 
             bvh_node* current_node = &nodes_.at(node_index);
+
             mean_radius_sd = mean_radius_sd + (*current_node).node_stats().radius_sd();
             counter++;
+
+            // compute node offset in file
+            int32_t nid = current_node->node_id();
+            for (uint32_t write_level = 0; write_level < uint32_t(level); ++write_level)
+                nid -= uint32_t(pow(fan_factor_, write_level));
+            nid = std::max(0, nid);
+
+            // save computed node to disk
+            current_node->flush_to_disk(level_temp_files[level], size_t(nid) * max_surfels_per_node_, false);
         }
         mean_radius_sd = mean_radius_sd/counter;
         std::cout<< "average radius deviation pro level: "<< mean_radius_sd << "\n";
     }
-
-    // Create level temp files
-    std::vector<shared_file> level_temp_files;
-    for (uint32_t level = 0; level <= depth_; ++level)
-    {
-        level_temp_files.push_back(std::make_shared<file>());
-        std::string ext = ".lv" + std::to_string(level);
-        level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
-    }
-
-    // Save node data in proper order (from zero to last).
-    for (uint32_t node_index = 0; node_index < nodes_.size(); ++node_index)
-    {
-        bvh_node* current_node = &nodes_.at(node_index);
-
-        // compute node offset in file
-        int32_t nid = current_node->node_id();
-        for (uint32_t level = 0; level < current_node->depth(); ++level)
-            nid -= uint32_t(pow(fan_factor_, level));
-        nid = std::max(0, nid);
-
-        // save computed node to disk
-        current_node->flush_to_disk(level_temp_files[current_node->depth()], size_t(nid) * max_surfels_per_node_, false);
-    }
     
     state_ = state_type::after_upsweep;
 }
-
 
 surfel_vector bvh::
 remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
@@ -1623,7 +1549,7 @@ remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours) {
         for( uint32_t surfel_idx = 0; surfel_idx < current_node->mem_array().length(); ++surfel_idx) {
 
             if( outlier_ids.end() == outlier_ids.find( surfel_id_t(node_idx, surfel_idx) ) ) {
-                cleaned_surfels.push_back(current_node->mem_array().read_surfel(surfel_idx) );
+                cleaned_surfels.emplace_back(current_node->mem_array().read_surfel(surfel_idx) );
 
             }
         }

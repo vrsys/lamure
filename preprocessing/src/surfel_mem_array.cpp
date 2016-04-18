@@ -17,7 +17,17 @@ read_surfel(const size_t index) const
     assert(index < length_);
     assert(offset_ + index < mem_data_->size());
 
-    return mem_data_->at(offset_ + index);
+    return mem_data_->operator[](offset_ + index);
+}
+
+surfel const& surfel_mem_array::
+read_surfel_ref(const size_t index) const
+{
+    assert(!is_empty_);
+    assert(index < length_);
+    assert(offset_ + index < mem_data_->size());
+
+    return mem_data_->operator[](offset_ + index);
 }
 
 void surfel_mem_array::
