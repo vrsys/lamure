@@ -1171,7 +1171,7 @@ thread_compute_attributes(const uint32_t start_marker,
         if(is_leaf_level){
             uint16_t number_of_neighbours = 100;
             auto normal_comp_algo = normal_computation_plane_fitting(number_of_neighbours);
-            auto radius_comp_algo = radius_computation_average_distance(number_of_neighbours);
+            auto radius_comp_algo = radius_computation_average_distance(number_of_neighbours, 1.0f);
             compute_normal_and_radius(current_node,
                                       normal_comp_algo,
                                       radius_comp_algo );

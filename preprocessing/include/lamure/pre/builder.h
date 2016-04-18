@@ -34,6 +34,7 @@ public:
         bool            keep_intermediate_files;
         bool            resample;
         float           memory_ratio;
+        float           radius_multiplier;
         size_t          buffer_size;
         uint16_t        number_of_neighbours;
         bool            translate_to_origin;

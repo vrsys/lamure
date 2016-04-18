@@ -134,11 +134,16 @@ int main(int argc, const char *argv[])
          "  planefitting ")
 
          ("radius-computation-algo",
-         po::value<std::string>()->default_value("naturalneighbours"),
+         po::value<std::string>()->default_value("averagedistance"),
          "Algorithm for computing surfel radius. Possible values:\n"
          "  averagedistance \n"
          "  naturalneighbours")
- 
+
+         ("radius-multiplier",
+         po::value<float>()->default_value(0.7, "0.7"),
+         "the multiplier for the average distance to the neighbours"
+         "during radius computation when using the averagedistance strategy")
+
         ("rep-radius-algo",
          po::value<std::string>()->default_value("gmean"),
          "Algorithm for computing representative surfel radius for tree nodes. Possible values:\n"
@@ -351,6 +356,7 @@ int main(int argc, const char *argv[])
         desc.translate_to_origin          = !vm.count("no-translate-to-origin");
         desc.outlier_ratio                = std::max(0.0f, vm["outlier-ratio"].as<float>() );
         desc.number_of_outlier_neighbours = std::max(vm["num-outlier-neighbours"].as<int>(), 1);
+        desc.radius_multiplier            = vm["radius-multiplier"].as<float>();
 
         // preprocess
         lamure::pre::builder builder(desc);
