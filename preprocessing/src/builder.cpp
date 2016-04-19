@@ -30,6 +30,7 @@
 #include <lamure/pre/reduction_k_clustering.h>
 #include <lamure/pre/reduction_spatially_subdivided_random.h>
 #include <lamure/pre/reduction_pair_contraction.h>
+#include <lamure/pre/reduction_hierarchical_clustering_mk5.h>
 
 #include <cstdio>
 
@@ -131,9 +132,12 @@ construct()
         case reduction_algorithm::spatially_subdivided_random:
             reduction_strategy = new reduction_spatially_subdivided_random();
             break;
-         case reduction_algorithm::pair:
+        case reduction_algorithm::pair:
             reduction_strategy = new reduction_pair_contraction(desc_.number_of_neighbours);
-            break;               
+            break;
+        case reduction_algorithm::hierarchical_clustering_extended:
+            reduction_strategy = new reduction_hierarchical_clustering_mk5();
+            break;
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return false;
