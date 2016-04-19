@@ -20,6 +20,10 @@
 namespace lamure {
 namespace pre {
 
+class reduction_strategy;
+class radius_computation_strategy;
+class normal_computation_strategy;
+
 class PREPROCESSING_DLL builder
 {
 public:
@@ -56,6 +60,19 @@ public:
     bool                construct();
 
 private:
+    reduction_strategy* get_reduction_strategy(reduction_algorithm algo) const;
+    radius_computation_strategy* get_radius_strategy(radius_computation_algorithm algo) const;
+    normal_computation_strategy* get_normal_strategy(normal_computation_algorithm algo) const;
+    boost::filesystem::path convert_to_binary(std::string const& input_type) const;
+    boost::filesystem::path downsweep(boost::filesystem::path input_file, uint16_t start_stage) const;
+    boost::filesystem::path upsweep(boost::filesystem::path input_file,
+                     uint16_t start_stage,
+                     reduction_strategy const* reduction_strategy,
+                     normal_computation_strategy const* normal_comp_strategy,
+                     radius_computation_strategy const* radius_comp_strategy) const;   
+    bool reserialize(boost::filesystem::path const& input_file, uint16_t start_stage) const;
+
+
     descriptor           desc_;
     size_t               memory_limit_;
     boost::filesystem::path base_path_;
