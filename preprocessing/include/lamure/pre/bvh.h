@@ -144,6 +144,7 @@ public:
                                 const radius_computation_strategy& radius_comp_strategy,
                                 bool recompute_leaf_level = true,
                                 bool resample = false);
+    void                resample();
 
     surfel_vector       remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
 
@@ -181,6 +182,8 @@ protected:
                                               const uint32_t last_node_of_level,
                                               const reduction_strategy& reduction_strgy,
                                               const bool resample);
+    void                spawn_resample_jobs(const uint32_t first_node_of_level, 
+                                              const uint32_t last_node_of_level);
     void                spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
                                                      const uint32_t last_node_of_level,
                                                      const normal_computation_strategy& normal_strategy, 
@@ -229,7 +232,9 @@ protected:
                                                const bool update_percentage,
                                                const int32_t level,
                                                const uint32_t num_threads);
-
+    void                thread_resample(const uint32_t start_marker,
+                                      const uint32_t end_marker,
+                                      const bool update_percentage);
 private:
     surfel_vector resampled_leaf_level_;
     std::mutex resample_mutex_;
