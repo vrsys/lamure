@@ -270,13 +270,12 @@ boost::filesystem::path builder::upsweep(boost::filesystem::path input_file,
     }
 
     CPU_TIMER;
-
     // perform upsweep
     bvh.upsweep(*reduction_strategy, 
                 *normal_comp_strategy, 
                 *radius_comp_strategy,
                 desc_.compute_normals_and_radii,
-                false);
+                desc_.resample);
 
     auto bvhu_file = add_to_path(base_path_, ".bvhu");
     bvh.serialize_tree_to_file(bvhu_file.string(), true);

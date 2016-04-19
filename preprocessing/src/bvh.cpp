@@ -1066,70 +1066,39 @@ thread_create_lod(const uint32_t start_marker,
     
     while(node_index < end_marker) {
         bvh_node* current_node = &nodes_.at(node_index);
-        std::vector<real> avg_radius_vector;
         // If a node has no data yet, calculate it based on child nodes.
         if (!current_node->is_in_core() && !current_node->is_out_of_core()) {
 
-            std::vector<surfel_mem_array*> child_mem_arrays;
-            std::vector<surfel_mem_array*> subsampled_child_mem_arrays;
-            for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
-                size_t child_id = this->get_child_id(current_node->node_id(), child_index);
-                bvh_node* child_node = &nodes_.at(child_id);
-
-                child_mem_arrays.push_back(&child_node->mem_array());
-                avg_radius_vector.push_back(child_node->avg_surfel_radius());
-            }
-            
-            real reduction_error;
+            std::vector<surfel_mem_array> resampled_arrays;
+            std::vector<surfel_mem_array*> input_mem_arrays;
             
             //simplified data will be stored here
-            surfel_mem_array reduction (std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+            surfel_mem_array reduction_result (std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
-            if (!do_resample){
-
-            reduction = reduction_strgy.create_lod(reduction_error, 
-                                                   child_mem_arrays, max_surfels_per_node_, 
-                                                   (*this), get_child_id(current_node->node_id(), 0) );
-
+            if (do_resample){
+               for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                    size_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                    resampled_arrays.push_back(resample_node(child_id));
+                }
+               for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                    input_mem_arrays.push_back(&resampled_arrays[child_index]);
+                }
             }
             else{
-                std::vector<surfel_mem_array> mem_array_obj;
-                for (unsigned i=0; i<child_mem_arrays.size(); ++i){
-                mem_array_obj.emplace_back( std::make_shared<surfel_vector>(surfel_vector()), 0, 0 );
+                for (uint8_t child_index = 0; child_index < fan_factor_; ++child_index) {
+                    size_t child_id = this->get_child_id(current_node->node_id(), child_index);
+                    bvh_node* child_node = &nodes_.at(child_id);
+
+                    input_mem_arrays.push_back(&child_node->mem_array());
                 }
-
-
-                subsampled_child_mem_arrays.reserve(child_mem_arrays.size());
-                for (unsigned local_child_index=0; local_child_index<child_mem_arrays.size(); ++local_child_index){
-                    //real current_avg_radius = avg_radius_vector.at(local_child_index);
-                    surfel_mem_array current_child_node = *child_mem_arrays.at(local_child_index);
-                    //resample(current_child_node,mem_array_obj[local_child_index], current_avg_radius);
-
-                    size_t global_child_id = this->get_child_id(current_node->node_id(), local_child_index);
-                    std::vector<surfel_id_t> resample_candidates = find_resample_candidates(global_child_id);
-                    resample_based_on_overlap(current_child_node,mem_array_obj[local_child_index], resample_candidates);
-                   // std::cout<<"I think I just resamoled something\n";
-                    mem_array_obj[local_child_index].set_length(mem_array_obj[local_child_index].mem_data()->size());
-                    subsampled_child_mem_arrays.push_back(&mem_array_obj.at(local_child_index));
-                }
-
-                //surfels after first resampling to be written in a file
-                resample_mutex_.lock();
-                for (const auto& current_mem_array : subsampled_child_mem_arrays){
-                    for (int index = 0; index < current_mem_array->mem_data()->size(); ++index){
-                       resampled_leaf_level_.push_back(current_mem_array->mem_data()->at(index));
-                    }
-                }
-                resample_mutex_.unlock();
-
-
-                //simplify
-                reduction = reduction_strgy.create_lod(reduction_error, 
-                                                       subsampled_child_mem_arrays, max_surfels_per_node_, 
-                                                       (*this), get_child_id(current_node->node_id(), 0) );
             }
 
-            current_node->reset(reduction);
+            real reduction_error;
+            reduction_result = reduction_strgy.create_lod(reduction_error, 
+                                               input_mem_arrays, max_surfels_per_node_, 
+                                               (*this), get_child_id(current_node->node_id(), 0) );
+
+            current_node->reset(reduction_result);
             current_node->set_reduction_error(reduction_error);
 
             // Unload all child nodes, if not in leaf level
