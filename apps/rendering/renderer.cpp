@@ -291,7 +291,7 @@ render_one_pass_LQ(lamure::context_t context_id,
         context_->apply();
 
         node_t node_counter = 0;
-
+        node_t non_culled_node_idx = 0;
         for (auto& model_id : current_set) {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
@@ -331,11 +331,14 @@ render_one_pass_LQ(lamure::context_t context_id,
                     context_->collect_query_results(depth_pass_timer_query);
                     depth_pass_time += depth_pass_timer_query->result();
 #endif
+                    ++non_culled_node_idx;
                 }
 
                 ++node_counter;
             }
        }
+
+        rendered_splats_ = non_culled_node_idx * database->surfels_per_node();
     }
 
 }
@@ -485,6 +488,9 @@ render_one_pass_HQ(lamure::context_t context_id,
                             ++node_counter;
                         }
                    }
+
+                    rendered_splats_ = non_culled_node_idx * database->surfels_per_node();
+
                 }
 
 
@@ -492,8 +498,6 @@ render_one_pass_HQ(lamure::context_t context_id,
                 /***************************************************************************************
                 *******************************BEGIN LINKED_LIST_RESOLVE PASS***************************
                 ****************************************************************************************/
-
-
                 {
 
                     //context_->set_default_frame_buffer();
@@ -643,7 +647,6 @@ render_two_pass_HQ(lamure::context_t context_id,
             }
        }
     }
-
 
 
     /***************************************************************************************
@@ -842,8 +845,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
      size_t normalization_pass_time = 0;
      size_t hole_filling_pass_time = 0;
 #endif
-
-
 
     {
 
