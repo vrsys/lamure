@@ -276,15 +276,7 @@ boost::filesystem::path builder::upsweep(boost::filesystem::path input_file,
                 *normal_comp_strategy, 
                 *radius_comp_strategy,
                 desc_.compute_normals_and_radii,
-                desc_.resample);
-
-    //write resampled leaf level out
-    format_xyz format_out;
-    std::unique_ptr<format_xyz> dummy_format_in{new format_xyz()};
-    auto xyz_res_file = add_to_path(base_path_, ".xyz_res");
-    converter conv(*dummy_format_in, format_out, desc_.buffer_size);
-    surfel_vector resampled_ll = bvh.get_resampled_leaf_lv_surfels();
-    conv.write_in_core_surfels_out(resampled_ll, xyz_res_file.string());
+                false);
 
     auto bvhu_file = add_to_path(base_path_, ".bvhu");
     bvh.serialize_tree_to_file(bvhu_file.string(), true);
@@ -296,6 +288,46 @@ boost::filesystem::path builder::upsweep(boost::filesystem::path input_file,
     input_file = bvhu_file;
 // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     return input_file;
+}
+
+bool builder::resample_surfels(boost::filesystem::path const& input_file) const {
+    std::cout << std::endl;
+    std::cout << "--------------------------------" << std::endl;
+    std::cout << "resample" << std::endl;
+    std::cout << "--------------------------------" << std::endl;
+    LOGGER_TRACE("resample stage");
+
+    lamure::pre::bvh bvh(memory_limit_, desc_.buffer_size, desc_.rep_radius_algo);
+
+    if (!bvh.load_tree(input_file.string())) {
+        return false;
+    }
+
+    if (bvh.state() != bvh::state_type::after_downsweep) {
+        LOGGER_ERROR("Wrong processing state!");
+        return false;
+    }
+
+    CPU_TIMER;
+    // perform resample
+    bvh.upsweep(reduction_random{}, 
+                normal_computation_plane_fitting{1}, 
+                radius_computation_average_distance{1, 1},
+                desc_.compute_normals_and_radii,
+                true);
+
+    //write resampled leaf level out
+    format_xyz format_out;
+    std::unique_ptr<format_xyz> dummy_format_in{new format_xyz()};
+    auto xyz_res_file = add_to_path(base_path_, "_res.xyz");
+    converter conv(*dummy_format_in, format_out, desc_.buffer_size);
+    surfel_vector resampled_ll = bvh.get_resampled_leaf_lv_surfels();
+    conv.write_in_core_surfels_out(resampled_ll, xyz_res_file.string());
+    
+    std::remove(input_file.string().c_str());
+
+// LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
+    return true;
 }
 
 bool builder::reserialize(boost::filesystem::path const& input_file, uint16_t start_stage) const {
@@ -331,10 +363,8 @@ bool builder::reserialize(boost::filesystem::path const& input_file, uint16_t st
     return true;
 }
 
-bool builder::
-construct()
-{
-    // compute memory parameters
+size_t builder::calculate_memory_limit() const {
+     // compute memory parameters
     const size_t memory_budget = get_total_memory() * desc_.memory_ratio;
     const size_t occupied = get_total_memory() - get_available_memory();
 
@@ -342,12 +372,55 @@ construct()
         LOGGER_ERROR("Memory ratio is too small");
         return false;
     }
-
-    memory_limit_ = memory_budget - occupied;
-
+    size_t memory_limit = memory_budget - occupied; 
     LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024 / 1024 << " MiB");
-    LOGGER_INFO("Memory limit: " << memory_limit_ / 1024 / 1024 << " MiB");
-    LOGGER_INFO("Precision for storing coordinates and radii: " << std::string((sizeof(real) == 8) ? "double" : "single"));
+    LOGGER_INFO("Memory limit: " << memory_limit / 1024 / 1024 << " MiB");
+    LOGGER_INFO("Precision for storing coordinates and radii: " << std::string((sizeof(real) == 8) ? "double" : "single"));   
+    return memory_limit;
+}
+
+bool builder::resample() {
+    memory_limit_ = calculate_memory_limit();
+
+    auto input_file = fs::canonical(fs::path(desc_.input_file));
+    const std::string input_file_type = input_file.extension().string();
+
+    uint16_t start_stage = 0;
+    if (input_file_type == ".xyz" || 
+        input_file_type == ".ply" || 
+        input_file_type == ".bin" ||
+        input_file_type == ".xyz" || 
+        input_file_type == ".xyz_all" || 
+        input_file_type == ".ply")
+        start_stage = 0;
+    else if (input_file_type == ".bin" || input_file_type == ".bin_all")
+        start_stage = 1;
+    else {
+        LOGGER_ERROR("Unknown input file format");
+        return false;
+    }
+
+    // convert to binary file
+    if (0 >= start_stage) {
+        input_file = convert_to_binary(input_file_type);
+        if(input_file.empty()) return false;
+    }
+
+    // downsweep (create bvh)
+    if (3 >= start_stage) {
+        input_file = downsweep(input_file, start_stage);
+        if(input_file.empty()) return false;
+    }
+
+    // resample (create new xzy)
+   bool resample_success = resample_surfels(input_file);
+   return resample_success;
+}
+
+bool builder::
+construct()
+{
+    memory_limit_ = calculate_memory_limit();
 
     uint16_t start_stage = 0;
     uint16_t final_stage = desc_.final_stage;

@@ -126,8 +126,7 @@ int main(int argc, const char *argv[])
          "  hierarchical - create clusters by binary splitting of the point cloud\n"
          "  kclustering - hash-based k-clustering\n"
          "  pair - use iterative point-pair contractions\n"
-         "  spatiallyrandom - subdivide scene into equally sized cubes and choose random surfels from different cubes\n"
-         "  hierarchicalext - hierarchical clustering with additional color splitting")
+         "  spatiallyrandom - subdivide scene into equally sized cubes and choose random surfels from different cubes")
 
         ("normal-computation-algo",
          po::value<std::string>()->default_value("planefitting"),
@@ -304,10 +303,6 @@ int main(int argc, const char *argv[])
         else if (reduction_algo == "pair")  {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::pair;
-        }
-        else if (reduction_algo == "hierarchicalext") {
-            std::cerr << "WARNING: prototype algorithm, quality of results unstable" << std::endl;
-            desc.reduction_algo       = lamure::pre::reduction_algorithm::hierarchical_clustering_extended;
         }
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;

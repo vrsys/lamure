@@ -58,6 +58,7 @@ public:
     builder&            operator=(const builder& other) = delete;
 
     bool                construct();
+    bool                resample();
 
 private:
     reduction_strategy* get_reduction_strategy(reduction_algorithm algo) const;
@@ -70,8 +71,10 @@ private:
                      reduction_strategy const* reduction_strategy,
                      normal_computation_strategy const* normal_comp_strategy,
                      radius_computation_strategy const* radius_comp_strategy) const;   
+    bool resample_surfels(boost::filesystem::path const& input_file) const;
     bool reserialize(boost::filesystem::path const& input_file, uint16_t start_stage) const;
 
+    size_t calculate_memory_limit() const;
 
     descriptor           desc_;
     size_t               memory_limit_;
