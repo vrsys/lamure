@@ -277,6 +277,9 @@ private:
                             std::vector<node_id_type>& result,
                             const node_id_type desired_depth,
                             const std::unordered_set<size_t>& excluded_nodes) const;
+
+    surfel_mem_array    resample_node(uint32_t node_id) const;
+
 };
 
 using bvh_ptr = std::shared_ptr<bvh>;

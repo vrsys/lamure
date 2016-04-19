@@ -1149,6 +1149,23 @@ thread_create_lod(const uint32_t start_marker,
         node_index = working_queue_head_counter_.increment_head();
     }
 }
+
+surfel_mem_array bvh::resample_node(uint32_t node_index) const {
+   bvh_node const* current_node = &nodes_.at(node_index);
+    // If a node has no data yet, calculate it based on child nodes.
+    if (!current_node->is_in_core()) {
+        throw std::exception();
+    }
+
+    surfel_mem_array result_mem_array{std::make_shared<surfel_vector>(surfel_vector()), 0, 0};
+
+    std::vector<surfel_id_t> resample_candidates = find_resample_candidates(current_node->node_id());
+    resample_based_on_overlap(current_node->mem_array(), result_mem_array, resample_candidates);
+    result_mem_array.set_length(result_mem_array.mem_data()->size());
+
+    return result_mem_array;
+}
+
 void bvh::
 thread_resample(const uint32_t start_marker,
                   const uint32_t end_marker,
@@ -1156,17 +1173,7 @@ thread_resample(const uint32_t start_marker,
     uint32_t node_index = working_queue_head_counter_.increment_head();
     
     while(node_index < end_marker) {
-        bvh_node* current_node = &nodes_.at(node_index);
-        // If a node has no data yet, calculate it based on child nodes.
-        if (!current_node->is_in_core()) {
-            throw std::exception();
-        }
-
-        surfel_mem_array current_mem_array{std::make_shared<surfel_vector>(surfel_vector()), 0, 0};
-
-        std::vector<surfel_id_t> resample_candidates = find_resample_candidates(current_node->node_id());
-        resample_based_on_overlap(current_node->mem_array(), current_mem_array, resample_candidates);
-        current_mem_array.set_length(current_mem_array.mem_data()->size());
+        surfel_mem_array current_mem_array = resample_node(node_index);
 
         //surfels after first resampling to be written in a file
         resample_mutex_.lock();
@@ -1443,28 +1450,20 @@ upsweep(const reduction_strategy& reduction_strgy,
             }
         }
 
-
         // Iterate over nodes of current tree level.
         // First apply reduction strategy, since calculation of attributes might depend on surfel data of nodes in same level.
         if(level != int32_t(depth_) ) {
             spawn_create_lod_jobs(first_node_of_level, last_node_of_level, reduction_strgy, resample);
-            resample = false; //resample only for leaf level
         }
-        
-        {
-            // skip the leaf level attribute computation if it was not requested or necessary
-
-            if( level == int32_t(depth_) && resample ){
-                spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, true);
-            }
-            else if( (level != int32_t(depth_) || recompute_leaf_level  ) ) {
-                spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, false);
-            }
-
-            spawn_compute_bounding_boxes_upsweep_jobs(first_node_of_level, last_node_of_level, level);
-
-            std::cout << std::endl;
+    
+        // skip the leaf level attribute computation if it was not requested or necessary
+        if( (level != int32_t(depth_) || recompute_leaf_level  ) ) {
+            spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, false);
         }
+
+        spawn_compute_bounding_boxes_upsweep_jobs(first_node_of_level, last_node_of_level, level);
+
+        std::cout << std::endl;
 
         real mean_radius_sd = 0.0;
         uint counter = 1;
