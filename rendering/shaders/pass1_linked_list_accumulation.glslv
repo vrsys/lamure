@@ -5,21 +5,26 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 420 core
+#version 440 core
 
-uniform mat4 inv_mv_matrix;
 uniform float point_size_factor;
 uniform float model_radius_scale;
 
+
 layout(location = 0) in vec3 in_position;
+layout(location = 1) in float in_r;
+layout(location = 2) in float in_g;
+layout(location = 3) in float in_b;
+layout(location = 4) in float empty;
 layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
 
+layout(binding = 0, RGBA16UI) coherent uniform restrict uimageBuffer linked_list_buffer;
 
 out VertexData {
   vec3 pass_ms_u;
   vec3 pass_ms_v;
-  vec3 pass_normal;
+  flat uint pass_global_surfel_id;
 } VertexOut;
 
 
@@ -41,8 +46,9 @@ void main() {
   VertexOut.pass_ms_u = normalize(ms_u) * point_size_factor * model_radius_scale * in_radius;
   VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * point_size_factor * model_radius_scale * in_radius;
 
-  VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz);
-
   gl_Position = vec4(in_position, 1.0);
 
+  uint global_surfel_idx = gl_VertexID;
+
+  VertexOut.pass_global_surfel_id = global_surfel_idx;
 }

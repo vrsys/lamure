@@ -381,25 +381,36 @@ dispatchKeyboardInput(unsigned char key)
 #endif
         break;
 
-    case '1':
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
+    case '1':
+
         control_left_ = !control_left_;
         if (control_left_)
             active_camera_ = active_camera_left_;
         else
             active_camera_ = active_camera_right_;
-#endif
         break;
 
     case '2':
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
         control_left_ = !control_left_;
         if (control_left_)
             active_camera_ = active_camera_left_;
         else
             active_camera_ = active_camera_right_;
-#endif
+#else
+    case '1':
+        renderer_->switch_render_mode(RenderMode::HQ_ONE_PASS);
         break;
+
+    case '2':
+        renderer_->switch_render_mode(RenderMode::HQ_TWO_PASS);
+        break;
+
+    case '3':
+        renderer_->switch_render_mode(RenderMode::LQ_ONE_PASS);
+        break;
+
+#endif
 
     case ' ':
 #ifdef LAMURE_RENDERING_ENABLE_MULTI_VIEW_TEST
@@ -757,6 +768,7 @@ PrintInfo()
 
 
 }
+
 
 void management::
 toggle_camera_session() {

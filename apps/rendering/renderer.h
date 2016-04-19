@@ -13,6 +13,7 @@
 
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/cut_database.h>
+#include <lamure/ren/controller.h>
 #include <lamure/ren/policy.h>
 
 #include <boost/assign/list_of.hpp>
@@ -59,12 +60,21 @@
 
 
 enum class RenderPass {
-    DEPTH              = 0,
-    ACCUMULATION       = 1,
-    NORMALIZATION      = 2,
-    BOUNDING_BOX       = 100,
-    LINE               = 101  
+    DEPTH                    = 0,
+    ACCUMULATION             = 1,
+    NORMALIZATION            = 2,
+    LINKED_LIST_ACCUMULATION = 4,
+    ONE_PASS_LQ              = 5,
+    BOUNDING_BOX             = 100,
+    LINE                     = 101  
 };
+
+enum class RenderMode {
+    HQ_ONE_PASS = 1,
+    HQ_TWO_PASS = 2,
+    LQ_ONE_PASS = 3
+};
+
 
 class Renderer
 {
@@ -86,20 +96,44 @@ public:
 
     void                set_radius_scale(const float radius_scale) { radius_scale_ = radius_scale; };
 
+    void                switch_render_mode(RenderMode const& render_mode);
 
     scm::gl::render_device_ptr device() const { return device_; }
 
     void                display_status(std::string const& information_to_display);
+
+    
 
 protected:
     bool                initialize_schism_device_and_shaders(int resX, int resY);
     void                initialize_VBOs();
     void                update_frustum_dependent_parameters(lamure::ren::camera const& camera);
 
+    void                bind_storage_buffer(scm::gl::buffer_ptr buffer);
+
     void                upload_uniforms(lamure::ren::camera const& camera) const;
     void                upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
     void                swap_temp_buffers();
     void                calculate_radius_scale_per_model();
+
+
+    void                render_one_pass_LQ(lamure::context_t context_id, 
+                                           lamure::ren::camera const& camera, 
+                                           const lamure::view_t view_id, 
+                                           scm::gl::vertex_array_ptr const& render_VAO,
+                                           std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
+
+    void                render_one_pass_HQ(lamure::context_t context_id, 
+                                           lamure::ren::camera const& camera, 
+                                           const lamure::view_t view_id, 
+                                           scm::gl::vertex_array_ptr const& render_VAO, 
+                                           std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
+
+    void                render_two_pass_HQ(lamure::context_t context_id, 
+                                           lamure::ren::camera const& camera, 
+                                           const lamure::view_t view_id, 
+                                           scm::gl::vertex_array_ptr const& render_VAO, 
+                                           std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
 private:
 
         int                                         win_x_;
@@ -117,11 +151,17 @@ private:
         scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
 
         //shader programs
+        scm::gl::program_ptr                        LQ_one_pass_program_;
+
         scm::gl::program_ptr                        pass1_visibility_shader_program_;
         scm::gl::program_ptr                        pass2_accumulation_shader_program_;
         scm::gl::program_ptr                        pass3_pass_through_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
+
+	    scm::gl::program_ptr                        pass1_linked_list_accumulate_program_;
+	    scm::gl::program_ptr                        pass2_linked_list_resolve_program_;
+	    scm::gl::program_ptr                        pass3_repair_program_;
 
         //framebuffer and textures for different passes
         scm::gl::frame_buffer_ptr                   pass1_visibility_fbo_;
@@ -136,6 +176,12 @@ private:
         scm::gl::texture_2d_ptr                     pass3_normalization_normal_texture_;
 
 
+	    scm::gl::texture_2d_ptr                     min_es_distance_image_;
+	    scm::gl::frame_buffer_ptr                   atomic_image_fbo_;
+	    scm::gl::texture_2d_ptr                     atomic_fragment_count_image_;
+	    scm::gl::texture_buffer_ptr                 linked_list_buffer_texture_;
+	
+
         scm::shared_ptr<scm::gl::quad_geometry>     screen_quad_;
 
 
@@ -143,6 +189,8 @@ private:
         float                                       near_plane_;                          //frustum dependent
         float                                       far_plane_;   
         float                                       point_size_factor_;
+
+	    float                                       blending_threshold_;
 
         bool                                        render_bounding_boxes_;
 
@@ -163,6 +211,8 @@ private:
         float                                                   radius_scale_;
 
         size_t                                                  elapsed_ms_since_cut_update_;
+
+        RenderMode                                              render_mode_;
 
         std::set<lamure::model_t> visible_set_;
         std::set<lamure::model_t> invisible_set_;
