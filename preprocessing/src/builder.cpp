@@ -310,11 +310,7 @@ bool builder::resample_surfels(boost::filesystem::path const& input_file) const 
 
     CPU_TIMER;
     // perform resample
-    bvh.upsweep(reduction_random{}, 
-                normal_computation_plane_fitting{1}, 
-                radius_computation_average_distance{1, 1},
-                desc_.compute_normals_and_radii,
-                true);
+    bvh.resample();
 
     //write resampled leaf level out
     format_xyz format_out;

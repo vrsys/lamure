@@ -87,8 +87,7 @@ public:
                                                   surfel_mem_array& output_mem_array,
                                                   std::vector<surfel_id_t> const& resample_candites) const;
     std::vector<surfel_id_t>
-                       find_resample_candidates(surfel_mem_array const&  child_mem_array,
-                                                const uint32_t node_idx) const;
+                       find_resample_candidates(const uint32_t node_idx) const;
 
     /**
      * Get id for the first node at given depth and total number of nodes at this depth.
@@ -182,8 +181,6 @@ protected:
                                               const uint32_t last_node_of_level,
                                               const reduction_strategy& reduction_strgy,
                                               const bool resample);
-    void                spawn_resample_jobs(const uint32_t first_node_of_level, 
-                                              const uint32_t last_node_of_level);
     void                spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
                                                      const uint32_t last_node_of_level,
                                                      const normal_computation_strategy& normal_strategy, 
