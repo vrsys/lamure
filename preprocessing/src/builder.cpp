@@ -116,20 +116,20 @@ boost::filesystem::path builder::convert_to_binary(std::string const& input_type
 
     LOGGER_TRACE("convert to a binary file");
     auto input_file = fs::canonical(fs::path(desc_.input_file));
-    format_abstract* format_in;
+    std::shared_ptr<format_abstract> format_in{};
     auto binary_file = base_path_;
 
     if (input_type == ".xyz") {
         binary_file += ".bin";
-        format_in = new format_xyz();
+        format_in = std::unique_ptr<format_xyz>{new format_xyz()};
     }
     else if (input_type == ".xyz_all") {
         binary_file += ".bin_all";
-        format_in = new format_xyzall();
+        format_in = std::unique_ptr<format_xyzall>{new format_xyzall()};
     }
     else if (input_type == ".ply") {
         binary_file += ".bin";
-        format_in = new format_ply();
+        format_in = std::unique_ptr<format_ply>{new format_ply()};
     }
     else {
         LOGGER_ERROR("Unable to convert input file: Unknown file format");
@@ -146,7 +146,6 @@ boost::filesystem::path builder::convert_to_binary(std::string const& input_type
 
     CPU_TIMER;
     conv.convert(input_file.string(), binary_file.string());
-    delete format_in;
     // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     return binary_file;
 }
@@ -222,9 +221,7 @@ boost::filesystem::path builder::downsweep(boost::filesystem::path input_file, u
 
                 format_bin format_out;
 
-                format_abstract* dummy_format_in;
-
-                dummy_format_in = new format_xyz();
+                std::unique_ptr<format_abstract> dummy_format_in{new format_xyz()};
 
                 converter conv(*dummy_format_in, format_out, desc_.buffer_size);
 
@@ -233,8 +230,6 @@ boost::filesystem::path builder::downsweep(boost::filesystem::path input_file, u
                 auto binary_outlier_removed_file = add_to_path(base_path_, ".bin_wo_outlier");
 
                 conv.write_in_core_surfels_out(kept_surfels, binary_outlier_removed_file.string());
-
-                delete dummy_format_in;
 
                 bvh.reset_nodes();
 
@@ -283,21 +278,13 @@ boost::filesystem::path builder::upsweep(boost::filesystem::path input_file,
                 desc_.compute_normals_and_radii,
                 desc_.resample);
 
-
-    delete reduction_strategy;
-    delete normal_comp_strategy;
-    delete radius_comp_strategy;
-
     //write resampled leaf level out
     format_xyz format_out;
-    format_abstract* dummy_format_in;
-    dummy_format_in = new format_xyz();
+    std::unique_ptr<format_xyz> dummy_format_in{new format_xyz()};
     auto xyz_res_file = add_to_path(base_path_, ".xyz_res");
     converter conv(*dummy_format_in, format_out, desc_.buffer_size);
     surfel_vector resampled_ll = bvh.get_resampled_leaf_lv_surfels();
     conv.write_in_core_surfels_out(resampled_ll, xyz_res_file.string());
-    delete dummy_format_in;
-
 
     auto bvhu_file = add_to_path(base_path_, ".bvhu");
     bvh.serialize_tree_to_file(bvhu_file.string(), true);
@@ -391,9 +378,9 @@ construct()
     }
 
     // init algorithms
-    reduction_strategy *reduction_strategy = get_reduction_strategy(desc_.reduction_algo);
-    normal_computation_strategy *normal_comp_strategy = get_normal_strategy(desc_.normal_computation_algo);
-    radius_computation_strategy *radius_comp_strategy = get_radius_strategy(desc_.radius_computation_algo);
+    std::unique_ptr<reduction_strategy> reduction_strategy{get_reduction_strategy(desc_.reduction_algo)};
+    std::unique_ptr<normal_computation_strategy> normal_comp_strategy{get_normal_strategy(desc_.normal_computation_algo)};
+    std::unique_ptr<radius_computation_strategy> radius_comp_strategy{get_radius_strategy(desc_.radius_computation_algo)};
 
     // convert to binary file
     if ((0 >= start_stage) && (0 <= final_stage)) {
@@ -409,7 +396,7 @@ construct()
 
     // upsweep (create LOD)
     if ((4 >= start_stage) && (4 <= final_stage)) {
-       input_file = upsweep(input_file, start_stage, reduction_strategy, normal_comp_strategy, radius_comp_strategy);
+       input_file = upsweep(input_file, start_stage, reduction_strategy.get(), normal_comp_strategy.get(), radius_comp_strategy.get());
        if(input_file.empty()) return false;
     }
 
