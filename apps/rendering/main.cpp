@@ -23,7 +23,7 @@
 #include <lamure/ren/config.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/cut_database.h>
-#include <lamure/ren/lod_point_cloud.h>
+#include <lamure/ren/dataset.h>
 #include <lamure/ren/policy.h>
 
 #include <scm/core/math.h>
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     unsigned int video_memory_budget ;
     unsigned int max_upload_budget;
 
-    std::string resource_file_path = "auto_generated.rsc";
+    std::string resource_file_path = "";
     std::string measurement_file_path = "";
 
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
       ("resource-file,f", po::value<std::string>(&resource_file_path), "specify resource input-file")
       ("vram,v", po::value<unsigned>(&video_memory_budget)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget)->default_value(4096), "specify main memory budget in MB (default=4096)")
-      ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(258), "specify maximum video memory upload budget per frame in MB (default=258)")
+      ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
       ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")");
       ;
 
@@ -157,15 +157,18 @@ int main(int argc, char** argv)
       std::vector<std::string> to_pass_further = po::collect_unrecognized(parsed_options.options, po::include_positional);
       bool no_input = !vm.count("input") && to_pass_further.empty();
 
-      if (vm.count("help") || no_input)
-      {
-        std::cout << desc;
-        return 0;
+      if (resource_file_path == "") {
+        if (vm.count("help") || no_input)
+        {
+          std::cout << desc;
+          return 0;
+        }
       }
 
       // no explicit input -> use unknown options
-      if (!vm.count("input")) 
+      if (!vm.count("input") && resource_file_path == "") 
       {
+        resource_file_path = "auto_generated.rsc";
         std::fstream ofstr(resource_file_path, std::ios::out);
         if (ofstr.good()) 
         {
@@ -178,6 +181,8 @@ int main(int argc, char** argv)
         }
         ofstr.close();
       }
+
+
     } catch (std::exception& e) {
       std::cout << "Warning: No input file specified. \n" << desc;
       return 0;
@@ -206,11 +211,10 @@ int main(int argc, char** argv)
     policy->set_max_upload_budget_in_mb(max_upload_budget); //8
     policy->set_render_budget_in_mb(video_memory_budget); //2048
     policy->set_out_of_core_budget_in_mb(main_memory_budget); //4096, 8192
+    policy->set_window_width(window_width);
+    policy->set_window_height(window_height);
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-    database->set_window_width(window_width);
-    database->set_window_height(window_height);
-
 
     std::vector<scm::math::mat4d> parsed_views = std::vector<scm::math::mat4d>();
 
@@ -237,29 +241,12 @@ int main(int argc, char** argv)
 
     if (management_ != nullptr)
     {
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "memory cleanup...(1)" << std::endl;
-#endif
         delete lamure::ren::cut_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted cut database" << std::endl;
-#endif
         delete lamure::ren::controller::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted controller" << std::endl;
-#endif
         delete lamure::ren::model_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted model database" << std::endl;
-#endif
         delete lamure::ren::policy::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted policy" << std::endl;
-#endif
         delete lamure::ren::ooc_cache::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted ooc cache" << std::endl;
-#endif
+
     }
 
     return 0;
@@ -324,30 +311,11 @@ void Cleanup()
     {
         delete management_;
         management_ = nullptr;
-
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "memory cleanup...(1)" << std::endl;
-#endif
         delete lamure::ren::cut_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted cut database" << std::endl;
-#endif
         delete lamure::ren::controller::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted controller" << std::endl;
-#endif
         delete lamure::ren::model_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted model database" << std::endl;
-#endif
         delete lamure::ren::policy::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted policy" << std::endl;
-#endif
         delete lamure::ren::ooc_cache::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted ooc cache" << std::endl;
-#endif
     }
 
 }
@@ -359,30 +327,11 @@ void glut_close()
     {
         delete management_;
         management_ = nullptr;
-
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "memory cleanup...(1)" << std::endl;
-#endif
         delete lamure::ren::cut_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted cut database" << std::endl;
-#endif
         delete lamure::ren::controller::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted controller" << std::endl;
-#endif
         delete lamure::ren::model_database::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted model database" << std::endl;
-#endif
         delete lamure::ren::policy::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted policy" << std::endl;
-#endif
         delete lamure::ren::ooc_cache::get_instance();
-#ifdef LAMURE_ENABLE_INFO
-        std::cout << "deleted ooc cache" << std::endl;
-#endif
     }
 }
 
@@ -415,5 +364,6 @@ void glut_keyboard_release(unsigned char key, int x, int y)
 {
 
 }
+
 
 

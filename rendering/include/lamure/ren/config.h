@@ -65,8 +65,8 @@ namespace ren {
 #define LAMURE_MIN_UPLOAD_BUDGET 16
 #define LAMURE_MIN_VIDEO_MEMORY_BUDGET 128
 #define LAMURE_MIN_MAIN_MEMORY_BUDGET 512
-#define LAMURE_DEFAULT_UPLOAD_BUDGET 128
-#define LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET 512
+#define LAMURE_DEFAULT_UPLOAD_BUDGET 64
+#define LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET 1024
 #define LAMURE_DEFAULT_MAIN_MEMORY_BUDGET 4096
 
 //------------------------------
@@ -85,6 +85,8 @@ namespace ren {
 
 #define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE cache_queue::update_mode::UPDATE_ALWAYS
 //#define LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE cache_queue::update_mode::UPDATE_INCREMENT_ONLY
+
+//#define LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
 
 //------------------------------
 //for bvh_stream: 

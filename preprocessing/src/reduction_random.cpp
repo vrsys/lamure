@@ -85,7 +85,7 @@ create_lod(real& reduction_error,
         }
   
     }
-
+    
     for(auto point_id : random_id){
         auto surfel = mem_array.mem_data()->at(point_id);
         output_mem_array.mem_data()->push_back(surfel); 

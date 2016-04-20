@@ -86,7 +86,7 @@ reserve_slot() {
 }
 
 void cache_index::
-applySlot(const slot_t slot_id, const model_t model_id, const node_t node_id) {
+apply_slot(const slot_t slot_id, const model_t model_id, const node_t node_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     cache_index_node& node = slots_[slot_id+1];
@@ -181,7 +181,7 @@ get_slot(const model_t model_id, const node_t node_id) {
 }
 
 const bool cache_index::
-IsNodeIndexed(const model_t model_id, const node_t node_id) {
+is_node_indexed(const model_t model_id, const node_t node_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     return maps_[model_id].find(node_id) != maps_[model_id].end();
 }
@@ -202,7 +202,7 @@ is_node_aquired(const model_t model_id, const node_t node_id) {
 }
 
 void cache_index::
-AquireSlot(const view_t view_id, const model_t model_id, const node_t node_id) {
+aquire_slot(const view_t view_id, const model_t model_id, const node_t node_id) {
 
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -240,7 +240,7 @@ AquireSlot(const view_t view_id, const model_t model_id, const node_t node_id) {
 }
 
 void cache_index::
-ReleaseSlot(const view_t view_id, const model_t model_id, const node_t node_id) {
+release_slot(const view_t view_id, const model_t model_id, const node_t node_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     const auto it = maps_[model_id].find(node_id);
@@ -275,7 +275,7 @@ ReleaseSlot(const view_t view_id, const model_t model_id, const node_t node_id) 
 }
 
 const bool cache_index::
-ReleaseSlotinvalidate(const view_t view_id, const model_t model_id, const node_t node_id) {
+release_slot_invalidate(const view_t view_id, const model_t model_id, const node_t node_id) {
     //purpose: unregister view from node,
     //if no views remain, invalidate node (remove from index)
     //and insert slot to head

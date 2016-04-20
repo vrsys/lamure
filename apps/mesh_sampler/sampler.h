@@ -54,7 +54,7 @@ class MyMesh : public vcg::tri::TriMesh<std::vector<MyVertex>,
                                         std::vector<MyFace>, 
                                         std::vector<MyEdge>> {};
 
-class sampler {
+class sampler { 
 public:
     sampler() {};
     virtual ~sampler() {};

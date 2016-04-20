@@ -159,7 +159,6 @@ public:
 
     static std::string  state_to_string(state_type state);
 
-
 protected:
     friend class bvh_stream;
     void                set_depth(const uint32_t depth) { depth_ = depth; };

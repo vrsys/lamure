@@ -211,6 +211,7 @@ boost::filesystem::path builder::downsweep(boost::filesystem::path input_file, u
                 size_t ten_percent_of_surfels = std::max( size_t(0.1 * (bvh.nodes().size() - bvh.first_leaf()) * bvh.max_surfels_per_node()), size_t(1) );
                 num_outliers = std::min(std::max(num_outliers, size_t(1) ), ten_percent_of_surfels); // remove at least 1 surfel, for any given ratio != 0.0
 
+
                 std::cout << std::endl;
                 std::cout << "--------------------------------" << std::endl;
                 std::cout << "outlier removal ( " << int(desc_.outlier_ratio * 100) << " percent = " << num_outliers << " surfels)" << std::endl;

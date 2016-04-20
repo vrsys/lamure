@@ -35,8 +35,8 @@ cut_update_index()
     }
 
     for (model_t model_id = 0; model_id < num_models_; ++model_id) {
-        fan_factor_table_.push_back(database->get_model(model_id)->get_bvh()->fan_factor());
-        num_nodes_table_.push_back(database->get_model(model_id)->get_bvh()->num_nodes());
+        fan_factor_table_.push_back(database->get_model(model_id)->get_bvh()->get_fan_factor());
+        num_nodes_table_.push_back(database->get_model(model_id)->get_bvh()->get_num_nodes());
     }
 
 }
@@ -82,8 +82,8 @@ update_policy(const view_t num_views) {
         num_nodes_table_.clear();
 
         for (model_t model_id = 0; model_id < num_models_; ++model_id) {
-            fan_factor_table_.push_back(database->get_model(model_id)->get_bvh()->fan_factor());
-            num_nodes_table_.push_back(database->get_model(model_id)->get_bvh()->num_nodes());
+            fan_factor_table_.push_back(database->get_model(model_id)->get_bvh()->get_fan_factor());
+            num_nodes_table_.push_back(database->get_model(model_id)->get_bvh()->get_num_nodes());
         }
 
     }

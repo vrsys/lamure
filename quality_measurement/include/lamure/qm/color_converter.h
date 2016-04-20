@@ -9,7 +9,18 @@
 #define COLOR_CONVERTER_HPP
 
 #include <cmath>
+#include <array>
 #include <algorithm>
+
+#if WIN32
+#if defined(LAMURE_QUALITY_MEASUREMENT_LIBRARY)
+#define QUALITY_MEASUREMENT_DLL __declspec( dllexport )
+#else
+#define QUALITY_MEASUREMENT_DLL __declspec( dllimport )
+#endif
+#else
+#define QUALITY_MEASUREMENT_DLL
+#endif
 
 //color conversion code taken from:
 //https://github.com/THEjoezack/ColorMine/tree/master/ColorMine/ColorSpaces/Conversions
@@ -17,7 +28,7 @@
 namespace lamure {
 namespace qm {
 
-struct col3
+struct QUALITY_MEASUREMENT_DLL col3
 {
 	col3() : col{0.0,0.0,0.0}{}
 	col3(double a, double b, double c) : col{a,b,c}
@@ -33,7 +44,7 @@ col3 const white_reference(95.047, 100.000, 108.883);
 double const epsilon = 0.008856;
 double const kappa   = 903.3;
 
-class color_converter
+class QUALITY_MEASUREMENT_DLL color_converter
 {
 	public:
 		static col3 const rgb_to_xyz(col3 const& rgbCol);

@@ -15,7 +15,7 @@ namespace pre {
 
 
 
-class reduction_spatially_subdivided_random : public reduction_strategy
+class PREPROCESSING_DLL reduction_spatially_subdivided_random : public reduction_strategy
 {
 public:
 

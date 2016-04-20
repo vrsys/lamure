@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
               << "to: " << out_lod_file << std::endl;
        
     //prepare lod output file
-    lamure::ren::LodStream* out_lod_access = new lamure::ren::LodStream();
-    out_lod_access->openForWriting(out_lod_file);
+    lamure::ren::lod_stream* out_lod_access = new lamure::ren::lod_stream();
+    out_lod_access->open_for_writing(out_lod_file);
 
     file_handler knobi_file_handler;
     
@@ -101,8 +101,8 @@ int main(int argc, char *argv[]) {
     bvh->set_num_nodes(num_nodes);
     bvh->set_fan_factor(fan_factor);
     bvh->set_depth(depth);
-    bvh->set_surfels_per_node(num_surfels_per_node);
-    bvh->set_size_of_surfel(sizeof(surfel));
+    bvh->set_primitives_per_node(num_surfels_per_node);
+    bvh->set_size_of_primitive(sizeof(surfel));
     bvh->set_translation(scm::math::vec3f(0.f, 0.f, 0.f));
 
     for (unsigned int node_id = 0; node_id < num_nodes; ++node_id) {
@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 
       bvh->set_bounding_box(node_id, scm::gl::boxf(bb_min, bb_max));
       bvh->set_centroid(node_id, bb_centroid);
-      bvh->set_average_surfel_radius(node_id, representative_surfel_size);
+      bvh->set_avg_primitive_extent(node_id, representative_surfel_size);
       bvh->set_visibility(node_id, lamure::ren::bvh::node_visibility::NODE_VISIBLE);
        
     }

@@ -14,7 +14,7 @@
 namespace lamure {
 namespace pre {
 
-class reduction_pair_contraction : public reduction_strategy
+class PREPROCESSING_DLL reduction_pair_contraction : public reduction_strategy
 {
 public:
   explicit reduction_pair_contraction(const uint16_t number_of_neighbours)

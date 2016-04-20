@@ -11,6 +11,7 @@
 #include <lamure/ren/camera.h>
 #include <lamure/ren/cut.h>
 
+#include <lamure/ren/controller.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/cut_database.h>
 #include <lamure/ren/controller.h>
@@ -66,7 +67,8 @@ enum class RenderPass {
     LINKED_LIST_ACCUMULATION = 4,
     ONE_PASS_LQ              = 5,
     BOUNDING_BOX             = 100,
-    LINE                     = 101  
+    LINE                     = 101,
+    TRIMESH                  = 300
 };
 
 enum class RenderMode {
@@ -88,8 +90,8 @@ public:
     //void                UnmapTempBuffer(cut_database_record::temporary_buffer const&  buffer);
     //void                CopyTempToMainMemory(context_t context_id, cut_database_record::temporary_buffer const& buffer);
 
+    //void                render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, const unsigned current_camera_session);
     void                render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, scm::gl::vertex_array_ptr render_VAO, const unsigned current_camera_session);
-
     void                reset_viewport(int const x, int const y);
 
     void                send_model_transform(const lamure::model_t model_id, const scm::math::mat4f& transform);
@@ -175,7 +177,6 @@ private:
         scm::gl::texture_2d_ptr                     pass3_normalization_color_texture_;
         scm::gl::texture_2d_ptr                     pass3_normalization_normal_texture_;
 
-
 	    scm::gl::texture_2d_ptr                     min_es_distance_image_;
 	    scm::gl::frame_buffer_ptr                   atomic_image_fbo_;
 	    scm::gl::texture_2d_ptr                     atomic_fragment_count_image_;
@@ -221,6 +222,7 @@ private:
         scm::gl::vertex_array_ptr line_memory_;
         scm::gl::buffer_ptr line_buffer_;
         scm::gl::program_ptr line_shader_program_;
+        scm::gl::program_ptr trimesh_shader_program_;
         std::vector<scm::math::vec3f> line_begin_;
         std::vector<scm::math::vec3f> line_end_;
         unsigned int max_lines_;

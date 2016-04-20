@@ -66,10 +66,8 @@ initialize() {
     assert(policy->render_budget_in_mb() > 0);
     assert(policy->out_of_core_budget_in_mb() > 0);
 
-    size_t size_of_node_in_bytes = database->size_of_surfel() * database->surfels_per_node();
-
     out_of_core_budget_in_nodes_ =
-        (policy->out_of_core_budget_in_mb()*1024*1024) / size_of_node_in_bytes;
+        (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();;
 
     index_ = new cut_update_index();
     index_->update_policy(0);
@@ -79,8 +77,8 @@ initialize() {
     semaphore_.set_min_signal_count(1);
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "PLOD: num models: " << index_->num_models() << std::endl;
-    std::cout << "PLOD: ooc-cache size (MB): " << policy->out_of_core_budget_in_mb() << std::endl;
+    std::cout << "lamure: num models: " << index_->num_models() << std::endl;
+    std::cout << "lamure: ooc-cache size (MB): " << policy->out_of_core_budget_in_mb() << std::endl;
 #endif
 
 }
@@ -140,7 +138,7 @@ dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B) {
             cut_update_queue::job(
                 cut_update_queue::task_t::CUT_MASTER_TASK, invalid_view_t, invalid_model_t));
 
-        semaphore_.Signal(1);
+        semaphore_.signal(1);
 
     }
 
@@ -155,7 +153,7 @@ run() {
         if (is_shutdown()) break;
 
         //dequeue job
-        cut_update_queue::job job = job_queue_.pop_frontjob();
+        cut_update_queue::job job = job_queue_.pop_front_job();
 
         if (job.task_ != cut_update_queue::task_t::CUT_INVALID_TASK) {
             switch (job.task_) {
@@ -191,7 +189,7 @@ prepare() {
     transfer_list_.clear();
     render_list_.clear();
 
-    gpu_cache_->resetTransferList();
+    gpu_cache_->reset_transfer_list();
     gpu_cache_->set_transfer_budget(upload_budget_in_nodes_);
     gpu_cache_->set_transfer_slots_written(0);
 
@@ -289,11 +287,11 @@ cut_master() {
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SHOW_GPU_CACHE_USAGE
-    std::cout << "PLOD: free slots gpu : " << gpu_cache_->num_free_slots() << "\t\t( " << gpu_cache_->num_slots()-gpu_cache_->num_free_slots() << " occupied)" << std::endl;
+    std::cout << "lamure: free slots gpu : " << gpu_cache_->num_free_slots() << "\t\t( " << gpu_cache_->num_slots()-gpu_cache_->num_free_slots() << " occupied)" << std::endl;
 #endif
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SHOW_OOC_CACHE_USAGE
-    std::cout << "PLOD: free slots cpu: " << ooc_cache_->num_free_slots() << "\t\t( " << ooc_cache_->num_slots()-ooc_cache_->num_free_slots() << " occupied)" << std::endl << std::endl;
+    std::cout << "lamure: free slots cpu: " << ooc_cache_->num_free_slots() << "\t\t( " << ooc_cache_->num_slots()-ooc_cache_->num_free_slots() << " occupied)" << std::endl << std::endl;
 #endif
 
     //swap and use temporary buffer
@@ -332,8 +330,8 @@ cut_master() {
     //swap cut index
     index_->swap_cuts();
 
-    assert(semaphore_.NumSignals() == 0);
-    assert(master_semaphore_.NumSignals() == 0);
+    assert(semaphore_.num_signals() == 0);
+    assert(master_semaphore_.num_signals() == 0);
 
     //re-configure semaphores
     master_semaphore_.lock();
@@ -353,14 +351,14 @@ cut_master() {
         }
     }
 
-    semaphore_.Signal(index_->num_models() * index_->num_views());
+    semaphore_.signal(index_->num_models() * index_->num_views());
 
     master_semaphore_.wait();
     if (is_shutdown())
         return;
 
-    assert(semaphore_.NumSignals() == 0);
-    assert(master_semaphore_.NumSignals() == 0);
+    assert(semaphore_.num_signals() == 0);
+    assert(master_semaphore_.num_signals() == 0);
 
     index_->sort();
 
@@ -376,7 +374,7 @@ cut_master() {
     semaphore_.unlock();
 
     job_queue_.push_job(cut_update_queue::job(cut_update_queue::task_t::CUT_UPDATE_TASK, 0, 0));
-    semaphore_.Signal(1);
+    semaphore_.signal(1);
 
     master_semaphore_.wait();
     if (is_shutdown())
@@ -472,6 +470,8 @@ cut_analysis(view_t view_id, model_t model_id) {
 
         assert(node_id != invalid_node_t);
         assert(node_id < index_->num_nodes(model_id));
+
+
 
         if (node_id > 0 && node_id < index_->num_nodes(model_id)) {
             parent_id = index_->get_parent_id(model_id, node_id);
@@ -604,8 +604,8 @@ cut_analysis(view_t view_id, model_t model_id) {
         }
 
     }
-
-    master_semaphore_.Signal(1);
+    
+    master_semaphore_.signal(1);
 
 
 }
@@ -979,7 +979,7 @@ cut_update() {
     compile_render_list();
     compile_transfer_list();
 
-    master_semaphore_.Signal(1);
+    master_semaphore_.signal(1);
 
 }
 
@@ -1089,7 +1089,7 @@ prefetch_routine() {
    pending_prefetch_set_.clear();
 
 #if 0
-   std::cout << "PLOD: num prefetched: " << num_prefetched << std::endl;
+   std::cout << "lamure: num prefetched: " << num_prefetched << std::endl;
 #endif
 
 
@@ -1104,7 +1104,6 @@ compile_transfer_list() {
     const std::vector<std::unordered_set<node_t>>& transfer_list = gpu_cache_->transfer_list();
 
     slot_t slot_count = gpu_cache_->transfer_slots_written();
-    size_t stride_in_bytes = database->size_of_surfel() * database->surfels_per_node();
 
     for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
         for (const auto& node_id : transfer_list[model_id]) {
@@ -1114,7 +1113,7 @@ compile_transfer_list() {
 
             char* node_data = ooc_cache->node_data(model_id, node_id);
 
-            memcpy(current_gpu_storage_ + slot_count*stride_in_bytes, node_data, stride_in_bytes);
+            memcpy(current_gpu_storage_ + slot_count*database->get_slot_size(), node_data, database->get_slot_size());
 
             transfer_list_.push_back(cut_database_record::slot_update_desc(slot_count, slot_id));
 
@@ -1124,7 +1123,7 @@ compile_transfer_list() {
 
     }
 
-    gpu_cache_->resetTransferList();
+    gpu_cache_->reset_transfer_list();
     gpu_cache_->set_transfer_slots_written(slot_count);
 
 
@@ -1251,7 +1250,7 @@ is_all_nodes_in_cut(const model_t model_id, const std::vector<node_t>& node_ids,
 const bool cut_update_pool::
 is_node_in_frustum(const view_t view_id, const model_t model_id, const node_t node_id, const scm::gl::frustum& frustum) {
     model_database* database = model_database::get_instance();
-    return 1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->bounding_boxes()[node_id]);
+    return 1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->get_bounding_boxes()[node_id]);
 }
 
 const bool cut_update_pool::
@@ -1264,7 +1263,7 @@ is_no_node_in_frustum(const view_t view_id, const model_t model_id, const std::v
             return false;
 
         model_database* database = model_database::get_instance();
-        if (1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->bounding_boxes()[node_id]))
+        if (1 != user_cameras_[view_id].cull_against_frustum(frustum, database->get_model(model_id)->get_bvh()->get_bounding_boxes()[node_id]))
             return false;
     }
 
@@ -1282,15 +1281,15 @@ calculate_node_error(const view_t view_id, const model_t model_id, const node_t 
     const scm::math::mat4f& view_matrix = user_cameras_[view_id].get_view_matrix();
 
     float radius_scaling = scm::math::length(model_matrix * scm::math::vec4f(1.0f,0.f,0.f,0.f));
-    float representative_radius = bvh->get_average_surfel_radius(node_id) * radius_scaling;
+    float representative_radius = bvh->get_avg_primitive_extent(node_id) * radius_scaling;
 
-    auto bb = bvh->bounding_boxes()[node_id];
+    auto bb = bvh->get_bounding_boxes()[node_id];
 
 
 #if 1
  
     //original error computation
-    scm::math::vec3f view_position = view_matrix * model_matrix * bvh->centroids()[node_id];
+    scm::math::vec3f view_position = view_matrix * model_matrix * bvh->get_centroids()[node_id];
     float near_plane = user_cameras_[view_id].near_plane_value();
     float height_divided_by_top_minus_bottom = height_divided_by_top_minus_bottoms_[view_id];
     float error = std::abs(2.0f * representative_radius * (near_plane/-view_position.z) * height_divided_by_top_minus_bottom);
@@ -1309,7 +1308,7 @@ calculate_node_error(const view_t view_id, const model_t model_id, const node_t 
     scm::math::vec4 view_position = view_projection * position;
     scm::math::vec4 view_perimeter = view_projection * perimeter;
     float error = scm::math::length(view_position/view_position.w - view_perimeter/view_perimeter.w);
-    //std::cout << "PLOD: " << view_position << "  ----  " << view_perimeter << " ,,,, " << error << std::endl;
+    //std::cout << "lamure: " << view_position << "  ----  " << view_perimeter << " ,,,, " << error << std::endl;
 #endif
 
     return error;

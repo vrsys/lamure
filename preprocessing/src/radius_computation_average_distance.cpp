@@ -35,7 +35,7 @@ compute_radius(const bvh& tree,
     avg_distance /= processed_neighbour_counter;
 
 	return avg_distance * radius_multiplier_;
-	};
+};
 
 }// namespace pre
 }// namespace lamure

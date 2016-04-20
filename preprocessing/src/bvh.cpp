@@ -361,7 +361,6 @@ downsweep_subtree_in_core( const bvh_node& node,
                            shared_file leaf_level_access)
 {
 
-
     size_t slice_left = node.node_id(),
            slice_right = node.node_id();
 
@@ -627,7 +626,6 @@ get_nearest_neighbours_in_nodes(
             }
         }
     }
-
 
     // check remaining nodes in vector
     sphere candidates_sphere = sphere(center, sqrt(max_candidate_distance));

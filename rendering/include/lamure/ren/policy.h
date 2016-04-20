@@ -38,6 +38,11 @@ public:
     const size_t        render_budget_in_mb() const { return render_budget_in_mb_; };
     const size_t        out_of_core_budget_in_mb() const { return out_of_core_budget_in_mb_; };
 
+    const int32_t       window_width() const { return window_width_; };
+    const int32_t       window_height() const { return window_height_; };
+    void                set_window_width(const int32_t window_width) { window_width_ = window_width; };
+    void                set_window_height(const int32_t window_height) { window_height_ = window_height; };
+
 protected:
 
                         policy();
@@ -54,6 +59,9 @@ private:
     size_t              max_upload_budget_in_mb_;
     size_t              render_budget_in_mb_;
     size_t              out_of_core_budget_in_mb_;
+
+    int32_t             window_width_;
+    int32_t             window_height_;
 
 };
 

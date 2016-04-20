@@ -179,9 +179,6 @@ compute_normal(const bvh& tree,
     vec3r cen = vec3r(0.0, 0.0, 0.0);
 
     for (const auto& neighbour_ids : nearest_neighbours_ids) {
-
-        
-
         vec3r neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
         if (neighbour_pos == poi) {
             continue;

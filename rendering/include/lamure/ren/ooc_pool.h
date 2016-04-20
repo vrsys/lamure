@@ -43,7 +43,7 @@ public:
 
     cache_queue::query_result acknowledge_query(const model_t model_id, const node_t node_id);
 
-    void                resolve_cache_histogramory(cache_index* index);
+    void                resolve_cache_history(cache_index* index);
     void                perform_queue_maintenance(cache_index* index);
 
     void                lock();

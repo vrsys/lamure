@@ -69,6 +69,7 @@ get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector 
         x_coord = std::floor((current_surfel->contained_surfel->pos()[(avg_dim + 1) % 3] )/(current_surfel->contained_surfel->radius()));
         y_coord = std::floor((current_surfel->contained_surfel->pos()[(avg_dim + 2) % 3] )/(current_surfel->contained_surfel->radius()));
         uint16_t group_id = (x_coord*3 + y_coord) % group_num; // formula might need to be reconsidered for different group_num
+
         cluster_array[group_id].push_back(current_surfel);
     }
 
@@ -167,7 +168,6 @@ compute_distance(shared_cluster_surfel first_surfel_ptr, shared_cluster_surfel s
     return scm::math::length(first_surfel_ptr->contained_surfel->pos() - second_surfel_ptr->contained_surfel->pos()); //
 }
 
-
 // compute deviation to all neighbours, independent on their set membership 
 void reduction_k_clustering:: 
 compute_deviation(shared_cluster_surfel current_surfel_ptr) const {
@@ -249,17 +249,6 @@ update_cluster_membership(shared_cluster_surfel current_surfel_ptr,
     current_surfel_ptr->member_of_M = is_member;
 
 }
-
-
-/*void reduction_k_clustering::
-assign_locally_nearest_neighbours(shared_cluster_surfel current_surfel_ptr,
-                                 const uint32_t number_of_neighbours,
-                                 shared_cluster_surfel_vector& input_surfel_ptr_array){
-
-    std::vector<std::pair<shared_cluster_surfel, real>> candidates;
-    real max_candidate_distance = std::numeric_limits<real>::infinity();
-
-} */
 
 void reduction_k_clustering::
 remove_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M) const {
@@ -400,6 +389,7 @@ subsample(surfel_mem_array& joined_input, real const avg_radius) const{
 
 }
 
+
 surfel_mem_array reduction_k_clustering::
 create_lod(real& reduction_error,
            const std::vector<surfel_mem_array*>& input,
@@ -412,7 +402,6 @@ create_lod(real& reduction_error,
 
     //^^create surfel array for subsampling
     surfel_mem_array mem_array_temp(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
-
 
     //container for all input surfels including [total set S]
     shared_cluster_surfel_vector cluster_surfel_array;
@@ -460,6 +449,7 @@ create_lod(real& reduction_error,
     }*/
 
        // wrap all surfels of the subsampled input array to cluster_surfels
+
     for (size_t node_id = 0; node_id < input.size(); ++node_id) {
         for (size_t surfel_id = input[node_id]->offset();
                     surfel_id < input[node_id]->offset() + input[node_id]->length();
@@ -520,7 +510,7 @@ create_lod(real& reduction_error,
     //average color and postion of output surfels with their neighbours
     merge(cluster_surfel_output_array);
     
-  
+
     //write surfels for output
     for (auto const& final_cluster_surfel : cluster_surfel_output_array) {
 
@@ -528,6 +518,7 @@ create_lod(real& reduction_error,
     }
 
     mem_array.set_length(mem_array.mem_data()->size());  
+
 
     return mem_array;
 }

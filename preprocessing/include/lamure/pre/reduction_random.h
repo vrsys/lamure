@@ -13,7 +13,7 @@
 namespace lamure {
 namespace pre {
 
-class reduction_random : public reduction_strategy
+class PREPROCESSING_DLL reduction_random : public reduction_strategy
 {
 public:
 
@@ -22,11 +22,9 @@ public:
                                   const uint32_t surfels_per_node,
           						  const bvh& tree,
           						  const size_t start_node_id) const override;
-
 private:
 
 	//void subsample(surfel_mem_array& joined_input, real const avg_radius) const;    
-
 };
 
 } // namespace pre

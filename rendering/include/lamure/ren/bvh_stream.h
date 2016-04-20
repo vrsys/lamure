@@ -64,6 +64,10 @@ protected:
         uint64_t length_;
         std::string string_;
     };
+    enum bvh_primitive_type {
+        BVH_POINTCLOUD = 0,
+        BVH_TRIMESH = 1
+    };
     enum bvh_node_visibility {
         BVH_NODE_VISIBLE = 0,
         BVH_NODE_INVISIBLE = 1
@@ -226,7 +230,8 @@ protected:
 
         uint32_t max_surfels_per_node_;
         uint32_t serialized_surfel_size_;
-        uint64_t reserved_0_;
+        uint32_t primitive_;
+        uint32_t reserved_0_;
 
         bvh_tree_state state_;
         uint32_t reserved_1_;
@@ -261,7 +266,8 @@ protected:
             file.write((char*)&fan_factor_, 4);
             file.write((char*)&max_surfels_per_node_, 4);
             file.write((char*)&serialized_surfel_size_, 4);
-            file.write((char*)&reserved_0_, 8);
+            file.write((char*)&primitive_, 4);
+            file.write((char*)&reserved_0_, 4);
             file.write((char*)&state_, 4);
             file.write((char*)&reserved_1_, 4);
             file.write((char*)&reserved_2_, 8);
@@ -281,7 +287,8 @@ protected:
             file.read((char*)&fan_factor_, 4);
             file.read((char*)&max_surfels_per_node_, 4);
             file.read((char*)&serialized_surfel_size_, 4);
-            file.read((char*)&reserved_0_, 8);
+            file.read((char*)&primitive_, 4);
+            file.read((char*)&reserved_0_, 4);
             file.read((char*)&state_, 4);
             file.read((char*)&reserved_1_, 4);
             file.read((char*)&reserved_2_, 8);

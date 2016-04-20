@@ -28,13 +28,13 @@ cache_queue::
 }
 
 const size_t cache_queue::
-Numjobs() {
+num_jobs() {
     std::lock_guard<std::mutex> lock(mutex_);
     return num_slots_;
 }
 
 const cache_queue::query_result cache_queue::
-IsNodeIndexed(const model_t model_id, const node_t node_id) {
+is_node_indexed(const model_t model_id, const node_t node_id) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(initialized_);
@@ -96,7 +96,7 @@ push_job(const job& job) {
 }
 
 const cache_queue::job cache_queue::
-Topjob() {
+top_job() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     job job;
@@ -137,7 +137,7 @@ pop_job(const job& job) {
 }
 
 void cache_queue::
-Updatejob(const model_t model_id, const node_t node_id, int32_t priority) {
+update_job(const model_t model_id, const node_t node_id, int32_t priority) {
     if (mode_ == update_mode::UPDATE_NEVER) {
         return;
     }
@@ -176,7 +176,7 @@ Updatejob(const model_t model_id, const node_t node_id, int32_t priority) {
 }
 
 const cache_queue::abort_result cache_queue::
-Abortjob(const job& job) {
+abort_job(const job& job) {
     abort_result result = abort_result::ABORT_FAILED;
 
     if (mode_ != update_mode::UPDATE_NEVER) {

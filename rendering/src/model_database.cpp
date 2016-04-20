@@ -20,11 +20,10 @@ model_database* model_database::single_ = nullptr;
 
 model_database::
 model_database()
-: num_models_(0),
-  num_models_pending_(0),
-  surfels_per_node_(0),
-  surfels_per_node_pending_(0),
-  size_of_surfel_(0) {
+: num_datasets_(0),
+  num_datasets_pending_(0),
+  primitives_per_node_(0),
+  primitives_per_node_pending_(0) {
 
 }
 
@@ -34,15 +33,15 @@ model_database::
 
     is_instanced_ = false;
 
-    for (const auto& model_it : models_) {
-        lod_point_cloud* model = model_it.second;
+    for (const auto& model_it : datasets_) {
+        dataset* model = model_it.second;
         if (model != nullptr) {
             delete model;
             model = nullptr;
         }
     }
 
-    models_.clear();
+    datasets_.clear();
 }
 
 model_database* model_database::
@@ -66,8 +65,8 @@ void model_database::
 apply() {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    num_models_ = num_models_pending_;
-    surfels_per_node_ = surfels_per_node_pending_;
+    num_datasets_ = num_datasets_pending_;
+    primitives_per_node_ = primitives_per_node_pending_;
 }
 
 const model_t model_database::
@@ -77,30 +76,23 @@ add_model(const std::string& filepath, const std::string& model_key) {
         return controller::get_instance()->deduce_model_id(model_key);
     }
 
-    lod_point_cloud* model = new lod_point_cloud(filepath);
+    dataset* model = new dataset(filepath);
 
     if (model->is_loaded()) {
         const bvh* bvh = model->get_bvh();
 
-        if (num_models_ == 0) {
+        if (num_datasets_ == 0) {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (num_models_ == 0) {
-                size_of_surfel_ = bvh->size_of_surfel();
-                surfels_per_node_pending_ = bvh->surfels_per_node();
-                surfels_per_node_ = surfels_per_node_pending_;
-            }
-        }
-        else {
-            if (size_of_surfel_ != bvh->size_of_surfel()) {
-                throw std::runtime_error(
-                    "PLOD: model_database::Incompatible surfel size");
+            if (num_datasets_ == 0) {
+                primitives_per_node_pending_ = bvh->get_primitives_per_node();
+                primitives_per_node_ = primitives_per_node_pending_;
             }
         }
 
-        if (bvh->surfels_per_node() > surfels_per_node_pending_) {
+        if (bvh->get_primitives_per_node() > primitives_per_node_pending_) {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (bvh->surfels_per_node() > surfels_per_node_pending_) {
-                surfels_per_node_pending_ = bvh->surfels_per_node();
+            if (bvh->get_primitives_per_node() > primitives_per_node_pending_) {
+                primitives_per_node_pending_ = bvh->get_primitives_per_node();
             }
         }
 
@@ -112,43 +104,98 @@ add_model(const std::string& filepath, const std::string& model_key) {
             model_id = controller::get_instance()->deduce_model_id(model_key);
 
             model->model_id_ = model_id;
-            models_[model_id] = model;
+            datasets_[model_id] = model;
 
-            ++num_models_pending_;
+            ++num_datasets_pending_;
 
-            num_models_ = num_models_pending_;
-            surfels_per_node_ = surfels_per_node_pending_;
+            num_datasets_ = num_datasets_pending_;
+            primitives_per_node_ = primitives_per_node_pending_;
 
             controller::get_instance()->signal_system_reset();
         }
 
+        switch (bvh->get_primitive()) {
+
+          case bvh::primitive_type::POINTCLOUD:
 #ifdef LAMURE_ENABLE_INFO
-        std::cout << "PLOD: model " << model_id << ": " << filepath << std::endl;
+            std::cout << "lamure: pointcloud " << model_id << ": " << filepath << std::endl;
 #endif
+            break;
+
+          case bvh::primitive_type::TRIMESH:
+#ifdef LAMURE_ENABLE_INFO
+            std::cout << "lamure: trimesh " << model_id << ": " << filepath << std::endl;
+#endif
+            break;
+
+          default:
+            throw std::runtime_error(
+                "lamure: unknwown primitive type: " + std::to_string(bvh->get_primitive()));
+            break; 
+
+        }
+
         return model_id;
 
     }
     else {
         throw std::runtime_error(
-            "PLOD: model_database::Model was not loaded");
+            "lamure: model_database::Model was not loaded");
     }
 
     return invalid_model_t;
 
 }
 
-lod_point_cloud* model_database::
+dataset* model_database::
 get_model(const model_t model_id) {
-    if (models_.find(model_id) != models_.end()) {
-        return models_[model_id];
+    if (datasets_.find(model_id) != datasets_.end()) {
+        return datasets_[model_id];
     }
-
     throw std::runtime_error(
-        "PLOD: model_database::Model was not found:" + model_id);
-
+        "lamure: model_database::Model was not found:" + std::to_string(model_id));
     return nullptr;
 }
 
+const size_t model_database::
+get_primitive_size(const bvh::primitive_type type) const {
+    switch (type) {
+        case bvh::primitive_type::POINTCLOUD:
+            return sizeof(dataset::serialized_surfel);
+        case bvh::primitive_type::TRIMESH:
+            return sizeof(dataset::serialized_triangle);
+        default: break;
+    }
+    throw std::runtime_error(
+        "lamure: model_database::Invalid primitive type has size 0");
+    return 0;
+}
+
+const size_t model_database::
+get_node_size(const model_t model_id) const {
+    auto model_it = datasets_.find(model_id);
+    if (model_it != datasets_.end()) {
+        const bvh* bvh = model_it->second->get_bvh();
+        return sizeof(dataset::serialized_surfel) * bvh->get_primitives_per_node();
+    }
+    throw std::runtime_error(
+        "lamure: model_database::Model was not found:" + std::to_string(model_id));
+    return 0;
+
+}
+
+const size_t model_database::
+get_slot_size() const {
+    //return the combined slot size in bytes for both trimeshes and pointclouds
+    return primitives_per_node_ * sizeof(dataset::serialized_surfel);
+
+}
+
+const size_t model_database::
+get_primitives_per_node() const {
+    //return the combined primitives per node for both trimeshes and pointclouds
+    return primitives_per_node_;
+}
 
 } // namespace ren
 

@@ -18,7 +18,7 @@ real radius_computation_natural_neighbours::
 compute_radius(const bvh& tree,
 			   const surfel_id_t target_surfel,
                std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
-	
+
     if (nearest_neighbours.size() < min_num_nearest_neighbours_) {
          return 0.0f;
     }
@@ -58,7 +58,7 @@ compute_radius(const bvh& tree,
 
     natural_neighbours.clear();
 
-	};
+};
 
 }// namespace pre
 }// namespace lamure

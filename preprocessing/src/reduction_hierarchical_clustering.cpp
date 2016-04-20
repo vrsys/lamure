@@ -65,7 +65,6 @@ create_lod(real& reduction_error,
 }
 
 
-
 std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
 split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const
 {

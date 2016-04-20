@@ -12,6 +12,7 @@
 
 #include <scm/core/math.h>
 #include <complex>
+#include <vector>
 
 
 namespace lamure {

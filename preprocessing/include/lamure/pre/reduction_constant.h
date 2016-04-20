@@ -17,7 +17,7 @@
 namespace lamure {
 namespace pre {
 
-class reduction_constant: public reduction_strategy
+class PREPROCESSING_DLL reduction_constant: public reduction_strategy
 {
 public:
 

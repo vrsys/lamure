@@ -18,8 +18,6 @@
 namespace lamure {
 namespace pre {
 
-
-
 struct cluster_surfel_with_neighbours{
     uint32_t surfel_id;
     uint32_t node_id;
@@ -65,7 +63,6 @@ struct max_overlap_order {
            return true;
     }
 };
-
 
 struct  min_SN_id_order{
     bool operator() (shared_cluster_surfel const& first_surfel, shared_cluster_surfel const& second_surfel) {
@@ -135,10 +132,9 @@ struct min_deviation_order {
 };
 
 
-class reduction_k_clustering: public reduction_strategy
+class PREPROCESSING_DLL reduction_k_clustering: public reduction_strategy
 {
 public:
-
 
 explicit reduction_k_clustering(size_t num_neighbours): 
                                     number_of_neighbours_(num_neighbours)
@@ -150,9 +146,6 @@ explicit reduction_k_clustering(size_t num_neighbours):
                                   const uint32_t surfels_per_node,
                                   const bvh& tree,
                                   const size_t start_node_id) const override;
-    
-    
-
 
 private:
 
@@ -174,7 +167,7 @@ private:
   void compute_deviation(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute deviation
 
   real compute_distance(shared_cluster_surfel first_surfel_ptr,
-                            shared_cluster_surfel second_surfel_ptr) const;
+                        shared_cluster_surfel second_surfel_ptr) const;
 
   void resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
 

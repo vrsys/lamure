@@ -79,7 +79,7 @@ struct min_entropy_order{
 using shared_entropy_surfel = std::shared_ptr<entropy_surfel>;
 using shared_entropy_surfel_vector = std::vector<shared_entropy_surfel>;
 
-class reduction_entropy: public reduction_strategy
+class PREPROCESSING_DLL reduction_entropy: public reduction_strategy
 {
 public:
 

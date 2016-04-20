@@ -13,7 +13,7 @@
 
 #include <lamure/utils.h>
 #include <lamure/types.h>
-#include <lamure/ren/lod_point_cloud.h>
+#include <lamure/ren/dataset.h>
 #include <lamure/ren/config.h>
 #include <lamure/ren/platform.h>
 
@@ -33,19 +33,16 @@ public:
     static model_database* get_instance();
 
     const model_t       add_model(const std::string& filepath, const std::string& model_key);
-    lod_point_cloud*    get_model(const model_t model_id);
+    dataset*            get_model(const model_t model_id);
     void                apply();
 
-    const model_t       num_models() const { std::lock_guard<std::mutex> lock(mutex_); return num_models_; };
-    const size_t        size_of_surfel() const { std::lock_guard<std::mutex> lock(mutex_); return size_of_surfel_; };
-    const size_t        surfels_per_node() const { std::lock_guard<std::mutex> lock(mutex_); return surfels_per_node_; };
+    const model_t       num_models() const { return num_datasets_; };
 
-    void                set_window_width(const int32_t window_width) { window_width_ = window_width; };
-    void                set_window_height(const int32_t window_height) { window_height_ = window_height; };
-    const int32_t       window_width() const { return window_width_; };
-    const int32_t       window_height() const { return window_height_; };
+    const size_t        get_primitive_size(const bvh::primitive_type type) const;
+    const size_t        get_node_size(const model_t model_id) const;
 
-
+    const size_t        get_slot_size() const;
+    const size_t        get_primitives_per_node() const;
 protected:
 
                         model_database();
@@ -55,18 +52,14 @@ protected:
 private:
     static std::mutex   mutex_;
 
-    std::unordered_map<model_t, lod_point_cloud*> models_;
+    std::unordered_map<model_t, dataset*> datasets_;
 
-    model_t             num_models_;
-    model_t             num_models_pending_;
-    size_t              surfels_per_node_;
-    size_t              surfels_per_node_pending_;
-    size_t              size_of_surfel_;
-    
-    int32_t             window_width_;
-    int32_t             window_height_;
+    model_t             num_datasets_;
+    model_t             num_datasets_pending_;
+    size_t              primitives_per_node_;
+    size_t              primitives_per_node_pending_;
 
-    std::vector<scm::gl::timer_query_ptr> _time_queries;
+
 };
 
 

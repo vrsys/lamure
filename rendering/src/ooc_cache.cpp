@@ -24,13 +24,11 @@ ooc_cache(const slot_t num_slots)
   maintenance_counter_(0) {
     model_database* database = model_database::get_instance();
 
-    cache_data_ = new char[num_slots * database->size_of_surfel() * database->surfels_per_node()];
-
-    pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS,
-                        database->surfels_per_node() * database->size_of_surfel());
+    cache_data_ = new char[num_slots * database->get_slot_size()];
+    pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, database->get_slot_size());
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "PLOD: ooc-cache init" << std::endl;
+    std::cout << "lamure: ooc-cache init" << std::endl;
 #endif
 
 }
@@ -51,7 +49,7 @@ ooc_cache::
         cache_data_ = nullptr;
 
 #ifdef LAMURE_ENABLE_INFO
-        std::cout << "PLOD: ooc-cache shutdown" << std::endl;
+        std::cout << "lamure: ooc-cache shutdown" << std::endl;
 #endif
     }
 
@@ -65,8 +63,7 @@ get_instance() {
         if (!is_instanced_) {
             policy* policy = policy::get_instance();
             model_database* database = model_database::get_instance();
-            size_t size_of_node_in_bytes = database->size_of_surfel() * database->surfels_per_node();
-            size_t out_of_core_budget_in_nodes = (policy->out_of_core_budget_in_mb()*1024*1024) / size_of_node_in_bytes;
+            size_t out_of_core_budget_in_nodes = (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();
             single_ = new ooc_cache(out_of_core_budget_in_nodes);
             is_instanced_ = true;
         }
@@ -126,7 +123,7 @@ is_node_resident_and_aquired(const model_t model_id, const node_t node_id) {
 void ooc_cache::
 refresh() {
     pool_->lock();
-    pool_->resolve_cache_histogramory(index_);
+    pool_->resolve_cache_history(index_);
 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_CACHE_MAINTENANCE
@@ -148,7 +145,7 @@ refresh() {
 void ooc_cache::
 lock_pool() {
     pool_->lock();
-    pool_->resolve_cache_histogramory(index_);
+    pool_->resolve_cache_history(index_);
 }
 
 void ooc_cache::

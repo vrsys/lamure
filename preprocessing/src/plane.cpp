@@ -42,6 +42,7 @@ vec3r plane_t::get_right() const {
     vec3r normal = get_normal();
     vec3r up = vec3r(0.0f, 1.0f, 0.0f);
     vec3r right = vec3r(1.0f, 0.0f, 0.0f);
+
     if (normal != up) {
         right = scm::math::normalize(scm::math::cross(normal, up));
     }
@@ -109,7 +110,7 @@ void plane_t::fit_plane(
         first = second;
         second = scm::math::normalize(first*inv_covariance_mat);
     }
-    
+
     plane = plane_t{second, centroid};
 }
 

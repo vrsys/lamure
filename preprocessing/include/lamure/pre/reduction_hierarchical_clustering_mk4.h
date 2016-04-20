@@ -51,7 +51,7 @@ struct cluster_comparator_mk4
 
 
 
-class reduction_hierarchical_clustering_mk4 : public reduction_strategy
+class PREPROCESSING_DLL reduction_hierarchical_clustering_mk4 : public reduction_strategy
 {
 public:
 

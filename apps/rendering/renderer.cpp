@@ -27,14 +27,14 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
          const std::set<lamure::model_t>& invisible_set)
     : near_plane_(0.f),
       far_plane_(1000.0f),
+      point_size_factor_(1.0f),
+      blending_threshold_(0.01f),
+      render_bounding_boxes_(false),
       elapsed_ms_since_cut_update_(0),
       render_mode_(RenderMode::HQ_TWO_PASS),
       visible_set_(visible_set),
       invisible_set_(invisible_set),
       render_visible_set_(true),
-      point_size_factor_(1.0f),
-      blending_threshold_(0.01f),
-      render_bounding_boxes_(false),
       fps_(0.0),
       rendered_splats_(0),
       is_cut_update_active_(true),
@@ -46,10 +46,10 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       model_transformations_(model_transformations),
       radius_scale_(1.f)
 {
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
-    win_x_ = database->window_width();
-    win_y_ = database->window_height();
+    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
+    win_x_ = policy->window_width();
+    win_y_ = policy->window_height();
 
     win_x_ = 800;
     win_y_ = 600;
@@ -71,6 +71,8 @@ Renderer::
     pass1_visibility_shader_program_.reset();
     pass2_accumulation_shader_program_.reset();
     pass3_pass_through_shader_program_.reset();
+
+    trimesh_shader_program_.reset();
 
     bounding_box_vis_shader_program_.reset();
 
@@ -105,7 +107,7 @@ bind_storage_buffer(scm::gl::buffer_ptr buffer) {
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     lamure::ren::policy*         policy   = lamure::ren::policy::get_instance();
 
-    size_t size_of_nodes_in_bytes = database->size_of_surfel() * database->surfels_per_node();
+    size_t size_of_nodes_in_bytes = database->get_primitive_size(lamure::ren::bvh::primitive_type::POINTCLOUD) * database->get_primitives_per_node();
     size_t render_budget_in_mb    = policy->render_budget_in_mb();
 
     size_t num_slots              = (render_budget_in_mb * 1024u * 1024u) / size_of_nodes_in_bytes;
@@ -122,7 +124,7 @@ upload_uniforms(lamure::ren::camera const& camera) const
     using namespace scm::math;
 
     model_database* database = model_database::get_instance();
-    uint32_t number_of_surfels_per_node = database->surfels_per_node();
+    uint32_t number_of_surfels_per_node = database->get_primitives_per_node();
     unsigned num_blend_f = NUM_BLENDED_FRAGS;
 
     pass1_visibility_shader_program_->uniform("near_plane", near_plane_);
@@ -199,7 +201,7 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
     scm::math::mat4f    model_view_matrix   = view_matrix * model_matrix;
 #endif
 
-    float total_radius_scale = radius_scale_ * radius_scale_per_model_[model_id];
+    float total_radius_scale = radius_scale_;// * radius_scale_per_model_[model_id];
 
     switch(pass) {
         case RenderPass::DEPTH:
@@ -241,6 +243,10 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
             line_shader_program_->uniform("view_matrix", view_matrix );
             break;
 #endif
+        case RenderPass::TRIMESH:
+            trimesh_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
+            break;
+
         default:
             //LOGGER_ERROR("Unknown Pass ID used in function 'upload_transformation_matrices'");
             std::cout << "Unknown Pass ID used in function 'upload_transformation_matrices'\n";
@@ -268,7 +274,7 @@ render_one_pass_LQ(lamure::context_t context_id,
     cut_database* cuts = cut_database::get_instance();
     model_database* database = model_database::get_instance();
 
-    size_t number_of_surfels_per_node = database->surfels_per_node();
+    size_t number_of_surfels_per_node = database->get_primitives_per_node();;
 
     /***************************************************************************************
     *******************************BEGIN LOW QUALIY PASS*****************************************
@@ -299,10 +305,14 @@ render_one_pass_LQ(lamure::context_t context_id,
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            size_t surfels_per_node_of_model = bvh->surfels_per_node();
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+                continue;
+            }
+
+            size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
             //store culling result and push it back for second pass#
 
-            std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
+            std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
 
 
             upload_transformation_matrices(camera, model_id, RenderPass::ONE_PASS_LQ);
@@ -338,7 +348,7 @@ render_one_pass_LQ(lamure::context_t context_id,
             }
        }
 
-        rendered_splats_ = non_culled_node_idx * database->surfels_per_node();
+        rendered_splats_ = non_culled_node_idx * database->get_primitives_per_node();
     }
 
 }
@@ -360,18 +370,11 @@ render_one_pass_HQ(lamure::context_t context_id,
     cut_database* cuts = cut_database::get_instance();
     model_database* database = model_database::get_instance();
 
-    size_t number_of_surfels_per_node = database->surfels_per_node();
-
-            uint32_t first_node_id = 0;
-
-            
-
+    size_t number_of_surfels_per_node = database->get_primitives_per_node();
 
                 /***************************************************************************************
                 *******************************BEGIN LINKED_LIST_ACCUMULATION PASS**********************
                 ****************************************************************************************/
-
-                {
 
                     context_->clear_color_buffer(atomic_image_fbo_, 0, vec4f(0.0, 0.0, 0.0, 0.0) );
                     context_->clear_color_buffer(atomic_image_fbo_, 1, vec4f(0.0, 0.0, 0.0, 0.0) );
@@ -417,25 +420,24 @@ render_one_pass_HQ(lamure::context_t context_id,
 
 
                     for (auto& model_id : current_set) {
-                        cut& cut = cuts->get_cut(context_id, view_id, model_id);
-
-                        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
-
 
 
                         const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-                        size_t surfels_per_node_of_model = bvh->surfels_per_node();
-                        //size_t surfels_per_node_of_model = NumbersOfsurfelsPerNode;
-                        //store culling result and push it back for second pass#
+                        if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+                            continue;
+                        }
 
-                        std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
+                            cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
+                            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
 
                         scm::math::mat4 inv_m_matrix = (  (( (camera.get_view_matrix()) ) * mat4(model_transformations_[model_id]) ) );
 
                         
+
+                        std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
+
                         std::sort(renderable.begin(), renderable.end(), [&](cut::node_slot_aggregate const & lhs,
                                                                             cut::node_slot_aggregate const & rhs)
                                                                             {  
@@ -453,14 +455,17 @@ render_one_pass_HQ(lamure::context_t context_id,
                         
                         upload_transformation_matrices(camera, model_id, RenderPass::LINKED_LIST_ACCUMULATION);
 
-                        scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
+
+                            scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
 
 
-                        for(auto const& node_slot_aggregate : renderable) {
-                            uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
 
 
-                             frustum_culling_results[node_counter] = node_culling_result;
+                            
+                            size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
+
+                            for(auto const& node_slot_aggregate : renderable) {
+                                uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
 
 
                             if( (node_culling_result != 1) ) {
@@ -473,26 +478,16 @@ render_one_pass_HQ(lamure::context_t context_id,
 
                                 context_->draw_arrays(PRIMITIVE_POINT_LIST, (node_slot_aggregate.slot_id_) * number_of_surfels_per_node, surfels_per_node_of_model);
 
-#ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-
-                                context_->collect_query_results(depth_pass_timer_query);
-                                depth_pass_time += depth_pass_timer_query->result();
-#endif
-
-                                if(non_culled_node_idx == 0)
-                                    first_node_id = node_slot_aggregate.node_id_;
                                 ++non_culled_node_idx;
                             }
 
 
                             ++node_counter;
                         }
-                   }
 
-                    rendered_splats_ = non_culled_node_idx * database->surfels_per_node();
+                    rendered_splats_ = non_culled_node_idx * database->get_primitives_per_node();
 
                 }
-
 
 
                 /***************************************************************************************
@@ -579,7 +574,7 @@ render_two_pass_HQ(lamure::context_t context_id,
     cut_database* cuts = cut_database::get_instance();
     model_database* database = model_database::get_instance();
 
-    size_t number_of_surfels_per_node = database->surfels_per_node();
+    size_t number_of_surfels_per_node = database->get_primitives_per_node();
 
     /***************************************************************************************
     *******************************BEGIN DEPTH PASS*****************************************
@@ -609,10 +604,15 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            size_t surfels_per_node_of_model = bvh->surfels_per_node();
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+                continue;
+            }
+
+
+            size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
             //store culling result and push it back for second pass#
 
-            std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->bounding_boxes();
+            std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
 
 
             upload_transformation_matrices(camera, model_id, RenderPass::DEPTH);
@@ -683,7 +683,11 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            size_t surfels_per_node_of_model = bvh->surfels_per_node();
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+                continue;
+            }
+
+            size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
 
 
             upload_transformation_matrices(camera, model_id, RenderPass::ACCUMULATION);
@@ -711,9 +715,8 @@ render_two_pass_HQ(lamure::context_t context_id,
                 ++node_counter;
             }
 
-
        }
-        rendered_splats_ = actually_rendered_nodes * database->surfels_per_node();
+        rendered_splats_ = actually_rendered_nodes * database->get_primitives_per_node();
 
     }
 
@@ -787,7 +790,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
     using namespace lamure::ren;
 
     update_frustum_dependent_parameters(camera);
-
     upload_uniforms(camera);
 
     using namespace scm::gl;
@@ -796,7 +798,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
     model_database* database = model_database::get_instance();
     cut_database* cuts = cut_database::get_instance();
 
-    size_t NumbersOfsurfelsPerNode = database->surfels_per_node();
     model_t num_models = database->num_models();
 
     //determine set of models to render
@@ -879,6 +880,45 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
         }
 
 
+
+        //TRIMESH PASS
+        context_->set_default_frame_buffer();
+        context_->bind_program(trimesh_shader_program_);
+               
+        scm::gl::vertex_array_ptr memory = lamure::ren::controller::get_instance()->get_context_memory(context_id, bvh::primitive_type::TRIMESH, device_);
+        context_->bind_vertex_array(memory);
+        context_->apply();
+
+        for (auto& model_id : current_set) {
+
+            const bvh* bvh = database->get_model(model_id)->get_bvh();
+
+            if (bvh->get_primitive() == bvh::primitive_type::TRIMESH) {
+               cut& cut = cuts->get_cut(context_id, view_id, model_id);
+               std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+
+               upload_transformation_matrices(camera, model_id, RenderPass::TRIMESH);
+               
+               size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
+
+               std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
+
+               scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
+
+               for (auto const& node_slot_aggregate : renderable) {
+                  uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
+
+                  if( node_culling_result != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
+                  {
+                      context_->apply();
+                      context_->draw_arrays(PRIMITIVE_TRIANGLE_LIST, (node_slot_aggregate.slot_id_) * database->get_primitives_per_node(), surfels_per_node_of_model);
+                  }
+               }
+            }
+        }
+
+
+
         if(render_bounding_boxes_)
         {
 
@@ -906,7 +946,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
                     if( culling_result  != 1 )  // 0 = inside, 1 = outside, 2 = intersectingS
                     {
 
-                        scm::gl::boxf temp_box = database->get_model(model_id)->get_bvh()->bounding_boxes()[node_slot_aggregate.node_id_ ];
+                        scm::gl::boxf temp_box = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[node_slot_aggregate.node_id_ ];
                         scm::gl::box_geometry box_to_render(device_,temp_box.min_vertex(), temp_box.max_vertex());
 
 
@@ -979,6 +1019,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
     device_->opengl_api().glEnable(GL_DEPTH_TEST);
 #endif
+
 
     //if(display_info_)
       //display_status(current_camera_session);
@@ -1082,9 +1123,8 @@ initialize_VBOs()
     pass3_normalization_fbo_->attach_color_buffer(0, pass3_normalization_color_texture_);
     pass3_normalization_fbo_->attach_color_buffer(1, pass3_normalization_normal_texture_);
 
-
+   
     screen_quad_.reset(new quad_geometry(device_, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
-
 
 
     color_blending_state_ = device_->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
@@ -1143,6 +1183,9 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string lq_one_pass_gs_source;
     std::string lq_one_pass_fs_source;
 
+    std::string trimesh_vs_source;
+    std::string trimesh_fs_source;
+
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
     std::string line_vs_source;
     std::string line_fs_source;
@@ -1173,6 +1216,8 @@ initialize_schism_device_and_shaders(int resX, int resY)
             || !read_text_file(root_path + "/lq_one_pass.glslv", lq_one_pass_vs_source)
             || !read_text_file(root_path + "/lq_one_pass.glslg", lq_one_pass_gs_source)
             || !read_text_file(root_path + "/lq_one_pass.glslf", lq_one_pass_fs_source)
+            || !read_text_file(root_path + "/trimesh.glslv", trimesh_vs_source)
+            || !read_text_file(root_path + "/trimesh.glslf", trimesh_fs_source)
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
             || !read_text_file(root_path + "/lines_shader.glslv", line_vs_source)
             || !read_text_file(root_path + "/lines_shader.glslf", line_fs_source)
@@ -1246,13 +1291,14 @@ initialize_schism_device_and_shaders(int resX, int resY)
                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, lq_one_pass_fs_source ))
     );
 
-
+    trimesh_shader_program_ = device_->create_program(
+       boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, trimesh_vs_source))
+                             (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, trimesh_fs_source)) );
 
     if (    !pass1_visibility_shader_program_ || !pass2_accumulation_shader_program_ || !pass3_pass_through_shader_program_ || !pass_filling_program_ 
-         || !pass1_linked_list_accumulate_program_ || !pass2_linked_list_resolve_program_ || !pass3_repair_program_
+         || !pass1_linked_list_accumulate_program_ || !pass2_linked_list_resolve_program_ || !pass3_repair_program_ || !trimesh_shader_program_
          || !LQ_one_pass_program_
          || !bounding_box_vis_shader_program_
-
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
         || !line_shader_program_
 #endif
@@ -1321,7 +1367,6 @@ void Renderer::reset_viewport(int w, int h)
     pass3_normalization_fbo_->attach_color_buffer(0, pass3_normalization_color_texture_);
     pass3_normalization_fbo_->attach_color_buffer(1, pass3_normalization_normal_texture_);
 
-
     size_t total_num_pixels = win_x_ * win_y_ * NUM_BLENDED_FRAGS;
 
     linked_list_buffer_texture_ = device_->create_texture_buffer(scm::gl::FORMAT_RGBA_16UI, scm::gl::USAGE_DYNAMIC_COPY, sizeof(uint16_t) * 4 * total_num_pixels);
@@ -1333,7 +1378,6 @@ void Renderer::reset_viewport(int w, int h)
 
     min_es_distance_image_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_), scm::gl::FORMAT_R_32UI, 1, 1, 1);
     atomic_image_fbo_->attach_color_buffer(1, min_es_distance_image_);
-
 
     //reset orthogonal projection matrix for text rendering
     scm::math::mat4f   fs_projection = scm::math::make_ortho_matrix(0.0f, static_cast<float>(win_x_),
@@ -1446,7 +1490,6 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
         FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
 
-
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, pass3_normalization_normal_texture_->object_id());
         device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGR, GL_UNSIGNED_BYTE, pixels);
 
@@ -1454,7 +1497,6 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
 
         image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 3 * win_x_, 24, 0x0000FF, 0xFF0000, 0x00FF00, false);
         FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
-
 
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
 

@@ -392,8 +392,6 @@ compute_delta_E(std::string const& image_path_1,
     free_image_data(image_data_1_ );
     free_image_data(image_data_2_);
 
-
-    //std::cout << "Write key\n";
     write_heatmap_key(1000, 30, out_image_path + "_key.png");
 
 
@@ -415,7 +413,6 @@ compute_delta_E(std::string const& image_path_1,
     bool min_local_equals_max_global = (min_delta_E_errors_local[0] == min_global_error);
     bool max_local_equals_max_global = (max_delta_E_errors_local[0] == max_global_error);
 
-    //std::cout << "\n";
     std::cout << "min delta_E_erros_local: " << min_delta_E_errors_local[0] << "\n";
     std::cout << "max delta_E_erros_local: " << max_delta_E_errors_local[0] << "\n";
 
@@ -426,7 +423,6 @@ compute_delta_E(std::string const& image_path_1,
 
 
     std::cout << "\n";
-    //std::cout << "De-Init FreeImage\n";
     FreeImage_DeInitialise();
 
 

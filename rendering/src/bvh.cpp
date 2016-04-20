@@ -9,12 +9,12 @@
 
 #include <limits>
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #if WIN32
   #include <io.h>
 #endif
- 
-#include <sys/stat.h>
-#include <fcntl.h>
 
 #include <lamure/ren/bvh_stream.h>
 
@@ -28,10 +28,11 @@ bvh()
 : num_nodes_(0),
   fan_factor_(0),
   depth_(0),
-  surfels_per_node_(0),
-  size_of_surfel_(0),
+  primitives_per_node_(0),
+  size_of_primitive_(0),
   filename_(""),
-  translation_(scm::math::vec3f(0.f)) {
+  translation_(scm::math::vec3f(0.f)),
+  primitive_(primitive_type::POINTCLOUD) {
 
 
 } 
@@ -41,8 +42,8 @@ bvh(const std::string& filename)
 : num_nodes_(0),
   fan_factor_(0),
   depth_(0),
-  surfels_per_node_(0),
-  size_of_surfel_(0),
+  primitives_per_node_(0),
+  size_of_primitive_(0),
   filename_(""),
   translation_(scm::math::vec3f(0.f)) {
 
@@ -52,7 +53,7 @@ bvh(const std::string& filename)
     }
     else {
        throw std::runtime_error(
-          "PLOD: bvh::Invalid file extension encountered.");
+          "lamure: bvh::Invalid file extension encountered.");
     }
 
 };
@@ -121,7 +122,7 @@ get_bounding_box(const node_t node_id) const {
 }
 
 void bvh::
-set_bounding_box(const lamure::node_t node_id, const scm::gl::boxf& bounding_box) {
+set_bounding_box(const node_t node_id, const scm::gl::boxf& bounding_box) {
     assert(node_id >= 0 && node_id < num_nodes_);
     while (bounding_boxes_.size() <= node_id) {
        bounding_boxes_.push_back(scm::gl::boxf());
@@ -136,7 +137,7 @@ get_centroid(const node_t node_id) const {
 }
 
 void bvh::
-set_centroid(const lamure::node_t node_id, const scm::math::vec3f& centroid) {
+set_centroid(const node_t node_id, const scm::math::vec3f& centroid) {
     assert(node_id >= 0 && node_id < num_nodes_);
     while (centroids_.size() <= node_id) {
        centroids_.push_back(scm::math::vec3f(0.f, 0.f, 0.f));
@@ -145,18 +146,18 @@ set_centroid(const lamure::node_t node_id, const scm::math::vec3f& centroid) {
 }
 
 const float bvh::
-get_average_surfel_radius(const node_t node_id) const {
+get_avg_primitive_extent(const node_t node_id) const {
     assert(node_id >= 0 && node_id < num_nodes_);
-    return avg_surfel_radii_[node_id];
+    return avg_primitive_extent_[node_id];
 }
 
 void bvh::
-set_average_surfel_radius(const lamure::node_t node_id, const float radius) {
+set_avg_primitive_extent(const node_t node_id, const float radius) {
     assert(node_id >= 0 && node_id < num_nodes_);
-    while (avg_surfel_radii_.size() <= node_id) {
-       avg_surfel_radii_.push_back(0.f);
+    while (avg_primitive_extent_.size() <= node_id) {
+       avg_primitive_extent_.push_back(0.f);
     }
-    avg_surfel_radii_[node_id] = radius;
+    avg_primitive_extent_[node_id] = radius;
 }
 
 const bvh::

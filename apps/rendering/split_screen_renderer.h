@@ -11,6 +11,7 @@
 #include <lamure/ren/camera.h>
 #include <lamure/ren/cut.h>
 
+#include <lamure/ren/controller.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/cut_database.h>
 #include <lamure/ren/policy.h>
@@ -65,7 +66,7 @@ public:
 
     void                reset();
 
-    void                render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, const uint32_t target, scm::gl::vertex_array_ptr render_VAO);
+    void                render(lamure::context_t context_id, lamure::ren::camera const& camera, const lamure::view_t view_id, const uint32_t target);
 
     void                reset_viewport(int const x, int const y);
 

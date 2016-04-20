@@ -62,7 +62,7 @@ camera(const view_t view_id,
 
 
     trackball_.set_transform(scm::math::mat4d(init_tb_mat));
-    trackball_.Dolly(distance);
+    trackball_.dolly(distance);
 
 }
 
@@ -90,7 +90,7 @@ void camera::set_trackball_center_of_rotation(const scm::math::vec3f& cor)
 
    trackball_.set_transform(scm::math::mat4d::identity());
    trackball_.set_transform(scm::math::mat4d(look_at));
-   trackball_.Dolly(scm::math::length(pos-(cor + scm::math::vec3f(0.f, 0.f, 0.001f)))); 
+   trackball_.dolly(scm::math::length(pos-(cor + scm::math::vec3f(0.f, 0.f, 0.001f)))); 
 
 }
 
@@ -222,14 +222,14 @@ update_trackball(int x, int y, int window_width, int window_height, mouse_state 
     double ny = 2.0 * double(window_height - y - (window_height/2))/double(window_height);
 
     if (mouse_state.lb_down_) {
-        trackball_.Rotate(trackball_init_x_, trackball_init_y_, nx, ny);
+        trackball_.rotate(trackball_init_x_, trackball_init_y_, nx, ny);
     }
     if (mouse_state.rb_down_) {
-        trackball_.Dolly(dolly_sens_*0.5 * (ny - trackball_init_y_));
+        trackball_.dolly(dolly_sens_*0.5 * (ny - trackball_init_y_));
     }
     if (mouse_state.mb_down_) {
         double f = dolly_sens_ < 1.0 ? 0.02 : 0.3;
-        trackball_.Translate(f*(nx - trackball_init_x_), f*(ny - trackball_init_y_));
+        trackball_.translate(f*(nx - trackball_init_x_), f*(ny - trackball_init_y_));
     }
 
     trackball_init_y_ = ny;

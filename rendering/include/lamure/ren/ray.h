@@ -20,7 +20,7 @@
 #include <lamure/ren/bvh.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/ooc_cache.h>
-#include <lamure/ren/lod_point_cloud.h>
+#include <lamure/ren/dataset.h>
 #include <lamure/ren/semaphore.h>
 
 #include <scm/core/math.h>
@@ -86,7 +86,7 @@ public:
 
     //this is a interpolation picking interface,
     //(all models, splat-based, fits a plane)
-    const bool Intersect(const float aabb_scale,
+    const bool intersect(const float aabb_scale,
                          scm::math::vec3f& ray_up_vector,
                          const float cone_diameter,
                          const unsigned int max_depth,
@@ -129,7 +129,7 @@ protected:
                                     const scm::math::vec3f& ray_origin,
                                     const scm::math::vec3f& ray_direction,
                                     scm::math::vec2f& t);
-    static const bool intersect_surfel(const lod_point_cloud::serialized_surfel& surfel,
+    static const bool intersect_surfel(const dataset::serialized_surfel& surfel,
                                       const scm::math::vec3f& ray_origin,
                                       const scm::math::vec3f& ray_direction,
                                       float& t);
@@ -168,7 +168,7 @@ public:
     void wait();
     void relaunch();
     const bool is_shutdown();
-    const unsigned int Numjobs();
+    const unsigned int num_jobs();
 
 private:
     std::queue<ray_job> queue_;

@@ -18,7 +18,7 @@
 namespace lamure {
 namespace pre{
 
-class reduction_normal_deviation_clustering: public reduction_strategy
+class PREPROCESSING_DLL reduction_normal_deviation_clustering: public reduction_strategy
 {
 public:
 

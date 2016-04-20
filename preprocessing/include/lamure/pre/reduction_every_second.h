@@ -13,7 +13,7 @@
 namespace lamure {
 namespace pre {
 
-class reduction_every_second: public reduction_strategy
+class PREPROCESSING_DLL reduction_every_second: public reduction_strategy
 {
 public:
 

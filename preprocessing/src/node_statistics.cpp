@@ -125,4 +125,3 @@ calculate_statistics(surfel_mem_array const& mem_array) {
 
 }
 }
-

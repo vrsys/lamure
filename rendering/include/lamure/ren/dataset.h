@@ -5,8 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef REN_LOD_POINT_CLOUD_H_
-#define REN_LOD_POINT_CLOUD_H_
+#ifndef REN_DATASET_H_
+#define REN_DATASET_H_
 
 #include <vector>
 #include <fstream>
@@ -24,28 +24,39 @@ namespace ren {
 
 class model_database;
 
-class RENDERING_DLL lod_point_cloud
+class RENDERING_DLL dataset
 {
 
 public:
 
-    struct serialized_surfel
-    {
-        float x, y, z;
-        uint8_t r, g, b, fake;
-        float size;
-        float nx, ny, nz;
+    struct serialized_surfel {
+      float x, y, z;
+      uint8_t r, g, b, fake;
+      float size;
+      float nx, ny, nz;
+    };
+    struct serialized_triangle {
+      float va_x_, va_y_, va_z_;
+      float n0_x_, n0_y_, n0_z_;
+      float c0_x_, c0_y_;
+      float vb_x_, vb_y_, vb_z_;
+      float n1_x_, n1_y_, n1_z_;
+      float c1_x_, c1_y_;
+      float vc_x_, vc_y_, vc_z_;
+      float n2_x_, n2_y_, n2_z_;
+      float c2_x_, c2_y_;
     };
 
-                        lod_point_cloud() {};
-                        lod_point_cloud(const std::string& filename);
-    virtual             ~lod_point_cloud();
+
+                        dataset() {};
+                        dataset(const std::string& filename);
+    virtual             ~dataset();
 
     const model_t       model_id() const { return model_id_; };
     const scm::gl::boxf& aabb() const { return aabb_; };
     const bool          is_loaded() const { return is_loaded_; };
     const bvh*          get_bvh() const { return bvh_; };
-
+    
     void                set_transform(const scm::math::mat4f& transform) { transform_ = transform; };
     const scm::math::mat4f transform() const { return transform_; };
 

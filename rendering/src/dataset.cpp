@@ -5,7 +5,7 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <lamure/ren/lod_point_cloud.h>
+#include <lamure/ren/dataset.h>
 
 #include <scm/core/math.h>
 
@@ -15,8 +15,8 @@ namespace lamure
 namespace ren
 {
 
-lod_point_cloud::
-lod_point_cloud(const std::string& filename)
+dataset::
+dataset(const std::string& filename)
 : model_id_(invalid_model_t),
   is_loaded_(false),
   bvh_(nullptr),
@@ -24,26 +24,26 @@ lod_point_cloud(const std::string& filename)
     load(filename);
 }
 
-lod_point_cloud::
-~lod_point_cloud() {
+dataset::
+~dataset() {
     if (bvh_ != nullptr) {
         delete bvh_;
         bvh_ = nullptr;
     }
 }
 
-void lod_point_cloud::
+void dataset::
 load(const std::string& filename) {
 
     std::string extension = filename.substr(filename.size()-3);
     
-    if (extension.compare("kdn") == 0 || extension.compare("bvh") == 0) {
+    if (extension.compare("bvh") == 0) {
         bvh_ = new bvh(filename);
         is_loaded_ = true;
     }
     else {
         throw std::runtime_error(
-            "lod_point_cloud::Incompatible input file: " + filename);
+            "lamure: dataset::Incompatible input file: " + filename);
     }
     
 }

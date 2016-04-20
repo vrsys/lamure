@@ -21,17 +21,17 @@ namespace lamure {
 namespace ren
 {
 
-class RENDERING_DLL LodStream
+class RENDERING_DLL lod_stream
 {
 public:
-                        LodStream();
-                        LodStream(const LodStream&) = delete;
-                        LodStream& operator=(const LodStream&) = delete;
-    virtual             ~LodStream();
+                        lod_stream();
+                        lod_stream(const lod_stream&) = delete;
+                        lod_stream& operator=(const lod_stream&) = delete;
+    virtual             ~lod_stream();
 
 
     void                open(const std::string& file_name);
-    void                openForWriting(const std::string& file_name);
+    void                open_for_writing(const std::string& file_name);
     void                close();
     const bool          is_file_open() const { return is_file_open_; };
     const std::string&  file_name() const { return file_name_; };

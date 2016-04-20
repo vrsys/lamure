@@ -109,6 +109,7 @@ create_lod(real& reduction_error,
             accumulated_weights += current_weight;
 
             surfel_lookup_vector.push_back(std::make_pair(accumulated_weights, current_surfel_ids) );
+
             original_surfels.push_back(current_surfel);
         // only place where shared pointers should be created
         //entropy_surfel_array.push_back( std::make_shared<entropy_surfel>(current_entropy_surfel) );

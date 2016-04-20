@@ -34,16 +34,16 @@ public:
 
     const slot_t        num_free_slots();
     const slot_t        reserve_slot();
-    void                applySlot(const slot_t slot_id, const model_t model_id, const node_t node_id);
+    void                apply_slot(const slot_t slot_id, const model_t model_id, const node_t node_id);
     void                unreserve_slot(const slot_t slot_id);
 
     const slot_t        get_slot(const model_t model_id, const node_t node_id);
-    const bool          IsNodeIndexed(const model_t model_id, const node_t node_id);
+    const bool          is_node_indexed(const model_t model_id, const node_t node_id);
     const bool          is_node_aquired(const model_t model_id, const node_t node_id);
 
-    void                AquireSlot(const view_t view_id, const model_t model_id, const node_t node_id);
-    void                ReleaseSlot(const view_t view_id, const model_t model_id, const node_t node_id);
-    const bool          ReleaseSlotinvalidate(const view_t view_id, const model_t model_id, const node_t node_id);
+    void                aquire_slot(const view_t view_id, const model_t model_id, const node_t node_id);
+    void                release_slot(const view_t view_id, const model_t model_id, const node_t node_id);
+    const bool          release_slot_invalidate(const view_t view_id, const model_t model_id, const node_t node_id);
 
 private:
 

@@ -8,6 +8,8 @@
 #ifndef PRE_NODE_STATISTICS_H_
 #define PRE_NODE_STATISTICS_H_
 
+#include <array>
+
 #include <lamure/pre/surfel_mem_array.h>
 
 namespace lamure {
@@ -56,12 +58,12 @@ public:
 private:
 
 	bool is_dirty_;
-
 	vec3r mean_pos_;
 	real  pos_sd_;
 
 	vec3r mean_color_;
 	real  color_sd_;
+
 
 	vec3r mean_normal_;
 	real  normal_sd_;
@@ -78,4 +80,3 @@ private:
 }
 }
 #endif
-

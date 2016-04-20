@@ -24,7 +24,9 @@ policy()
 : reset_system_(true),
   max_upload_budget_in_mb_(LAMURE_DEFAULT_UPLOAD_BUDGET),
   render_budget_in_mb_(LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET),
-  out_of_core_budget_in_mb_(LAMURE_DEFAULT_MAIN_MEMORY_BUDGET) {
+  out_of_core_budget_in_mb_(LAMURE_DEFAULT_MAIN_MEMORY_BUDGET),
+  window_width_(800),
+  window_height_(600) {
 
 }
 
