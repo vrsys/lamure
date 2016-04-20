@@ -21,8 +21,10 @@ class bvh;
 class normal_computation_plane_fitting: public normal_computation_strategy
 {
 public:
-	explicit normal_computation_plane_fitting(const uint16_t number_of_neighbours)
-		: number_of_neighbours_(number_of_neighbours){}
+	explicit normal_computation_plane_fitting(const uint16_t number_of_neighbours) {
+			// base class attribute
+			number_of_neighbours_ = number_of_neighbours;
+		}
 
 	void eigsrt_jacobi(
 	    int dim,
@@ -34,10 +36,8 @@ public:
 	                     double** eigenvectors) const;
 
 	vec3f  compute_normal(const bvh& tree,
-						  const surfel_id_t surfel) const override;
-
-private:
-	const uint16_t number_of_neighbours_;
+						  const surfel_id_t surfel,
+                       	  std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const override;
 };
 
 }// namespace pre

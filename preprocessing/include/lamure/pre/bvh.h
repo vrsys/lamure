@@ -17,6 +17,9 @@
 #include <lamure/pre/normal_computation_strategy.h>
 #include <lamure/pre/radius_computation_strategy.h>
 #include <lamure/pre/logger.h>
+#include <lamure/atomic_counter.h>
+
+#include <lamure/pre/io/converter.h>
 
 #include <boost/filesystem.hpp>
 #include <unordered_set>
@@ -24,6 +27,8 @@
 
 namespace lamure {
 namespace pre {
+
+class reduction_strategy;
 
 class normal_computation_strategy;
 class radius_computation_strategy;
@@ -74,8 +79,15 @@ public:
     uint32_t            get_depth_of_node(const uint32_t node_id) const;
     uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
     uint32_t            get_parent_id(const uint32_t node_id) const;
-    const node_t        get_first_node_id_of_depth(uint32_t depth) const;
+    const node_id_type        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
+
+    surfel_vector       get_resampled_leaf_lv_surfels() const {return resampled_leaf_level_;}
+    void                resample_based_on_overlap(surfel_mem_array const&  joined_input,
+                                                  surfel_mem_array& output_mem_array,
+                                                  std::vector<surfel_id_t> const& resample_candites) const;
+    std::vector<surfel_id_t>
+                       find_resample_candidates(const uint32_t node_idx) const;
 
     /**
      * Get id for the first node at given depth and total number of nodes at this depth.
@@ -88,7 +100,8 @@ public:
     std::vector<std::pair<surfel_id_t, real>>
                         get_nearest_neighbours(
                             const surfel_id_t target_surfel,
-                            const uint32_t num_neighbours) const;
+                            const uint32_t num_neighbours,
+                            const bool do_local_search = false) const;
 
     std::vector<std::pair<surfel_id_t, real>>
                         get_nearest_neighbours_in_nodes(
@@ -99,7 +112,17 @@ public:
     std::vector<std::pair<surfel_id_t, real>>
                         get_natural_neighbours(
                             const surfel_id_t& target_surfel,
-                            const uint32_t num_neighbours) const;
+                            std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const;
+
+    std::vector<std::pair<surfel, real> >
+                        get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,
+                                                       vec3r const& poi,
+                                                       uint32_t num_nearest_neighbours) const;
+
+    std::vector<std::pair<uint32_t, real>>
+                        extract_approximate_natural_neighbours(vec3r const& target_surfel,
+                        std::vector<vec3r> const& all_nearest_neighbours) const;
+
 
     void                print_tree_properties() const;
     const node_id_type  first_leaf() const { return first_leaf_; }
@@ -115,11 +138,14 @@ public:
                                                   const normal_computation_strategy& normal_computation_strategy,
                                                   const radius_computation_strategy& radius_computation_strategy);
 
-    void                upsweep(const reduction_strategy& strategy);
-    void                upsweep_new(const reduction_strategy& reduction_strategy, 
-                                    const normal_computation_strategy& normal_comp_strategy, 
-                                    const radius_computation_strategy& radius_comp_strategy,
-                                    bool recompute_leaf_level = true);
+    void                upsweep(const reduction_strategy& reduction_strategy, 
+                                const normal_computation_strategy& normal_comp_strategy, 
+                                const radius_computation_strategy& radius_comp_strategy,
+                                bool recompute_leaf_level = true,
+                                bool resample = false);
+    void                resample();
+
+    surfel_vector       remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
 
     void                serialize_tree_to_file(const std::string& output_file,
                                             bool write_intermediate_data);
@@ -150,7 +176,67 @@ protected:
     void                set_first_leaf(const node_id_type first_leaf) { first_leaf_ = first_leaf; };
     void                set_state(const state_type state) { state_ = state; };
 
+    void                spawn_create_lod_jobs(const uint32_t first_node_of_level, 
+                                              const uint32_t last_node_of_level,
+                                              const reduction_strategy& reduction_strgy,
+                                              const bool resample);
+    void                spawn_compute_attribute_jobs(const uint32_t first_node_of_level, 
+                                                     const uint32_t last_node_of_level,
+                                                     const normal_computation_strategy& normal_strategy, 
+                                                     const radius_computation_strategy& radius_strategy,
+                                                     const bool is_leaf_level);
+    void                spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left, 
+                                                                    const uint32_t slice_right);
+    void                spawn_compute_bounding_boxes_upsweep_jobs(const uint32_t first_node_of_level, 
+                                                                  const uint32_t last_node_of_level,
+                                                                  const int32_t level);
+    void                spawn_split_node_jobs(size_t& slice_left,
+                                              size_t& slice_right,
+                                              size_t& new_slice_left,
+                                              size_t& new_slice_right,
+                                              const uint32_t level);
+    
+    void                thread_remove_outlier_jobs(const uint32_t start_marker,
+                                                   const uint32_t end_marker,
+                                                   const uint32_t num_outliers,
+                                                   const uint16_t num_neighbours,
+                                                   std::vector< std::pair<surfel_id_t, real> >&  intermediate_outliers_for_thread);
+    void                thread_compute_attributes(const uint32_t start_marker,
+                                                  const uint32_t end_marker,
+                                                  const bool update_percentage,
+                                                  const normal_computation_strategy& normal_strategy, 
+                                                  const radius_computation_strategy& radius_strategy,
+                                                  const bool is_leaf_level);
+    void                thread_create_lod(const uint32_t start_marker,
+                                          const uint32_t end_marker,
+                                          const bool update_percentage,
+                                          const reduction_strategy& reduction_strgy,
+                                          const bool resample);
+    void                thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
+                                                                const uint32_t slice_right,
+                                                                const bool update_percentage,
+                                                                const uint32_t num_threads);
+    void                thread_compute_bounding_boxes_upsweep(const uint32_t start_marker,
+                                                              const uint32_t end_marker,
+                                                              const bool update_percentage,
+                                                              const int32_t level, 
+                                                              const uint32_t num_threads);
+    void                thread_split_node_jobs(      size_t& slice_left,
+                                                     size_t& slice_right,
+                                                     size_t& new_slice_left,
+                                                     size_t& new_slice_right,
+                                               const bool update_percentage,
+                                               const int32_t level,
+                                               const uint32_t num_threads);
+    void                thread_resample(const uint32_t start_marker,
+                                      const uint32_t end_marker,
+                                      const bool update_percentage);
 private:
+    surfel_vector resampled_leaf_level_;
+    std::mutex resample_mutex_;
+
+    atomic_counter<uint32_t> working_queue_head_counter_;
+
     state_type          state_ = state_type::null;
 
     std::vector<bvh_node>
@@ -181,21 +267,17 @@ private:
                             shared_file leaf_level_access);
 
     void                get_descendant_leaves(
-                            const size_t node,
-                            std::vector<size_t>& result,
-                            const size_t first_leaf,
+                            const node_id_type node,
+                            std::vector<node_id_type>& result,
+                            const node_id_type first_leaf,
                             const std::unordered_set<size_t>& excluded_leaves) const;
     void                get_descendant_nodes(
-                            const size_t node,
-                            std::vector<size_t>& result,
-                            const size_t desired_depth,
+                            const node_id_type node,
+                            std::vector<node_id_type>& result,
+                            const node_id_type desired_depth,
                             const std::unordered_set<size_t>& excluded_nodes) const;
 
-    void                upsweep_r(
-                            bvh_node& node,
-                            const reduction_strategy& reduction_strategy,
-                            std::vector<shared_file>& level_temp_files,
-                            std::atomic_uint& ctr);
+    surfel_mem_array    resample_node(uint32_t node_id) const;
 
 };
 

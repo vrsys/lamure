@@ -31,6 +31,7 @@ public:
                             : surfel_array_abstract() { reset(mem_data, offset, length); }
 
     surfel              read_surfel(const size_t index) const override;
+    surfel const&       read_surfel_ref(const size_t index) const;
     void                write_surfel(const surfel& surfel, const size_t index) const override;
 
     shared_surfel_vector&

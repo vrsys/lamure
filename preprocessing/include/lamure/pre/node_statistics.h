@@ -43,6 +43,12 @@ public:
 	                              return normal_sd_;}
 	real const radius_sd() const {assert(is_dirty_ == false);
 	                              return radius_sd_;}
+	                              
+	real const min_radius() const {assert(is_dirty_ == false);
+								  return min_radius_;}
+	real const max_radius() const {assert(is_dirty_ == false);
+								  return max_radius_;}
+
 
 	histogram_t const color_histogram() const {assert(is_dirty_ == false);						       return color_histogram_;}
 
@@ -56,13 +62,16 @@ private:
 	real  pos_sd_;
 
 	vec3r mean_color_;
-	real color_sd_;
+	real  color_sd_;
+
 
 	vec3r mean_normal_;
 	real  normal_sd_;
 
 	real  mean_radius_;
 	real  radius_sd_;
+	real  max_radius_;
+	real  min_radius_;
 
 	histogram_t color_histogram_;
 

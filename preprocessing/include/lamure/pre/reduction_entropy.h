@@ -79,9 +79,11 @@ struct min_entropy_order{
 using shared_entropy_surfel = std::shared_ptr<entropy_surfel>;
 using shared_entropy_surfel_vector = std::vector<shared_entropy_surfel>;
 
-class PREPROCESSING_DLL reduction_entropy : public reduction_strategy
+class PREPROCESSING_DLL reduction_entropy: public reduction_strategy
 {
 public:
+
+    explicit  reduction_entropy() {}
 
     surfel_mem_array      create_lod(real& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,

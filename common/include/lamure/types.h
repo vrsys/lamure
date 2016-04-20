@@ -23,7 +23,7 @@ struct surfel_id_t {
     node_id_type node_idx;
     size_t surfel_idx;
 
-    surfel_id_t(node_id_type node_i, size_t surfel_i)
+    surfel_id_t(node_id_type node_i = -1, size_t surfel_i = -1)
      :node_idx(node_i)
      ,surfel_idx(surfel_i)
     {}
@@ -32,12 +32,27 @@ struct surfel_id_t {
         return lhs.node_idx == rhs.node_idx &&
                lhs.surfel_idx == rhs.surfel_idx;
     }
+ 
+    friend bool operator!=(surfel_id_t const& lhs, surfel_id_t const& rhs) {
+        return lhs.node_idx != rhs.node_idx ||
+               lhs.surfel_idx != rhs.surfel_idx;
+    }
 
     friend bool operator<(surfel_id_t const& lhs, surfel_id_t const& rhs) {
-        if(lhs.node_idx == rhs.node_idx)
-            return lhs.surfel_idx < rhs.surfel_idx;
+      if(lhs.node_idx < rhs.node_idx) {
+        return true;
+      }
+      else {
+        if(lhs.node_idx == rhs.node_idx) {
+          return lhs.surfel_idx < rhs.surfel_idx;
+        }
+        else return false;
+      }
+    }
 
-        return lhs.node_idx < rhs.node_idx;
+    friend std::ostream& operator<<(std::ostream& os, const surfel_id_t& s) {
+      os << "(" << s.node_idx << "," << s.surfel_idx << ")";
+      return os;
     }
 };
 
@@ -46,6 +61,7 @@ struct surfel_id_t {
 using vec2r  = scm::math::vec<real, 2>;
 using vec2f  = scm::math::vec2f;
 using vec3r  = scm::math::vec<real, 3>; //< for surfel position
+using vec4r  = scm::math::vec<real, 4>; //< for surfel position
 using vec3f  = scm::math::vec3f;
 using vec3ui = scm::math::vec<uint32_t, 3>;
 using vec3b  = scm::math::vec<uint8_t, 3>;

@@ -90,6 +90,8 @@ public:
 
     void calculate_statistics();
 
+    node_statistics&      node_stats() { return node_stats_;}
+
     surfel_mem_array&     mem_array() { return mem_array_; }
     const surfel_mem_array&
                         mem_array() const { return mem_array_; }

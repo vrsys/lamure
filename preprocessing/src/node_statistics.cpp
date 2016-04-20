@@ -19,7 +19,8 @@ calculate_statistics(surfel_mem_array const& mem_array) {
     vec3r temp_mean_color  = vec3r(0.0, 0.0, 0.0);
     vec3r temp_mean_normal = vec3r(0.0, 0.0, 0.0);
     real  temp_mean_radius = 0.0;
-
+    real  temp_max_radius  = 0.0;
+    real  temp_min_radius  = std::numeric_limits<real>::max();
 
     for(int color_comp_idx = 0;
             color_comp_idx < 3;
@@ -39,13 +40,18 @@ calculate_statistics(surfel_mem_array const& mem_array) {
             temp_mean        += current_surfel.pos();
             temp_mean_color  += surfel_color;
             temp_mean_normal += current_surfel.normal();
+
+            real current_radius = current_surfel.radius();
             temp_mean_radius += current_surfel.radius();
+
+            temp_max_radius = std::max(temp_max_radius, current_radius);
+            temp_min_radius = std:: min(temp_min_radius, current_radius);
 
             for (int color_comp_idx = 0; color_comp_idx < 3; ++color_comp_idx) {
 	        ++(color_histogram_[color_comp_idx][surfel_color[color_comp_idx]]);
             }
 	    ++num_contributed_surfels;
-	}
+	   }
     }
 
     if (num_contributed_surfels) {
@@ -67,7 +73,7 @@ calculate_statistics(surfel_mem_array const& mem_array) {
 
         temp_mean_normal = vec3r(lowest_real,
                                  lowest_real,
-				 lowest_real);
+				                 lowest_real);
 
 	temp_mean_radius = lowest_real;
 

@@ -147,16 +147,27 @@ jacobi_rotation(const scm::math::mat3d& _matrix,
 
 vec3f normal_computation_plane_fitting::
 compute_normal(const bvh& tree,
-			   const surfel_id_t target_surfel) const {
+			   const surfel_id_t target_surfel,
+               std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
 
-    const uint16_t num = number_of_neighbours_;
 	// find nearest neighbours
-    std::vector<std::pair<surfel_id_t, real>> nearest_neighbours_ids = tree.get_nearest_neighbours(target_surfel, num);
+    std::vector<std::pair<surfel_id_t, real>> nearest_neighbours_ids;// = tree.get_nearest_neighbours(target_surfel, num);
+
+
+    unsigned processed_neighbour_counter = 0;
+    // compute radius
+    for (auto const& neighbour : nearest_neighbours) {
+        if( processed_neighbour_counter++ < number_of_neighbours_) {
+            nearest_neighbours_ids.emplace_back(nearest_neighbours[processed_neighbour_counter-1]);
+        }
+        else {
+            break;
+        }
+    }
+
 
     auto& bvh_nodes = (tree.nodes());
-    surfel surf = bvh_nodes[target_surfel.node_idx].mem_array().read_surfel(target_surfel.surfel_idx);
-
-    vec3r poi = surf.pos();
+    vec3r poi = bvh_nodes[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     uint32_t num_neighbours = nearest_neighbours_ids.size();
     if (num_neighbours < 3) {
@@ -168,10 +179,7 @@ compute_normal(const bvh& tree,
     vec3r cen = vec3r(0.0, 0.0, 0.0);
 
     for (const auto& neighbour_ids : nearest_neighbours_ids) {
-
-        
-
-        vec3r const& neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel(neighbour_ids.first.surfel_idx).pos();
+        vec3r neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
         if (neighbour_pos == poi) {
             continue;
         }
@@ -193,7 +201,7 @@ compute_normal(const bvh& tree,
     scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
 
     for (const auto& neighbour_ids : nearest_neighbours_ids) {
-        vec3r const& neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel(neighbour_ids.first.surfel_idx).pos();
+        vec3r neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
         if (neighbour_pos == poi) {
             continue;
         }

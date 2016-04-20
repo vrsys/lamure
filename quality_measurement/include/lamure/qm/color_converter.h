@@ -30,13 +30,17 @@ namespace qm {
 
 struct QUALITY_MEASUREMENT_DLL col3
 {
+	col3() : col{0.0,0.0,0.0}{}
+	col3(double a, double b, double c) : col{a,b,c}
+	{}
+
 	double const operator[](int i) const {return col[i];};
 	double&      operator[](int i)       {return col[i];};
 	
-  double col[3];
+	double col[3];
 };
 
-col3 const white_reference = { 95.047, 100.000, 108.883 };
+col3 const white_reference(95.047, 100.000, 108.883);
 double const epsilon = 0.008856;
 double const kappa   = 903.3;
 

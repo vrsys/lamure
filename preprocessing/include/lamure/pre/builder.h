@@ -20,6 +20,10 @@
 namespace lamure {
 namespace pre {
 
+class reduction_strategy;
+class radius_computation_strategy;
+class normal_computation_strategy;
+
 class PREPROCESSING_DLL builder
 {
 public:
@@ -32,10 +36,14 @@ public:
         uint16_t        final_stage;
         bool            compute_normals_and_radii;
         bool            keep_intermediate_files;
+        bool            resample;
         float           memory_ratio;
+        float           radius_multiplier;
         size_t          buffer_size;
         uint16_t        number_of_neighbours;
         bool            translate_to_origin;
+        uint16_t        number_of_outlier_neighbours;
+        float           outlier_ratio;
 
         rep_radius_algorithm          rep_radius_algo;
         reduction_algorithm           reduction_algo;
@@ -50,8 +58,24 @@ public:
     builder&            operator=(const builder& other) = delete;
 
     bool                construct();
+    bool                resample();
 
 private:
+    reduction_strategy* get_reduction_strategy(reduction_algorithm algo) const;
+    radius_computation_strategy* get_radius_strategy(radius_computation_algorithm algo) const;
+    normal_computation_strategy* get_normal_strategy(normal_computation_algorithm algo) const;
+    boost::filesystem::path convert_to_binary(std::string const& input_type) const;
+    boost::filesystem::path downsweep(boost::filesystem::path input_file, uint16_t start_stage) const;
+    boost::filesystem::path upsweep(boost::filesystem::path input_file,
+                     uint16_t start_stage,
+                     reduction_strategy const* reduction_strategy,
+                     normal_computation_strategy const* normal_comp_strategy,
+                     radius_computation_strategy const* radius_comp_strategy) const;   
+    bool resample_surfels(boost::filesystem::path const& input_file) const;
+    bool reserialize(boost::filesystem::path const& input_file, uint16_t start_stage) const;
+
+    size_t calculate_memory_limit() const;
+
     descriptor           desc_;
     size_t               memory_limit_;
     boost::filesystem::path base_path_;

@@ -26,7 +26,7 @@ class bvh;
 //using shared_entropy_surfel = std::shared_ptr<entropy_surfel>;
 //using shared_entropy_surfel_vector = std::vector<shared_entropy_surfel>;
 
-class reduction_particle_simulation: public reduction_strategy
+class PREPROCESSING_DLL reduction_particle_simulation: public reduction_strategy
 {
 public:
 

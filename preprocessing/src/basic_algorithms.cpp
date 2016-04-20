@@ -29,7 +29,7 @@ compute_aabb(const surfel_mem_array& sa,
     assert(!sa.is_empty());
     assert(sa.length() > 0);
 
-    vec3r min = sa.read_surfel(0).pos();
+    vec3r min = sa.read_surfel_ref(0).pos();
     vec3r max = min;
 
     const auto begin = sa.mem_data()->begin() + sa.offset();
@@ -323,14 +323,9 @@ compute_properties(const surfel_mem_array& sa,
     size_t counter = 0;
 
     for (size_t i = 0; i < sa.length(); ++i) {
-        surfel s = sa.read_surfel(i);
+        surfel s = sa.read_surfel_ref(i);
         
-        // TODO: moved here to fix normal-radii computation
-        if(use_radii_for_node_expansion) {
-            props.bbox.expand(s.pos(), s.radius());
-        } else {
-            props.bbox.expand(s.pos());
-        }
+        props.bbox.expand_by_disk(s.pos(), s.normal(), s.radius());
 
         if (s.radius() <= 0.0)
             continue;

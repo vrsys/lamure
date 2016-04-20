@@ -44,4 +44,5 @@ void main() {
   VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz);
 
   gl_Position = vec4(in_position, 1.0);
+
 }

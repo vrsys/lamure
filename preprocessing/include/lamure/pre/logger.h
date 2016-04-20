@@ -52,7 +52,11 @@ private:
 #define LOGGER_INFO(msg) logger::get_instance()<<msg<<"\n"
 #define LOGGER_WARN(msg) logger::get_instance()<<msg<<"\n"
 #define LOGGER_ERROR(msg) logger::get_instance()<<msg<<"\n"
-#define LOGGER_DEBUG(msg) 0
+#ifdef NDEBUG
+    #define LOGGER_DEBUG(msg)
+#else
+    #define LOGGER_DEBUG(msg) logger::get_instance()<<msg<<"\n"
+#endif
 #define LOGGER_TEXT(msg) logger::get_instance()<<msg<<"\n"
 
 

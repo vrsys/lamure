@@ -14,7 +14,7 @@
 namespace lamure {
 namespace pre {
 
-class reduction_region_growing : public reduction_strategy
+class PREPROCESSING_DLL reduction_region_growing : public reduction_strategy
 {
 public:
 

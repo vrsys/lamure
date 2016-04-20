@@ -215,9 +215,7 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
             {
                 for (uint32_t j = 0; j < input[i]->length(); ++j)
                 {
-                    surfel surfel = input[i]->read_surfel(j);
-
-                    vec3r surfel_pos = surfel.pos() - bounding_box.min();
+                    vec3r surfel_pos = input[i]->read_surfel_ref(j).pos() - bounding_box.min();
                     if (surfel_pos.x < 0.f) surfel_pos.x = 0.f;
                     if (surfel_pos.y < 0.f) surfel_pos.y = 0.f;
                     if (surfel_pos.z < 0.f) surfel_pos.z = 0.f;
@@ -347,9 +345,7 @@ create_lod(real& reduction_error,
     {
         for (uint32_t j = 0; j < input[i]->length(); ++j)
         {
-            surfel surfel = input[i]->read_surfel(j);
-
-            vec3r surfel_pos = surfel.pos() - bbox.min();
+            vec3r surfel_pos =  input[i]->read_surfel_ref(j).pos() - bbox.min();
             if (surfel_pos.x < 0.f) surfel_pos.x = 0.f;
             if (surfel_pos.y < 0.f) surfel_pos.y = 0.f;
             if (surfel_pos.z < 0.f) surfel_pos.z = 0.f;
@@ -383,7 +379,7 @@ create_lod(real& reduction_error,
             if ((index[2] != 0) && (index[2] == grid_dimensions[2]))
                 index[2] = grid_dimensions[2]-1;
 
-            grid[index[0]][index[1]][index[2]]->push_back(surfel);
+            grid[index[0]][index[1]][index[2]]->push_back(input[i]->read_surfel_ref(j));
 
         }
     }

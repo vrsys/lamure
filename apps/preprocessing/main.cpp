@@ -51,13 +51,14 @@ int main(int argc, const char *argv[])
          " input file directory)")
 
         ("final-stage,s",
-         po::value<int>()->default_value(4),
+         po::value<int>()->default_value(5),
          "number of the stage to stop after.\n"
          "  0 - binary file creation\n"
          "  1 - surfel + radius computation\n"
          "  2 - downsweep/tree creation\n"
-         "  3 - upsweep/LOD creation\n"
-         "  4 - serialization.\n"
+         "  3 - statistical outlier removal\n"
+         "  4 - upsweep/LOD creation\n"
+         "  5 - serialization.\n"
          "make sure the final stage number is equal or higher than the start stage,"
          "which is implicitly defined by INPUT")
 
@@ -82,12 +83,26 @@ int main(int argc, const char *argv[])
          "recompute surfel normals and radii, even if they data is present in the "
          "input data")
 
+        ("outlier-ratio",
+          po::value<float>()->default_value(0.0f),
+          "the application will remove (<outlier-ratio> * total_num_surfels) points "
+          " with the max avg-distance to it's k-nearest neighbors from the input point "
+          "cloud before computing the LODs")
+
+        ("num-outlier-neighbours",
+          po::value<int>()->default_value(24),
+          "defines the number of nearest neighbours that are searched for the outlier "
+           "detection")
+
         ("neighbours",
          po::value<int>()->default_value(40),
          "Number of neighbours for the plane-fitting when computing normals")
 
         ("keep-interm,k",
          "prevents deletion of intermediate files")
+
+        ("resample",
+         "resample to replace huge surfels by collection of smaller one")
 
         ("mem-ratio,m",
          po::value<float>()->default_value(0.6, "0.6"),
@@ -109,7 +124,9 @@ int main(int argc, const char *argv[])
          "  entropy - take sufels with min entropy\n"
          "  particlesim - perform particle simulation\n"
          "  hierarchical - create clusters by binary splitting of the point cloud\n"
-         "  kclustering - hash-based k-clustering")
+         "  kclustering - hash-based k-clustering\n"
+         "  pair - use iterative point-pair contractions\n"
+         "  spatiallyrandom - subdivide scene into equally sized cubes and choose random surfels from different cubes")
 
         ("normal-computation-algo",
          po::value<std::string>()->default_value("planefitting"),
@@ -117,11 +134,16 @@ int main(int argc, const char *argv[])
          "  planefitting ")
 
          ("radius-computation-algo",
-         po::value<std::string>()->default_value("naturalneighbours"),
+         po::value<std::string>()->default_value("averagedistance"),
          "Algorithm for computing surfel radius. Possible values:\n"
          "  averagedistance \n"
          "  naturalneighbours")
- 
+
+         ("radius-multiplier",
+         po::value<float>()->default_value(0.7, "0.7"),
+         "the multiplier for the average distance to the neighbours"
+         "during radius computation when using the averagedistance strategy")
+
         ("rep-radius-algo",
          po::value<std::string>()->default_value("gmean"),
          "Algorithm for computing representative surfel radius for tree nodes. Possible values:\n"
@@ -233,7 +255,7 @@ int main(int argc, const char *argv[])
             std::cerr << "Provided working directory does not exist" << std::endl;
             return EXIT_FAILURE;
         }
-        if (vm["final-stage"].as<int>() < 0 || vm["final-stage"].as<int>() > 4) {
+        if (vm["final-stage"].as<int>() < 0 || vm["final-stage"].as<int>() > 5) {
             std::cerr << "Wrong final stage value" << details_msg;
             return EXIT_FAILURE;
         }
@@ -252,20 +274,36 @@ int main(int argc, const char *argv[])
 
         if (reduction_algo == "ndc")
             desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc;
-        else if (reduction_algo == "const")
+        else if (reduction_algo == "const") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::constant;
+        }
         else if (reduction_algo == "everysecond")
             desc.reduction_algo        = lamure::pre::reduction_algorithm::every_second;
         else if (reduction_algo == "random") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::random;
-        else if (reduction_algo == "entropy") 
+        else if (reduction_algo == "entropy")  {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::entropy;
-        else if (reduction_algo == "particlesim")
+        }
+        else if (reduction_algo == "particlesim") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::particle_sim;
+        }
         else if (reduction_algo == "hierarchical") 
             desc.reduction_algo        = lamure::pre::reduction_algorithm::hierarchical_clustering;
-        else if (reduction_algo == "kclustering")
+        else if (reduction_algo == "kclustering") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::k_clustering;
+        }
+        else if (reduction_algo == "spatiallyrandom") {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::spatially_subdivided_random;
+        }
+        else if (reduction_algo == "pair")  {
+            std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::pair;
+        }
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
             return EXIT_FAILURE;
@@ -298,17 +336,27 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
 
-        desc.input_file                = fs::canonical(input_file).string();
-        desc.working_directory         = fs::canonical(wd).string();
-        desc.max_fan_factor            = std::min(std::max(vm["max-fanout"].as<int>(), 2), 8);
-        desc.surfels_per_node          = vm["desired"].as<int>();
-        desc.final_stage               = vm["final-stage"].as<int>();
-        desc.compute_normals_and_radii = vm.count("recompute");
-        desc.keep_intermediate_files   = vm.count("keep-interm");
-        desc.memory_ratio              = std::max(vm["mem-ratio"].as<float>(), 0.05f);
-        desc.buffer_size               = buffer_size;
-        desc.number_of_neighbours      = std::max(vm["neighbours"].as<int>(), 1);
-        desc.translate_to_origin       = !vm.count("no-translate-to-origin");
+        desc.input_file                   = fs::canonical(input_file).string();
+        desc.working_directory            = fs::canonical(wd).string();
+        desc.max_fan_factor               = std::min(std::max(vm["max-fanout"].as<int>(), 2), 8);
+        desc.surfels_per_node             = vm["desired"].as<int>();
+        desc.final_stage                  = vm["final-stage"].as<int>();
+        desc.compute_normals_and_radii    = vm.count("recompute");
+        desc.keep_intermediate_files      = vm.count("keep-interm");
+        desc.resample                     = vm.count("resample");
+        // manual check because typed_value doenst support check whether default is used
+        if(vm["mem-ratio"].as<float>() != 0.6f) {
+            std::cerr << "WARNING: \"mem-ratio\" flag deprecated" << std::endl;
+        }
+
+        desc.memory_ratio                 = std::max(vm["mem-ratio"].as<float>(), 0.05f);
+
+        desc.buffer_size                  = buffer_size;
+        desc.number_of_neighbours         = std::max(vm["neighbours"].as<int>(), 1);
+        desc.translate_to_origin          = !vm.count("no-translate-to-origin");
+        desc.outlier_ratio                = std::max(0.0f, vm["outlier-ratio"].as<float>() );
+        desc.number_of_outlier_neighbours = std::max(vm["num-outlier-neighbours"].as<int>(), 1);
+        desc.radius_multiplier            = vm["radius-multiplier"].as<float>();
 
         // preprocess
         lamure::pre::builder builder(desc);

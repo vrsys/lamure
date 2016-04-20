@@ -78,6 +78,51 @@ expand(const bounding_box& bounding_box)
 }
 
 void bounding_box::
+expand_by_disk(const vec3r& surfel_center, const scm::math::vec3f& surfel_normal, const real surfel_radius) {
+
+    const uint8_t X_AXIS = 0;
+    const uint8_t Y_AXIS = 1;
+    const uint8_t Z_AXIS = 2;
+
+    auto calculate_half_offset = [](const vec3r& surf_center,
+                                    const vec3r surf_normal,
+                                    const real surf_radius, uint8_t axis) {
+        vec3r point_along_axis(surf_center);
+
+        point_along_axis[axis] += surf_radius;
+
+        vec3r projected_point = point_along_axis - scm::math::dot(point_along_axis - surf_center, surf_normal) * surf_normal;
+
+        return std::fabs(surf_center[axis] - projected_point[axis]);
+    };
+
+    vec3r normal = vec3r(surfel_normal);
+
+    real half_offset_x = calculate_half_offset(surfel_center, normal, surfel_radius, X_AXIS);
+    real half_offset_y = calculate_half_offset(surfel_center, normal, surfel_radius, Y_AXIS);
+    real half_offset_z = calculate_half_offset(surfel_center, normal, surfel_radius, Z_AXIS);
+
+    if (is_valid()) {
+      min_.x = std::min(min_.x, surfel_center.x - half_offset_x);
+      min_.y = std::min(min_.y, surfel_center.y - half_offset_y);
+      min_.z = std::min(min_.z, surfel_center.z - half_offset_z);
+
+      max_.x = std::max(max_.x, surfel_center.x + half_offset_x);
+      max_.y = std::max(max_.y, surfel_center.y + half_offset_y);
+      max_.z = std::max(max_.z, surfel_center.z + half_offset_z);
+    }
+    else {
+      min_.x = surfel_center.x - half_offset_x;
+      min_.y = surfel_center.y - half_offset_y;
+      min_.z = surfel_center.z - half_offset_z;
+
+      max_.x = surfel_center.x + half_offset_x;
+      max_.y = surfel_center.y + half_offset_y;
+      max_.z = surfel_center.z + half_offset_z;
+    }
+}
+
+void bounding_box::
 shrink(const bounding_box& bounding_box)
 {
     assert(contains(bounding_box));
