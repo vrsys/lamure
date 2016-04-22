@@ -9,15 +9,15 @@
 #include <iostream>
 #include <chrono>
 
-#include <lamure/pre/builder.h>
+#include <lamure/xyz/builder.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
-#include <lamure/pre/io/format_ply.h>
-#include <lamure/pre/io/format_xyz.h>
-#include <lamure/pre/io/format_xyz_all.h>
-#include <lamure/pre/io/format_bin.h>
-#include <lamure/pre/io/converter.h>
+#include <lamure/xyz/io/format_ply.h>
+#include <lamure/xyz/io/format_xyz.h>
+#include <lamure/xyz/io/format_xyz_all.h>
+#include <lamure/xyz/io/format_bin.h>
+#include <lamure/xyz/io/converter.h>
 
 
 
@@ -124,11 +124,11 @@ int main(int argc, const char *argv[])
         const auto input_file = fs::canonical(files[0]);
         const auto output_file = fs::absolute(files[1]);
 
-        lamure::pre::format_factory f;
-        f[".xyz"] = &lamure::pre::create_format_instance<lamure::pre::format_xyz>;
-        f[".xyz_all"] = &lamure::pre::create_format_instance<lamure::pre::format_xyzall>;
-        f[".ply"] = &lamure::pre::create_format_instance<lamure::pre::format_ply>;
-        f[".bin"] = &lamure::pre::create_format_instance<lamure::pre::format_bin>;
+        lamure::xyz::format_factory f;
+        f[".xyz"] = &lamure::xyz::create_format_instance<lamure::xyz::format_xyz>;
+        f[".xyz_all"] = &lamure::xyz::create_format_instance<lamure::xyz::format_xyzall>;
+        f[".ply"] = &lamure::xyz::create_format_instance<lamure::xyz::format_ply>;
+        f[".bin"] = &lamure::xyz::create_format_instance<lamure::xyz::format_bin>;
 
         auto input_type = input_file.extension().string();
         auto output_type = output_file.extension().string();
@@ -141,10 +141,10 @@ int main(int argc, const char *argv[])
             std::cerr << "Unknown output file format" << details_msg;
             return EXIT_FAILURE;
         }
-        lamure::pre::format_abstract* inp = f[input_type]();
-        lamure::pre::format_abstract* out = f[output_type]();
+        lamure::xyz::format_abstract* inp = f[input_type]();
+        lamure::xyz::format_abstract* out = f[output_type]();
 
-        lamure::pre::converter conv(*inp, *out, buffer_size);
+        lamure::xyz::converter conv(*inp, *out, buffer_size);
 
         conv.convert(input_file.string(), output_file.string());
 
@@ -174,15 +174,15 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
 
-        lamure::pre::builder::descriptor desc;
+        lamure::xyz::builder::descriptor desc;
 
         std::string rep_radius_algo = vm["rep-radius-algo"].as<std::string>();
         if (rep_radius_algo == "amean")
-            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::arithmetic_mean;
+            desc.rep_radius_algo       = lamure::xyz::rep_radius_algorithm::arithmetic_mean;
         else if (rep_radius_algo == "gmean")
-            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::geometric_mean;
+            desc.rep_radius_algo       = lamure::xyz::rep_radius_algorithm::geometric_mean;
         else if (rep_radius_algo == "hmean")
-            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::harmonic_mean;
+            desc.rep_radius_algo       = lamure::xyz::rep_radius_algorithm::harmonic_mean;
         else {
             std::cerr << "Unknown algorithm for computing representative surfel radius" << details_msg;
             return EXIT_FAILURE;
@@ -202,7 +202,7 @@ int main(int argc, const char *argv[])
         desc.resample                     = true;
         desc.outlier_ratio                = 0.0f;
         // preprocess
-        lamure::pre::builder builder(desc);
+        lamure::xyz::builder builder(desc);
         if (!builder.resample())
             return EXIT_FAILURE;
     }

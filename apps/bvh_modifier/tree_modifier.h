@@ -8,13 +8,13 @@
 #ifndef TREE_MODIFIER_H_
 #define TREE_MODIFIER_H_
 
-#include <lamure/pre/bvh.h>
+#include <lamure/xyz/bvh.h>
 #include <functional>
 
 class collision_detector
 {
 public:
-    typedef std::pair<lamure::pre::bvh_ptr, lamure::mat4r_t> object;
+    typedef std::pair<lamure::xyz::bvh_ptr, lamure::mat4r_t> object;
     typedef std::vector<object> objectArray;
     typedef std::vector<lamure::math::bounding_box_t> aabb_array;
 
@@ -55,7 +55,7 @@ public:
 
 private:
 
-    lamure::real_t computeAvgRadius(const lamure::pre::bvh& bvh, unsigned depth) const;
+    lamure::real_t computeAvgRadius(const lamure::xyz::bvh& bvh, unsigned depth) const;
 
 
     collision_detector::objectArray& bvhs_;

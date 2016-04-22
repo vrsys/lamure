@@ -3,7 +3,7 @@
 #include "catch/catch.hpp" // includes catch from the third party folder
 
 // include all headers needed for your tests below here
-#include <lamure/pre/reduction_entropy.h>
+#include <lamure/xyz/reduction_entropy.h>
 #include <vector>
 #include <ctime>
 
@@ -11,7 +11,7 @@
 TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Valid ESP to the Back",
 		   "[entropy_sorting]" ) {
 	using namespace lamure;
-	using namespace pre;
+	using namespace xyz;
 
 	std::shared_ptr<entropy_surfel> valid_entropy_surfel 
 		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 2, 5, true) );
@@ -81,7 +81,7 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts Two Valid ESP"\
 			"Such That The One With Lower Entropy Is At The Back",
 		   "[entropy_sorting]" ) {
 	using namespace lamure;
-	using namespace pre;
+	using namespace xyz;
 
 
 	std::shared_ptr<entropy_surfel> high_entropy_surfel 
@@ -159,7 +159,7 @@ TEST_CASE( "Sort for Entropy Surfel Pointers Sorts ESP"\
 			"Front",
 		   "[entropy_sorting]" ) {
 	using namespace lamure;
-	using namespace pre;
+	using namespace xyz;
 
 	std::shared_ptr<entropy_surfel> valid_high_entropy_surfel
 		= std::make_shared<entropy_surfel>(entropy_surfel(surfel(), 2,5, true, 9123.2143));
@@ -238,7 +238,7 @@ TEST_CASE( "Sort 50000 Entropy Surfels with randomly generated validity and rand
 		   "[entropy_sorting]" ) {
 
 	using namespace lamure;
-	using namespace pre;
+	using namespace xyz;
 
 	std::srand(time(NULL));
 

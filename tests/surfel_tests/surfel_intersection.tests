@@ -3,7 +3,7 @@
 #include "catch/catch.hpp" // includes catch from the third party folder
 
 // include all headers needed for your tests below here
-#include <lamure/pre/surfel.h>
+#include <lamure/xyz/surfel.h>
 #include <vector>
 
 
@@ -12,7 +12,7 @@
 TEST_CASE( "Two parallel surfels with a position offset along their normal should not intersect",
 		   "[surfel_intersection]" ) {
 
-	lamure::pre::surfel surfel_1, surfel_2;
+	lamure::xyz::surfel surfel_1, surfel_2;
 
 	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
 	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
@@ -22,7 +22,7 @@ TEST_CASE( "Two parallel surfels with a position offset along their normal shoul
 	surfel_2.pos() = lamure::vec3r(0.000001, 0.0, 0.0);
 	surfel_2.radius() = 1.0;
 
-	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
+	bool did_intersect = lamure::xyz::surfel::intersect(surfel_1, surfel_2);
 
 	REQUIRE(did_intersect == false);
 
@@ -32,7 +32,7 @@ TEST_CASE( "Two parallel surfels with a position offset along their normal shoul
 TEST_CASE( "Two parallel surfels with a position offset on the non normal axes with sufficiently large radius should intersect",
 		   "[surfel_intersection]" ) {
 
-	lamure::pre::surfel surfel_1, surfel_2;
+	lamure::xyz::surfel surfel_1, surfel_2;
 
 	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
 	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
@@ -42,7 +42,7 @@ TEST_CASE( "Two parallel surfels with a position offset on the non normal axes w
 	surfel_2.pos() = lamure::vec3r_t(0.0, 1.999, 0.0);
 	surfel_2.radius() = 1.0;
 
-	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
+	bool did_intersect = lamure::xyz::surfel::intersect(surfel_1, surfel_2);
 
 	REQUIRE(did_intersect == true);
 }
@@ -50,7 +50,7 @@ TEST_CASE( "Two parallel surfels with a position offset on the non normal axes w
 TEST_CASE( "Two parallel surfels with a position offset on the non normal axes with insufficient radius should not intersect",
 		   "[surfel_intersection]" ) {
 
-	lamure::pre::surfel surfel_1, surfel_2;
+	lamure::xyz::surfel surfel_1, surfel_2;
 
 	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
 	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
@@ -60,7 +60,7 @@ TEST_CASE( "Two parallel surfels with a position offset on the non normal axes w
 	surfel_2.pos() = lamure::vec3r_t(0.0, 2.01, 0.0);
 	surfel_2.radius() = 1.0;
 
-	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
+	bool did_intersect = lamure::xyz::surfel::intersect(surfel_1, surfel_2);
 
 	REQUIRE(did_intersect == false);
 }
@@ -68,7 +68,7 @@ TEST_CASE( "Two parallel surfels with a position offset on the non normal axes w
 TEST_CASE( "Two non parallel surfels with sufficiently large radius should intersect",
 		   "[surfel_intersection]" ) {
 
-	lamure::pre::surfel surfel_1, surfel_2;
+	lamure::xyz::surfel surfel_1, surfel_2;
 
 	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
 	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
@@ -78,7 +78,7 @@ TEST_CASE( "Two non parallel surfels with sufficiently large radius should inter
 	surfel_2.pos() = lamure::vec3r_t(1.0, 0.0, 0.0);
 	surfel_2.radius() = 1.001;
 
-	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
+	bool did_intersect = lamure::xyz::surfel::intersect(surfel_1, surfel_2);
 
 	REQUIRE(did_intersect == true);
 }
@@ -86,7 +86,7 @@ TEST_CASE( "Two non parallel surfels with sufficiently large radius should inter
 TEST_CASE( "Two non parallel surfels with too small radius should intersect",
 		   "[surfel_intersection]" ) {
 
-	lamure::pre::surfel surfel_1, surfel_2;
+	lamure::xyz::surfel surfel_1, surfel_2;
 
 	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
 	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
@@ -96,7 +96,7 @@ TEST_CASE( "Two non parallel surfels with too small radius should intersect",
 	surfel_2.pos() = lamure::vec3r_t(2.0, 0.0, 0.0);
 	surfel_2.radius() = 1.000;
 
-	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
+	bool did_intersect = lamure::xyz::surfel::intersect(surfel_1, surfel_2);
 
 	REQUIRE(did_intersect == false);
 
@@ -105,7 +105,7 @@ TEST_CASE( "Two non parallel surfels with too small radius should intersect",
 TEST_CASE( "Real Life Artificial Plane Example",
 		   "[surfel_intersection]" ) {
 
-	lamure::pre::surfel surfel_1, surfel_2;
+	lamure::xyz::surfel surfel_1, surfel_2;
 
 	surfel_1.normal() = lamure::vec3f_t(0.363, 0.765, -0.532);
 	surfel_1.pos() = lamure::vec3r_t(-1.005, 0.465, -0.017);
@@ -115,12 +115,12 @@ TEST_CASE( "Real Life Artificial Plane Example",
 	surfel_2.pos() = lamure::vec3r_t(-0.998, 0.445,  -0.041);
 	surfel_2.radius() = 0.066680;
 
-	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
+	bool did_intersect = lamure::xyz::surfel::intersect(surfel_1, surfel_2);
 
 	REQUIRE(did_intersect == true);
 
 
-	lamure::pre::surfel artificial_surfel;
+	lamure::xyz::surfel artificial_surfel;
 
 	artificial_surfel.pos() = lamure::vec3r_t(0.0, 10.0, 0.0);
 	artificial_surfel.normal() = lamure::math::normalize(lamure::vec3f_t(1.0, 1.0, 0.0));

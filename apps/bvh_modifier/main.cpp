@@ -5,8 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <lamure/pre/node_serializer.h>
-#include <lamure/pre/serialized_surfel.h>
+#include <lamure/xyz/node_serializer.h>
+#include <lamure/xyz/serialized_surfel.h>
 #include <lamure/math/gl_math.h>
 
 #include <omp.h>
@@ -136,10 +136,10 @@ int main(int argc, const char *argv[])
     auto trans_it = inp_transforms.begin();
 
     for (const auto& s : inp_files) {
-        auto tr = std::make_shared<lamure::pre::bvh>(0, 0);
+        auto tr = std::make_shared<lamure::xyz::bvh>(0, 0);
         tr->load_tree(s);
-        if (tr->state() < lamure::pre::bvh::state_type::serialized) {
-            std::cerr << "file of wrong processing state: " << lamure::pre::bvh::state_to_string(tr->state()) << std::endl;
+        if (tr->state() < lamure::xyz::bvh::state_type::serialized) {
+            std::cerr << "file of wrong processing state: " << lamure::xyz::bvh::state_to_string(tr->state()) << std::endl;
             return EXIT_FAILURE;
         }
         tr->print_tree_properties();
@@ -205,10 +205,10 @@ int main(int argc, const char *argv[])
 
             /*
             using namespace lamure;
-            pre::node_serializer ser(t.first->max_surfels_per_node(), 0);
+            xyz::node_serializer ser(t.first->max_surfels_per_node(), 0);
             ser.open(add_to_path(t.first->base_path(), ".lod").string(), true);
 
-            pre::surfel::surfel_vector surfels;
+            xyz::surfel::surfel_vector surfels;
             ser.read_node_immediate(surfels, 32767);
 
             for(const auto& s: surfels)

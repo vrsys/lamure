@@ -9,15 +9,15 @@
 #include <iostream>
 #include <chrono>
 
-#include <lamure/pre/builder.h>
+#include <lamure/xyz/builder.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
-#include <lamure/pre/io/format_ply.h>
-#include <lamure/pre/io/format_xyz.h>
-#include <lamure/pre/io/format_xyz_all.h>
-#include <lamure/pre/io/format_bin.h>
-#include <lamure/pre/io/converter.h>
+#include <lamure/xyz/io/format_ply.h>
+#include <lamure/xyz/io/format_xyz.h>
+#include <lamure/xyz/io/format_xyz_all.h>
+#include <lamure/xyz/io/format_bin.h>
+#include <lamure/xyz/io/converter.h>
 
 
 
@@ -208,11 +208,11 @@ int main(int argc, const char *argv[])
         const auto input_file = fs::canonical(files[0]);
         const auto output_file = fs::absolute(files[1]);
 
-        lamure::pre::format_factory f;
-        f[".xyz"] = &lamure::pre::create_format_instance<lamure::pre::format_xyz>;
-        f[".xyz_all"] = &lamure::pre::create_format_instance<lamure::pre::format_xyzall>;
-        f[".ply"] = &lamure::pre::create_format_instance<lamure::pre::format_ply>;
-        f[".bin"] = &lamure::pre::create_format_instance<lamure::pre::format_bin>;
+        lamure::xyz::format_factory f;
+        f[".xyz"] = &lamure::xyz::create_format_instance<lamure::xyz::format_xyz>;
+        f[".xyz_all"] = &lamure::xyz::create_format_instance<lamure::xyz::format_xyzall>;
+        f[".ply"] = &lamure::xyz::create_format_instance<lamure::xyz::format_ply>;
+        f[".bin"] = &lamure::xyz::create_format_instance<lamure::xyz::format_bin>;
 
         auto input_type = input_file.extension().string();
         auto output_type = output_file.extension().string();
@@ -225,10 +225,10 @@ int main(int argc, const char *argv[])
             std::cerr << "Unknown output file format" << details_msg;
             return EXIT_FAILURE;
         }
-        lamure::pre::format_abstract* inp = f[input_type]();
-        lamure::pre::format_abstract* out = f[output_type]();
+        lamure::xyz::format_abstract* inp = f[input_type]();
+        lamure::xyz::format_abstract* out = f[output_type]();
 
-        lamure::pre::converter conv(*inp, *out, buffer_size);
+        lamure::xyz::converter conv(*inp, *out, buffer_size);
 
         conv.convert(input_file.string(), output_file.string());
 
@@ -268,43 +268,43 @@ int main(int argc, const char *argv[])
         }
 
         // set building options
-        lamure::pre::builder::descriptor desc;
+        lamure::xyz::builder::descriptor desc;
         std::string reduction_algo = vm["reduction-algo"].as<std::string>();
         std::string normal_computation_algo = vm["normal-computation-algo"].as<std::string>();
         std::string radius_computation_algo = vm["radius-computation-algo"].as<std::string>();
         std::string rep_radius_algo = vm["rep-radius-algo"].as<std::string>();
 
         if (reduction_algo == "ndc")
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::ndc;
         else if (reduction_algo == "const") {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::constant;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::constant;
         }
         else if (reduction_algo == "everysecond")
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::every_second;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::every_second;
         else if (reduction_algo == "random") 
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::random;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::random;
         else if (reduction_algo == "entropy")  {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::entropy;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::entropy;
         }
         else if (reduction_algo == "particlesim") {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::particle_sim;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::particle_sim;
         }
         else if (reduction_algo == "hierarchical") 
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::hierarchical_clustering;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::hierarchical_clustering;
         else if (reduction_algo == "kclustering") {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::k_clustering;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::k_clustering;
         }
         else if (reduction_algo == "spatiallyrandom") {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::spatially_subdivided_random;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::spatially_subdivided_random;
         }
         else if (reduction_algo == "pair")  {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
-            desc.reduction_algo        = lamure::pre::reduction_algorithm::pair;
+            desc.reduction_algo        = lamure::xyz::reduction_algorithm::pair;
         }
         else {
             std::cerr << "Unknown reduction algorithm" << details_msg;
@@ -312,27 +312,27 @@ int main(int argc, const char *argv[])
         }
 
         if (normal_computation_algo == "planefitting")
-            desc.normal_computation_algo      = lamure::pre::normal_computation_algorithm::plane_fitting;
+            desc.normal_computation_algo      = lamure::xyz::normal_computation_algorithm::plane_fitting;
         else {
             std::cerr << "Unknown algorithm for computing surfel normal" << details_msg;
             return EXIT_FAILURE;
         }
 
         if (radius_computation_algo == "averagedistance")
-            desc.radius_computation_algo      = lamure::pre::radius_computation_algorithm::average_distance;
+            desc.radius_computation_algo      = lamure::xyz::radius_computation_algorithm::average_distance;
         else if (radius_computation_algo == "naturalneighbours")
-            desc.radius_computation_algo      = lamure::pre::radius_computation_algorithm::natural_neighbours;
+            desc.radius_computation_algo      = lamure::xyz::radius_computation_algorithm::natural_neighbours;
         else {
             std::cerr << "Unknown algorithm for computing surfel radius" << details_msg;
             return EXIT_FAILURE;
         }
 
         if (rep_radius_algo == "amean")
-            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::arithmetic_mean;
+            desc.rep_radius_algo       = lamure::xyz::rep_radius_algorithm::arithmetic_mean;
         else if (rep_radius_algo == "gmean")
-            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::geometric_mean;
+            desc.rep_radius_algo       = lamure::xyz::rep_radius_algorithm::geometric_mean;
         else if (rep_radius_algo == "hmean")
-            desc.rep_radius_algo       = lamure::pre::rep_radius_algorithm::harmonic_mean;
+            desc.rep_radius_algo       = lamure::xyz::rep_radius_algorithm::harmonic_mean;
         else {
             std::cerr << "Unknown algorithm for computing representative surfel radius" << details_msg;
             return EXIT_FAILURE;
@@ -361,7 +361,7 @@ int main(int argc, const char *argv[])
         desc.radius_multiplier            = vm["radius-multiplier"].as<float>();
 
         // preprocess
-        lamure::pre::builder builder(desc);
+        lamure::xyz::builder builder(desc);
         if (!builder.construct())
             return EXIT_FAILURE;
     }

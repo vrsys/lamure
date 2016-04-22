@@ -7,8 +7,8 @@
 
 #include "tree_modifier.h"
 
-#include <lamure/pre/serialized_surfel.h>
-#include <lamure/pre/node_serializer.h>
+#include <lamure/xyz/serialized_surfel.h>
+#include <lamure/xyz/node_serializer.h>
 #include <lamure/types.h>
 #include <lamure/math/gl_math.h>
 #include <lamure/util/add_to_path.h>
@@ -183,10 +183,10 @@ complementOnFirstTree(int relax_levels)
 
     const lamure::mat4r_t frame_trans = get_frame_transform(bvhs_[0], bvhs_[1]);
 
-    pre::node_serializer ser_a(tr_a->max_surfels_per_node(), 0);
+    xyz::node_serializer ser_a(tr_a->max_surfels_per_node(), 0);
     ser_a.open(util::add_to_path(tr_a->base_path(), ".lod").string(), true);
 
-    pre::surfel_vector surfels;
+    xyz::surfel_vector surfels;
     size_t pairs = 0, total_discarded = 0;
 
     std::cout << "processing..." << std::flush;
@@ -306,9 +306,9 @@ histogrammatchSecondTree()
     using namespace lamure;
 
     // init serializers
-    std::vector<std::shared_ptr<pre::node_serializer>> ser;
+    std::vector<std::shared_ptr<xyz::node_serializer>> ser;
     for (auto& tr : bvhs_) {
-        ser.push_back(std::make_shared<pre::node_serializer>(tr.first->max_surfels_per_node(), 0));
+        ser.push_back(std::make_shared<xyz::node_serializer>(tr.first->max_surfels_per_node(), 0));
         ser.back()->open(util::add_to_path(tr.first->base_path(), ".lod").string(), true);
     }
 
@@ -329,11 +329,11 @@ histogrammatchSecondTree()
     // get reference colors
     {
         histogram_matcher::color_array ref_colors;
-        pre::surfel_vector surfels;
+        xyz::surfel_vector surfels;
         for (const auto& col: collision_info) {
             ser[0]->read_node_immediate(surfels, col);
             for (auto& s: surfels) {
-                if (s != pre::surfel())
+                if (s != xyz::surfel())
                     ref_colors.add_color(s.color());
             }
         }
@@ -345,7 +345,7 @@ histogrammatchSecondTree()
 
     for (size_t tid = 1; tid < bvhs_.size(); ++ tid) {
         auto& tr = bvhs_[tid].first;
-        pre::surfel_vector surfels;
+        xyz::surfel_vector surfels;
         histogram_matcher::color_array colors;
 
         ctr = 0; 
@@ -356,7 +356,7 @@ histogrammatchSecondTree()
             for (lamure::node_id_t j = 0; j < ranges.second; ++j) {
                 ser[tid]->read_node_immediate(surfels, j + ranges.first);
                 for (auto& s: surfels) {
-                    if (s != pre::surfel())
+                    if (s != xyz::surfel())
                         colors.add_color(s.color());
                 }
             }
@@ -367,7 +367,7 @@ histogrammatchSecondTree()
             for (lamure::node_id_t j = 0; j < ranges.second; ++j) {
                 ser[tid]->read_node_immediate(surfels, j + ranges.first);
                 for (auto& s: surfels) {
-                    if (s != pre::surfel()) {
+                    if (s != xyz::surfel()) {
                         vec3b_t c(colors.r[surfel_ctr], 
                                 colors.g[surfel_ctr], 
                                 colors.b[surfel_ctr]);
@@ -387,18 +387,18 @@ void TreeModifier::
 MultRadii(lamure::real_t factor)
 {
     using namespace lamure;
-    pre::surfel_vector surfels;
+    xyz::surfel_vector surfels;
     for (size_t tid = 0; tid < bvhs_.size(); ++ tid) {
         auto& tr = bvhs_[tid].first;
         size_t ctr{};
 
-        pre::node_serializer ser(tr->max_surfels_per_node(), 0);
+        xyz::node_serializer ser(tr->max_surfels_per_node(), 0);
         ser.open(util::add_to_path(tr->base_path(), ".lod").string(), true);
 
         for (lamure::node_id_t i = 0; i < tr->nodes().size(); ++i) {
             ser.read_node_immediate(surfels, i);
             for (auto& s: surfels) {
-                if (s != pre::surfel() && s.radius() != 0.f)
+                if (s != xyz::surfel() && s.radius() != 0.f)
                     s.radius() *= factor;
             }
             ser.write_node_immediate(surfels, i);
@@ -415,7 +415,7 @@ MultRadii(lamure::real_t factor)
 }
 
 lamure::real_t TreeModifier::
-computeAvgRadius(const lamure::pre::bvh& bvh, unsigned depth) const
+computeAvgRadius(const lamure::xyz::bvh& bvh, unsigned depth) const
 {
     lamure::real_t avg_surfel = 0.0;
     auto ranges = bvh.get_node_ranges(depth);

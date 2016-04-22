@@ -3,13 +3,13 @@
 #include "catch/catch.hpp" // includes catch from the third party folder
 
 // include all headers needed for your tests below here
-#include <lamure/pre/reduction_entropy.h>
+#include <lamure/xyz/reduction_entropy.h>
 #include <vector>
 
 TEST_CASE( "Check if attributes are computed correctly for two overlapping surfels",
 		   "[create_lod]" ) {
 	using namespace lamure;
-	using namespace pre;
+	using namespace xyz;
 
 	std::vector<surfel_mem_array*> input_mem_arrays;
    	surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
@@ -84,7 +84,7 @@ TEST_CASE( "Check if attributes are computed correctly for two overlapping surfe
 TEST_CASE( "For Non Overlapping Surfels, Entropy Based Reduction Gives Us One Entire Surfel Back",
 		   "[create_lod]" ) {
 	using namespace lamure;
-	using namespace pre;
+	using namespace xyz;
 
 	std::vector<surfel_mem_array*> input_mem_arrays;
    	surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
@@ -155,7 +155,7 @@ TEST_CASE( "For Non Overlapping Surfels, Entropy Based Reduction Gives Us One En
 TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfel Overlaps Two of the Three Remaining)",
 		   "[create_lod]" ) {
 	using namespace lamure;
-	using namespace pre;
+	using namespace xyz;
 
 	std::vector<surfel_mem_array*> input_mem_arrays;
    	surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
@@ -397,7 +397,7 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfe
 TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfel Overlaps all of the three remaining)",
            "[create_lod]" ) {
     using namespace lamure;
-    using namespace pre;
+    using namespace xyz;
 
     std::vector<surfel_mem_array*> input_mem_arrays;
     surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
@@ -641,7 +641,7 @@ TEST_CASE( "Check Grid Of Four Surfels To Be Resolved As Constructed (Each Surfe
 TEST_CASE( "Check that four surfels in a row that do not overlap are merged based on relative distance to each other",
            "[create_lod]" ) {
     using namespace lamure;
-    using namespace pre;
+    using namespace xyz;
 
     std::vector<surfel_mem_array*> input_mem_arrays;
     surfel_mem_array mem_array_one(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
