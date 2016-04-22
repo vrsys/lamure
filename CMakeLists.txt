@@ -140,6 +140,9 @@ include(find_mpfr)
 ############################################################
 # Targets
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/lamure_core)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lamure_gl)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lamure_lod)
 add_subdirectory(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
@@ -147,6 +150,12 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
+set_target_properties(lamure_core PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(lamure_gl PROPERTIES LINKER_LANGUAGE C)
+set_target_properties(lamure_lod PROPERTIES LINKER_LANGUAGE C)
+
+add_dependencies(lamure_gl lamure_core)
+add_dependencies(lamure_lod lamure_core lamure_gl)
 add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 
