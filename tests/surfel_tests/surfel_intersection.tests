@@ -14,11 +14,11 @@ TEST_CASE( "Two parallel surfels with a position offset along their normal shoul
 
 	lamure::pre::surfel surfel_1, surfel_2;
 
-	surfel_1.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
-	surfel_1.pos() = lamure::vec3r(0.0, 0.0, 0.0);
+	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
+	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
 	surfel_1.radius() = 1.0;
 
-	surfel_2.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
+	surfel_2.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
 	surfel_2.pos() = lamure::vec3r(0.000001, 0.0, 0.0);
 	surfel_2.radius() = 1.0;
 
@@ -34,12 +34,12 @@ TEST_CASE( "Two parallel surfels with a position offset on the non normal axes w
 
 	lamure::pre::surfel surfel_1, surfel_2;
 
-	surfel_1.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
-	surfel_1.pos() = lamure::vec3r(0.0, 0.0, 0.0);
+	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
+	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
 	surfel_1.radius() = 1.0;
 
-	surfel_2.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
-	surfel_2.pos() = lamure::vec3r(0.0, 1.999, 0.0);
+	surfel_2.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
+	surfel_2.pos() = lamure::vec3r_t(0.0, 1.999, 0.0);
 	surfel_2.radius() = 1.0;
 
 	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
@@ -52,12 +52,12 @@ TEST_CASE( "Two parallel surfels with a position offset on the non normal axes w
 
 	lamure::pre::surfel surfel_1, surfel_2;
 
-	surfel_1.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
-	surfel_1.pos() = lamure::vec3r(0.0, 0.0, 0.0);
+	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
+	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
 	surfel_1.radius() = 1.0;
 
-	surfel_2.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
-	surfel_2.pos() = lamure::vec3r(0.0, 2.01, 0.0);
+	surfel_2.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
+	surfel_2.pos() = lamure::vec3r_t(0.0, 2.01, 0.0);
 	surfel_2.radius() = 1.0;
 
 	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
@@ -70,12 +70,12 @@ TEST_CASE( "Two non parallel surfels with sufficiently large radius should inter
 
 	lamure::pre::surfel surfel_1, surfel_2;
 
-	surfel_1.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
-	surfel_1.pos() = lamure::vec3r(0.0, 0.0, 0.0);
+	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
+	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
 	surfel_1.radius() = 1.001;
 
-	surfel_2.normal() = scm::math::vec3f(0.0f, 1.0f, 0.0f);
-	surfel_2.pos() = lamure::vec3r(1.0, 0.0, 0.0);
+	surfel_2.normal() = lamure::vec3f_t(0.0f, 1.0f, 0.0f);
+	surfel_2.pos() = lamure::vec3r_t(1.0, 0.0, 0.0);
 	surfel_2.radius() = 1.001;
 
 	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
@@ -88,12 +88,12 @@ TEST_CASE( "Two non parallel surfels with too small radius should intersect",
 
 	lamure::pre::surfel surfel_1, surfel_2;
 
-	surfel_1.normal() = scm::math::vec3f(1.0f, 0.0f, 0.0f);
-	surfel_1.pos() = lamure::vec3r(0.0, 0.0, 0.0);
+	surfel_1.normal() = lamure::vec3f_t(1.0f, 0.0f, 0.0f);
+	surfel_1.pos() = lamure::vec3r_t(0.0, 0.0, 0.0);
 	surfel_1.radius() = 1.00;
 
-	surfel_2.normal() = scm::math::vec3f(0.0f, 1.0f, 0.0f);
-	surfel_2.pos() = lamure::vec3r(2.0, 0.0, 0.0);
+	surfel_2.normal() = lamure::vec3f_t(0.0f, 1.0f, 0.0f);
+	surfel_2.pos() = lamure::vec3r_t(2.0, 0.0, 0.0);
 	surfel_2.radius() = 1.000;
 
 	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
@@ -107,12 +107,12 @@ TEST_CASE( "Real Life Artificial Plane Example",
 
 	lamure::pre::surfel surfel_1, surfel_2;
 
-	surfel_1.normal() = scm::math::vec3f(0.363, 0.765, -0.532);
-	surfel_1.pos() = lamure::vec3r(-1.005, 0.465, -0.017);
+	surfel_1.normal() = lamure::vec3f_t(0.363, 0.765, -0.532);
+	surfel_1.pos() = lamure::vec3r_t(-1.005, 0.465, -0.017);
 	surfel_1.radius() = 0.066680;
 
-	surfel_2.normal() = scm::math::vec3f(0.363, 0.765, -0.532);
-	surfel_2.pos() = lamure::vec3r(-0.998, 0.445,  -0.041);
+	surfel_2.normal() = lamure::vec3f_t(0.363, 0.765, -0.532);
+	surfel_2.pos() = lamure::vec3r_t(-0.998, 0.445,  -0.041);
 	surfel_2.radius() = 0.066680;
 
 	bool did_intersect = lamure::pre::surfel::intersect(surfel_1, surfel_2);
@@ -122,12 +122,12 @@ TEST_CASE( "Real Life Artificial Plane Example",
 
 	lamure::pre::surfel artificial_surfel;
 
-	artificial_surfel.pos() = lamure::vec3r(0.0, 10.0, 0.0);
-	artificial_surfel.normal() = scm::math::normalize(scm::math::vec3f(1.0, 1.0, 0.0));
+	artificial_surfel.pos() = lamure::vec3r_t(0.0, 10.0, 0.0);
+	artificial_surfel.normal() = lamure::math::normalize(lamure::vec3f_t(1.0, 1.0, 0.0));
 	artificial_surfel.radius() = 5;
 
 	for(int i = 0; i < 1000; ++i) {
-		std::cout << artificial_surfel.random_point_on_surfel() << "\n";
+		//std::cout << artificial_surfel.random_point_on_surfel() << "\n";
 	}
 
 }

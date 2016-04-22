@@ -20,10 +20,10 @@ class histogram_matcher
       std::vector<unsigned char> g;
       std::vector<unsigned char> b;
 
-      void add_color(const lamure::vec3b& c) {
-          r.push_back(c.r);
-          g.push_back(c.g);
-          b.push_back(c.b);
+      void add_color(const lamure::vec3b_t& c) {
+          r.push_back(c.x_);
+          g.push_back(c.y_);
+          b.push_back(c.z_);
       }
 
       size_t size() const { return r.size(); }

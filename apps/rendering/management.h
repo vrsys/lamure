@@ -11,7 +11,6 @@
 #include <lamure/utils.h>
 #include <lamure/types.h>
 
-#include "split_screen_renderer.h"
 #include "renderer.h"
 #include <lamure/ren/config.h>
 
@@ -102,16 +101,7 @@ private:
     std::string         current_session_file_path_;
     unsigned            num_recorded_camera_positions_;
 
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    split_screen_renderer* renderer_;
-    lamure::ren::camera*   active_camera_left_;
-    lamure::ren::camera*   active_camera_right_;
-    bool                control_left_;
-#endif
-
-#ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     Renderer* renderer_;
-#endif
 
     lamure::ren::camera*   active_camera_;
 

@@ -193,6 +193,8 @@ int main(int argc, const char *argv[])
         return EXIT_FAILURE;
     }
 
+    lamure::logger_t::get().set_level(lamure::logger_t::LOGGER_LEVEL_INFO);
+
     const auto files         = vm["files"].as<std::vector<std::string>>();
     const size_t buffer_size = size_t(std::max(vm["buffer-size"].as<int>(), 20)) * 1024UL * 1024UL;
 

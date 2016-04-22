@@ -31,11 +31,6 @@ management(std::vector<std::string> const& model_filenames,
         model_transformations_(model_transformations),
         //recorded_view_vector_(recorded_view_vector),
         measurement_session_descriptor_(snap_descriptor),
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-        active_camera_left_(nullptr),
-        active_camera_right_(nullptr),
-        control_left_(true),
-#endif
         test_send_rendered_(true),
         active_camera_(nullptr),
         mouse_state_(),
@@ -94,19 +89,9 @@ management(std::vector<std::string> const& model_filenames,
         }
     }
 
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    active_camera_left_ = cameras_[0];
-    active_camera_right_ = cameras_[0];
-#endif
     active_camera_ = cameras_[0];
 
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_ = new SplitScreenRenderer(model_transformations_);
-#endif
-
-#ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
-#endif
 
     PrintInfo();
 }
@@ -155,24 +140,11 @@ MainLoop()
     controller->dispatch(context_id, renderer_->device());
 
 
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    lamure::view_t view_id_left = controller->deduce_view_id(context_id, active_camera_left_->view_id());
-    lamure::view_t view_id_right = controller->deduce_view_id(context_id, active_camera_right_->view_id());
-#else
 
     lamure::view_t view_id = controller->deduce_view_id(context_id, active_camera_->view_id());
 
-#endif    
-    
-
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), num_recorded_camera_positions_);
-    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), num_recorded_camera_positions_);
-#else
     renderer_->set_radius_scale(importance_);
     renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), num_recorded_camera_positions_);
-#endif
-
 
     std::string status_string("");
 
@@ -376,28 +348,8 @@ dispatchKeyboardInput(unsigned char key)
         renderer_->change_point_size(-0.1f);
         break;
     case 't':
-#ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
         renderer_->toggle_visible_set();
-#endif
         break;
-
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    case '1':
-
-        control_left_ = !control_left_;
-        if (control_left_)
-            active_camera_ = active_camera_left_;
-        else
-            active_camera_ = active_camera_right_;
-        break;
-
-    case '2':
-        control_left_ = !control_left_;
-        if (control_left_)
-            active_camera_ = active_camera_left_;
-        else
-            active_camera_ = active_camera_right_;
-#else
     case '1':
         renderer_->switch_render_mode(RenderMode::HQ_ONE_PASS);
         break;
@@ -409,34 +361,14 @@ dispatchKeyboardInput(unsigned char key)
     case '3':
         renderer_->switch_render_mode(RenderMode::LQ_ONE_PASS);
         break;
-#endif
 
     case ' ':
 #ifdef LAMURE_RENDERING_ENABLE_MULTI_VIEW_TEST
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-        {
-            if (control_left_)
-            {
-                lamure::view_t current_camera_id = active_camera_left_->view_id();
-                active_camera_left_ = cameras_[(++current_camera_id) % num_cameras_];
-                active_camera_ = active_camera_left_;
-            }
-            else
-            {
-                lamure::view_t current_camera_id = active_camera_right_->view_id();
-                active_camera_right_ = cameras_[(++current_camera_id) % num_cameras_];
-                active_camera_ = active_camera_right_;
-            }
-
-            renderer_->toggle_camera_info(active_camera_left_->view_id(), active_camera_right_->view_id());
-        }
-#else
         {
             lamure::view_t current_camera_id = active_camera_->view_id();
             active_camera_ = cameras_[(++current_camera_id) % num_cameras_];
             renderer_->toggle_camera_info(active_camera_->view_id());
         }
-#endif
 #endif
         break;
 
@@ -469,9 +401,6 @@ dispatchKeyboardInput(unsigned char key)
         cameras_.push_back(new lamure::ren::camera(num_cameras_, reset_matrix_, reset_diameter_, fast_travel_));
         int w = width_;
         int h = height_;
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-        w/=2;
-#endif
 
         cameras_.back()->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
 
@@ -503,7 +432,6 @@ dispatchKeyboardInput(unsigned char key)
         fast_travel_ = ! fast_travel_;
 
         break;
-#ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     
  
     case 'V':
@@ -641,7 +569,6 @@ dispatchKeyboardInput(unsigned char key)
 
 #endif
 
-#endif
 
     case 'r':
     case 'R':
@@ -676,10 +603,6 @@ dispatchResize(int w, int h)
 {
     width_ = w;
     height_ = h;
-
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    w/=2;
-#endif
 
     // if snapshots are taken, use the user specified resolution
     if( measurement_session_descriptor_.snapshot_session_enabled_ ) {
@@ -758,12 +681,6 @@ PrintInfo()
                "\n"<<
                "          x - add camera\n"<<
                "          Space - switch to next camera\n" <<
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-               "\n"<<
-               "          1 - control left screen"<<
-               "\n"<<
-               "          2 - control right screen"<<
-#endif
 #endif
 
                "\n";

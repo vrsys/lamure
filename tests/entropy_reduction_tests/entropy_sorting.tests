@@ -256,10 +256,10 @@ TEST_CASE( "Sort 50000 Entropy Surfels with randomly generated validity and rand
 		double rand_entropy = draw_rand_double_between(0.0, 1000000.0);
 		double rand_radius = draw_rand_double_between(0.0001, 100.0);
 
-		surfel rand_surfel(vec3r(std::rand(), std::rand(), std::rand() ),
-						   vec3b(std::rand()%256, std::rand()%256, std::rand()%256),
+		surfel rand_surfel(vec3r_t(std::rand(), std::rand(), std::rand() ),
+						   vec3b_t(std::rand()%256, std::rand()%256, std::rand()%256),
 						   rand_radius,
-						   scm::math::normalize(vec3f(std::rand(), std::rand(), std::rand()) ) );
+						   lamure::math::normalize(vec3f_t(std::rand(), std::rand(), std::rand()) ) );
 
 		rand_entropy_surfel_array.push_back( std::make_shared<entropy_surfel>(
 												entropy_surfel(rand_surfel, 

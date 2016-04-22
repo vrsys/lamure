@@ -7,19 +7,18 @@
 
 #include <lamure/pre/node_serializer.h>
 #include <lamure/pre/serialized_surfel.h>
-#include <lamure/utils.h>
+#include <lamure/math/gl_math.h>
 
 #include <omp.h>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
-#include <scm/gl_core/math/math.h>
 #include <iostream>
 
 #include "tree_modifier.h"
 
-lamure::mat4r loadMatrix(const std::string& filename)
+lamure::mat4r_t loadMatrix(const std::string& filename)
 {
-    lamure::mat4r mat = lamure::mat4r::identity();
+    lamure::mat4r_t mat = lamure::mat4r_t::identity();
     if (filename == "eye")
         return mat;
 
@@ -36,24 +35,24 @@ lamure::mat4r loadMatrix(const std::string& filename)
         for (int i = 0; i < 16; ++i)
             sstr >> mat[i];
     }
-    return scm::math::transpose(mat);
+    return lamure::math::transpose(mat);
 }
 
 int main(int argc, const char *argv[])
 {
-    /*scm::math::mat4f rock = scm::math::make_translation(604050.0f, 5098490.0f, 400.0f);
+    /*lamure::mat4f_t rock = lamure::math::make_translation(604050.0f, 5098490.0f, 400.0f);
     float valley_seradina_scale = 31.261682663898622f;
-    scm::math::mat4f valley_seradina_rot = scm::math::mat4f::identity();
+    lamure::mat4f_t valley_seradina_rot = lamure::mat4f_t::identity();
     valley_seradina_rot.m00 = -0.57732352f; valley_seradina_rot.m01 = 0.816437476f; valley_seradina_rot.m02 = 0.0112872f;
     valley_seradina_rot.m04 = 0.040792f;    valley_seradina_rot.m05 = 0.042645956f; valley_seradina_rot.m06 = -0.998257147f;
     valley_seradina_rot.m08 = -0.8154959f;  valley_seradina_rot.m09 = -0.5758569f;  valley_seradina_rot.m10 = -0.057924671f;
-    scm::math::mat4f valley_seradina = scm::math::make_translation(603956.727956973f, 5098223.502562742f, 819.626837676f) 
+    lamure::mat4f_t valley_seradina = lamure::math::make_translation(603956.727956973f, 5098223.502562742f, 819.626837676f) 
                                      * valley_seradina_rot 
-                                     * scm::math::make_scale(valley_seradina_scale, valley_seradina_scale, valley_seradina_scale);
-    scm::math::mat4f all = scm::math::make_scale(0.1f, 0.1f, 0.1f) * scm::math::make_translation(-604050.0f, -5098490.0f, -400.f);
+                                     * lamure::math::make_scale(valley_seradina_scale, valley_seradina_scale, valley_seradina_scale);
+    lamure::mat4f_t all = lamure::math::make_scale(0.1f, 0.1f, 0.1f) * lamure::math::make_translation(-604050.0f, -5098490.0f, -400.f);
 
-    rock = scm::math::transpose(all * rock);
-    valley_seradina = scm::math::transpose(all * valley_seradina);
+    rock = lamure::math::transpose(all * rock);
+    valley_seradina = lamure::math::transpose(all * valley_seradina);
 
     std::cout << "_ground_truth: " << std::endl;
     for (int i = 0; i < 16; ++i)
@@ -144,7 +143,7 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
         tr->print_tree_properties();
-        lamure::mat4r mat = lamure::mat4r::identity();
+        lamure::mat4r_t mat = lamure::mat4r_t::identity();
         
         if (trans_it != inp_transforms.end()) {
             mat = loadMatrix(*trans_it);
@@ -155,7 +154,7 @@ int main(int argc, const char *argv[])
     }
     
     for (const auto& t : bvhs) {
-        auto trans = scm::math::transpose(t.second);
+        auto trans = lamure::math::transpose(t.second);
         std::cout << "transform: ";
         for (int i = 0; i < 16; ++i)
             std::cout << trans[i] << " ";

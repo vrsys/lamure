@@ -14,11 +14,11 @@
 class collision_detector
 {
 public:
-    typedef std::pair<lamure::pre::bvh_ptr, lamure::mat4r> object;
+    typedef std::pair<lamure::pre::bvh_ptr, lamure::mat4r_t> object;
     typedef std::vector<object> objectArray;
-    typedef std::vector<lamure::bounding_box> aabb_array;
+    typedef std::vector<lamure::math::bounding_box_t> aabb_array;
 
-    typedef std::function<void(lamure::node_id_type a, lamure::node_id_type b)> callback_func;
+    typedef std::function<void(lamure::node_id_t a, lamure::node_id_t b)> callback_func;
 
     collision_detector(const object& bvh_l,
                       const object& bvh_r,
@@ -33,7 +33,7 @@ private:
     const object& bvh_r_;
     aabb_array boxes_;
 
-    void traverse(lamure::node_id_type a, lamure::node_id_type b, 
+    void traverse(lamure::node_id_t a, lamure::node_id_t b, 
                   const callback_func& callback) const;
 
     int stop_level_a_;
@@ -51,11 +51,11 @@ public:
 
     void histogrammatchSecondTree();
 
-    void MultRadii(lamure::real factor);
+    void MultRadii(lamure::real_t factor);
 
 private:
 
-    lamure::real computeAvgRadius(const lamure::pre::bvh& bvh, unsigned depth) const;
+    lamure::real_t computeAvgRadius(const lamure::pre::bvh& bvh, unsigned depth) const;
 
 
     collision_detector::objectArray& bvhs_;
