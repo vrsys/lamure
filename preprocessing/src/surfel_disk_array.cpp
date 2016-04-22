@@ -6,7 +6,8 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/surfel_disk_array.h>
-#include <lamure/pre/logger.h>
+#include <lamure/logger.h>
+#include <lamure/assert.h>
 
 namespace lamure {
 namespace pre {
@@ -14,8 +15,8 @@ namespace pre {
 surfel surfel_disk_array::
 read_surfel(const size_t index) const
 {
-    assert(!is_empty_);
-    assert(index < length_);
+    ASSERT(!is_empty_);
+    ASSERT(index < length_);
 
     return file_->read(offset_ + index);
 }
@@ -23,8 +24,8 @@ read_surfel(const size_t index) const
 void surfel_disk_array::
 write_surfel(const surfel& surfel, const size_t index) const
 {
-    assert(!is_empty_);
-    assert(index < length_);
+    ASSERT(!is_empty_);
+    ASSERT(index < length_);
 
     file_->write(surfel, offset_ + index);
 }
@@ -51,7 +52,7 @@ shared_surfel_vector surfel_disk_array::
 read_all() const
 {
     if (is_empty()) {
-        LOGGER_ERROR("Attempt to read from an empty surfel_disk_array");
+        LAMURE_LOG_ERROR("Attempt to read from an empty surfel_disk_array");
         exit(1);
     }
 
@@ -65,7 +66,7 @@ write_all(const shared_surfel_vector& data,
          const size_t offset_in_vector)
 {
     if (is_empty()) {
-        LOGGER_ERROR("Attempt to write to an empty surfel_disk_array");
+        LAMURE_LOG_ERROR("Attempt to write to an empty surfel_disk_array");
         exit(1);
     }
 

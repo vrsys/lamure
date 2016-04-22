@@ -19,11 +19,11 @@ public:
 
     explicit            reduction_every_second() { }
 
-    surfel_mem_array      create_lod(real& reduction_error,
+    surfel_mem_array      create_lod(real_t& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node,
                                   const bvh& tree,
-          						  const size_t start_node_id) const override;
+    const size_t start_node_id) const override;
 
 };
 

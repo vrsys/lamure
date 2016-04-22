@@ -9,8 +9,10 @@
 #define PRE_EXTERNAL_SORT_H_
 
 #include <lamure/pre/surfel_disk_array.h>
+#include <lamure/logger.h>
+#include <lamure/assert.h>
+
 #include <vector>
-#include <lamure/pre/logger.h>
 
 namespace lamure {
 namespace pre
@@ -57,7 +59,7 @@ private:
             }
 
             void pop_front() {
-                assert(size > 0);
+                ASSERT(size > 0);
                 candidate_pos++;
             }
 

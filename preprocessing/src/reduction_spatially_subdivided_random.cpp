@@ -13,7 +13,7 @@ namespace lamure {
 namespace pre {
 
 surfel_mem_array reduction_spatially_subdivided_random::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node,
           const bvh& tree,
@@ -40,12 +40,12 @@ create_lod(real& reduction_error,
 
     uint32_t const num_divisions_for_shortest_axis = 8;
 
-    vec3r step_length(-1.0, -1.0, -1.0);
+    vec3r_t step_length(-1.0, -1.0, -1.0);
 
     uint8_t shortest_axis = -1;
-    real min_length = std::numeric_limits<real>::max();
+    real_t min_length = std::numeric_limits<real_t>::max();
 
-    vec3r axis_lengths = combined_bounding_box.max() - combined_bounding_box.min();
+    vec3r_t axis_lengths = combined_bounding_box.max() - combined_bounding_box.min();
 
     for( uint8_t axis_idx = 0; axis_idx < 3; ++axis_idx ) {
         if( axis_lengths[axis_idx] < min_length ) {
@@ -56,7 +56,7 @@ create_lod(real& reduction_error,
 
     step_length[shortest_axis] = axis_lengths[shortest_axis] / num_divisions_for_shortest_axis;
 
-    vec3b steps_per_axis(-1,-1,-1);
+    vec3b_t steps_per_axis(-1,-1,-1);
 
     steps_per_axis[shortest_axis] = num_divisions_for_shortest_axis;
 

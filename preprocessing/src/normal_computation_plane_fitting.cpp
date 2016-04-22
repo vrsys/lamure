@@ -42,7 +42,7 @@ eigsrt_jacobi(
 }
 
 void normal_computation_plane_fitting::
-jacobi_rotation(const scm::math::mat3d& _matrix,
+jacobi_rotation(const mat3d_t& _matrix,
                      double* eigenvalues,
                      double** eigenvectors) const {
 
@@ -145,13 +145,13 @@ jacobi_rotation(const scm::math::mat3d& _matrix,
 
 }
 
-vec3f normal_computation_plane_fitting::
+vec3f_t normal_computation_plane_fitting::
 compute_normal(const bvh& tree,
-			   const surfel_id_t target_surfel,
-               std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
+   const surfel_id_t target_surfel,
+   std::vector<std::pair<surfel_id_t, real_t>> const& nearest_neighbours) const {
 
-	// find nearest neighbours
-    std::vector<std::pair<surfel_id_t, real>> nearest_neighbours_ids;// = tree.get_nearest_neighbours(target_surfel, num);
+    // find nearest neighbours
+    std::vector<std::pair<surfel_id_t, real_t>> nearest_neighbours_ids;// = tree.get_nearest_neighbours(target_surfel, num);
 
 
     unsigned processed_neighbour_counter = 0;
@@ -167,73 +167,73 @@ compute_normal(const bvh& tree,
 
 
     auto& bvh_nodes = (tree.nodes());
-    vec3r poi = bvh_nodes[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
+    vec3r_t poi = bvh_nodes[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     uint32_t num_neighbours = nearest_neighbours_ids.size();
     if (num_neighbours < 3) {
-        return vec3f(0.0,0.0,0.0);
+        return vec3f_t(0.0,0.0,0.0);
     }
 
     double summed_distance = 0.0f;
     double max_distance = 0.0f; 
-    vec3r cen = vec3r(0.0, 0.0, 0.0);
+    vec3r_t cen = vec3r_t(0.0, 0.0, 0.0);
 
     for (const auto& neighbour_ids : nearest_neighbours_ids) {
-        vec3r neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
+        vec3r_t neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
         if (neighbour_pos == poi) {
             continue;
         }
 
         cen += neighbour_pos;
     
-        real distance = scm::math::length(poi - neighbour_pos);
+        real_t distance = lamure::math::length(poi - neighbour_pos);
         summed_distance += distance;
         max_distance = std::max(distance, max_distance);
     }
 
-    scm::math::vec3d centroid = cen * (1.0/ (real)num_neighbours);
+    vec3d_t centroid = cen * (1.0/ (real_t)num_neighbours);
 
     if (max_distance >= 0.01) {
     //    return false;
     }
 
     //produce covariance matrix
-    scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
+    mat3d_t covariance_mat = mat3d_t::zero();
 
     for (const auto& neighbour_ids : nearest_neighbours_ids) {
-        vec3r neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
+        vec3r_t neighbour_pos = bvh_nodes[neighbour_ids.first.node_idx].mem_array().read_surfel_ref(neighbour_ids.first.surfel_idx).pos();
         if (neighbour_pos == poi) {
             continue;
         }
         
-        covariance_mat.m00 += std::pow(neighbour_pos.x-centroid.x, 2);
-        covariance_mat.m01 += (neighbour_pos.x-centroid.x) * (neighbour_pos.y - centroid.y);
-        covariance_mat.m02 += (neighbour_pos.x-centroid.x) * (neighbour_pos.z - centroid.z);
+        covariance_mat.m00 += std::pow(neighbour_pos.x_-centroid.x_, 2);
+        covariance_mat.m01 += (neighbour_pos.x_-centroid.x_) * (neighbour_pos.y_ - centroid.y_);
+        covariance_mat.m02 += (neighbour_pos.x_-centroid.x_) * (neighbour_pos.z_ - centroid.z_);
 
-        covariance_mat.m03 += (neighbour_pos.y-centroid.y) * (neighbour_pos.x - centroid.x);
-        covariance_mat.m04 += std::pow(neighbour_pos.y-centroid.y, 2);
-        covariance_mat.m05 += (neighbour_pos.y-centroid.y) * (neighbour_pos.z - centroid.z);
+        covariance_mat.m03 += (neighbour_pos.y_-centroid.y_) * (neighbour_pos.x_ - centroid.x_);
+        covariance_mat.m04 += std::pow(neighbour_pos.y_-centroid.y_, 2);
+        covariance_mat.m05 += (neighbour_pos.y_-centroid.y_) * (neighbour_pos.z_ - centroid.z_);
 
-        covariance_mat.m06 += (neighbour_pos.z-centroid.z) * (neighbour_pos.x - centroid.x);
-        covariance_mat.m07 += (neighbour_pos.z-centroid.z) * (neighbour_pos.y - centroid.y);
-        covariance_mat.m08 += std::pow(neighbour_pos.z-centroid.z, 2);
+        covariance_mat.m06 += (neighbour_pos.z_-centroid.z_) * (neighbour_pos.x_ - centroid.x_);
+        covariance_mat.m07 += (neighbour_pos.z_-centroid.z_) * (neighbour_pos.y_ - centroid.y_);
+        covariance_mat.m08 += std::pow(neighbour_pos.z_-centroid.z_, 2);
 
     }
 
     //solve for eigenvectors
-    real* eigenvalues = new real[3];
-    real** eigenvectors = new real*[3];
+    real_t* eigenvalues = new real_t[3];
+    real_t** eigenvectors = new real_t*[3];
     for (int i = 0; i < 3; ++i) {
-       eigenvectors[i] = new real[3];
+       eigenvectors[i] = new real_t[3];
     }
 
     jacobi_rotation(covariance_mat, eigenvalues, eigenvectors);
 
-    scm::math::vec3f normal = scm::math::vec3f(eigenvectors[0][0], 
+    vec3f_t normal = vec3f_t(eigenvectors[0][0], 
                                                eigenvectors[1][0], 
                                                eigenvectors[2][0]);
-    //scm::math::vec3f binormal = scm::math::vec3f(eigenvectors[0][1], eigenvectors[1][1], eigenvectors[2][1]);
-    //scm::math::vec3f tangent = scm::math::vec3f(eigenvectors[0][2], eigenvectors[1][2], eigenvectors[2][2]);
+    //vec3f_t binormal = vec3f_t(eigenvectors[0][1], eigenvectors[1][1], eigenvectors[2][1]);
+    //vec3f_t tangent = vec3f_t(eigenvectors[0][2], eigenvectors[1][2], eigenvectors[2][2]);
 
     delete[] eigenvalues;
     for (int i = 0; i < 3; ++i) {

@@ -47,17 +47,17 @@ public:
 
     void set_surfel(const surfel& surfel) {
         data_ = {
-            float(surfel.pos().x),    float(surfel.pos().y),    float(surfel.pos().z),
-            surfel.color().x,  surfel.color().y,  surfel.color().z, 0,
+            float(surfel.pos().x_),    float(surfel.pos().y_),    float(surfel.pos().z_),
+            surfel.color().x_,  surfel.color().y_,  surfel.color().z_, 0,
             float(surfel.radius()),
-            surfel.normal().x, surfel.normal().y, surfel.normal().z };
+            surfel.normal().x_, surfel.normal().y_, surfel.normal().z_ };
     }
 
     surfel get_surfel() const {
-        return surfel(vec3r(data_.x, data_.y, data_.z),
-                      vec3b(data_.r, data_.g, data_.b),
-                      data_.size,
-                      vec3f(data_.nx, data_.ny, data_.nz));
+        return surfel(vec3r_t(data_.x_, data_.y_, data_.z_),
+                      vec3b_t(data_.r_, data_.g_, data_.b_),
+                      data_.size_,
+                      vec3f_t(data_.nx_, data_.ny_, data_.nz_));
     }
 
     void serialize(char *data) {
@@ -73,10 +73,10 @@ private:
     
     struct data
     {
-        float x, y, z;
-        uint8_t r, g, b, fake;
-        float size;
-        float nx, ny, nz;
+        float x_, y_, z_;
+        uint8_t r_, g_, b_, fake_;
+        float size_;
+        float nx_, ny_, nz_;
     };
 
     union {

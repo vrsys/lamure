@@ -14,12 +14,12 @@ namespace lamure {
 namespace pre{
 	
 
-real radius_computation_average_distance::
+real_t radius_computation_average_distance::
 compute_radius(const bvh& tree,
 			   const surfel_id_t target_surfel,
-			   std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
+			   std::vector<std::pair<surfel_id_t, real_t>> const& nearest_neighbours) const {
 
-    real avg_distance = 0.0;
+    real_t avg_distance = 0.0;
 
     unsigned processed_neighbour_counter = 0;
     // compute radius

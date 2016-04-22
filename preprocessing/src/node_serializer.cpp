@@ -6,7 +6,8 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/node_serializer.h>
-
+#include <lamure/logger.h>
+#include <lamure/assert.h>
 #include <lamure/pre/serialized_surfel.h>
 #include <cstring>
 
@@ -43,7 +44,7 @@ open(const std::string& file_name, const bool read_write_mode)
         stream_.open(file_name, std::ios::out | std::ios::binary | std::ios::trunc);
 
     if (!stream_.is_open()) {
-        LOGGER_ERROR("Failed to create/open file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("Failed to create/open file: \"" << file_name_ << 
                                 "\". " << strerror(errno));
     }
 
@@ -58,7 +59,7 @@ close()
         buffer_.clear();
         stream_.close();
         if (stream_.fail()) {
-            LOGGER_ERROR("Failed to close file: \"" << file_name_ << 
+            LAMURE_LOG_ERROR("Failed to close file: \"" << file_name_ << 
                                      "\". " << strerror(errno));
         }
         stream_.exceptions(std::ifstream::failbit);
@@ -83,7 +84,7 @@ read_node_immediate(surfel_vector& surfels,
     stream_.seekg(buffer_size * offset);
     stream_.read(buffer, buffer_size);
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("read failed. file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("read failed. file: \"" << file_name_ << 
                                 "\". " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -111,7 +112,7 @@ write_node_immediate(const surfel_vector& surfels,
     stream_.seekp(buffer_size * offset);
     stream_.write(buffer, buffer_size);
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("write failed. file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("write failed. file: \"" << file_name_ << 
                                 "\". " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -128,9 +129,9 @@ serialize_nodes(const std::vector<bvh_node>& nodes)
 void node_serializer::
 write_node_streamed(const bvh_node& node)
 {
-    assert(max_nodes_in_buffer_ != 0);
-    assert(is_open());
-    assert(node.is_out_of_core());
+    ASSERT(max_nodes_in_buffer_ != 0);
+    ASSERT(is_open());
+    ASSERT(node.is_out_of_core());
 
     const size_t read_length = (node.disk_array().length() > surfels_per_node_)? 
                                surfels_per_node_ : 
@@ -153,7 +154,7 @@ flush_buffer()
         const size_t output_buffer_size = serialized_surfel::get_size() * surfels_per_node_ * buffer_.size();
         char* output_buffer = new char[output_buffer_size];
 
-        LOGGER_ERROR("Flush buffer to disk. buffer size: " << 
+        LAMURE_LOG_INFO("Flush buffer to disk. buffer size: " << 
                                 buffer_.size() << " nodes (" << 
                                 output_buffer_size / 1024 / 1024 << " MiB)");
 
@@ -173,7 +174,7 @@ flush_buffer()
         stream_.seekp(0, stream_.end);
         stream_.write(output_buffer, output_buffer_size);
         if (stream_.fail() || stream_.bad()) {
-            LOGGER_ERROR("write failed. file: \"" << file_name_ << 
+            LAMURE_LOG_ERROR("write failed. file: \"" << file_name_ << 
                                     "\". " << strerror(errno));
         }
         buffer_.clear();

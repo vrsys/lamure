@@ -23,15 +23,18 @@ public:
 
     virtual ~reduction_strategy() {}
 
-    virtual surfel_mem_array create_lod(real& reduction_error, const std::vector<surfel_mem_array*>& input,
-                                     	const uint32_t surfels_per_node,
-          								            const bvh& tree,
-          								            const size_t start_node_id) const = 0;
+    virtual surfel_mem_array create_lod(
+      real_t& reduction_error, 
+      const std::vector<surfel_mem_array*>& input,
+      const uint32_t surfels_per_node,
+      const bvh& tree,
+      const size_t start_node_id) const = 0;
 
-    		void             interpolate_approx_natural_neighbours(surfel& surfel_to_update,
-    															   std::vector<surfel> const& input_surfels,
-    															   const bvh& tree,
-    															   size_t const num_nearest_neighbours = 24) const;
+    void interpolate_approx_natural_neighbours(
+      surfel& surfel_to_update,
+      std::vector<surfel> const& input_surfels,
+      const bvh& tree,
+      size_t const num_nearest_neighbours = 24) const;
 };
 
 } // namespace pre

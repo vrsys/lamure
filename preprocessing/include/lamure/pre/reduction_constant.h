@@ -10,7 +10,7 @@
 
 #include <lamure/pre/reduction_strategy.h>
 
-#include <lamure/bounding_box.h>
+#include <lamure/math/bounding_box.h>
 #include <vector>
 #include <list>
 
@@ -23,7 +23,7 @@ public:
 
     explicit            reduction_constant() { }
 
-    surfel_mem_array      create_lod(real& reduction_error,
+    surfel_mem_array      create_lod(real_t& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node,
                                   const bvh& tree,
@@ -31,7 +31,7 @@ public:
 
 private:
 
-    using value_index_pair = std::pair<real, uint16_t>;
+    using value_index_pair = std::pair<real_t, uint16_t>;
 
     struct surfel_cluster_with_error {
         std::list<surfel>* cluster;
@@ -47,8 +47,8 @@ private:
 
     static surfel create_representative(const std::vector<surfel>& input);
     
-    static std::pair<vec3ui, vec3b> compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
-                                                 const bounding_box& bounding_box,
+    static std::pair<vec3ui_t, vec3b_t> compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
+                                                 const math::bounding_box_t& bounding_box,
                                                  const uint32_t surfels_per_node);
 
     static bool comp (const value_index_pair& l, const value_index_pair& r) {

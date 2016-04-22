@@ -10,7 +10,7 @@
 #define  NORMAL_COMPUTATION_PLANE_FITTING_H_
 
 #include <lamure/pre/normal_computation_strategy.h>
-#include <lamure/types.h>
+
 #include <vector>
 
 namespace lamure {
@@ -35,9 +35,9 @@ public:
 	                     double* eigenvalues,
 	                     double** eigenvectors) const;
 
-	vec3f_t  compute_normal(const bvh& tree,
+	vec3f  compute_normal(const bvh& tree,
                               const surfel_id_t surfel,
-                              std::vector<std::pair<surfel_id_t, real_t>> const& nearest_neighbours) const override;
+                              std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const override;
 };
 
 }// namespace pre

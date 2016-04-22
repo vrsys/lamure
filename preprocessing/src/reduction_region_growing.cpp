@@ -6,6 +6,8 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/reduction_region_growing.h>
+#include <vector>
+#include <algorithm>
 
 namespace lamure {
 namespace pre {
@@ -19,7 +21,7 @@ reduction_region_growing()
 
 
 surfel_mem_array reduction_region_growing::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
 			const std::vector<surfel_mem_array*>& input,
             const uint32_t surfels_per_node,
           	const bvh& tree,
@@ -41,7 +43,7 @@ create_lod(real& reduction_error,
     std::vector<std::vector<surfel*>> clusters;
 
     // Calculate a dynamic maximum bound depending on the provided surfel data.
-    real maximum_bound = find_maximum_bound(surfels_to_sample) / surfels_to_sample.size();
+    real_t maximum_bound = find_maximum_bound(surfels_to_sample) / surfels_to_sample.size();
 
 	// Choose a random seed point p0.
 	uint32_t random_index = (uint32_t)(std::rand() % surfels_to_sample.size());
@@ -53,7 +55,7 @@ create_lod(real& reduction_error,
 	{
 		std::vector<surfel*> current_cluster;
 		current_cluster.push_back(p_i);
-		std::vector<std::pair<surfel*, real>> current_neighbours;
+		std::vector<std::pair<surfel*, real_t>> current_neighbours;
 
 		// Grow cluster until stopping condition reached.
 		while (!reached_maximum_bound(current_cluster, maximum_bound) && surfels_to_sample.size() > 0)
@@ -122,7 +124,7 @@ create_lod(real& reduction_error,
 
 
 
-real reduction_region_growing::
+real_t reduction_region_growing::
 find_maximum_bound(const std::vector<surfel*>& input_cluster) const
 {
 	if (input_cluster.size() < 2)
@@ -131,7 +133,7 @@ find_maximum_bound(const std::vector<surfel*>& input_cluster) const
 	}
 
 	// Calculate current centroid to get a reference point.
-	vec3r centroid = vec3r(0);
+	vec3r_t centroid = vec3r_t(0);
 	for (uint32_t surfel_index = 0; surfel_index < input_cluster.size(); ++surfel_index)
 	{
 		surfel* current_surfel = input_cluster.at(surfel_index);
@@ -141,11 +143,11 @@ find_maximum_bound(const std::vector<surfel*>& input_cluster) const
 	centroid /= input_cluster.size();
 
 	// Get largest distance to centroid in current cluster.
-	real max_distance_to_centroid = 0;
+	real_t max_distance_to_centroid = 0;
 	for (uint32_t surfel_index = 0; surfel_index < input_cluster.size(); ++surfel_index)
 	{
 		surfel* current_surfel = input_cluster.at(surfel_index);
-		real current_distance = scm::math::distance(centroid, current_surfel->pos());
+		real_t current_distance = lamure::math::length(centroid - current_surfel->pos());
 
 		if (current_distance > max_distance_to_centroid)
 		{
@@ -159,7 +161,7 @@ find_maximum_bound(const std::vector<surfel*>& input_cluster) const
 
 
 bool reduction_region_growing::
-reached_maximum_bound(const std::vector<surfel*>& input_cluster, const real& maximum_bound) const
+reached_maximum_bound(const std::vector<surfel*>& input_cluster, const real_t& maximum_bound) const
 {
 	return find_maximum_bound(input_cluster) > maximum_bound;
 }
@@ -170,7 +172,7 @@ surfel* reduction_region_growing::
 sample_point_from_cluster(const std::vector<surfel*>& input_cluster) const
 {
 	// Calculate current centroid as new surfel position.
-	vec3r new_position = vec3r(0);
+	vec3r_t new_position = vec3r_t(0);
 	// TODO: also interpolate normal, colour, radius
 
 	for (uint32_t surfel_index = 0; surfel_index < input_cluster.size(); ++surfel_index)
@@ -189,13 +191,13 @@ sample_point_from_cluster(const std::vector<surfel*>& input_cluster) const
 
 
 
-std::vector<std::pair<surfel*, real>> reduction_region_growing::
+std::vector<std::pair<surfel*, real_t>> reduction_region_growing::
 find_neighbours(const std::vector<surfel*>& cluster, const surfel* core_surfel, const uint32_t& number_neighbours) const
 {
-    vec3r center = core_surfel->pos();
+    vec3r_t center = core_surfel->pos();
 
-    std::vector<std::pair<surfel*, real>> candidates;
-    real max_candidate_distance = std::numeric_limits<real>::infinity();
+    std::vector<std::pair<surfel*, real_t>> candidates;
+    real_t max_candidate_distance = std::numeric_limits<real_t>::infinity();
 
     // Iterate over given surfel space.
     for (uint32_t surfel_index = 0; surfel_index < cluster.size(); ++surfel_index)
@@ -204,7 +206,7 @@ find_neighbours(const std::vector<surfel*>& cluster, const surfel* core_surfel, 
         
         if (current_surfel != core_surfel)
         {
-            real distance_to_center = scm::math::length_sqr(center - current_surfel->pos());
+            real_t distance_to_center = lamure::math::length_sqr(center - current_surfel->pos());
 
             if (candidates.size() < number_neighbours || (distance_to_center < max_candidate_distance))
             {

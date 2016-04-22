@@ -16,8 +16,8 @@
 #include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/normal_computation_strategy.h>
 #include <lamure/pre/radius_computation_strategy.h>
-#include <lamure/pre/logger.h>
-#include <lamure/atomic_counter.h>
+#include <lamure/logger.h>
+#include <lamure/util/atomic_counter.h>
 
 #include <lamure/pre/io/converter.h>
 
@@ -68,7 +68,7 @@ public:
     uint8_t             fan_factor() const { return fan_factor_; }
     uint32_t            depth() const { return depth_; }
     size_t              max_surfels_per_node() const { return max_surfels_per_node_; }
-    vec3r               translation() const { return translation_; }
+    vec3r_t               translation() const { return translation_; }
 
     boost::filesystem::path base_path() const { return base_path_; }
 
@@ -79,7 +79,7 @@ public:
     uint32_t            get_depth_of_node(const uint32_t node_id) const;
     uint32_t            get_child_id(const uint32_t node_id, const uint32_t child_index) const;
     uint32_t            get_parent_id(const uint32_t node_id) const;
-    const node_id_type        get_first_node_id_of_depth(uint32_t depth) const;
+    const node_id_t        get_first_node_id_of_depth(uint32_t depth) const;
     const uint32_t      get_length_of_depth(uint32_t depth) const;
 
     surfel_vector       get_resampled_leaf_lv_surfels() const {return resampled_leaf_level_;}
@@ -95,37 +95,37 @@ public:
      * \param[in] depth           Tree layer for the range
      * \return                    Pair that contains first node id and number of nodes
      */
-    std::pair<node_id_type, node_id_type> get_node_ranges(const uint32_t depth) const;
+    std::pair<node_id_t, node_id_t> get_node_ranges(const uint32_t depth) const;
 
-    std::vector<std::pair<surfel_id_t, real>>
+    std::vector<std::pair<surfel_id_t, real_t>>
                         get_nearest_neighbours(
                             const surfel_id_t target_surfel,
                             const uint32_t num_neighbours,
                             const bool do_local_search = false) const;
 
-    std::vector<std::pair<surfel_id_t, real>>
+    std::vector<std::pair<surfel_id_t, real_t>>
                         get_nearest_neighbours_in_nodes(
                             const surfel_id_t target_surfel,
-                            const std::vector<node_id_type>& target_nodes,
+                            const std::vector<node_id_t>& target_nodes,
                             const uint32_t num_neighbours) const;
 
-    std::vector<std::pair<surfel_id_t, real>>
+    std::vector<std::pair<surfel_id_t, real_t>>
                         get_natural_neighbours(
                             const surfel_id_t& target_surfel,
-                            std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const;
+                            std::vector<std::pair<surfel_id_t, real_t>> const& nearest_neighbours) const;
 
-    std::vector<std::pair<surfel, real> >
+    std::vector<std::pair<surfel, real_t> >
                         get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,
-                                                       vec3r const& poi,
+                                                       vec3r_t const& poi,
                                                        uint32_t num_nearest_neighbours) const;
 
-    std::vector<std::pair<uint32_t, real>>
-                        extract_approximate_natural_neighbours(vec3r const& target_surfel,
-                        std::vector<vec3r> const& all_nearest_neighbours) const;
+    std::vector<std::pair<uint32_t, real_t>>
+                        extract_approximate_natural_neighbours(vec3r_t const& target_surfel,
+                        std::vector<vec3r_t> const& all_nearest_neighbours) const;
 
 
     void                print_tree_properties() const;
-    const node_id_type  first_leaf() const { return first_leaf_; }
+    const node_id_t  first_leaf() const { return first_leaf_; }
 
     // processing functions
     void                downsweep(bool adjust_translation,
@@ -166,14 +166,14 @@ protected:
     void                set_max_surfels_per_node(const size_t max_surfels_per_node) {
                             max_surfels_per_node_ = max_surfels_per_node;
                         }
-    void                set_translation(const vec3r& translation) { translation_ = translation; };
+    void                set_translation(const vec3r_t& translation) { translation_ = translation; };
     //void                set_working_directory(const std::string& working_directory) { 
     //                        working_directory_ = working_directory;
     //                   }
     //void                set basename(const std::string& basename) { basename_ = basename; };
     void                set_base_path(const boost::filesystem::path& base_path) { base_path_ = base_path; };
     void                set_nodes(const std::vector<bvh_node>& nodes) { nodes_ = nodes; };
-    void                set_first_leaf(const node_id_type first_leaf) { first_leaf_ = first_leaf; };
+    void                set_first_leaf(const node_id_t first_leaf) { first_leaf_ = first_leaf; };
     void                set_state(const state_type state) { state_ = state; };
 
     void                spawn_create_lod_jobs(const uint32_t first_node_of_level, 
@@ -200,7 +200,7 @@ protected:
                                                    const uint32_t end_marker,
                                                    const uint32_t num_outliers,
                                                    const uint16_t num_neighbours,
-                                                   std::vector< std::pair<surfel_id_t, real> >&  intermediate_outliers_for_thread);
+                                                   std::vector< std::pair<surfel_id_t, real_t> >&  intermediate_outliers_for_thread);
     void                thread_compute_attributes(const uint32_t start_marker,
                                                   const uint32_t end_marker,
                                                   const bool update_percentage,
@@ -235,7 +235,7 @@ private:
     surfel_vector resampled_leaf_level_;
     std::mutex resample_mutex_;
 
-    atomic_counter<uint32_t> working_queue_head_counter_;
+    util::atomic_counter_t<uint32_t> working_queue_head_counter_;
 
     state_type          state_ = state_type::null;
 
@@ -247,7 +247,7 @@ private:
 
     size_t              max_surfels_per_node_ = 0;
 
-    node_id_type          first_leaf_;
+    node_id_t          first_leaf_;
 
     //std::string         working_directory_;
     //std::string         basename_;
@@ -257,7 +257,7 @@ private:
     size_t              buffer_size_;
     rep_radius_algorithm  rep_radius_algo_;
 
-    vec3r               translation_ = vec3r(0.0); ///< translation of surfels
+    vec3r_t             translation_ = vec3r_t(0.0); ///< translation of surfels
 
     void                downsweep_subtree_in_core(
                             const bvh_node& node,
@@ -267,14 +267,14 @@ private:
                             shared_file leaf_level_access);
 
     void                get_descendant_leaves(
-                            const node_id_type node,
-                            std::vector<node_id_type>& result,
-                            const node_id_type first_leaf,
+                            const node_id_t node,
+                            std::vector<node_id_t>& result,
+                            const node_id_t first_leaf,
                             const std::unordered_set<size_t>& excluded_leaves) const;
     void                get_descendant_nodes(
-                            const node_id_type node,
-                            std::vector<node_id_type>& result,
-                            const node_id_type desired_depth,
+                            const node_id_t node,
+                            std::vector<node_id_t>& result,
+                            const node_id_t desired_depth,
                             const std::unordered_set<size_t>& excluded_nodes) const;
 
     surfel_mem_array    resample_node(uint32_t node_id) const;

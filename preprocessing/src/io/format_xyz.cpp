@@ -7,6 +7,7 @@
 
 #include <lamure/pre/io/format_xyz.h>
 
+#include <iomanip>
 #include <stdexcept>
 #include <fstream>
 #include <sstream>
@@ -28,7 +29,7 @@ read(const std::string& filename, surfel_callback_funtion callback)
 
     std::string line;
 
-    real pos[3];
+    real_t pos[3];
     unsigned int color[3];
 
     xyz_file_stream.seekg (0, std::ios::end);
@@ -55,8 +56,8 @@ read(const std::string& filename, surfel_callback_funtion callback)
         sstream >> color[1];
         sstream >> color[2];
 
-        callback(surfel(vec3r(pos[0], pos[1], pos[2]),
-                        vec3b(color[0], color[1], color[2])));
+        callback(surfel(vec3r_t(pos[0], pos[1], pos[2]),
+                        vec3b_t(color[0], color[1], color[2])));
     }
 
     xyz_file_stream.close();
@@ -80,14 +81,14 @@ write(const std::string& filename, buffer_callback_function callback)
             break;
 
         for (const auto s: buffer) {
-            xyz_file_stream << std::setprecision(DEFAULT_PRECISION) << s.pos().x << " " << s.pos().y << " " << s.pos().z << " "
-                            << int(s.color().r) << " " << int(s.color().g) << " " << int(s.color().b) << "\r\n";
+            xyz_file_stream << std::setprecision(DEFAULT_PRECISION) << s.pos().x_ << " " << s.pos().y_ << " " << s.pos().z_ << " "
+                            << int(s.color().x_) << " " << int(s.color().y_) << " " << int(s.color().z_) << "\r\n";
         }
 
         count += buffer.size();
     }
     xyz_file_stream.close();
-    LOGGER_TRACE("Output surfels: " << count);
+    LAMURE_LOG_INFO("Output surfels: " << count);
 }
 
 } // namespace pre

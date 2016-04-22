@@ -11,6 +11,7 @@
 #include <array>
 
 #include <lamure/pre/surfel_mem_array.h>
+#include <lamure/assert.h>
 
 namespace lamure {
 namespace pre {
@@ -26,31 +27,29 @@ public:
 
 	void calculate_statistics(surfel_mem_array const& mem_array);
 
-	vec3r const mean_pos() const {assert(is_dirty_ == false); 
+	vec3r_t const mean_pos() const {ASSERT(is_dirty_ == false); 
                                       return mean_pos_;}
-	vec3r const mean_color() const {assert(is_dirty_ == false);
+	vec3r_t const mean_color() const {ASSERT(is_dirty_ == false);
 					return mean_color_;}
-	vec3r const mean_normal() const {assert(is_dirty_ == false);
+	vec3r_t const mean_normal() const {ASSERT(is_dirty_ == false);
 					 return mean_normal_;}
-	real  const mean_radius() const {assert(is_dirty_ == false);
+	real_t  const mean_radius() const {ASSERT(is_dirty_ == false);
 	                                 return mean_radius_;}
 
-	real const pos_sd() const {assert(is_dirty_ == false);
+	real_t const pos_sd() const {ASSERT(is_dirty_ == false);
 			           return pos_sd_;}
-	real const color_sd() const {assert(is_dirty_ == false);
+	real_t const color_sd() const {ASSERT(is_dirty_ == false);
 		                     return color_sd_;}
-	real const normal_sd() const {assert(is_dirty_ == false);
+	real_t const normal_sd() const {ASSERT(is_dirty_ == false);
 	                              return normal_sd_;}
-	real const radius_sd() const {assert(is_dirty_ == false);
+	real_t const radius_sd() const {ASSERT(is_dirty_ == false);
 	                              return radius_sd_;}
 	                              
-	real const min_radius() const {assert(is_dirty_ == false);
-								  return min_radius_;}
-	real const max_radius() const {assert(is_dirty_ == false);
-								  return max_radius_;}
+	real_t const min_radius() const {ASSERT(is_dirty_ == false); return min_radius_;}
+	real_t const max_radius() const {ASSERT(is_dirty_ == false); return max_radius_;}
 
 
-	histogram_t const color_histogram() const {assert(is_dirty_ == false);						       return color_histogram_;}
+	histogram_t const color_histogram() const {ASSERT(is_dirty_ == false); return color_histogram_;}
 
 	void set_dirty(bool dirty) {is_dirty_ = dirty;}
 	bool is_dirty() const {return is_dirty_;}
@@ -58,20 +57,20 @@ public:
 private:
 
 	bool is_dirty_;
-	vec3r mean_pos_;
-	real  pos_sd_;
+	vec3r_t mean_pos_;
+	real_t  pos_sd_;
 
-	vec3r mean_color_;
-	real  color_sd_;
+	vec3r_t mean_color_;
+	real_t  color_sd_;
 
 
-	vec3r mean_normal_;
-	real  normal_sd_;
+	vec3r_t mean_normal_;
+	real_t  normal_sd_;
 
-	real  mean_radius_;
-	real  radius_sd_;
-	real  max_radius_;
-	real  min_radius_;
+	real_t  mean_radius_;
+	real_t  radius_sd_;
+	real_t  max_radius_;
+	real_t  min_radius_;
 
 	histogram_t color_histogram_;
 

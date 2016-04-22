@@ -8,7 +8,6 @@
 #include <lamure/pre/reduction_k_clustering.h>
 
 #include <lamure/pre/basic_algorithms.h>
-#include <lamure/utils.h>
 
 #include <queue>
 #include <array>
@@ -25,20 +24,20 @@ namespace pre {
 
 
 int reduction_k_clustering::
-get_largest_dim(vec3f const& avg_normal) const{
+get_largest_dim(vec3f_t const& avg_normal) const{
 
     //compare normal absolute values of the 3 normal components 
 
-    if (!((avg_normal.x == avg_normal.y)&&(avg_normal.z == avg_normal.y))) {
+    if (!((avg_normal.x_ == avg_normal.y_)&&(avg_normal.z_ == avg_normal.y_))) {
 
-        if (avg_normal.x == std::max(std::fabs(avg_normal.x), std::fabs(avg_normal.y)) && std::fabs(avg_normal.y) >= std::fabs(avg_normal.z)) {
+        if (avg_normal.x_ == std::max(std::fabs(avg_normal.x_), std::fabs(avg_normal.y_)) && std::fabs(avg_normal.y_) >= std::fabs(avg_normal.z_)) {
             return 0;
         }
-        else if (avg_normal.y == std::max(std::fabs(avg_normal.x), std::fabs(avg_normal.y)) && std::fabs(avg_normal.x) >= std::fabs(avg_normal.z)) {
+        else if (avg_normal.y_ == std::max(std::fabs(avg_normal.x_), std::fabs(avg_normal.y_)) && std::fabs(avg_normal.x_) >= std::fabs(avg_normal.z_)) {
             return 1;
         }
 
-        else if (avg_normal.z == std::max(std::fabs(avg_normal.z), std::fabs(avg_normal.y)) && std::fabs(avg_normal.y) >= std::fabs(avg_normal.x)) {
+        else if (avg_normal.z_ == std::max(std::fabs(avg_normal.z_), std::fabs(avg_normal.y_)) && std::fabs(avg_normal.y_) >= std::fabs(avg_normal.x_)) {
             return 2;
         } else {
             return 0;
@@ -52,7 +51,7 @@ get_largest_dim(vec3f const& avg_normal) const{
 }
 
 shared_cluster_surfel_vector reduction_k_clustering::
-get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector const& input_surfels) const{
+get_initial_cluster_seeds(vec3f_t const& avg_normal, shared_cluster_surfel_vector const& input_surfels) const{
     //hash-based grouping
     //reference: http://www.ifi.uzh.ch/vmml/publications/older-puclications/DeferredBlending.pdf 
 
@@ -96,10 +95,10 @@ get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector 
 }
 
 
-vec3f reduction_k_clustering::  
+vec3f_t reduction_k_clustering::  
 compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const{
 
-    vec3f avg_normal (0.0, 0.0, 0.0);
+    vec3f_t avg_normal (0.0, 0.0, 0.0);
     if( input_surfels.size() != 0){
 
         for (auto const& current_cluster_surfel_ptr : input_surfels) {
@@ -108,8 +107,8 @@ compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const{
 
         avg_normal /= input_surfels.size();
 
-        if( scm::math::length(avg_normal) != 0.0) {
-            avg_normal = scm::math::normalize(avg_normal);
+        if(lamure::math::length(avg_normal) != 0.0) {
+            avg_normal = lamure::math::normalize(avg_normal);
         }
     }
        
@@ -147,9 +146,9 @@ void reduction_k_clustering::
 compute_overlap(shared_cluster_surfel current_surfel_ptr, bool look_in_M) const {
     //use only neighbours belonging to either set M or set S-M in order to compute overlap
 
-    real overlap = 0;
+    real_t overlap = 0;
     shared_surfel target_neighbour_surfel;
-    real distance = 0.0;
+    real_t distance = 0.0;
 
     for(auto const& current_neighbour : current_surfel_ptr->neighbours){
         if (current_neighbour->member_of_M == look_in_M){
@@ -163,22 +162,22 @@ compute_overlap(shared_cluster_surfel current_surfel_ptr, bool look_in_M) const 
     current_surfel_ptr->overlap = overlap;
 }
 
-real reduction_k_clustering::
+real_t reduction_k_clustering::
 compute_distance(shared_cluster_surfel first_surfel_ptr, shared_cluster_surfel second_surfel_ptr) const {
-    return scm::math::length(first_surfel_ptr->contained_surfel->pos() - second_surfel_ptr->contained_surfel->pos()); //
+    return lamure::math::length(first_surfel_ptr->contained_surfel->pos() - second_surfel_ptr->contained_surfel->pos()); //
 }
 
 // compute deviation to all neighbours, independent on their set membership 
 void reduction_k_clustering:: 
 compute_deviation(shared_cluster_surfel current_surfel_ptr) const {
 
-    real deviation = 0;
+    real_t deviation = 0;
     shared_surfel target_neighbour_surfel;
 
 
     for(auto const& current_neighbour : current_surfel_ptr->neighbours){
         target_neighbour_surfel = current_neighbour->contained_surfel;
-        deviation += 1 - std::fabs( scm::math::dot(current_surfel_ptr->contained_surfel->normal(), target_neighbour_surfel->normal()));
+        deviation += 1 - std::fabs(lamure::math::dot(current_surfel_ptr->contained_surfel->normal(), target_neighbour_surfel->normal()));
     }
 
     current_surfel_ptr->deviation = deviation;
@@ -187,7 +186,7 @@ compute_deviation(shared_cluster_surfel current_surfel_ptr) const {
 void reduction_k_clustering::
 resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_m) const {
     std::sort(surfel_ptr_set_m.begin(), surfel_ptr_set_m.end(), max_overlap_order());
-    real min_overlap = 0;
+    real_t min_overlap = 0;
     shared_cluster_surfel_vector temp_neighbour_list;
 
     //maximal overlap computed
@@ -294,8 +293,8 @@ add_surfel(shared_cluster_surfel_vector& surfel_ptr_set_M,
 void reduction_k_clustering::
 merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const
 {   
-    vec3r avg_position = vec3r(0.0, 0.0, 0.0);    
-    vec3r avg_color = vec3r(0.0, 0.0, 0.0);
+    vec3r_t avg_position = vec3r_t(0.0, 0.0, 0.0);    
+    vec3r_t avg_color = vec3r_t(0.0, 0.0, 0.0);
 
     shared_cluster_surfel_vector current_temp_neighbour_vector;
     for(auto const& current_surfel_ptr : final_cluster_surfel_set){
@@ -311,38 +310,38 @@ merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const
         avg_position /= (current_temp_neighbour_vector.size() + 1 );
         avg_color /= (current_temp_neighbour_vector.size() + 1 );
         current_surfel_ptr->contained_surfel->pos() = avg_position;
-        current_surfel_ptr->contained_surfel->color() = vec3b(avg_color[0], avg_color[1], avg_color[2]) ;
+        current_surfel_ptr->contained_surfel->color() = vec3b_t(avg_color[0], avg_color[1], avg_color[2]) ;
     }
 } 
 
 
 void reduction_k_clustering::
-subsample(surfel_mem_array& joined_input, real const avg_radius) const{
+subsample(surfel_mem_array& joined_input, real_t const avg_radius) const{
     //std::cout<< "I should work on node with id: " << node.node_id() << "\n";
-    const real max_radius_difference = 0.0; //
-    //real avg_radius = node.avg_surfel_radius();
+    const real_t max_radius_difference = 0.0; //
+    //real_t avg_radius = node.avg_surfel_radius();
 
-    auto copute_new_postion = [] (surfel const& plane_ref_surfel, real radius_offset, real rot_angle) {
-        vec3r new_position (0.0, 0.0, 0.0);
+    auto copute_new_postion = [] (surfel const& plane_ref_surfel, real_t radius_offset, real_t rot_angle) {
+        vec3r_t new_position (0.0, 0.0, 0.0);
 
-        vec3f n = plane_ref_surfel.normal();
+        vec3f_t n = plane_ref_surfel.normal();
 
         //from random_point_on_surfel() in surfe.cpp
         //find a vector orthogonal to given normal vector
-        scm::math::vec3f  u(std::numeric_limits<float>::lowest(),
-                            std::numeric_limits<float>::lowest(),
-                            std::numeric_limits<float>::lowest());
-        if(n.z != 0.0) {
-            u = scm::math::vec3f( 1, 1, (-n.x - n.y) / n.z);
-        } else if (n.y != 0.0) {
-            u = scm::math::vec3f( 1, (-n.x - n.z) / n.y, 1);
+        vec3f_t  u(std::numeric_limits<float>::lowest(),
+                   std::numeric_limits<float>::lowest(),
+                   std::numeric_limits<float>::lowest());
+        if(n.z_ != 0.0) {
+            u = vec3f_t( 1, 1, (-n.x_ - n.y_) / n.z_);
+        } else if (n.y_ != 0.0) {
+            u = vec3f_t( 1, (-n.x_ - n.z_) / n.y_, 1);
         } else {
-            u = scm::math::vec3f( (-n.y - n.z)/n.x, 1, 1);
+            u = vec3f_t( (-n.y_ - n.z_)/n.x_, 1, 1);
         }
-        scm::math::normalize(u);
+        lamure::math::normalize(u);
 
         //vector rotation according to: https://en.wikipedia.org/wiki/Rodrigues'_rotation_formula
-        vec3f u_rotated = n*cos(rot_angle) + scm::math::cross(n,u)*sin(rot_angle) + u*scm::math::dot(n,u)*(1-cos(rot_angle));
+        vec3f_t u_rotated = n*cos(rot_angle) + lamure::math::cross(n,u)*sin(rot_angle) + u*lamure::math::dot(n,u)*(1-cos(rot_angle));
 
         //extend vector  lenght to match desired radius 
         u_rotated = u_rotated*radius_offset;
@@ -374,10 +373,10 @@ subsample(surfel_mem_array& joined_input, real const avg_radius) const{
             for(int k = 1; k <= itteration_level; ++k){
                uint16_t num_new_surfels = 6*k; //^^ formula basis https://en.wikipedia.org/wiki/Circle_packing_in_a_circle
                for(int j = 0; j < num_new_surfels; ++j){
-                    real radius_offset = k*2*avg_radius; 
-                    real angle = 0.0;
-                    real angle_offset = 2*M_PI / num_new_surfels;
-                    new_surfel.color() = vec3b(1.0, 1.0, 1.0); 
+                    real_t radius_offset = k*2*avg_radius; 
+                    real_t angle = 0.0;
+                    real_t angle_offset = 2*M_PI / num_new_surfels;
+                    new_surfel.color() = vec3b_t(1.0, 1.0, 1.0); 
                     new_surfel.pos() = copute_new_postion(current_surfel, radius_offset, angle);
                     joined_input.mem_data()->push_back(new_surfel);
                             //modified_mem_array.mem_data()->push_back(new_surfel);
@@ -391,7 +390,7 @@ subsample(surfel_mem_array& joined_input, real const avg_radius) const{
 
 
 surfel_mem_array reduction_k_clustering::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
            const std::vector<surfel_mem_array*>& input,
            const uint32_t surfels_per_node,
            const bvh& tree,
@@ -477,7 +476,7 @@ create_lod(real& reduction_error,
     }
 
     //average nomal, used in computaions of the hash-based grouping
-    vec3f avg_normal = compute_avg_normal(cluster_surfel_array);
+    vec3f_t avg_normal = compute_avg_normal(cluster_surfel_array);
 
 
 //sort all surfels into 2 sets

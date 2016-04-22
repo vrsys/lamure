@@ -36,7 +36,7 @@ write(const std::string& filename, buffer_callback_function callback)
         count += buffer.size();
     }
     file.close();
-    LOGGER_TRACE("Output surfels: " << count);
+    LAMURE_LOG_INFO("Output surfels: " << count);
 }
 
 }

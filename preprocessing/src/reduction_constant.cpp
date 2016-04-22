@@ -6,9 +6,9 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/reduction_constant.h>
-
+#include <lamure/assert.h>
 #include <lamure/pre/basic_algorithms.h>
-#include <lamure/utils.h>
+#include <lamure/math/bounding_box.h>
 
 #include <queue>
 
@@ -24,25 +24,25 @@ namespace pre {
 surfel reduction_constant::
 create_representative(const std::vector<surfel>& input)
 {
-    assert(input.size() > 0);
+    ASSERT(input.size() > 0);
 
     //const float fan_factor = 2;
     //const float mult = sqrt(1.f + 1.f / fan_factor)*1.0f;
 
-//    real radius = input.front().radius() * mult;
+//    real_t radius = input.front().radius() * mult;
 
     if (input.size() == 1) {
         return input.front();
 //        return surfel(input.front().pos(), input.front().color(), radius, input.front().normal());
     }
 
-    vec3r pos = vec3r(0);
-    vec3f nml = vec3f(0);
-    vec3f col = vec3f(0);
-    real weight_sum = 0.0;
+    vec3r_t pos = vec3r_t(0);
+    vec3f_t nml = vec3f_t(0);
+    vec3f_t col = vec3f_t(0);
+    real_t weight_sum = 0.0;
     for (const auto& surfel : input)
     {
-        real weight = 1.0; //surfel.radius();
+        real_t weight = 1.0; //surfel.radius();
         weight_sum += weight;
 
         pos += weight * surfel.pos();
@@ -54,34 +54,34 @@ create_representative(const std::vector<surfel>& input)
     nml /= weight_sum;
     col /= input.size();
 
-    nml = scm::math::normalize(nml);
+    nml = lamure::math::normalize(nml);
 
 
-    real radius = 0.0;
+    real_t radius = 0.0;
 
     for (const auto& surfel : input) {
-        real dist = scm::math::distance(pos, surfel.pos());
+        real_t dist = lamure::math::length(pos - surfel.pos());
         if (radius < dist + surfel.radius()) radius = dist + surfel.radius();
     }
 
-    return surfel(pos, vec3b(col.x, col.y, col.z), radius, nml);
+    return surfel(pos, vec3b_t(col.x_, col.y_, col.z_), radius, nml);
 }
 
-std::pair<vec3ui, vec3b> reduction_constant::
+std::pair<vec3ui_t, vec3b_t> reduction_constant::
 compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
-                        const bounding_box& bounding_box,
+                        const math::bounding_box_t& bounding_box,
                         const uint32_t surfels_per_node)
 {
 
     uint16_t max_axis_ratio = 1000;
 
-    vec3r bb_dimensions = bounding_box.get_dimensions();
+    vec3r_t bb_dimensions = bounding_box.get_dimensions();
 
     // find axis relations
     // mark axes where every surfel has the same position as locked
     // sort bb_axes by size to make code readable
-    vec3ui grid_dimensions;
-    vec3b locked_grid_dimensions;
+    vec3ui_t grid_dimensions;
+    vec3b_t locked_grid_dimensions;
     locked_grid_dimensions[0] = false;
     locked_grid_dimensions[1] = false;
     locked_grid_dimensions[2] = false;
@@ -93,8 +93,8 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
 
     std::sort(sorted_bb_dimensions.begin(), sorted_bb_dimensions.end());
 
-    vec3ui sorted_grid_dimensions;
-    vec3b sorted_locked_grid_dimensions;
+    vec3ui_t sorted_grid_dimensions;
+    vec3b_t sorted_locked_grid_dimensions;
     sorted_locked_grid_dimensions[0] = false;
     sorted_locked_grid_dimensions[1] = false;
     sorted_locked_grid_dimensions[2] = false;
@@ -114,7 +114,7 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
         // 1 dimension
         sorted_locked_grid_dimensions[0] = true;
         sorted_locked_grid_dimensions[1] = true;
-        sorted_grid_dimensions = vec3ui(1,1,1);
+        sorted_grid_dimensions = vec3ui_t(1,1,1);
     }
     else if (sorted_bb_dimensions[0].first == 0)
     {
@@ -123,20 +123,20 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
 
         if (sorted_bb_dimensions[1].first < sorted_bb_dimensions[2].first)
         {
-            sorted_grid_dimensions = vec3ui(1,1,floor(sorted_bb_dimensions[2].first/sorted_bb_dimensions[1].first));
+            sorted_grid_dimensions = vec3ui_t(1,1,floor(sorted_bb_dimensions[2].first/sorted_bb_dimensions[1].first));
             if (sorted_grid_dimensions[2] > max_axis_ratio)
                 sorted_grid_dimensions[2] = max_axis_ratio;
         }
         else
         {
-            sorted_grid_dimensions = vec3ui(1,floor(sorted_bb_dimensions[1].first/sorted_bb_dimensions[2].first),1);
+            sorted_grid_dimensions = vec3ui_t(1,floor(sorted_bb_dimensions[1].first/sorted_bb_dimensions[2].first),1);
             if (sorted_grid_dimensions[1] > max_axis_ratio)
                 sorted_grid_dimensions[1] = max_axis_ratio;
         }
 
     } else {
         // 3 dimensions
-        sorted_grid_dimensions = vec3ui(1,floor(sorted_bb_dimensions[1].first/sorted_bb_dimensions[0].first),floor(sorted_bb_dimensions[2].first/sorted_bb_dimensions[0].first));
+        sorted_grid_dimensions = vec3ui_t(1,floor(sorted_bb_dimensions[1].first/sorted_bb_dimensions[0].first),floor(sorted_bb_dimensions[2].first/sorted_bb_dimensions[0].first));
         if (sorted_grid_dimensions[1] > max_axis_ratio)
             sorted_grid_dimensions[1] = max_axis_ratio;
         if (sorted_grid_dimensions[2] > max_axis_ratio)
@@ -204,7 +204,7 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
             }
 
             // check which cell a surfel occupies
-            vec3r cell_size = vec3r(fabs(bb_dimensions[0]/grid_dimensions[0]),fabs(bb_dimensions[1]/grid_dimensions[1]),fabs(bb_dimensions[2]/grid_dimensions[2]));
+            vec3r_t cell_size = vec3r_t(fabs(bb_dimensions[0]/grid_dimensions[0]),fabs(bb_dimensions[1]/grid_dimensions[1]),fabs(bb_dimensions[2]/grid_dimensions[2]));
 
             for (uint32_t i = 0; i < input.size(); ++i)
             {
@@ -212,12 +212,12 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
                 {
                     surfel surfel = input[i]->read_surfel(j);
 
-                    vec3r surfel_pos = surfel.pos() - bounding_box.min();
-                    if (surfel_pos.x < 0.f) surfel_pos.x = 0.f;
-                    if (surfel_pos.y < 0.f) surfel_pos.y = 0.f;
-                    if (surfel_pos.z < 0.f) surfel_pos.z = 0.f;
+                    vec3r_t surfel_pos = surfel.pos() - bounding_box.min();
+                    if (surfel_pos.x_ < 0.f) surfel_pos.x_ = 0.f;
+                    if (surfel_pos.y_ < 0.f) surfel_pos.y_ = 0.f;
+                    if (surfel_pos.z_ < 0.f) surfel_pos.z_ = 0.f;
 
-                    vec3ui index;
+                    vec3ui_t index;
 
                     if (locked_grid_dimensions[0]) {
                         index[0] = 0;
@@ -291,7 +291,7 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
     }
     else
     {
-        grid_dimensions = vec3ui(1,1,1); // 0 dimensions, every surfel hast the same position
+        grid_dimensions = vec3ui_t(1,1,1); // 0 dimensions, every surfel hast the same position
     }
 
     return std::make_pair(grid_dimensions, locked_grid_dimensions);
@@ -299,27 +299,27 @@ compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
 }
 
 surfel_mem_array reduction_constant::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node,
           const bvh& tree,
           const size_t start_node_id) const
 {
     // compute bounding box for actual surfels
-    bounding_box bbox = basic_algorithms::compute_aabb(*input[0], true);
+    math::bounding_box_t bbox = basic_algorithms::compute_aabb(*input[0], true);
 
     for (auto child_surfels = input.begin() + 1; child_surfels !=input.end(); ++child_surfels)
     {
-        bounding_box child_bb = basic_algorithms::compute_aabb(*(*child_surfels), true);
+        math::bounding_box_t child_bb = basic_algorithms::compute_aabb(*(*child_surfels), true);
         bbox.expand(child_bb);
     }
 
-    vec3r bb_dimensions = bbox.get_dimensions();
+    vec3r_t bb_dimensions = bbox.get_dimensions();
 
     // compute grid dimensions
-    std::pair<vec3ui, vec3b> grid_data = compute_grid_dimensions(input, bbox, surfels_per_node);
-    vec3ui grid_dimensions = grid_data.first;
-    vec3b locked_grid_dimensions = grid_data.second;
+    std::pair<vec3ui_t, vec3b_t> grid_data = compute_grid_dimensions(input, bbox, surfels_per_node);
+    vec3ui_t grid_dimensions = grid_data.first;
+    vec3b_t locked_grid_dimensions = grid_data.second;
 
     // create grid
     std::vector<std::vector<std::vector<std::list<surfel>*>>> grid(grid_dimensions[0],std::vector<std::vector<std::list<surfel>*>>(grid_dimensions[1], std::vector<std::list<surfel>*>(grid_dimensions[2])));
@@ -336,7 +336,7 @@ create_lod(real& reduction_error,
     }
 
     // sort surfels into grid
-    vec3r cell_size = vec3r(fabs(bb_dimensions[0]/grid_dimensions[0]),fabs(bb_dimensions[1]/grid_dimensions[1]),fabs(bb_dimensions[2]/grid_dimensions[2]));
+    vec3r_t cell_size = vec3r_t(fabs(bb_dimensions[0]/grid_dimensions[0]),fabs(bb_dimensions[1]/grid_dimensions[1]),fabs(bb_dimensions[2]/grid_dimensions[2]));
 
     for (uint32_t i = 0; i < input.size(); ++i)
     {
@@ -344,12 +344,12 @@ create_lod(real& reduction_error,
         {
             surfel surfel = input[i]->read_surfel(j);
 
-            vec3r surfel_pos = surfel.pos() - bbox.min();
-            if (surfel_pos.x < 0.f) surfel_pos.x = 0.f;
-            if (surfel_pos.y < 0.f) surfel_pos.y = 0.f;
-            if (surfel_pos.z < 0.f) surfel_pos.z = 0.f;
+            vec3r_t surfel_pos = surfel.pos() - bbox.min();
+            if (surfel_pos.x_ < 0.f) surfel_pos.x_ = 0.f;
+            if (surfel_pos.y_ < 0.f) surfel_pos.y_ = 0.f;
+            if (surfel_pos.z_ < 0.f) surfel_pos.z_ = 0.f;
 
-            vec3ui index;
+            vec3ui_t index;
 
             if (locked_grid_dimensions[0]) {
                 index[0] = 0;
@@ -414,8 +414,8 @@ create_lod(real& reduction_error,
         surfel_count -= input_cluster_size;
         bool early_termination = false;
 
-        real min_radius = input_cluster->begin()->radius();
-        real max_radius = input_cluster->begin()->radius();
+        real_t min_radius = input_cluster->begin()->radius();
+        real_t max_radius = input_cluster->begin()->radius();
 
         auto start = input_cluster->begin();
         std::advance(start, 1);
@@ -427,7 +427,7 @@ create_lod(real& reduction_error,
                 max_radius = surfel->radius();
         }
 
-        //real radius_range = max_radius - min_radius;
+        //real_t radius_range = max_radius - min_radius;
 
         std::list<surfel>* output_cluster = new std::list<surfel>;
 
@@ -443,12 +443,12 @@ create_lod(real& reduction_error,
             while(surfel_to_compare != input_cluster->end())
             {
                 // angle
-                vec3f normal1 = surfels_to_merge.front().normal();
-                vec3f normal2 = (*surfel_to_compare).normal();
+                vec3f_t normal1 = surfels_to_merge.front().normal();
+                vec3f_t normal2 = (*surfel_to_compare).normal();
 
                 bool flip_normal = false;
 
-                float dot_product = scm::math::dot(normal1,normal2);
+                float dot_product = lamure::math::dot(normal1,normal2);
 
                 if (dot_product > 1.0)
                     dot_product = 1.0;
@@ -475,10 +475,10 @@ create_lod(real& reduction_error,
 
                 // radius
                 /*
-                real radius1 = surfels_to_merge.front().radius();
-                real radius2 = (*surfel_to_compare).radius();
+                real_t radius1 = surfels_to_merge.front().radius();
+                real_t radius2 = (*surfel_to_compare).radius();
 
-                real radius_weight_normalized = 0;
+                real_t radius_weight_normalized = 0;
 
                 if (radius_range != 0)
                     radius_weight_normalized = ((radius1 - min_radius) + (radius2 - min_radius)) / (2.0*radius_range);

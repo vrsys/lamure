@@ -14,7 +14,7 @@
 #include <lamure/pre/platform.h>
 #include <lamure/pre/io/format_abstract.h>
 
-#include <lamure/pre/logger.h>
+#include <lamure/logger.h>
 
 namespace lamure {
 namespace pre {
@@ -29,7 +29,7 @@ public:
                                   const size_t buffer_size) // buffer_size - in bytes
                             : in_format_(in_format),
                               out_format_(out_format),
-                              translation_(vec3r(0.0)),
+                              translation_(vec3r_t(0.0)),
                               override_radius_(false),
                               override_color_(false),
                               scale_factor_(1.0),
@@ -50,20 +50,20 @@ public:
 
     const size_t        surfels_in_buffer() const { return surfels_in_buffer_; }
 
-    void                override_radius(const real radius) {
+    void                override_radius(const real_t radius) {
                             override_radius_ = true;
                             new_radius_ = radius;
                         }
 
-    void                override_color(const vec3b& color) {
+    void                override_color(const vec3b_t& color) {
                             override_color_ = true;
                             new_color_ = color;
                         }
 
-    void                set_scale_factor(const real factor)
+    void                set_scale_factor(const real_t factor)
                             { scale_factor_ = factor; }
 
-    void                set_translation(const vec3r& translation)
+    void                set_translation(const vec3r_t& translation)
                             { translation_ = translation; }
 
     void                set_surfel_callback(const surfel_modifier_function& callback) { surfel_callback_ = callback; }
@@ -81,21 +81,21 @@ private:
     const bool          is_degenerate(const surfel& s) const;
 
 
-    format_abstract&     in_format_;
-    format_abstract&     out_format_;
+    format_abstract&    in_format_;
+    format_abstract&    out_format_;
 
 
-    vec3r               translation_;
+    vec3r_t             translation_;
     size_t              surfels_in_buffer_;
     bool                override_radius_;
     bool                override_color_;
-    real                scale_factor_;
+    real_t              scale_factor_;
     surfel_modifier_function surfel_callback_;
 
-    surfel_vector        buffer_;
+    surfel_vector       buffer_;
 
-    real                new_radius_;
-    vec3b               new_color_;
+    real_t              new_radius_;
+    vec3b_t             new_color_;
     size_t              discarded_;
 
 };

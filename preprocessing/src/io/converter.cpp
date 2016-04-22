@@ -53,7 +53,7 @@ convert(const std::string& input_filename,
     tr.join();
 
     if (discarded_ > 0) {
-        LOGGER_WARN("Discarded degenerate surfels: " << 
+        LAMURE_LOG_WARN("Discarded degenerate surfels: " << 
                                 discarded_);
     }
 }
@@ -103,7 +103,7 @@ write_in_core_surfels_out(const surfel_vector& surf_vec,
     tr.join();
 
     if (discarded_ > 0) {
-        LOGGER_WARN("Discarded degenerate surfels: " << 
+        LAMURE_LOG_WARN("Discarded degenerate surfels: " << 
                                 discarded_);
     }
 }
@@ -128,7 +128,7 @@ append_surfel(const surfel& surf)
             s.radius() *= scale_factor_;
         }
 
-        if (translation_ != vec3r(0.0)) {
+        if (translation_ != vec3r_t(0.0)) {
             s.pos() += translation_;
         }
 
@@ -152,7 +152,7 @@ void converter::
 flush_buffer()
 {
     if (!buffer_.empty()) {
-        LOGGER_TRACE("Flush buffer to disk. buffer size: " << 
+        LAMURE_LOG_INFO("Flush buffer to disk. buffer size: " << 
                         buffer_.size() << " surfels");
         {
             std::lock_guard<std::mutex> lk(mtx_);
@@ -172,9 +172,9 @@ flush_buffer()
 const bool converter::
 is_degenerate(const surfel& s) const
 {
-    return !std::isfinite(s.pos().x) 
-        || !std::isfinite(s.pos().y)
-        || !std::isfinite(s.pos().z);
+    return !std::isfinite(s.pos().x_) 
+        || !std::isfinite(s.pos().y_)
+        || !std::isfinite(s.pos().z_);
 }
 
 

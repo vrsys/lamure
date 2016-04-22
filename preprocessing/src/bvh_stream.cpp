@@ -6,7 +6,6 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/bvh_stream.h>
-
 #include <lamure/pre/serialized_surfel.h>
 
 namespace lamure {
@@ -255,10 +254,10 @@ read_bvh(const std::string& filename, bvh& bvh) {
     bvh.set_depth(tree.depth_);
     bvh.set_fan_factor(tree.fan_factor_);
     bvh.set_max_surfels_per_node(tree.max_surfels_per_node_);
-    scm::math::vec3f translation(tree.translation_.x_,
+    lamure::vec3f_t translation(tree.translation_.x_,
                                  tree.translation_.y_,
                                  tree.translation_.z_);
-    bvh.set_translation(vec3r(translation));
+    bvh.set_translation(vec3r_t(translation));
     if (tree.num_nodes_ != node_id) {
         throw std::runtime_error(
             "PLOD: bvh_stream::Stream corrupt -- Invalid number of node segments");
@@ -311,13 +310,13 @@ read_bvh(const std::string& filename, bvh& bvh) {
                "PLOD: bvh_stream::Stream corrupt -- Invalid node ordering");
        }
 
-       scm::math::vec3f centroid(node.centroid_.x_,
+       lamure::vec3f_t centroid(node.centroid_.x_,
                                  node.centroid_.y_,
                                  node.centroid_.z_);
-       scm::math::vec3f box_min(node.bounding_box_.min_.x_,
+       lamure::vec3f_t box_min(node.bounding_box_.min_.x_,
                                 node.bounding_box_.min_.y_,
                                 node.bounding_box_.min_.z_);
-       scm::math::vec3f box_max(node.bounding_box_.max_.x_,
+       lamure::vec3f_t box_max(node.bounding_box_.max_.x_,
                                 node.bounding_box_.max_.y_,
                                 node.bounding_box_.max_.z_);
 
@@ -329,25 +328,25 @@ read_bvh(const std::string& filename, bvh& bvh) {
            }
            
            if (node_ext.empty_ == 1) {
-               bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)));
+               bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, math::bounding_box_t(vec3r_t(box_min), vec3r_t(box_max)));
            }
            else {
                const auto& disk_array = node_ext.disk_array_;
                surfel_disk_array sdarray = surfel_disk_array(level_temp_files[disk_array.disk_access_ref_],
                                                                    disk_array.offset_,
                                                                    disk_array.length_);
-               bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)), sdarray);
+               bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, math::bounding_box_t(vec3r_t(box_min), vec3r_t(box_max)), sdarray);
            }
        }
        else {
            //init empty nodes. We don't use surfelDIskArray
            //because we deal with serialized data
-           bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)));
+           bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, math::bounding_box_t(vec3r_t(box_min), vec3r_t(box_max)));
        }
 
        //set node params
        bvh_nodes[i].set_reduction_error(node.reduction_error_);
-       bvh_nodes[i].set_centroid(vec3r(centroid));
+       bvh_nodes[i].set_centroid(vec3r_t(centroid));
        bvh_nodes[i].set_avg_surfel_radius(node.avg_surfel_radius_);
        bvh_nodes[i].set_visibility((bvh_node::node_visibility)node.visibility_);
 
@@ -395,9 +394,9 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
    tree.state_ = (bvh_stream::bvh_tree_state)bvh.state();
    tree.reserved_1_ = 0;
    tree.reserved_2_ = 0;
-   tree.translation_.x_ = bvh.translation().x;
-   tree.translation_.y_ = bvh.translation().y;
-   tree.translation_.z_ = bvh.translation().z;
+   tree.translation_.x_ = bvh.translation().x_;
+   tree.translation_.y_ = bvh.translation().y_;
+   tree.translation_.z_ = bvh.translation().z_;
    tree.reserved_3_ = 0;
 
    write(tree);
@@ -408,20 +407,20 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
        bvh_node_seg node;
        node.segment_id_ = num_segments_++;
        node.node_id_ = i;
-       node.centroid_.x_ = bvh_node.centroid().x;
-       node.centroid_.y_ = bvh_node.centroid().y;
-       node.centroid_.z_ = bvh_node.centroid().z;
+       node.centroid_.x_ = bvh_node.centroid().x_;
+       node.centroid_.y_ = bvh_node.centroid().y_;
+       node.centroid_.z_ = bvh_node.centroid().z_;
        node.depth_ = bvh_node.depth();
        node.reduction_error_ = bvh_node.reduction_error();
        node.avg_surfel_radius_ = bvh_node.avg_surfel_radius();
        node.visibility_ = (bvh_node_visibility)bvh_node.visibility();
        node.reserved_ = 0;
-       node.bounding_box_.min_.x_ = bvh_node.get_bounding_box().min().x;
-       node.bounding_box_.min_.y_ = bvh_node.get_bounding_box().min().y;
-       node.bounding_box_.min_.z_ = bvh_node.get_bounding_box().min().z;
-       node.bounding_box_.max_.x_ = bvh_node.get_bounding_box().max().x;
-       node.bounding_box_.max_.y_ = bvh_node.get_bounding_box().max().y;
-       node.bounding_box_.max_.z_ = bvh_node.get_bounding_box().max().z;
+       node.bounding_box_.min_.x_ = bvh_node.get_bounding_box().min().x_;
+       node.bounding_box_.min_.y_ = bvh_node.get_bounding_box().min().y_;
+       node.bounding_box_.min_.z_ = bvh_node.get_bounding_box().min().z_;
+       node.bounding_box_.max_.x_ = bvh_node.get_bounding_box().max().x_;
+       node.bounding_box_.max_.y_ = bvh_node.get_bounding_box().max().y_;
+       node.bounding_box_.max_.z_ = bvh_node.get_bounding_box().max().z_;
 
        write(node);
    }

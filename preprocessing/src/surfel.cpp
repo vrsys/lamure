@@ -21,50 +21,50 @@ namespace lamure {
 namespace pre
 {
 
-const vec3r surfel::
+const vec3r_t surfel::
 random_point_on_surfel() const {
 
-    auto compute_orthogonal_vector = [] (scm::math::vec3f const& n) {
+    auto compute_orthogonal_vector = [] (vec3f_t const& n) {
 
-        scm::math::vec3f  u(std::numeric_limits<float>::lowest(),
-                            std::numeric_limits<float>::lowest(),
-                            std::numeric_limits<float>::lowest());
-        if(n.z != 0.0) {
-            u = scm::math::vec3f( 1, 1, (-n.x - n.y) / n.z);
-        } else if (n.y != 0.0) {
-            u = scm::math::vec3f( 1, (-n.x - n.z) / n.y, 1);
+        vec3f_t  u(std::numeric_limits<float>::lowest(),
+                   std::numeric_limits<float>::lowest(),
+                   std::numeric_limits<float>::lowest());
+        if(n.z_ != 0.0) {
+            u = vec3f_t( 1, 1, (-n.x_ - n.y_) / n.z_);
+        } else if (n.y_ != 0.0) {
+            u = vec3f_t( 1, (-n.x_ - n.z_) / n.y_, 1);
         } else {
-            u = scm::math::vec3f( (-n.y - n.z)/n.x, 1, 1);
+            u = vec3f_t( (-n.y_ - n.z_)/n.x_, 1, 1);
         }
 
-        return scm::math::normalize(u);
+        return lamure::math::normalize(u);
     };
 
     // implements the orthogonal method discussed here:
     // http://math.stackexchange.com/questions/511370/how-to-rotate-one-vector-about-another
-    auto rotate_a_around_b_by_rad = [](vec3f const& a, vec3f const& b, double rad) {
-        vec3f a_comp_parallel_b = (scm::math::dot(a,b) / scm::math::dot(b,b) ) * b;
-        vec3f a_comp_orthogonal_b = a - a_comp_parallel_b;
+    auto rotate_a_around_b_by_rad = [](vec3f_t const& a, vec3f_t const& b, double rad) {
+        vec3f_t a_comp_parallel_b = (lamure::math::dot(a,b) / lamure::math::dot(b,b) ) * b;
+        vec3f_t a_comp_orthogonal_b = a - a_comp_parallel_b;
 
-        vec3f w = scm::math::cross(b, a_comp_orthogonal_b);
+        vec3f_t w = lamure::math::cross(b, a_comp_orthogonal_b);
 
-        double x_1 = std::cos(rad) / scm::math::length(a_comp_orthogonal_b);
-        double x_2 = std::sin(rad) / scm::math::length(w);
+        double x_1 = std::cos(rad) / lamure::math::length(a_comp_orthogonal_b);
+        double x_2 = std::sin(rad) / lamure::math::length(w);
 
-        vec3f a_rot_by_rad_orthogonal_b = scm::math::length(a_comp_orthogonal_b) * (x_1 * a_comp_orthogonal_b + x_2 * w);
+        vec3f_t a_rot_by_rad_orthogonal_b = lamure::math::length(a_comp_orthogonal_b) * (x_1 * a_comp_orthogonal_b + x_2 * w);
 
         return a_rot_by_rad_orthogonal_b + a_comp_parallel_b;
     };
 
-    real random_normalized_radius_extent    = ((double)std::rand()/RAND_MAX);
-    real random_angle_in_radians = 2.0 * M_PI * ((double)std::rand()/RAND_MAX);
+    real_t random_normalized_radius_extent    = ((double)std::rand()/RAND_MAX);
+    real_t random_angle_in_radians = 2.0 * M_PI * ((double)std::rand()/RAND_MAX);
 
-    vec3f random_direction_along_surfel        = scm::math::normalize(rotate_a_around_b_by_rad( compute_orthogonal_vector(normal_), 
+    vec3f_t random_direction_along_surfel        = lamure::math::normalize(rotate_a_around_b_by_rad( compute_orthogonal_vector(normal_), 
                                                                                                 normal_, random_angle_in_radians));
 
     // see http://mathworld.wolfram.com/DiskPointPicking.html for a short discussion about
     // random sampling of disks
-    return (std::sqrt(random_normalized_radius_extent) * radius_) * vec3r(random_direction_along_surfel) + pos_;
+    return (std::sqrt(random_normalized_radius_extent) * radius_) * vec3r_t(random_direction_along_surfel) + pos_;
 } 
 
 bool surfel::
@@ -72,26 +72,26 @@ intersect(const surfel &left_surfel, const surfel &right_surfel) {
 
     auto create_surfel_plane = [](const surfel& target_surfel, bool is_left) {
 
-        auto compute_orthogonal_vector = [] (scm::math::vec3f const& n) {
+        auto compute_orthogonal_vector = [] (vec3f_t const& n) {
 
-            scm::math::vec3f  u(std::numeric_limits<float>::lowest(),
-                                std::numeric_limits<float>::lowest(),
-                                std::numeric_limits<float>::lowest());
-            if(n.z != 0.0) {
-                u = scm::math::vec3f( 1, 1, (-n.x - n.y) / n.z);
-            } else if (n.y != 0.0) {
-                u = scm::math::vec3f( 1, (-n.x - n.z) / n.y, 1);
+            vec3f_t  u(std::numeric_limits<float>::lowest(),
+                       std::numeric_limits<float>::lowest(),
+                       std::numeric_limits<float>::lowest());
+            if(n.z_ != 0.0) {
+                u = vec3f_t( 1, 1, (-n.x_ - n.y_) / n.z_);
+            } else if (n.y_ != 0.0) {
+                u = vec3f_t( 1, (-n.x_ - n.z_) / n.y_, 1);
             } else {
-                u = scm::math::vec3f( (-n.y - n.z)/n.x, 1, 1);
+                u = vec3f_t( (-n.y_ - n.z_)/n.x_, 1, 1);
             }
 
-            return scm::math::normalize(u);
+            return lamure::math::normalize(u);
         };
 
         // jitter first normal slightly to avoid numerical problems for splats on skewed a plane
-        auto const& jittered_normal = scm::math::normalize(target_surfel.normal() + scm::math::vec3f(0.001*is_left, 0.0, 0.001*(!is_left)) );
+        auto const& jittered_normal = lamure::math::normalize(target_surfel.normal() + vec3f_t(0.001*is_left, 0.0, 0.001*(!is_left)) );
         auto const& tangent = compute_orthogonal_vector(jittered_normal);
-        auto const& bitangent = scm::math::normalize(scm::math::cross(jittered_normal, tangent));
+        auto const& bitangent = lamure::math::normalize(lamure::math::cross(jittered_normal, tangent));
 
         auto const& a = target_surfel.pos();
         auto const& b = a + tangent;
@@ -113,7 +113,7 @@ intersect(const surfel &left_surfel, const surfel &right_surfel) {
     auto const right_radius = right_surfel.radius();
     auto const& right_a = right_surfel.pos();
 
-    auto const center_distance = scm::math::length(left_a - right_a);
+    auto const center_distance = lamure::math::length(left_a - right_a);
 
     if( !(center_distance <= left_radius + right_radius ) ) {
         // not even the spheres did intersect - stop here
@@ -150,7 +150,7 @@ intersect(const surfel &left_surfel, const surfel &right_surfel) {
         // that lie in the same plane intersect as well 
         return true;
     }  else {
-        std::cout << left_a - right_a << "\n";
+        //std::cout << left_a - right_a << "\n";
         return false;
     }
 
@@ -159,17 +159,17 @@ intersect(const surfel &left_surfel, const surfel &right_surfel) {
 
 bool surfel::
 compare_x(const surfel &left_surfel, const surfel &right_surfel) {
-    return left_surfel.pos().x < right_surfel.pos().x;
+    return left_surfel.pos().x_ < right_surfel.pos().x_;
 }
 
 bool surfel::
 compare_y(const surfel &left_surfel, const surfel &right_surfel) {
-    return left_surfel.pos().y < right_surfel.pos().y;
+    return left_surfel.pos().y_ < right_surfel.pos().y_;
 }
 
 bool surfel::
 compare_z(const surfel &left_surfel, const surfel &right_surfel) {
-    return left_surfel.pos().z < right_surfel.pos().z;
+    return left_surfel.pos().z_ < right_surfel.pos().z_;
 }
 
 surfel::compare_function

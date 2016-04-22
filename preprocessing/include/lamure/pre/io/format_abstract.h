@@ -10,7 +10,7 @@
 
 #include <lamure/pre/platform.h>
 #include <lamure/pre/io/file.h>
-#include <lamure/pre/logger.h>
+#include <lamure/logger.h>
 #include <map>
 
 namespace lamure {

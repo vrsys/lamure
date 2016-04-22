@@ -10,8 +10,8 @@
 
 #include <lamure/pre/platform.h>
 #include <lamure/types.h>
-#include <lamure/bounding_box.h>
-
+#include <lamure/math/bounding_box.h>
+#include <lamure/assert.h>
 #include <lamure/pre/surfel_mem_array.h>
 #include <lamure/pre/surfel_disk_array.h>
 #include <lamure/pre/node_statistics.h>
@@ -29,31 +29,31 @@ public:
     explicit            bvh_node()
                             : node_id_(0),
                               depth_(0),
-                              bounding_box_(vec3r(0.0), vec3r(0.0)),
+                              bounding_box_(vec3r_t(0.0), vec3r_t(0.0)),
                               reduction_error_(0.0),
                               avg_surfel_radius_(0.0),
-                              centroid_(vec3r(0.0)),
+                              centroid_(vec3r_t(0.0)),
                               visibility_(node_visibility::node_visible) {}
 
-    explicit            bvh_node(const node_id_type id,
+    explicit            bvh_node(const node_id_t id,
                                 const uint32_t depth,
-                                const bounding_box& bounding_box)
+                                const math::bounding_box_t& bounding_box)
                             : node_id_(id),
                               depth_(depth),
                               bounding_box_(bounding_box),
                               reduction_error_(0.0),
                               avg_surfel_radius_(0.0),
-                              centroid_(vec3r(0.0)),
+                              centroid_(vec3r_t(0.0)),
                               visibility_(node_visibility::node_visible) {}
 
-    explicit            bvh_node(const node_id_type id,
+    explicit            bvh_node(const node_id_t id,
                                 const uint32_t depth,
-                                const bounding_box& bounding_box,
+                                const math::bounding_box_t& bounding_box,
                                 const surfel_mem_array& array);
 
-    explicit            bvh_node(const node_id_type id,
+    explicit            bvh_node(const node_id_t id,
                                 const uint32_t depth,
-                                const bounding_box& bounding_box,
+                                const math::bounding_box_t& bounding_box,
                                 const surfel_disk_array& array);
 
                         ~bvh_node();
@@ -63,25 +63,25 @@ public:
        node_invisible = 1
     };
 
-    const node_id_type    node_id() const { return node_id_; }
+    const node_id_t     node_id() const { return node_id_; }
 
-    const bounding_box&  get_bounding_box() const { return bounding_box_; }
-    bounding_box&        get_bounding_box() { return bounding_box_; }
+    const math::bounding_box_t& get_bounding_box() const { return bounding_box_; }
+    math::bounding_box_t& get_bounding_box() { return bounding_box_; }
 
-    void                set_bounding_box(const bounding_box& value) { bounding_box_ = value; }
+    void                set_bounding_box(const math::bounding_box_t& value) { bounding_box_ = value; }
 
     const uint32_t      depth() const { return depth_; }
 
-    const real          reduction_error() const { return reduction_error_; }
-    void                set_reduction_error(const real value)
+    const real_t          reduction_error() const { return reduction_error_; }
+    void                set_reduction_error(const real_t value)
                             { reduction_error_ = value; }
 
-    const real          avg_surfel_radius() const { return avg_surfel_radius_; }
-    void                set_avg_surfel_radius(const real value)
+    const real_t          avg_surfel_radius() const { return avg_surfel_radius_; }
+    void                set_avg_surfel_radius(const real_t value)
                             { avg_surfel_radius_ = value; }
 
-    const vec3r         centroid() const { return centroid_; }
-    void                set_centroid(const vec3r& value)
+    const vec3r_t         centroid() const { return centroid_; }
+    void                set_centroid(const vec3r_t& value)
                             { centroid_ = value; }
 
     const node_visibility visibility() const { return visibility_; }
@@ -164,12 +164,12 @@ public:
 
 private:
 
-    node_id_type         node_id_;
+    node_id_t            node_id_;
     uint32_t             depth_;
-    bounding_box         bounding_box_;
-    real                 reduction_error_;
-    real                 avg_surfel_radius_;
-    vec3r                centroid_;
+    math::bounding_box_t bounding_box_;
+    real_t               reduction_error_;
+    real_t               avg_surfel_radius_;
+    vec3r_t              centroid_;
     node_visibility      visibility_;
 
     surfel_mem_array     mem_array_;

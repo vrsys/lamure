@@ -24,28 +24,28 @@ class PREPROCESSING_DLL surfel /*final*/
 public:
   using compare_function = std::function<bool(const surfel& left, const surfel& right)>;
 
-                        surfel(const vec3r& pos    = vec3r(0.0),
-                               const vec3b& color  = vec3b(0),
-                               const real   radius = 0.0,
-                               const vec3f& normal = vec3f(0.f))
+                        surfel(const vec3r_t& pos    = vec3r_t(0.0),
+                               const vec3b_t& color  = vec3b_t(0),
+                               const real_t   radius = 0.0,
+                               const vec3f_t& normal = vec3f_t(0.f))
                             : pos_(pos),
                               color_(color),
                               radius_(radius),
                               normal_(normal) {}
 
-    const vec3r         pos() const { return pos_; }
-    vec3r&              pos() { return pos_; }
+    const vec3r_t       pos() const { return pos_; }
+    vec3r_t&            pos() { return pos_; }
 
-    const vec3b         color() const { return color_; }
-    vec3b&              color() { return color_; }
+    const vec3b_t       color() const { return color_; }
+    vec3b_t&            color() { return color_; }
     
-    const real          radius() const { return radius_; }
-    real&               radius() { return radius_; }
+    const real_t        radius() const { return radius_; }
+    real_t&             radius() { return radius_; }
 
-    const vec3f         normal() const { return normal_; }
-    vec3f&              normal() { return normal_; }
+    const vec3f_t       normal() const { return normal_; }
+    vec3f_t&            normal() { return normal_; }
 
-    const vec3r         random_point_on_surfel() const;      
+    const vec3r_t       random_point_on_surfel() const;      
 
     bool                operator==(const surfel& rhs) const
                             { return pos_    == rhs.pos_ &&
@@ -72,10 +72,10 @@ private:
     /*static CGAL::Simple_cartesian<double>::Plane_3 
                         create_surfel_plane(const surfel& target_surfel, bool is_left);*/
 
-    vec3r               pos_;
-    vec3b               color_;
-    real                radius_;
-    vec3f               normal_;
+    vec3r_t             pos_;
+    vec3b_t             color_;
+    real_t              radius_;
+    vec3f_t             normal_;
 
 };
 

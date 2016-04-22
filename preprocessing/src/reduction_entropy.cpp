@@ -19,7 +19,7 @@ namespace lamure {
 namespace pre {
 
 surfel_mem_array reduction_entropy::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node,
           const bvh& tree,
@@ -184,7 +184,7 @@ void reduction_entropy::
 update_color(shared_surfel target_surfel, 
               shared_entropy_surfel_vector const& neighbour_ptrs) const{
 
-    vec3r accumulated_color(0.0, 0.0, 0.0);
+    vec3r_t accumulated_color(0.0, 0.0, 0.0);
     double accumulated_weight = 0.0;
 
     accumulated_color = target_surfel->color();
@@ -195,7 +195,7 @@ update_color(shared_surfel target_surfel,
         accumulated_color += curr_neighbour_ptr->contained_surfel->color();
     }
 
-    vec3b normalized_color = vec3b(accumulated_color[0] / accumulated_weight,
+    vec3b_t normalized_color = vec3b_t(accumulated_color[0] / accumulated_weight,
                                    accumulated_color[1] / accumulated_weight,
                                    accumulated_color[2] / accumulated_weight );
     target_surfel->color() = normalized_color;
@@ -204,9 +204,9 @@ update_color(shared_surfel target_surfel,
 void reduction_entropy::
 update_normal(shared_surfel target_surfel_ptr, 
                shared_entropy_surfel_vector const neighbour_ptrs) const{
-    vec3f new_normal(0.0, 0.0, 0.0);
+    vec3f_t new_normal(0.0, 0.0, 0.0);
 
-    real weight_sum = 0.f;
+    real_t weight_sum = 0.f;
 
     new_normal = target_surfel_ptr->normal();
     weight_sum = 1.0;   
@@ -214,7 +214,7 @@ update_normal(shared_surfel target_surfel_ptr,
     for(auto const neighbour_ptr : neighbour_ptrs){
     shared_surfel target_surfel_ptr = neighbour_ptr->contained_surfel;
 
-        real weight = target_surfel_ptr->radius();
+        real_t weight = target_surfel_ptr->radius();
         weight_sum += weight;
 
         new_normal += weight * target_surfel_ptr->normal();
@@ -223,33 +223,33 @@ update_normal(shared_surfel target_surfel_ptr,
     if( weight_sum != 0.0 ) {
         new_normal /= weight_sum;
     } else {
-        new_normal = vec3r(0.0, 0.0, 0.0);
+        new_normal = vec3r_t(0.0, 0.0, 0.0);
     }
 
-    target_surfel_ptr->normal() = scm::math::normalize(new_normal);
+    target_surfel_ptr->normal() = lamure::math::normalize(new_normal);
 } 
 
 // to verify: the center of mass is the point that allows for the minimal enclosing sphere
-vec3r reduction_entropy::
+vec3r_t reduction_entropy::
 compute_center_of_mass(shared_surfel target_surfel_ptr, 
                        shared_entropy_surfel_vector const & neighbour_ptrs) const {
 
     //volume of a sphere (4/3) * pi * r^3
-    real target_surfel_radius = target_surfel_ptr->radius();
-    real rad_pow_3 = target_surfel_radius * target_surfel_radius * target_surfel_radius;
-    real target_surfel_mass = (4.0/3.0) * M_PI * rad_pow_3;
+    real_t target_surfel_radius = target_surfel_ptr->radius();
+    real_t rad_pow_3 = target_surfel_radius * target_surfel_radius * target_surfel_radius;
+    real_t target_surfel_mass = (4.0/3.0) * M_PI * rad_pow_3;
 
-    vec3r center_of_mass_enumerator = target_surfel_mass * target_surfel_ptr->pos();
-    real center_of_mass_denominator = target_surfel_mass;
+    vec3r_t center_of_mass_enumerator = target_surfel_mass * target_surfel_ptr->pos();
+    real_t center_of_mass_denominator = target_surfel_mass;
 
     //center of mass equation: c_o_m = ( sum_of( m_i*x_i) ) / ( sum_of(m_i) )
     for (auto const curr_neighbour_ptr : neighbour_ptrs) {
 
     shared_surfel current_neighbour_surfel = curr_neighbour_ptr->contained_surfel;
 
-        real neighbour_radius = current_neighbour_surfel->radius();
+        real_t neighbour_radius = current_neighbour_surfel->radius();
 
-        real neighbour_mass = (4.0/3.0) * M_PI * 
+        real_t neighbour_mass = (4.0/3.0) * M_PI * 
                                 neighbour_radius * neighbour_radius * neighbour_radius;
 
         center_of_mass_enumerator += neighbour_mass * current_neighbour_surfel->pos();
@@ -260,19 +260,19 @@ compute_center_of_mass(shared_surfel target_surfel_ptr,
     return center_of_mass_enumerator / center_of_mass_denominator;
 }
 
-real reduction_entropy::
-compute_enclosing_sphere_radius(vec3r const& center_of_mass, 
+real_t reduction_entropy::
+compute_enclosing_sphere_radius(vec3r_t const& center_of_mass, 
                                 shared_surfel target_surfel_ptr, 
                                 std::vector< shared_entropy_surfel > const neighbour_ptrs) const {
 
-    real enclosing_radius = 0.0;
+    real_t enclosing_radius = 0.0;
 
-    enclosing_radius = scm::math::length(center_of_mass - target_surfel_ptr->pos()) + target_surfel_ptr->radius();
+    enclosing_radius = lamure::math::length(center_of_mass - target_surfel_ptr->pos()) + target_surfel_ptr->radius();
 
     for (auto const curr_neighbour_ptr : neighbour_ptrs) {
 
     shared_surfel current_neighbour_surfel = curr_neighbour_ptr->contained_surfel;
-        real neighbour_enclosing_radius = scm::math::length(center_of_mass - current_neighbour_surfel->pos()) + current_neighbour_surfel->radius();
+        real_t neighbour_enclosing_radius = lamure::math::length(center_of_mass - current_neighbour_surfel->pos()) + current_neighbour_surfel->radius();
         
         if(neighbour_enclosing_radius > enclosing_radius) {
             enclosing_radius = neighbour_enclosing_radius;
@@ -319,7 +319,7 @@ update_entropy(shared_entropy_surfel target_en_surfel,
     //double entropy = target_en_surfel->contained_surfel->radius();
     double entropy = 0.0;
 
-    vec3b const& target_surfel_color = target_en_surfel->contained_surfel->color();
+    vec3b_t const& target_surfel_color = target_en_surfel->contained_surfel->color();
 
     size_t num_surfels_considered = 1;
 
@@ -328,15 +328,15 @@ update_entropy(shared_entropy_surfel target_en_surfel,
         if( curr_neighbour_ptr->validity ) {
     	    shared_surfel current_neighbour_surfel = curr_neighbour_ptr->contained_surfel;
 
-            vec3f const& neighbour_normal = current_neighbour_surfel->normal();  
+            vec3f_t const& neighbour_normal = current_neighbour_surfel->normal();  
 
-            vec3b const& neighbour_color = current_neighbour_surfel->color();
+            vec3b_t const& neighbour_color = current_neighbour_surfel->color();
 
 
-            float normal_angle = std::fabs(scm::math::dot(target_en_surfel->contained_surfel->normal(), neighbour_normal));
+            float normal_angle = std::fabs(lamure::math::dot(target_en_surfel->contained_surfel->normal(), neighbour_normal));
             entropy += (1 + target_en_surfel->level)/(1.0 + normal_angle);
 /*
-            real color_diff = scm::math::length( vec3r((target_surfel_color[0] - neighbour_color[0]),
+            real_t color_diff = lamure::math::length( vec3r_t((target_surfel_color[0] - neighbour_color[0]),
                                                        (target_surfel_color[1] - neighbour_color[1]),
                                                        (target_surfel_color[2] - neighbour_color[2]) ) ) ;
 */
@@ -408,13 +408,13 @@ merge(shared_entropy_surfel target_entropy_surfel,
                     double left_en_surfel_distance_measure = 
                         (target_entropy_surfel->contained_surfel->radius() +
                          left_entropy_surfel->contained_surfel->radius()) - 
-                        scm::math::length(target_entropy_surfel->contained_surfel->pos() -
+                        lamure::math::length(target_entropy_surfel->contained_surfel->pos() -
                                           left_entropy_surfel->contained_surfel->pos());
 
                     double right_en_surfel_distance_measure = 
                         (target_entropy_surfel->contained_surfel->radius() +
                          right_entropy_surfel->contained_surfel->radius()) - 
-                        scm::math::length(target_entropy_surfel->contained_surfel->pos() -
+                        lamure::math::length(target_entropy_surfel->contained_surfel->pos() -
                                           right_entropy_surfel->contained_surfel->pos());
 
                     if(

@@ -53,13 +53,13 @@ read(const std::string& filename, surfel_callback_funtion callback)
     });
 
     ply_parser.info_callback([&](std::size_t line, const std::string& message) {
-			       LOGGER_INFO(basename << " (" << line << "): " << message);
+			       LAMURE_LOG_INFO(basename << " (" << line << "): " << message);
 			     });
     ply_parser.warning_callback([&](std::size_t line, const std::string& message) {
-				  LOGGER_WARN(basename << " (" << line << "): " << message);
+				  LAMURE_LOG_WARN(basename << " (" << line << "): " << message);
 				});
     ply_parser.error_callback([&](std::size_t line, const std::string& message) {
-				LOGGER_ERROR(basename << " (" << line << "): " << message);
+				LAMURE_LOG_ERROR(basename << " (" << line << "): " << message);
 				throw std::runtime_error("Failed to parse PLY file");
 			      });
 
@@ -79,17 +79,17 @@ scalar_callback(const std::string& element_name, const std::string& property_nam
 {
     if (element_name == "vertex") {
         if (property_name == "x")
-            return [this](float value) { current_surfel_.pos().x = value; };
+            return [this](float value) { current_surfel_.pos().x_ = value; };
         else if (property_name == "y")
-            return [this](float value) { current_surfel_.pos().y = value; };
+            return [this](float value) { current_surfel_.pos().y_ = value; };
         else if (property_name == "z")
-            return [this](float value) { current_surfel_.pos().z = value; };
+            return [this](float value) { current_surfel_.pos().z_ = value; };
         else if (property_name == "nx")
-            return [this](float value) { current_surfel_.normal().x = value; };
+            return [this](float value) { current_surfel_.normal().x_ = value; };
         else if (property_name == "ny")
-            return [this](float value) { current_surfel_.normal().y = value; };
+            return [this](float value) { current_surfel_.normal().y_ = value; };
         else if (property_name == "nz")
-            return [this](float value) { current_surfel_.normal().z = value; };
+            return [this](float value) { current_surfel_.normal().z_ = value; };
 	else
           throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }
@@ -103,13 +103,13 @@ scalar_callback(const std::string& element_name, const std::string& property_nam
 {
     if (element_name == "vertex") {
         if (property_name == "red")
-            return [this](uint8_t value) { current_surfel_.color().x = value; };
+            return [this](uint8_t value) { current_surfel_.color().x_ = value; };
         else if (property_name == "green")
-            return [this](uint8_t value) { current_surfel_.color().y = value; };
+            return [this](uint8_t value) { current_surfel_.color().y_ = value; };
         else if (property_name == "blue")
-            return [this](uint8_t value) { current_surfel_.color().z = value; };
+            return [this](uint8_t value) { current_surfel_.color().z_ = value; };
         else if (property_name == "alpha")
-	  return [this](uint8_t value) { /*current_surfel_.color().z = value*/; };
+	  return [this](uint8_t value) { /*current_surfel_.color().z_ = value*/; };
         else
           throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }

@@ -85,7 +85,7 @@ public:
 
     explicit  reduction_entropy() {}
 
-    surfel_mem_array      create_lod(real& reduction_error,
+    surfel_mem_array      create_lod(real_t& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node,
                                   const bvh& tree,
@@ -97,9 +97,9 @@ private:
 
 
 
-	vec3r compute_center_of_mass(shared_surfel current_surfel_ptr, 
+	vec3r_t compute_center_of_mass(shared_surfel current_surfel_ptr, 
 								shared_entropy_surfel_vector const& neighbour_ptrs) const;
-	real compute_enclosing_sphere_radius(vec3r const& center_of_mass, 
+	real_t compute_enclosing_sphere_radius(vec3r_t const& center_of_mass, 
 										 shared_surfel current_surfel, 
 										 shared_entropy_surfel_vector const neighbour_ptrs) const;
 	

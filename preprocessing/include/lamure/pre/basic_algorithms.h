@@ -11,7 +11,7 @@
 #include <lamure/pre/common.h>
 #include <lamure/pre/surfel_disk_array.h>
 #include <lamure/pre/surfel_mem_array.h>
-#include <lamure/bounding_box.h>
+#include <lamure/math/bounding_box.h>
 
 namespace lamure {
 namespace pre {
@@ -24,28 +24,28 @@ class basic_algorithms
 public:
     
     struct surfel_group_properties {
-        real         rep_radius;
-        vec3r        centroid;
-        bounding_box bbox;
+        real_t         rep_radius;
+        vec3r_t        centroid;
+	math::bounding_box_t bbox;
     };
 
     template <class T>
-    using splitted_array = std::vector<std::pair<T, bounding_box>>;
+    using splitted_array = std::vector<std::pair<T, math::bounding_box_t>>;
 
                         basic_algorithms() = delete;
 
-    static bounding_box  compute_aabb(const surfel_mem_array& sa, 
+    static math::bounding_box_t  compute_aabb(const surfel_mem_array& sa, 
                                     const bool parallelize = true);
 
-    static bounding_box  compute_aabb(const surfel_disk_array& sa, 
+    static math::bounding_box_t  compute_aabb(const surfel_disk_array& sa, 
                                     const size_t buffer_size,
                                     const bool parallelize = true);
 
     static void         translate_surfels(surfel_mem_array& sa,
-                                         const vec3r& translation);
+                                         const vec3r_t& translation);
 
     static void         translate_surfels(surfel_disk_array& sa,
-                                         const vec3r& translation,
+                                         const vec3r_t& translation,
                                          const size_t buffer_size);
 
     static surfel_group_properties
@@ -55,14 +55,14 @@ public:
 
     static void         sort_and_split(surfel_mem_array& sa,
                                      splitted_array<surfel_mem_array>& out,
-                                     const bounding_box& box,
+                                     const math::bounding_box_t& box,
                                      const uint8_t split_axis,
                                      const uint8_t fan_factor, 
                                      const bool parallelize = false);
 
     static void         sort_and_split(surfel_disk_array& sa,
                                      splitted_array<surfel_disk_array>& out,
-                                     const bounding_box& box,
+                                     const math::bounding_box_t& box,
                                      const uint8_t split_axis,
                                      const uint8_t fan_factor, 
                                      const size_t memory_limit);
@@ -71,7 +71,7 @@ private:
     template <class T>
     static void         split_surfel_array(T& sa,
                                          splitted_array<T>& out,
-                                         const bounding_box& box,
+                                         const math::bounding_box_t& box,
                                          const uint8_t split_axis,
                                          const uint8_t fan_factor);
 

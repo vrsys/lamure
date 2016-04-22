@@ -6,6 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/surfel_mem_array.h>
+#include <lamure/assert.h>
 
 namespace lamure {
 namespace pre {
@@ -13,9 +14,9 @@ namespace pre {
 surfel surfel_mem_array::
 read_surfel(const size_t index) const
 {
-    assert(!is_empty_);
-    assert(index < length_);
-    assert(offset_ + index < mem_data_->size());
+    ASSERT(!is_empty_);
+    ASSERT(index < length_);
+    ASSERT(offset_ + index < mem_data_->size());
 
     return mem_data_->operator[](offset_ + index);
 }
@@ -23,9 +24,9 @@ read_surfel(const size_t index) const
 surfel const& surfel_mem_array::
 read_surfel_ref(const size_t index) const
 {
-    assert(!is_empty_);
-    assert(index < length_);
-    assert(offset_ + index < mem_data_->size());
+    ASSERT(!is_empty_);
+    ASSERT(index < length_);
+    ASSERT(offset_ + index < mem_data_->size());
 
     return mem_data_->operator[](offset_ + index);
 }
@@ -33,9 +34,9 @@ read_surfel_ref(const size_t index) const
 void surfel_mem_array::
 write_surfel(const surfel& surfel, const size_t index) const
 {
-    assert(!is_empty_);
-    assert(index < length_);
-    assert(offset_ + index < mem_data_->size());
+    ASSERT(!is_empty_);
+    ASSERT(index < length_);
+    ASSERT(offset_ + index < mem_data_->size());
 
     mem_data_->at(offset_ + index) = surfel;
 }

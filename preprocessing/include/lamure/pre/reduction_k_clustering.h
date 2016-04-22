@@ -22,8 +22,8 @@ struct cluster_surfel_with_neighbours{
     uint32_t surfel_id;
     uint32_t node_id;
     bool member_of_M; 
-    real overlap;
-    real deviation;
+    real_t overlap;
+    real_t deviation;
     std::vector<std::shared_ptr<cluster_surfel_with_neighbours> > neighbours;
     std::shared_ptr<surfel> contained_surfel;
     cluster_surfel_with_neighbours(surfel const&  in_surfel, uint32_t const in_surfel_id, uint32_t const in_node_id) :
@@ -141,7 +141,7 @@ explicit reduction_k_clustering(size_t num_neighbours):
                                     {}
 
 
-    surfel_mem_array      create_lod(real& reduction_error,
+    surfel_mem_array      create_lod(real_t& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node,
                                   const bvh& tree,
@@ -154,9 +154,9 @@ private:
 
   //hash_based algorithm to provide set of min-overlap surfels
   //^no currently no collision handling
-  shared_cluster_surfel_vector get_initial_cluster_seeds(vec3f const& avg_normal, shared_cluster_surfel_vector const&  input_cluster_surfels) const;
-  int get_largest_dim(vec3f const& avg_normal) const;
-  vec3f compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const; 
+  shared_cluster_surfel_vector get_initial_cluster_seeds(vec3f_t const& avg_normal, shared_cluster_surfel_vector const&  input_cluster_surfels) const;
+  int get_largest_dim(vec3f_t const& avg_normal) const;
+  vec3f_t compute_avg_normal(shared_cluster_surfel_vector const& input_surfels) const; 
 
 
   void assign_locally_overlapping_neighbours(shared_cluster_surfel current_surfel_ptr,
@@ -166,7 +166,7 @@ private:
 
   void compute_deviation(shared_cluster_surfel current_surfel_ptr) const; //use neighbours to compute deviation
 
-  real compute_distance(shared_cluster_surfel first_surfel_ptr,
+  real_t compute_distance(shared_cluster_surfel first_surfel_ptr,
                         shared_cluster_surfel second_surfel_ptr) const;
 
   void resolve_oversampling(shared_cluster_surfel_vector& surfel_ptr_set_M) const;
@@ -187,7 +187,7 @@ private:
 
   void merge(shared_cluster_surfel_vector& final_cluster_surfel_set) const;
 
-  void subsample(surfel_mem_array& joined_input, real const avg_radius) const;
+  void subsample(surfel_mem_array& joined_input, real_t const avg_radius) const;
 
 
 };

@@ -22,17 +22,17 @@ class radius_computation_natural_neighbours: public radius_computation_strategy
 {
 public:
 	explicit radius_computation_natural_neighbours(uint16_t desired_num_nearest_neighbours = 20,
-		                                           uint16_t min_num_nearest_neighbours = 10,
-												   uint16_t min_num_natural_neighbours = 3) 
+		                                       uint16_t min_num_nearest_neighbours = 10,
+			  			       uint16_t min_num_natural_neighbours = 3) 
 		:  min_num_nearest_neighbours_(min_num_nearest_neighbours),
 		   min_num_natural_neighbours_(min_num_natural_neighbours) {
-		   		number_of_neighbours_ = desired_num_nearest_neighbours;
+		   	number_of_neighbours_ = desired_num_nearest_neighbours;
 		   }
 
 
-	real  compute_radius(const bvh& tree, 
-	 					 const surfel_id_t surfel,
-                       	  std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const override;
+        real_t  compute_radius(const bvh& tree, 
+          const surfel_id_t surfel,
+          std::vector<std::pair<surfel_id_t, real_t>> const& nearest_neighbours) const override;
 
 
 private:

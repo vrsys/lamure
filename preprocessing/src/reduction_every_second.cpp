@@ -11,7 +11,7 @@ namespace lamure {
 namespace pre {
 
 surfel_mem_array reduction_every_second::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node,
           const bvh& tree,
@@ -19,8 +19,8 @@ create_lod(real& reduction_error,
 {
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
-    const real fan_factor = 2;
-    const real mult = sqrt(1.0 + 1.0 / fan_factor)*1.0;
+    const real_t fan_factor = 2;
+    const real_t mult = sqrt(1.0 + 1.0 / fan_factor)*1.0;
 
     //create lod from input
     for (size_t i = 0; i < input.size(); ++i) {
@@ -30,7 +30,7 @@ create_lod(real& reduction_error,
 
             auto surfel = input[i]->mem_data()->at(j);
 
-            real new_rad = mult * surfel.radius();
+            real_t new_rad = mult * surfel.radius();
             surfel.radius() = new_rad;
             mem_array.mem_data()->push_back(surfel);
         }

@@ -20,7 +20,7 @@ public:
   explicit reduction_pair_contraction(const uint16_t number_of_neighbours)
       : number_of_neighbours_(number_of_neighbours){}
 
-    surfel_mem_array      create_lod(real& reduction_error,
+    surfel_mem_array      create_lod(real_t& reduction_error,
                                   const std::vector<surfel_mem_array*>& input,
                                   const uint32_t surfels_per_node,
                                   const bvh& tree,
@@ -30,10 +30,10 @@ private:
   uint16_t  number_of_neighbours_;
 };
 
-lamure::real quadric_error(const vec3r& p, const mat4r& quadric);
-mat4r edge_quadric(const vec3f& normal_p1, const vec3r& p1, const vec3r& p2);
+lamure::real_t quadric_error(const vec3r_t& p, const mat4r_t& quadric);
+mat4r_t edge_quadric(const vec3f_t& normal_p1, const vec3r_t& p1, const vec3r_t& p2);
 
-std::vector<std::pair<surfel_id_t, real>>
+std::vector<std::pair<surfel_id_t, real_t>>
 get_local_nearest_neighbours(const std::vector<surfel_mem_array*>& input,
                              size_t num_local_neighbours,
                              surfel_id_t const& target_surfel);

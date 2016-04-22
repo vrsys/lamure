@@ -20,7 +20,7 @@ reduction_hierarchical_clustering_mk5()
 
 
 surfel_mem_array reduction_hierarchical_clustering_mk5::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
 			const std::vector<surfel_mem_array*>& input,
             const uint32_t surfels_per_node,
           	const bvh& tree,
@@ -43,8 +43,8 @@ create_lod(real& reduction_error,
     // Maximum possible variation is 1/3.
     // TODO: optimize chosen parameters
     uint32_t maximum_cluster_size = (surfels_to_sample.size() / surfels_per_node) * 2;
-    real maximum_variation_position = -1;
-    real maximum_variation_color = 0.025;
+    real_t maximum_variation_position = -1;
+    real_t maximum_variation_color = 0.025;
 
 	std::vector<std::vector<surfel*>> clusters;
 	clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, maximum_variation_position, maximum_variation_color, surfels_per_node);
@@ -69,8 +69,8 @@ create_lod(real& reduction_error,
 std::vector<std::vector<surfel*>> reduction_hierarchical_clustering_mk5::
 split_point_cloud(const std::vector<surfel*>& input_surfels, 
 				uint32_t max_cluster_size, 
-				real max_variation_position,
-				real max_variation_color, 
+				real_t max_variation_position,
+				real_t max_variation_color, 
 				const uint32_t& max_clusters) const
 {
 	std::priority_queue<hierarchical_cluster_mk5, 
@@ -100,8 +100,8 @@ split_point_cloud(const std::vector<surfel*>& input_surfels,
 			{
 				surfel* current_surfel = current_cluster.surfels.at(surfel_index);
 				
-				vec3r color_trans = transform_color(current_surfel->color());
-				real surfel_side = point_plane_distance(current_cluster.centroid_color, current_cluster.normal_color, color_trans);
+				vec3r_t color_trans = transform_color(current_surfel->color());
+				real_t surfel_side = point_plane_distance(current_cluster.centroid_color, current_cluster.normal_color, color_trans);
 
 				if(surfel_side >= 0)
 				{
@@ -150,7 +150,7 @@ split_point_cloud(const std::vector<surfel*>& input_surfels,
 void reduction_hierarchical_clustering_mk5::
 split_cluster_by_position(const hierarchical_cluster_mk5& input_cluster,
 	const uint32_t& max_cluster_size,
-	const real& max_variation,
+	const real_t& max_variation,
 	std::priority_queue<hierarchical_cluster_mk5, std::vector<hierarchical_cluster_mk5>, cluster_comparator_mk5>& cluster_queue) const
 {
 	if(input_cluster.surfels.size() > max_cluster_size || input_cluster.variation_pos > max_variation)
@@ -162,7 +162,7 @@ split_cluster_by_position(const hierarchical_cluster_mk5& input_cluster,
 		for(uint32_t surfel_index = 0; surfel_index < input_cluster.surfels.size(); ++surfel_index)
 		{
 			surfel* current_surfel = input_cluster.surfels.at(surfel_index);
-			real surfel_side = point_plane_distance(input_cluster.centroid_pos, input_cluster.normal_pos, current_surfel->pos());
+			real_t surfel_side = point_plane_distance(input_cluster.centroid_pos, input_cluster.normal_pos, current_surfel->pos());
 
 			if(surfel_side >= 0)
 			{
@@ -194,17 +194,17 @@ split_cluster_by_position(const hierarchical_cluster_mk5& input_cluster,
 hierarchical_cluster_mk5 reduction_hierarchical_clustering_mk5::
 calculate_cluster_data(const std::vector<surfel*>& input_surfels) const
 {
-	vec3r centroid_pos;
-	vec3r centroid_color;
+	vec3r_t centroid_pos;
+	vec3r_t centroid_color;
 
-	scm::math::mat3d covariance_matrix_pos = calculate_covariance_matrix(input_surfels, centroid_pos);
-	scm::math::mat3d covariance_matrix_color = calculate_covariance_matrix_color(input_surfels, centroid_color);
+	mat3d_t covariance_matrix_pos = calculate_covariance_matrix(input_surfels, centroid_pos);
+	mat3d_t covariance_matrix_color = calculate_covariance_matrix_color(input_surfels, centroid_color);
 
-	vec3f normal_pos;
-	vec3f normal_color;
+	vec3f_t normal_pos;
+	vec3f_t normal_color;
 
-	real variation_pos = calculate_variation(covariance_matrix_pos, normal_pos);
-	real variation_color = calculate_variation(covariance_matrix_color, normal_color);
+	real_t variation_pos = calculate_variation(covariance_matrix_pos, normal_pos);
+	real_t variation_color = calculate_variation(covariance_matrix_color, normal_color);
 
 	hierarchical_cluster_mk5 new_cluster;
 	new_cluster.surfels = input_surfels;
@@ -223,10 +223,10 @@ calculate_cluster_data(const std::vector<surfel*>& input_surfels) const
 
 
 
-scm::math::mat3d reduction_hierarchical_clustering_mk5::
-calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r& centroid) const
+mat3d_t reduction_hierarchical_clustering_mk5::
+calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r_t& centroid) const
 {
-    scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
+    mat3d_t covariance_mat = mat3d_t::zero();
     centroid = calculate_centroid(surfels_to_sample);
     
     // TODO: The rounding is only necessary for some models (infinite loop otherwise), it would be good to get rid of it completely though.
@@ -236,17 +236,17 @@ calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r
     {
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
         
-        covariance_mat.m00 += std::pow(current_surfel->pos().x-centroid.x, 2);
-        covariance_mat.m01 += (current_surfel->pos().x-centroid.x) * (current_surfel->pos().y - centroid.y);
-        covariance_mat.m02 += (current_surfel->pos().x-centroid.x) * (current_surfel->pos().z - centroid.z);
+        covariance_mat.m00 += std::pow(current_surfel->pos().x_-centroid.x_, 2);
+        covariance_mat.m01 += (current_surfel->pos().x_-centroid.x_) * (current_surfel->pos().y_ - centroid.y_);
+        covariance_mat.m02 += (current_surfel->pos().x_-centroid.x_) * (current_surfel->pos().z_ - centroid.z_);
 
-        covariance_mat.m03 += (current_surfel->pos().y-centroid.y) * (current_surfel->pos().x - centroid.x);
-        covariance_mat.m04 += std::pow(current_surfel->pos().y-centroid.y, 2);
-        covariance_mat.m05 += (current_surfel->pos().y-centroid.y) * (current_surfel->pos().z - centroid.z);
+        covariance_mat.m03 += (current_surfel->pos().y_-centroid.y_) * (current_surfel->pos().x_ - centroid.x_);
+        covariance_mat.m04 += std::pow(current_surfel->pos().y_-centroid.y_, 2);
+        covariance_mat.m05 += (current_surfel->pos().y_-centroid.y_) * (current_surfel->pos().z_ - centroid.z_);
 
-        covariance_mat.m06 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().x - centroid.x);
-        covariance_mat.m07 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().y - centroid.y);
-        covariance_mat.m08 += std::pow(current_surfel->pos().z-centroid.z, 2);
+        covariance_mat.m06 += (current_surfel->pos().z_-centroid.z_) * (current_surfel->pos().x_ - centroid.x_);
+        covariance_mat.m07 += (current_surfel->pos().z_-centroid.z_) * (current_surfel->pos().y_ - centroid.y_);
+        covariance_mat.m08 += std::pow(current_surfel->pos().z_-centroid.z_, 2);
     }
 
     if (roundingNecessary)
@@ -263,28 +263,28 @@ calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r
 
 
 
-scm::math::mat3d reduction_hierarchical_clustering_mk5::
-calculate_covariance_matrix_color(const std::vector<surfel*>& surfels_to_sample, vec3r& centroid) const
+mat3d_t reduction_hierarchical_clustering_mk5::
+calculate_covariance_matrix_color(const std::vector<surfel*>& surfels_to_sample, vec3r_t& centroid) const
 {
-    scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
+    mat3d_t covariance_mat = mat3d_t::zero();
     centroid = calculate_centroid_color(surfels_to_sample);
 
     for (uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
     {
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
-		vec3r color_trans = transform_color(current_surfel->color());
+		vec3r_t color_trans = transform_color(current_surfel->color());
 
-        covariance_mat.m00 += std::pow(color_trans.x - centroid.x, 2);
-        covariance_mat.m01 += (color_trans.x-centroid.x) * (color_trans.y - centroid.y);
-        covariance_mat.m02 += (color_trans.x-centroid.x) * (color_trans.z - centroid.z);
+        covariance_mat.m00 += std::pow(color_trans.x_ - centroid.x_, 2);
+        covariance_mat.m01 += (color_trans.x_-centroid.x_) * (color_trans.y_ - centroid.y_);
+        covariance_mat.m02 += (color_trans.x_-centroid.x_) * (color_trans.z_ - centroid.z_);
 
-        covariance_mat.m03 += (color_trans.y-centroid.y) * (color_trans.x - centroid.x);
-        covariance_mat.m04 += std::pow(color_trans.y - centroid.y, 2);
-        covariance_mat.m05 += (color_trans.y-centroid.y) * (color_trans.z - centroid.z);
+        covariance_mat.m03 += (color_trans.y_-centroid.y_) * (color_trans.x_ - centroid.x_);
+        covariance_mat.m04 += std::pow(color_trans.y_ - centroid.y_, 2);
+        covariance_mat.m05 += (color_trans.y_-centroid.y_) * (color_trans.z_ - centroid.z_);
 
-        covariance_mat.m06 += (color_trans.z-centroid.z) * (color_trans.x - centroid.x);
-        covariance_mat.m07 += (color_trans.z-centroid.z) * (color_trans.y - centroid.y);
-        covariance_mat.m08 += std::pow(color_trans.z - centroid.z, 2);
+        covariance_mat.m06 += (color_trans.z_-centroid.z_) * (color_trans.x_ - centroid.x_);
+        covariance_mat.m07 += (color_trans.z_-centroid.z_) * (color_trans.y_ - centroid.y_);
+        covariance_mat.m08 += std::pow(color_trans.z_ - centroid.z_, 2);
     }
 
     // Precision limitation because of rounding errors otherwise.
@@ -298,22 +298,22 @@ calculate_covariance_matrix_color(const std::vector<surfel*>& surfels_to_sample,
 
 
 
-real reduction_hierarchical_clustering_mk5::
-calculate_variation(const scm::math::mat3d& covariance_matrix, vec3f& normal) const
+real_t reduction_hierarchical_clustering_mk5::
+calculate_variation(const mat3d_t& covariance_matrix, vec3f_t& normal) const
 {
 	//solve for eigenvectors
-    real* eigenvalues = new real[3];
-    real** eigenvectors = new real*[3];
+    real_t* eigenvalues = new real_t[3];
+    real_t** eigenvectors = new real_t*[3];
     for (int i = 0; i < 3; ++i) {
-       eigenvectors[i] = new real[3];
+       eigenvectors[i] = new real_t[3];
     }
 
     jacobi_rotation(covariance_matrix, eigenvalues, eigenvectors);
 
-    real variation = eigenvalues[0] / (eigenvalues[0] + eigenvalues[1] + eigenvalues[2]);
+    real_t variation = eigenvalues[0] / (eigenvalues[0] + eigenvalues[1] + eigenvalues[2]);
 
     // Use eigenvector with highest magnitude as splitting plane normal.
-    normal = scm::math::vec3f(eigenvectors[0][2], eigenvectors[1][2], eigenvectors[2][2]);
+    normal = vec3f_t(eigenvectors[0][2], eigenvectors[1][2], eigenvectors[2][2]);
 
     delete[] eigenvalues;
     for (int i = 0; i < 3; ++i) {
@@ -326,10 +326,10 @@ calculate_variation(const scm::math::mat3d& covariance_matrix, vec3f& normal) co
 
 
 
-vec3r reduction_hierarchical_clustering_mk5::
+vec3r_t reduction_hierarchical_clustering_mk5::
 calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const
 {
-	vec3r centroid = vec3r(0, 0, 0);
+	vec3r_t centroid = vec3r_t(0, 0, 0);
 
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
@@ -342,15 +342,15 @@ calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const
 
 
 
-vec3r reduction_hierarchical_clustering_mk5::
+vec3r_t reduction_hierarchical_clustering_mk5::
 calculate_centroid_color(const std::vector<surfel*>& surfels_to_sample) const
 {
-	vec3r centroid = vec3r(0, 0, 0);
+	vec3r_t centroid = vec3r_t(0, 0, 0);
 
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
-		vec3r color_trans = transform_color(current_surfel->color());
+		vec3r_t color_trans = transform_color(current_surfel->color());
 		centroid = centroid + color_trans;
 	}
 
@@ -362,10 +362,10 @@ calculate_centroid_color(const std::vector<surfel*>& surfels_to_sample) const
 surfel reduction_hierarchical_clustering_mk5::
 create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 {
-	vec3r centroid = vec3r(0, 0, 0);
-	vec3f normal = vec3f(0, 0, 0);
-	vec3r color_overrun = vec3r(0, 0, 0);
-	real radius = 0;
+	vec3r_t centroid = vec3r_t(0, 0, 0);
+	vec3f_t normal = vec3f_t(0, 0, 0);
+	vec3r_t color_overrun = vec3r_t(0, 0, 0);
+	real_t radius = 0;
 
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
@@ -381,11 +381,11 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 	color_overrun = color_overrun / surfels_to_sample.size();
 
 	// Compute radius by taking max radius of cluster surfels and max distance from centroid.
-	real highest_distance = 0;
+	real_t highest_distance = 0;
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
-		real distance_centroid_surfel = scm::math::length(centroid - current_surfel->pos());
+		real_t distance_centroid_surfel = lamure::math::length(centroid - current_surfel->pos());
 
 		if(distance_centroid_surfel > highest_distance)
 		{
@@ -401,7 +401,7 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 	surfel new_surfel;
 	new_surfel.pos() = centroid;
 	new_surfel.normal() = normal;
-	new_surfel.color() = vec3b(color_overrun.x, color_overrun.y, color_overrun.z);
+	new_surfel.color() = vec3b_t(color_overrun.x_, color_overrun.y_, color_overrun.z_);
 	new_surfel.radius() = (radius + highest_distance);
 
 	return new_surfel;
@@ -409,50 +409,50 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 
 
 
-real reduction_hierarchical_clustering_mk5::
-point_plane_distance(const vec3r& centroid, const vec3f& normal, const vec3r& point) const
+real_t reduction_hierarchical_clustering_mk5::
+point_plane_distance(const vec3r_t& centroid, const vec3f_t& normal, const vec3r_t& point) const
 {
-	vec3f normalized_normal = scm::math::normalize(normal);
-	vec3r w = centroid - point;
-	real a = normalized_normal.x;
-	real b = normalized_normal.y;
-	real c = normalized_normal.z;
+	vec3f_t normalized_normal = lamure::math::normalize(normal);
+	vec3r_t w = centroid - point;
+	real_t a = normalized_normal.x_;
+	real_t b = normalized_normal.y_;
+	real_t c = normalized_normal.z_;
 
-	real distance = (a * w.x + b * w.y + c * w.z) / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
+	real_t distance = (a * w.x_ + b * w.y_ + c * w.z_) / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
 	return distance;
 }
 
 
 
-vec3r reduction_hierarchical_clustering_mk5::
-transform_RGB_to_XYZ(const vec3b& color) const
+vec3r_t reduction_hierarchical_clustering_mk5::
+transform_RGB_to_XYZ(const vec3b_t& color) const
 {
-	vec3r color_rgb(color.x, color.y, color.z);
+	vec3r_t color_rgb(color.x_, color.y_, color.z_);
 
 	// http://stackoverflow.com/questions/12524623/what-are-the-practical-differences-when-working-with-colors-in-a-linear-vs-a-no
 	// Conversion to linear RGB.
 	color_rgb = color_rgb / 255.0;
-	color_rgb.x = sRGB_to_linearRGB_channel(color_rgb.x);
-	color_rgb.y = sRGB_to_linearRGB_channel(color_rgb.y);
-	color_rgb.z = sRGB_to_linearRGB_channel(color_rgb.z);
+	color_rgb.x_ = sRGB_to_linearRGB_channel(color_rgb.x_);
+	color_rgb.y_ = sRGB_to_linearRGB_channel(color_rgb.y_);
+	color_rgb.z_ = sRGB_to_linearRGB_channel(color_rgb.z_);
 	color_rgb = color_rgb * 100.0;
 
 	// CIE-RGB conversion matrix.
-	//mat3r conversion_mat(0.49, 0.31, 0.20, 0.17697, 0.81240, 0.01063, 0.00, 0.01, 0.99);
-	//vec3r color_xyz = (conversion_mat / 0.17697) * color_rgb;
+	//mat3r_t conversion_mat(0.49, 0.31, 0.20, 0.17697, 0.81240, 0.01063, 0.00, 0.01, 0.99);
+	//vec3r_t color_xyz = (conversion_mat / 0.17697) * color_rgb;
 	
 	// http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
 	// sRGB conversion matrix.
-	mat3r conversion_mat(0.4124, 0.2126, 0.0193, 0.3576, 0.7152, 0.1192, 0.1805, 0.0722, 0.9505);
-	vec3r color_xyz = conversion_mat * color_rgb;
+	mat3r_t conversion_mat(0.4124, 0.2126, 0.0193, 0.3576, 0.7152, 0.1192, 0.1805, 0.0722, 0.9505);
+	vec3r_t color_xyz = conversion_mat * color_rgb;
 
 	return color_xyz;
 }
 
 
 
-real reduction_hierarchical_clustering_mk5::
-sRGB_to_linearRGB_channel(real color_value) const
+real_t reduction_hierarchical_clustering_mk5::
+sRGB_to_linearRGB_channel(real_t color_value) const
 {
 	if(color_value <= 0.04045)
 	{
@@ -466,29 +466,29 @@ sRGB_to_linearRGB_channel(real color_value) const
 
 
 
-vec3r reduction_hierarchical_clustering_mk5::
-transform_RGB_to_LAB(const vec3b& color) const
+vec3r_t reduction_hierarchical_clustering_mk5::
+transform_RGB_to_LAB(const vec3b_t& color) const
 {
-	vec3r color_xyz = transform_RGB_to_XYZ(color);
-	vec3r reference_white(95.047, 100.000, 108.883);
+	vec3r_t color_xyz = transform_RGB_to_XYZ(color);
+	vec3r_t reference_white(95.047, 100.000, 108.883);
 
-	real var_x = LAB_helper(color_xyz.x / reference_white.x);
-	real var_y = LAB_helper(color_xyz.y / reference_white.y);
-	real var_z = LAB_helper(color_xyz.z / reference_white.z);
+	real_t var_x = LAB_helper(color_xyz.x_ / reference_white.x_);
+	real_t var_y = LAB_helper(color_xyz.y_ / reference_white.y_);
+	real_t var_z = LAB_helper(color_xyz.z_ / reference_white.z_);
 
-	real L = 116.0 * var_y - 16.0;
-	real a = 500.0 * (var_x - var_y);
-	real b = 200.0 * (var_y - var_z);
+	real_t L = 116.0 * var_y - 16.0;
+	real_t a = 500.0 * (var_x - var_y);
+	real_t b = 200.0 * (var_y - var_z);
 
-	return vec3r(L, a, b);
+	return vec3r_t(L, a, b);
 }
 
 
 
-real reduction_hierarchical_clustering_mk5::
-LAB_helper(const real& t) const
+real_t reduction_hierarchical_clustering_mk5::
+LAB_helper(const real_t& t) const
 {
-	real result;
+	real_t result;
 
 	if (t > std::pow(6.0/29.0, 3.0))
 	{
@@ -504,10 +504,10 @@ LAB_helper(const real& t) const
 
 
 
-vec3r reduction_hierarchical_clustering_mk5::
-transform_color(const vec3b& color) const
+vec3r_t reduction_hierarchical_clustering_mk5::
+transform_color(const vec3b_t& color) const
 {
-	vec3r color_transformed(color.x, color.y, color.z);
+	vec3r_t color_transformed(color.x_, color.y_, color.z_);
 	
 	if (color_space_mode_ == 1)
 	{
@@ -524,7 +524,7 @@ transform_color(const vec3b& color) const
 
 
 void reduction_hierarchical_clustering_mk5::
-jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const
+jacobi_rotation(const mat3d_t& _matrix, double* eigenvalues, double** eigenvectors) const
 {
     unsigned int max_iterations = 10;
     double max_error = 0.00000001;

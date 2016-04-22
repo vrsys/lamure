@@ -15,7 +15,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include <lamure/pre/logger.h>
+#include <lamure/logger.h>
 
 namespace lamure {
 namespace pre {

@@ -13,7 +13,7 @@ namespace lamure {
 namespace pre {
 
 surfel_mem_array reduction_random::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
           const std::vector<surfel_mem_array*>& input,
           const uint32_t surfels_per_node,
           const bvh& tree,

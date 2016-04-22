@@ -20,7 +20,7 @@ reduction_hierarchical_clustering()
 
 
 surfel_mem_array reduction_hierarchical_clustering::
-create_lod(real& reduction_error,
+create_lod(real_t& reduction_error,
 			const std::vector<surfel_mem_array*>& input,
             const uint32_t surfels_per_node,
           	const bvh& tree,
@@ -43,7 +43,7 @@ create_lod(real& reduction_error,
     // Maximum possible variation is 1/3.
     // First maximum variation is calculated during first splitting iteration.
     uint32_t maximum_cluster_size = (surfels_to_sample.size() / surfels_per_node) * 2;
-    real maximum_variation = -1;
+    real_t maximum_variation = -1;
 	
 	std::vector<std::vector<surfel*>> clusters;
 	clusters = split_point_cloud(surfels_to_sample, maximum_cluster_size, maximum_variation, surfels_per_node);
@@ -66,7 +66,7 @@ create_lod(real& reduction_error,
 
 
 std::vector<std::vector<surfel*>> reduction_hierarchical_clustering::
-split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real max_variation, const uint32_t& max_clusters) const
+split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluster_size, real_t max_variation, const uint32_t& max_clusters) const
 {
 	std::priority_queue<hierarchical_cluster, 
 						std::vector<hierarchical_cluster>, 
@@ -93,7 +93,7 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluste
 			for(uint32_t surfel_index = 0; surfel_index < current_cluster.surfels.size(); ++surfel_index)
 			{
 				surfel* current_surfel = current_cluster.surfels.at(surfel_index);
-				real surfel_side = point_plane_distance(current_cluster.centroid, current_cluster.normal, current_surfel->pos());
+				real_t surfel_side = point_plane_distance(current_cluster.centroid, current_cluster.normal, current_surfel->pos());
 
 				if(surfel_side >= 0)
 				{
@@ -138,10 +138,10 @@ split_point_cloud(const std::vector<surfel*>& input_surfels, uint32_t max_cluste
 hierarchical_cluster reduction_hierarchical_clustering::
 calculate_cluster_data(const std::vector<surfel*>& input_surfels) const
 {
-	vec3r centroid;
-	scm::math::mat3d covariance_matrix = calculate_covariance_matrix(input_surfels, centroid);
-	vec3f normal;
-	real variation = calculate_variation(covariance_matrix, normal);
+	vec3r_t centroid;
+	mat3d_t covariance_matrix = calculate_covariance_matrix(input_surfels, centroid);
+	vec3f_t normal;
+	real_t variation = calculate_variation(covariance_matrix, normal);
 
 	hierarchical_cluster new_cluster;
 	new_cluster.surfels = input_surfels;
@@ -154,27 +154,27 @@ calculate_cluster_data(const std::vector<surfel*>& input_surfels) const
 
 
 
-scm::math::mat3d reduction_hierarchical_clustering::
-calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r& centroid) const
+mat3d_t reduction_hierarchical_clustering::
+calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r_t& centroid) const
 {
-    scm::math::mat3d covariance_mat = scm::math::mat3d::zero();
+    mat3d_t covariance_mat = mat3d_t::zero();
     centroid = calculate_centroid(surfels_to_sample);
 
     for (uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
     {
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
         
-        covariance_mat.m00 += std::pow(current_surfel->pos().x-centroid.x, 2);
-        covariance_mat.m01 += (current_surfel->pos().x-centroid.x) * (current_surfel->pos().y - centroid.y);
-        covariance_mat.m02 += (current_surfel->pos().x-centroid.x) * (current_surfel->pos().z - centroid.z);
+        covariance_mat.m00 += std::pow(current_surfel->pos().x_-centroid.x_, 2);
+        covariance_mat.m01 += (current_surfel->pos().x_-centroid.x_) * (current_surfel->pos().y_ - centroid.y_);
+        covariance_mat.m02 += (current_surfel->pos().x_-centroid.x_) * (current_surfel->pos().z_ - centroid.z_);
 
-        covariance_mat.m03 += (current_surfel->pos().y-centroid.y) * (current_surfel->pos().x - centroid.x);
-        covariance_mat.m04 += std::pow(current_surfel->pos().y-centroid.y, 2);
-        covariance_mat.m05 += (current_surfel->pos().y-centroid.y) * (current_surfel->pos().z - centroid.z);
+        covariance_mat.m03 += (current_surfel->pos().y_-centroid.y_) * (current_surfel->pos().x_ - centroid.x_);
+        covariance_mat.m04 += std::pow(current_surfel->pos().y_-centroid.y_, 2);
+        covariance_mat.m05 += (current_surfel->pos().y_-centroid.y_) * (current_surfel->pos().z_ - centroid.z_);
 
-        covariance_mat.m06 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().x - centroid.x);
-        covariance_mat.m07 += (current_surfel->pos().z-centroid.z) * (current_surfel->pos().y - centroid.y);
-        covariance_mat.m08 += std::pow(current_surfel->pos().z-centroid.z, 2);
+        covariance_mat.m06 += (current_surfel->pos().z_-centroid.z_) * (current_surfel->pos().x_ - centroid.x_);
+        covariance_mat.m07 += (current_surfel->pos().z_-centroid.z_) * (current_surfel->pos().y_ - centroid.y_);
+        covariance_mat.m08 += std::pow(current_surfel->pos().z_-centroid.z_, 2);
     }
 
     return covariance_mat;
@@ -182,28 +182,28 @@ calculate_covariance_matrix(const std::vector<surfel*>& surfels_to_sample, vec3r
 
 
 
-real reduction_hierarchical_clustering::
-calculate_variation(const scm::math::mat3d& covariance_matrix, vec3f& normal) const
+real_t reduction_hierarchical_clustering::
+calculate_variation(const mat3d_t& covariance_matrix, vec3f_t& normal) const
 {
 	//solve for eigenvectors
-    real* eigenvalues = new real[3];
-    real** eigenvectors = new real*[3];
+    real_t* eigenvalues = new real_t[3];
+    real_t** eigenvectors = new real_t*[3];
     for (int i = 0; i < 3; ++i) {
-       eigenvectors[i] = new real[3];
+       eigenvectors[i] = new real_t[3];
     }
 
     jacobi_rotation(covariance_matrix, eigenvalues, eigenvectors);
 
-    real variation = eigenvalues[0] / (eigenvalues[0] + eigenvalues[1] + eigenvalues[2]);
+    real_t variation = eigenvalues[0] / (eigenvalues[0] + eigenvalues[1] + eigenvalues[2]);
 
     // Use eigenvector with highest magnitude as splitting plane normal.
-    normal = scm::math::vec3f(eigenvectors[0][2], eigenvectors[1][2], eigenvectors[2][2]);
+    normal = vec3f_t(eigenvectors[0][2], eigenvectors[1][2], eigenvectors[2][2]);
 
     /*for(uint32_t eigen_index = 1; eigen_index <= 2; ++eigen_index)
     {
-    	vec3f other_normal = scm::math::vec3f(eigenvectors[0][eigen_index], eigenvectors[1][eigen_index], eigenvectors[2][eigen_index]);
+    	vec3f_t other_normal = vec3f_t(eigenvectors[0][eigen_index], eigenvectors[1][eigen_index], eigenvectors[2][eigen_index]);
     	
-    	if(scm::math::length(normal) < scm::math::length(other_normal))
+    	if(lamure::math::length(normal) < lamure::math::length(other_normal))
     	{
     		normal = other_normal;
     	}
@@ -220,10 +220,10 @@ calculate_variation(const scm::math::mat3d& covariance_matrix, vec3f& normal) co
 
 
 
-vec3r reduction_hierarchical_clustering::
+vec3r_t reduction_hierarchical_clustering::
 calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const
 {
-	vec3r centroid = vec3r(0, 0, 0);
+	vec3r_t centroid = vec3r_t(0, 0, 0);
 
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
@@ -239,10 +239,10 @@ calculate_centroid(const std::vector<surfel*>& surfels_to_sample) const
 surfel reduction_hierarchical_clustering::
 create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 {
-	vec3r centroid = vec3r(0, 0, 0);
-	vec3f normal = vec3f(0, 0, 0);
-	vec3r color_overrun = vec3r(0, 0, 0);
-	real radius = 0;
+	vec3r_t centroid = vec3r_t(0, 0, 0);
+	vec3f_t normal = vec3f_t(0, 0, 0);
+	vec3r_t color_overrun = vec3r_t(0, 0, 0);
+	real_t radius = 0;
 
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
@@ -258,11 +258,11 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 	color_overrun = color_overrun / surfels_to_sample.size();
 
 	// Compute raius by taking max radius of cluster surfels and max distance from centroid.
-	real highest_distance = 0;
+	real_t highest_distance = 0;
 	for(uint32_t surfel_index = 0; surfel_index < surfels_to_sample.size(); ++surfel_index)
 	{
 		surfel* current_surfel = surfels_to_sample.at(surfel_index);
-		real distance_centroid_surfel = scm::math::length(centroid - current_surfel->pos());
+		real_t distance_centroid_surfel = lamure::math::length(centroid - current_surfel->pos());
 
 		if(distance_centroid_surfel > highest_distance)
 		{
@@ -278,7 +278,7 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 	surfel new_surfel;
 	new_surfel.pos() = centroid;
 	new_surfel.normal() = normal;
-	new_surfel.color() = vec3b(color_overrun.x, color_overrun.y, color_overrun.z);
+	new_surfel.color() = vec3b_t(color_overrun.x_, color_overrun.y_, color_overrun.z_);
 	new_surfel.radius() = (radius + highest_distance);
 
 	return new_surfel;
@@ -286,23 +286,23 @@ create_surfel_from_cluster(const std::vector<surfel*>& surfels_to_sample) const
 
 
 
-real reduction_hierarchical_clustering::
-point_plane_distance(const vec3r& centroid, const vec3f& normal, const vec3r& point) const
+real_t reduction_hierarchical_clustering::
+point_plane_distance(const vec3r_t& centroid, const vec3f_t& normal, const vec3r_t& point) const
 {
-	vec3f normalized_normal = scm::math::normalize(normal);
-	vec3r w = centroid - point;
-	real a = normalized_normal.x;
-	real b = normalized_normal.y;
-	real c = normalized_normal.z;
+	vec3f_t normalized_normal = lamure::math::normalize(normal);
+	vec3r_t w = centroid - point;
+	real_t a = normalized_normal.x_;
+	real_t b = normalized_normal.y_;
+	real_t c = normalized_normal.z_;
 
-	real distance = (a * w.x + b * w.y + c * w.z) / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
+	real_t distance = (a * w.x_ + b * w.y_ + c * w.z_) / sqrt(pow(a, 2) + pow(b, 2) + pow(c, 2));
 	return distance;
 }
 
 
 
 void reduction_hierarchical_clustering::
-jacobi_rotation(const scm::math::mat3d& _matrix, double* eigenvalues, double** eigenvectors) const
+jacobi_rotation(const mat3d_t& _matrix, double* eigenvalues, double** eigenvectors) const
 {
     unsigned int max_iterations = 10;
     double max_error = 0.00000001;

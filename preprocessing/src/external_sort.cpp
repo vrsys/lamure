@@ -6,6 +6,8 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/pre/external_sort.h>
+#include <lamure/assert.h>
+#include <lamure/logger.h>
 
 #if WIN32
   #include <ppl.h>
@@ -36,8 +38,8 @@ sort(surfel_disk_array& array,
      const size_t memory_limit,
      const surfel::compare_function& compare)
 {
-    assert(!array.is_empty());
-    assert(array.file());
+    ASSERT(!array.is_empty());
+    ASSERT(array.file() != 0);
 
     if (!array.length())
         return;
@@ -49,20 +51,20 @@ sort(surfel_disk_array& array,
     const uint32_t runs_count = std::ceil(array.length() / double(run_length));
     const size_t merge_buffer_size = memory_limit / sizeof(surfel) / (runs_count + 1u);
 
-    LOGGER_INFO("External sort. Length: " << array.length());
-    LOGGER_INFO("Max run length: " << run_length << 
+    LAMURE_LOG_INFO("External sort. Length: " << array.length());
+    LAMURE_LOG_INFO("Max run length: " << run_length << 
             " surfels. runs: " << runs_count << 
             ". merge buffer size: " << merge_buffer_size << " surfels.");
 
 
     if (runs_count > MAX_RUNS_COUNT) {
-        LOGGER_WARN("External sort has been called with an inadequate "
+        LAMURE_LOG_WARN("External sort has been called with an inadequate "
                                   "memory limit, which produces more than " <<
                                   MAX_RUNS_COUNT << " runs.");
     }
 
     if (merge_buffer_size < MIN_MERGE_BUFFER_SIZE)
-        LOGGER_WARN("External sort has been called with an inadequate "
+        LAMURE_LOG_WARN("External sort has been called with an inadequate "
                                   "memory limit, which forces merge algorithm to allocate "
                                   "buffers that store less than " <<
                                   MIN_MERGE_BUFFER_SIZE << " surfels.");
@@ -70,9 +72,9 @@ sort(surfel_disk_array& array,
     if (runs_count > 1u) {
         // external sort
         es.runs_file_->open(array.file()->file_name() + TEMP_FILE_EXT, true);
-        LOGGER_TRACE("create runs");
+        LAMURE_LOG_INFO("create runs");
         es.create_runs(array, run_length, runs_count);
-        LOGGER_TRACE("merge");
+        LAMURE_LOG_INFO("merge");
         es.merge(array, merge_buffer_size);
         es.runs_file_->close(true);
         es.runs_.clear();
@@ -104,7 +106,7 @@ create_runs(surfel_disk_array& array,
     runs_.push_back(surfel_disk_array(array, array.offset() + offset, 
                                            array.length() - offset));
 
-    assert(std::accumulate(runs_.begin(), runs_.end(), 0u,
+    ASSERT(std::accumulate(runs_.begin(), runs_.end(), 0u,
                            [](const size_t& a,
                               const surfel_disk_array& b) { return a + b.length(); }) ==
                                                                  array.length());
@@ -120,14 +122,14 @@ create_runs(surfel_disk_array& array,
             next_data.reset();
         }
         else {
-            LOGGER_TRACE("read run " << i);
+            LAMURE_LOG_INFO("read run " << i);
             data = runs_[i].read_all();
         }
 
         #pragma omp parallel sections
         {
             {
-                LOGGER_TRACE("sort run " << i);
+                LAMURE_LOG_INFO("sort run " << i);
 #if WIN32
                 Concurrency::parallel_sort(data->begin(), data->end(), compare_);           
 #else
@@ -137,12 +139,12 @@ create_runs(surfel_disk_array& array,
             #pragma omp section
             {
                 if (i + 1 < runs_.size()) {
-                    LOGGER_TRACE("read run " << i+1);
+                    LAMURE_LOG_INFO("read run " << i+1);
                     next_data = runs_[i + 1].read_all();
                 }
             }
         }
-        LOGGER_TRACE("Save run " << i);
+        LAMURE_LOG_INFO("Save run " << i);
         runs_file_->append(&(*data));
         runs_[i].reset(runs_file_, runs_[i].offset() - array.offset(), 
                                    runs_[i].length());
@@ -192,7 +194,7 @@ merge(surfel_disk_array& array, const size_t buffer_size)
         file_offset += output.size();
         output.clear();
     }
-    assert(file_offset == array.length());
+    ASSERT(file_offset == array.length());
 }
 
 } } // namespace lamure

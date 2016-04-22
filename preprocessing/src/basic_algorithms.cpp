@@ -9,6 +9,7 @@
 
 #include <lamure/pre/io/file.h>
 #include <lamure/pre/external_sort.h>
+#include <lamure/math/bounding_box.h>
 
 #if WIN32
   #include <ppl.h>
@@ -22,15 +23,15 @@ namespace lamure {
 namespace pre 
 {
 
-bounding_box basic_algorithms::
+math::bounding_box_t basic_algorithms::
 compute_aabb(const surfel_mem_array& sa,
             const bool parallelize)
 {
-    assert(!sa.is_empty());
-    assert(sa.length() > 0);
+    ASSERT(!sa.is_empty());
+    ASSERT(sa.length() > 0);
 
-    vec3r min = sa.read_surfel_ref(0).pos();
-    vec3r max = min;
+    vec3r_t min = sa.read_surfel_ref(0).pos();
+    vec3r_t max = min;
 
     const auto begin = sa.mem_data()->begin() + sa.offset();
     const auto end = sa.mem_data()->begin() + sa.offset() + sa.length();
@@ -81,23 +82,23 @@ compute_aabb(const surfel_mem_array& sa,
                         max[2] = s->pos()[2]; }
         }
     }
-    return bounding_box(min, max);
+    return math::bounding_box_t(min, max);
 }
 
-bounding_box basic_algorithms::
+math::bounding_box_t basic_algorithms::
 compute_aabb(const surfel_disk_array& sa,
             const size_t buffer_size,
             const bool parallelize)
 {
-    assert(!sa.is_empty());
-    assert(sa.length() > 0);
+    ASSERT(!sa.is_empty());
+    ASSERT(sa.length() > 0);
 
-    vec3r min = vec3r(std::numeric_limits<real>::max(),
-                      std::numeric_limits<real>::max(),
-                      std::numeric_limits<real>::max());
-    vec3r max = vec3r(std::numeric_limits<real>::lowest(),
-                      std::numeric_limits<real>::lowest(),
-                      std::numeric_limits<real>::lowest());
+    vec3r_t min = vec3r_t(std::numeric_limits<real_t>::max(),
+                      std::numeric_limits<real_t>::max(),
+                      std::numeric_limits<real_t>::max());
+    vec3r_t max = vec3r_t(std::numeric_limits<real_t>::lowest(),
+                      std::numeric_limits<real_t>::lowest(),
+                      std::numeric_limits<real_t>::lowest());
 
     const size_t surfels_in_buffer = buffer_size / sizeof(surfel);
 
@@ -157,15 +158,15 @@ compute_aabb(const surfel_disk_array& sa,
             }
         }
     }
-    return bounding_box(min, max);
+    return math::bounding_box_t(min, max);
 }
 
 void basic_algorithms::
 translate_surfels(surfel_mem_array& sa,
-                 const vec3r& translation)
+                 const vec3r_t& translation)
 {
-    assert(!sa.is_empty());
-    assert(sa.length() > 0);
+    ASSERT(!sa.is_empty());
+    ASSERT(sa.length() > 0);
 
     const auto begin = sa.mem_data()->begin() + sa.offset();
     const auto end = sa.mem_data()->begin() + sa.offset() + sa.length();
@@ -177,11 +178,11 @@ translate_surfels(surfel_mem_array& sa,
 
 void basic_algorithms::
 translate_surfels(surfel_disk_array& sa,
-                 const vec3r& translation,
+                 const vec3r_t& translation,
                  const size_t buffer_size)
 {
-    assert(!sa.is_empty());
-    assert(sa.length() > 0);
+    ASSERT(!sa.is_empty());
+    ASSERT(sa.length() > 0);
 
     const size_t surfels_in_buffer = buffer_size / sizeof(surfel);
 
@@ -204,13 +205,13 @@ translate_surfels(surfel_disk_array& sa,
 void basic_algorithms::
 sort_and_split(surfel_mem_array& sa,
              splitted_array<surfel_mem_array>& out,
-             const bounding_box& box,
+             const math::bounding_box_t& box,
              const uint8_t split_axis,
              const uint8_t fan_factor,
              const bool parallelize)
 {
-    assert(!sa.is_empty());
-    assert(sa.length() > 0);
+    ASSERT(!sa.is_empty());
+    ASSERT(sa.length() > 0);
 
     if (parallelize) {
 #if WIN32
@@ -235,7 +236,7 @@ sort_and_split(surfel_mem_array& sa,
 void basic_algorithms::
 sort_and_split(surfel_disk_array& sa,
              splitted_array<surfel_disk_array>& out,
-             const bounding_box& box,
+             const math::bounding_box_t& box,
              const uint8_t split_axis,
              const uint8_t fan_factor,
              const size_t memory_limit)
@@ -248,12 +249,12 @@ template <class T>
 void basic_algorithms::
 split_surfel_array(T& sa,
                  splitted_array<T>& out,
-                 const bounding_box& box,
+                 const math::bounding_box_t& box,
                  const uint8_t split_axis,
                  const uint8_t fan_factor)
 {
     using Traits = surfel_array_traits<T>;
-    static_assert(Traits::is_in_core || Traits::is_out_of_core, "Wrong type");
+    LAMURE_ASSERT(Traits::is_in_core || Traits::is_out_of_core, "Wrong type");
 
     const uint32_t child_size = (int)sa.length() / fan_factor;
     uint32_t remainder = sa.length() % fan_factor;
@@ -272,23 +273,23 @@ split_surfel_array(T& sa,
         }
 
         auto child_array = T(sa, child_first, child_last - child_first);
-        out.push_back(std::make_pair(child_array, bounding_box()));
+        out.push_back(std::make_pair(child_array, math::bounding_box_t()));
     }
 
     // compute bounding boxes
 
-    std::vector<real> splits;
+    std::vector<real_t> splits;
 
     for (size_t i = 0; i < out.size() - 1; ++i) {
-        real p0 = out[i].first.read_surfel(out[i].first.length() - 1).pos()[split_axis];
-        real p1 = out[i + 1].first.read_surfel(0).pos()[split_axis];
+        real_t p0 = out[i].first.read_surfel(out[i].first.length() - 1).pos()[split_axis];
+        real_t p1 = out[i + 1].first.read_surfel(0).pos()[split_axis];
 
         splits.push_back((p1 - p0) / 2.0 + p0);
     }
 
     for (size_t i = 0; i < out.size(); ++i) {
-        vec3r child_max = box.max();
-        vec3r child_min = box.min();
+        vec3r_t child_max = box.max();
+        vec3r_t child_min = box.min();
 
         if (i == 0) {
             child_max[split_axis] = splits[0];
@@ -301,7 +302,7 @@ split_surfel_array(T& sa,
             child_max[split_axis] = splits[i];
         }
 
-        out[i].second = bounding_box(child_min, child_max);
+        out[i].second = math::bounding_box_t(child_min, child_max);
     }
 }
 
@@ -310,12 +311,12 @@ compute_properties(const surfel_mem_array& sa,
                    const rep_radius_algorithm rep_radius_algo,
                    bool use_radii_for_node_expansion)
 {
-    assert(!sa.is_empty());
-    assert(rep_radius_algo == rep_radius_algorithm::arithmetic_mean ||
+    ASSERT(!sa.is_empty());
+    ASSERT(rep_radius_algo == rep_radius_algorithm::arithmetic_mean ||
            rep_radius_algo == rep_radius_algorithm::geometric_mean ||
            rep_radius_algo == rep_radius_algorithm::harmonic_mean);
 
-    surfel_group_properties props = {0.0, vec3r(0.0), bounding_box()};
+    surfel_group_properties props = {0.0, vec3r_t(0.0), math::bounding_box_t()};
 
 //    if (rep_radius_algo == rep_radius_algorithm::geometric_mean)
 //        props.rep_radius = 1.0;
@@ -343,12 +344,12 @@ compute_properties(const surfel_mem_array& sa,
     if (counter > 0) {
 
         switch (rep_radius_algo) {
-            case rep_radius_algorithm::arithmetic_mean: props.rep_radius /= static_cast<real>(counter); break;
-            case rep_radius_algorithm::geometric_mean:  props.rep_radius = exp(props.rep_radius / static_cast<real>(counter)); break;
-            case rep_radius_algorithm::harmonic_mean:   props.rep_radius = static_cast<real>(counter) / props.rep_radius; break;
+            case rep_radius_algorithm::arithmetic_mean: props.rep_radius /= static_cast<real_t>(counter); break;
+            case rep_radius_algorithm::geometric_mean:  props.rep_radius = exp(props.rep_radius / static_cast<real_t>(counter)); break;
+            case rep_radius_algorithm::harmonic_mean:   props.rep_radius = static_cast<real_t>(counter) / props.rep_radius; break;
         }
 
-        props.centroid /= static_cast<real>(counter);
+        props.centroid /= static_cast<real_t>(counter);
 
     }
 

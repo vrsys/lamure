@@ -12,31 +12,31 @@ namespace pre
 {
 
 bvh_node::
-bvh_node(const node_id_type id,
+bvh_node(const node_id_t id,
         const uint32_t depth,
-        const bounding_box& bounding_box,
+        const math::bounding_box_t& bounding_box,
         const surfel_mem_array& array)
 : node_id_(id),
   depth_(depth),
   bounding_box_(bounding_box),
   reduction_error_(0.0),
   avg_surfel_radius_(0.0),
-  centroid_(vec3r(0.0))
+  centroid_(vec3r_t(0.0))
 {
     reset(array);
 }
 
 bvh_node::
-bvh_node(const node_id_type id,
+bvh_node(const node_id_t id,
         const uint32_t depth,
-        const bounding_box& bounding_box,
+        const math::bounding_box_t& bounding_box,
         const surfel_disk_array& array)
 : node_id_(id),
   depth_(depth),
   bounding_box_(bounding_box),
   reduction_error_(0.0),
   avg_surfel_radius_(0.0),
-  centroid_(vec3r(0.0))
+  centroid_(vec3r_t(0.0))
 {
     reset(array);
 }
@@ -78,7 +78,7 @@ reset(const surfel_disk_array& array)
 void bvh_node::
 load_from_disk()
 {
-    assert(is_out_of_core());
+    ASSERT(is_out_of_core());
     mem_array_.reset(disk_array_.read_all(), 0, disk_array_.length());
 }
 
@@ -87,7 +87,7 @@ flush_to_disk(const shared_file& file,
             const size_t offset_in_file,
             const bool dealloc_mem_array)
 {
-    assert(is_in_core());
+    ASSERT(is_in_core());
 
     disk_array_.reset(file, offset_in_file, mem_array_.length());
     disk_array_.write_all(mem_array_.mem_data(), mem_array_.offset());
@@ -99,8 +99,8 @@ flush_to_disk(const shared_file& file,
 void bvh_node::
 flush_to_disk(const bool dealloc_mem_array)
 {
-    assert(is_in_core());
-    assert(is_out_of_core());
+    ASSERT(is_in_core());
+    ASSERT(is_out_of_core());
 
     disk_array_.write_all(mem_array_.mem_data(), mem_array_.offset());
 

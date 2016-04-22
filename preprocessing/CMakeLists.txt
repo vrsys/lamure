@@ -8,44 +8,27 @@ set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # main sources
-file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
-file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/*.h)
+file(GLOB_RECURSE PROJECT_SOURCES ${PROJECT_SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE PROJECT_INCLUDES ${PROJECT_INCLUDE_DIR}/*.h)
+file(GLOB_RECURSE PROJECT_INLINES ${PROJECT_INCLUDE_DIR}/*.inl)
 
-# IO
-file(GLOB IO_SRC ${PROJECT_SOURCE_DIR}/io/*.cpp)
-file(GLOB IO_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/io/*.h)
-
-file(GLOB PLY_SRC ${PROJECT_SOURCE_DIR}/io/ply/*.cpp)
-file(GLOB PLY_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/io/ply/*.h)
-
-SOURCE_GROUP("preprocessing" FILES ${MAIN_SRC})
-SOURCE_GROUP("preprocessing" FILES ${MAIN_INC})
-
-SOURCE_GROUP("io" FILES ${IO_SRC})
-SOURCE_GROUP("io" FILES ${IO_INC})
-
-SOURCE_GROUP("io\\ply" FILES ${PLY_SRC})
-SOURCE_GROUP("io\\ply" FILES ${PLY_INC})
-
-set(PROJECT_SOURCES ${MAIN_SRC} ${IO_SRC} ${PLY_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${IO_INC} ${PLY_INC})
+SOURCE_GROUP("preprocessing" FILES ${PROJECT_SOURCES})
+SOURCE_GROUP("preprocessing" FILES ${PROJECT_INLCUDES})
+SOURCE_GROUP("preprocessing" FILES ${PROJECT_INLINES})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
-                    ${COMMON_INCLUDE_DIR}
+                    ${CORE_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR}
                     ${CGAL_INCLUDE_DIR}
                     ${GMP_INCLUDE_DIR} 
                     ${MPFR_INCLUDE_DIR}
                     )
 
-include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
-                           ${Boost_INCLUDE_DIR})
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
-link_directories(${SCHISM_LIBRARY_DIRS})
+add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_INLINES} ${PROJECT_SOURCES})
 
-add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES})
-
-add_dependencies(${PROJECT_NAME} lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_core)
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PREPROCESSING_LIBRARY -DBOOST_ALL_NO_LIB")
@@ -60,8 +43,7 @@ set(PREPROC_LIBRARY ${PROJECT_NAME})
 # Libraries
 
 target_link_libraries(${PROJECT_NAME}
-    ${COMMON_LIBRARY}
-    ${SCHISM_LIBRARIES}
+    ${CORE_LIBRARY}
     ${PROJECT_LIBS}
     ${GMP_LIBRARY}
     ${MPFR_LIBRARY}

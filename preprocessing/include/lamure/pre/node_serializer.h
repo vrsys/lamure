@@ -11,7 +11,7 @@
 #include <lamure/pre/platform.h>
 #include <lamure/pre/surfel.h>
 #include <lamure/pre/bvh_node.h>
-#include <lamure/pre/logger.h>
+#include <lamure/logger.h>
 
 #include <fstream>
 #include <string>

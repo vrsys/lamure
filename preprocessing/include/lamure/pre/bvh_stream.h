@@ -15,9 +15,8 @@
 #include <cstring>
 
 #include <lamure/pre/platform.h>
-#include <lamure/bounding_box.h>
+#include <lamure/math/bounding_box.h>
 #include <lamure/types.h>
-#include <scm/gl_core/primitives/box.h>
 
 #include <lamure/pre/bvh.h>
 

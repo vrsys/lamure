@@ -7,11 +7,12 @@
 
 #include <lamure/pre/io/file.h>
 
+#include <lamure/logger.h>
+#include <lamure/assert.h>
+
 #include <stdexcept>
 #include <cstdio>
 #include <cstring>
-
-#include <lamure/pre/logger.h>
 
 namespace lamure {
 namespace pre
@@ -30,7 +31,7 @@ void file::
 open(const std::string& file_name, const bool truncate)
 {
     if (is_open()) {
-        LOGGER_ERROR("Attempt to open file when the instance of "
+        LAMURE_LOG_ERROR("Attempt to open file when the instance of "
                                 "pre::file is already in open state. "
                                 "file: \"" << file_name << "\" "
                                 "opened file: \"" << file_name_ << "\"");
@@ -48,7 +49,7 @@ open(const std::string& file_name, const bool truncate)
     stream_.open(file_name_, mode);
 
     if (!is_open()) {
-        LOGGER_ERROR("Failed to open file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("Failed to open file: \"" << file_name_ << 
                                 "\". " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -61,14 +62,14 @@ close(const bool remove)
         stream_.flush();
         stream_.close();
         if (stream_.fail()) {
-            LOGGER_ERROR("Failed to close file: \"" << file_name_ << 
+            LAMURE_LOG_ERROR("Failed to close file: \"" << file_name_ << 
                                      "\". " << strerror(errno));
         }
         stream_.exceptions(std::ifstream::failbit);
 
         if (remove)
             if (std::remove(file_name_.c_str())) {
-                LOGGER_WARN("Unable to delete file: \"" << file_name_ << 
+                LAMURE_LOG_WARN("Unable to delete file: \"" << file_name_ << 
                                        "\". " << strerror(errno));
             }
         file_name_ = "";
@@ -86,13 +87,13 @@ get_size() const
 {
     std::lock_guard<std::mutex> lock(read_write_mutex_);
 
-    assert(is_open());
+    ASSERT(is_open());
     stream_.seekg(0, stream_.end);
     size_t len = stream_.tellg();
     stream_.seekg(0, stream_.beg);
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("get_size failed. file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("get_size failed. file: \"" << file_name_ << 
                                 "\". " << strerror(errno));
     }
     return len / sizeof(surfel);
@@ -105,9 +106,9 @@ append(const surfel_vector* data,
 {
     std::lock_guard<std::mutex> lock(read_write_mutex_);
 
-    assert(is_open());
-    assert(length > 0);
-    assert(offset_in_mem + length <= data->size());
+    ASSERT(is_open());
+    ASSERT(length > 0);
+    ASSERT(offset_in_mem + length <= data->size());
 
     stream_.seekp(0, stream_.end);
     stream_.write(reinterpret_cast<char*>(
@@ -115,7 +116,7 @@ append(const surfel_vector* data,
                   length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("append failed. file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("append failed. file: \"" << file_name_ << 
                                 "\". (mem offset: " << offset_in_mem << 
                                 ", len: " << length << "). " << strerror(errno));
     }
@@ -134,8 +135,8 @@ write(const surfel_vector* data,
       const size_t offset_in_file,
       const size_t length)
 {
-    assert(length > 0);
-    assert(offset_in_mem + length <= data->size());
+    ASSERT(length > 0);
+    ASSERT(offset_in_mem + length <= data->size());
 
     write_data(reinterpret_cast<char*>(
               const_cast<surfel*>(&(*data)[offset_in_mem])),
@@ -155,8 +156,8 @@ read(surfel_vector* data,
      const size_t offset_in_file,
      const size_t length) const
 {
-    assert(length > 0);
-    assert(offset_in_mem + length <= data->size());
+    ASSERT(length > 0);
+    ASSERT(offset_in_mem + length <= data->size());
 
     read_data(reinterpret_cast<char*>(&(*data)[offset_in_mem]),
              offset_in_file, length);
@@ -174,14 +175,14 @@ read(const size_t pos_in_file) const
 void file::
 write_data(char *data, const size_t offset_in_file, const size_t length)
 {
-    assert(is_open());
+    ASSERT(is_open());
 
     std::lock_guard<std::mutex> lock(read_write_mutex_);
     stream_.seekp(offset_in_file * sizeof(surfel));
     stream_.write(data, length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("write failed. file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("write failed. file: \"" << file_name_ << 
                                 "\". (offset: " << offset_in_file << 
                                 ", len: " << length << "). " << strerror(errno));
     }
@@ -191,14 +192,14 @@ write_data(char *data, const size_t offset_in_file, const size_t length)
 void file::
 read_data(char *data, const size_t offset_in_file, const size_t length) const
 {
-    assert(is_open());
+    ASSERT(is_open());
 
     std::lock_guard<std::mutex> lock(read_write_mutex_);
     stream_.seekg(offset_in_file * sizeof(surfel));
     stream_.read(data, length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("read failed. file: \"" << file_name_ << 
+        LAMURE_LOG_ERROR("read failed. file: \"" << file_name_ << 
                                 "\". (offset: " << offset_in_file << 
                                 ", len: " << length << "). " << strerror(errno));
     }

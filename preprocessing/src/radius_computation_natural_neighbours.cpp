@@ -14,10 +14,10 @@ namespace lamure {
 namespace pre{
 
 
-real radius_computation_natural_neighbours::
+real_t radius_computation_natural_neighbours::
 compute_radius(const bvh& tree,
 			   const surfel_id_t target_surfel,
-               std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
+               std::vector<std::pair<surfel_id_t, real_t>> const& nearest_neighbours) const {
 
     if (nearest_neighbours.size() < min_num_nearest_neighbours_) {
          return 0.0f;
@@ -37,19 +37,19 @@ compute_radius(const bvh& tree,
         natural_neighbours.emplace_back( current_node.mem_array().read_surfel_ref(surf_id_pair.first.surfel_idx).pos() );
     }
 
-    vec3r point_of_interest = ((tree.nodes()[target_surfel.node_idx]).mem_array().read_surfel_ref(target_surfel.surfel_idx)).pos();
+    vec3r_t point_of_interest = ((tree.nodes()[target_surfel.node_idx]).mem_array().read_surfel_ref(target_surfel.surfel_idx)).pos();
 
     //determine most distant natural neighbour
-    real max_distance = 0.f;
+    real_t max_distance = 0.f;
     for (const auto& nn : natural_neighbours) {
 
         auto const& surfel_pos = nn.pos();
-        real new_dist = scm::math::length_sqr( point_of_interest - surfel_pos );
+        real_t new_dist = lamure::math::length_sqr( point_of_interest - surfel_pos );
         max_distance = std::max(max_distance, new_dist);
     }
 
-    if (max_distance >= std::numeric_limits<real>::min()) {
-        max_distance = scm::math::sqrt(max_distance);
+    if (max_distance >= std::numeric_limits<real_t>::min()) {
+        max_distance = lamure::math::sqrt(max_distance);
         return 0.5 * max_distance;
 
     } else { 
