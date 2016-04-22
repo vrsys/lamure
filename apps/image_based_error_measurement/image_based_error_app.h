@@ -8,7 +8,7 @@
 #ifndef IMAGE_BASED_ERROR_APP_H
 #define IMAGE_BASED_ERROR_APP_H
 
-#include <lamure/qm/color_converter.h>
+#include <lamure/util/color_converter.h>
 
 #include <FreeImagePlus.h>
 #include <iostream>

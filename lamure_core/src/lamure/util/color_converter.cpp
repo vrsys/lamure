@@ -5,10 +5,10 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <lamure/qm/color_converter.h>
+#include <lamure/util/color_converter.h>
 
 namespace lamure {
-namespace qm {
+namespace util {
 
 double const color_converter::pivot_RGB(double n)
 {

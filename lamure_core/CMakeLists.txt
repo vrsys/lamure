@@ -44,6 +44,7 @@ set(CORE_LIBRARY ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
+    ${FREEIMAGE_LIBRARY}
     optimized ${Boost_TIMER_LIBRARY_RELEASE} debug ${Boost_TIMER_LIBRARY_DEBUG}
     optimized ${Boost_CHRONO_LIBRARY_RELEASE} debug ${Boost_CHRONO_LIBRARY_DEBUG}
     optimized ${Boost_SYSTEM_LIBRARY_RELEASE} debug ${Boost_SYSTEM_LIBRARY_DEBUG}

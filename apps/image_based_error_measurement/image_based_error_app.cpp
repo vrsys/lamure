@@ -7,7 +7,7 @@
 
 #include "image_based_error_app.h"
 
-using cc = lamure::qm::color_converter;
+using cc = lamure::util::color_converter;
 
 namespace lamure{
 namespace app {
@@ -339,11 +339,11 @@ compute_delta_E(std::string const& image_path_1,
         unsigned char b2 = image_data_2_[i*4 + 2];
         //std::cout << "Read colors\n";
 
-        lamure::qm::col3 rgb1(r1,g1,b1);
-        lamure::qm::col3 rgb2(r2,g2,b2);
+        lamure::util::col3 rgb1(r1,g1,b1);
+        lamure::util::col3 rgb2(r2,g2,b2);
 
-        lamure::qm::col3 lab1 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb1));
-        lamure::qm::col3 lab2 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb2));
+        lamure::util::col3 lab1 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb1));
+        lamure::util::col3 lab2 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb2));
 
         double delta_E = cc::calc_delta_E(lab1, lab2);
 
