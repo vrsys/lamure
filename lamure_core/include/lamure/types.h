@@ -93,6 +93,8 @@ const static model_t invalid_model_t     = std::numeric_limits<model_t>::max();
 const static view_t invalid_view_t       = std::numeric_limits<view_t>::max();
 const static context_t invalid_context_t = std::numeric_limits<context_t>::max();
 
+
+
 } // namespace lamure
 
 #endif // LAMURE_TYPES_H_
