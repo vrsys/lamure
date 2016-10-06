@@ -1,0 +1,27 @@
+############################################################
+# CMake Build Script for the potentially_visible_set executable
+
+include_directories(${PVS_INCLUDE_DIR} 
+                    ${COMMON_INCLUDE_DIR})
+
+include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
+						   ${Boost_INCLUDE_DIR})
+
+link_directories(${SCHISM_LIBRARY_DIRS})
+
+InitApp(${CMAKE_PROJECT_NAME}_potentially_visible_set)
+
+############################################################
+# Libraries
+
+target_link_libraries(${PROJECT_NAME}
+    ${PROJECT_LIBS}
+    ${PVS_LIBRARY}
+    ${OpenGL_LIBRARIES} 
+    ${GLUT_LIBRARY}
+    ${SCHISM_LIBRARIES}
+    )
+
+add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set lamure_common)
+
+MsvcPostBuild(${PROJECT_NAME})
