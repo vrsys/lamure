@@ -133,7 +133,7 @@ boost::filesystem::path builder::convert_to_binary(std::string const& input_type
     }
     else {
         LOGGER_ERROR("Unable to convert input file: Unknown file format");
-        return false;
+        return boost::filesystem::path{};
     }
 
     format_bin format_out;

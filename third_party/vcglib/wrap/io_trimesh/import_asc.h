@@ -100,7 +100,7 @@ static int Open( MESH_TYPE &m, const char * filename, CallBackPos *cb=0, bool tr
   
     Point3f pp;
 		float q;
-    int cnt=0;
+    size_t cnt=0;
 		int ret;
 		char buf[1024];
 
@@ -140,8 +140,8 @@ static int Open( MESH_TYPE &m, const char * filename, CallBackPos *cb=0, bool tr
 				}
 		cnt=m.vert.size();
 		qDebug("Grid is %i x %i = %i (%i) ",i,cnt/i,i* (cnt/i),cnt);
-		tri::FaceGrid(m,i,cnt/i);
-		tri::Clean<CMeshO>::FlipMesh(m);
+		tri::FaceGrid(m,i,int(cnt/i));
+		tri::Clean<MESH_TYPE>::FlipMesh(m);
     return E_NOERROR;
   }
 

@@ -34,7 +34,7 @@
 #endif
 #include <vcg/space/color4.h>
 
-#include <iostream>
+
 #include <fstream>
 #include <string>
 #include <vector>
@@ -57,6 +57,7 @@ namespace vcg {
                 typedef typename OpenMeshType::VertexPointer VertexPointer;
                 typedef typename OpenMeshType::ScalarType ScalarType;
                 typedef typename OpenMeshType::VertexType VertexType;
+                typedef typename OpenMeshType::EdgeType   EdgeType;
                 typedef typename OpenMeshType::FaceType FaceType;
                 typedef typename OpenMeshType::VertexIterator VertexIterator;
                 typedef typename OpenMeshType::FaceIterator FaceIterator;
@@ -82,6 +83,8 @@ namespace vcg {
 
                     /// number of vertices
                     int numVertices;
+                    /// number of edges
+                    int numEdges;
                     /// number of faces (the number of triangles could be
                     /// larger in presence of polygonal faces
                     int numFaces;
@@ -110,6 +113,12 @@ namespace vcg {
                     int tInd;
                     bool  edge[3];// useless if the face is a polygon, no need to have variable length array
                     Color4b c;
+                };
+
+                struct ObjEdge
+                {
+                    int v0;
+                    int v1;
                 };
 
                 struct ObjTexCoord
@@ -203,7 +212,7 @@ namespace vcg {
                 static int Open(OpenMeshType &mesh, const char *filename, int &loadmask, CallBackPos *cb=0)
                 {
                     Info oi;
-                    oi.mask=-1;
+                    oi.mask=0;
                     oi.cb=cb;
                     int ret=Open(mesh,filename,oi);
                     loadmask=oi.mask;
@@ -225,7 +234,7 @@ namespace vcg {
                     CallBackPos *cb = oi.cb;
 
                     // if LoadMask has not been called yet, we call it here
-                    if (oi.mask == -1)
+                    if (oi.mask == 0)
                         LoadMask(filename, oi);
 
                     const int inputMask = oi.mask;
@@ -260,6 +269,7 @@ namespace vcg {
                     materials.push_back(defaultMaterial);
 
                     int numVertices  = 0;  // stores the number of vertices been read till now
+                    int numEdges     = 0;  // stores the number of edges read till now
                     int numTriangles = 0;  // stores the number of faces been read till now
                     int numTexCoords = 0;  // stores the number of texture coordinates been read till now
                     int numVNormals	 = 0;  // stores the number of vertex normals been read till now
@@ -269,6 +279,8 @@ namespace vcg {
                     // vertices and faces allocation
                     VertexIterator vi = vcg::tri::Allocator<OpenMeshType>::AddVertices(m,oi.numVertices);
                     //FaceIterator   fi = Allocator<OpenMeshType>::AddFaces(m,oi.numFaces);
+                    // edges found
+                    std::vector<ObjEdge> ev;
                     std::vector<Color4b> vertexColorVector;
                     ObjIndexedFace	ff;
                     const char *loadingStr = "Loading";
@@ -357,6 +369,22 @@ namespace vcg {
                                 normals.push_back(n);
 
                                 numVNormals++;
+                            }
+                            else if ( header.compare("l")==0 )
+                            {
+                                loadingStr = "Edge Loading";
+
+                                if (numTokens < 3)
+                                {
+                                    result = E_LESS_THAN_3_VERT_IN_FACE; // TODO add proper/handling error code
+                                    continue;
+                                }
+
+                                ObjEdge e = { (atoi(tokens[1].c_str()) - 1),
+                                              (atoi(tokens[2].c_str()) - 1) };
+                                ev.push_back(e);
+
+                                numEdges++;
                             }
                             else if( (header.compare("f")==0) || (header.compare("q")==0) )  // face
                             {
@@ -468,6 +496,8 @@ namespace vcg {
 #ifdef __gl_h_
                                         //qDebug("OK: using opengl tessellation for a polygon of %i verteces",vertexesPerFace);
                                         vcg::glu_tesselator::tesselate<vcg::Point3f>(polygonVect, indexTriangulatedVect);
+                                        if(indexTriangulatedVect.size()==0)
+                                          FanTessellator(polygonVect, indexTriangulatedVect);
 #else
                                         //qDebug("Warning: using fan tessellation for a polygon of %i verteces",vertexesPerFace);
                                         FanTessellator(polygonVect, indexTriangulatedVect);
@@ -516,7 +546,7 @@ namespace vcg {
                                                     break;
                                                 }
                                                 if (invalid) continue;
-                                                ff.tInd=materials[currentMaterialIdx].index; 
+                                                ff.tInd=materials[currentMaterialIdx].index;
                                         }
 
                                         // verifying validity of vertex indices
@@ -565,8 +595,7 @@ namespace vcg {
                             else if ((header.compare("mtllib")==0) && (tokens.size() > 1))	// material library
                             {
                                 // obtain the name of the file containing materials library
-                                unsigned slashPos = std::string(filename).find_last_of("/\\");
-                                std::string materialFileName = std::string(filename).substr(0, slashPos+1) + tokens[1];
+                                std::string materialFileName = tokens[1];
                                 if (!LoadMaterials( materialFileName.c_str(), materials, m.textures))
                                     result = E_MATERIAL_FILE_NOT_FOUND;
                             }
@@ -604,8 +633,29 @@ namespace vcg {
                     } // end while stream not eof
                     assert((numTriangles +numVertices) == numVerticesPlusFaces+extraTriangles);
                     vcg::tri::Allocator<OpenMeshType>::AddFaces(m,numTriangles);
+
+                    // Add found edges
+                    if (numEdges > 0)
+                    {
+                        vcg::tri::Allocator<OpenMeshType>::AddEdges(m,numEdges);
+
+                        assert(m.edge.size() == size_t(m.en));
+
+                        for(int i=0; i<numEdges; ++i)
+                        {
+                            ObjEdge &  e    = ev[i];
+                            EdgeType & edge = m.edge[i];
+
+                            assert(e.v0 >= 0 && size_t(e.v0) < m.vert.size() &&
+                                   e.v1 >= 0 && size_t(e.v1) < m.vert.size());
+                            // TODO add proper handling of bad indices
+
+                            edge.V(0) = &(m.vert[e.v0]);
+                            edge.V(1) = &(m.vert[e.v1]);
+                        }
+                    }
                     //-------------------------------------------------------------------------------
-                    //
+
                     // Now the final passes:
                     // First Pass to convert indexes into pointers for face to vert/norm/tex references
                     for(int i=0; i<numTriangles; ++i)
@@ -642,8 +692,10 @@ namespace vcg {
                             }
 
                             // set faux edge flags according to internals faces
-                            if (indexedFaces[i].edge[j]) m.face[i].SetF(j);
-                            else m.face[i].ClearF(j);
+                            if (indexedFaces[i].edge[j]) 
+								m.face[i].SetF(j);
+                            else 
+                                m.face[i].ClearF(j);
                         }
 
                         if (HasPerFaceNormal(m))
@@ -660,7 +712,7 @@ namespace vcg {
                             }
                             else
                             {
-                                face::ComputeNormalizedNormal(m.face[i]);
+                                m.face[i].N().Import(TriangleNormal(m.face[i]).Normalize());
                             }
                         }
                     }
@@ -928,6 +980,7 @@ namespace vcg {
                     bool bHasPerVertexColor = false;
 
                     oi.numVertices=0;
+                    oi.numEdges=0;
                     oi.numFaces=0;
                     oi.numTexCoords=0;
                     oi.numNormals=0;
@@ -960,6 +1013,8 @@ namespace vcg {
                             else {
                                 if((line[0]=='f') || (line[0]=='q')) oi.numFaces++;
                                 else
+                                    if (line[0]=='l') oi.numEdges++;
+                                else
                                     if(line[0]=='u' && line[1]=='s') bHasPerFaceColor = true; // there is a usematerial so add per face color
                             }
                         }
@@ -982,6 +1037,8 @@ namespace vcg {
                         else
                             oi.mask |= vcg::tri::io::Mask::IOM_WEDGNORMAL;
                     }
+                    if (oi.numEdges)
+                        oi.mask |= vcg::tri::io::Mask::IOM_EDGEINDEX;
 
                     stream.close();
 
@@ -999,6 +1056,7 @@ namespace vcg {
                 static bool LoadMaterials(const char * filename, std::vector<Material> &materials, std::vector<std::string> &textures)
                 {
                     // assumes we are in the right directory
+
                     std::ifstream stream(filename);
                     if (stream.fail())
                         return false;
@@ -1039,7 +1097,7 @@ namespace vcg {
                             else if (header.compare("Ka")==0)
                             {
                                 if (tokens.size() < 4)
-                                    continue;
+                                    return false;
                                 float r = (float) atof(tokens[1].c_str());
                                 float g = (float) atof(tokens[2].c_str());
                                 float b = (float) atof(tokens[3].c_str());
@@ -1049,7 +1107,7 @@ namespace vcg {
                             else if (header.compare("Kd")==0)
                             {
                                 if (tokens.size() < 4)
-                                    continue;
+                                    return false;
                                 float r = (float) atof(tokens[1].c_str());
                                 float g = (float) atof(tokens[2].c_str());
                                 float b = (float) atof(tokens[3].c_str());
@@ -1059,7 +1117,7 @@ namespace vcg {
                             else if (header.compare("Ks")==0)
                             {
                                 if (tokens.size() < 4)
-                                    continue;
+                                    return false;
                                 float r = (float) atof(tokens[1].c_str());
                                 float g = (float) atof(tokens[2].c_str());
                                 float b = (float) atof(tokens[3].c_str());
@@ -1070,19 +1128,19 @@ namespace vcg {
                                 (header.compare("Tr")==0)	)	// alpha
                             {
                                 if (tokens.size() < 2)
-                                    continue;
+                                    return false;
                                 currentMaterial.Tr = (float) atof(tokens[1].c_str());
                             }
                             else if (header.compare("Ns")==0)  // shininess
                             {
                                 if (tokens.size() < 2)
-                                    continue;
+                                    return false;
                                 currentMaterial.Ns = float(atoi(tokens[1].c_str()));
                             }
                             else if (header.compare("illum")==0)	// specular illumination on/off
                             {
                                 if (tokens.size() < 2)
-                                    continue;
+                                    return false;
                                 int illumination = atoi(tokens[1].c_str());
                                 //currentMaterial.bSpecular = (illumination == 2);
                                 currentMaterial.illum = illumination;
@@ -1090,7 +1148,7 @@ namespace vcg {
                             else if( (header.compare("map_Kd")==0)	|| (header.compare("map_Ka")==0) ) // texture name
                             {
                                 if (tokens.size() < 2)
-                                    continue;
+                                    return false;
                                 std::string textureName = tokens[1];
                                 //strcpy(currentMaterial.textureFileName, textureName.c_str());
                                 currentMaterial.map_Kd=textureName;

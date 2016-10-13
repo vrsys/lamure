@@ -61,7 +61,6 @@ set(PREPROC_LIBRARY ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME}
     ${COMMON_LIBRARY}
-    ${SCHISM_LIBRARIES}
     ${PROJECT_LIBS}
     ${GMP_LIBRARY}
     ${MPFR_LIBRARY}

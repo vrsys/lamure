@@ -3,12 +3,14 @@
 ##############################################################################
 SET(CGAL_INCLUDE_SEARCH_DIRS
   ${GLOBAL_EXT_DIR}/CGAL-4.9/include
+  ${GLOBAL_EXT_DIR}/CGAL/include
   /usr/include
   /opt/cgal/include
 )
 
 SET(CGAL_LIBRARY_SEARCH_DIRS
   ${GLOBAL_EXT_DIR}/CGAL-4.9/lib
+  ${GLOBAL_EXT_DIR}/CGAL/lib
   /usr/lib
   /usr/lib/x86_64-linux-gnu
   /opt/cgal/lib

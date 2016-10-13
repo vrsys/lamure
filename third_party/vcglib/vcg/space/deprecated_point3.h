@@ -203,6 +203,11 @@ public:
     return b;
   }
 
+  static inline Point3 Zero(void)
+  {
+    return Point3(0,0,0);
+  }
+
 //@}
 
 //@{
@@ -386,6 +391,13 @@ public:
 //@}
 //@{
 
+  size_t MaxCoeffId() const
+ {
+     if (_v[0]>_v[1])
+         return _v[0]>_v[2] ? 0 : 2;
+     else
+         return _v[1]>_v[2] ? 1 : 2;
+ }
   /** @name Comparison Operators.
    Note that the reverse z prioritized ordering, useful in many situations.
    **/

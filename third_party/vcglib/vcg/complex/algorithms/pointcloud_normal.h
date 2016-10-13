@@ -35,49 +35,54 @@ public:
     bool operator< (const WArc &a) const {return w<a.w;}
   };
 
-  static void ComputeUndirectedNormal(MeshType &m, int nn, float maxDist, KdTree<float> &tree,vcg::CallBackPos * cb=0)
+  static void ComputeUndirectedNormal(MeshType &m, int nn, ScalarType maxDist, KdTree<ScalarType> &tree,vcg::CallBackPos * cb=0)
   {
-    tree.setMaxNofNeighbors(nn);
+//    tree.setMaxNofNeighbors(nn);
+    const ScalarType maxDistSquared = maxDist*maxDist;
     int cnt=0;
     int step=m.vn/100;
+    typename KdTree<ScalarType>::PriorityQueue nq;
     for (VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi)
     {
-        tree.doQueryK(vi->cP());
+        tree.doQueryK(vi->cP(),nn,nq);
         if(cb && (++cnt%step)==0) cb(cnt/step,"Fitting planes");
 
-        int neighbours = tree.getNofFoundNeighbors();
+//        int neighbours = tree.getNofFoundNeighbors();
+        int neighbours = nq.getNofElements();
         std::vector<CoordType> ptVec;
-
         for (int i = 0; i < neighbours; i++)
         {
-            int neightId = tree.getNeighborId(i);
-            if(Distance(vi->cP(),m.vert[neightId].cP())<maxDist)
-            ptVec.push_back(m.vert[neightId].cP());
+//            int neightId = tree.getNeighborId(i);
+            int neightId = nq.getIndex(i);
+            if(nq.getWeight(i) <maxDistSquared)
+              ptVec.push_back(m.vert[neightId].cP());
         }
-        Plane3f plane;
+        Plane3<ScalarType> plane;
         FitPlaneToPointSet(ptVec,plane);
         vi->N()=plane.Direction();
     }
   }
 
-  static void AddNeighboursToHeap( MeshType &m, VertexPointer vp, KdTree<float> &tree, std::vector<WArc> &heap)
+  static void AddNeighboursToHeap( MeshType &m, VertexPointer vp, int nn, KdTree<ScalarType> &tree, std::vector<WArc> &heap)
   {
-    tree.doQueryK(vp->cP());
+    typename KdTree<ScalarType>::PriorityQueue nq;
+    tree.doQueryK(vp->cP(),nn,nq);
 
-    int neighbours = tree.getNofFoundNeighbors();
+    int neighbours =  nq.getNofElements();
     for (int i = 0; i < neighbours; i++)
     {
-        int neightId = tree.getNeighborId(i);
+//        int neightId = tree.getNeighborId(i);
+        int neightId = nq.getIndex(i);
         if (neightId < m.vn && (&m.vert[neightId] != vp))
         {
           if(!m.vert[neightId].IsV())
           {
             heap.push_back(WArc(vp,&(m.vert[neightId])));
             //std::push_heap(heap.begin(),heap.end());
-            if(heap.back().w < 0.3f) 
-				heap.pop_back();
-			else
-				std::push_heap(heap.begin(),heap.end());
+            if(heap.back().w < 0.3f)
+                heap.pop_back();
+            else
+                std::push_heap(heap.begin(),heap.end());
           }
         }
     }
@@ -98,7 +103,7 @@ public:
     int fittingAdjNum; /// number of adjacent nodes used for computing the fitting plane
     int smoothingIterNum; /// number of itaration of a simple normal smoothing (use the same number of ajdacent of fittingAdjNjm)
     int coherentAdjNum; /// number of nodes used in the coherency pass
-    Point3f viewPoint;  /// position of a viewpoint used to disambiguate direction
+    CoordType viewPoint;  /// position of a viewpoint used to disambiguate direction
     bool useViewPoint;  /// if the position of the viewpoint has to be used.
   };
 
@@ -107,14 +112,14 @@ public:
     tri::Allocator<MeshType>::CompactVertexVector(m);
     if(cb) cb(1,"Building KdTree...");
     VertexConstDataWrapper<MeshType> DW(m);
-    KdTree<float> tree(DW);
+    KdTree<ScalarType> tree(DW);
 
     ComputeUndirectedNormal(m, p.fittingAdjNum, std::numeric_limits<ScalarType>::max(), tree,cb);
 
     tri::Smooth<MeshType>::VertexNormalPointCloud(m,p.fittingAdjNum,p.smoothingIterNum,&tree);
 
     if(p.coherentAdjNum==0) return;
-    tree.setMaxNofNeighbors(p.coherentAdjNum+1);
+//    tree.setMaxNofNeighbors(p.coherentAdjNum+1);
 
     tri::UpdateFlags<MeshType>::VertexClearV(m);
     std::vector<WArc> heap;
@@ -133,7 +138,7 @@ public:
           vi->N()=-(*vi).N();
 
       vi->SetV();
-      AddNeighboursToHeap(m,&*vi,tree,heap);
+      AddNeighboursToHeap(m,&*vi,p.coherentAdjNum,tree,heap);
 
       while(!heap.empty())
       {
@@ -146,7 +151,7 @@ public:
           if(a.src->cN()*a.trg->cN()<0.0f)
             if(!p.useViewPoint || ( a.trg->N().dot(p.viewPoint- a.trg->P())<0.0f)) // test to prevent flipping according to viewpos
               a.trg->N()=-a.trg->N();
-          AddNeighboursToHeap(m,a.trg,tree,heap);
+          AddNeighboursToHeap(m,a.trg,p.coherentAdjNum,tree,heap);
         }
       }
     }

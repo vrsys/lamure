@@ -137,14 +137,14 @@ const char * PlyFile::newtypenames[9]=
 	"float64"
 };
 
-static int Typesize[] = {
+static int TypeSize[] = {
   0, 1, 2, 4, 1, 2, 4, 4, 8
 };
 
-size_t PropDescriptor::memtypesize() const {return Typesize[memtype1];}
-size_t PropDescriptor::stotypesize() const { return Typesize[stotype1]; }
-const char *PropDescriptor::memtypename() const { return PlyFile::typenames[memtype1]; }
-const char *PropDescriptor::stotypename() const { return PlyFile::typenames[stotype1]; }
+size_t PropDescriptor::memtypesize() const {return TypeSize[memtype1];}
+size_t PropDescriptor::stotypesize() const {return TypeSize[stotype1];}
+const char *PropDescriptor::memtypename() const {return PlyFile::typenames[memtype1];}
+const char *PropDescriptor::stotypename() const {return PlyFile::typenames[stotype1];}
 
 static char CrossType[9][9]=
 {
@@ -165,14 +165,14 @@ static char CrossType[9][9]=
 
 		// Big-little endian
 
-static inline void swapShort( ushort * s )
+static inline void SwapShort( ushort * s )
 {
 	assert(s);
     *s = ushort( (int(*s)>>8) | (int(*s)<<8) );
 }
 
 
-static inline void swapInt( uint * x )
+static inline void SwapInt( uint * x )
 {
 	assert(x);
     *x = 
@@ -183,7 +183,7 @@ static inline void swapInt( uint * x )
 }
 
 
-static inline void swapDouble( double * /*d*/ )
+static inline void SwapDouble( double * /*d*/ )
 {
 	// Come si fa?
 	assert(0);
@@ -214,7 +214,7 @@ static inline int ReadShortB( XFILE * fp, short * s, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-	swapShort((ushort *)s);
+	SwapShort((ushort *)s);
 
 	return r;
 }
@@ -233,7 +233,7 @@ static inline int ReadIntB( XFILE * fp, int * i, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		swapInt((uint *)i);
+		SwapInt((uint *)i);
 
 	return r;
 }
@@ -261,7 +261,7 @@ static inline int ReadUShortB( XFILE * fp, ushort * us, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		swapShort(us);
+		SwapShort(us);
 
 	return r;
 }
@@ -280,7 +280,7 @@ static inline int ReadUIntB( XFILE * fp, uint * ui, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		swapInt(ui);
+		SwapInt(ui);
 
 	return r;
 }
@@ -299,7 +299,7 @@ static inline int ReadFloatB( XFILE * fp, float * f, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		swapInt((uint *)f);
+		SwapInt((uint *)f);
 
 	return r;
 }
@@ -318,7 +318,7 @@ static inline int ReadDoubleB( XFILE * fp, double * d, int format )
 #else
 	if(format==F_BINLITTLE)
 #endif
-		swapDouble(d);
+		SwapDouble(d);
 
 	return r;
 }
@@ -587,7 +587,7 @@ static inline int SkipScalarB( XFILE * fp, const int tf)
   char dummy[8];
 
 	assert(fp);
-	return pb_fread(dummy,1,Typesize[tf],fp);
+	return pb_fread(dummy,1,TypeSize[tf],fp);
 }
 
 static int ReadScalarB( XFILE * fp, void * mem, const int tf, const int tm, int fmt )
@@ -1916,7 +1916,7 @@ static bool cb_read_list_ascii( GZFILE fp, void * mem, PropDescriptor * d )
 		// Determinazione memoria vettore
 	if(d->alloclist)
 	{
-		store = (char *)calloc(n,Typesize[d->memtype1]);
+		store = (char *)calloc(n,TypeSize[d->memtype1]);
 		assert(store);
 		*(char **)(((char *)mem)+d->offset1) = store;
 	}
@@ -1929,7 +1929,7 @@ static bool cb_read_list_ascii( GZFILE fp, void * mem, PropDescriptor * d )
 	{
 		if( !ReadScalarA(
 				fp, 
-				store+i*Typesize[d->memtype1],
+				store+i*TypeSize[d->memtype1],
 				d->stotype1,
 				d->memtype1
 			 ) )
@@ -3320,7 +3320,7 @@ void PlyFile::compile( PlyProperty * p )
 			}
 			else
 			{
-				switch(Typesize[p->tipo])
+				switch(TypeSize[p->tipo])
 				{
 				case 1: p->cb = cb_skip_list_bin1; break;
 				case 2: p->cb = cb_skip_list_bin2; break;
@@ -3442,7 +3442,7 @@ void PlyFile::compile( PlyProperty * p )
 			}
 			else
 			{
-				switch(Typesize[p->tipo])
+				switch(TypeSize[p->tipo])
 				{
 				case 1: p->cb = cb_skip_bin1; break;
 				case 2: p->cb = cb_skip_bin2; break;
@@ -3489,7 +3489,7 @@ int ReadBin  ( XFILE * fp, const PlyProperty * pr, void * mem, int fmt )
 				// Determinazione memoria vettore
 			if(pr->desc.alloclist)
 			{
-				store = (char *)calloc(n,Typesize[pr->desc.memtype1]);
+				store = (char *)calloc(n,TypeSize[pr->desc.memtype1]);
 				assert(store);
 				*(char **)(((char *)mem)+pr->desc.offset1) = store;
 			}
@@ -3502,7 +3502,7 @@ int ReadBin  ( XFILE * fp, const PlyProperty * pr, void * mem, int fmt )
 			{
 				if( !ReadScalarB(
 						fp, 
-						store+i*Typesize[pr->desc.memtype1],
+						store+i*TypeSize[pr->desc.memtype1],
 						pr->desc.stotype1,
 						pr->desc.memtype1,
 						fmt
@@ -3563,7 +3563,7 @@ int ReadAscii( XFILE * fp, const PlyProperty * pr, void * mem, int /*fmt*/ )
 				// Determinazione memoria vettore
 			if(pr->desc.alloclist)
 			{
-				store = (char *)calloc(n,Typesize[pr->desc.memtype1]);
+				store = (char *)calloc(n,TypeSize[pr->desc.memtype1]);
 				assert(store);
 				*(char **)(((char *)mem)+pr->desc.offset1) = store;
 			}
@@ -3576,7 +3576,7 @@ int ReadAscii( XFILE * fp, const PlyProperty * pr, void * mem, int /*fmt*/ )
 			{
 				if( !ReadScalarA(
 						fp, 
-						store+i*Typesize[pr->desc.memtype1],
+						store+i*TypeSize[pr->desc.memtype1],
 						pr->desc.stotype1,
 						pr->desc.memtype1
 					 ) )

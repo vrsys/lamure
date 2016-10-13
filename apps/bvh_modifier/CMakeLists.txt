@@ -19,7 +19,6 @@ target_link_libraries(${PROJECT_NAME}
     ${PREPROC_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
-    ${SCHISM_LIBRARIES}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
     optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     optimized ${Boost_PROGRAM_OPTIONS_LIBRARY_RELEASE} debug ${Boost_PROGRAM_OPTIONS_LIBRARY_DEBUG}

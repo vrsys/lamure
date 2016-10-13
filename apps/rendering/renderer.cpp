@@ -402,8 +402,8 @@ render_one_pass_HQ(lamure::context_t context_id,
 
 
 
-                    auto compute_dist = [](vec3f const& v3, vec4r const& v4) {
-                        vec3r dist_vec(
+                    auto compute_dist = [](lamure::vec3f const& v3, lamure::vec4r const& v4) {
+                      lamure::vec3r dist_vec(
                                        real(v3[2]) - v4[2]);
 
                         return scm::math::length_sqr(dist_vec);

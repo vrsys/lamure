@@ -395,7 +395,7 @@ create_lod(real& reduction_error,
         {
             for (uint32_t k = 0; k < grid_dimensions[2]; ++k)
             {
-                cell_pq.push({grid[i][j][k], 0.1});
+                cell_pq.push({grid[i][j][k], 0.1f});
                 surfel_count += grid[i][j][k]->size();
                 grid[i][j][k] = 0;
             }

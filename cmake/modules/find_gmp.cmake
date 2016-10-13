@@ -33,7 +33,7 @@ ENDFOREACH()
 
 find_path(GMP_INCLUDE_DIR NAMES gmp.h PATHS ${GMP_INCLUDE_SEARCH_DIRS})
 
-find_library(GMP_LIBRARY NAMES libGMP ${GMP_LIBRARY_FILENAMES} PATHS ${GMP_LIBRARY_SEARCH_DIRS})
+find_library(GMP_LIBRARY NAMES gmp libGMP ${GMP_LIBRARY_FILENAMES} PATHS ${GMP_LIBRARY_SEARCH_DIRS})
 
 ##############################################################################
 # verify

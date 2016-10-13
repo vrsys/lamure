@@ -22,7 +22,9 @@ target_link_libraries(${PROJECT_NAME}
     ${REND_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_glut_LIBRARY}
-    ${SCHISM_LIBRARIES}
+    optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
+    optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
+    optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     )
 
 add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common)

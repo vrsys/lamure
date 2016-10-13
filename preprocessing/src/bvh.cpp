@@ -1433,7 +1433,7 @@ upsweep(const reduction_strategy& reduction_strgy,
         std::cout << std::endl;
 
         real mean_radius_sd = 0.0;
-        uint counter = 1;
+        unsigned counter = 1;
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index){
 
             bvh_node* current_node = &nodes_.at(node_index);
@@ -1495,7 +1495,7 @@ resample() {
     }
 
     real mean_radius_sd = 0.0;
-    uint counter = 1;
+    unsigned counter = 1;
     for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index){
 
         bvh_node* current_node = &nodes_.at(node_index);
