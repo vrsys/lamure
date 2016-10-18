@@ -23,6 +23,7 @@ include_directories(${PROJECT_INCLUDE_DIR}
                     ${CGAL_INCLUDE_DIR}
                     ${GMP_INCLUDE_DIR} 
                     ${MPFR_INCLUDE_DIR}
+                    ${REND_INCLUDE_DIR} 
                     )
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}

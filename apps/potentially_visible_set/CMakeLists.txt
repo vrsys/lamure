@@ -1,8 +1,12 @@
 ############################################################
 # CMake Build Script for the potentially_visible_set executable
 
-include_directories(${PVS_INCLUDE_DIR} 
-                    ${COMMON_INCLUDE_DIR})
+include_directories(${PVS_INCLUDE_DIR}
+					${REND_INCLUDE_DIR} 
+                    ${COMMON_INCLUDE_DIR}
+                    ${GLUT_INCLUDE_DIR}
+                    ${FREEIMAGE_INCLUDE_DIR}
+			        ${LAMURE_CONFIG_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 						   ${Boost_INCLUDE_DIR})
@@ -17,6 +21,7 @@ InitApp(${CMAKE_PROJECT_NAME}_potentially_visible_set)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${PVS_LIBRARY}
+    ${REND_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     ${SCHISM_LIBRARIES}
