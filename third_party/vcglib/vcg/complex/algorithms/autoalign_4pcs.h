@@ -36,6 +36,7 @@ used in the paper pseudocode.
 #include <vcg/complex/algorithms/closest.h>
 #include <vcg/complex/algorithms/point_sampling.h>
 #include <vcg/math/random_generator.h>
+#include <ctime>
 namespace vcg{
 namespace tri{
 
@@ -49,12 +50,15 @@ public:
   class PUsedTypes: public vcg::UsedTypes < vcg::Use<PVertex>::template AsVertexType,
                                             vcg::Use<PFace  >::template AsFaceType >{};
 
-  class PVertex : public vcg::Vertex< PUsedTypes,vcg::vertex::BitFlags,vcg::vertex::Coord3f ,vcg::vertex::Mark>{};
+  class PVertex : public vcg::Vertex< PUsedTypes,vcg::vertex::BitFlags,vcg::vertex::Coord3f,vcg::vertex::Mark>{};
   class PFace   : public vcg::Face<   PUsedTypes> {};
   class PMesh   : public vcg::tri::TriMesh< std::vector<PVertex>, std::vector<PFace> > {};
 
   typedef typename MeshType::ScalarType ScalarType;
   typedef typename MeshType::CoordType CoordType;
+  typedef typename vcg::Matrix44<ScalarType> Matrix44x;
+  typedef typename vcg::Box3<ScalarType> Box3x;
+
   typedef typename MeshType::VertexIterator VertexIterator;
   typedef typename MeshType::VertexPointer VertexPointer;
   typedef typename MeshType::VertexType VertexType;
@@ -110,7 +114,7 @@ public:
     VertexPointer p0,p1;
     Couple(VertexPointer i, VertexPointer j, float d) : p0(i),p1(j),dist(d){}
     float dist;
-    const bool operator < (const   Couple & o) const {return dist < o.dist;}
+    bool operator < (const   Couple & o) const {return dist < o.dist;}
     VertexPointer operator[](const int &i) const {return (i==0)? this->p0 : this->p1;}
   };
 
@@ -200,7 +204,7 @@ bool SelectCoplanarBase(FourPoints &B, ScalarType &r1, ScalarType &r2)
   B[0] = P->vert[ rnd.generate(P->vert.size())].P();
 
   // **** second point: a random point at distance side +-dtol
-  int i;
+  size_t i;
   for(i = 0; i < P->vert.size(); ++i){
     int id = rnd.generate(P->vert.size());
     ScalarType dd = (P->vert[id].P() - B[0]).Norm();
@@ -212,7 +216,7 @@ bool SelectCoplanarBase(FourPoints &B, ScalarType &r1, ScalarType &r2)
   if(i ==  P->vert.size()) return false;
 
   // **** third point: at distance less than side*0.8 from middle way between B[0] and B[1]
-  const vcg::Point3f middle = (B[0]+B[1])/2.0;
+  const CoordType middle = (B[0]+B[1])/2.0;
   for(i = 0; i < P->vert.size(); ++i){
     int id = rnd.generate(P->vert.size());
     if( Distance(P->vert[id].P(),middle) < side*0.8 ){
@@ -223,8 +227,8 @@ bool SelectCoplanarBase(FourPoints &B, ScalarType &r1, ScalarType &r2)
   if(i ==  P->vert.size()) return false;
 
   // **** fourth point:
-  float cpr = rnd.generate01();
-  vcg::Point3f crossP = B[0] *(1-cpr)+B[1]*cpr;
+  ScalarType cpr = rnd.generate01();
+  CoordType crossP = B[0] *(1-cpr)+B[1]*cpr;
   CoordType B4 = B[2]+(crossP-B[2]).Normalize()*side;
   CoordType n = ((B[0]-B[1]).normalized() ^ (B[2]-B[1]).normalized()).normalized();
   ScalarType radius = dtol;
@@ -281,7 +285,7 @@ bool SelectCoplanarBase(FourPoints &B, ScalarType &r1, ScalarType &r2)
         std::vector< CoordType > >(*P,ugridP, par.feetSize ,B[i],radius, ExtB[i], dists, samples);
   }
 
-  qDebug("ExtB %i",ExtB[0].size()+ExtB[1].size()+ExtB[2].size()+ExtB[3].size());
+  //qDebug("ExtB %i",ExtB[0].size()+ExtB[1].size()+ExtB[2].size()+ExtB[3].size());
   stat.selectCoplanarBaseTime+=clock()-t0;
   return true;
 }
@@ -315,8 +319,8 @@ bool IsTransfCongruent(const FourPoints &B, const FourPoints &fp, vcg::Matrix44<
 void ComputeR1(std::vector<Couple > &R1)
 {
   R1.clear();
-  for(int vi = 0; vi  < subsetQ.size(); ++vi)
-    for(int vj = vi; vj < subsetQ.size(); ++vj){
+  for(size_t vi = 0; vi  < subsetQ.size(); ++vi)
+    for(size_t vj = vi; vj < subsetQ.size(); ++vj){
       ScalarType d = Distance(subsetQ[vi]->P(),subsetQ[vj]->P());
       if( (d < side+par.deltaAbs))
       {
@@ -360,7 +364,7 @@ bool FindCongruent(const std::vector<Couple > &R1, const FourPoints &B, const Sc
   for(ite = bR1; ite != eR1;++ite){
     vii = vcg::tri::Allocator<PMesh>::AddVertices(Invr,1);
     //      (*vii).P() = Q->vert[R1[i][0]].P() + (Q->vert[R1[i][1]].P()-Q->vert[R1[i][0]].P()) * r1;
-    (*vii).P() =         ite->p0->P() + (        ite->p1->P() -       ite->p0->P()) * r1;
+    (*vii).P() .Import(         ite->p0->P() + (        ite->p1->P() -       ite->p0->P()) * r1);
     ++i;
   }
   if(Invr.vert.empty() ) return false;
@@ -386,15 +390,15 @@ bool FindCongruent(const std::vector<Couple > &R1, const FourPoints &B, const Sc
   ugrid.Set(Invr.vert.begin(),Invr.vert.end());
   n_closests = 0; n_congr = 0; ac =0 ; acf = 0; tr = 0; trf = 0;
   printf("R2Inv.size  = %d \n",R2inv.size());
-  for(uint i = 0 ; i < R2inv.size() ; ++i)
+  for(unsigned int i = 0 ; i < R2inv.size() ; ++i)
   {
     std::vector<typename PMesh::VertexType*> closests;
 
     // for each point in R2inv get all the points in R1 closer than par.delta
     vcg::Matrix44<ScalarType> mat;
-    vcg::Box3f bb;
-    bb.Add(R2inv[i].pos+vcg::Point3f(par.deltaAbs,par.deltaAbs, par.deltaAbs));
-    bb.Add(R2inv[i].pos-vcg::Point3f(par.deltaAbs,par.deltaAbs, par.deltaAbs));
+    Box3x bb;
+    bb.Add(R2inv[i].pos+CoordType(par.deltaAbs,par.deltaAbs, par.deltaAbs));
+    bb.Add(R2inv[i].pos-CoordType(par.deltaAbs,par.deltaAbs, par.deltaAbs));
 
     vcg::tri::GetInBoxVertex<PMesh,GridType,std::vector<typename PMesh::VertexType*> >
         (Invr,ugrid,bb,closests);
@@ -403,7 +407,7 @@ bool FindCongruent(const std::vector<Couple > &R1, const FourPoints &B, const Sc
       closests.resize(5);
 
     n_closests+=closests.size();
-    for(uint ip = 0; ip < closests.size(); ++ip)
+    for(unsigned int ip = 0; ip < closests.size(); ++ip)
     {
       FourPoints p;
       p[0] = R1[id[closests[ip]]][0]->cP();
@@ -456,7 +460,7 @@ int EvaluateSample(Candidate & fp, const CoordType & tp, const CoordType & np)
 void EvaluateAlignment(Candidate  & fp){
         int n_delta_close = 0;
         for(int i  = 0 ; i< 4; ++i) {
-            for(uint j = 0; j < ExtB[i].size();++j){
+            for(unsigned int j = 0; j < ExtB[i].size();++j){
                 n_delta_close+=EvaluateSample(fp, ExtB[i][j]->P(), ExtB[i][j]->cN());
             }
         }
@@ -467,7 +471,7 @@ void TestAlignment(Candidate  & fp)
 {
   clock_t t0 = clock();
   int n_delta_close = 0;
-  for(uint j = 0; j < subsetP.size();++j){
+  for(unsigned int j = 0; j < subsetP.size();++j){
     CoordType np = subsetP[j]->N();
     CoordType tp = subsetP[j]->P();
     n_delta_close+=EvaluateSample(fp,tp,np);
@@ -477,7 +481,7 @@ void TestAlignment(Candidate  & fp)
 }
 
 
-bool Align(vcg::Matrix44f & result, vcg::CallBackPos * cb )
+bool Align(Matrix44x & result, vcg::CallBackPos * cb )
 {
   int maxAttempt =100;
   int scoreThr = par.sampleNumP*0.8;
@@ -495,7 +499,7 @@ bool Align(vcg::Matrix44f & result, vcg::CallBackPos * cb )
       U.clear();
       FindCongruent(R1,B,r1,r2);
       qDebug("Attempt %i found %i candidate best score %i",i,U.size(),bestC.score);
-      for(int i = 0 ; i <  U.size() ;++i)
+      for(size_t i = 0 ; i <  U.size() ;++i)
       {
         TestAlignment(U[i]);
         if(U[i].score > bestC.score)
@@ -507,7 +511,7 @@ bool Align(vcg::Matrix44f & result, vcg::CallBackPos * cb )
   return bestC.score >0;
 }
 
-bool Align(int L, vcg::Matrix44f & result, vcg::CallBackPos * cb )
+bool Align(int L, Matrix44x & result, vcg::CallBackPos * cb )
 {
     int bestv = 0;
     bool found;

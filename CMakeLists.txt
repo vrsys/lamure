@@ -30,6 +30,8 @@ set(TEST_OUTPUT_PATH ${CMAKE_BINARY_DIR}/test)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(LAMURE_CONFIG_DIR ${CMAKE_BINARY_DIR})
 
+option (LAMURE_USE_CGAL_FOR_NNI "Set to enable CGAL library for natural neighbor interpolation. NNI will not work without CGAL." ON)
+
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/install" CACHE PATH "default install path" FORCE )
 endif()
@@ -83,7 +85,7 @@ ELSEIF (UNIX)
   set(BOOST_LIBRARYDIR /opt/boost/latest/lib)
 ENDIF ()
 
-find_package( Boost 1.54.0 REQUIRED thread system program_options timer chrono filesystem date_time)
+find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex system thread timer)
 find_package( Threads )
 
 ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
@@ -118,21 +120,25 @@ endif ()
 ################################
 include (find_freeimage)
 
-################################
-# CGAL
-################################
-include(find_cgal)
+if (${LAMURE_USE_CGAL_FOR_NNI})
+  ################################
+  # CGAL
+  ################################
+  include(find_cgal)
 
-################################
-# GMP
-################################
-include(find_gmp)
+  ################################
+  # GMP
+  ################################
+  include(find_gmp)
 
-################################
-# MPFR
-################################
-include(find_mpfr)
+  ################################
+  # MPFR
+  ################################
+  include(find_mpfr)
 
+else()
+  # include NNI alternative here
+endif (${LAMURE_USE_CGAL_FOR_NNI})
 
 ############################################################
 # Build 3rd-party

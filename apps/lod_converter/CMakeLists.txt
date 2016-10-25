@@ -20,6 +20,5 @@ target_link_libraries(${PROJECT_NAME}
     ${REND_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
-    ${SCHISM_LIBRARIES}
     )
 

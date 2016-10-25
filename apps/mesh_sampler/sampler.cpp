@@ -20,9 +20,9 @@ compute_normals()
     //PerVertexclear(m);
     for (auto& f : m.face)
         if (!f.IsD() && f.IsR()) {
-            //typename FaceType::NormalType t = (*f).Normal();
+          //typename FaceType::NormalType t = (*f).Normal();
 
-            auto t = vcg::Normal(f);
+          auto t = vcg::TriangleNormal(f);
 
             for (int j = 0; j < 3; ++j) {
               if (!f.V(j)->IsD() && f.V(j)->IsRW())

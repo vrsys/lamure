@@ -93,8 +93,8 @@ inline typename FaceType::ScalarType DihedralAngleRad(FaceType & f,  const int i
   VertexType *vf0 = f0->V2(i0);
   VertexType *vf1 = f1->V2(i1);
 
-  CoordType n0 = NormalizedNormal(*f0);
-  CoordType n1 = NormalizedNormal(*f1);
+  CoordType n0 = TriangleNormal(*f0).Normalize();
+  CoordType n1 = TriangleNormal(*f1).Normalize();
   ScalarType off0 = n0*vf0->P();
   ScalarType off1 = n1*vf1->P();
 
@@ -106,7 +106,7 @@ inline typename FaceType::ScalarType DihedralAngleRad(FaceType & f,  const int i
   if(fabs(dist01) > fabs(dist10)) sign = dist01;
   else sign=dist10;
 
-  ScalarType angleRad=Angle(f0->N(),f1->N());
+  ScalarType angleRad=AngleN(n0,n1);
 
   if(sign > 0 ) return angleRad;
   else return -angleRad;
@@ -468,7 +468,9 @@ bool FFLinkCondition(FaceType &f, const int z)
 
 /*! Perform a simple edge collapse
  * The edge z is collapsed and the vertex V(z) is collapsed onto the vertex V1(Z)
- * It assumes that the mesh is Manifold.
+ * vertex V(z) is deleted and vertex V1(z) survives.
+ * It assumes that the mesh is Manifold. 
+ * Note that it preserves manifoldness only if FFLinkConditions are satisfied
  * If the mesh is not manifold it will crash (there will be faces with deleted vertexes around)
  *           f12
  *   surV ___________
@@ -555,7 +557,6 @@ bool CheckFlipEdgeNormal(FaceType &f, const int z, const float angleRad)
 {
   typedef typename FaceType::VertexType VertexType;
   typedef typename VertexType::CoordType CoordType;
-  typedef typename VertexType::ScalarType ScalarType;
 
   VertexType *OldDiag0 = f.V0(z);
   VertexType *OldDiag1 = f.V1(z);
@@ -794,7 +795,7 @@ void VVExtendedStarVF(typename FaceType::VertexType* vp,
             for (unsigned int i=0;i<vertVec.size();i++)
             {
                 std::vector<VertexType *> Vtemp;
-                vcg::face::VVStarVF<FaceType>(vp,Vtemp);
+                vcg::face::VVStarVF<FaceType>(vertVec[i],Vtemp);
                 toAdd.insert(toAdd.end(),Vtemp.begin(),Vtemp.end());
             }
             vertVec.insert(vertVec.end(),toAdd.begin(),toAdd.end());
@@ -817,7 +818,6 @@ void VFStarVF( typename FaceType::VertexType* vp,
                std::vector<FaceType *> &faceVec,
                std::vector<int> &indexes)
 {
-    typedef typename FaceType::VertexType* VertexPointer;
     faceVec.clear();
     indexes.clear();
     face::VFIterator<FaceType> vfi(vp);
@@ -962,7 +962,7 @@ void VVOrderedStarFF(Pos<FaceType> &startPos,
  *
 */
 template <class FaceType>
-void VFOrderedStarFF(Pos<FaceType> &startPos,
+void VFOrderedStarFF(const Pos<FaceType> &startPos,
                      std::vector<Pos<FaceType> > &posVec)
 {
   posVec.clear();
@@ -1002,7 +1002,7 @@ void VFOrderedStarFF(Pos<FaceType> &startPos,
 */
 
 template <class FaceType>
-void VFOrderedStarFF(Pos<FaceType> &startPos,
+void VFOrderedStarFF(const Pos<FaceType> &startPos,
                         std::vector<FaceType*> &faceVec,
                         std::vector<int> &edgeVec)
 {

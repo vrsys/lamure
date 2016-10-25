@@ -56,10 +56,9 @@ public:
   typedef typename MeshType::FacePointer    FacePointer;
   typedef typename MeshType::FaceIterator   FaceIterator;
 
-
 /** Assign to each vertex of the mesh a constant quality value. Useful for initialization.
 */
-static void VertexConstant(MeshType &m, float q)
+static void VertexConstant(MeshType &m, ScalarType q)
 {
   tri::RequirePerVertexQuality(m);
   for(VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi) if(!(*vi).IsD())
@@ -68,7 +67,9 @@ static void VertexConstant(MeshType &m, float q)
 
 /** Clamp each vertex of the mesh with a range of values.
 */
-static void VertexClamp(MeshType &m, float qmin, float qmax)
+static void VertexClamp(MeshType &m,
+                        typename MeshType::VertexType::QualityType qmin,
+                        typename MeshType::VertexType::QualityType qmax)
 {
   tri::RequirePerVertexQuality(m);
   for(VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi) if(!(*vi).IsD())
@@ -140,6 +141,21 @@ static void VertexFromFace( MeshType &m, bool areaWeighted=true)
     {
       (*vi).Q() = TQ[*vi] / TCnt[*vi];
     }
+}
+
+template <class HandleScalar>
+static void VertexFromAttributeHandle(MeshType &m, typename MeshType::template PerVertexAttributeHandle<HandleScalar> &h)
+{
+  for(VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi)
+    if(!(*vi).IsD())
+      (*vi).Q()=ScalarType(h[vi]);
+}
+
+template <class HandleScalar>
+static void FaceFromAttributeHandle(MeshType &m, typename MeshType::template PerFaceAttributeHandle<HandleScalar> &h)
+{
+  for(FaceIterator fi=m.face.begin();fi!=m.face.end();++fi) if(!(*fi).IsD())
+    (*fi).Q() =h[fi];
 }
 
 static void FaceFromVertex( MeshType &m)
@@ -241,6 +257,8 @@ static void VertexFromRMSCurvature(MeshType &m)
 static void FaceSaturate(MeshType &m, ScalarType gradientThr=1.0)
 {
   typedef typename MeshType::CoordType CoordType;
+  typedef typename MeshType::ScalarType ScalarType;
+
   UpdateFlags<MeshType>::FaceClearV(m);
   std::stack<FacePointer> st;
 
@@ -264,9 +282,9 @@ static void FaceSaturate(MeshType &m, ScalarType gradientThr=1.0)
      for(ffi=star.begin();ffi!=star.end();++ffi )
      {
        assert(fc!=(*ffi));
-       float &qi = (*ffi)->Q();
+       ScalarType &qi = (*ffi)->Q();
        CoordType bary1=((*ffi)->P(0)+(*ffi)->P(1)+(*ffi)->P(2))/3;
-       float distGeom = Distance(bary0,bary1) / gradientThr;
+       ScalarType distGeom = Distance(bary0,bary1) / gradientThr;
        // Main test if the quality varies more than the geometric displacement we have to lower something.
        if( distGeom < fabs(qi - fc->Q()))
        {
@@ -329,8 +347,8 @@ static void VertexSaturate(MeshType &m, ScalarType gradientThr=1.0)
      face::VVStarVF<FaceType>(vc,star);
      for(vvi=star.begin();vvi!=star.end();++vvi )
      {
-       float &qi = (*vvi)->Q();
-       float distGeom = Distance((*vvi)->cP(),vc->cP()) / gradientThr;
+       ScalarType &qi = (*vvi)->Q();
+       ScalarType distGeom = Distance((*vvi)->cP(),vc->cP()) / gradientThr;
        // Main test if the quality varies more than the geometric displacement we have to lower something.
        if( distGeom < fabs(qi - vc->Q()))
        {
