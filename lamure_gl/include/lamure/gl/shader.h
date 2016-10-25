@@ -44,6 +44,7 @@ public:
   void  disable();
 
   void  set(const std::string& uniform, const lamure::math::mat4f_t& matrix);
+  void  set(const std::string& uniform, const lamure::math::vec2f_t& vector);
   void  set(const std::string& uniform, const lamure::math::vec3f_t& vector);
   void  set(const std::string& uniform, const int32_t value);
   void  set(const std::string& uniform, const float32_t value);

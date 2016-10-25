@@ -67,6 +67,15 @@ shader_t::set(
 inline void
 shader_t::set(
   const std::string& uniform,
+  const lamure::math::vec2f_t& vector)
+{
+  LAMURE_ASSERT(linked_, "cannot set uniform on non-linked program");
+  glUniform2fv(glGetUniformLocation(program_, uniform.c_str()), 1, &vector.data_[0]);
+}
+
+inline void
+shader_t::set(
+  const std::string& uniform,
   const lamure::math::vec3f_t& vector)
 {
   LAMURE_ASSERT(linked_, "cannot set uniform on non-linked program");
