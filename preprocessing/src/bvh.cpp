@@ -7,7 +7,7 @@
 
 #include <lamure/config.h>
 
-#if LAMURE_USE_CGAL_FOR_NNI
+#ifdef LAMURE_USE_CGAL_FOR_NNI
   #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
   #include <CGAL/Delaunay_triangulation_2.h>
   #include <CGAL/natural_neighbor_coordinates_2.h>
@@ -55,7 +55,7 @@ namespace pre {
 
 class reduction_strategy;
 
-#if LAMURE_USE_CGAL_FOR_NNI
+#ifdef LAMURE_USE_CGAL_FOR_NNI
 using K       = CGAL::Exact_predicates_inexact_constructions_kernel;
 using Point2  = K::Point_2;
 using Vector2 = K::Vector_2;
@@ -708,7 +708,7 @@ get_natural_neighbours(surfel_id_t const& target_surfel, std::vector<std::pair<s
     return natural_neighbours;
 }
 
-#if LAMURE_USE_CGAL_FOR_NNI
+#ifdef LAMURE_USE_CGAL_FOR_NNI
 std::vector<std::pair<uint32_t, real> > bvh::
 extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vector<vec3r> const& nn_positions) const {
     std::vector<std::pair<uint32_t, real>> natural_neighbour_ids;
