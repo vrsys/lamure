@@ -5,9 +5,13 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Delaunay_triangulation_2.h>
-#include <CGAL/natural_neighbor_coordinates_2.h>
+#include <lamure/config.h>
+
+#if LAMURE_USE_CGAL_FOR_NNI
+  #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+  #include <CGAL/Delaunay_triangulation_2.h>
+  #include <CGAL/natural_neighbor_coordinates_2.h>
+#endif
 
 #include <lamure/pre/bvh.h>
 #include <lamure/pre/bvh_stream.h>
@@ -51,10 +55,12 @@ namespace pre {
 
 class reduction_strategy;
 
+#if LAMURE_USE_CGAL_FOR_NNI
 using K       = CGAL::Exact_predicates_inexact_constructions_kernel;
 using Point2  = K::Point_2;
 using Vector2 = K::Vector_2;
 using Dh2     = CGAL::Delaunay_triangulation_2<K>;
+#endif
 
 struct nni_sample_t {
     scm::math::vec2f xy_;
@@ -109,7 +115,7 @@ init_tree(const std::string& surfels_input_file,
     first_leaf_ = nodes_.size() - std::pow(fan_factor_, depth_);
     state_ = state_type::empty;
 
-    std::srand(613475635);
+    std::srand(time(0));
 }
 
 bool bvh::
@@ -702,6 +708,7 @@ get_natural_neighbours(surfel_id_t const& target_surfel, std::vector<std::pair<s
     return natural_neighbours;
 }
 
+#if LAMURE_USE_CGAL_FOR_NNI
 std::vector<std::pair<uint32_t, real> > bvh::
 extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vector<vec3r> const& nn_positions) const {
     std::vector<std::pair<uint32_t, real>> natural_neighbour_ids;
@@ -766,6 +773,13 @@ extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vect
 
     return natural_neighbour_ids;
 }
+#else
+std::vector<std::pair<uint32_t, real> > bvh::
+extract_approximate_natural_neighbours(vec3r const& point_of_interest, std::vector<vec3r> const& nn_positions) const 
+{
+  throw std::runtime_error("to implement without CGAL.");
+}
+#endif
 
 std::vector<std::pair<surfel, real> > bvh::
 get_locally_natural_neighbours(std::vector<surfel> const& potential_neighbour_vec,

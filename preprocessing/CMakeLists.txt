@@ -59,15 +59,22 @@ set(PREPROC_LIBRARY ${PROJECT_NAME})
 ############################################################
 # Libraries
 
+
+
 target_link_libraries(${PROJECT_NAME}
     ${COMMON_LIBRARY}
     ${PROJECT_LIBS}
-    ${GMP_LIBRARY}
-    ${MPFR_LIBRARY}
     optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
-    optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
-    optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     )
+
+if (${LAMURE_USE_CGAL_FOR_NNI})
+  target_link_libraries(${PROJECT_NAME}
+      ${GMP_LIBRARY}
+      ${MPFR_LIBRARY}
+      optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
+      optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
+      )
+endif ()
 
 ###############################################################################
 # install 

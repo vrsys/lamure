@@ -30,6 +30,8 @@ set(TEST_OUTPUT_PATH ${CMAKE_BINARY_DIR}/test)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(LAMURE_CONFIG_DIR ${CMAKE_BINARY_DIR})
 
+option (LAMURE_USE_CGAL_FOR_NNI "Set to enable CGAL library for natural neighbor interpolation. Default library nanoflann." ON)
+
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/install" CACHE PATH "default install path" FORCE )
 endif()
@@ -118,6 +120,7 @@ endif ()
 ################################
 include (find_freeimage)
 
+if (${LAMURE_USE_CGAL_FOR_NNI})
 ################################
 # CGAL
 ################################
@@ -133,6 +136,9 @@ include(find_gmp)
 ################################
 include(find_mpfr)
 
+else()
+  include(find_nanoflann)
+endif (${LAMURE_USE_CGAL_FOR_NNI})
 
 ############################################################
 # Build 3rd-party
