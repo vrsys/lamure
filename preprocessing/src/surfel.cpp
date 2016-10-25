@@ -8,7 +8,7 @@
 #include <lamure/pre/surfel.h>
 
 #include <lamure/config.h>
-#if LAMURE_USE_CGAL_FOR_NNI
+#ifdef LAMURE_USE_CGAL_FOR_NNI
   #include <CGAL/Simple_cartesian.h>
   #include <CGAL/Plane_3.h>
 
@@ -71,7 +71,7 @@ random_point_on_surfel() const {
     return (std::sqrt(random_normalized_radius_extent) * radius_) * vec3r(random_direction_along_surfel) + pos_;
 } 
 
-#if LAMURE_USE_CGAL_FOR_NNI
+#ifdef LAMURE_USE_CGAL_FOR_NNI
 bool surfel::
 intersect(const surfel &left_surfel, const surfel &right_surfel) {
 
