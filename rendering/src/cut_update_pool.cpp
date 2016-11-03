@@ -810,7 +810,7 @@ cut_update() {
                                                                           keep_action.view_id_,
                                                                           keep_action.model_id_,
                                                                           sibling_id)) {
-                                        gpu_cache_->RemoveFromTransferList(keep_action.model_id_, sibling_id);
+                                        gpu_cache_->remove_from_transfer_list(keep_action.model_id_, sibling_id);
                                     }
 
                                     ooc_cache->release_node(context_id_, keep_action.view_id_, keep_action.model_id_, sibling_id);
@@ -826,7 +826,7 @@ cut_update() {
                                                                                 keep_action.view_id_,
                                                                                 keep_action.model_id_,
                                                                                 sibling_child_id)) {
-                                                gpu_cache_->RemoveFromTransferList(keep_action.model_id_, sibling_child_id);
+                                                gpu_cache_->remove_from_transfer_list(keep_action.model_id_, sibling_child_id);
                                             }
 
                                             ooc_cache->release_node(context_id_, keep_action.view_id_, keep_action.model_id_, sibling_child_id);
