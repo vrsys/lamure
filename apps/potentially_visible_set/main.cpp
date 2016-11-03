@@ -131,6 +131,7 @@ int main(int argc, char** argv)
     management* management_ = new management(model_filenames, model_transformations, visible_set, invisible_set);
     lamure::pvs::glut_wrapper::set_management(management_);
 
+    // deactivates cut update to allow forced cut
     //lamure::ren::cut_database::get_instance()->set_cut_update_running(false);
 
     glutMainLoop();

@@ -65,16 +65,15 @@ enum class RenderPass {
     ACCUMULATION             = 1,
     NORMALIZATION            = 2,
     LINKED_LIST_ACCUMULATION = 4,
-    ONE_PASS_LQ              = 5,
+    VISIBLE_NODE             = 6,
     BOUNDING_BOX             = 100,
     LINE                     = 101,
     TRIMESH                  = 300
 };
 
-enum class RenderMode {
-    HQ_ONE_PASS = 1,
-    HQ_TWO_PASS = 2,
-    LQ_ONE_PASS = 3
+enum class RenderMode
+{
+    VISIBLE_NODE_PASS = 1
 };
 
 
@@ -106,8 +105,6 @@ protected:
     void                initialize_VBOs();
     void                update_frustum_dependent_parameters(lamure::ren::camera const& camera);
 
-    void                bind_storage_buffer(scm::gl::buffer_ptr buffer);
-
     void                upload_uniforms(lamure::ren::camera const& camera) const;
     void                upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
     void                swap_temp_buffers();
@@ -120,11 +117,11 @@ protected:
                                            scm::gl::vertex_array_ptr const& render_VAO,
                                            std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
 
-    void                render_one_pass_HQ(lamure::context_t context_id, 
-                                           lamure::ren::camera const& camera, 
-                                           const lamure::view_t view_id, 
-                                           scm::gl::vertex_array_ptr const& render_VAO, 
-                                           std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
+    void                render_depth(lamure::context_t context_id, 
+                                    lamure::ren::camera const& camera, 
+                                    const lamure::view_t view_id, 
+                                    scm::gl::vertex_array_ptr const& render_VAO, 
+                                    std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
 
     void                render_two_pass_HQ(lamure::context_t context_id, 
                                            lamure::ren::camera const& camera, 
@@ -148,38 +145,14 @@ private:
         scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
 
         //shader programs
-        scm::gl::program_ptr                        LQ_one_pass_program_;
-
-        scm::gl::program_ptr                        pass1_visibility_shader_program_;
-        scm::gl::program_ptr                        pass2_accumulation_shader_program_;
-        scm::gl::program_ptr                        pass3_pass_through_shader_program_;
-        scm::gl::program_ptr                        pass_filling_program_;
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
-
-	    scm::gl::program_ptr                        pass1_linked_list_accumulate_program_;
-	    scm::gl::program_ptr                        pass2_linked_list_resolve_program_;
-	    scm::gl::program_ptr                        pass3_repair_program_;
+        scm::gl::program_ptr                        visible_node_shader_program_;
 
         //framebuffer and textures for different passes
-        scm::gl::frame_buffer_ptr                   pass1_visibility_fbo_;
-        scm::gl::texture_2d_ptr                     pass1_depth_buffer_;
-
-        scm::gl::frame_buffer_ptr                   pass2_accumulation_fbo_;
-        scm::gl::texture_2d_ptr                     pass2_accumulated_color_buffer_;
-        scm::gl::texture_2d_ptr                     pass2_accumulated_normal_buffer_;
-
-        scm::gl::frame_buffer_ptr                   pass3_normalization_fbo_;
-        scm::gl::texture_2d_ptr                     pass3_normalization_color_texture_;
-        scm::gl::texture_2d_ptr                     pass3_normalization_normal_texture_;
-
-	    scm::gl::texture_2d_ptr                     min_es_distance_image_;
-	    scm::gl::frame_buffer_ptr                   atomic_image_fbo_;
-	    scm::gl::texture_2d_ptr                     atomic_fragment_count_image_;
-	    scm::gl::texture_buffer_ptr                 linked_list_buffer_texture_;
+        scm::gl::frame_buffer_ptr                   visible_node_id_fbo_;
+        scm::gl::texture_2d_ptr                     visible_node_id_texture_;
 	
-
         scm::shared_ptr<scm::gl::quad_geometry>     screen_quad_;
-
 
         float                                       height_divided_by_top_minus_bottom_;  //frustum dependent
         float                                       near_plane_;                          //frustum dependent
@@ -214,28 +187,17 @@ private:
         std::set<lamure::model_t> invisible_set_;
         bool render_visible_set_;
 
-        scm::gl::vertex_array_ptr line_memory_;
-        scm::gl::buffer_ptr line_buffer_;
-        scm::gl::program_ptr line_shader_program_;
         scm::gl::program_ptr trimesh_shader_program_;
-        std::vector<scm::math::vec3f> line_begin_;
-        std::vector<scm::math::vec3f> line_end_;
-        unsigned int max_lines_;
 
 //methods for changing rendering settings dynamically
 public:
-    void add_line_begin(const scm::math::vec3f& line_begin) { line_begin_.push_back(line_begin); };
-    void add_line_end(const scm::math::vec3f& line_end) { line_end_.push_back(line_end); };
-    void clear_line_begin() { line_begin_.clear(); };
-    void clear_line_end() { line_end_.clear(); };
-
     void toggle_bounding_box_rendering();
     void change_point_size(float amount);
     void toggle_cut_update_info();
     void toggle_camera_info(const lamure::view_t current_cam_id);
-    void take_screenshot(std::string const& screenshot_path, std::string const& screenshot_name);
     void toggle_visible_set();
     void toggle_display_info();
+    void create_node_id_histogram();
 };
 
 #endif // PVS_OLD_RENDERER_H_

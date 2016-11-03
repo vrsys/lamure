@@ -54,6 +54,7 @@ protected:
     void                Toggledispatching();
 
 private:
+    lamure::ren::camera::mouse_state mouse_state_;
 
     Renderer* renderer_;
 

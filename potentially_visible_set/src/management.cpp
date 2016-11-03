@@ -27,7 +27,7 @@ management(std::vector<std::string> const& model_filenames,
         dispatch_(true),
         error_threshold_(LAMURE_DEFAULT_THRESHOLD),
         near_plane_(0.001f),
-        far_plane_(100.f),
+        far_plane_(1000.f),
         importance_(1.f)
 
 {
@@ -66,6 +66,9 @@ management(std::vector<std::string> const& model_filenames,
 
     active_camera_ = new lamure::ren::camera(0, reset_matrix, reset_diameter, false, false);
 
+    // Increase camera movement speed for debugging purpose.
+    active_camera_->set_dolly_sens_(20.5f);
+
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
 }
 
@@ -101,6 +104,9 @@ MainLoop()
 
     lamure::view_t view_id = controller->deduce_view_id(context_id, active_camera_->view_id());
  
+    // NEW STUFF
+    //lamure::ren::cut_database::get_instance()->force_cut(context_id, view_id);
+
     renderer_->set_radius_scale(importance_);
     renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), 0);
 
@@ -166,6 +172,7 @@ MainLoop()
 void management::
 update_trackball(int x, int y)
 {
+    active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
 }
 
 
@@ -173,12 +180,42 @@ update_trackball(int x, int y)
 void management::
 RegisterMousePresses(int button, int state, int x, int y)
 {
+    switch (button) {
+        case GLUT_LEFT_BUTTON:
+            {
+                mouse_state_.lb_down_ = (state == GLUT_DOWN) ? true : false;
+            }break;
+        case GLUT_MIDDLE_BUTTON:
+            {
+                mouse_state_.mb_down_ = (state == GLUT_DOWN) ? true : false;
+            }break;
+        case GLUT_RIGHT_BUTTON:
+            {
+                mouse_state_.rb_down_ = (state == GLUT_DOWN) ? true : false;
+            }break;
+    }
+
+
+
+    float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
+    float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
+
+    active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
 }
 
 
 void management::
 dispatchKeyboardInput(unsigned char key)
 {
+    switch(key)
+    {
+        case 's':
+            renderer_->create_node_id_histogram();
+            break;
+        case 'w':
+            renderer_->toggle_bounding_box_rendering();
+            break;
+    }
 }
 
 void management::
