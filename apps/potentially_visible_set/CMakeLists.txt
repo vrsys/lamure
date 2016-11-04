@@ -1,6 +1,8 @@
 ############################################################
 # CMake Build Script for the potentially_visible_set executable
 
+link_directories(${SCHISM_LIBRARY_DIRS})
+
 include_directories(${PVS_INCLUDE_DIR}
 					${REND_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}
@@ -24,7 +26,9 @@ target_link_libraries(${PROJECT_NAME}
     ${REND_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
-    ${SCHISM_LIBRARIES}
+    optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
+    optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
+    optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     )
 
 add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set lamure_common)
