@@ -159,7 +159,30 @@ Point2<ScalarType> ClosestPoint( Segment2<ScalarType> s, const Point2<ScalarType
 		return clos;
 }
 
-/*@}*/
+template <class S>
+class PointSegment2DEPFunctor {
+public:
+    typedef S ScalarType;
+    typedef Point2<ScalarType> QueryType;
+    static inline const Point2<ScalarType> &  Pos(const QueryType & qt)  {return qt;}
+
+    template <class EdgeType, class ScalarType>
+    inline bool operator () (const EdgeType & e, const Point2<ScalarType> & p,
+                             ScalarType & minDist, Point2<ScalarType> & q)
+    {
+        const Point2<typename EdgeType::ScalarType> fp = Point2<typename EdgeType::ScalarType>::Construct(p);
+        Point2<typename EdgeType::ScalarType> fq;
+        fq=ClosestPoint(e,fp);
+        ScalarType currD = (ScalarType)(fp-fq).Norm();
+
+        if (currD>minDist)return false;
+
+        minDist=currD;
+        q = Point2<ScalarType>::Construct(fq);
+        return true;
+    }
+};
+
 
 } // end namespace
 #endif

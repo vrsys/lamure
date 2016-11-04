@@ -17,33 +17,6 @@ SET(SCHISM_LIBRARY_SEARCH_DIRS
 )
 
 ##############################################################################
-# feedback to provide user-defined paths to search for schism
-##############################################################################
-MACRO (request_schism_search_directories)
-
-    IF ( NOT SCHISM_INCLUDE_DIRS AND NOT SCHISM_LIBRARY_DIRS )
-        SET(SCHISM_INCLUDE_SEARCH_DIR "Please provide schism include path." CACHE PATH "path to schism headers.")
-        SET(SCHISM_LIBRARY_SEARCH_DIR "Please provide schism library path." CACHE PATH "path to schism libraries.")
-        MESSAGE(FATAL_ERROR "find_schism.cmake: unable to find schism.")
-    ENDIF ( NOT SCHISM_INCLUDE_DIRS AND NOT SCHISM_LIBRARY_DIRS )
-
-    IF ( NOT SCHISM_INCLUDE_DIRS )
-        SET(SCHISM_INCLUDE_SEARCH_DIR "Please provide schism include path." CACHE PATH "path to schism headers.")
-        MESSAGE(FATAL_ERROR "find_schism.cmake: unable to find schism headers.")
-    ELSE ( NOT SCHISM_INCLUDE_DIRS )
-        UNSET(SCHISM_INCLUDE_SEARCH_DIR CACHE)
-    ENDIF ( NOT SCHISM_INCLUDE_DIRS )
-
-    IF ( NOT SCHISM_LIBRARY_DIRS )
-        SET(SCHISM_LIBRARY_SEARCH_DIR "Please provide schism library path." CACHE PATH "path to schism libraries.")
-        MESSAGE(FATAL_ERROR "find_schism.cmake: unable to find schism libraries.")
-    ELSE ( NOT SCHISM_LIBRARY_DIRS )
-        UNSET(SCHISM_LIBRARY_SEARCH_DIR CACHE)
-    ENDIF ( NOT SCHISM_LIBRARY_DIRS )
-
-ENDMACRO (request_schism_search_directories)
-
-##############################################################################
 # check for schism
 ##############################################################################
 message(STATUS "-- checking for schism")
@@ -79,69 +52,52 @@ IF ( NOT SCHISM_INCLUDE_DIRS )
 
 ENDIF ( NOT SCHISM_INCLUDE_DIRS )
 
-IF ( SCHISM_INCLUDE_DIRS AND ( NOT SCHISM_LIBRARY_DIRS OR NOT SCHISM_LIBRARIES))
+# release libraries
+find_library(SCHISM_CORE_LIBRARY 
+             NAMES scm_core libscm_core
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES release
+            )
 
-    FOREACH(_SEARCH_DIR ${SCHISM_LIBRARY_SEARCH_DIRS})
+find_library(SCHISM_GL_CORE_LIBRARY 
+             NAMES scm_gl_core libscm_gl_core
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES release
+            )
 
-		    IF (UNIX)
-			    FIND_PATH(_CUR_SEARCH
-					    NAMES libscm_gl_core.so
-					    PATHS ${_SEARCH_DIR} 
-              PATH_SUFFIXES linux_x86
-					    NO_DEFAULT_PATH)
-		    ELSEIF(WIN32)
-			    FIND_PATH(_CUR_SEARCH
-					    NAMES scm_gl_core.lib
-					    PATHS ${_SEARCH_DIR}
-					    PATH_SUFFIXES debug release
-					    NO_DEFAULT_PATH)
-		    ENDIF(UNIX)
+find_library(SCHISM_GL_UTIL_LIBRARY 
+             NAMES scm_gl_util libscm_gl_util
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES release
+            )
 
-        IF (_CUR_SEARCH)
-            LIST(APPEND _SCHISM_FOUND_LIB_DIR ${_SEARCH_DIR})
-        ENDIF(_CUR_SEARCH)
+find_library(SCHISM_INPUT_LIBRARY 
+             NAMES scm_input libscm_input
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES release
+            )
 
-        SET(_CUR_SEARCH _CUR_SEARCH-NOTFOUND CACHE INTERNAL "internal use")
+# find debug libraries
+find_library(SCHISM_CORE_LIBRARY_DEBUG
+             NAMES scm_core-gd libscm_core-gd scm_core libscm_core
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES debug
+            )
 
-    ENDFOREACH(_SEARCH_DIR ${SCHISM_LIBRARY_SEARCH_DIRS})
+find_library(SCHISM_GL_CORE_LIBRARY_DEBUG
+             NAMES scm_gl_core-gd libscm_gl_core-gd scm_gl_core libscm_gl_core
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES debug
+            )
 
-    IF (NOT _SCHISM_FOUND_LIB_DIR)
-        request_schism_search_directories()
-    ELSE (NOT _SCHISM_FOUND_LIB_DIR)
-		    SET(SCHISM_LIBRARY_DIRS ${_SCHISM_FOUND_LIB_DIR} CACHE STRING "The schism library directory.")
-    ENDIF (NOT _SCHISM_FOUND_LIB_DIR)
+find_library(SCHISM_GL_UTIL_LIBRARY_DEBUG
+             NAMES scm_gl_util-gd libscm_gl_util-gd scm_gl_util libscm_gl_util
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES debug
+            )
 
-    SET(_SCHISM_LIBRARIES "")
-
-    FOREACH(_LIB_DIR ${_SCHISM_FOUND_LIB_DIR})
-		    IF (UNIX)
-          file(GLOB _SCHISM_LIBRARIES ${_LIB_DIR}/libscm*.so)
-		    ELSEIF(WIN32)
-			    file(GLOB _SCHISM_LIBRARY_ABSOLUTE_PATHS ${_LIB_DIR}/release/scm*.lib)
-			    FOREACH (_SCHISM_LIB_PATH ${_SCHISM_LIBRARY_ABSOLUTE_PATHS})
-				    SET(_SCHISM_LIB_FILENAME "")
-				    GET_FILENAME_COMPONENT(_SCHISM_LIB_FILENAME ${_SCHISM_LIB_PATH} NAME)
-				    LIST(APPEND _SCHISM_LIBRARIES ${_SCHISM_LIB_FILENAME})
-			    ENDFOREACH(_SCHISM_LIB_PATH)
-		    ENDIF(UNIX)
-    ENDFOREACH(_LIB_DIR ${_SCHISM_FOUND_INC_DIRS})
-
-    IF (_SCHISM_FOUND_LIB_DIR)
-        SET(SCHISM_LIBRARIES ${_SCHISM_LIBRARIES} CACHE STRING "schism libraries.")
-    ENDIF (_SCHISM_FOUND_LIB_DIR)
-
-ENDIF ( SCHISM_INCLUDE_DIRS AND ( NOT SCHISM_LIBRARY_DIRS OR NOT SCHISM_LIBRARIES))
-
-##############################################################################
-# verify
-##############################################################################
-IF ( NOT SCHISM_INCLUDE_DIRS OR NOT SCHISM_LIBRARY_DIRS )
-    request_schism_search_directories()
-ELSE ( NOT SCHISM_INCLUDE_DIRS OR NOT SCHISM_LIBRARY_DIRS )
-    UNSET(SCHISM_INCLUDE_SEARCH_DIR CACHE)
-    UNSET(SCHISM_LIBRARY_SEARCH_DIR CACHE)
-    MESSAGE(STATUS "--  found matching schism version")
-ENDIF ( NOT SCHISM_INCLUDE_DIRS OR NOT SCHISM_LIBRARY_DIRS )
-
-
-
+find_library(SCHISM_INPUT_LIBRARY_DEBUG
+             NAMES scm_input-gd libscm_input-gd scm_input libscm_input
+             PATHS ${SCHISM_LIBRARY_SEARCH_DIRS}
+             SUFFIXES debug
+            )

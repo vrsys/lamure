@@ -18,7 +18,6 @@ InitTest(${CMAKE_PROJECT_NAME}_surfel_tests)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${PREPROC_LIBRARY}
-    ${SCHISM_LIBRARIES}
     )
 
 add_dependencies(${PROJECT_NAME} lamure_preprocessing lamure_common)

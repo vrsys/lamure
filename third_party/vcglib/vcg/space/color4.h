@@ -39,55 +39,56 @@ namespace vcg {
 template <class T>
 class Color4 : public Point4<T>
 {
-	typedef Point4<T> Base;
+    typedef Point4<T> Base;
 public:
   /// Constant for storing standard colors.
   /// Each color is stored in a simple in so that the bit pattern match with the one of Color4b.
-	enum ColorConstant  {
-	  Black   = 0xff000000,
-	  Gray    = 0xff808080,
-	  White   = 0xffffffff,
+    enum ColorConstant  {
+      Black   = 0xff000000,
+      Gray    = 0xff808080,
+      White   = 0xffffffff,
 
-	  Red     = 0xff0000ff,
-	  Green   = 0xff00ff00,
-	  Blue    = 0xffff0000,
+      Red     = 0xff0000ff,
+      Green   = 0xff00ff00,
+      Blue    = 0xffff0000,
 
-	  Cyan    = 0xffffff00,
-	  Yellow  = 0xff00ffff,
-	  Magenta = 0xffff00ff,
+      Cyan    = 0xffffff00,
+      Yellow  = 0xff00ffff,
+      Magenta = 0xffff00ff,
 
-	  LightGray   =0xffc0c0c0,
-	  LightRed    =0xff8080ff,
-	  LightGreen  =0xff80ff80,
-	  LightBlue   =0xffff8080,
+      LightGray   =0xffc0c0c0,
+      LightRed    =0xff8080ff,
+      LightGreen  =0xff80ff80,
+      LightBlue   =0xffff8080,
 
-	  DarkGray    =0xff404040,
-	  DarkRed     =0xff000040,
-	  DarkGreen   =0xff004000,
-	  DarkBlue    =0xff400000
-	};
+      DarkGray    =0xff404040,
+      DarkRed     =0xff000040,
+      DarkGreen   =0xff004000,
+      DarkBlue    =0xff400000
+    };
 
   inline Color4 ( const T nx, const T ny, const T nz , const T nw ) :Point4<T>(nx,ny,nz,nw) {}
   inline Color4 ( const Point4<T> &c) :Point4<T>(c) {}
   inline Color4 (){}
   inline Color4 (ColorConstant cc);
+  inline Color4 (unsigned int cc);
 
   template <class Q>
-	inline void Import(const Color4<Q> & b )
+    inline void Import(const Color4<Q> & b )
   {
-	  (*this)[0] = T(b[0]);
-	  (*this)[1] = T(b[1]);
-	  (*this)[2] = T(b[2]);
-	  (*this)[3] = T(b[3]);
+      (*this)[0] = T(b[0]);
+      (*this)[1] = T(b[1]);
+      (*this)[2] = T(b[2]);
+      (*this)[3] = T(b[3]);
   }
 
  template <class Q>
-	inline void Import(const Point4<Q> & b )
+    inline void Import(const Point4<Q> & b )
   {
-	  (*this)[0] = T(b[0]);
-	  (*this)[1] = T(b[1]);
-	  (*this)[2] = T(b[2]);
-	  (*this)[3] = T(b[3]);
+      (*this)[0] = T(b[0]);
+      (*this)[1] = T(b[1]);
+      (*this)[2] = T(b[2]);
+      (*this)[3] = T(b[3]);
   }
 
  template <class Q>
@@ -100,12 +101,12 @@ public:
   //inline void Import(const Color4<unsigned char> &b);
 
  inline Color4 operator + ( const Color4 & p) const
-	{
-		return Color4( (*this)[0]+p.V()[0], (*this)[1]+p.V()[1], (*this)[2]+p.V()[2], (*this)[3]+p.V()[3] );
-	}
+    {
+        return Color4( (*this)[0]+p.V()[0], (*this)[1]+p.V()[1], (*this)[2]+p.V()[2], (*this)[3]+p.V()[3] );
+    }
 
-
-  inline void lerp(const Color4 &c0, const Color4 &c1, const float x)
+  template <class ScalarInterpType>
+  inline void lerp(const Color4 &c0, const Color4 &c1, const ScalarInterpType x)
   {
       assert(x>=0);
       assert(x<=1);
@@ -116,7 +117,8 @@ public:
       (*this)[3]=(T)(c1.V()[3]*x + c0.V()[3]*(1.0f-x));
   }
 
-  inline void lerp(const Color4 &c0, const Color4 &c1, const Color4 &c2, const Point3f &ip)
+  template <class ScalarInterpType>
+  inline void lerp(const Color4 &c0, const Color4 &c1, const Color4 &c2, const Point3<ScalarInterpType> &ip)
   {
     assert(fabs(ip[0]+ip[1]+ip[2]-1)<0.00001);
 
@@ -144,6 +146,27 @@ public:
         if(v<step) { lerp(Color4<T>(Color4<T>::Cyan),  Color4<T>(Color4<T>::Blue),  v/step); return;}
 
         *this= Color4<T>(Color4<T>::Blue);
+    }
+
+    inline void SetColorRampParula(const float &minf,const float  &maxf ,float v)
+    {
+      if(minf>maxf) { SetColorRampParula(maxf,minf,maxf+(minf-v)); return; }
+      SetColorRampParula((v-minf)/(maxf-minf));      
+    }
+
+    inline void SetColorRampParula(float v)
+    {
+      if(v<0) v=0;
+      else if(v>1) v=1;
+      
+      unsigned int ParuVal[9]={0xff801627,  0xffe16303,  0xffd48514,
+                               0xffc6a706,  0xff9eb938,  0xff73bf92,
+                               0xff56bad9,  0xff2ecefc,  0xff0afaff};
+      int ind = int(floor(v*8.0f)); 
+      float div = (v*8.0f - ind);
+      if(div<0) div=0;
+      else if(div>1) div=1;
+      lerp(Color4<T>(ParuVal[ind]),  Color4<T>(ParuVal[ind+1]), div);
     }
 
     void SetHSVColor( float h, float s, float v)
@@ -184,12 +207,18 @@ public:
 
 inline static Color4 GrayShade(float f)
 {
- return Color4(f,f,f,1);
+  if(f<0) f=0.0f;
+  else if(f>1) f=1.0f;
+  
+  return Color4(f,f,f,1);
 }
 
 inline void SetGrayShade(float f)
 {
- Import(Color4<float>(f,f,f,1));
+  if(f<0) f=0.0f;
+  else if(f>1) f=1.0f;
+  
+  Import(Color4<float>(f,f,f,1));
 }
 
 
@@ -204,20 +233,20 @@ inline static Color4 Scatter(int range, int value,float Sat=.3f,float Val=.9f)
   int b, k, m=range;
   int r =range;
 
-	for (b=0, k=1; k<range; k<<=1)
-			if (value<<1>=m) {
-				if (b==0) r = k;
-				b += k;
-				value -= (m+1)>>1;
-				m >>= 1;
-			}
-	else m = (m+1)>>1;
-	if (r>range-b) r = range-b;
+    for (b=0, k=1; k<range; k<<=1)
+            if (value<<1>=m) {
+                if (b==0) r = k;
+                b += k;
+                value -= (m+1)>>1;
+                m >>= 1;
+            }
+    else m = (m+1)>>1;
+    if (r>range-b) r = range-b;
 
-	//TRACE("Scatter range 0..%i, in %i out %i\n",n,a,b);
-	Color4 rc;
-	rc.SetHSVColor(float(b)/float(range),Sat,Val);
-	return rc;
+    //TRACE("Scatter range 0..%i, in %i out %i\n",n,a,b);
+    Color4 rc;
+    rc.SetHSVColor(float(b)/float(range),Sat,Val);
+    return rc;
 }
 
 inline static Color4 ColorRamp(const float &minf,const float  &maxf ,float v )
@@ -272,20 +301,20 @@ template <> template <>
 inline Color4<unsigned char> Color4<unsigned char>::Construct( const Color4<float> & b )
 {
     return Color4<unsigned char>(
-									(unsigned char)(b[0]*255.0f),
-									(unsigned char)(b[1]*255.0f),
-									(unsigned char)(b[2]*255.0f),
-									(unsigned char)(b[3]*255.0f));
+                                    (unsigned char)(b[0]*255.0f),
+                                    (unsigned char)(b[1]*255.0f),
+                                    (unsigned char)(b[2]*255.0f),
+                                    (unsigned char)(b[3]*255.0f));
 }
 
 template <> template <>
 inline Color4<float> Color4<float>::Construct( const Color4<unsigned char> & b )
 {
     return Color4<float>(
-									(float)(b[0])/255.0f,
-									(float)(b[1])/255.0f,
-									(float)(b[2])/255.0f,
-									(float)(b[3])/255.0f);
+                                    (float)(b[0])/255.0f,
+                                    (float)(b[1])/255.0f,
+                                    (float)(b[2])/255.0f,
+                                    (float)(b[3])/255.0f);
 }
 
 template<>
@@ -300,24 +329,36 @@ inline Color4<float>::Color4(Color4<float>::ColorConstant cc)
   Import(Color4<unsigned char>((Color4<unsigned char>::ColorConstant)cc));
 }
 
+template<>
+inline Color4<unsigned char>::Color4(unsigned int cc)
+{
+  *((int *)this )= cc;
+}
+
+template<>
+inline Color4<float>::Color4(unsigned int cc)
+{
+  Import(Color4<unsigned char>(cc));
+}
+
 inline Color4<float> Clamp(Color4<float> &c)
 {
-	c[0]=math::Clamp(c[0],0.0f,1.0f);
-	c[1]=math::Clamp(c[1],0.0f,1.0f);
-	c[2]=math::Clamp(c[2],0.0f,1.0f);
-	c[3]=math::Clamp(c[3],0.0f,1.0f);
-	return c;
+    c[0]=math::Clamp(c[0],0.0f,1.0f);
+    c[1]=math::Clamp(c[1],0.0f,1.0f);
+    c[2]=math::Clamp(c[2],0.0f,1.0f);
+    c[3]=math::Clamp(c[3],0.0f,1.0f);
+    return c;
 }
 
 template<>
 inline Color4<unsigned char> Color4<unsigned char>::operator + ( const Color4<unsigned char>  & p) const
 {
-		return Color4<unsigned char>(
-									 (unsigned char)(math::Clamp(int((*this)[0])+int(p[0]),0,255)),
-									 (unsigned char)(math::Clamp(int((*this)[1])+int(p[1]),0,255)),
-									 (unsigned char)(math::Clamp(int((*this)[2])+int(p[2]),0,255)),
-									 (unsigned char)(math::Clamp(int((*this)[3])+int(p[3]),0,255))
-									 );
+        return Color4<unsigned char>(
+                                     (unsigned char)(math::Clamp(int((*this)[0])+int(p[0]),0,255)),
+                                     (unsigned char)(math::Clamp(int((*this)[1])+int(p[1]),0,255)),
+                                     (unsigned char)(math::Clamp(int((*this)[2])+int(p[2]),0,255)),
+                                     (unsigned char)(math::Clamp(int((*this)[3])+int(p[3]),0,255))
+                                     );
 }
 
 

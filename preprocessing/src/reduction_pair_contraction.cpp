@@ -400,7 +400,10 @@ create_lod(real& reduction_error,
     }
     #endif
 
-    surfel_id_t new_id = surfel_id_t{node_surfels.size()-1, i};
+    assert(node_surfels.size() - 1 >= 0);
+    assert(node_surfels.size() <= std::numeric_limits<int>::max());
+    surfel_id_t new_id = surfel_id_t{uint32_t(node_surfels.size() - 1), i};
+
     // save new surfels in vector at back
     surfel& new_surfel = curr_contraction.new_surfel;
     // save new surfel

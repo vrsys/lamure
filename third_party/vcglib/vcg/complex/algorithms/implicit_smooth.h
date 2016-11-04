@@ -50,23 +50,19 @@ public:
         int numF;
         std::vector<ScalarType > BarycentricW;
         CoordType TargetPos;
-        ScalarType facePenalty;
 
         FaceConstraint()
         {
             numF=-1;
-            facePenalty=ScalarType(PENALTY);
         }
 
         FaceConstraint(int _numF,
                        const std::vector<ScalarType > &_BarycentricW,
-                       const CoordType &_TargetPos,
-                       const ScalarType fPenalty = ScalarType(PENALTY))
+                       const CoordType &_TargetPos)
         {
             numF=_numF;
             BarycentricW= std::vector<ScalarType > (_BarycentricW.begin(),_BarycentricW.end());
             TargetPos=_TargetPos;
-            facePenalty=fPenalty;
         }
     };
 
@@ -81,12 +77,16 @@ public:
         bool fixBorder;
         //this bool is used to set if cotangent weight is used, this flag to false means uniform laplacian
         bool useCotWeight;
+        //use this weight for the laplacian when the cotangent one is not used
+        ScalarType lapWeight;
         //the set of fixed vertices
         std::vector<int> FixedV;
         //the set of faces for barycentric constraints
         std::vector<FaceConstraint> ConstrainedF;
         //the degree of laplacian
         int degree;
+        //this is to say if we smooth the positions or the quality
+        bool SmoothQ;
 
         Parameter()
         {
@@ -95,6 +95,8 @@ public:
             useMassMatrix=true;
             fixBorder=false;
             useCotWeight=false;
+            lapWeight=1;
+            SmoothQ=false;
         }
     };
 
@@ -130,7 +132,8 @@ private:
 
     static void CollectHardConstraints(MeshType &mesh,const Parameter &SParam,
                                        std::vector<std::pair<int,int> > &IndexC,
-                                       std::vector<ScalarType> &WeightC)
+                                       std::vector<ScalarType> &WeightC,
+                                       bool SmoothQ=false)
     {
         std::vector<int> To_Fix;
 
@@ -154,12 +157,21 @@ private:
 
         for (size_t i=0;i<To_Fix.size();i++)
         {
-            for (int j=0;j<3;j++)
+            if (!SmoothQ)
             {
-                int IndexV=(To_Fix[i]*3)+j;
+                for (int j=0;j<3;j++)
+                {
+                    int IndexV=(To_Fix[i]*3)+j;
+                    IndexC.push_back(std::pair<int,int>(IndexV,IndexV));
+                    WeightC.push_back((ScalarType)PENALTY);
+                }
+            }else
+            {
+                int IndexV=To_Fix[i];
                 IndexC.push_back(std::pair<int,int>(IndexV,IndexV));
                 WeightC.push_back((ScalarType)PENALTY);
             }
+
         }
     }
 
@@ -182,7 +194,8 @@ private:
             assert(FaceN>=0);
             assert(FaceN<(int)mesh.face.size());
             assert(mesh.face[FaceN].VN()==(int)SParam.ConstrainedF[i].BarycentricW.size());
-            penalty=SParam.ConstrainedF[i].facePenalty;
+            penalty=ScalarType(1) - SParam.lapWeight;
+            assert(penalty>ScalarType(0) && penalty<ScalarType(1));
 
             //then add all the weights to impose the constraint
             for (int j=0;j<mesh.face[FaceN].VN();j++)
@@ -246,21 +259,39 @@ public:
         std::vector<ScalarType> ValuesM;
 
         //add the entries for mass matrix
-        if (SParam.useMassMatrix) MeshToMatrix<MeshType>::MassMatrixEntry(mesh,IndexM,ValuesM);
+        if (SParam.useMassMatrix)
+            MeshToMatrix<MeshType>::MassMatrixEntry(mesh,IndexM,ValuesM,!SParam.SmoothQ);
+
         //then add entries for lagrange mult due to barycentric constraints
         for (size_t i=0;i<SParam.ConstrainedF.size();i++)
         {
             int baseIndex=(mesh.vert.size()+i)*3;
-            for (int j=0;j<3;j++)
+
+            if (SParam.SmoothQ)
+                baseIndex=(mesh.vert.size()+i);
+
+            if (SParam.SmoothQ)
             {
-                IndexM.push_back(std::pair<int,int>(baseIndex+j,baseIndex+j));
+                IndexM.push_back(std::pair<int,int>(baseIndex,baseIndex));
                 ValuesM.push_back(1);
+            }
+            else
+            {
+                for (int j=0;j<3;j++)
+                {
+                    IndexM.push_back(std::pair<int,int>(baseIndex+j,baseIndex+j));
+                    ValuesM.push_back(1);
+                }
             }
         }
         //add the hard constraints
-        CollectHardConstraints(mesh,SParam,IndexM,ValuesM);
+        CollectHardConstraints(mesh,SParam,IndexM,ValuesM,SParam.SmoothQ);
+
         //initialize sparse mass matrix
-        InitSparse(IndexM,ValuesM,matr_size*3,matr_size*3,M);
+        if (!SParam.SmoothQ)
+            InitSparse(IndexM,ValuesM,matr_size*3,matr_size*3,M);
+        else
+            InitSparse(IndexM,ValuesM,matr_size,matr_size,M);
 
         //initialize the barycentric matrix
         std::vector<std::pair<int,int> > IndexB;
@@ -270,17 +301,25 @@ public:
         std::vector<ScalarType> ValuesRhs;
 
         //then also collect hard constraints
-        CollectBarycentricConstraints(mesh,SParam,IndexB,ValuesB,IndexRhs,ValuesRhs);
-        //initialize sparse constraint matrix
-        InitSparse(IndexB,ValuesB,matr_size*3,matr_size*3,B);
+        if (!SParam.SmoothQ)
+        {
+            CollectBarycentricConstraints(mesh,SParam,IndexB,ValuesB,IndexRhs,ValuesRhs);
+            //initialize sparse constraint matrix
+            InitSparse(IndexB,ValuesB,matr_size*3,matr_size*3,B);
+        }
+        else
+            InitSparse(IndexB,ValuesB,matr_size,matr_size,B);
 
         //get the entries for laplacian matrix
         std::vector<std::pair<int,int> > IndexL;
         std::vector<ScalarType> ValuesL;
-        MeshToMatrix<MeshType>::GetLaplacianMatrix(mesh,IndexL,ValuesL,SParam.useCotWeight);
+        MeshToMatrix<MeshType>::GetLaplacianMatrix(mesh,IndexL,ValuesL,SParam.useCotWeight,SParam.lapWeight,!SParam.SmoothQ);
 
         //initialize sparse laplacian matrix
-        InitSparse(IndexL,ValuesL,matr_size*3,matr_size*3,L);
+        if (!SParam.SmoothQ)
+            InitSparse(IndexL,ValuesL,matr_size*3,matr_size*3,L);
+        else
+            InitSparse(IndexL,ValuesL,matr_size,matr_size,L);
 
         for (int i=0;i<(SParam.degree-1);i++)L=L*L;
 
@@ -291,15 +330,30 @@ public:
         Eigen::SimplicialCholesky<Eigen::SparseMatrix<ScalarType > > solver(S);
         assert(solver.info() == Eigen::Success);
 
-        MatrixXm V(matr_size*3,1);
+        MatrixXm V;
+        if (!SParam.SmoothQ)
+            V=MatrixXm(matr_size*3,1);
+        else
+            V=MatrixXm(matr_size,1);
 
         //set the first part of the matrix with vertex values
-        for (size_t i=0;i<mesh.vert.size();i++)
+        if (!SParam.SmoothQ)
         {
-            int index=i*3;
-            V(index,0)=mesh.vert[i].P().X();
-            V(index+1,0)=mesh.vert[i].P().Y();
-            V(index+2,0)=mesh.vert[i].P().Z();
+            for (size_t i=0;i<mesh.vert.size();i++)
+            {
+                int index=i*3;
+                V(index,0)=mesh.vert[i].P().X();
+                V(index+1,0)=mesh.vert[i].P().Y();
+                V(index+2,0)=mesh.vert[i].P().Z();
+            }
+        }
+        else
+        {
+            for (size_t i=0;i<mesh.vert.size();i++)
+            {
+                int index=i;
+                V(index,0)=mesh.vert[i].Q();
+            }
         }
 
         //then set the second part by considering RHS gien by barycentric constraint
@@ -314,12 +368,22 @@ public:
         V = solver.solve(M*V).eval();
 
         //then copy back values
-        for (size_t i=0;i<mesh.vert.size();i++)
+        if (!SParam.SmoothQ)
         {
-            int index=i*3;
-            mesh.vert[i].P().X()=V(index,0);
-            mesh.vert[i].P().Y()=V(index+1,0);
-            mesh.vert[i].P().Z()=V(index+2,0);
+            for (size_t i=0;i<mesh.vert.size();i++)
+            {
+                int index=i*3;
+                mesh.vert[i].P().X()=V(index,0);
+                mesh.vert[i].P().Y()=V(index+1,0);
+                mesh.vert[i].P().Z()=V(index+2,0);
+            }
+        }else
+        {
+            for (size_t i=0;i<mesh.vert.size();i++)
+            {
+                int index=i;
+                mesh.vert[i].Q()=V(index,0);
+            }
         }
     }
 };

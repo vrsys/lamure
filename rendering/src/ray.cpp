@@ -4,7 +4,7 @@
 // Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
-#if 0
+
 #include <lamure/ren/ray.h>
 
 namespace lamure
@@ -266,9 +266,13 @@ const bool ray::intersect_model_unsafe(
     ooc_cache* ooc_cache = ooc_cache::get_instance();
 
     const bvh* tree = database->get_model(model_id)->get_bvh();
+    if (tree->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+      return false;
+    }
+
     unsigned int fan_factor = tree->get_fan_factor();
     node_t num_nodes = tree->get_num_nodes();
-    uint32_t num_surfels_per_node = database->surfels_per_node();
+    uint32_t num_surfels_per_node = database->get_primitives_per_node();
 
     scm::math::mat4f inverse_model_transform = scm::math::inverse(model_transform);
     scm::math::vec3f object_ray_origin = inverse_model_transform * origin_;
@@ -623,6 +627,10 @@ const bool ray::intersect_model_bvh(const model_t model_id,
     }
 
     const bvh* tree = database->get_model(model_id)->get_bvh();
+    if (tree->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+      return false;
+    }
+
     unsigned int fan_factor = tree->get_fan_factor();
     node_t num_nodes = tree->get_num_nodes();
 
@@ -842,4 +850,3 @@ pop_job() {
 }
 
 
-#endif

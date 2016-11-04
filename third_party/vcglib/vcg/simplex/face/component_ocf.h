@@ -134,9 +134,9 @@ public:
     if (WedgeNormalEnabled) WNV.push_back(WedgeNormalTypePack());
   }
     void pop_back();
-  void resize(const unsigned int & _size)
+  void resize(size_t _size)
   {
-      unsigned int oldsize = BaseType::size();
+      size_t oldsize = BaseType::size();
     BaseType::resize(_size);
       if(oldsize<_size){
           ThisTypeIterator firstnew = BaseType::begin();
@@ -154,7 +154,7 @@ public:
     if (WedgeColorEnabled)  WCV.resize(_size);
     if (WedgeNormalEnabled) WNV.resize(_size);
    }
-  void reserve(const unsigned int & _size)
+  void reserve(size_t _size)
   {
     BaseType::reserve(_size);
 
@@ -494,72 +494,41 @@ template <class T> class Normal3dOcf: public NormalOcf<vcg::Point3d, T> {};
 /*------------------------- CurvatureDir -----------------------------------------*/
 template <class S>
 struct CurvatureDirOcfBaseType{
-        typedef Point3<S> VecType;
-        typedef  S   ScalarType;
+        typedef Point3<S> CurVecType;
+        typedef  S   CurScalarType;
         CurvatureDirOcfBaseType () {}
-        Point3<S>max_dir,min_dir; // max and min curvature direction
-        S k1,k2;// max and min curvature values
+        CurVecType max_dir,min_dir; // max and min curvature direction
+        CurScalarType k1,k2;// max and min curvature values
 };
 
 template <class A, class T> class CurvatureDirOcf: public T {
 public:
   typedef A CurvatureDirType;
-  typedef typename CurvatureDirType::VecType VecType;
-  typedef typename CurvatureDirType::ScalarType ScalarType;
+  typedef typename CurvatureDirType::CurVecType CurVecType;
+  typedef typename CurvatureDirType::CurScalarType CurScalarType;
 
   inline bool IsCurvatureDirEnabled( )  const  { return this->Base().IsCurvatureDirEnabled(); }
   static bool HasCurvatureDir()   { return true; }
   static bool HasCurvatureDirOcf()   { return true; }
 
-  VecType &PD1()       {
-    assert((*this).Base().CurvatureDirEnabled);
-    return (*this).Base().CDV[(*this).Index()].max_dir;
-  }
+  CurVecType &PD1()       { assert((*this).Base().CurvatureDirEnabled); return (*this).Base().CDV[(*this).Index()].max_dir; }
+  CurVecType &PD2()       { assert((*this).Base().CurvatureDirEnabled); return (*this).Base().CDV[(*this).Index()].min_dir; }
+  CurVecType cPD1() const { assert((*this).Base().CurvatureDirEnabled); return (*this).Base().CDV[(*this).Index()].max_dir; }
+  CurVecType cPD2() const { assert((*this).Base().CurvatureDirEnabled); return (*this).Base().CDV[(*this).Index()].min_dir; }
 
-  VecType &PD2()       {
-    assert((*this).Base().CurvatureDirEnabled);
-    return (*this).Base().CDV[(*this).Index()].min_dir;
-  }
-
-  VecType cPD1() const {
-    assert((*this).Base().CurvatureDirEnabled);
-    return (*this).Base().CDV[(*this).Index()].max_dir;
-  }
-
-  VecType cPD2() const {
-    assert((*this).Base().CurvatureDirEnabled);
-    return (*this).Base().CDV[(*this).Index()].min_dir;
-  }
-
-  ScalarType &K1()       {
-    // you cannot use Normals before enabling them with: yourmesh.face.EnableNormal()
-    assert((*this).Base().NormalEnabled);
-    return (*this).Base().CDV[(*this).Index()].k1;
-  }
-  ScalarType &K2()       {
-    // you cannot use Normals before enabling them with: yourmesh.face.EnableNormal()
-    assert((*this).Base().NormalEnabled);
-    return (*this).Base().CDV[(*this).Index()].k2;
-  }
-  ScalarType cK1() const {
-    // you cannot use Normals before enabling them with: yourmesh.face.EnableNormal()
-    assert((*this).Base().NormalEnabled);
-    return (*this).Base().CDV[(*this).Index()].k1;
-  }
-  ScalarType cK2() const {
-    // you cannot use Normals before enabling them with: yourmesh.face.EnableNormal()
-    assert((*this).Base().NormalEnabled);
-    return (*this).Base().CDV[(*this).Index()].k2;
-  }
-
+  CurScalarType &K1()       { assert((*this).Base().NormalEnabled); return (*this).Base().CDV[(*this).Index()].k1; }
+  CurScalarType &K2()       { assert((*this).Base().NormalEnabled); return (*this).Base().CDV[(*this).Index()].k2; }
+  CurScalarType cK1() const { assert((*this).Base().NormalEnabled); return (*this).Base().CDV[(*this).Index()].k1; }
+  CurScalarType cK2() const { assert((*this).Base().NormalEnabled); return (*this).Base().CDV[(*this).Index()].k2; }
 
   template <class RightFaceType>
   void ImportData(const RightFaceType & rightF){
-    if((*this).IsCurvatureDirEnabled() && rightF.IsCurvatureDirEnabled())
-      PD1() = rightF.cPD1();
-    PD2() = rightF.cPD2();
-    K1() = rightF.cK1();
-    K2() = rightF.cK2();
+    if((*this).IsCurvatureDirEnabled() && rightF.IsCurvatureDirEnabled()) {
+      PD1().Import(rightF.cPD1());
+      PD2().Import(rightF.cPD2());
+      K1() = rightF.cK1();
+      K2() = rightF.cK2();
+    }
     T::ImportData(rightF);
   }
 
@@ -672,9 +641,9 @@ template <class T> class WedgeTexCoordfOcf: public WedgeTexCoordOcf<TexCoord2<fl
 template <class A, class TT> class WedgeColorOcf: public TT {
 public:
   WedgeColorOcf(){ }
-  typedef A ColorType;
-  ColorType &WC(const int i)              { assert((*this).Base().WedgeColorEnabled); return (*this).Base().WCV[(*this).Index()].wc[i]; }
-  const ColorType cWC(const int i) const { assert((*this).Base().WedgeColorEnabled); return (*this).Base().WCV[(*this).Index()].wc[i]; }
+  typedef A WedgeColorType;
+  WedgeColorType &WC(const int i)              { assert((*this).Base().WedgeColorEnabled); return (*this).Base().WCV[(*this).Index()].wc[i]; }
+  const WedgeColorType cWC(const int i) const { assert((*this).Base().WedgeColorEnabled); return (*this).Base().WCV[(*this).Index()].wc[i]; }
   template <class RightFaceType>
   void ImportData(const RightFaceType & rightF){
     if(this->IsWedgeColorEnabled() && rightF.IsWedgeColorEnabled())
@@ -692,9 +661,9 @@ template <class T> class WedgeColor4bOcf: public WedgeColorOcf<vcg::Color4b, T> 
 template <class A, class TT> class WedgeNormalOcf: public TT {
 public:
   WedgeNormalOcf(){ }
-  typedef A NormalType;
-  NormalType &WN(const int i)              { assert((*this).Base().WedgeNormalEnabled); return (*this).Base().WNV[(*this).Index()].wn[i]; }
-  NormalType const &cWN(const int i) const { assert((*this).Base().WedgeNormalEnabled); return (*this).Base().WNV[(*this).Index()].wn[i]; }
+  typedef A WedgeNormalType;
+  WedgeNormalType &WN(const int i)              { assert((*this).Base().WedgeNormalEnabled); return (*this).Base().WNV[(*this).Index()].wn[i]; }
+  WedgeNormalType const &cWN(const int i) const { assert((*this).Base().WedgeNormalEnabled); return (*this).Base().WNV[(*this).Index()].wn[i]; }
   template <class RightFaceType>
   void ImportData(const RightFaceType & rightF){
     if(this->IsWedgeNormalEnabled() && rightF.IsWedgeNormalEnabled())
@@ -742,9 +711,9 @@ public:
 
 
 
-  inline int Index() const {
+  inline size_t Index() const {
     typename T::FaceType const *tp=static_cast<typename T::FaceType const *>(this);
-    int tt2=tp- &*(_ovp->begin());
+    size_t tt2=tp- &*(_ovp->begin());
     return tt2;
   }
 public:

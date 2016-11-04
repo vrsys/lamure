@@ -66,7 +66,7 @@ template <class MESH> class AdvancingFront {
 
 
     UpdateFlags<MESH>::FaceBorderFromNone(mesh);
-    UpdateFlags<MESH>::VertexBorderFromFace(mesh);
+    UpdateFlags<MESH>::VertexBorderFromFaceBorder(mesh);
 
     nb.clear();
     nb.resize(mesh.vert.size(), 0);
@@ -342,13 +342,8 @@ public:
 
 protected:
   void AddFace(int v0, int v1, int v2) {
-    assert(v0 < (int)mesh.vert.size() && v1 < (int)mesh.vert.size() && v2 < (int)mesh.vert.size());
-    FaceIterator fi = vcg::tri::Allocator<MESH>::AddFaces(mesh,1);
-    fi->ClearFlags();
-    fi->V(0) = &mesh.vert[v0];
-    fi->V(1) = &mesh.vert[v1];
-    fi->V(2) = &mesh.vert[v2];
-    ComputeNormalizedNormal(*fi);
+    FaceIterator fi = vcg::tri::Allocator<MESH>::AddFace(mesh,v0,v1,v2);
+    fi->N() = TriangleNormal(*fi).Normalize();
     if(tri::HasVFAdjacency(mesh))
     {
       for(int j=0;j<3;++j)
@@ -520,24 +515,24 @@ template <class MESH> class AdvancingTest: public AdvancingFront<MESH> {
      {
        if((this->mesh.vert[i].P() - point).Norm() < 0.1)
        {
-            vn = i;
-            //find the border
-            assert(this->mesh.vert[i].IsB());
-            for(std::list<FrontEdge>::iterator k = this->front.begin(); k != this->front.end(); k++)
-                if((*k).v0 == i)
-                {
-                                        touch.first = AdvancingFront<MESH>::FRONT;
-                    touch.second = k;
-                }
+         vn = i;
+         //find the border
+         assert(this->mesh.vert[i].IsB());
+         for(std::list<FrontEdge>::iterator k = this->front.begin(); k != this->front.end(); k++)
+           if((*k).v0 == i)
+           {
+             touch.first = AdvancingFront<MESH>::FRONT;
+             touch.second = k;
+           }
 
-            for(std::list<FrontEdge>::iterator k = this->deads.begin(); k != this->deads.end(); k++)
-                if((*k).v0 == i)
-                    if((*k).v0 == i)
-                    {
-                                                touch.first = AdvancingFront<MESH>::FRONT;
-                        touch.second = k;
-                    }
-            break;
+         for(std::list<FrontEdge>::iterator k = this->deads.begin(); k != this->deads.end(); k++)
+           if((*k).v0 == i)
+             if((*k).v0 == i)
+             {
+               touch.first = AdvancingFront<MESH>::FRONT;
+               touch.second = k;
+             }
+         break;
        }
      }
      if(vn == this->mesh.vert.size()) {

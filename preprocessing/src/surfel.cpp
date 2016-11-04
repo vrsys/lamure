@@ -7,14 +7,18 @@
 
 #include <lamure/pre/surfel.h>
 
-#include <CGAL/Simple_cartesian.h>
-#include <CGAL/Plane_3.h>
+#include <lamure/config.h>
+#ifdef LAMURE_USE_CGAL_FOR_NNI
+  #include <CGAL/Simple_cartesian.h>
+  #include <CGAL/Plane_3.h>
 
-#include <CGAL/Point_3.h>
+  #include <CGAL/Point_3.h>
 
-#include <CGAL/intersections.h>
-#include <CGAL/squared_distance_2.h>
+  #include <CGAL/intersections.h>
+  #include <CGAL/squared_distance_2.h>
+#endif
 
+#include <iostream>
 #include <limits.h>
 
 namespace lamure {
@@ -67,6 +71,7 @@ random_point_on_surfel() const {
     return (std::sqrt(random_normalized_radius_extent) * radius_) * vec3r(random_direction_along_surfel) + pos_;
 } 
 
+#ifdef LAMURE_USE_CGAL_FOR_NNI
 bool surfel::
 intersect(const surfel &left_surfel, const surfel &right_surfel) {
 
@@ -156,6 +161,88 @@ intersect(const surfel &left_surfel, const surfel &right_surfel) {
 
     return true;
 }
+#else
+bool surfel::
+intersect(const surfel &left_surfel, const surfel &right_surfel) {
+#if 1
+  throw std::runtime_error("to implement without CGAL");
+#else
+  // if surfel planes are parallel, check distance between centers
+  if (scm::math::length(left_surfel.normal() - right_surfel.normal()) < std::numeric_limits<float>::epsilon() ||
+      scm::math::length(left_surfel.normal() + right_surfel.normal()) < std::numeric_limits<float>::epsilon()) {
+    return scm::math::length(left_surfel.pos() - right_surfel.pos()) < left_surfel.radius() + right_surfel.radius();
+  }
+  else { // else compute plane-plane intersection and compute closest point on line
+
+    auto n0 = scm::math::vec3d(left_surfel.normal());
+    auto n1 = scm::math::vec3d(right_surfel.normal());
+
+    // 1. compute hessian normal form of splat planes
+    auto d0 = -scm::math::dot(left_surfel.pos(), n0);
+    auto d1 = -scm::math::dot(right_surfel.pos(), n1);
+
+    // 2. compute two arbitrary points on plane-plane intersection
+    auto denom_y = n0[1] * n1[0] - n0[0] * n1[1];
+    auto denom_z = n0[2] * n1[0] - n0[0] * n1[2];
+
+    scm::math::vec3d p0;
+    scm::math::vec3d p1;
+
+    if (std::fabs(denom_y) > std::numeric_limits<float>::epsilon()) {
+      // choose z freely
+      p0[2] = 1.0;
+      p1[2] = 2.0;
+      // compute corresponding y
+      p0[1] = (n0[0] * d1 - n1[0] * d0) / denom_y - (p0[2] * (n0[2] * n1[0] - n0[0] * n1[2])) / denom_y;
+      p1[1] = (n0[0] * d1 - n1[0] * d0) / denom_y - (p1[2] * (n0[2] * n1[0] - n0[0] * n1[2])) / denom_y;
+    }
+    else {
+      // choose y freely
+      p0[1] = 1.0;
+      p1[1] = 2.0;
+      // compute corresponding z
+      p0[2] = (n0[0] * d1 - n1[0] * d0) / denom_z - (p0[1] * (n0[1] * n1[0] - n0[0] * n1[1])) / denom_z;
+      p1[2] = (n0[0] * d1 - n1[0] * d0) / denom_z - (p1[1] * (n0[1] * n1[0] - n0[0] * n1[1])) / denom_z;
+    }
+    // compute x coordinate
+    p0[0] = -d0 - n0[2] * p0[2] - n0[1] * p0[1];
+    p1[0] = -d0 - n0[2] * p1[2] - n0[1] * p1[1];
+
+    // r(t) := p0 + t (p1 - p0)  represents plane intersection 
+    auto r = scm::math::normalize(p1 - p0);
+  }
+
+
+  
+  
+
+
+
+  struct ray {
+    scm::math::vec3d origin;
+    scm::math::vec3d direction;
+  };
+
+  // create rays that connect the surfel center 
+  ray ray_right_to_left = { right_surfel.pos(), left_surfel.pos() - right_surfel.pos() };
+  ray ray_left_to_right = { left_surfel.pos(), right_surfel.pos() - left_surfel.pos() };
+
+  // projects ray into surfel planes
+  auto distance_r = scm::math::dot(scm::math::vec3d(right_surfel.pos()) * left_surfel.normal());
+  auto distance_l = scm::math::dot(left_surfel.pos() * right_surfel.normal());
+
+  auto r_projected_on_l = right_surfel.pos() + distance_r * left_surfel.normal();
+  auto l_projected_on_r = left_surfel.pos() + distance_l * right_surfel.normal();
+
+  auto distance_rl = scm::math::length(r_projected_on_l - left_surfel.pos());
+  auto distance_lr = scm::math::length(l_projected_on_r - right_surfel.pos());
+
+  // to be continued
+#endif
+
+}
+
+#endif
 
 bool surfel::
 compare_x(const surfel &left_surfel, const surfel &right_surfel) {

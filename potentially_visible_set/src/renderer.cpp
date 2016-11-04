@@ -494,7 +494,7 @@ initialize_VBOs()
     no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, false, false, 0.0, false, false);
 
     visible_node_id_fbo_ = device_->create_frame_buffer();
-    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8 , 1, 1, 1);
+    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8UI , 1, 1, 1);
     visible_node_id_fbo_->attach_color_buffer(0, visible_node_id_texture_);
    
     screen_quad_.reset(new quad_geometry(device_, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
@@ -607,7 +607,7 @@ void Renderer::reset_viewport(int w, int h)
 
     //reset frame buffers and textures
     visible_node_id_fbo_ = device_->create_frame_buffer();
-    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8 , 1, 1, 1);
+    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8UI , 1, 1, 1);
     visible_node_id_fbo_->attach_color_buffer(0, visible_node_id_texture_);
 
     //reset orthogonal projection matrix for text rendering
@@ -718,7 +718,8 @@ create_node_id_histogram()
         GLubyte* pixels = new GLubyte[4 * win_x_ * win_y_];
 
         device_->opengl_api().glBindTexture(GL_TEXTURE_2D, visible_node_id_texture_->object_id());
-        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+        //device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, pixels);
 
         std::string filename = full_path + "color__" + screenshot_name + "__surfels_" + file_extension;
 

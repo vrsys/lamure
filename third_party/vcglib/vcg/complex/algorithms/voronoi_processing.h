@@ -29,7 +29,7 @@
 #include<vcg/complex/algorithms/refine.h>
 #include<vcg/complex/algorithms/smooth.h>
 #include<vcg/space/fitting3.h>
-
+#include<wrap/callback.h>
 
 namespace vcg
 {
@@ -59,6 +59,9 @@ struct VoronoiProcessingParameter
     geodesicRelaxFlag = true;
     relaxOnlyConstrainedFlag=false;
     refinementRatio = 5.0f;
+    seedPerturbationProbability=0;
+    seedPerturbationAmount = 0.001f;
+
   }
   int colorStrategy;
 
@@ -82,6 +85,8 @@ struct VoronoiProcessingParameter
                                 /// triangulation that is dense enough to well approximate the voronoi diagram.
                                 /// reasonable values are in the range 4..10. It is used by PreprocessForVoronoi and this value
                                 /// says how many triangles you should expect in a voronoi region of a given radius.
+  float seedPerturbationProbability;      /// if true at each iteration step each seed has the given probability to be perturbed a little.
+  float seedPerturbationAmount;      /// As a bbox diag fraction (e.g. in the 0..1 range).
 
   // Convertion to Voronoi Diagram Parameters
 
@@ -109,10 +114,17 @@ class VoronoiProcessing
   typedef typename MeshType::FaceContainer		FaceContainer;
   typedef typename tri::Geodesic<MeshType>::VertDist VertDist;
 
+  static math::MarsenneTwisterRNG &RandomGenerator()
+  {
+      static math::MarsenneTwisterRNG rnd;
+      return rnd;
+  }
+
 public:
 
   typedef typename MeshType::template PerVertexAttributeHandle<VertexPointer> PerVertexPointerHandle;
   typedef typename MeshType::template PerVertexAttributeHandle<bool> PerVertexBoolHandle;
+  typedef typename MeshType::template PerVertexAttributeHandle<float> PerVertexFloatHandle;
   typedef typename MeshType::template PerFaceAttributeHandle<VertexPointer> PerFacePointerHandle;
 
 
@@ -131,7 +143,7 @@ static void SeedToVertexConversion(MeshType &m,std::vector<CoordType> &seedPVec,
     typename std::vector<CoordType>::iterator pi;
     for(pi=seedPVec.begin();pi!=seedPVec.end();++pi)
         {
-            float dist;
+            ScalarType dist;
             VertexPointer vp;
             vp=tri::GetClosestVertex<MeshType,HashVertexGrid>(m, HG, *pi, dist_upper_bound, dist);
             if(vp)
@@ -154,7 +166,7 @@ static void ComputePerVertexSources(MeshType &m, std::vector<VertexType *> &seed
   PerVertexPointerHandle vertexSources =  tri::Allocator<MeshType>:: template AddPerVertexAttribute<VertexPointer> (m,"sources");
 
   tri::Allocator<MeshType>::DeletePerFaceAttribute(m,"sources"); // delete any conflicting handle regardless of the type...
-  PerFacePointerHandle faceSources =  tri::Allocator<MeshType>:: template AddPerFaceAttribute<VertexPointer> (m,"sources");
+  tri::Allocator<MeshType>::template AddPerFaceAttribute<VertexPointer> (m,"sources");
 
   assert(tri::Allocator<MeshType>::IsValidHandle(m,vertexSources));
 
@@ -176,7 +188,22 @@ static void VoronoiColoring(MeshType &m, bool frontierFlag=true)
     GetAreaAndFrontier(m, sources,  regionArea, frontierVec);
     tri::Geodesic<MeshType>::Compute(m,frontierVec);
   }
-  tri::UpdateColor<MeshType>::PerVertexQualityRamp(m);
+  float minQ =  std::numeric_limits<float>::max();
+  float maxQ = -std::numeric_limits<float>::max();
+  
+  for(VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi)
+    if(sources[*vi])
+    {
+      if( (*vi).Q() < minQ) minQ=(*vi).Q();
+      if( (*vi).Q() > maxQ) maxQ=(*vi).Q();
+    }
+  for(VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi)
+    if(sources[*vi])
+          (*vi).C().SetColorRamp(minQ,maxQ,(*vi).Q());
+  else 
+      (*vi).C()=Color4b::DarkGray;
+  
+//  tri::UpdateColor<MeshType>::PerVertexQualityRamp(m);
 }
 
 static void VoronoiAreaColoring(MeshType &m,std::vector<VertexType *> &seedVec,
@@ -419,7 +446,7 @@ static void ConvertVoronoiDiagramToMesh(MeshType &m,
   for(size_t i=0;i<seedVec.size();++i)
   {
     VertexPointer curSeed=seedVec[i];
-    vector<Point3f> pt;
+    vector<CoordType> pt;
     for(size_t j=0;j<innerCornerVec.size();++j)
       for(int qq=0;qq<3;qq++)
         if(sources[innerCornerVec[j]->V(qq)] == curSeed)
@@ -431,23 +458,23 @@ static void ConvertVoronoiDiagramToMesh(MeshType &m,
       for(int qq=0;qq<3;qq++)
         if(sources[borderCornerVec[j]->V(qq)] == curSeed)
         {
-          Point3f edgeCenter;
+          CoordType edgeCenter;
           for(int jj=0;jj<3;++jj) if(face::IsBorder(*(borderCornerVec[j]),jj))
             edgeCenter=(borderCornerVec[j]->P0(jj)+borderCornerVec[j]->P1(jj))/2.0f;
           pt.push_back(edgeCenter);
           break;
         }
-    Plane3f pl;
+    Plane3<ScalarType> pl;
     pt.push_back(curSeed->P());
     FitPlaneToPointSet(pt,pl);
     pt.pop_back();
-    Point3f nZ = pl.Direction();
-    Point3f nX = (pt[0]-curSeed->P()).Normalize();
-    Point3f nY = (nX^nZ).Normalize();
+    CoordType nZ = pl.Direction();
+    CoordType nX = (pt[0]-curSeed->P()).Normalize();
+    CoordType nY = (nX^nZ).Normalize();
     vector<std::pair<float,int> > angleVec(pt.size());
     for(size_t j=0;j<pt.size();++j)
     {
-      Point3f p = (pt[j]-curSeed->P()).Normalize();
+      CoordType p = (pt[j]-curSeed->P()).Normalize();
       float angle = 180.0f+math::ToDeg(atan2(p*nY,p*nX));
       angleVec[j] = make_pair(angle,j);
     }
@@ -491,7 +518,7 @@ static void ConvertVoronoiDiagramToMesh(MeshType &m,
   if(vpp.triangulateRegion)
   {
     tri::UpdateFlags<MeshType>::FaceBorderFromFF(outMesh);
-    tri::UpdateFlags<MeshType>::VertexBorderFromFace(outMesh);
+    tri::UpdateFlags<MeshType>::VertexBorderFromFaceBorder(outMesh);
     for(FaceIterator fi=outMesh.face.begin();fi!=outMesh.face.end();++fi) if(!fi->IsD())
     {
       for(int i=0;i<3;++i)
@@ -722,7 +749,7 @@ static void ConvertVoronoiDiagramToMeshOld(MeshType &m,
   tri::Allocator<MeshType>::CompactEveryVector(outMesh);
   tri::UpdateTopology<MeshType>::FaceFace(outMesh);
   tri::UpdateFlags<MeshType>::FaceBorderFromFF(outMesh);
-  tri::UpdateFlags<MeshType>::VertexBorderFromFace(outMesh);
+  tri::UpdateFlags<MeshType>::VertexBorderFromFaceBorder(outMesh);
 
   // 3) set up faux bits
   for(FaceIterator fi=outMesh.face.begin();fi!=outMesh.face.end();++fi)
@@ -878,7 +905,7 @@ static void BuildBiasedSeedVec(MeshType &m,
 
   std::vector<VoronoiEdge> edgeVec;
   BuildVoronoiEdgeVec(m,edgeVec);
-  printf("Found %lu edges on a diagram of %lu seeds\n",edgeVec.size(),seedVec.size());
+  printf("Found %i edges on a diagram of %i seeds\n",int(edgeVec.size()),int(seedVec.size()));
 
   std::map<VertexPointer,std::vector<VoronoiEdge *> > SeedToEdgeVecMap;
   std::map< std::pair<VertexPointer,VertexPointer>, VoronoiEdge *> SeedPairToEdgeMap;
@@ -1178,6 +1205,74 @@ static void FixVertexVector(MeshType &m, std::vector<VertexType *> &vertToFixVec
     fixed[vertToFixVec[i]]=true;
 }
 
+
+static int RestrictedVoronoiRelaxing(MeshType &m, std::vector<CoordType> &seedPosVec,
+                                     std::vector<bool> &fixedVec,
+                                     int relaxStep,
+                                     VoronoiProcessingParameter &vpp,
+                                     vcg::CallBackPos *cb=0)
+{
+  PerVertexFloatHandle area = tri::Allocator<MeshType>:: template GetPerVertexAttribute<float> (m,"area");
+
+  for(VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi)
+    area[vi]=0;
+
+  for(FaceIterator fi=m.face.begin();fi!=m.face.end();++fi)
+  {
+    ScalarType a3 = DoubleArea(*fi)/6.0;
+    for(int i=0;i<3;++i)
+      area[fi->V(i)]+=a3;
+  }
+
+  assert(m.vn > seedPosVec.size()*20);
+  int i;
+  ScalarType perturb = m.bbox.Diag()*vpp.seedPerturbationAmount;
+  for(i=0;i<relaxStep;++i)
+  {
+    if(cb) cb(i*100/relaxStep,"RestrictedVoronoiRelaxing ");    
+    // Kdtree for the seeds must be rebuilt at each step;
+    VectorConstDataWrapper<std::vector<CoordType> > vdw(seedPosVec);
+    KdTree<ScalarType> seedTree(vdw);
+
+    std::vector<std::pair<ScalarType,CoordType> > sumVec(seedPosVec.size(),std::make_pair(0,CoordType(0,0,0)));
+    for(VertexIterator vi=m.vert.begin();vi!=m.vert.end();++vi)
+    {
+      unsigned int seedInd;
+      ScalarType sqdist;
+      seedTree.doQueryClosest(vi->P(),seedInd,sqdist);
+      vi->Q()=sqrt(sqdist);
+      sumVec[seedInd].first+=area[vi];
+      sumVec[seedInd].second+=vi->cP()*area[vi];
+    }
+
+    vector<CoordType> newseedVec;
+    vector<bool> newfixedVec;
+
+    for(size_t i=0;i<seedPosVec.size();++i)
+    {
+      if(fixedVec[i])
+      {
+        newseedVec.push_back(seedPosVec[i]);
+        newfixedVec.push_back(true);
+      }
+      else
+      {
+        if(sumVec[i].first != 0)
+        {
+          newseedVec.push_back(sumVec[i].second /ScalarType(sumVec[i].first));
+          if(vpp.seedPerturbationProbability > RandomGenerator().generate01())
+            newseedVec.back()+=math::GeneratePointInUnitBallUniform<ScalarType,math::MarsenneTwisterRNG>( RandomGenerator())*perturb;
+          newfixedVec.push_back(false);
+        }
+      }
+    }
+    std::swap(seedPosVec,newseedVec);
+    std::swap(fixedVec,newfixedVec);
+    tri::UpdateColor<MeshType>::PerVertexQualityRamp(m);
+  }
+  return relaxStep;
+}
+
 /// \brief Perform a Lloyd relaxation cycle over a mesh
 ///  It uses two conventions:
 ///  1) a few vertexes can remain fixed, you have to set a per vertex bool attribute named 'fixed'
@@ -1203,11 +1298,9 @@ static int VoronoiRelaxing(MeshType &m, std::vector<VertexType *> &seedVec,
   }
 
   tri::UpdateFlags<MeshType>::FaceBorderFromVF(m);
-  tri::UpdateFlags<MeshType>::VertexBorderFromFace(m);
-  typename MeshType::template PerVertexAttributeHandle<VertexPointer> sources;
-  sources = tri::Allocator<MeshType>:: template GetPerVertexAttribute<VertexPointer> (m,"sources");
-  typename MeshType::template PerVertexAttributeHandle<bool> fixed;
-  fixed = tri::Allocator<MeshType>:: template GetPerVertexAttribute<bool> (m,"fixed");
+  tri::UpdateFlags<MeshType>::VertexBorderFromFaceBorder(m);
+  PerVertexPointerHandle sources = tri::Allocator<MeshType>:: template GetPerVertexAttribute<VertexPointer> (m,"sources");
+  PerVertexBoolHandle fixed = tri::Allocator<MeshType>:: template GetPerVertexAttribute<bool> (m,"fixed");
   int iter;
   for(iter=0;iter<relaxIter;++iter)
   {
@@ -1241,7 +1334,7 @@ static int VoronoiRelaxing(MeshType &m, std::vector<VertexType *> &seedVec,
     else
       changed = QuadricRelax(m,seedVec,frontierVec, newSeedVec, df,vpp);
 
-    assert(newSeedVec.size() == seedVec.size());
+    //assert(newSeedVec.size() == seedVec.size());
     PruneSeedByRegionArea(newSeedVec,regionArea,vpp);
 
     for(size_t i=0;i<frontierVec.size();++i)
@@ -1277,7 +1370,10 @@ static int VoronoiRelaxing(MeshType &m, std::vector<VertexType *> &seedVec,
 
 
 // Base vertex voronoi coloring algorithm.
-// it assumes VF adjacency. No attempt of computing real geodesic distnace is done. Just a BFS visit starting from the seeds.
+// It assumes VF adjacency. 
+// No attempt of computing real geodesic distnace is done. Just a BFS visit starting from the seeds
+// It leaves in each vertex quality the index of the seed.
+
 static void TopologicalVertexColoring(MeshType &m, std::vector<VertexType *> &seedVec)
 {
   std::queue<VertexPointer> VQ;
@@ -1407,7 +1503,7 @@ static bool CheckVoronoiTopology(MeshType& m,std::vector<VertexType *> &seedVec)
   }
 
   std::vector<MeshType *> regionVec(seedVec.size(),0);
-  for(int i=0; i< seedVec.size();i++) regionVec[i] = new MeshType;
+  for(size_t i=0; i< seedVec.size();i++) regionVec[i] = new MeshType;
 
   for(int i=0;i<m.fn;++i)
   {
@@ -1425,7 +1521,7 @@ static bool CheckVoronoiTopology(MeshType& m,std::vector<VertexType *> &seedVec)
   }
 
   bool AllDiskRegion=true;
-  for(int i=0; i< seedVec.size();i++)
+  for(size_t i=0; i< seedVec.size();i++)
   {
     MeshType &rm = *(regionVec[i]);
     tri::Clean<MeshType>::RemoveDuplicateVertex(rm);
@@ -1482,7 +1578,7 @@ static void BuildSeedMap(MeshType &m, std::vector<VertexType *> &seedVec,  std::
   for(size_t i=0;i<seedVec.size();++i)
     seedMap[seedVec[i]]=i;
   for(size_t i=0;i<seedVec.size();++i)
-    assert(tri::Index(m,seedVec[i])>=0 && tri::Index(m,seedVec[i])<m.vn);
+    assert(tri::Index(m,seedVec[i])>=0 && tri::Index(m,seedVec[i])<size_t(m.vn));
 }
 
 /// \brief Build a mesh of the Delaunay triangulation induced by the given seeds
@@ -1564,7 +1660,7 @@ static void ConvertDelaunayTriangulationToMesh(MeshType &m,
 }
 
 template <class MidPointType >
-static void PreprocessForVoronoi(MeshType &m, float radius,
+static void PreprocessForVoronoi(MeshType &m, ScalarType radius,
                                  MidPointType mid,
                                  VoronoiProcessingParameter &vpp)
 {
@@ -1589,7 +1685,7 @@ static void PreprocessForVoronoi(MeshType &m, float radius, VoronoiProcessingPar
   PreprocessForVoronoi<tri::MidPoint<MeshType> >(m, radius,mid,vpp);
 }
 
-static void RelaxRefineTriangulationSpring(MeshType &m, MeshType &delaMesh, int refineStep=3, int relaxStep=10 )
+static void RelaxRefineTriangulationSpring(MeshType &m, MeshType &delaMesh, int relaxStep=10, int refineStep=3 )
 {
   tri::RequireCompactness(m);
   tri::RequireCompactness(delaMesh);
@@ -1613,7 +1709,7 @@ static void RelaxRefineTriangulationSpring(MeshType &m, MeshType &delaMesh, int 
   PerVertexBoolHandle fixed = tri::Allocator<MeshType>:: template GetPerVertexAttribute<bool> (m,"fixed");
 
   const ScalarType maxDist = m.bbox.Diag()/4.f;
-  for(int kk=0;kk<refineStep;kk++)
+  for(int kk=0;kk<refineStep+1;kk++)
   {
     tri::UpdateTopology<MeshType>::FaceFace(delaMesh);
 
@@ -1627,7 +1723,7 @@ static void RelaxRefineTriangulationSpring(MeshType &m, MeshType &delaMesh, int 
     const float dist_upper_bound=m.bbox.Diag()/10.0;
     float dist;
 
-    for(int k=0;k<relaxStep;k++)
+    for(int k=0;k<relaxStep;k++) 
     {
       std::vector<Point3f> avgForce(delaMesh.vn);
       std::vector<float> avgLenVec(delaMesh.vn,0);
@@ -1636,12 +1732,12 @@ static void RelaxRefineTriangulationSpring(MeshType &m, MeshType &delaMesh, int 
         vector<VertexPointer> starVec;
         face::VVStarVF<FaceType>(&delaMesh.vert[i],starVec);
 
-        for(int j=0;j<starVec.size();++j)
+        for(size_t j=0;j<starVec.size();++j)
           avgLenVec[i] +=Distance(delaMesh.vert[i].cP(),starVec[j]->cP());
         avgLenVec[i] /= float(starVec.size());
 
         avgForce[i] =Point3f(0,0,0);
-        for(int j=0;j<starVec.size();++j)
+        for(size_t j=0;j<starVec.size();++j)
         {
           Point3f force = delaMesh.vert[i].cP()-starVec[j]->cP();
           float len = force.Norm();

@@ -436,6 +436,8 @@ compute_delta_E(std::string const& image_path_1,
     free(min_delta_E_errors_local);
     free(max_delta_E_errors_local);
     free(valid_pixel_array);
+
+    return true;
 }
 
 bool image_based_error_app::

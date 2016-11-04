@@ -40,7 +40,7 @@ struct snapshot_session_descriptor {
       return num_taken_screenshots;
     }   
 
-    uint32_t increment_screenshot_counter() {
+    void increment_screenshot_counter() {
         ++num_taken_screenshots;
     }
 

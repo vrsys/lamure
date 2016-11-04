@@ -512,7 +512,7 @@ dispatchKeyboardInput(unsigned char key)
 
         }
 
-#if 0
+#if 1
     case 'v':
         {
             scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
@@ -533,7 +533,7 @@ dispatchKeyboardInput(unsigned char key)
             float plane_dim = 0.11f;//e.g. 5.0 for valley, 0.05 for seradina rock
 
 
-#if 1 /*INTERPOLATION PICK*/
+#if 0 /*INTERPOLATION PICK*/
                 if (intersection_ray.intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersectn)) {
 #ifdef LAMURE_ENABLE_INFO
                     std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
@@ -587,13 +587,13 @@ dispatchKeyboardInput(unsigned char key)
       lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
       std::set<std::string> bvh_filenames;
       for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-         const std::string& bvh_filename = database->get_model(model_id)->bvh()->filename();
+         const std::string& bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
          bvh_filenames.insert(bvh_filename);
       }
 
       //now test the list of files
-      lamure::ren::ray::Intersectionbvh temp;
-      if (intersection_ray.Intersectbvh(bvh_filenames, 1.0f, temp)) {
+      lamure::ren::ray::intersection_bvh temp;
+      if (intersection_ray.intersect_bvh(bvh_filenames, 1.0f, temp)) {
          intersectn.position_ = temp.position_;
          intersectn.normal_ = scm::math::vec3f(0.f, 1.0f, 1.0f);
          intersectn.error_ = 0.f;
@@ -605,8 +605,8 @@ dispatchKeyboardInput(unsigned char key)
 #endif
 
 #ifdef LAMURE_ENABLE_INFO
-               // std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
-               // std::cout << "intersection position: " << intersectn.position_ << std::endl;
+                std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
+                std::cout << "intersection position: " << intersectn.position_ << std::endl;
 #endif
 
                 if (intersectn.error_ < std::numeric_limits<float>::max()) {
