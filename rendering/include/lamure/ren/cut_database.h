@@ -20,67 +20,67 @@
 namespace lamure {
 namespace ren {
 
-class cut_update_pool;
+class CutUpdatePool;
 
-class RENDERING_DLL cut_database
+class RENDERING_DLL Cutdatabase
 {
 public:
 
-                        cut_database(const cut_database&) = delete;
-                        cut_database& operator=(const cut_database&) = delete;
-    virtual             ~cut_database();
+                        Cutdatabase(const Cutdatabase&) = delete;
+                        Cutdatabase& operator=(const Cutdatabase&) = delete;
+    virtual             ~Cutdatabase();
 
-    static cut_database* get_instance();
+    static Cutdatabase* get_instance();
 
     void                reset();
 
-    cut&                get_cut(const context_t context_id, const view_t view_id, const model_t model_id);
-    std::vector<cut_database_record::slot_update_desc>& get_updated_set(const context_t context_id);
+    Cut&                GetCut(const context_t context_id, const view_t view_id, const model_t model_id);
+    std::vector<CutdatabaseRecord::SlotUpdateDescr>& GetUpdatedSet(const context_t context_id);
 
-    const bool          is_front_modified(const context_t context_id);
-    void                set_is_front_modified(const context_t context_id, const bool front_modified);
-    const bool          is_swap_required(const context_t context_id);
-    void                signal_upload_complete(const context_t context_id);
+    const bool          IsfrontModified(const context_t context_id);
+    void                SetIsfrontModified(const context_t context_id, const bool front_modified);
+    const bool          IsSwapRequired(const context_t context_id);
+    void                SignalUploadcomplete(const context_t context_id);
 
-    const cut_database_record::temporary_buffer get_buffer(const context_t context_id);
-    void                swap(const context_t context_id);
-    void                send_camera(const context_t context_id, const view_t view_id, const camera& camera);
-    void                send_height_divided_by_top_minus_bottom(context_t const context_id, view_t const view_id, const float& height_divided_by_top_minus_bottom);
-    void                send_transform(const context_t context_id, const model_t model_id, const scm::math::mat4f& transform);
-    void                send_rendered(const context_t context_id, const model_t model_id);
-    void                send_threshold(const context_t context_id, const model_t model_id, const float threshold);
+    const CutdatabaseRecord::Temporarybuffer Getbuffer(const context_t context_id);
+    void                Swap(const context_t context_id);
+    void                SendCamera(const context_t context_id, const view_t view_id, const Camera& camera);
+    void                SendheightDividedByTopMinusBottom(context_t const context_id, view_t const view_id, const float& height_divided_by_top_minus_bottom);
+    void                SendTransform(const context_t context_id, const model_t model_id, const scm::math::mat4f& transform);
+    void                Sendrendered(const context_t context_id, const model_t model_id);
+    void                SendThreshold(const context_t context_id, const model_t model_id, const float threshold);
 
 protected:
-                        cut_database();
+                        Cutdatabase();
     static bool         is_instanced_;
-    static cut_database* single_;
+    static Cutdatabase* single_;
 
-    friend class        cut_update_pool;
+    friend class        CutUpdatePool;
 
     void                expand(const context_t context_id);
-    void                receive_cameras(const context_t context_id, std::map<view_t, camera>& cameras);
-    void                receive_height_divided_by_top_minus_bottoms(const context_t context_id, std::map<view_t, float>& height_divided_by_top_minus_bottom);
-    void                receive_transforms(const context_t context_id, std::map<model_t, scm::math::mat4f>& transforms);
-    void                receive_rendered(const context_t context_id, std::set<model_t>& rendered);
-    void                receive_importance(const context_t context_id, std::map<model_t, float>& importance);
-    void                receive_thresholds(const context_t context_id, std::map<model_t, float>& thresholds);
+    void                ReceiveCameras(const context_t context_id, std::map<view_t, Camera>& cameras);
+    void                ReceiveheightDividedByTopMinusBottoms(const context_t context_id, std::map<view_t, float>& height_divided_by_top_minus_bottom);
+    void                ReceiveTransforms(const context_t context_id, std::map<model_t, scm::math::mat4f>& transforms);
+    void                Receiverendered(const context_t context_id, std::set<model_t>& rendered);
+    void                ReceiveImportance(const context_t context_id, std::map<model_t, float>& importance);
+    void                ReceiveThresholds(const context_t context_id, std::map<model_t, float>& thresholds);
 
-    void                lock_record(const context_t context_id);
-    void                unlock_record(const context_t context_id);
+    void                LockRecord(const context_t context_id);
+    void                UnlockRecord(const context_t context_id);
 
-    void                set_buffer(const context_t context_id, const cut_database_record::temporary_buffer buffer);
+    void                Setbuffer(const context_t context_id, const CutdatabaseRecord::Temporarybuffer buffer);
 
-    void                set_is_swap_required(const context_t context_id, const bool front_modified);
+    void                SetIsSwapRequired(const context_t context_id, const bool front_modified);
 
-    void                set_updated_set(const context_t context_id, std::vector<cut_database_record::slot_update_desc>& updated_set);
+    void                SetUpdatedSet(const context_t context_id, std::vector<CutdatabaseRecord::SlotUpdateDescr>& updated_set);
 
-    void                set_cut(const context_t context_id, const view_t view_id, const model_t model_id, cut& cut);
+    void                SetCut(const context_t context_id, const view_t view_id, const model_t model_id, Cut& cut);
 
 private:
     /* data */
     static std::mutex   mutex_;
 
-    std::map<context_t, cut_database_record*> records_;
+    std::map<context_t, CutdatabaseRecord*> records_;
 
 };
 
