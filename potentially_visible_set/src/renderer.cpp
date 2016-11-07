@@ -20,6 +20,7 @@
 #include <scm/gl_core/render_device/opengl/gl_core.h>
 
 #define NUM_BLENDED_FRAGS 18
+//#define RENDER_TO_SCREEN
 
 Renderer::
 Renderer(std::vector<scm::math::mat4f> const& model_transformations,
@@ -177,10 +178,14 @@ render_depth(lamure::context_t context_id,
 
     {
         context_->clear_depth_stencil_buffer(visible_node_id_fbo_);
-        context_->clear_color_buffer(visible_node_id_fbo_, 0, vec4f(1.0f, 1.0f, 1.0f, 1.0f));
+        context_->clear_color_buffer(visible_node_id_fbo_, 0, vec4f(0.0f, 0.0f, 0.0f, 1.0f));
+        context_->clear_color_buffer(visible_node_id_fbo_, 1, vec4f(1.0f, 1.0f, 1.0f, 1.0f));
 
+#ifdef RENDER_TO_SCREEN
+        context_->set_default_frame_buffer();
+#else
         context_->set_frame_buffer(visible_node_id_fbo_);
-        //context_->set_default_frame_buffer();
+#endif   
 
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
         context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
@@ -269,24 +274,29 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
     //determine set of models to render
     std::set<lamure::model_t> current_set;
-    for (lamure::model_t model_id = 0; model_id < num_models; ++model_id) {
+    for (lamure::model_t model_id = 0; model_id < num_models; ++model_id)
+    {
         auto vs_it = visible_set_.find(model_id);
         auto is_it = invisible_set_.find(model_id);
 
-        if (vs_it == visible_set_.end() && is_it == invisible_set_.end()) {
+        if (vs_it == visible_set_.end() && is_it == invisible_set_.end())
+        {
             current_set.insert(model_id);
         }
-        else if (vs_it != visible_set_.end()) {
-            if (render_visible_set_) {
+        else if (vs_it != visible_set_.end())
+        {
+            if (render_visible_set_)
+            {
                 current_set.insert(model_id);
             }
         }
-        else if (is_it != invisible_set_.end()) {
-            if (!render_visible_set_) {
+        else if (is_it != invisible_set_.end())
+        {
+            if (!render_visible_set_)
+            {
                 current_set.insert(model_id);
             }
         }
-
     }
 
 
@@ -494,9 +504,14 @@ initialize_VBOs()
     no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, false, false, 0.0, false, false);
 
     visible_node_id_fbo_ = device_->create_frame_buffer();
-    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8UI , 1, 1, 1);
+#ifdef RENDER_TO_SCREEN
+    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8 , 1, 1, 1);
     visible_node_id_fbo_->attach_color_buffer(0, visible_node_id_texture_);
-   
+#else
+    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8UI , 1, 1, 1);
+    visible_node_id_fbo_->attach_color_buffer(1, visible_node_id_texture_);
+#endif
+
     screen_quad_.reset(new quad_geometry(device_, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
 
 
@@ -607,8 +622,13 @@ void Renderer::reset_viewport(int w, int h)
 
     //reset frame buffers and textures
     visible_node_id_fbo_ = device_->create_frame_buffer();
-    visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8UI , 1, 1, 1);
-    visible_node_id_fbo_->attach_color_buffer(0, visible_node_id_texture_);
+    #ifdef RENDER_TO_SCREEN
+        visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8 , 1, 1, 1);
+        visible_node_id_fbo_->attach_color_buffer(0, visible_node_id_texture_);
+    #else
+        visible_node_id_texture_ = device_->create_texture_2d(scm::math::vec2ui(win_x_, win_y_) * 1, scm::gl::FORMAT_RGBA_8UI , 1, 1, 1);
+        visible_node_id_fbo_->attach_color_buffer(1, visible_node_id_texture_);
+    #endif
 
     //reset orthogonal projection matrix for text rendering
     scm::math::mat4f   fs_projection = scm::math::make_ortho_matrix(0.0f, static_cast<float>(win_x_),
@@ -696,42 +716,107 @@ switch_render_mode(RenderMode const& render_mode) {
     render_mode_ = render_mode;
 }
 
-void Renderer::
+id_histogram Renderer::
 create_node_id_histogram()
 {
-    std::string screenshot_path = "/home/tiwo9285/";
+    /*std::string screenshot_path = "/home/tiwo9285/";
     std::string screenshot_name = "test";
     std::string file_extension = ".png";
-    {
 
-        std::string full_path = screenshot_path + "/";
+    std::string full_path = screenshot_path + "/";
+    {
+        if(! boost::filesystem::exists(full_path)) {
+           std::cout<<"Screenshot Folder did not exist. Creating Folder: " << full_path << "\n\n";
+           boost::filesystem::create_directories(full_path);
+        }
+    }*/
+
+    // Make the BYTE array, factor of 4 because it's RGBA.
+    GLubyte* pixels = new GLubyte[4 * win_x_ * win_y_];
+
+    device_->opengl_api().glBindTexture(GL_TEXTURE_2D, visible_node_id_texture_->object_id());
+#ifdef RENDER_TO_SCREEN
+    device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+#else
+    device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, pixels);
+#endif
+
+    id_histogram hist;
+    hist.create(pixels, win_x_ * win_y_);
+
+    /*std::string filename = full_path + "color__" + screenshot_name + "__surfels_" + file_extension;
+
+    FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0x00FF00, 0xFF0000, false);
+    FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
+
+    device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
+
+    std::cout<<"Saved Screenshot: "<<filename.c_str()<<"\n\n";
+
+    // Free resources
+    FreeImage_Unload(image);*/
+    delete [] pixels;
+    
+    // Debug stuff to output rendered nodes as histogram and check if histogram is valid within current cut.
+    {
+        int numPixels = win_x_ * win_y_;
+        std::map<unsigned int, std::vector<unsigned int>> visible_nodes = hist.get_visible_nodes(numPixels, 0.001f);
+        
+        std::fstream f;
+        f.open("/home/tiwo9285/test.txt", std::ios::out);
+        for(std::map<unsigned int, std::map<unsigned int, unsigned int>>::iterator modelIter = hist.get_histogram().begin(); modelIter != hist.get_histogram().end(); ++modelIter)
         {
-            if(! boost::filesystem::exists(full_path)) {
-               std::cout<<"Screenshot Folder did not exist. Creating Folder: " << full_path << "\n\n";
-               boost::filesystem::create_directories(full_path);
+            for(std::map<unsigned int, unsigned int>::iterator nodeIter = modelIter->second.begin(); nodeIter != modelIter->second.end(); ++nodeIter)
+            {
+                f << "model: " << modelIter->first << "  node: " << nodeIter->first << "  amount: " << nodeIter->second << "  percent: " << ((float)nodeIter->second / (float)numPixels) * 100.0f << std::endl;
             }
         }
 
-        
+        f << "\n";
 
-        // Make the BYTE array, factor of 4 because it's RGBA.
-        GLubyte* pixels = new GLubyte[4 * win_x_ * win_y_];
+        lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+        lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+        lamure::context_t context_id = 0;
+        lamure::view_t view_id = 0;
 
-        device_->opengl_api().glBindTexture(GL_TEXTURE_2D, visible_node_id_texture_->object_id());
-        //device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
-        device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, pixels);
+        int node_counter = 0;
+        int regular_node_counter = 0;
+        int irregular_node_counter = 0;
 
-        std::string filename = full_path + "color__" + screenshot_name + "__surfels_" + file_extension;
+        for (int model_id = 0; model_id < database->num_models(); ++model_id)
+        {
+            std::vector<unsigned int> rendered_nodes;
 
-        FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0x00FF00, 0xFF0000, false);
-        FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
+            lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+            std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
 
-        device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
+            for(auto const& node_slot_aggregate : renderable)
+            {
+                rendered_nodes.push_back(node_slot_aggregate.node_id_);
+                node_counter++;
+            }
 
-        // Free resources
-        FreeImage_Unload(image);
-        delete [] pixels;
+            for(int index = 0; index < visible_nodes[model_id].size(); ++index)
+            {
+                unsigned int irregular_node_id = visible_nodes[model_id][index];
+                if(std::find(rendered_nodes.begin(), rendered_nodes.end(), irregular_node_id) == rendered_nodes.end())
+                {
+                    f << irregular_node_id << "\n";
+                    irregular_node_counter++;
+                }
+                else
+                {
+                    regular_node_counter++;
+                }
+            }
+       }
 
-        std::cout<<"Saved Screenshot: "<<filename.c_str()<<"\n\n";
+       f << "cut nodes total: " << node_counter << std::endl;
+       f << "regular rendered nodes: " << regular_node_counter << std::endl;
+       f << "irregular rendered nodes: " << irregular_node_counter << std::endl;
+
+       f.close();
     }
+
+    return hist;
 }

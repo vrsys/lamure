@@ -17,12 +17,13 @@ uniform int model_id = 0;
 uniform int node_id = 0;
 
 // Color rendered as output containing node and model ID.
-layout(location = 0) out uvec4 out_color;
+layout(location = 0) out vec4 out_color;
+layout(location = 1) out uvec4 out_color_int;
 
 // Remodel IDs to fit output color.
 uvec4 color_from_id(int node_id, int model_id)
 {
-    return uvec4(((node_id >> 16) & 0xFF), ((node_id >> 8) & 0xFF), (node_id & 0xFF), (model_id & 0xFF));
+    return uvec4(((node_id) & 0xFF), ((node_id >> 8) & 0xFF), ((node_id >> 16) & 0xFF), (model_id & 0xFF));
 
     /*if(node_id % 3 == 0)
         return uvec4(((node_id >> 16) & 0xFF), ((node_id >> 8) & 0xFF), (node_id & 0xFF), (model_id & 0xFF));
@@ -44,7 +45,7 @@ void main()
   gl_FragDepth = gl_FragCoord.z + (VertexIn.pass_es_shift / far_plane);
   
   // new
-  //out_color = vec4(color_from_id(node_id, 255 - model_id)) / 255.0;
-  out_color = color_from_id(node_id, 255-model_id);
+  out_color = vec4(color_from_id(node_id, 255 - model_id)) / 255.0;
+  out_color_int = color_from_id(node_id, model_id);
 }
 

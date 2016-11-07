@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <fstream>
 #include <lamure/ren/bvh.h>
+#include <sstream>
 
 management::
 management(std::vector<std::string> const& model_filenames,
@@ -69,6 +70,12 @@ management(std::vector<std::string> const& model_filenames,
     // Increase camera movement speed for debugging purpose.
     active_camera_->set_dolly_sens_(20.5f);
 
+    // Set camera view manually for debug purpose.
+    active_camera_->set_view_matrix(scm::math::mat4d(0.05, -0.3, 0.95, 0.0,
+                                            1.0, -0.09, 0.03, 0.0,
+                                            0.07, 0.95, 0.32, 0.0,
+                                            -75.0, 4.75, -173.4, 1.0));
+
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
 }
 
@@ -110,7 +117,19 @@ MainLoop()
     renderer_->set_radius_scale(importance_);
     renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), 0);
 
-    renderer_->display_status("");
+    //renderer_->display_status("");
+    // Output current view matrix for debug purpose.
+    std::stringstream cam_mat_string;
+    cam_mat_string << "view matrix:\n";
+    for(int index = 0; index < 16; ++index)
+    {
+        cam_mat_string << active_camera_->get_view_matrix()[index] << "   ";
+        if((index + 1) % 4 == 0)
+        {
+            cam_mat_string << "\n";
+        }
+    }
+    renderer_->display_status(cam_mat_string.str());
 
     if (dispatch_)
     {
@@ -168,14 +187,11 @@ MainLoop()
     return signal_shutdown;
 }
 
-
 void management::
 update_trackball(int x, int y)
 {
     active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
 }
-
-
 
 void management::
 RegisterMousePresses(int button, int state, int x, int y)
@@ -203,15 +219,17 @@ RegisterMousePresses(int button, int state, int x, int y)
     active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
 }
 
-
 void management::
 dispatchKeyboardInput(unsigned char key)
 {
     switch(key)
     {
         case 's':
-            renderer_->create_node_id_histogram();
+        {
+            id_histogram hist = renderer_->create_node_id_histogram();
             break;
+        }
+
         case 'w':
             renderer_->toggle_bounding_box_rendering();
             break;

@@ -55,6 +55,7 @@
 #include <lamure/types.h>
 #include <lamure/utils.h>
 
+#include "lamure/pvs/id_histogram.h"
 
 #include <lamure/ren/ray.h>
 //#define LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
@@ -197,7 +198,7 @@ public:
     void toggle_camera_info(const lamure::view_t current_cam_id);
     void toggle_visible_set();
     void toggle_display_info();
-    void create_node_id_histogram();
+    id_histogram create_node_id_histogram();
 };
 
 #endif // PVS_OLD_RENDERER_H_
