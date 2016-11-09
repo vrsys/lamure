@@ -64,6 +64,7 @@ private:
     int32_t             height_;
 
     float importance_;
+    float visibility_threshold_;
 
     bool test_send_rendered_;
 

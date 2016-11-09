@@ -32,6 +32,7 @@ management(std::vector<std::string> const& model_filenames,
         importance_(1.f)
 
 {
+    visibility_threshold_ = 0.0001f;
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
@@ -120,6 +121,8 @@ MainLoop()
     //renderer_->display_status("");
     // Output current view matrix for debug purpose.
     std::stringstream cam_mat_string;
+    cam_mat_string << "visibility threshold: " << visibility_threshold_ << std::endl;
+
     cam_mat_string << "view matrix:\n";
     for(int index = 0; index < 16; ++index)
     {
@@ -211,8 +214,6 @@ RegisterMousePresses(int button, int state, int x, int y)
             }break;
     }
 
-
-
     float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
     float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
 
@@ -227,8 +228,40 @@ dispatchKeyboardInput(unsigned char key)
         case 's':
         {
             id_histogram hist = renderer_->create_node_id_histogram();
+            renderer_->compare_histogram_to_cut(hist, visibility_threshold_, true);
             break;
         }
+
+        // Reset node visibility (all nodess become visible again).
+        case 'a':
+        {
+            lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+            lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+
+            lamure::context_t context_id = 0;
+            lamure::view_t view_id = 0;
+
+            for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+            {
+                lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+                std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
+
+                for(unsigned int index = 0; index < renderable.size(); ++index)
+                {
+                    lamure::ren::cut::node_slot_aggregate& aggregate = renderable.at(index);
+                    database->get_model(model_id)->get_bvh()->set_visibility(aggregate.node_id_, lamure::ren::bvh::node_visibility::NODE_VISIBLE);
+                }
+            }
+            break;
+        }
+
+        case 'e':
+            visibility_threshold_ *= 1.1f;
+            break;
+
+        case 'd':
+            visibility_threshold_ /= 1.1f;
+            break;
 
         case 'w':
             renderer_->toggle_bounding_box_rendering();
@@ -255,8 +288,7 @@ void management::
 Toggledispatching()
 {
     dispatch_ = ! dispatch_;
-};
-
+}
 
 void management::
 DecreaseErrorThreshold()
@@ -272,5 +304,4 @@ IncreaseErrorThreshold()
     error_threshold_ += 0.1f;
     if (error_threshold_ > LAMURE_MAX_THRESHOLD)
         error_threshold_ = LAMURE_MAX_THRESHOLD;
-
 }

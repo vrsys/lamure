@@ -148,9 +148,11 @@ private:
         //shader programs
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
         scm::gl::program_ptr                        visible_node_shader_program_;
+        scm::gl::program_ptr                        node_texture_shader_program_;
 
         //framebuffer and textures for different passes
         scm::gl::frame_buffer_ptr                   visible_node_id_fbo_;
+        scm::gl::texture_2d_ptr                     visible_node_depth_buffer_;
         scm::gl::texture_2d_ptr                     visible_node_id_texture_;
 	
         scm::shared_ptr<scm::gl::quad_geometry>     screen_quad_;
@@ -198,7 +200,9 @@ public:
     void toggle_camera_info(const lamure::view_t current_cam_id);
     void toggle_visible_set();
     void toggle_display_info();
-    id_histogram create_node_id_histogram();
+
+    id_histogram create_node_id_histogram() const;
+    void compare_histogram_to_cut(const id_histogram& hist, const float& visibility_threshold, const bool& apply_visibility_to_nodes);
 };
 
 #endif // PVS_OLD_RENDERER_H_
