@@ -156,3 +156,8 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 
+set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_quality_measurement PROPERTIES DEBUG_POSTFIX "d")
+
