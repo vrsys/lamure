@@ -264,7 +264,6 @@ MainLoop()
 
         //controller->dispatch(context_id, renderer_->device());
 
-
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE

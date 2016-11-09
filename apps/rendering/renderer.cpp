@@ -51,8 +51,6 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
     win_x_ = policy->window_width();
     win_y_ = policy->window_height();
 
-    win_x_ = 800;
-    win_y_ = 600;
     initialize_schism_device_and_shaders(win_x_, win_y_);
     initialize_VBOs();
     reset_viewport(win_x_, win_y_);

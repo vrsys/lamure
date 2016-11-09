@@ -273,7 +273,6 @@ void glut_display()
 
 void glut_resize(int w, int h)
 {
-
     if (management_ != nullptr)
     {
         management_->dispatchResize(w, h);
