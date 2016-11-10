@@ -24,6 +24,11 @@
 
 #include <lamure/ren/ray.h>
 
+namespace lamure
+{
+namespace pvs
+{
+
 class management
 {
 public:
@@ -78,11 +83,15 @@ private:
     std::vector<scm::math::mat4f> model_transformations_;
     std::vector<std::string> model_filenames_;
 
+    bool                first_frame_;
+
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;
     boost::timer::cpu_timer system_result_timer_;
 #endif
 };
 
+}
+}
 
 #endif

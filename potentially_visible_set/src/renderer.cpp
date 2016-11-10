@@ -205,7 +205,8 @@ render_depth(lamure::context_t context_id,
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
+            {
                 continue;
             }
 
@@ -222,7 +223,7 @@ render_depth(lamure::context_t context_id,
 
             for(auto const& node_slot_aggregate : renderable)
             {
-                if(node_slot_aggregate.visible_)
+                if(database->get_model(model_id)->get_bvh()->get_visibility(node_slot_aggregate.node_id_) == bvh::node_visibility::NODE_VISIBLE)
                 {
                     uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
 
@@ -486,7 +487,8 @@ void Renderer::display_status(std::string const& information_to_display)
    // os.setprecision(5);
     os
       <<"FPS:   "<<std::setprecision(4)<<fps_<<"\n"
-      <<"# Points:   "<< (rendered_splats_ / 100000) / 10.0f<< " Mio. \n"
+      //<<"# Points:   "<< (rendered_splats_ / 100000) / 10.0f<< " Mio. \n" 
+      <<"# Nodes:   "<< rendered_splats_ / lamure::ren::model_database::get_instance()->get_primitives_per_node() << "\n"
       <<"Render Mode: " ;
       switch(render_mode_) {
         case(RenderMode::VISIBLE_NODE_PASS):
@@ -741,20 +743,8 @@ switch_render_mode(RenderMode const& render_mode)
 }
 
 id_histogram Renderer::
-create_node_id_histogram() const
+create_node_id_histogram(const bool& save_screenshot) const
 {
-    /*std::string screenshot_path = "/home/tiwo9285/";
-    std::string screenshot_name = "test";
-    std::string file_extension = ".png";
-
-    std::string full_path = screenshot_path + "/";
-    {
-        if(! boost::filesystem::exists(full_path)) {
-           std::cout<<"Screenshot Folder did not exist. Creating Folder: " << full_path << "\n\n";
-           boost::filesystem::create_directories(full_path);
-        }
-    }*/
-
     // Make the BYTE array, factor of 4 because it's RGBA.
     GLubyte* pixels = new GLubyte[4 * win_x_ * win_y_];
 
@@ -764,17 +754,33 @@ create_node_id_histogram() const
     id_histogram hist;
     hist.create(pixels, win_x_ * win_y_);
 
-    /*std::string filename = full_path + "color__" + screenshot_name + "__surfels_" + file_extension;
+    if(save_screenshot)
+    {
+        std::string screenshot_path = "/home/tiwo9285/";
+        std::string screenshot_name = "test";
+        std::string file_extension = ".png";
 
-    FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0x00FF00, 0xFF0000, false);
-    FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
+        std::string full_path = screenshot_path + "/";
+        {
+            if(! boost::filesystem::exists(full_path)) {
+               std::cout<<"Screenshot Folder did not exist. Creating Folder: " << full_path << "\n\n";
+               boost::filesystem::create_directories(full_path);
+            }
+        }
 
-    device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
+        std::string filename = full_path + "color__" + screenshot_name + "__surfels_" + file_extension;
 
-    std::cout<<"Saved Screenshot: "<<filename.c_str()<<"\n\n";
+        FIBITMAP* image = FreeImage_ConvertFromRawBits(pixels, win_x_, win_y_, 4 * win_x_, 32, 0x0000FF, 0x00FF00, 0xFF0000, false);
+        FreeImage_Save(FIF_PNG, image, filename.c_str(), 0);
 
-    // Free resources
-    FreeImage_Unload(image);*/
+        device_->opengl_api().glBindTexture(GL_TEXTURE_2D, 0);
+
+        std::cout<<"Saved Screenshot: "<<filename.c_str()<<"\n\n";
+
+        // Free resources
+        FreeImage_Unload(image);
+    }
+
     delete [] pixels;
 
     return hist;

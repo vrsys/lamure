@@ -13,6 +13,16 @@
 #include <lamure/ren/bvh.h>
 #include <sstream>
 
+#include <chrono>
+#include <thread>
+
+//#define ALLOW_INPUT
+
+namespace lamure
+{
+namespace pvs
+{
+
 management::
 management(std::vector<std::string> const& model_filenames,
     std::vector<scm::math::mat4f> const& model_transformations,
@@ -33,17 +43,18 @@ management(std::vector<std::string> const& model_filenames,
 
 {
     visibility_threshold_ = 0.0001f;
+    first_frame_ = true;
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
 #ifdef LAMURE_RENDERING_ENABLE_LAZY_MODELS_TEST
     assert(model_filenames_.size() > 0);
-    lamure::model_t model_id = database->add_model(model_filenames_[0], std::to_string(num_models_));
+    database->add_model(model_filenames_[0], std::to_string(num_models_));
     ++num_models_;
 #else
     for (const auto& filename : model_filenames_)
     {
-        lamure::model_t model_id = database->add_model(filename, std::to_string(num_models_));
+        database->add_model(filename, std::to_string(num_models_));
         ++num_models_;
     }
 #endif
@@ -107,13 +118,78 @@ MainLoop()
     controller->reset_system();
 
     lamure::context_t context_id = controller->deduce_context_id(0);
-    
-    controller->dispatch(context_id, renderer_->device());
-
     lamure::view_t view_id = controller->deduce_view_id(context_id, active_camera_->view_id());
- 
-    // NEW STUFF
-    //lamure::ren::cut_database::get_instance()->force_cut(context_id, view_id);
+    
+    bool done = false;
+    int repetition_counter = 0;
+
+    if(first_frame_)
+    {
+        controller->dispatch(context_id, renderer_->device());
+        first_frame_ = false;
+    }
+    else
+    {
+        std::vector<int> old_cut_lengths(num_models_, -1);
+
+        while (!done)
+        {
+            // Cut update runs asynchronous, so wait until it is done.
+            if (!controller->is_cut_update_in_progress(context_id))
+            {
+                bool length_changed = false;
+
+                for (lamure::model_t model_index = 0; model_index < num_models_; ++model_index)
+                {
+                    lamure::model_t model_id = controller->deduce_model_id(std::to_string(model_index));
+
+                    // Check if the cut length changed in comparison to previous frame.
+                    lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+                    if(cut.complete_set().size() > old_cut_lengths[model_index])
+                    {
+                        length_changed = true;
+                    }
+                    //std::cout << "model: " << model_id << "  new length: " << cut.complete_set().size() << "  old length: " << old_cut_lengths[model_index] << std::endl;
+                    old_cut_lengths[model_index] = cut.complete_set().size();
+
+                    cuts->send_transform(context_id, model_id, model_transformations_[model_id]);
+                    cuts->send_threshold(context_id, model_id, error_threshold_ / importance_);
+
+                    //send rendered, threshold, camera, 
+                    cuts->send_rendered(context_id, model_id);
+                    database->get_model(model_id)->set_transform(model_transformations_[model_id]);
+
+                    lamure::view_t cam_id = controller->deduce_view_id(context_id, active_camera_->view_id());
+                    cuts->send_camera(context_id, cam_id, *active_camera_);
+
+                    std::vector<scm::math::vec3d> corner_values = active_camera_->get_frustum_corners();
+                    double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
+                    float height_divided_by_top_minus_bottom = lamure::ren::policy::get_instance()->window_height() / top_minus_bottom;
+
+                    cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
+                }
+
+                controller->dispatch(context_id, renderer_->device());
+
+                // Stop if no length change was detected.
+                if(!length_changed)
+                {
+                    ++repetition_counter;
+
+                    if(repetition_counter >= 10)
+                    {
+                        done = true;
+                    }
+                }
+                else
+                {
+                    repetition_counter = 0;
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
 
     renderer_->set_radius_scale(importance_);
     renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), 0);
@@ -134,36 +210,11 @@ MainLoop()
     }
     renderer_->display_status(cam_mat_string.str());
 
-    if (dispatch_)
+    if(done)
     {
-        for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id)
-        {
-            lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
-
-            cuts->send_transform(context_id, m_id, model_transformations_[m_id]);
-            cuts->send_threshold(context_id, m_id, error_threshold_ / importance_);
-            
-            //if (visible_set_.find(model_id) != visible_set_.end())
-            if (!test_send_rendered_) {
-               if (model_id > num_models_/2) {
-                  cuts->send_rendered(context_id, m_id);
-               }
-            }
-            else {
-               cuts->send_rendered(context_id, m_id);
-            }
-
-            database->get_model(m_id)->set_transform(model_transformations_[m_id]);
-        }
-
-        lamure::view_t cam_id = controller->deduce_view_id(context_id, active_camera_->view_id());
-        cuts->send_camera(context_id, cam_id, *active_camera_);
-
-        std::vector<scm::math::vec3d> corner_values = active_camera_->get_frustum_corners();
-        double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
-        float height_divided_by_top_minus_bottom = lamure::ren::policy::get_instance()->window_height() / top_minus_bottom;
-
-        cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
+        id_histogram hist = renderer_->create_node_id_histogram(true);
+        renderer_->compare_histogram_to_cut(hist, visibility_threshold_, false);
+        signal_shutdown = true;
     }
 
 /*#ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
@@ -193,12 +244,15 @@ MainLoop()
 void management::
 update_trackball(int x, int y)
 {
+#ifdef ALLOW_INPUT
     active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
+#endif
 }
 
 void management::
 RegisterMousePresses(int button, int state, int x, int y)
 {
+#ifdef ALLOW_INPUT
     switch (button) {
         case GLUT_LEFT_BUTTON:
             {
@@ -218,16 +272,18 @@ RegisterMousePresses(int button, int state, int x, int y)
     float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
 
     active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
+#endif
 }
 
 void management::
 dispatchKeyboardInput(unsigned char key)
 {
+#ifdef ALLOW_INPUT
     switch(key)
     {
         case 's':
         {
-            id_histogram hist = renderer_->create_node_id_histogram();
+            id_histogram hist = renderer_->create_node_id_histogram(false);
             renderer_->compare_histogram_to_cut(hist, visibility_threshold_, true);
             break;
         }
@@ -263,10 +319,15 @@ dispatchKeyboardInput(unsigned char key)
             visibility_threshold_ /= 1.1f;
             break;
 
+        case 'q':
+            Toggledispatching();
+            break;
+
         case 'w':
             renderer_->toggle_bounding_box_rendering();
             break;
     }
+#endif
 }
 
 void management::
@@ -304,4 +365,7 @@ IncreaseErrorThreshold()
     error_threshold_ += 0.1f;
     if (error_threshold_ > LAMURE_MAX_THRESHOLD)
         error_threshold_ = LAMURE_MAX_THRESHOLD;
+}
+
+}
 }

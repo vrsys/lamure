@@ -201,7 +201,7 @@ public:
     void toggle_visible_set();
     void toggle_display_info();
 
-    id_histogram create_node_id_histogram() const;
+    id_histogram create_node_id_histogram(const bool& save_screenshot) const;
     void compare_histogram_to_cut(const id_histogram& hist, const float& visibility_threshold, const bool& apply_visibility_to_nodes);
 };
 
