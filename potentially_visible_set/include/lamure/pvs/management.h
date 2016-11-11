@@ -5,8 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef PVS_MANAGEMENT_H_
-#define PVS_MANAGEMENT_H_
+#ifndef LAMURE_PVS_MANAGEMENT_H_
+#define LAMURE_PVS_MANAGEMENT_H_
 
 #include <lamure/types.h>
 

@@ -1,6 +1,7 @@
-#ifndef VISIBILITY_TEST_ID_HISTOGRAM_RENDERER_H
-#define VISIBILITY_TEST_ID_HISTOGRAM_RENDERER_H
+#ifndef LAMURE_PVS_VISIBILITY_TEST_ID_HISTOGRAM_RENDERER_H
+#define LAMURE_PVS_VISIBILITY_TEST_ID_HISTOGRAM_RENDERER_H
 
+#include "lamure/pvs/visibility_test.h"
 #include "lamure/pvs/management.h"
 
 namespace lamure
@@ -8,15 +9,15 @@ namespace lamure
 namespace pvs
 {
 
-class visibility_test_id_histogram_renderer
+class visibility_test_id_histogram_renderer : public visibility_test
 {
 public:
 	visibility_test_id_histogram_renderer();
 	~visibility_test_id_histogram_renderer();
 
-	int initialize(int& argc, char** argv);
-	void test_visibility();
-	void shutdown();
+	virtual int initialize(int& argc, char** argv);
+	virtual void test_visibility();
+	virtual void shutdown();
 
 private:
 	int resolution_x_;
