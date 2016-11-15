@@ -279,8 +279,8 @@ render_depth(lamure::context_t context_id,
         context_->collect_query_results(hole_filling_pass_timer_query);
         hole_filling_pass_time += hole_filling_pass_timer_query->result();
     #endif
-#endif
     }
+#endif
 }
 
 void Renderer::
@@ -743,7 +743,7 @@ switch_render_mode(RenderMode const& render_mode)
 }
 
 id_histogram Renderer::
-create_node_id_histogram(const bool& save_screenshot) const
+create_node_id_histogram(const bool& save_screenshot, const int& image_index) const
 {
     // Make the BYTE array, factor of 4 because it's RGBA.
     GLubyte* pixels = new GLubyte[4 * win_x_ * win_y_];
@@ -757,7 +757,7 @@ create_node_id_histogram(const bool& save_screenshot) const
     if(save_screenshot)
     {
         std::string screenshot_path = "/home/tiwo9285/";
-        std::string screenshot_name = "test";
+        std::string screenshot_name = "test" + std::to_string(image_index);
         std::string file_extension = ".png";
 
         std::string full_path = screenshot_path + "/";
@@ -868,4 +868,10 @@ compare_histogram_to_cut(const id_histogram& hist, const float& visibility_thres
     f << "irregular rendered nodes: " << irregular_node_counter << std::endl;
 
     f.close();   
+}
+
+int Renderer::
+get_rendered_node_count() const
+{
+    return rendered_splats_ / lamure::ren::model_database::get_instance()->get_primitives_per_node();
 }

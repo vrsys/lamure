@@ -46,8 +46,8 @@ initialize(int& argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("help", "print help message")
-      ("width,w", po::value<int>(&resolution_x_)->default_value(1920), "specify window width (default=1920)")
-      ("height,h", po::value<int>(&resolution_y_)->default_value(1080), "specify window height (default=1080)")
+      ("width,w", po::value<int>(&resolution_x_)->default_value(1024), "specify window width (default=1024)")
+      ("height,h", po::value<int>(&resolution_y_)->default_value(1024), "specify window height (default=1024)")
       ("resource-file,f", po::value<std::string>(&resource_file_path), "specify resource input-file")
       ("vram,v", po::value<unsigned>(&video_memory_budget_)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget_)->default_value(4096), "specify main memory budget in MB (default=4096)")
@@ -116,17 +116,31 @@ initialize(int& argc, char** argv)
     policy->set_window_width(resolution_x_);
     policy->set_window_height(resolution_y_);
 
-	lamure::ren::model_database::get_instance();
+	lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     management_ = new lamure::pvs::management(model_filenames, model_transformations, visible_set, invisible_set);
     lamure::pvs::glut_wrapper::set_management(management_);
+
+    // Calculate bounding box of whole scene.
+    scene_bounds_ = bounding_box();
+    for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+    {
+    	// Cast required from boxf to bounding_box.
+        const scm::gl::boxf& box_model_root = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
+        vec3r min_vertex(box_model_root.min_vertex().x, box_model_root.min_vertex().y, box_model_root.min_vertex().z);
+        vec3r max_vertex(box_model_root.max_vertex().x, box_model_root.max_vertex().y, box_model_root.max_vertex().z);
+
+        bounding_box model_root_box(min_vertex, max_vertex);
+        scene_bounds_.expand(model_root_box);
+    }
 
     return 0;
 }
 
 void visibility_test_id_histogram_renderer::
-test_visibility()
+test_visibility(grid* visibility_grid)
 {
 	// Does the visibility test in the main loop, returns once all images are rendered and analyzed.
+	management_->set_grid(visibility_grid);
 	glutMainLoop();
 }
 
@@ -145,6 +159,12 @@ shutdown()
         delete management_;
         management_ = nullptr;
     }
+}
+
+bounding_box visibility_test_id_histogram_renderer::
+get_scene_bounds() const
+{
+	return scene_bounds_;
 }
 
 }

@@ -11,8 +11,9 @@
 #include <lamure/types.h>
 
 #include "lamure/pvs/renderer.h"
-#include <lamure/ren/config.h>
+#include "lamure/pvs/grid.h"
 
+#include <lamure/ren/config.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/controller.h>
 #include <lamure/ren/cut.h>
@@ -54,6 +55,8 @@ public:
     void                IncreaseErrorThreshold();
     void                DecreaseErrorThreshold();
 
+    void                set_grid(grid* visibility_grid);
+
 protected:
 
     void                Toggledispatching();
@@ -85,10 +88,12 @@ private:
 
     bool                first_frame_;
 
-#ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
-    boost::timer::cpu_timer system_performance_timer_;
-    boost::timer::cpu_timer system_result_timer_;
-#endif
+    grid*               visibility_grid_;
+    unsigned int        current_grid_index_;
+    unsigned int        direction_counter_;
+
+    double              average_cut_update_time_;
+    double              average_render_time_;
 };
 
 }

@@ -17,6 +17,8 @@
 #include <thread>
 
 //#define ALLOW_INPUT
+//#define LAMURE_PVS_USE_AS_RENDERER
+//#define LAMURE_PVS_MEASURE_PERFORMANCE
 
 namespace lamure
 {
@@ -44,20 +46,22 @@ management(std::vector<std::string> const& model_filenames,
 {
     visibility_threshold_ = 0.0001f;
     first_frame_ = true;
+    visibility_grid_ = nullptr;
+    current_grid_index_ = 0;
+    direction_counter_ = 0;
+
+#ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+    average_cut_update_time_ = 0.0;
+    average_render_time_ = 0.0;
+#endif
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
-#ifdef LAMURE_RENDERING_ENABLE_LAZY_MODELS_TEST
-    assert(model_filenames_.size() > 0);
-    database->add_model(model_filenames_[0], std::to_string(num_models_));
-    ++num_models_;
-#else
     for (const auto& filename : model_filenames_)
     {
         database->add_model(filename, std::to_string(num_models_));
         ++num_models_;
     }
-#endif
 
     float scene_diameter = far_plane_;
     for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
@@ -70,7 +74,7 @@ management(std::vector<std::string> const& model_filenames,
 
     auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
     scm::math::vec3 center = model_transformations_[0] * root_bb.center();
-    scm::math::mat4f reset_matrix = scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f,-0.01f), center, scm::math::vec3f(0.f, 1.f,0.f));
+    scm::math::mat4f reset_matrix = scm::math::make_look_at_matrix(center + scm::math::vec3f(0.0f, 0.0f, 0.1f), center, scm::math::vec3f(0.0f, 1.0f,0.0f));
     float reset_diameter = scm::math::length(root_bb.max_vertex()-root_bb.min_vertex());
 
 
@@ -81,12 +85,6 @@ management(std::vector<std::string> const& model_filenames,
 
     // Increase camera movement speed for debugging purpose.
     active_camera_->set_dolly_sens_(20.5f);
-
-    // Set camera view manually for debug purpose.
-    active_camera_->set_view_matrix(scm::math::mat4d(0.05, -0.3, 0.95, 0.0,
-                                            1.0, -0.09, 0.03, 0.0,
-                                            0.07, 0.95, 0.32, 0.0,
-                                            -75.0, 4.75, -173.4, 1.0));
 
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
 }
@@ -120,8 +118,69 @@ MainLoop()
     lamure::context_t context_id = controller->deduce_context_id(0);
     lamure::view_t view_id = controller->deduce_view_id(context_id, active_camera_->view_id());
     
-    bool done = false;
+#ifndef LAMURE_PVS_USE_AS_RENDERER
     int repetition_counter = 0;
+    view_cell& current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
+
+    scm::math::vec3d look_dir;
+    scm::math::vec3d up_dir(0.0, 1.0, 0.0);
+    
+    float opening_angle = 90.0f;        // TODO: these two should also be computed per cell (these constants only work in the regular box case)
+    float aspect_ratio = 1.0f;
+    float near_plane = 0.0f;
+
+    switch(direction_counter_)
+    {
+        case 0:
+            look_dir = current_cell.get_position_center() + scm::math::vec3d(1.0, 0.0, 0.0);
+
+            //near_plane = current_cell.get_size().x * 0.5f;
+            break;
+
+        case 1:
+            look_dir = current_cell.get_position_center() + scm::math::vec3d(-1.0, 0.0, 0.0);
+
+            //near_plane = current_cell.get_size().x * 0.5f;
+            break;
+
+        case 2:
+            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, 1.0, 0.0);
+            up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
+
+            near_plane = current_cell.get_size().y * 0.5f;
+            break;
+
+        case 3:
+            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, -1.0, 0.0);
+            up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
+
+            //near_plane = current_cell.get_size().y * 0.5f;
+            break;
+
+        case 4:
+            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, 0.0, 1.0);
+            
+            //near_plane = current_cell.get_size().z * 0.5f;
+            break;
+
+        case 5:
+            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, 0.0, -1.0);
+
+            //near_plane = current_cell.get_size().z * 0.5f;
+            break;
+            
+        default:
+            break;
+    }
+
+    active_camera_->set_projection_matrix(opening_angle, aspect_ratio, near_plane, far_plane_);
+    active_camera_->set_view_matrix(scm::math::make_look_at_matrix(current_cell.get_position_center(), look_dir, up_dir));  // look_at(eye, center, up)
+
+#ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+    // Performance measurement of cut update.
+    std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
+    start_time = std::chrono::system_clock::now();
+#endif
 
     if(first_frame_)
     {
@@ -131,6 +190,7 @@ MainLoop()
     else
     {
         std::vector<int> old_cut_lengths(num_models_, -1);
+        bool done = false;
 
         while (!done)
         {
@@ -138,24 +198,26 @@ MainLoop()
             if (!controller->is_cut_update_in_progress(context_id))
             {
                 bool length_changed = false;
+#endif
 
                 for (lamure::model_t model_index = 0; model_index < num_models_; ++model_index)
                 {
                     lamure::model_t model_id = controller->deduce_model_id(std::to_string(model_index));
 
+#ifndef LAMURE_PVS_USE_AS_RENDERER
                     // Check if the cut length changed in comparison to previous frame.
                     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
                     if(cut.complete_set().size() > old_cut_lengths[model_index])
                     {
                         length_changed = true;
                     }
-                    //std::cout << "model: " << model_id << "  new length: " << cut.complete_set().size() << "  old length: " << old_cut_lengths[model_index] << std::endl;
                     old_cut_lengths[model_index] = cut.complete_set().size();
+#endif
 
                     cuts->send_transform(context_id, model_id, model_transformations_[model_id]);
                     cuts->send_threshold(context_id, model_id, error_threshold_ / importance_);
 
-                    //send rendered, threshold, camera, 
+                    // Send rendered, threshold, camera, ... 
                     cuts->send_rendered(context_id, model_id);
                     database->get_model(model_id)->set_transform(model_transformations_[model_id]);
 
@@ -171,6 +233,7 @@ MainLoop()
 
                 controller->dispatch(context_id, renderer_->device());
 
+#ifndef LAMURE_PVS_USE_AS_RENDERER
                 // Stop if no length change was detected.
                 if(!length_changed)
                 {
@@ -187,56 +250,91 @@ MainLoop()
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
     }
+
+#ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+    std::cout << "cut update time: " << elapsed_seconds.count() << std::endl;
+    average_cut_update_time_ += elapsed_seconds.count();
+#endif
+#endif
+
+#ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+    // Measure rendering performance.
+    start_time = std::chrono::system_clock::now();
+#endif
 
     renderer_->set_radius_scale(importance_);
     renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), 0);
 
-    //renderer_->display_status("");
+#ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+    end_time = std::chrono::system_clock::now();
+    elapsed_seconds = end_time - start_time;
+    std::cout << "render time: " << elapsed_seconds.count() << std::endl;
+    average_render_time_ += elapsed_seconds.count();
+#endif
+
+#ifdef LAMURE_PVS_USE_AS_RENDERER
     // Output current view matrix for debug purpose.
     std::stringstream cam_mat_string;
     cam_mat_string << "visibility threshold: " << visibility_threshold_ << std::endl;
+    scm::math::mat4f view_mat = scm::math::transpose(active_camera_->get_view_matrix());
 
     cam_mat_string << "view matrix:\n";
     for(int index = 0; index < 16; ++index)
     {
-        cam_mat_string << active_camera_->get_view_matrix()[index] << "   ";
+        cam_mat_string << view_mat[index] << "   ";
         if((index + 1) % 4 == 0)
         {
             cam_mat_string << "\n";
         }
     }
     renderer_->display_status(cam_mat_string.str());
+    //renderer_->display_status("");
+#endif
 
-    if(done)
+#ifndef LAMURE_PVS_USE_AS_RENDERER
+    if(!first_frame_)
     {
-        id_histogram hist = renderer_->create_node_id_histogram(true);
-        renderer_->compare_histogram_to_cut(hist, visibility_threshold_, false);
-        signal_shutdown = true;
+        if(renderer_->get_rendered_node_count() > 0)
+        {
+        #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+            // Measure histogram creation performance.
+            start_time = std::chrono::system_clock::now();
+        #endif
+
+            id_histogram hist = renderer_->create_node_id_histogram(false, (direction_counter_ * visibility_grid_->get_cell_count()) + current_grid_index_);
+            //renderer_->compare_histogram_to_cut(hist, visibility_threshold_, false);
+
+        #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+            end_time = std::chrono::system_clock::now();
+            elapsed_seconds = end_time - start_time;
+            std::cout << "histogram creation time: " << elapsed_seconds.count() << std::endl;
+        #endif 
+        }
+
+        current_grid_index_++;
+        if(current_grid_index_ == visibility_grid_->get_cell_count())
+        {
+            current_grid_index_ = 0;
+            direction_counter_++;
+
+            if(direction_counter_ == 6)
+            {
+                signal_shutdown = true;
+
+            #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+                std::cout << "---------- average performance in seconds ----------" << std::endl;
+                std::cout << "cut update: " << average_cut_update_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+                std::cout << "rendering: " << average_render_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+            #endif
+            }
+        }
     }
-
-/*#ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
-    system_performance_timer_.stop();
-    boost::timer::cpu_times const elapsed_times(system_performance_timer_.elapsed());
-    boost::timer::nanosecond_type const elapsed(elapsed_times.system + elapsed_times.user);
-
-    if (elapsed >= boost::timer::nanosecond_type(1.0f * 1000 * 1000 * 1000)) //1 second
-    {
-       boost::timer::cpu_times const result_elapsed_times(system_result_timer_.elapsed());
-       boost::timer::nanosecond_type const result_elapsed(result_elapsed_times.system + result_elapsed_times.user);
-
-
-       std::cout << "no cut update after " << result_elapsed/(1000 * 1000 * 1000) << " seconds" << std::endl;
-       system_performance_timer_.start();
-    }
-    else
-    {
-       system_performance_timer_.resume();
-    }
-
-#endif*/
+#endif
 
     return signal_shutdown;
 }
@@ -283,7 +381,7 @@ dispatchKeyboardInput(unsigned char key)
     {
         case 's':
         {
-            id_histogram hist = renderer_->create_node_id_histogram(false);
+            id_histogram hist = renderer_->create_node_id_histogram(true, 0);
             renderer_->compare_histogram_to_cut(hist, visibility_threshold_, true);
             break;
         }
@@ -356,7 +454,9 @@ DecreaseErrorThreshold()
 {
     error_threshold_ -= 0.1f;
     if (error_threshold_ < LAMURE_MIN_THRESHOLD)
+    {
         error_threshold_ = LAMURE_MIN_THRESHOLD;
+    }
 }
 
 void management::
@@ -364,7 +464,15 @@ IncreaseErrorThreshold()
 {
     error_threshold_ += 0.1f;
     if (error_threshold_ > LAMURE_MAX_THRESHOLD)
+    {
         error_threshold_ = LAMURE_MAX_THRESHOLD;
+    }
+}
+
+void management::
+set_grid(grid* visibility_grid)
+{
+    visibility_grid_ = visibility_grid;
 }
 
 }

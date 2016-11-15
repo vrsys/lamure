@@ -3,6 +3,7 @@
 
 #include "lamure/pvs/visibility_test.h"
 #include "lamure/pvs/management.h"
+#include "lamure/pvs/grid.h"
 
 namespace lamure
 {
@@ -16,8 +17,10 @@ public:
 	~visibility_test_id_histogram_renderer();
 
 	virtual int initialize(int& argc, char** argv);
-	virtual void test_visibility();
+	virtual void test_visibility(grid* visibility_grid);
 	virtual void shutdown();
+
+	virtual bounding_box get_scene_bounds() const;
 
 private:
 	int resolution_x_;
@@ -27,6 +30,7 @@ private:
     unsigned int max_upload_budget_;
 
     management* management_;
+    bounding_box scene_bounds_;
 };
 
 }
