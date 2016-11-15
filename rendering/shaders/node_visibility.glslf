@@ -43,6 +43,6 @@ void main()
 
   gl_FragDepth = gl_FragCoord.z + (VertexIn.pass_es_shift / far_plane);
   
-  out_color_int = color_from_id(node_id, model_id);
+  out_color_int = color_from_id(node_id, 255 - model_id);
 }
 

@@ -22,6 +22,8 @@ create(const void* pixelData, const unsigned int& numPixels)
 		unsigned int pixelValue = pixelDataInt[index];
 		unsigned int modelID = (pixelValue >> 24) & 0xFF;				// RGBA-value is written in order AGBR, so skip 24 bits to get to model ID within alpha channel.
 
+		modelID = 255 - modelID;										// Debug thingie. Helps to create a more visible object by starting at higher alpha values.
+
 		if(modelID != 255)
 		{
 			unsigned int nodeID = pixelValue & 0xFFFFFF;				// RGBA-value is written in order AGBR, so first 24 bits are node ID.
