@@ -36,5 +36,31 @@ get_position_center() const
 	return position_center_;
 }
 
+void view_cell_regular::
+set_visibility(const unsigned int& object_id, const unsigned int& node_id)
+{
+	std::vector<bool> node_visibility = visibility_[object_id];
+	
+	if(node_visibility.size() < node_id + 1)
+	{
+		node_visibility.resize(node_id + 1);
+	}
+
+	node_visibility.at(node_id) = true;
+}
+
+bool view_cell_regular::
+get_visibility(const unsigned int& object_id, const unsigned int& node_id) const
+{
+	const std::vector<bool>& node_visibility = visibility_.at(object_id);
+	
+	if(node_visibility.size() < node_id + 1)
+	{
+		return false;
+	}
+
+	return node_visibility.at(node_id);
+}
+
 }
 }

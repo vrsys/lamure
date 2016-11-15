@@ -23,10 +23,14 @@ public:
 	virtual scm::math::vec3d get_size() const;
 	virtual scm::math::vec3d get_position_center() const;
 
+	virtual void set_visibility(const unsigned int& object_id, const unsigned int& node_id);
+	virtual bool get_visibility(const unsigned int& object_id, const unsigned int& node_id) const;
+
 private:
 	double cell_size_;
 	scm::math::vec3d position_center_;
-	std::vector<std::map<unsigned int, unsigned int>> node_visibility_;
+
+	std::map<unsigned int, std::vector<bool>> visibility_;
 };
 
 }
