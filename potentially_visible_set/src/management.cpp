@@ -77,7 +77,6 @@ management(std::vector<std::string> const& model_filenames,
     scm::math::mat4f reset_matrix = scm::math::make_look_at_matrix(center + scm::math::vec3f(0.0f, 0.0f, 0.1f), center, scm::math::vec3f(0.0f, 1.0f,0.0f));
     float reset_diameter = scm::math::length(root_bb.max_vertex()-root_bb.min_vertex());
 
-
     std::cout << "model center : " << center << std::endl;
     std::cout << "model size : " << reset_diameter << std::endl;
 
@@ -127,44 +126,44 @@ MainLoop()
     
     float opening_angle = 90.0f;        // TODO: these two should also be computed per cell (these constants only work in the regular box case)
     float aspect_ratio = 1.0f;
-    float near_plane = 0.0f;
+    float near_plane = 0.01f;
 
     switch(direction_counter_)
     {
         case 0:
-            look_dir = current_cell.get_position_center() + scm::math::vec3d(1.0, 0.0, 0.0);
+            look_dir = scm::math::vec3d(1.0, 0.0, 0.0);
 
             //near_plane = current_cell.get_size().x * 0.5f;
             break;
 
         case 1:
-            look_dir = current_cell.get_position_center() + scm::math::vec3d(-1.0, 0.0, 0.0);
+            look_dir = scm::math::vec3d(-1.0, 0.0, 0.0);
 
             //near_plane = current_cell.get_size().x * 0.5f;
             break;
 
         case 2:
-            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, 1.0, 0.0);
+            look_dir = scm::math::vec3d(0.0, 1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
-            near_plane = current_cell.get_size().y * 0.5f;
+            //near_plane = current_cell.get_size().y * 0.5f;
             break;
 
         case 3:
-            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, -1.0, 0.0);
+            look_dir = scm::math::vec3d(0.0, -1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
             //near_plane = current_cell.get_size().y * 0.5f;
             break;
 
         case 4:
-            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, 0.0, 1.0);
+            look_dir = scm::math::vec3d(0.0, 0.0, 1.0);
             
             //near_plane = current_cell.get_size().z * 0.5f;
             break;
 
         case 5:
-            look_dir = current_cell.get_position_center() + scm::math::vec3d(0.0, 0.0, -1.0);
+            look_dir = scm::math::vec3d(0.0, 0.0, -1.0);
 
             //near_plane = current_cell.get_size().z * 0.5f;
             break;
@@ -174,7 +173,7 @@ MainLoop()
     }
 
     active_camera_->set_projection_matrix(opening_angle, aspect_ratio, near_plane, far_plane_);
-    active_camera_->set_view_matrix(scm::math::make_look_at_matrix(current_cell.get_position_center(), look_dir, up_dir));  // look_at(eye, center, up)
+    active_camera_->set_view_matrix(scm::math::make_look_at_matrix(current_cell.get_position_center(), current_cell.get_position_center() + look_dir, up_dir));  // look_at(eye, center, up)
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     // Performance measurement of cut update.
@@ -277,6 +276,9 @@ MainLoop()
     average_render_time_ += elapsed_seconds.count();
 #endif
 
+    // Debug output of current state.
+    //std::cout << "rendered view cell: " << current_grid_index_ << "  direction: " << direction_counter_ << std::endl;
+
 #ifdef LAMURE_PVS_USE_AS_RENDERER
     // Output current view matrix for debug purpose.
     std::stringstream cam_mat_string;
@@ -307,6 +309,15 @@ MainLoop()
         #endif
 
             id_histogram hist = renderer_->create_node_id_histogram(false, (direction_counter_ * visibility_grid_->get_cell_count()) + current_grid_index_);
+            std::map<unsigned int, std::vector<unsigned int>> visible_ids = hist.get_visible_nodes(width_ * height_, visibility_threshold_);
+
+            for(std::map<unsigned int, std::vector<unsigned int>>::iterator iter = visible_ids.begin(); iter != visible_ids.end(); ++iter)
+            {
+                for(unsigned int node_id : iter->second)
+                {
+                    current_cell.set_visibility(iter->first, node_id);
+                }
+            }
             //renderer_->compare_histogram_to_cut(hist, visibility_threshold_, false);
 
         #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
@@ -335,7 +346,6 @@ MainLoop()
         }
     }
 #endif
-
     return signal_shutdown;
 }
 
@@ -381,7 +391,7 @@ dispatchKeyboardInput(unsigned char key)
     {
         case 's':
         {
-            id_histogram hist = renderer_->create_node_id_histogram(true, 0);
+            id_histogram hist = renderer_->create_node_id_histogram(false, 0);
             renderer_->compare_histogram_to_cut(hist, visibility_threshold_, true);
             break;
         }
