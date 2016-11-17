@@ -119,7 +119,7 @@ MainLoop()
     
 #ifndef LAMURE_PVS_USE_AS_RENDERER
     int repetition_counter = 0;
-    view_cell& current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
+    view_cell* current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
 
     scm::math::vec3d look_dir;
     scm::math::vec3d up_dir(0.0, 1.0, 0.0);
@@ -133,39 +133,39 @@ MainLoop()
         case 0:
             look_dir = scm::math::vec3d(1.0, 0.0, 0.0);
 
-            //near_plane = current_cell.get_size().x * 0.5f;
+            //near_plane = current_cell->get_size().x * 0.5f;
             break;
 
         case 1:
             look_dir = scm::math::vec3d(-1.0, 0.0, 0.0);
 
-            //near_plane = current_cell.get_size().x * 0.5f;
+            //near_plane = current_cell->get_size().x * 0.5f;
             break;
 
         case 2:
             look_dir = scm::math::vec3d(0.0, 1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
-            //near_plane = current_cell.get_size().y * 0.5f;
+            //near_plane = current_cell->get_size().y * 0.5f;
             break;
 
         case 3:
             look_dir = scm::math::vec3d(0.0, -1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
-            //near_plane = current_cell.get_size().y * 0.5f;
+            //near_plane = current_cell->get_size().y * 0.5f;
             break;
 
         case 4:
             look_dir = scm::math::vec3d(0.0, 0.0, 1.0);
             
-            //near_plane = current_cell.get_size().z * 0.5f;
+            //near_plane = current_cell->get_size().z * 0.5f;
             break;
 
         case 5:
             look_dir = scm::math::vec3d(0.0, 0.0, -1.0);
 
-            //near_plane = current_cell.get_size().z * 0.5f;
+            //near_plane = current_cell->get_size().z * 0.5f;
             break;
             
         default:
@@ -173,7 +173,7 @@ MainLoop()
     }
 
     active_camera_->set_projection_matrix(opening_angle, aspect_ratio, near_plane, far_plane_);
-    active_camera_->set_view_matrix(scm::math::make_look_at_matrix(current_cell.get_position_center(), current_cell.get_position_center() + look_dir, up_dir));  // look_at(eye, center, up)
+    active_camera_->set_view_matrix(scm::math::make_look_at_matrix(current_cell->get_position_center(), current_cell->get_position_center() + look_dir, up_dir));  // look_at(eye, center, up)
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     // Performance measurement of cut update.
@@ -188,7 +188,7 @@ MainLoop()
     }
     else
     {
-        std::vector<int> old_cut_lengths(num_models_, -1);
+        std::vector<unsigned int> old_cut_lengths(num_models_, 0);
         bool done = false;
 
         while (!done)
@@ -203,7 +203,7 @@ MainLoop()
                 {
                     lamure::model_t model_id = controller->deduce_model_id(std::to_string(model_index));
 
-#ifndef LAMURE_PVS_USE_AS_RENDERER
+                #ifndef LAMURE_PVS_USE_AS_RENDERER
                     // Check if the cut length changed in comparison to previous frame.
                     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
                     if(cut.complete_set().size() > old_cut_lengths[model_index])
@@ -211,7 +211,7 @@ MainLoop()
                         length_changed = true;
                     }
                     old_cut_lengths[model_index] = cut.complete_set().size();
-#endif
+                #endif
 
                     cuts->send_transform(context_id, model_id, model_transformations_[model_id]);
                     cuts->send_threshold(context_id, model_id, error_threshold_ / importance_);
@@ -315,7 +315,7 @@ MainLoop()
             {
                 for(unsigned int node_id : iter->second)
                 {
-                    current_cell.set_visibility(iter->first, node_id);
+                    current_cell->set_visibility(iter->first, node_id);
                 }
             }
             //renderer_->compare_histogram_to_cut(hist, visibility_threshold_, false);

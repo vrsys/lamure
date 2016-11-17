@@ -22,7 +22,7 @@ public:
 	~regular_grid();
 
 	virtual unsigned int get_cell_count() const;
-	virtual view_cell& get_cell_at_index(const unsigned int& index);
+	virtual view_cell* get_cell_at_index(const unsigned int& index);
 
 	virtual void save_to_file(std::string file_path);
 	virtual bool load_from_file(std::string file_path);

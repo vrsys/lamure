@@ -21,13 +21,20 @@ int main(int argc, char** argv)
     lamure::vec3r scene_dimensions = vt->get_scene_bounds().get_dimensions();
 
     // Create grid based on scene size.
-    unsigned int num_cells = 16;
+    unsigned int num_cells = 4;
     double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
-    scm::math::vec3d center(vt->get_scene_bounds().get_center().x, vt->get_scene_bounds().get_center().y, vt->get_scene_bounds().get_center().z);
+    
+    lamure::vec3r center_bounds = vt->get_scene_bounds().get_center();
+    scm::math::vec3d center(center_bounds.x, center_bounds.y, center_bounds.z);
+    
     lamure::pvs::grid* test_grid = new lamure::pvs::regular_grid(num_cells, cell_size, center);
 
     // Run visibility test on given scene and grid.
     vt->test_visibility(test_grid);
+
+    // Save grid containing visibility information to file.
+    test_grid->save_to_file("/home/tiwo9285/visibility_grid.txt");
+
     vt->shutdown();
 
     delete test_grid;

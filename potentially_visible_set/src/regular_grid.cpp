@@ -3,7 +3,7 @@
 #include <fstream>
 #include <stdexcept>
 
-#include <iostream>
+#include <lamure/ren/model_database.h>
 
 namespace lamure
 {
@@ -46,19 +46,17 @@ get_cell_count() const
 	return cells_.size();
 }
 
-view_cell& regular_grid::
+view_cell* regular_grid::
 get_cell_at_index(const unsigned int& index)
 {
-	return cells_.at(index);
+	return &cells_.at(index);
 }
 
 void regular_grid::
 save_to_file(std::string file_path)
 {
 	std::fstream file_out;
-	file_out.open(file_path, std::ios::out);
-
-	std::cout << "called 1" << std::endl;
+	file_out.open(file_path, std::ios::out /*| std::ios::binary*/);
 
 	if(!file_out.is_open())
 	{
@@ -68,13 +66,48 @@ save_to_file(std::string file_path)
 	// Grid file type.
 	file_out << "regular" << std::endl;
 
+	// Number of grid cells per dimension.
+	file_out << std::pow(cells_.size(), 1.0f/3.0f) << std::endl;
+
 	// Grid size and position
 	file_out << cell_size_ << std::endl;
-	file_out << position_center_.x << position_center_.y << position_center_.z << std::endl;
+	file_out << position_center_.x << " " << position_center_.y << " " << position_center_.z << std::endl;
+
+	lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+
+	// Iterate over view cells.
+	for(unsigned int cell_index = 0; cell_index < cells_.size(); ++cell_index)
+	{
+		// Iterate over models in the scene.
+		for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+		{
+			char current_byte = 0x00;
+
+			// Iterate over nodes in the model.
+			for(lamure::node_t node_id = 0; node_id < database->get_model(model_id)->get_bvh()->get_num_nodes(); ++node_id)
+			{
+				if(node_id % 8 == 0)
+				{
+					current_byte = 0x00;
+				}
+
+				if(cells_.at(cell_index).get_visibility(model_id, node_id))
+				{
+					current_byte |= 1 << (7 - (node_id % 8));
+				}
+
+				if((node_id + 1) % 8 == 0 || node_id == database->get_model(model_id)->get_bvh()->get_num_nodes() - 1)
+				{
+					file_out << current_byte;
+				}
+			}
+
+			file_out << std::endl;
+		}
+		file_out << std::endl;
+	}
 
 	file_out.close();
-
-	std::cout << "called 2" << std::endl;
 }
 
 bool regular_grid::
