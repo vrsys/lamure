@@ -15,6 +15,7 @@ class glut_wrapper
 	public:
 		static void initialize(int argc, char** argv, const uint32_t& width, const uint32_t& height, management* manager);
         static void set_management(management* manager);
+        static void quit();
 
 	private:
 		static void resize(int w, int h);

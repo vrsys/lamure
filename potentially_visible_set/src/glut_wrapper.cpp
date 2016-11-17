@@ -40,6 +40,11 @@ void glut_wrapper::set_management(management* manager)
     glut_wrapper::manager = manager;
 }
 
+void glut_wrapper::quit()
+{
+    glutExit();
+}
+
 void glut_wrapper::resize(int w, int h)
 {
     if (glut_wrapper::manager != nullptr)
@@ -60,9 +65,16 @@ void glut_wrapper::display()
 
     if(signaled_shutdown)
     {
+        glutLeaveMainLoop();
+    }
+
+    // Exiting glut provokes an exception in schism.
+    // Prefer to exit when the application quits. 
+    /*if(signaled_shutdown)
+    {
         glutExit();
         exit(0);
-    }
+    }*/
 }
 
 void glut_wrapper::keyboard(unsigned char key, int x, int y)

@@ -159,6 +159,8 @@ shutdown()
         delete management_;
         management_ = nullptr;
     }
+
+    glut_wrapper::quit();
 }
 
 bounding_box visibility_test_id_histogram_renderer::
