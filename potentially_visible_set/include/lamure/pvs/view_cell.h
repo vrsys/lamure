@@ -1,6 +1,8 @@
 #ifndef LAMURE_PVS_VIEW_CELL_H
 #define LAMURE_PVS_VIEW_CELL_H
 
+#include <map>
+#include <vector>
 #include <scm/core/math.h>
 
 namespace lamure
@@ -18,6 +20,7 @@ public:
 
 	virtual void set_visibility(const unsigned int& object_id, const unsigned int& node_id) = 0;
 	virtual bool get_visibility(const unsigned int& object_id, const unsigned int& node_id) const = 0;
+	virtual std::map<unsigned int, std::vector<unsigned int>> get_visible_indices() const = 0;
 };
 
 }

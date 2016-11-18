@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     vt->test_visibility(test_grid);
 
     // Save grid containing visibility information to file.
-    test_grid->save_to_file("/home/tiwo9285/visibility_grid.txt");
+    test_grid->save_to_file("/home/tiwo9285/visibility_grid.pvs");
 
     vt->shutdown();
 

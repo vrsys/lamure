@@ -62,5 +62,24 @@ get_visibility(const unsigned int& object_id, const unsigned int& node_id) const
 	return node_visibility->at(node_id);
 }
 
+std::map<unsigned int, std::vector<unsigned int>> view_cell_regular::
+get_visible_indices() const
+{
+	std::map<unsigned int, std::vector<unsigned int>> indices;
+
+	for(std::map<unsigned int, std::vector<bool>>::const_iterator iter = visibility_.begin(); iter != visibility_.end(); ++iter)
+	{
+		for(unsigned int node_index = 0; node_index < iter->second.size(); ++node_index)
+		{
+			if(iter->second.at(node_index))
+			{
+				indices[iter->first].push_back(node_index);
+			}
+		}
+	}
+
+	return indices;
+}
+
 }
 }

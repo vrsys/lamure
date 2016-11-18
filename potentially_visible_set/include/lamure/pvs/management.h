@@ -61,6 +61,10 @@ protected:
 
     void                Toggledispatching();
 
+    void                emit_node_visibility(grid* visibility_grid);
+    void                set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
+    void                set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
+
 private:
     lamure::ren::camera::mouse_state mouse_state_;
 

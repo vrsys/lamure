@@ -6,13 +6,13 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include "lamure/pvs/management.h"
+
 #include <set>
 #include <ctime>
 #include <algorithm>
 #include <fstream>
 #include <lamure/ren/bvh.h>
 #include <sstream>
-
 #include <chrono>
 #include <thread>
 
@@ -346,7 +346,77 @@ MainLoop()
         }
     }
 #endif
+
+    if(signal_shutdown)
+    {
+        emit_node_visibility(visibility_grid_);
+    }
+
     return signal_shutdown;
+}
+
+void management::
+emit_node_visibility(grid* visibility_grid)
+{
+    // Advance node visibility downwards and upwards in the LOD-hierarchy.
+    // Since only a single LOD-level was rendered in the visibility test, this is necessary to produce a complete PVS.
+    for(unsigned int cell_index = 0; cell_index < visibility_grid->get_cell_count(); ++cell_index)
+    {
+        view_cell* current_cell = visibility_grid->get_cell_at_index(cell_index);
+        std::map<unsigned int, std::vector<unsigned int>> visible_indices = current_cell->get_visible_indices();
+
+        for(std::map<unsigned int, std::vector<unsigned int>>::const_iterator map_iter = visible_indices.begin(); map_iter != visible_indices.end(); ++map_iter)
+        {
+            for(unsigned node_index = 0; node_index < map_iter->second.size(); ++node_index)
+            {
+                unsigned int visible_node_id = map_iter->second.at(node_index);
+
+                // Communicate visibility to children and parents nodes of visible nodes.
+                set_node_children_visible(map_iter->first, visible_node_id, current_cell);
+                set_node_parents_visible(map_iter->first, visible_node_id, current_cell);
+            }
+        }
+    }
+}
+
+void management::
+set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_cell* cell)
+{
+    // Set parents of a visible node visible, too.
+    // Necessary since only a single LOD-level is rendered during the visibility test.
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    node_t parent_id = database->get_model(model_id)->get_bvh()->get_parent_id(node_id);
+
+    if(parent_id != lamure::invalid_node_t)
+    {
+        if(cell != nullptr)
+        {
+            cell->set_visibility(model_id, parent_id);
+        }
+        set_node_parents_visible(model_id, parent_id, cell);
+    }
+}
+
+void management::
+set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell)
+{
+    // Set children of a visible node visible, too.
+    // TODO: this currently ignores invisibility information which can be achieved by comparing the rendered nodes against the current cut.
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    uint32_t fan_factor = database->get_model(model_id)->get_bvh()->get_fan_factor();
+
+    for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
+    {
+        node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
+        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes())
+        {
+            if(cell != nullptr)
+            {
+                cell->set_visibility(model_id, child_id);
+            }
+            set_node_children_visible(model_id, child_id, cell);
+        }
+    } 
 }
 
 void management::

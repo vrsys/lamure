@@ -25,6 +25,7 @@ public:
 
 	virtual void set_visibility(const unsigned int& object_id, const unsigned int& node_id);
 	virtual bool get_visibility(const unsigned int& object_id, const unsigned int& node_id) const;
+	virtual std::map<unsigned int, std::vector<unsigned int>> get_visible_indices() const;
 
 private:
 	double cell_size_;

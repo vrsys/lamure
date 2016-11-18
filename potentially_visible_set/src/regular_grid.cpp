@@ -56,7 +56,7 @@ void regular_grid::
 save_to_file(std::string file_path)
 {
 	std::fstream file_out;
-	file_out.open(file_path, std::ios::out /*| std::ios::binary*/);
+	file_out.open(file_path, std::ios::out | std::ios::binary);
 
 	if(!file_out.is_open())
 	{
