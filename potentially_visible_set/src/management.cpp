@@ -462,7 +462,7 @@ dispatchKeyboardInput(unsigned char key)
         case 's':
         {
             id_histogram hist = renderer_->create_node_id_histogram(false, 0);
-            renderer_->compare_histogram_to_cut(hist, visibility_threshold_, true);
+            renderer_->compare_histogram_to_cut(hist, visibility_threshold_);
             break;
         }
 

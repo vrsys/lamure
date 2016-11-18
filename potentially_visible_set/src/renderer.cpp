@@ -788,7 +788,7 @@ create_node_id_histogram(const bool& save_screenshot, const int& image_index) co
 
 // Debug stuff to output rendered nodes as histogram and check if histogram is valid within current cut.
 void Renderer::
-compare_histogram_to_cut(const id_histogram& hist, const float& visibility_threshold, const bool& apply_visibility_to_nodes)
+compare_histogram_to_cut(const id_histogram& hist, const float& visibility_threshold)
 {
     int numPixels = win_x_ * win_y_;
     std::map<unsigned int, std::vector<unsigned int>> visible_nodes = hist.get_visible_nodes(numPixels, visibility_threshold);
@@ -841,24 +841,6 @@ compare_histogram_to_cut(const id_histogram& hist, const float& visibility_thres
             else
             {
                 regular_node_counter++;
-            }
-        }
-
-        if(apply_visibility_to_nodes)
-        {
-            // Set visibility flag of nodes in the bvh according to computed visibility.
-            for(unsigned int index = 0; index < renderable.size(); ++index)
-            {
-                lamure::ren::cut::node_slot_aggregate& aggregate = renderable.at(index);
-                
-                if(std::find(visible_nodes[model_id].begin(), visible_nodes[model_id].end(), aggregate.node_id_) == visible_nodes[model_id].end())
-                {
-                    database->get_model(model_id)->get_bvh()->set_visibility(aggregate.node_id_, lamure::ren::bvh::node_visibility::NODE_INVISIBLE);
-                }
-                else
-                {
-                     database->get_model(model_id)->get_bvh()->set_visibility(aggregate.node_id_, lamure::ren::bvh::node_visibility::NODE_VISIBLE);
-                }
             }
         }
     }
