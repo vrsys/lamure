@@ -19,6 +19,8 @@
 
 #include <scm/gl_core/render_device/opengl/gl_core.h>
 
+#include "lamure/pvs/pvs_database.h"
+
 #define NUM_BLENDED_FRAGS 18
 #define RENDER_TO_SCREEN
 
@@ -233,6 +235,13 @@ render_depth(lamure::context_t context_id,
 
                     if( (node_culling_result != 1) )
                     {
+                        // If the app is not used as preprocessor, but as renderer, the current visibility may already be applied.
+                        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+                        if(!pvs->get_viewer_visibility(model_id, node_slot_aggregate.node_id_))
+                        {
+                            continue;
+                        }
+
                         context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                         scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();

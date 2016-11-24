@@ -13,6 +13,8 @@
 #include <lamure/pvs/grid.h>
 #include <lamure/pvs/regular_grid.h>
 
+#include <lamure/pvs/pvs_database.h>
+
 int main(int argc, char** argv)
 {
     // Load scene and analyze scene size.
@@ -29,11 +31,16 @@ int main(int argc, char** argv)
     
     lamure::pvs::grid* test_grid = new lamure::pvs::regular_grid(num_cells, cell_size, center);
 
+    // Debug: allows to test pvs result within pvs view.
+    lamure::pvs::pvs_database* pvs_db = lamure::pvs::pvs_database::get_instance();
+    pvs_db->load_pvs_from_file("/home/tiwo9285/test_bridge.grid", "/home/tiwo9285/test_bridge.pvs");
+
     // Run visibility test on given scene and grid.
     vt->test_visibility(test_grid);
 
     // Save grid containing visibility information to file.
-    test_grid->save_to_file("/home/tiwo9285/visibility_grid.pvs");
+    //test_grid->save_grid_to_file("/home/tiwo9285/test_bridge.grid");
+    //test_grid->save_visibility_to_file("/home/tiwo9285/test_bridge.pvs");
 
     vt->shutdown();
 

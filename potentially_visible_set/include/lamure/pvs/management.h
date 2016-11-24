@@ -96,6 +96,8 @@ private:
     unsigned int        current_grid_index_;
     unsigned int        direction_counter_;
 
+    bool                update_position_for_pvs_;
+
     double              average_cut_update_time_;
     double              average_render_time_;
 };

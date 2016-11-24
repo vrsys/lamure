@@ -16,8 +16,10 @@
 #include <chrono>
 #include <thread>
 
-//#define ALLOW_INPUT
-//#define LAMURE_PVS_USE_AS_RENDERER
+#include "lamure/pvs/pvs_database.h"
+
+#define ALLOW_INPUT
+#define LAMURE_PVS_USE_AS_RENDERER
 //#define LAMURE_PVS_MEASURE_PERFORMANCE
 
 namespace lamure
@@ -49,10 +51,15 @@ management(std::vector<std::string> const& model_filenames,
     visibility_grid_ = nullptr;
     current_grid_index_ = 0;
     direction_counter_ = 0;
+    update_position_for_pvs_ = true;
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     average_cut_update_time_ = 0.0;
     average_render_time_ = 0.0;
+#endif
+
+#ifndef LAMURE_PVS_USE_AS_RENDERER
+    lamure::pvs::pvs_database::get_instance()->activate(false);
 #endif
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
@@ -261,6 +268,17 @@ MainLoop()
 #endif
 #endif
 
+#ifdef LAMURE_PVS_USE_AS_RENDERER
+    // Update PVS database with current camera position before rendering.
+    pvs_database* pvs = pvs_database::get_instance();
+    if(update_position_for_pvs_)
+    {
+        scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
+        scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
+        pvs->set_viewer_position(cam_pos);
+    }
+#endif
+
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     // Measure rendering performance.
     start_time = std::chrono::system_clock::now();
@@ -281,20 +299,22 @@ MainLoop()
 
 #ifdef LAMURE_PVS_USE_AS_RENDERER
     // Output current view matrix for debug purpose.
-    std::stringstream cam_mat_string;
-    cam_mat_string << "visibility threshold: " << visibility_threshold_ << std::endl;
-    scm::math::mat4f view_mat = scm::math::transpose(active_camera_->get_view_matrix());
+    std::stringstream add_info_string;
+    add_info_string << "visibility threshold: " << visibility_threshold_ << std::endl;
 
-    cam_mat_string << "view matrix:\n";
-    for(int index = 0; index < 16; ++index)
+    add_info_string << "camera position:\n";
+    scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
+    for(int index = 11; index < 15; ++index)
     {
-        cam_mat_string << view_mat[index] << "   ";
-        if((index + 1) % 4 == 0)
-        {
-            cam_mat_string << "\n";
-        }
+        add_info_string << cm[index] << "  ";
     }
-    renderer_->display_status(cam_mat_string.str());
+    add_info_string << std::endl;
+
+    //add_info_string << "dispatching: " << dispatch_ << std::endl;
+    add_info_string << "use PVS: " << pvs->is_activated() << std::endl;
+    add_info_string << "update pos: " << update_position_for_pvs_ << std::endl;
+
+    renderer_->display_status(add_info_string.str());
     //renderer_->display_status("");
 #endif
 
@@ -315,7 +335,7 @@ MainLoop()
             {
                 for(unsigned int node_id : iter->second)
                 {
-                    current_cell->set_visibility(iter->first, node_id);
+                    current_cell->set_visibility(iter->first, node_id, true);
                 }
             }
             //renderer_->compare_histogram_to_cut(hist, visibility_threshold_, false);
@@ -347,6 +367,7 @@ MainLoop()
     }
 #endif
 
+    // Once the visibility test is complete, set visibility of LOD-trees based on rendered nodes. 
     if(signal_shutdown)
     {
         emit_node_visibility(visibility_grid_);
@@ -391,7 +412,7 @@ set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_ce
     {
         if(cell != nullptr)
         {
-            cell->set_visibility(model_id, parent_id);
+            cell->set_visibility(model_id, parent_id, true);
         }
         set_node_parents_visible(model_id, parent_id, cell);
     }
@@ -412,7 +433,7 @@ set_node_children_visible(const model_t& model_id, const node_t& node_id, view_c
         {
             if(cell != nullptr)
             {
-                cell->set_visibility(model_id, child_id);
+                cell->set_visibility(model_id, child_id, true);
             }
             set_node_children_visible(model_id, child_id, cell);
         }
@@ -466,26 +487,21 @@ dispatchKeyboardInput(unsigned char key)
             break;
         }
 
-        // Reset node visibility (all nodess become visible again).
         case 'a':
         {
-            lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
-            lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+            pvs_database::get_instance()->activate(true);
+            break;
+        }
 
-            lamure::context_t context_id = 0;
-            lamure::view_t view_id = 0;
+        case 'y':
+        {
+            pvs_database::get_instance()->activate(false);
+            break;
+        }
 
-            for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
-            {
-                lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
-                std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
-
-                for(unsigned int index = 0; index < renderable.size(); ++index)
-                {
-                    lamure::ren::cut::node_slot_aggregate& aggregate = renderable.at(index);
-                    database->get_model(model_id)->get_bvh()->set_visibility(aggregate.node_id_, lamure::ren::bvh::node_visibility::NODE_VISIBLE);
-                }
-            }
+        case 'x':
+        {
+            update_position_for_pvs_ = !update_position_for_pvs_;
             break;
         }
 

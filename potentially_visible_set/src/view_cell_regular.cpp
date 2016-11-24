@@ -37,7 +37,7 @@ get_position_center() const
 }
 
 void view_cell_regular::
-set_visibility(const unsigned int& object_id, const unsigned int& node_id)
+set_visibility(const unsigned int& object_id, const unsigned int& node_id, const bool& visible)
 {
 	std::vector<bool>* node_visibility = &visibility_[object_id];
 	
@@ -46,7 +46,7 @@ set_visibility(const unsigned int& object_id, const unsigned int& node_id)
 		node_visibility->resize(node_id + 1);
 	}
 
-	node_visibility->at(node_id) = true;
+	node_visibility->at(node_id) = visible;
 }
 
 bool view_cell_regular::
