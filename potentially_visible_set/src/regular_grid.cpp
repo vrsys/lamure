@@ -113,7 +113,6 @@ save_visibility_to_file(std::string file_path)
 		{
 			unsigned int num_nodes = database->get_model(model_id)->get_bvh()->get_num_nodes();
 			char current_byte = 0x00;
-			std::string current_line = "";
 
 			// Iterate over nodes in the model.
 			for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
@@ -126,13 +125,10 @@ save_visibility_to_file(std::string file_path)
 				// Flush character if either 8 bits are written or if the node id is the last one.
 				if((node_id + 1) % CHAR_BIT == 0 || node_id == (num_nodes - 1))
 				{
-					current_line = current_line + current_byte;
+					file_out.write(&current_byte, 1);
 					current_byte = 0x00;
 				}
 			}
-
-			//current_line = current_line + "\n";
-			file_out.write(current_line.c_str(), current_line.length());
 
 			// Does not save bitwise, but bytewise. (Only here because I do not 100% believe in the bitwise code.)
 			/*for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
@@ -213,16 +209,10 @@ load_visibility_from_file(std::string file_path)
 
 			unsigned int line_size = (num_nodes / CHAR_BIT) + addition;
 
-			// Do not use readline, since the writing process might have added random linebreaks when writing bits.
-			char current_line[line_size];
-			file_in.read(current_line, line_size);
-
-			//char block[2];
-			//file_in.getline(block, 2);
-
 			for(unsigned int character_index = 0; character_index < line_size; ++character_index)
 			{
-				char current_byte = current_line[character_index];
+				char current_byte = 0x00;
+				file_in.read(&current_byte, 1);
 				
 				for(unsigned int bit_index = 0; bit_index < CHAR_BIT; ++bit_index)
 				{
