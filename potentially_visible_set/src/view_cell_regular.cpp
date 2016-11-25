@@ -39,7 +39,12 @@ get_position_center() const
 void view_cell_regular::
 set_visibility(const unsigned int& object_id, const unsigned int& node_id, const bool& visible)
 {
-	std::vector<bool>* node_visibility = &visibility_[object_id];
+	if(visibility_.size() <= object_id)
+	{
+		visibility_.resize(object_id + 1);
+	}
+
+	std::vector<bool>* node_visibility = &visibility_.at(object_id);
 	
 	if(node_visibility->size() <= node_id)
 	{
@@ -52,6 +57,11 @@ set_visibility(const unsigned int& object_id, const unsigned int& node_id, const
 bool view_cell_regular::
 get_visibility(const unsigned int& object_id, const unsigned int& node_id) const
 {
+	if(visibility_.size() <= object_id)
+	{
+		return false;
+	}
+
 	const std::vector<bool>* node_visibility = &visibility_.at(object_id);
 	
 	if(node_visibility->size() <= node_id)
@@ -67,13 +77,16 @@ get_visible_indices() const
 {
 	std::map<unsigned int, std::vector<unsigned int>> indices;
 
-	for(std::map<unsigned int, std::vector<bool>>::const_iterator iter = visibility_.begin(); iter != visibility_.end(); ++iter)
+	//for(std::vector<std::vector<bool>>::const_iterator iter = visibility_.begin(); iter != visibility_.end(); ++iter)
+	for(unsigned int model_index = 0; model_index < visibility_.size(); ++model_index)
 	{
-		for(unsigned int node_index = 0; node_index < iter->second.size(); ++node_index)
+		const std::vector<bool>& node_visibility = visibility_.at(model_index);
+
+		for(unsigned int node_index = 0; node_index < node_visibility.size(); ++node_index)
 		{
-			if(iter->second.at(node_index))
+			if(node_visibility.at(node_index))
 			{
-				indices[iter->first].push_back(node_index);
+				indices[model_index].push_back(node_index);
 			}
 		}
 	}

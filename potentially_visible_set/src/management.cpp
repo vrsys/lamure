@@ -294,9 +294,6 @@ MainLoop()
     average_render_time_ += elapsed_seconds.count();
 #endif
 
-    // Debug output of current state.
-    //std::cout << "rendered view cell: " << current_grid_index_ << "  direction: " << direction_counter_ << std::endl;
-
 #ifdef LAMURE_PVS_USE_AS_RENDERER
     // Output current view matrix for debug purpose.
     std::stringstream add_info_string;
@@ -310,7 +307,6 @@ MainLoop()
     }
     add_info_string << std::endl;
 
-    //add_info_string << "dispatching: " << dispatch_ << std::endl;
     add_info_string << "use PVS: " << pvs->is_activated() << std::endl;
     add_info_string << "update pos: " << update_position_for_pvs_ << std::endl;
 
@@ -370,7 +366,9 @@ MainLoop()
     // Once the visibility test is complete, set visibility of LOD-trees based on rendered nodes. 
     if(signal_shutdown)
     {
+        std::cout << "start visibility propagation..." << std::endl;
         emit_node_visibility(visibility_grid_);
+        std::cout << "visibility propagation finished" << std::endl;
     }
 
     return signal_shutdown;
@@ -388,14 +386,14 @@ emit_node_visibility(grid* visibility_grid)
 
         for(std::map<unsigned int, std::vector<unsigned int>>::const_iterator map_iter = visible_indices.begin(); map_iter != visible_indices.end(); ++map_iter)
         {
-            for(unsigned node_index = 0; node_index < map_iter->second.size(); ++node_index)
+            for(int node_index = 0; node_index < (int)map_iter->second.size(); ++node_index)
             {
                 unsigned int visible_node_id = map_iter->second.at(node_index);
 
                 // Communicate visibility to children and parents nodes of visible nodes.
                 set_node_children_visible(map_iter->first, visible_node_id, current_cell);
                 set_node_parents_visible(map_iter->first, visible_node_id, current_cell);
-            }
+            }       
         }
     }
 }
@@ -408,7 +406,7 @@ set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_ce
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     node_t parent_id = database->get_model(model_id)->get_bvh()->get_parent_id(node_id);
 
-    if(parent_id != lamure::invalid_node_t)
+    if(parent_id != lamure::invalid_node_t && !cell->get_visibility(model_id, parent_id))
     {
         if(cell != nullptr)
         {
@@ -429,7 +427,7 @@ set_node_children_visible(const model_t& model_id, const node_t& node_id, view_c
     for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
     {
         node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
-        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes())
+        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() && !cell->get_visibility(model_id, child_id))
         {
             if(cell != nullptr)
             {

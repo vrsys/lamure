@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     lamure::vec3r scene_dimensions = vt->get_scene_bounds().get_dimensions();
 
     // Create grid based on scene size.
-    unsigned int num_cells = 4;
+    unsigned int num_cells = 16;
     double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
     
     lamure::vec3r center_bounds = vt->get_scene_bounds().get_center();

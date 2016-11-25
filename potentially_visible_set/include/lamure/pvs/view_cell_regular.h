@@ -31,7 +31,7 @@ private:
 	double cell_size_;
 	scm::math::vec3d position_center_;
 
-	std::map<unsigned int, std::vector<bool>> visibility_;
+	std::vector<std::vector<bool>> visibility_;
 };
 
 }
