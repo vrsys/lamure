@@ -1,5 +1,6 @@
 #include "lamure/pvs/pvs_database.h"
-#include "lamure/pvs/regular_grid.h"
+#include "lamure/pvs/grid_regular.h"
+#include "lamure/pvs/grid_regular_runtime.h"
 
 namespace lamure
 {
@@ -40,7 +41,7 @@ bool pvs_database::
 load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const std::vector<unsigned int>& ids)
 {
 	// TODO: currently there is only one grid type, but later on the created grid should depend on the type noted in the grid file.
-	visibility_grid_ = new regular_grid();
+	visibility_grid_ = new grid_regular_runtime();
 	bool result = visibility_grid_->load_grid_from_file(grid_file_path);
 
 	if(!result)

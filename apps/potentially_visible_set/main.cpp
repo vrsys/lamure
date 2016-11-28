@@ -11,7 +11,8 @@
 #include <lamure/pvs/visibility_test_id_histogram_renderer.h>
 
 #include <lamure/pvs/grid.h>
-#include <lamure/pvs/regular_grid.h>
+#include <lamure/pvs/grid_regular.h>
+#include <lamure/pvs/grid_regular_runtime.h>
 
 #include <lamure/pvs/pvs_database.h>
 
@@ -32,7 +33,7 @@ int main(int argc, char** argv)
     lamure::vec3r center_bounds = vt->get_scene_bounds().get_center();
     scm::math::vec3d center(center_bounds.x, center_bounds.y, center_bounds.z);
     
-    lamure::pvs::grid* test_grid = new lamure::pvs::regular_grid(num_cells, cell_size, center);
+    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular_runtime(num_cells, cell_size, center);
 
     // Debug: allows to test pvs result within pvs view.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
