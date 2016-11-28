@@ -3,7 +3,8 @@
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
-include_directories(${PVS_INCLUDE_DIR}
+include_directories(${PVS_COMMON_INCLUDE_DIR}
+                    ${PVS_PREPROCESSING_INCLUDE_DIR}
 					${REND_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}
                     ${GLUT_INCLUDE_DIR}
@@ -22,7 +23,8 @@ InitApp(${CMAKE_PROJECT_NAME}_potentially_visible_set)
 
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
-    ${PVS_LIBRARY}
+    ${PVS_COMMON_LIBRARY}
+    ${PVS_PREPROCESSING_LIBRARY}
     ${REND_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
@@ -31,6 +33,6 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set_preprocessing lamure_common)
 
 MsvcPostBuild(${PROJECT_NAME})
