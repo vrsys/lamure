@@ -1,4 +1,4 @@
-#include "lamure/pvs/regular_grid.h"
+#include "lamure/pvs/grid_regular.h"
 
 #include <fstream>
 #include <stdexcept>
@@ -10,36 +10,36 @@ namespace lamure
 namespace pvs
 {
 
-regular_grid::
-regular_grid() : regular_grid(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0))
+grid_regular::
+grid_regular() : grid_regular(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0))
 {
 }
 
-regular_grid::
-regular_grid(const unsigned int& number_cells, const double& cell_size, const scm::math::vec3d& position_center)
+grid_regular::
+grid_regular(const unsigned int& number_cells, const double& cell_size, const scm::math::vec3d& position_center)
 {
 	create_grid(number_cells, cell_size, position_center);
 }
 
-regular_grid::
-~regular_grid()
+grid_regular::
+~grid_regular()
 {
 	cells_.clear();
 }
 
-unsigned int regular_grid::
+unsigned int grid_regular::
 get_cell_count() const
 {
 	return cells_.size();
 }
 
-view_cell* regular_grid::
+view_cell* grid_regular::
 get_cell_at_index(const unsigned int& index)
 {
 	return &cells_.at(index);
 }
 
-view_cell* regular_grid::
+view_cell* grid_regular::
 get_cell_at_position(const scm::math::vec3d& position)
 {
 	int num_cells = std::pow(cells_.size(), 1.0f/3.0f);
@@ -62,7 +62,7 @@ get_cell_at_position(const scm::math::vec3d& position)
 	return get_cell_at_index(general_index);
 }
 
-void regular_grid::
+void grid_regular::
 save_grid_to_file(const std::string& file_path) const
 {
 	std::fstream file_out;
@@ -86,7 +86,7 @@ save_grid_to_file(const std::string& file_path) const
 	file_out.close();
 }
 
-void regular_grid::
+void grid_regular::
 save_visibility_to_file(const std::string& file_path, const std::vector<unsigned int>& ids) const
 {
 	std::fstream file_out;
@@ -136,7 +136,7 @@ save_visibility_to_file(const std::string& file_path, const std::vector<unsigned
 	file_out.close();
 }
 
-bool regular_grid::
+bool grid_regular::
 load_grid_from_file(const std::string& file_path)
 {
 	std::fstream file_in;
@@ -171,7 +171,7 @@ load_grid_from_file(const std::string& file_path)
 }
 
 
-bool regular_grid::
+bool grid_regular::
 load_visibility_from_file(const std::string& file_path, const std::vector<unsigned int>& ids)
 {
 	std::fstream file_in;
@@ -226,7 +226,7 @@ load_visibility_from_file(const std::string& file_path, const std::vector<unsign
 	return true;
 }
 
-void regular_grid::
+void grid_regular::
 create_grid(const unsigned int& num_cells, const double& cell_size, const scm::math::vec3d& position_center)
 {
 	cells_.clear();

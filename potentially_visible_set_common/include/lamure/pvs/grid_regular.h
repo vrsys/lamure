@@ -15,12 +15,12 @@ namespace lamure
 namespace pvs
 {
 
-class regular_grid : public grid
+class grid_regular : public grid
 {
 public:
-	regular_grid();
-	regular_grid(const unsigned int& number_cells, const double& cell_size, const scm::math::vec3d& position_center);
-	~regular_grid();
+	grid_regular();
+	grid_regular(const unsigned int& number_cells, const double& cell_size, const scm::math::vec3d& position_center);
+	~grid_regular();
 
 	virtual unsigned int get_cell_count() const;
 	virtual view_cell* get_cell_at_index(const unsigned int& index);
