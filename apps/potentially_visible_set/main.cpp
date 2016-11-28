@@ -15,6 +15,9 @@
 
 #include <lamure/pvs/pvs_database.h>
 
+#include <lamure/ren/model_database.h>
+#include <vector>
+
 int main(int argc, char** argv)
 {
     // Load scene and analyze scene size.
@@ -32,8 +35,16 @@ int main(int argc, char** argv)
     lamure::pvs::grid* test_grid = new lamure::pvs::regular_grid(num_cells, cell_size, center);
 
     // Debug: allows to test pvs result within pvs view.
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    std::vector<unsigned int> ids;
+    ids.resize(database->num_models());
+    for(unsigned int model_index = 0; model_index < ids.size(); ++model_index)
+    {
+        ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
+    }
+
     lamure::pvs::pvs_database* pvs_db = lamure::pvs::pvs_database::get_instance();
-    pvs_db->load_pvs_from_file("/home/tiwo9285/test_bridge.grid", "/home/tiwo9285/test_bridge.pvs");
+    pvs_db->load_pvs_from_file("/home/tiwo9285/test_bridge.grid", "/home/tiwo9285/test_bridge.pvs", ids);
 
     // Run visibility test on given scene and grid.
     vt->test_visibility(test_grid);
