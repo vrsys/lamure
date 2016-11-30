@@ -1,6 +1,7 @@
 #include "lamure/pvs/visibility_test_id_histogram_renderer.h"
 #include "lamure/pvs/glut_wrapper.h"
 #include "lamure/pvs/utils.h"
+#include "lamure/pvs/pvs_database.h"
 
 #include "lamure/ren/model_database.h"
 #include "lamure/ren/cut_database.h"
@@ -150,6 +151,8 @@ shutdown()
 	// Renderer shutdown.
     if (management_ != nullptr)
     {
+        delete lamure::pvs::pvs_database::get_instance();
+
         delete lamure::ren::cut_database::get_instance();
         delete lamure::ren::controller::get_instance();
         delete lamure::ren::model_database::get_instance();

@@ -14,7 +14,7 @@ class visibility_test_id_histogram_renderer : public visibility_test
 {
 public:
 	visibility_test_id_histogram_renderer();
-	~visibility_test_id_histogram_renderer();
+	virtual ~visibility_test_id_histogram_renderer();
 
 	virtual int initialize(int& argc, char** argv);
 	virtual void test_visibility(grid* visibility_grid);

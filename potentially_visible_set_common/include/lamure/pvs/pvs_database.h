@@ -14,7 +14,7 @@ namespace pvs
 class pvs_database
 {
 public:
-	~pvs_database();
+	virtual ~pvs_database();
 	static pvs_database* get_instance();
 
 	bool load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const std::vector<node_t>& ids);

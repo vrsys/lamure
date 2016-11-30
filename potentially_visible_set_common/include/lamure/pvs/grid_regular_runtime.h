@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <fstream>
 #include <mutex>
 
 #include "lamure/pvs/grid.h"
@@ -43,6 +44,7 @@ private:
 	std::vector<view_cell_regular> cells_;
 
 	std::string file_path_pvs_;
+	std::fstream file_in_;
 	std::vector<node_t> ids_;
 
 	std::mutex mutex_;

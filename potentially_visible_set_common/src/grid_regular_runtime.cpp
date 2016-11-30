@@ -1,6 +1,5 @@
 #include "lamure/pvs/grid_regular_runtime.h"
 
-#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <climits>
@@ -26,6 +25,7 @@ grid_regular_runtime::
 ~grid_regular_runtime()
 {
 	cells_.clear();
+	file_in_.close();
 }
 
 size_t grid_regular_runtime::
@@ -63,15 +63,17 @@ get_cell_at_index(const size_t& index)
 		single_model_bytes += line_size;
 	}
 
-	std::fstream file_in;
-	file_in.open(file_path_pvs_, std::ios::in | std::ios::binary);
-
-	if(!file_in.is_open())
+	if(!file_in_.is_open())
 	{
-		throw std::invalid_argument("invalid file path: " + file_path_pvs_);
+		file_in_.open(file_path_pvs_, std::ios::in | std::ios::binary);
+
+		if(!file_in_.is_open())
+		{
+			throw std::invalid_argument("invalid file path: " + file_path_pvs_);
+		}
 	}
 
-	file_in.seekg(index * single_model_bytes);
+	file_in_.seekg(index * single_model_bytes);
 
 	for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 	{
@@ -89,7 +91,7 @@ get_cell_at_index(const size_t& index)
 		for(node_t character_index = 0; character_index < line_size; ++character_index)
 		{
 			char current_byte = 0x00;
-			file_in.read(&current_byte, 1);
+			file_in_.read(&current_byte, 1);
 			
 			for(unsigned short bit_index = 0; bit_index < CHAR_BIT; ++bit_index)
 			{
@@ -98,8 +100,6 @@ get_cell_at_index(const size_t& index)
 			}
 		}
 	}
-
-	file_in.close();
 
 	return current_cell;
 }
