@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
 
 #include "lamure/pvs/grid.h"
 #include "lamure/pvs/view_cell.h"
@@ -40,6 +41,8 @@ private:
 	scm::math::vec3d position_center_;
 
 	std::vector<view_cell_regular> cells_;
+
+	std::mutex mutex_;
 };
 
 }

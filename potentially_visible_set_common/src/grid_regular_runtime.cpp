@@ -37,6 +37,8 @@ get_cell_count() const
 view_cell* grid_regular_runtime::
 get_cell_at_index(const size_t& index)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
+
 	view_cell* current_cell = &cells_.at(index);
 	if(current_cell->contains_visibility_data() || file_path_pvs_ == "")
 	{
@@ -105,29 +107,38 @@ get_cell_at_index(const size_t& index)
 view_cell* grid_regular_runtime::
 get_cell_at_position(const scm::math::vec3d& position)
 {
-	size_t num_cells = std::pow(cells_.size(), 1.0f/3.0f);
-	double half_size = cell_size_ * (double)num_cells * 0.5f;
-	scm::math::vec3d distance = position - (position_center_ - half_size);
+	size_t general_index = 0;
 
-	size_t index_x = (size_t)(distance.x / cell_size_);
-	size_t index_y = (size_t)(distance.y / cell_size_);
-	size_t index_z = (size_t)(distance.z / cell_size_);
-
-	// Check calculated index so we know if the position is inside the grid at all.
-	if(index_x < 0 || index_x >= num_cells ||
-		index_y < 0 || index_y >= num_cells ||
-		index_z < 0 || index_z >= num_cells)
 	{
-		return nullptr;
+		std::lock_guard<std::mutex> lock(mutex_);
+
+		size_t num_cells = std::pow(cells_.size(), 1.0f/3.0f);
+		double half_size = cell_size_ * (double)num_cells * 0.5f;
+		scm::math::vec3d distance = position - (position_center_ - half_size);
+
+		size_t index_x = (size_t)(distance.x / cell_size_);
+		size_t index_y = (size_t)(distance.y / cell_size_);
+		size_t index_z = (size_t)(distance.z / cell_size_);
+
+		// Check calculated index so we know if the position is inside the grid at all.
+		if(index_x < 0 || index_x >= num_cells ||
+			index_y < 0 || index_y >= num_cells ||
+			index_z < 0 || index_z >= num_cells)
+		{
+			return nullptr;
+		}
+
+		general_index = (num_cells * num_cells * index_z) + (num_cells * index_y) + index_x;
 	}
 
-	size_t general_index = (num_cells * num_cells * index_z) + (num_cells * index_y) + index_x;
 	return get_cell_at_index(general_index);
 }
 
 void grid_regular_runtime::
 save_grid_to_file(const std::string& file_path) const
 {
+	//std::lock_guard<std::mutex> lock(mutex_);
+
 	std::fstream file_out;
 	file_out.open(file_path, std::ios::out);
 
@@ -152,6 +163,8 @@ save_grid_to_file(const std::string& file_path) const
 void grid_regular_runtime::
 save_visibility_to_file(const std::string& file_path, const std::vector<node_t>& ids) const
 {
+	//std::lock_guard<std::mutex> lock(mutex_);
+
 	std::fstream file_out;
 	file_out.open(file_path, std::ios::out | std::ios::binary);
 
@@ -193,6 +206,8 @@ save_visibility_to_file(const std::string& file_path, const std::vector<node_t>&
 bool grid_regular_runtime::
 load_grid_from_file(const std::string& file_path)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
+
 	std::fstream file_in;
 	file_in.open(file_path, std::ios::in);
 
@@ -228,6 +243,8 @@ load_grid_from_file(const std::string& file_path)
 bool grid_regular_runtime::
 load_visibility_from_file(const std::string& file_path, const std::vector<node_t>& ids)
 {
+	std::lock_guard<std::mutex> lock(mutex_);
+
 	std::fstream file_in;
 	file_in.open(file_path, std::ios::in | std::ios::binary);
 
