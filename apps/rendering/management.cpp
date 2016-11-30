@@ -7,11 +7,14 @@
 
 #include "utils.h"
 #include "management.h"
+
 #include <set>
 #include <ctime>
 #include <algorithm>
 #include <fstream>
+
 #include <lamure/ren/bvh.h>
+#include <lamure/pvs/pvs_database.h>
 
 management::
 management(std::vector<std::string> const& model_filenames,
@@ -56,6 +59,7 @@ management(std::vector<std::string> const& model_filenames,
 {
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    is_updating_pvs_position_ = true;
 
 #ifdef LAMURE_RENDERING_ENABLE_LAZY_MODELS_TEST
     assert(model_filenames_.size() > 0);
@@ -137,6 +141,14 @@ MainLoop()
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     lamure::ren::controller* controller = lamure::ren::controller::get_instance();
     lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+
+    if(is_updating_pvs_position_)
+    {
+        scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
+        scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
+        pvs->set_viewer_position(cam_pos);
+    }
 
     bool signal_shutdown = false;
 
@@ -219,6 +231,24 @@ MainLoop()
         } else {
             status_string += std::to_string( ((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
         }
+    }
+
+    if(pvs->is_activated())
+    {
+        status_string += "PVS: ON\n";
+    }
+    else
+    {
+        status_string += "PVS: OFF\n";
+    }
+
+    if(is_updating_pvs_position_)
+    {
+        status_string += "PVS viewer position update: ON\n";
+    }
+    else
+    {
+        status_string += "PVS viewer position update: OFF\n";
     }
 
     renderer_->display_status(status_string);
@@ -375,6 +405,18 @@ dispatchKeyboardInput(unsigned char key)
     case 'j':
         renderer_->change_point_size(-0.1f);
         break;
+    case 'p':
+    {
+        // Toggle PVS usage.
+        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+        pvs->activate(!pvs->is_activated());
+        break;
+    }
+    case 'o':
+    {
+        is_updating_pvs_position_ = !is_updating_pvs_position_;
+        break;
+    }
     case 't':
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
         renderer_->toggle_visible_set();

@@ -20,11 +20,14 @@
 #include <GL/freeglut.h>
 
 #include <lamure/types.h>
+
 #include <lamure/ren/config.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/cut_database.h>
 #include <lamure/ren/dataset.h>
 #include <lamure/ren/policy.h>
+
+#include <lamure/pvs/pvs_database.h>
 
 #include <scm/core/math.h>
 
@@ -235,6 +238,17 @@ int main(int argc, char** argv)
     }
 
     management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, measurement_descriptor);
+
+    // PVS basic setup. If no path is given, runtime access to the PVS will always return true (visible).
+    std::vector<lamure::node_t> ids;
+    ids.resize(database->num_models());
+    for(lamure::model_t model_index = 0; model_index < ids.size(); ++model_index)
+    {
+        ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
+    }
+
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+    pvs->load_pvs_from_file("/home/tiwo9285/test_bridge.grid", "/home/tiwo9285/test_bridge.pvs", ids);
 
     glutMainLoop();
 

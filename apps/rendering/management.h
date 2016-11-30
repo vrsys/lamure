@@ -148,7 +148,9 @@ private:
     std::vector<std::string> model_filenames_;
 
     snapshot_session_descriptor& measurement_session_descriptor_;
-    //std::vector<scm::math::mat4d>& recorded_view_vector_; 
+    //std::vector<scm::math::mat4d>& recorded_view_vector_;
+
+    bool                is_updating_pvs_position_;
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;
