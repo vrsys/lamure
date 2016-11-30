@@ -17,7 +17,7 @@ public:
 	~pvs_database();
 	static pvs_database* get_instance();
 
-	bool load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const std::vector<unsigned int>& ids);
+	bool load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const std::vector<node_t>& ids);
 
 	virtual void set_viewer_position(const scm::math::vec3d& position);
 	virtual bool get_viewer_visibility(const model_t& model_id, const node_t node_id) const;

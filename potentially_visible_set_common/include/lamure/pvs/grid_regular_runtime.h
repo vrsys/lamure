@@ -19,21 +19,21 @@ class grid_regular_runtime : public grid
 {
 public:
 	grid_regular_runtime();
-	grid_regular_runtime(const unsigned int& number_cells, const double& cell_size, const scm::math::vec3d& position_center);
+	grid_regular_runtime(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center);
 	~grid_regular_runtime();
 
-	virtual unsigned int get_cell_count() const;
-	virtual view_cell* get_cell_at_index(const unsigned int& index);
+	virtual size_t get_cell_count() const;
+	virtual view_cell* get_cell_at_index(const size_t& index);
 	virtual view_cell* get_cell_at_position(const scm::math::vec3d& position);
 
 	virtual void save_grid_to_file(const std::string& file_path) const;
-	virtual void save_visibility_to_file(const std::string& file_path, const std::vector<unsigned int>& ids) const;
+	virtual void save_visibility_to_file(const std::string& file_path, const std::vector<node_t>& ids) const;
 
 	virtual bool load_grid_from_file(const std::string& file_path);
-	virtual bool load_visibility_from_file(const std::string& file_path, const std::vector<unsigned int>& ids);
+	virtual bool load_visibility_from_file(const std::string& file_path, const std::vector<node_t>& ids);
 
 protected:
-	void create_grid(const unsigned int& num_cells, const double& cell_size, const scm::math::vec3d& position_center);
+	void create_grid(const size_t& num_cells, const double& cell_size, const scm::math::vec3d& position_center);
 
 private:
 	double cell_size_;
@@ -42,7 +42,7 @@ private:
 	std::vector<view_cell_regular> cells_;
 
 	std::string file_path_pvs_;
-	std::vector<unsigned int> ids_;
+	std::vector<node_t> ids_;
 };
 
 }

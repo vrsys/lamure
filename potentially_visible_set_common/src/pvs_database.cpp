@@ -38,7 +38,7 @@ get_instance()
 }
 
 bool pvs_database::
-load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const std::vector<unsigned int>& ids)
+load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const std::vector<node_t>& ids)
 {
 	// TODO: currently there is only one grid type, but later on the created grid should depend on the type noted in the grid file.
 	visibility_grid_ = new grid_regular_runtime();
@@ -70,7 +70,7 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 void pvs_database::
 set_viewer_position(const scm::math::vec3d& position)
 {
-	if(activated_)
+	if(activated_ && visibility_grid_ != nullptr)
 	{
 		if(position != position_viewer_)
 		{

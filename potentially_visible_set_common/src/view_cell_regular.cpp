@@ -37,7 +37,7 @@ get_position_center() const
 }
 
 void view_cell_regular::
-set_visibility(const unsigned int& object_id, const unsigned int& node_id, const bool& visible)
+set_visibility(const model_t& object_id, const node_t& node_id, const bool& visible)
 {
 	if(visibility_.size() <= object_id)
 	{
@@ -55,7 +55,7 @@ set_visibility(const unsigned int& object_id, const unsigned int& node_id, const
 }
 
 bool view_cell_regular::
-get_visibility(const unsigned int& object_id, const unsigned int& node_id) const
+get_visibility(const model_t& object_id, const node_t& node_id) const
 {
 	if(visibility_.size() <= object_id)
 	{
@@ -72,17 +72,23 @@ get_visibility(const unsigned int& object_id, const unsigned int& node_id) const
 	return node_visibility->at(node_id);
 }
 
-std::map<unsigned int, std::vector<unsigned int>> view_cell_regular::
+bool view_cell_regular::
+contains_visibility_data() const
+{
+	return visibility_.size() > 0;
+}
+
+std::map<model_t, std::vector<node_t>> view_cell_regular::
 get_visible_indices() const
 {
-	std::map<unsigned int, std::vector<unsigned int>> indices;
+	std::map<model_t, std::vector<node_t>> indices;
 
 	//for(std::vector<std::vector<bool>>::const_iterator iter = visibility_.begin(); iter != visibility_.end(); ++iter)
-	for(unsigned int model_index = 0; model_index < visibility_.size(); ++model_index)
+	for(model_t model_index = 0; model_index < visibility_.size(); ++model_index)
 	{
 		const std::vector<bool>& node_visibility = visibility_.at(model_index);
 
-		for(unsigned int node_index = 0; node_index < node_visibility.size(); ++node_index)
+		for(node_t node_index = 0; node_index < node_visibility.size(); ++node_index)
 		{
 			if(node_visibility.at(node_index))
 			{

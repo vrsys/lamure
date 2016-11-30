@@ -5,7 +5,7 @@
 #include <map>
 
 #include <scm/core/math.h>
-
+#include <lamure/types.h>
 #include "lamure/pvs/view_cell.h"
 
 namespace lamure
@@ -23,9 +23,11 @@ public:
 	virtual scm::math::vec3d get_size() const;
 	virtual scm::math::vec3d get_position_center() const;
 
-	virtual void set_visibility(const unsigned int& object_id, const unsigned int& node_id, const bool& visible);
-	virtual bool get_visibility(const unsigned int& object_id, const unsigned int& node_id) const;
-	virtual std::map<unsigned int, std::vector<unsigned int>> get_visible_indices() const;
+	virtual void set_visibility(const model_t& object_id, const node_t& node_id, const bool& visible);
+	virtual bool get_visibility(const model_t& object_id, const node_t& node_id) const;
+
+	virtual bool contains_visibility_data() const;
+	virtual std::map<model_t, std::vector<node_t>> get_visible_indices() const;
 
 private:
 	double cell_size_;
