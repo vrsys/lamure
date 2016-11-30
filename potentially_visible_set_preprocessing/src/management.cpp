@@ -325,11 +325,11 @@ MainLoop()
         #endif
 
             id_histogram hist = renderer_->create_node_id_histogram(false, (direction_counter_ * visibility_grid_->get_cell_count()) + current_grid_index_);
-            std::map<unsigned int, std::vector<unsigned int>> visible_ids = hist.get_visible_nodes(width_ * height_, visibility_threshold_);
+            std::map<model_t, std::vector<node_t>> visible_ids = hist.get_visible_nodes(width_ * height_, visibility_threshold_);
 
-            for(std::map<unsigned int, std::vector<unsigned int>>::iterator iter = visible_ids.begin(); iter != visible_ids.end(); ++iter)
+            for(std::map<model_t, std::vector<node_t>>::iterator iter = visible_ids.begin(); iter != visible_ids.end(); ++iter)
             {
-                for(unsigned int node_id : iter->second)
+                for(node_t node_id : iter->second)
                 {
                     current_cell->set_visibility(iter->first, node_id, true);
                 }
@@ -379,16 +379,16 @@ emit_node_visibility(grid* visibility_grid)
 {
     // Advance node visibility downwards and upwards in the LOD-hierarchy.
     // Since only a single LOD-level was rendered in the visibility test, this is necessary to produce a complete PVS.
-    for(unsigned int cell_index = 0; cell_index < visibility_grid->get_cell_count(); ++cell_index)
+    for(size_t cell_index = 0; cell_index < visibility_grid->get_cell_count(); ++cell_index)
     {
         view_cell* current_cell = visibility_grid->get_cell_at_index(cell_index);
-        std::map<unsigned int, std::vector<unsigned int>> visible_indices = current_cell->get_visible_indices();
+        std::map<model_t, std::vector<node_t>> visible_indices = current_cell->get_visible_indices();
 
-        for(std::map<unsigned int, std::vector<unsigned int>>::const_iterator map_iter = visible_indices.begin(); map_iter != visible_indices.end(); ++map_iter)
+        for(std::map<model_t, std::vector<node_t>>::const_iterator map_iter = visible_indices.begin(); map_iter != visible_indices.end(); ++map_iter)
         {
-            for(int node_index = 0; node_index < (int)map_iter->second.size(); ++node_index)
+            for(node_t node_index = 0; node_index < map_iter->second.size(); ++node_index)
             {
-                unsigned int visible_node_id = map_iter->second.at(node_index);
+                node_t visible_node_id = map_iter->second.at(node_index);
 
                 // Communicate visibility to children and parents nodes of visible nodes.
                 set_node_children_visible(map_iter->first, visible_node_id, current_cell);
@@ -406,7 +406,7 @@ set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_ce
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     node_t parent_id = database->get_model(model_id)->get_bvh()->get_parent_id(node_id);
 
-    if(parent_id != lamure::invalid_node_t && !cell->get_visibility(model_id, parent_id))
+    if(parent_id != lamure::invalid_node_t /*&& !cell->get_visibility(model_id, parent_id)*/)
     {
         if(cell != nullptr)
         {
@@ -427,7 +427,7 @@ set_node_children_visible(const model_t& model_id, const node_t& node_id, view_c
     for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
     {
         node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
-        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() && !cell->get_visibility(model_id, child_id))
+        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() /*&& !cell->get_visibility(model_id, child_id)*/)
         {
             if(cell != nullptr)
             {

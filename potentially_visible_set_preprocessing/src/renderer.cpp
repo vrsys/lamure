@@ -751,7 +751,7 @@ switch_render_mode(RenderMode const& render_mode)
     render_mode_ = render_mode;
 }
 
-id_histogram Renderer::
+lamure::pvs::id_histogram Renderer::
 create_node_id_histogram(const bool& save_screenshot, const int& image_index) const
 {
     // Make the BYTE array, factor of 4 because it's RGBA.
@@ -760,7 +760,7 @@ create_node_id_histogram(const bool& save_screenshot, const int& image_index) co
     device_->opengl_api().glBindTexture(GL_TEXTURE_2D, visible_node_id_texture_->object_id());
     device_->opengl_api().glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, pixels);
 
-    id_histogram hist;
+    lamure::pvs::id_histogram hist;
     hist.create(pixels, win_x_ * win_y_);
 
     if(save_screenshot)
@@ -797,16 +797,16 @@ create_node_id_histogram(const bool& save_screenshot, const int& image_index) co
 
 // Debug stuff to output rendered nodes as histogram and check if histogram is valid within current cut.
 void Renderer::
-compare_histogram_to_cut(const id_histogram& hist, const float& visibility_threshold)
+compare_histogram_to_cut(const lamure::pvs::id_histogram& hist, const float& visibility_threshold)
 {
     int numPixels = win_x_ * win_y_;
-    std::map<unsigned int, std::vector<unsigned int>> visible_nodes = hist.get_visible_nodes(numPixels, visibility_threshold);
+    std::map<lamure::model_t, std::vector<lamure::node_t>> visible_nodes = hist.get_visible_nodes(numPixels, visibility_threshold);
 
     std::fstream f;
     f.open("/home/tiwo9285/test.txt", std::ios::out);
-    for(std::map<unsigned int, std::map<unsigned int, unsigned int>>::iterator modelIter = hist.get_histogram().begin(); modelIter != hist.get_histogram().end(); ++modelIter)
+    for(std::map<lamure::model_t, std::map<lamure::node_t, size_t>>::iterator modelIter = hist.get_histogram().begin(); modelIter != hist.get_histogram().end(); ++modelIter)
     {
-        for(std::map<unsigned int, unsigned int>::iterator nodeIter = modelIter->second.begin(); nodeIter != modelIter->second.end(); ++nodeIter)
+        for(std::map<lamure::node_t, size_t>::iterator nodeIter = modelIter->second.begin(); nodeIter != modelIter->second.end(); ++nodeIter)
         {
             f << "model: " << modelIter->first << "  node: " << nodeIter->first << "  amount: " << nodeIter->second << "  percent: " << ((float)nodeIter->second / (float)numPixels) * 100.0f << std::endl;
         }
@@ -819,13 +819,13 @@ compare_histogram_to_cut(const id_histogram& hist, const float& visibility_thres
     lamure::context_t context_id = 0;
     lamure::view_t view_id = 0;
 
-    int node_counter = 0;
-    int regular_node_counter = 0;
-    int irregular_node_counter = 0;
+    lamure::node_t node_counter = 0;
+    lamure::node_t regular_node_counter = 0;
+    lamure::node_t irregular_node_counter = 0;
 
-    for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id)
+    for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
     {
-        std::vector<unsigned int> rendered_nodes;
+        std::vector<lamure::node_t> rendered_nodes;
 
         lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
         std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
@@ -838,9 +838,9 @@ compare_histogram_to_cut(const id_histogram& hist, const float& visibility_thres
         }
 
         // Check rendered nodes against current cut. Count rendered nodes inside cut (regular) and not inside cut (irregular).
-        for(unsigned int index = 0; index < visible_nodes[model_id].size(); ++index)
+        for(size_t index = 0; index < visible_nodes[model_id].size(); ++index)
         {
-            unsigned int irregular_node_id = visible_nodes[model_id][index];
+            lamure::node_t irregular_node_id = visible_nodes[model_id][index];
 
             if(std::find(rendered_nodes.begin(), rendered_nodes.end(), irregular_node_id) == rendered_nodes.end())
             {

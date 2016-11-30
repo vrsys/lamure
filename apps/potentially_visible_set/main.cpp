@@ -27,19 +27,19 @@ int main(int argc, char** argv)
     lamure::vec3r scene_dimensions = vt->get_scene_bounds().get_dimensions();
 
     // Create grid based on scene size.
-    unsigned int num_cells = 16;
+    size_t num_cells = 8;
     double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
     
     lamure::vec3r center_bounds = vt->get_scene_bounds().get_center();
     scm::math::vec3d center(center_bounds.x, center_bounds.y, center_bounds.z);
     
-    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular_runtime(num_cells, cell_size, center);
+    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center);
 
     // Debug: allows to test pvs result within pvs view.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-    std::vector<unsigned int> ids;
+    std::vector<lamure::node_t> ids;
     ids.resize(database->num_models());
-    for(unsigned int model_index = 0; model_index < ids.size(); ++model_index)
+    for(lamure::model_t model_index = 0; model_index < ids.size(); ++model_index)
     {
         ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
     }
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 
     // Save grid containing visibility information to file.
     //test_grid->save_grid_to_file("/home/tiwo9285/test_bridge.grid");
-    //test_grid->save_visibility_to_file("/home/tiwo9285/test_bridge.pvs");
+    //test_grid->save_visibility_to_file("/home/tiwo9285/test_bridge.pvs", ids);
 
     vt->shutdown();
 

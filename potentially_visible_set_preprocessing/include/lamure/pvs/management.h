@@ -93,8 +93,8 @@ private:
     bool                first_frame_;
 
     grid*               visibility_grid_;
-    unsigned int        current_grid_index_;
-    unsigned int        direction_counter_;
+    size_t              current_grid_index_;
+    unsigned short      direction_counter_;
 
     bool                update_position_for_pvs_;
 

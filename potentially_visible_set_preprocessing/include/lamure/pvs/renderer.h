@@ -61,7 +61,8 @@
 //#define LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
 
 
-enum class RenderPass {
+enum class RenderPass
+{
     DEPTH                    = 0,
     ACCUMULATION             = 1,
     NORMALIZATION            = 2,
@@ -201,8 +202,8 @@ public:
     void toggle_visible_set();
     void toggle_display_info();
 
-    id_histogram create_node_id_histogram(const bool& save_screenshot, const int& image_index) const;
-    void compare_histogram_to_cut(const id_histogram& hist, const float& visibility_threshold);
+    lamure::pvs::id_histogram create_node_id_histogram(const bool& save_screenshot, const int& image_index) const;
+    void compare_histogram_to_cut(const lamure::pvs::id_histogram& hist, const float& visibility_threshold);
 
     int get_rendered_node_count() const;
 };
