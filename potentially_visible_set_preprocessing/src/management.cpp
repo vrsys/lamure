@@ -18,8 +18,8 @@
 
 #include "lamure/pvs/pvs_database.h"
 
-#define ALLOW_INPUT
-#define LAMURE_PVS_USE_AS_RENDERER
+//#define ALLOW_INPUT
+//#define LAMURE_PVS_USE_AS_RENDERER
 //#define LAMURE_PVS_MEASURE_PERFORMANCE
 
 namespace lamure
@@ -406,7 +406,7 @@ set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_ce
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     node_t parent_id = database->get_model(model_id)->get_bvh()->get_parent_id(node_id);
 
-    if(parent_id != lamure::invalid_node_t /*&& !cell->get_visibility(model_id, parent_id)*/)
+    if(parent_id != lamure::invalid_node_t && !cell->get_visibility(model_id, parent_id))
     {
         if(cell != nullptr)
         {
@@ -427,7 +427,7 @@ set_node_children_visible(const model_t& model_id, const node_t& node_id, view_c
     for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
     {
         node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
-        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() /*&& !cell->get_visibility(model_id, child_id)*/)
+        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() && !cell->get_visibility(model_id, child_id))
         {
             if(cell != nullptr)
             {
@@ -485,19 +485,13 @@ dispatchKeyboardInput(unsigned char key)
             break;
         }
 
-        case 'a':
+        case 'p':
         {
-            pvs_database::get_instance()->activate(true);
+            pvs_database::get_instance()->activate(!pvs_database::get_instance()->is_activated());
             break;
         }
 
-        case 'y':
-        {
-            pvs_database::get_instance()->activate(false);
-            break;
-        }
-
-        case 'x':
+        case 'o':
         {
             update_position_for_pvs_ = !update_position_for_pvs_;
             break;
