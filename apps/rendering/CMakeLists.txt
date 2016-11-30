@@ -29,7 +29,7 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common lamure_potentially_visible_set_common)
 
 MsvcPostBuild(${PROJECT_NAME})
 
