@@ -379,6 +379,7 @@ emit_node_visibility(grid* visibility_grid)
 {
     // Advance node visibility downwards and upwards in the LOD-hierarchy.
     // Since only a single LOD-level was rendered in the visibility test, this is necessary to produce a complete PVS.
+    #pragma omp parallel for
     for(size_t cell_index = 0; cell_index < visibility_grid->get_cell_count(); ++cell_index)
     {
         view_cell* current_cell = visibility_grid->get_cell_at_index(cell_index);
@@ -420,7 +421,6 @@ void management::
 set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell)
 {
     // Set children of a visible node visible, too.
-    // TODO: this currently ignores invisibility information which can be achieved by comparing the rendered nodes against the current cut.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     uint32_t fan_factor = database->get_model(model_id)->get_bvh()->get_fan_factor();
 

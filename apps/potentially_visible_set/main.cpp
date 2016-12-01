@@ -90,8 +90,11 @@ int main(int argc, char** argv)
         pvs_grid_output_file_path = pvs_grid_output_file_path + "grid";
     }
 
+    std::cout << "Start writing grid file..." << std::endl;
     test_grid->save_grid_to_file(pvs_grid_output_file_path);
+    std::cout << "Finished writing grid file.\nStart writing pvs file..." << std::endl;
     test_grid->save_visibility_to_file(pvs_output_file_path, ids);
+    std::cout << "Finished writing pvs file." << std::endl;
 
     vt->shutdown();
 
