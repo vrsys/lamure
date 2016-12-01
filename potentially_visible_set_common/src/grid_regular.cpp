@@ -115,11 +115,17 @@ save_visibility_to_file(const std::string& file_path, const std::vector<node_t>&
 	// Iterate over view cells.
 	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
 	{
+		std::string current_cell_data = "";
+
 		// Iterate over models in the scene.
 		for(lamure::model_t model_id = 0; model_id < ids.size(); ++model_id)
 		{
-			unsigned int num_nodes = ids.at(model_id);
+			node_t num_nodes = ids.at(model_id);
 			char current_byte = 0x00;
+
+			size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
+			size_t character_counter = 0;
+			std::string current_line_data(line_length, 0x00);
 
 			// Iterate over nodes in the model.
 			for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
@@ -132,20 +138,18 @@ save_visibility_to_file(const std::string& file_path, const std::vector<node_t>&
 				// Flush character if either 8 bits are written or if the node id is the last one.
 				if((node_id + 1) % CHAR_BIT == 0 || node_id == (num_nodes - 1))
 				{
-					file_out.write(&current_byte, 1);
+					//file_out.write(&current_byte, 1);
+					current_line_data[character_counter] = current_byte;
+					character_counter++;
+
 					current_byte = 0x00;
 				}
 			}
 
-			// Does not save bitwise, but bytewise. (Only here because I do not 100% believe in the bitwise code.)
-			/*for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
-			{
-				file_out << (cells_.at(cell_index).get_visibility(model_id, node_id) == true ? 1 : 0);
-			}*/
-
-			// Exactly one model per line.
-			//file_out << std::endl;
+			current_cell_data = current_cell_data + current_line_data;
 		}
+
+		file_out.write(current_cell_data.c_str(), current_cell_data.length());
 	}
 
 	file_out.close();
@@ -211,20 +215,14 @@ load_visibility_from_file(const std::string& file_path, const std::vector<node_t
 		for(model_t model_index = 0; model_index < ids.size(); ++model_index)
 		{
 			node_t num_nodes = ids.at(model_index);
+			size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
+			char current_line_data[line_length];
 
-			// If the number of node IDs is not dividable by 8 there is one additional character.
-			node_t addition = 0;
-			if(num_nodes % CHAR_BIT != 0)
+			file_in.read(current_line_data, line_length);
+
+			for(node_t character_index = 0; character_index < line_length; ++character_index)
 			{
-				addition = 1;
-			}
-
-			node_t line_size = (num_nodes / CHAR_BIT) + addition;
-
-			for(node_t character_index = 0; character_index < line_size; ++character_index)
-			{
-				char current_byte = 0x00;
-				file_in.read(&current_byte, 1);
+				char current_byte = current_line_data[character_index];
 				
 				for(unsigned short bit_index = 0; bit_index < CHAR_BIT; ++bit_index)
 				{
@@ -232,14 +230,6 @@ load_visibility_from_file(const std::string& file_path, const std::vector<node_t
 					current_cell->set_visibility(model_index, (character_index * CHAR_BIT) + bit_index, visible);
 				}
 			}
-
-			// Does not load bitwise, but bytewise. (Only here because I do not 100% believe in the bitwise code.)
-			/*for(unsigned int node_index = 0; node_index < num_nodes; ++node_index)
-			{
-				char input;
-				file_in >> input;
-				current_cell->set_visibility(model_index, node_index, input == '1');
-			}*/
 		}
 	}
 
