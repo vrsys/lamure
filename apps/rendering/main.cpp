@@ -136,6 +136,8 @@ int main(int argc, char** argv)
     std::string resource_file_path = "";
     std::string measurement_file_path = "";
 
+    std::string pvs_file_path = "";
+
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
     desc.add_options()
@@ -146,7 +148,8 @@ int main(int argc, char** argv)
       ("vram,v", po::value<unsigned>(&video_memory_budget)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
-      ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")");
+      ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")")
+      ("pvs-file,p", po::value<std::string>(&pvs_file_path), "specify potentially visible set file.");
       ;
 
     po::positional_options_description p;
@@ -247,9 +250,17 @@ int main(int argc, char** argv)
         ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
     }
 
-    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-    pvs->load_pvs_from_file("/home/tiwo9285/test_bridge.grid", "/home/tiwo9285/test_bridge.pvs", ids);
+    std::string pvs_grid_file_path = pvs_file_path;
+    if(pvs_grid_file_path != "")
+    {
+        pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
+        pvs_grid_file_path = pvs_grid_file_path + "grid";
+    }
 
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+    pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path, ids);
+
+    // Start rendering main loop.
     glutMainLoop();
 
 
