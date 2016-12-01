@@ -43,6 +43,9 @@ initialize(int& argc, char** argv)
 
     std::string resource_file_path = "";
 
+    std::string pvs_output_file_path = "";
+    unsigned int grid_size = 1;
+
 	po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
     desc.add_options()
@@ -52,7 +55,9 @@ initialize(int& argc, char** argv)
       ("resource-file,f", po::value<std::string>(&resource_file_path), "specify resource input-file")
       ("vram,v", po::value<unsigned>(&video_memory_budget_)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget_)->default_value(4096), "specify main memory budget in MB (default=4096)")
-      ("upload,u", po::value<unsigned>(&max_upload_budget_)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)");
+      ("upload,u", po::value<unsigned>(&max_upload_budget_)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
+      ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
+      ("gridsize,g", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test");
       ;
 
     po::variables_map vm;
