@@ -8,6 +8,8 @@
 #ifndef REN_APP_MANAGEMENT_H_
 #define REN_APP_MANAGEMENT_H_
 
+#include <thread>
+
 #include <lamure/utils.h>
 #include <lamure/types.h>
 
@@ -151,6 +153,9 @@ private:
     //std::vector<scm::math::mat4d>& recorded_view_vector_;
 
     bool                is_updating_pvs_position_;
+    bool                run_update_thread_;
+    std::thread         pvs_viewer_position_update_thread_;
+    void                update_viewer_position_thread_call();
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;

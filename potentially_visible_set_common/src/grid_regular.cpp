@@ -220,6 +220,9 @@ load_visibility_from_file(const std::string& file_path, const std::vector<node_t
 
 			file_in.read(current_line_data, line_length);
 
+			// Used to avoid continuing resize within visibility data.
+			current_cell->set_visibility(model_index, num_nodes - 1, false);
+
 			for(node_t character_index = 0; character_index < line_length; ++character_index)
 			{
 				char current_byte = current_line_data[character_index];
