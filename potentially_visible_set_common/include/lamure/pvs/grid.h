@@ -17,8 +17,12 @@ public:
 	virtual ~grid() {}
 
 	virtual size_t get_cell_count() const = 0;
+
 	virtual view_cell* get_cell_at_index(const size_t& index) = 0;
+	virtual view_cell* get_cell_at_index(const size_t& index) const = 0;
+
 	virtual view_cell* get_cell_at_position(const scm::math::vec3d& position) = 0;
+	virtual view_cell* get_cell_at_position(const scm::math::vec3d& position) const = 0;
 
 	virtual void save_grid_to_file(const std::string& file_path) const = 0;
 	virtual void save_visibility_to_file(const std::string& file_path, const std::vector<node_t>& ids) const = 0;

@@ -44,6 +44,12 @@ get_cell_at_index(const size_t& index)
 }
 
 view_cell* grid_regular::
+get_cell_at_index(const size_t& index) const
+{
+	return get_cell_at_index(index);
+}
+
+view_cell* grid_regular::
 get_cell_at_position(const scm::math::vec3d& position)
 {
 	size_t general_index = 0;
@@ -71,6 +77,12 @@ get_cell_at_position(const scm::math::vec3d& position)
 	}
 
 	return get_cell_at_index(general_index);
+}
+
+view_cell* grid_regular::
+get_cell_at_position(const scm::math::vec3d& position) const
+{
+	return get_cell_at_position(position);
 }
 
 void grid_regular::
