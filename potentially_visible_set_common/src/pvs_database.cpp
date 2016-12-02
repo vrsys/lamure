@@ -105,5 +105,11 @@ is_activated() const
 	return activated_;
 }
 
+const grid* pvs_database::
+get_visibility_grid() const
+{
+	return visibility_grid_;
+}
+
 }
 }
