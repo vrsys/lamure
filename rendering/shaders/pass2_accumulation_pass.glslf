@@ -32,14 +32,16 @@ void main() {
   if ( dot(uv_coords, uv_coords)> 1 )
     discard;
 
-  if( VertexIn.pass_normal.z < 0 )
-    VertexIn.pass_normal = VertexIn.pass_normal * -1; 
+  vec3 normal = VertexIn.pass_normal;
 
-  VertexIn.pass_normal = (VertexIn.pass_normal + vec3(1.0, 1.0, 1.0)) / 2.0;
+  if( normal.z < 0 )
+    normal = normal * -1; 
+
+  normal = (normal + vec3(1.0, 1.0, 1.0)) / 2.0;
   float weight = gaussian[int(round(length(uv_coords) * 31.0 ))];
 
   accumulated_colors = vec4(VertexIn.pass_point_color * weight, weight);
-  accumulated_normals = vec3(VertexIn.pass_normal * weight);
+  accumulated_normals = vec3(normal * weight);
 }
 
 
