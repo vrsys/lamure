@@ -43,10 +43,12 @@ get_cell_at_index(const size_t& index)
 	return &cells_.at(index);
 }
 
-view_cell* grid_regular::
-get_cell_at_index(const size_t& index) const
+const view_cell* grid_regular::
+get_cell_at_index_const(const size_t& index) const
 {
-	return get_cell_at_index(index);
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	return  &cells_.at(index);
 }
 
 view_cell* grid_regular::
@@ -79,8 +81,8 @@ get_cell_at_position(const scm::math::vec3d& position)
 	return get_cell_at_index(general_index);
 }
 
-view_cell* grid_regular::
-get_cell_at_position(const scm::math::vec3d& position) const
+const view_cell* grid_regular::
+get_cell_at_position_const(const scm::math::vec3d& position)
 {
 	return get_cell_at_position(position);
 }
@@ -88,7 +90,7 @@ get_cell_at_position(const scm::math::vec3d& position) const
 void grid_regular::
 save_grid_to_file(const std::string& file_path) const
 {
-	//std::lock_guard<std::mutex> lock(mutex_);
+	std::lock_guard<std::mutex> lock(mutex_);
 
 	std::fstream file_out;
 	file_out.open(file_path, std::ios::out);
@@ -114,7 +116,7 @@ save_grid_to_file(const std::string& file_path) const
 void grid_regular::
 save_visibility_to_file(const std::string& file_path, const std::vector<node_t>& ids) const
 {
-	//std::lock_guard<std::mutex> lock(mutex_);
+	std::lock_guard<std::mutex> lock(mutex_);
 
 	std::fstream file_out;
 	file_out.open(file_path, std::ios::out | std::ios::binary);

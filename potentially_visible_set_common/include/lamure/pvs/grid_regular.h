@@ -26,10 +26,10 @@ public:
 	virtual size_t get_cell_count() const;
 
 	virtual view_cell* get_cell_at_index(const size_t& index);
-	virtual view_cell* get_cell_at_index(const size_t& index) const;
+	virtual const view_cell* get_cell_at_index_const(const size_t& index) const;
 
 	virtual view_cell* get_cell_at_position(const scm::math::vec3d& position);
-	virtual view_cell* get_cell_at_position(const scm::math::vec3d& position) const;
+	virtual const view_cell* get_cell_at_position_const(const scm::math::vec3d& position);
 
 	virtual void save_grid_to_file(const std::string& file_path) const;
 	virtual void save_visibility_to_file(const std::string& file_path, const std::vector<node_t>& ids) const;
@@ -46,7 +46,7 @@ private:
 
 	std::vector<view_cell_regular> cells_;
 
-	std::mutex mutex_;
+	mutable std::mutex mutex_;
 };
 
 }
