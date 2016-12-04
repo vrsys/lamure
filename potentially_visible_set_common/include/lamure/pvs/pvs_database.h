@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "lamure/pvs/grid.h"
 
@@ -39,6 +40,8 @@ private:
 	view_cell* viewer_cell_;
 
 	bool activated_;
+
+	mutable std::mutex mutex_;
 };
 
 }

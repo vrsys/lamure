@@ -87,6 +87,8 @@ public:
     void                IncreaseErrorThreshold();
     void                DecreaseErrorThreshold();
 
+    void                start_update_viewer_position_thread();
+
 protected:
 
     void                Toggledispatching();

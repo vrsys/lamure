@@ -112,10 +112,8 @@ management(std::vector<std::string> const& model_filenames,
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
 #endif
-
-    // Start thread to feed the PVS system with the current camera position.
-    run_update_thread_ = true;
-    pvs_viewer_position_update_thread_ = std::thread(&management::update_viewer_position_thread_call, this);
+    
+    run_update_thread_ = false;
 
     PrintInfo();
 }
@@ -411,14 +409,21 @@ dispatchKeyboardInput(unsigned char key)
         break;
     case 'p':
     {
-        // Toggle PVS usage.
+        // Toggle PVS activation.
         lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
         pvs->activate(!pvs->is_activated());
         break;
     }
     case 'o':
     {
+        // Toggle the position update to the pvs.
         is_updating_pvs_position_ = !is_updating_pvs_position_;
+        break;
+    }
+    case 'l':
+    {
+        // Toggle the rendering of the view cells of the loaded pvs.
+        renderer_->toggle_pvs_grid_cell_rendering();
         break;
     }
     case 't':
@@ -859,6 +864,14 @@ create_quality_measurement_resources() {
     std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);
     active_camera_->write_view_matrix(camera_session_file);
     camera_session_file.close();
+}
+
+void management::
+start_update_viewer_position_thread()
+{
+    // Start thread to feed the PVS system with the current camera position.
+    run_update_thread_ = true;
+    pvs_viewer_position_update_thread_ = std::thread(&management::update_viewer_position_thread_call, this);
 }
 
 void management::
