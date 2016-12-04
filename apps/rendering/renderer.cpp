@@ -19,6 +19,9 @@
 
 #include <scm/gl_core/render_device/opengl/gl_core.h>
 
+#include <lamure/pvs/pvs_database.h>
+#include <lamure/pvs/view_cell.h>
+
 #define NUM_BLENDED_FRAGS 18
 
 Renderer::
@@ -46,6 +49,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       model_transformations_(model_transformations),
       radius_scale_(1.f)
 {
+    render_pvs_grid_cells_ = false;
 
     lamure::ren::policy* policy = lamure::ren::policy::get_instance();
     win_x_ = policy->window_width();
@@ -75,6 +79,7 @@ Renderer::
     trimesh_shader_program_.reset();
 
     bounding_box_vis_shader_program_.reset();
+    pvs_grid_cell_vis_shader_program_.reset();
 
     pass1_depth_buffer_.reset();
     pass1_visibility_fbo_.reset();
@@ -921,11 +926,8 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
         if(render_bounding_boxes_)
         {
-
             context_->set_default_frame_buffer();
-
             context_->bind_program(bounding_box_vis_shader_program_);
-
             context_->apply();
 
             node_t node_counter = 0;
@@ -933,9 +935,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
             for (auto& model_id : current_set)
             {
                 cut& c = cuts->get_cut(context_id, view_id, model_id);
-
                 std::vector<cut::node_slot_aggregate> renderable = c.complete_set();
-
 
                 upload_transformation_matrices(camera, model_id, RenderPass::BOUNDING_BOX);
 
@@ -949,11 +949,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
                         scm::gl::boxf temp_box = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[node_slot_aggregate.node_id_ ];
                         scm::gl::box_geometry box_to_render(device_,temp_box.min_vertex(), temp_box.max_vertex());
 
-
-
-
                         bounding_box_vis_shader_program_->uniform("culling_status", culling_result);
-
 
                         device_->opengl_api().glDisable(GL_DEPTH_TEST);
                         box_to_render.draw(context_, scm::gl::geometry::MODE_WIRE_FRAME);
@@ -963,11 +959,50 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
                     ++node_counter;
                 }
-
-
             }
+        }
 
+        // Render PVS grid cell outlines to visualize grid cell size and position.
+        if(render_pvs_grid_cells_)
+        {
+            lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
+            if(pvs->get_visibility_grid() != nullptr)
+            {
+                context_->set_default_frame_buffer();
+                context_->bind_program(pvs_grid_cell_vis_shader_program_);
+                context_->apply();
+
+                // Code copied from upload_transformation_matrices() because we need to manually set the model matrix.
+                scm::math::mat4f model_matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+                scm::math::mat4f projection_matrix = camera.get_projection_matrix();
+
+                scm::math::mat4d    vm = camera.get_high_precision_view_matrix();
+                scm::math::mat4d    mm = scm::math::mat4d(model_matrix);
+                scm::math::mat4d    vmd = vm * mm;
+    
+                scm::math::mat4f model_view_matrix = scm::math::mat4f(vmd);
+
+                pvs_grid_cell_vis_shader_program_->uniform("projection_matrix", projection_matrix);
+                pvs_grid_cell_vis_shader_program_->uniform("model_view_matrix", model_view_matrix );
+
+                for(size_t cell_index = 0; cell_index < pvs->get_visibility_grid()->get_cell_count(); ++cell_index)
+                {
+                    const lamure::pvs::view_cell* current_cell = pvs->get_visibility_grid()->get_cell_at_index_const(cell_index);
+
+                    scm::math::vec3f min_corner(current_cell->get_position_center() - (current_cell->get_size() * 0.5f));
+                    scm::math::vec3f max_corner(current_cell->get_position_center() + (current_cell->get_size() * 0.5f));
+                    scm::gl::box_geometry box_to_render(device_, min_corner, max_corner);
+
+                    //device_->opengl_api().glDisable(GL_DEPTH_TEST);
+                    box_to_render.draw(context_, scm::gl::geometry::MODE_WIRE_FRAME);
+                    //device_->opengl_api().glEnable(GL_DEPTH_TEST);
+                }
+            }
+            else
+            {
+                std::cout << "no grid" << std::endl;
+            }
         }
 
 
@@ -1169,6 +1204,9 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string bounding_box_vs_source;
     std::string bounding_box_fs_source;
 
+    std::string pvs_grid_cell_vs_source;
+    std::string pvs_grid_cell_fs_source;
+
     std::string linked_list_accum_vs_source;
     std::string linked_list_accum_gs_source;
     std::string linked_list_accum_fs_source;
@@ -1206,6 +1244,8 @@ initialize_schism_device_and_shaders(int resX, int resY)
             || !read_text_file(root_path + "/pass_reconstruction.glslf", filling_fs_source)
             || !read_text_file(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
             || !read_text_file(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
+            || !read_text_file(root_path + "/pvs_grid_cell_vis.glslv", pvs_grid_cell_vs_source)
+            || !read_text_file(root_path + "/pvs_grid_cell_vis.glslf", pvs_grid_cell_fs_source)
     	    || !read_text_file(root_path + "/pass1_linked_list_accumulation.glslv", linked_list_accum_vs_source)
     	    || !read_text_file(root_path + "/pass1_linked_list_accumulation.glslg", linked_list_accum_gs_source)
     	    || !read_text_file(root_path + "/pass1_linked_list_accumulation.glslf", linked_list_accum_fs_source)
@@ -1230,7 +1270,6 @@ initialize_schism_device_and_shaders(int resX, int resY)
     }
     catch (std::exception& e)
     {
-
         std::cout << e.what() << std::endl;
     }
 
@@ -1253,7 +1292,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
                                                                           (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
                                                                 );
-
+    
     pass3_pass_through_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pass_trough_vs_source))
                                                                 (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pass_trough_fs_source)));
 
@@ -1262,6 +1301,9 @@ initialize_schism_device_and_shaders(int resX, int resY)
 
     bounding_box_vis_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, bounding_box_vs_source))
                                                                (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, bounding_box_fs_source)));
+
+    pvs_grid_cell_vis_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pvs_grid_cell_vs_source))
+                                                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pvs_grid_cell_fs_source)));
 
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
     line_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, line_vs_source))
@@ -1299,6 +1341,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
          || !pass1_linked_list_accumulate_program_ || !pass2_linked_list_resolve_program_ || !pass3_repair_program_ || !trimesh_shader_program_
          || !LQ_one_pass_program_
          || !bounding_box_vis_shader_program_
+         || !pvs_grid_cell_vis_shader_program_
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
         || !line_shader_program_
 #endif
@@ -1425,6 +1468,18 @@ toggle_bounding_box_rendering()
     else
         std::cout<<"OFF\n\n";
 };
+
+void Renderer::
+toggle_pvs_grid_cell_rendering()
+{
+    render_pvs_grid_cells_ = ! render_pvs_grid_cells_;
+
+    std::cout<<"pvs grid cell visualisation: ";
+    if(render_pvs_grid_cells_)
+        std::cout<<"ON\n\n";
+    else
+        std::cout<<"OFF\n\n";  
+}
 
 
 

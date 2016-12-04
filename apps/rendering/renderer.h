@@ -159,7 +159,9 @@ private:
         scm::gl::program_ptr                        pass2_accumulation_shader_program_;
         scm::gl::program_ptr                        pass3_pass_through_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
+
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
+        scm::gl::program_ptr                        pvs_grid_cell_vis_shader_program_;
 
 	    scm::gl::program_ptr                        pass1_linked_list_accumulate_program_;
 	    scm::gl::program_ptr                        pass2_linked_list_resolve_program_;
@@ -194,6 +196,7 @@ private:
 	    float                                       blending_threshold_;
 
         bool                                        render_bounding_boxes_;
+        bool                                        render_pvs_grid_cells_;
 
         //variables related to text rendering
         scm::gl::text_renderer_ptr                              text_renderer_;
@@ -235,6 +238,7 @@ public:
     void clear_line_end() { line_end_.clear(); };
 
     void toggle_bounding_box_rendering();
+    void toggle_pvs_grid_cell_rendering();
     void change_point_size(float amount);
     void toggle_cut_update_info();
     void toggle_camera_info(const lamure::view_t current_cam_id);
