@@ -54,8 +54,8 @@ management(std::vector<std::string> const& model_filenames,
     update_position_for_pvs_ = true;
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
-    average_cut_update_time_ = 0.0;
-    average_render_time_ = 0.0;
+    total_cut_update_time_ = 0.0;
+    total_render_time_ = 0.0;
 #endif
 
 #ifndef LAMURE_PVS_USE_AS_RENDERER
@@ -69,6 +69,9 @@ management(std::vector<std::string> const& model_filenames,
         database->add_model(filename, std::to_string(num_models_));
         ++num_models_;
     }
+
+    total_depth_rendered_nodes_.resize(num_models_);
+    total_num_rendered_nodes_.resize(num_models_);
 
     float scene_diameter = far_plane_;
     for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
@@ -140,39 +143,39 @@ MainLoop()
         case 0:
             look_dir = scm::math::vec3d(1.0, 0.0, 0.0);
 
-            //near_plane = current_cell->get_size().x * 0.5f;
+            near_plane = current_cell->get_size().x * 0.5f;
             break;
 
         case 1:
             look_dir = scm::math::vec3d(-1.0, 0.0, 0.0);
 
-            //near_plane = current_cell->get_size().x * 0.5f;
+            near_plane = current_cell->get_size().x * 0.5f;
             break;
 
         case 2:
             look_dir = scm::math::vec3d(0.0, 1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
-            //near_plane = current_cell->get_size().y * 0.5f;
+            near_plane = current_cell->get_size().y * 0.5f;
             break;
 
         case 3:
             look_dir = scm::math::vec3d(0.0, -1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
-            //near_plane = current_cell->get_size().y * 0.5f;
+            near_plane = current_cell->get_size().y * 0.5f;
             break;
 
         case 4:
             look_dir = scm::math::vec3d(0.0, 0.0, 1.0);
             
-            //near_plane = current_cell->get_size().z * 0.5f;
+            near_plane = current_cell->get_size().z * 0.5f;
             break;
 
         case 5:
             look_dir = scm::math::vec3d(0.0, 0.0, -1.0);
 
-            //near_plane = current_cell->get_size().z * 0.5f;
+            near_plane = current_cell->get_size().z * 0.5f;
             break;
             
         default:
@@ -264,7 +267,7 @@ MainLoop()
     end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end_time - start_time;
     std::cout << "cut update time: " << elapsed_seconds.count() << std::endl;
-    average_cut_update_time_ += elapsed_seconds.count();
+    total_cut_update_time_ += elapsed_seconds.count();
 #endif
 #endif
 
@@ -291,7 +294,7 @@ MainLoop()
     end_time = std::chrono::system_clock::now();
     elapsed_seconds = end_time - start_time;
     std::cout << "render time: " << elapsed_seconds.count() << std::endl;
-    average_render_time_ += elapsed_seconds.count();
+    total_render_time_ += elapsed_seconds.count();
 #endif
 
 #ifdef LAMURE_PVS_USE_AS_RENDERER
@@ -317,6 +320,7 @@ MainLoop()
 #ifndef LAMURE_PVS_USE_AS_RENDERER
     if(!first_frame_)
     {
+        // Analyze histogram data of current rendered image.
         if(renderer_->get_rendered_node_count() > 0)
         {
         #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
@@ -343,6 +347,21 @@ MainLoop()
         #endif 
         }
 
+        // Collect data to calculate average depth of nodes per model.
+        for (lamure::model_t model_index = 0; model_index < num_models_; ++model_index)
+        {
+            lamure::model_t model_id = controller->deduce_model_id(std::to_string(model_index));
+            lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+            std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
+
+            // Count nodes in the current cut.
+            for(auto const& node_slot_aggregate : renderable)
+            {
+                total_depth_rendered_nodes_[model_index][current_grid_index_] = total_depth_rendered_nodes_[model_index][current_grid_index_] + database->get_model(model_id)->get_bvh()->get_depth_of_node(node_slot_aggregate.node_id_);
+                total_num_rendered_nodes_[model_index][current_grid_index_] = total_num_rendered_nodes_[model_index][current_grid_index_] + 1;
+            }
+        }
+
         current_grid_index_++;
         if(current_grid_index_ == visibility_grid_->get_cell_count())
         {
@@ -355,23 +374,67 @@ MainLoop()
 
             #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
                 std::cout << "---------- average performance in seconds ----------" << std::endl;
-                std::cout << "cut update: " << average_cut_update_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
-                std::cout << "rendering: " << average_render_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+                std::cout << "cut update: " << total_cut_update_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+                std::cout << "rendering: " << total_render_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
             #endif
             }
         }
     }
 #endif
 
-    // Once the visibility test is complete, set visibility of LOD-trees based on rendered nodes. 
+    // Once the visibility test is complete ...
     if(signal_shutdown)
     {
+        // ... calculate which nodes are inside the view cells based on the average depth of the nodes inside the cuts during rendering.
+        std::cout << "start check for nodes inside grid cells..." << std::endl;
+        check_for_nodes_within_cells(total_depth_rendered_nodes_, total_num_rendered_nodes_);
+        std::cout << "node check finished" << std::endl;
+
+        // ... set visibility of LOD-trees based on rendered nodes.
         std::cout << "start visibility propagation..." << std::endl;
         emit_node_visibility(visibility_grid_);
         std::cout << "visibility propagation finished" << std::endl;
     }
 
     return signal_shutdown;
+}
+
+void management::
+check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depths, const std::vector<std::vector<size_t>>& total_nums)
+{
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+
+    for(model_t model_index = 0; model_index < total_depth_rendered_nodes_.size(); ++model_index)
+    {
+        for(size_t cell_index = 0; cell_index < visibility_grid_->get_cell_count(); ++cell_index)
+        {
+            // Create bounding box of view cell.
+            view_cell* current_cell = visibility_grid_->get_cell_at_index(cell_index);
+                
+            vec3r min_vertex(current_cell->get_position_center() - (current_cell->get_size() * 0.5f));
+            vec3r max_vertex(current_cell->get_position_center() + (current_cell->get_size() * 0.5f));
+            bounding_box cell_bounds(min_vertex, max_vertex);
+
+            // We can get the first and last index of the nodes on a certain depth inside the bvh.
+            unsigned int average_depth = total_depth_rendered_nodes_[model_index][cell_index] / total_num_rendered_nodes_[model_index][cell_index];
+
+            node_t start_index = database->get_model(model_index)->get_bvh()->get_first_node_id_of_depth(average_depth);
+            node_t end_index = start_index + database->get_model(model_index)->get_bvh()->get_length_of_depth(average_depth);
+
+            for(node_t node_index = start_index; node_index < end_index; ++node_index)
+            {
+                // Create bounding box of node.
+                scm::gl::boxf node_bounding_box = database->get_model(model_index)->get_bvh()->get_bounding_boxes()[node_index];
+                bounding_box node_bounds(vec3r(node_bounding_box.min_vertex()), vec3r(node_bounding_box.max_vertex()));
+
+                // check if the bounding boxes collide.
+                if(cell_bounds.intersects(node_bounds))
+                {
+                    current_cell->set_visibility(model_index, node_index, true);
+                }
+            }
+        }
+    }
 }
 
 void management::
@@ -450,19 +513,23 @@ void management::
 RegisterMousePresses(int button, int state, int x, int y)
 {
 #ifdef ALLOW_INPUT
-    switch (button) {
+    switch (button)
+    {
         case GLUT_LEFT_BUTTON:
             {
                 mouse_state_.lb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
         case GLUT_MIDDLE_BUTTON:
             {
                 mouse_state_.mb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
         case GLUT_RIGHT_BUTTON:
             {
                 mouse_state_.rb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
     }
 
     float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
@@ -561,6 +628,16 @@ void management::
 set_grid(grid* visibility_grid)
 {
     visibility_grid_ = visibility_grid;
+
+    // Set size of containers used to collect data on rendered node depth.
+    if(visibility_grid_ != nullptr)
+    {
+        for(model_t model_index = 0; model_index < num_models_; ++model_index)
+        {
+            total_depth_rendered_nodes_[model_index].resize(visibility_grid_->get_cell_count());
+            total_num_rendered_nodes_[model_index].resize(visibility_grid_->get_cell_count());
+        }
+    }
 }
 
 }

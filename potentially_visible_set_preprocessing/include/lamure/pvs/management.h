@@ -61,6 +61,8 @@ protected:
 
     void                Toggledispatching();
 
+    void                check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depths, const std::vector<std::vector<size_t>>& total_nums);
+
     void                emit_node_visibility(grid* visibility_grid);
     void                set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
     void                set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
@@ -98,8 +100,13 @@ private:
 
     bool                update_position_for_pvs_;
 
-    double              average_cut_update_time_;
-    double              average_render_time_;
+    // Used to measure performance of preprocessing substeps.
+    double              total_cut_update_time_;
+    double              total_render_time_;
+
+    // Used to identify the depth of nodes for the check which nodes are inside the grid cells. (model id<grid cell id<data>>)
+    std::vector<std::vector<size_t>> total_depth_rendered_nodes_;
+    std::vector<std::vector<size_t>> total_num_rendered_nodes_;
 };
 
 }
