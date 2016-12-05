@@ -25,6 +25,10 @@
 
 #include <lamure/ren/ray.h>
 
+//#define ALLOW_INPUT
+//#define LAMURE_PVS_USE_AS_RENDERER
+#define LAMURE_PVS_MEASURE_PERFORMANCE
+
 namespace lamure
 {
 namespace pvs
@@ -100,9 +104,12 @@ private:
 
     bool                update_position_for_pvs_;
 
+#ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     // Used to measure performance of preprocessing substeps.
     double              total_cut_update_time_;
     double              total_render_time_;
+    double              total_histogram_evaluation_time_;
+#endif
 
     // Used to identify the depth of nodes for the check which nodes are inside the grid cells. (model id<grid cell id<data>>)
     std::vector<std::vector<size_t>> total_depth_rendered_nodes_;

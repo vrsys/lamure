@@ -18,10 +18,6 @@
 
 #include "lamure/pvs/pvs_database.h"
 
-//#define ALLOW_INPUT
-//#define LAMURE_PVS_USE_AS_RENDERER
-//#define LAMURE_PVS_MEASURE_PERFORMANCE
-
 namespace lamure
 {
 namespace pvs
@@ -56,6 +52,7 @@ management(std::vector<std::string> const& model_filenames,
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     total_cut_update_time_ = 0.0;
     total_render_time_ = 0.0;
+    total_histogram_evaluation_time_ = 0.0;
 #endif
 
 #ifndef LAMURE_PVS_USE_AS_RENDERER
@@ -266,7 +263,6 @@ MainLoop()
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end_time - start_time;
-    std::cout << "cut update time: " << elapsed_seconds.count() << std::endl;
     total_cut_update_time_ += elapsed_seconds.count();
 #endif
 #endif
@@ -293,7 +289,6 @@ MainLoop()
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     end_time = std::chrono::system_clock::now();
     elapsed_seconds = end_time - start_time;
-    std::cout << "render time: " << elapsed_seconds.count() << std::endl;
     total_render_time_ += elapsed_seconds.count();
 #endif
 
@@ -343,7 +338,7 @@ MainLoop()
         #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
             end_time = std::chrono::system_clock::now();
             elapsed_seconds = end_time - start_time;
-            std::cout << "histogram creation time: " << elapsed_seconds.count() << std::endl;
+            total_histogram_evaluation_time_ += elapsed_seconds.count();
         #endif 
         }
 
@@ -371,12 +366,6 @@ MainLoop()
             if(direction_counter_ == 6)
             {
                 signal_shutdown = true;
-
-            #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
-                std::cout << "---------- average performance in seconds ----------" << std::endl;
-                std::cout << "cut update: " << total_cut_update_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
-                std::cout << "rendering: " << total_render_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
-            #endif
             }
         }
     }
@@ -385,15 +374,46 @@ MainLoop()
     // Once the visibility test is complete ...
     if(signal_shutdown)
     {
+    #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+        start_time = std::chrono::system_clock::now();
+    #endif
+
         // ... calculate which nodes are inside the view cells based on the average depth of the nodes inside the cuts during rendering.
         std::cout << "start check for nodes inside grid cells..." << std::endl;
         check_for_nodes_within_cells(total_depth_rendered_nodes_, total_num_rendered_nodes_);
         std::cout << "node check finished" << std::endl;
 
+    #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+        end_time = std::chrono::system_clock::now();
+        elapsed_seconds = end_time - start_time;
+        double node_within_cell_check_time = elapsed_seconds.count();
+
+        start_time = std::chrono::system_clock::now();
+    #endif
+
         // ... set visibility of LOD-trees based on rendered nodes.
         std::cout << "start visibility propagation..." << std::endl;
         emit_node_visibility(visibility_grid_);
         std::cout << "visibility propagation finished" << std::endl;
+
+    #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
+        end_time = std::chrono::system_clock::now();
+        elapsed_seconds = end_time - start_time;
+        double visibility_propagation_time = elapsed_seconds.count();
+
+        std::cout << "\n---------- average performance in seconds ----------" << std::endl;
+        std::cout << "cut update: " << total_cut_update_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+        std::cout << "rendering: " << total_render_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+        std::cout << "histogram evaluation: " << total_histogram_evaluation_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+
+        std::cout << "\n---------- total performance in seconds ----------" << std::endl;
+        std::cout << "cut update: " << total_cut_update_time_ << std::endl;
+        std::cout << "rendering: " << total_render_time_ << std::endl;
+        std::cout << "histogram evaluation: " << total_histogram_evaluation_time_ << std::endl;
+        std::cout << "node in cell check: " << node_within_cell_check_time << std::endl;
+        std::cout << "visibility propagation: " << visibility_propagation_time << std::endl;
+        std::cout << std::endl;
+    #endif
     }
 
     return signal_shutdown;

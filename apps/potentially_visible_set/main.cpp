@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <chrono>
 
 #include <lamure/pvs/visibility_test.h>
 #include <lamure/pvs/visibility_test_id_histogram_renderer.h>
@@ -19,8 +20,15 @@
 
 #include <boost/program_options.hpp>
 
+#define PVS_MAIN_MEASURE_PERFORMANCE
+
 int main(int argc, char** argv)
 {
+#ifdef PVS_MAIN_MEASURE_PERFORMANCE
+    std::chrono::time_point<std::chrono::system_clock> start_time_complete, end_time_complete;
+    start_time_complete = std::chrono::system_clock::now();
+#endif
+
     // Load scene and analyze scene size.
     lamure::pvs::visibility_test* vt = new lamure::pvs::visibility_test_id_histogram_renderer();
     vt->initialize(argc, argv);
@@ -67,7 +75,7 @@ int main(int argc, char** argv)
     
     lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center);
 
-    // Debug: allows to test pvs result within pvs view.
+    // Knowledge about how many models containing how many nodes is required to load and save pvs data.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     std::vector<lamure::node_t> ids;
     ids.resize(database->num_models());
@@ -79,8 +87,19 @@ int main(int argc, char** argv)
     //lamure::pvs::pvs_database* pvs_db = lamure::pvs::pvs_database::get_instance();
     //pvs_db->load_pvs_from_file("/home/tiwo9285/test_bridge.grid", "/home/tiwo9285/test_bridge.pvs", ids);
 
+#ifdef PVS_MAIN_MEASURE_PERFORMANCE
+    std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
+    start_time = std::chrono::system_clock::now();
+#endif
+
     // Run visibility test on given scene and grid.
     vt->test_visibility(test_grid);
+
+#ifdef PVS_MAIN_MEASURE_PERFORMANCE
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+    double visibility_test_time = elapsed_seconds.count();
+#endif
 
     // Save grid containing visibility information to file.
     std::string pvs_grid_output_file_path = pvs_output_file_path;
@@ -90,11 +109,31 @@ int main(int argc, char** argv)
         pvs_grid_output_file_path = pvs_grid_output_file_path + "grid";
     }
 
+#ifdef PVS_MAIN_MEASURE_PERFORMANCE
+    start_time = std::chrono::system_clock::now();
+#endif
+
     std::cout << "Start writing grid file..." << std::endl;
     test_grid->save_grid_to_file(pvs_grid_output_file_path);
     std::cout << "Finished writing grid file.\nStart writing pvs file..." << std::endl;
     test_grid->save_visibility_to_file(pvs_output_file_path, ids);
     std::cout << "Finished writing pvs file." << std::endl;
+
+#ifdef PVS_MAIN_MEASURE_PERFORMANCE
+    end_time = std::chrono::system_clock::now();
+    elapsed_seconds = end_time - start_time;
+    double save_file_time = elapsed_seconds.count();
+
+    end_time_complete = std::chrono::system_clock::now();
+    elapsed_seconds = end_time_complete - start_time_complete;
+    double complete_time = elapsed_seconds.count();
+
+    std::cout << "\n---------- main performance in seconds ----------" << std::endl;
+    std::cout << "initialization: " << complete_time - (visibility_test_time + save_file_time) << std::endl;
+    std::cout << "visibility test: " << visibility_test_time << std::endl;
+    std::cout << "save file: " << save_file_time << std::endl;
+    std::cout << "complete execution: " << complete_time << std::endl;
+#endif
 
     vt->shutdown();
 
