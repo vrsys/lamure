@@ -27,7 +27,8 @@
 
 //#define ALLOW_INPUT
 //#define LAMURE_PVS_USE_AS_RENDERER
-#define LAMURE_PVS_MEASURE_PERFORMANCE
+#define LAMURE_PVS_MEASURE_PERFORMANCE          // Will output some info on runtime in the terminal.
+#define LAMURE_PVS_MEASURE_VISIBILITY           // Will output some info on the calculated visibility into a special file.
 
 namespace lamure
 {
@@ -71,6 +72,10 @@ protected:
     void                set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
     void                set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
 
+#ifdef LAMURE_PVS_MEASURE_VISIBILITY
+    void                save_visibility_data();
+#endif
+
 private:
     lamure::ren::camera::mouse_state mouse_state_;
 
@@ -109,6 +114,10 @@ private:
     double              total_cut_update_time_;
     double              total_render_time_;
     double              total_histogram_evaluation_time_;
+#endif
+
+#ifdef LAMURE_PVS_MEASURE_VISIBILITY
+    std::vector<std::vector<std::pair<size_t, size_t>>> visibility_data_;   // <cell ID <model ID <#nodes in cut, #nodes rendered>>>
 #endif
 
     // Used to identify the depth of nodes for the check which nodes are inside the grid cells. (model id<grid cell id<data>>)
