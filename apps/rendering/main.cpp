@@ -250,18 +250,18 @@ int main(int argc, char** argv)
         ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
     }
 
-    std::string pvs_grid_file_path = pvs_file_path;
-    if(pvs_grid_file_path != "")
+    if(pvs_file_path != "")
     {
+        std::string pvs_grid_file_path = pvs_file_path;
         pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
         pvs_grid_file_path = pvs_grid_file_path + "grid";
+
+        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+        pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path, ids);
+
+        // Thread to update viewer position to pvs must be started after the pvs has loaded.
+        management_->start_update_viewer_position_thread();
     }
-
-    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-    pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path, ids);
-
-    // Thread to update viewer position to pvs must be started after the pvs has loaded.
-    management_->start_update_viewer_position_thread();
 
     // Start rendering main loop.
     glutMainLoop();
