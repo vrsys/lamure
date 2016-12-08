@@ -5,8 +5,6 @@
 #include <string>
 #include <climits>
 
-#include <iostream>
-
 namespace lamure
 {
 namespace pvs
@@ -88,7 +86,7 @@ get_cell_at_position_const(const scm::math::vec3d& position)
 }
 
 void grid_regular::
-save_grid_to_file(const std::string& file_path) const
+save_grid_to_file(const std::string& file_path, const std::vector<node_t>& ids) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -109,6 +107,15 @@ save_grid_to_file(const std::string& file_path) const
 	// Grid size and position
 	file_out << cell_size_ << std::endl;
 	file_out << position_center_.x << " " << position_center_.y << " " << position_center_.z << std::endl;
+
+	// Save number of models, so we can later simply read the node numbers.
+	file_out << ids.size() << std::endl;
+
+	// Save the number of node ids of each model.
+	for(size_t model_index = 0; model_index < ids.size(); ++model_index)
+	{
+		file_out << ids[model_index] << " ";
+	}
 
 	file_out.close();
 }
@@ -141,6 +148,9 @@ save_visibility_to_file(const std::string& file_path, const std::vector<node_t>&
 			size_t character_counter = 0;
 			std::string current_line_data(line_length, 0x00);
 
+			node_t invisible_counter = 0;
+			node_t node_counter = 0;
+
 			// Iterate over nodes in the model.
 			for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
 			{
@@ -148,11 +158,14 @@ save_visibility_to_file(const std::string& file_path, const std::vector<node_t>&
 				{
 					current_byte |= 1 << (node_id % CHAR_BIT);
 				}
+				else
+					invisible_counter++;
+
+				node_counter++;
 
 				// Flush character if either 8 bits are written or if the node id is the last one.
 				if((node_id + 1) % CHAR_BIT == 0 || node_id == (num_nodes - 1))
 				{
-					//file_out.write(&current_byte, 1);
 					current_line_data[character_counter] = current_byte;
 					character_counter++;
 
@@ -201,13 +214,26 @@ load_grid_from_file(const std::string& file_path)
 
 	create_grid(num_cells, cell_size, scm::math::vec3d(pos_x, pos_y, pos_z));
 
+	// Read the number of models.
+	size_t num_models = 0;
+	file_in >> num_models;
+	ids_.resize(num_models);
+
+	// Read the number of nodes per model.
+	for(size_t model_index = 0; model_index < ids_.size(); ++model_index)
+	{
+		node_t num_nodes = 0;
+		file_in >> num_nodes;
+		ids_[model_index] = num_nodes;
+	}
+
 	file_in.close();
 	return true;
 }
 
 
 bool grid_regular::
-load_visibility_from_file(const std::string& file_path, const std::vector<node_t>& ids)
+load_visibility_from_file(const std::string& file_path)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -221,14 +247,12 @@ load_visibility_from_file(const std::string& file_path, const std::vector<node_t
 
 	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
 	{
-		std::cout << "cell: " << cell_index << std::endl;
-
 		view_cell* current_cell = &cells_.at(cell_index);
 		
 		// One line per model.
-		for(model_t model_index = 0; model_index < ids.size(); ++model_index)
+		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 		{
-			node_t num_nodes = ids.at(model_index);
+			node_t num_nodes = ids_.at(model_index);
 			size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
 			char current_line_data[line_length];
 

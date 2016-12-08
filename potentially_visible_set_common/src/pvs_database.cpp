@@ -38,7 +38,7 @@ get_instance()
 }
 
 bool pvs_database::
-load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const std::vector<node_t>& ids)
+load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -55,7 +55,7 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 		return false;
 	}
 	
-	result = visibility_grid_->load_visibility_from_file(pvs_file_path, ids);
+	result = visibility_grid_->load_visibility_from_file(pvs_file_path);
 
 	if(!result)
 	{
