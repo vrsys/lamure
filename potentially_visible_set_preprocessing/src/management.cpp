@@ -456,7 +456,7 @@ check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depth
 {
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
 
-    for(model_t model_index = 0; model_index < total_depth_rendered_nodes_.size(); ++model_index)
+    for(model_t model_index = 0; model_index < database->num_models(); ++model_index)
     {
         for(size_t cell_index = 0; cell_index < visibility_grid_->get_cell_count(); ++cell_index)
         {
