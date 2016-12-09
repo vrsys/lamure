@@ -1086,11 +1086,14 @@ void Renderer::send_model_transform(const lamure::model_t model_id, const scm::m
 
 void Renderer::display_status(std::string const& information_to_display)
 {
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+
     std::stringstream os;
    // os.setprecision(5);
     os
       <<"FPS:   "<<std::setprecision(4)<<fps_<<"\n"
       <<"# Points:   "<< (rendered_splats_ / 100000) / 10.0f<< " Mio. \n"
+      <<"# Nodes:   "<< (rendered_splats_ / database->get_primitives_per_node()) << "\n"
       <<"Render Mode: " ;
       switch(render_mode_) {
         case(RenderMode::HQ_ONE_PASS):
