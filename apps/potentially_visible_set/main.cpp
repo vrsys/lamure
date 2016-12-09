@@ -70,13 +70,22 @@ int main(int argc, char** argv)
     size_t num_cells = grid_size;
     double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
     
-    lamure::vec3r center_bounds = vt->get_scene_bounds().get_center();
-    scm::math::vec3d center(center_bounds.x, center_bounds.y, center_bounds.z);
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    
+    // Models may have their own translation, so calculate their center and add it to the scene bounds calculated from the bounding boxes.
+    lamure::vec3r translation_center(0.0, 0.0, 0.0);
+    for(lamure::model_t model_index = 0; model_index < database->num_models(); ++model_index)
+    {
+        translation_center += database->get_model(model_index)->get_bvh()->get_translation();
+    }
+    translation_center /= database->num_models();
+
+    lamure::vec3r center_bounds = vt->get_scene_bounds().get_center() + translation_center;
+    scm::math::vec3d center(center_bounds);
     
     lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center);
 
-    // Knowledge about how many models containing how many nodes is required to load and save pvs data.
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    // Knowledge about how many models containing how many nodes is required to save pvs data.
     std::vector<lamure::node_t> ids;
     ids.resize(database->num_models());
     for(lamure::model_t model_index = 0; model_index < ids.size(); ++model_index)
@@ -114,7 +123,7 @@ int main(int argc, char** argv)
 #endif
 
     std::cout << "Start writing grid file..." << std::endl;
-    test_grid->save_grid_to_file(pvs_grid_output_file_path);
+    test_grid->save_grid_to_file(pvs_grid_output_file_path, ids);
     std::cout << "Finished writing grid file.\nStart writing pvs file..." << std::endl;
     test_grid->save_visibility_to_file(pvs_output_file_path, ids);
     std::cout << "Finished writing pvs file." << std::endl;

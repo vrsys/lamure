@@ -116,10 +116,6 @@ private:
     double              total_histogram_evaluation_time_;
 #endif
 
-#ifdef LAMURE_PVS_MEASURE_VISIBILITY
-    std::vector<std::vector<std::pair<size_t, size_t>>> visibility_data_;   // <cell ID <model ID <#nodes in cut, #nodes rendered>>>
-#endif
-
     // Used to identify the depth of nodes for the check which nodes are inside the grid cells. (model id<grid cell id<data>>)
     std::vector<std::vector<size_t>> total_depth_rendered_nodes_;
     std::vector<std::vector<size_t>> total_num_rendered_nodes_;

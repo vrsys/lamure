@@ -334,11 +334,6 @@ MainLoop()
                 {
                     current_cell->set_visibility(model_id, node_id, true);
                 }
-
-            /*#ifdef LAMURE_PVS_MEASURE_VISIBILITY
-                // Collect number of rendered nodes per model.
-                visibility_data_[current_grid_index_][model_id].second += iter->second.size();
-            #endif*/
             }
 
         #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
@@ -361,11 +356,6 @@ MainLoop()
                 total_depth_rendered_nodes_[model_index][current_grid_index_] = total_depth_rendered_nodes_[model_index][current_grid_index_] + database->get_model(model_id)->get_bvh()->get_depth_of_node(node_slot_aggregate.node_id_);
                 total_num_rendered_nodes_[model_index][current_grid_index_] = total_num_rendered_nodes_[model_index][current_grid_index_] + 1;
             }
-
-        #ifdef LAMURE_PVS_MEASURE_VISIBILITY
-            // Collect number of nodes in cut per model.
-            visibility_data_[current_grid_index_][model_index].first += renderable.size();
-        #endif
         }
 
         current_grid_index_++;
@@ -398,23 +388,6 @@ MainLoop()
         end_time = std::chrono::system_clock::now();
         elapsed_seconds = end_time - start_time;
         double node_within_cell_check_time = elapsed_seconds.count();
-    #endif
-
-    #ifdef LAMURE_PVS_MEASURE_VISIBILITY
-        // Collect number of visible nodes per model.
-        for(size_t cell_index = 0; cell_index < visibility_grid_->get_cell_count(); ++cell_index)
-        {
-            const view_cell* cell = visibility_grid_->get_cell_at_index_const(cell_index);
-            std::map<model_t, std::vector<node_t>> visible_indices = cell->get_visible_indices();
-
-            for(model_t model_index = 0; model_index < num_models_; ++model_index)
-            {
-                visibility_data_[cell_index][model_index].second +=  visible_indices[model_index].size();
-            }
-        }
-    #endif
-
-    #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
         start_time = std::chrono::system_clock::now();
     #endif
 
@@ -557,38 +530,41 @@ set_node_children_visible(const model_t& model_id, const node_t& node_id, view_c
 void management::
 save_visibility_data()
 {
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+
     std::ofstream file_out;
     file_out.open("/home/tiwo9285/test_visibility.txt");
 
-    size_t absolute_nodes_in_cut = 0;
-    size_t absolute_nodes_rendered = 0;
+    node_t absolute_visible_nodes = 0;
+    node_t absolute_num_nodes = 0;
 
-    for(size_t cell_index = 0; cell_index < visibility_data_.size(); ++cell_index)
+    for(size_t cell_index = 0; cell_index < visibility_grid_->get_cell_count(); ++cell_index)
     {
-        size_t total_nodes_in_cut = 0;
-        size_t total_nodes_rendered = 0;
+        size_t total_visible_nodes = 0;
+        size_t total_num_nodes = 0;
+        std::map<model_t, std::vector<node_t>> visible_indices = visibility_grid_->get_cell_at_index_const(cell_index)->get_visible_indices();
 
         for(model_t model_index = 0; model_index < num_models_; ++model_index)
         {
-            size_t current_nodes_in_cut = visibility_data_[cell_index][model_index].first;
-            size_t current_nodes_rendered = visibility_data_[cell_index][model_index].second;
+            node_t visible_nodes = visible_indices[model_index].size();
+            node_t num_nodes = database->get_model(model_index)->get_bvh()->get_num_nodes();
 
-            total_nodes_in_cut += current_nodes_in_cut;
-            total_nodes_rendered += current_nodes_rendered;
+            total_visible_nodes += visible_nodes;
+            total_num_nodes += num_nodes;
 
-            float occlusion = 100.0f - ((float)current_nodes_rendered / (float)current_nodes_in_cut) * 100.0f;
-            file_out << "cell: " << cell_index << "   model: " << model_index << "   occlusion: " << occlusion << "   nodes: " << current_nodes_rendered << "/" << current_nodes_in_cut << std::endl;
+            float occlusion = 100.0f - ((float)visible_nodes / (float)num_nodes) * 100.0f;
+            file_out << "cell: " << cell_index << "   model: " << model_index << "   occlusion: " << occlusion << "   nodes: " << visible_nodes << "/" << num_nodes << std::endl;
         }
 
-        float occlusion = 100.0f - ((float)total_nodes_rendered / (float)total_nodes_in_cut) * 100.0f;
-        file_out << "cell: " << cell_index << "   total occlusion: " << occlusion << "   nodes: " << total_nodes_rendered << "/" << total_nodes_in_cut << std::endl << std::endl;
+        float occlusion = 100.0f - ((float)total_visible_nodes / (float)total_num_nodes) * 100.0f;
+        file_out << "cell: " << cell_index << "   total occlusion: " << occlusion << "   nodes: " << total_visible_nodes << "/" << total_num_nodes << std::endl << std::endl;
 
-        absolute_nodes_in_cut += total_nodes_in_cut;
-        absolute_nodes_rendered += total_nodes_rendered;
+        absolute_visible_nodes += total_visible_nodes;
+        absolute_num_nodes += total_num_nodes;
     }
 
-    float occlusion = 100.0f - ((float)absolute_nodes_rendered / (float)absolute_nodes_in_cut) * 100.0f;
-    file_out << "absolute occlusion: " << occlusion << "   nodes: " << absolute_nodes_rendered << "/" << absolute_nodes_in_cut << std::endl << std::endl;
+    float occlusion = (1.0f - (float)absolute_visible_nodes / (float)absolute_num_nodes) * 100.0f;
+    file_out << "absolute occlusion: " << occlusion << "   nodes: " << absolute_visible_nodes << "/" << absolute_num_nodes << std::endl << std::endl;
 
     file_out.close();
 }
@@ -733,22 +709,6 @@ set_grid(grid* visibility_grid)
             total_depth_rendered_nodes_[model_index].resize(visibility_grid_->get_cell_count());
             total_num_rendered_nodes_[model_index].resize(visibility_grid_->get_cell_count());
         }
-
-    #ifdef LAMURE_PVS_MEASURE_VISIBILITY
-        visibility_data_.clear();
-        visibility_data_.resize(visibility_grid_->get_cell_count());
-
-        // Allocate memory necessary to collect visibility data.
-        for(size_t cell_index = 0; cell_index < visibility_data_.size(); ++cell_index)
-        {
-            visibility_data_[cell_index].resize(num_models_);
-
-            for(model_t model_index = 0; model_index < num_models_; ++model_index)
-            {
-                visibility_data_[cell_index][model_index] = std::make_pair(0, 0);
-            }
-        }
-    #endif
     }
 }
 
