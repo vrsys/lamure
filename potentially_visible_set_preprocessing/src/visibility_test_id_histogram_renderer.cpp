@@ -123,20 +123,26 @@ initialize(int& argc, char** argv)
     policy->set_window_height(resolution_y_);
 
 	lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-    management_ = new lamure::pvs::management(model_filenames, model_transformations, visible_set, invisible_set);
-    lamure::pvs::glut_wrapper::set_management(management_);
+    management_ = new management(model_filenames, model_transformations, visible_set, invisible_set);
+    glut_wrapper::set_management(management_);
 
     // Calculate bounding box of whole scene.
-    scene_bounds_ = bounding_box();
     for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
     {
-    	// Cast required from boxf to bounding_box.
+        // Cast required from boxf to bounding_box.
         const scm::gl::boxf& box_model_root = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
-        vec3r min_vertex(box_model_root.min_vertex().x, box_model_root.min_vertex().y, box_model_root.min_vertex().z);
-        vec3r max_vertex(box_model_root.max_vertex().x, box_model_root.max_vertex().y, box_model_root.max_vertex().z);
-
+        vec3r min_vertex(box_model_root.min_vertex());
+        vec3r max_vertex(box_model_root.max_vertex());
         bounding_box model_root_box(min_vertex, max_vertex);
-        scene_bounds_.expand(model_root_box);
+
+        if(model_id == 0)
+        {
+            scene_bounds_ = bounding_box(model_root_box);
+        }
+        else
+        {
+            scene_bounds_.expand(model_root_box);
+        }  
     }
 
     return 0;
