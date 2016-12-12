@@ -392,23 +392,6 @@ MainLoop()
         start_time = std::chrono::system_clock::now();
     #endif
 
-        for (size_t cell_index = 0; cell_index < visibility_grid_->get_cell_count(); ++cell_index)
-        {
-            std::map<model_t, std::vector<node_t>> visible_nodes = visibility_grid_->get_cell_at_index(cell_index)->get_visible_indices();
-
-            for(model_t model_index = 0; model_index < num_models_; ++model_index)
-            {
-                std::cout << "cell: " << cell_index << " model: " << model_index << std::endl;
-
-                for(node_t node_index = 0; node_index < visible_nodes[model_index].size(); ++node_index)
-                {
-                    std::cout << visible_nodes[model_index][node_index] << " ";
-                }
-
-                std::cout << std::endl;
-            }
-        }
-
         // ... set visibility of LOD-trees based on rendered nodes.
         std::cout << "start visibility propagation..." << std::endl;
         emit_node_visibility(visibility_grid_);
@@ -769,6 +752,23 @@ apply_temporal_pvs(const id_histogram& hist)
 
     pvs_database* pvs = pvs_database::get_instance();
     pvs->load_pvs_from_file("/home/tiwo9285/tmp.grid", "/home/tiwo9285/tmp.pvs");
+
+    for (size_t cell_index = 0; cell_index < pvs->get_visibility_grid()->get_cell_count(); ++cell_index)
+    {
+        std::map<model_t, std::vector<node_t>> visible_nodes = pvs->get_visibility_grid()->get_cell_at_index_const(cell_index)->get_visible_indices();
+
+        for(model_t model_index = 0; model_index < num_models_; ++model_index)
+        {
+            std::cout << "cell: " << cell_index << " model: " << model_index << std::endl;
+
+            for(node_t node_index = 0; node_index < visible_nodes[model_index].size(); ++node_index)
+            {
+                std::cout << visible_nodes[model_index][node_index] << " ";
+            }
+
+            std::cout << std::endl;
+        }
+    }
 }
 
 }

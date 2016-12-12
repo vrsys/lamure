@@ -183,7 +183,7 @@ render_depth(lamure::context_t context_id,
 
     {
         context_->clear_depth_stencil_buffer(visible_node_id_fbo_);
-        context_->clear_color_buffer(visible_node_id_fbo_, 0, vec4f(0.0f, 0.0f, 0.0f, 1.0f));
+        context_->clear_color_buffer(visible_node_id_fbo_, 0, vec4f(0.0f, 0.0f, 0.0f, 0.0f));
         
         context_->set_frame_buffer(visible_node_id_fbo_);
 

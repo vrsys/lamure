@@ -25,10 +25,10 @@
 
 #include <lamure/ren/ray.h>
 
-#define ALLOW_INPUT
-#define LAMURE_PVS_USE_AS_RENDERER
-//#define LAMURE_PVS_MEASURE_PERFORMANCE          // Will output some info on runtime in the terminal.
-//#define LAMURE_PVS_MEASURE_VISIBILITY           // Will output some info on the calculated visibility into a special file.
+//#define ALLOW_INPUT
+//#define LAMURE_PVS_USE_AS_RENDERER
+#define LAMURE_PVS_MEASURE_PERFORMANCE          // Will output some info on runtime in the terminal.
+#define LAMURE_PVS_MEASURE_VISIBILITY           // Will output some info on the calculated visibility into a special file.
 
 namespace lamure
 {

@@ -93,8 +93,15 @@ int main(int argc, char** argv)
         ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
     }
 
-    //lamure::pvs::pvs_database* pvs_db = lamure::pvs::pvs_database::get_instance();
-    //pvs_db->load_pvs_from_file("/home/tiwo9285/test_bridge.grid", "/home/tiwo9285/test_bridge.pvs", ids);
+    /*std::string pvs_grid_output_file_path = pvs_output_file_path;
+    if(pvs_grid_output_file_path != "")
+    {
+        pvs_grid_output_file_path.resize(pvs_grid_output_file_path.length() - 3);
+        pvs_grid_output_file_path = pvs_grid_output_file_path + "grid";
+    }
+
+    lamure::pvs::pvs_database* pvs_db = lamure::pvs::pvs_database::get_instance();
+    pvs_db->load_pvs_from_file(pvs_output_file_path, pvs_grid_output_file_path);*/
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE
     std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
