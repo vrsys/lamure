@@ -27,6 +27,7 @@ public:
 	bool is_activated() const;
 
 	const grid* get_visibility_grid() const;
+	void clear_visibility_grid();
 
 protected:
 	pvs_database();

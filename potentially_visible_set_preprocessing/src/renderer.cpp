@@ -225,37 +225,33 @@ render_depth(lamure::context_t context_id,
 
             for(auto const& node_slot_aggregate : renderable)
             {
-                if(database->get_model(model_id)->get_bvh()->get_visibility(node_slot_aggregate.node_id_) == bvh::node_visibility::NODE_VISIBLE)
+                uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
+
+                // Set node ID so it may be rendered to the resulting image in the RGB-channel.
+                visible_node_shader_program_->uniform("node_id", (GLint)node_slot_aggregate.node_id_ );
+
+                if( (node_culling_result != 1) )
                 {
-                    uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
-
-                    // Set node ID so it may be rendered to the resulting image in the RGB-channel.
-                    visible_node_shader_program_->uniform("node_id", (GLint)node_slot_aggregate.node_id_ );
-
-
-                    if( (node_culling_result != 1) )
+                    // If the app is not used as preprocessor, but as renderer, the current visibility may already be applied.
+                    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+                    if(!pvs->get_viewer_visibility(model_id, node_slot_aggregate.node_id_))
                     {
-                        // If the app is not used as preprocessor, but as renderer, the current visibility may already be applied.
-                        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-                        if(!pvs->get_viewer_visibility(model_id, node_slot_aggregate.node_id_))
-                        {
-                            continue;
-                        }
-
-                        context_->apply();
-#ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-                        scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
-                        context_->begin_query(depth_pass_timer_query);
-#endif
-
-                        context_->draw_arrays(PRIMITIVE_POINT_LIST, (node_slot_aggregate.slot_id_) * number_of_surfels_per_node, surfels_per_node_of_model);
-
-#ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-                        context_->collect_query_results(depth_pass_timer_query);
-                        depth_pass_time += depth_pass_timer_query->result();
-#endif
-                        ++actually_rendered_nodes;
+                        continue;
                     }
+
+                    context_->apply();
+#ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
+                    scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
+                    context_->begin_query(depth_pass_timer_query);
+#endif
+
+                    context_->draw_arrays(PRIMITIVE_POINT_LIST, (node_slot_aggregate.slot_id_) * number_of_surfels_per_node, surfels_per_node_of_model);
+
+#ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
+                    context_->collect_query_results(depth_pass_timer_query);
+                    depth_pass_time += depth_pass_timer_query->result();
+#endif
+                    ++actually_rendered_nodes;
                 }
             }
        }

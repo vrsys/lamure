@@ -25,10 +25,10 @@
 
 #include <lamure/ren/ray.h>
 
-//#define ALLOW_INPUT
-//#define LAMURE_PVS_USE_AS_RENDERER
-#define LAMURE_PVS_MEASURE_PERFORMANCE          // Will output some info on runtime in the terminal.
-#define LAMURE_PVS_MEASURE_VISIBILITY           // Will output some info on the calculated visibility into a special file.
+#define ALLOW_INPUT
+#define LAMURE_PVS_USE_AS_RENDERER
+//#define LAMURE_PVS_MEASURE_PERFORMANCE          // Will output some info on runtime in the terminal.
+//#define LAMURE_PVS_MEASURE_VISIBILITY           // Will output some info on the calculated visibility into a special file.
 
 namespace lamure
 {
@@ -75,6 +75,8 @@ protected:
 #ifdef LAMURE_PVS_MEASURE_VISIBILITY
     void                save_visibility_data();
 #endif
+
+    void                apply_temporal_pvs(const id_histogram& hist);
 
 private:
     lamure::ren::camera::mouse_state mouse_state_;

@@ -123,5 +123,16 @@ get_visibility_grid() const
 	return visibility_grid_;
 }
 
+void pvs_database::
+clear_visibility_grid()
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	viewer_cell_ = nullptr;
+
+	delete visibility_grid_;
+	visibility_grid_ = nullptr;
+}
+
 }
 }
