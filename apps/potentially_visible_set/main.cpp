@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include <fstream>
 
 #include <lamure/pvs/visibility_test.h>
 #include <lamure/pvs/visibility_test_id_histogram_renderer.h>
@@ -144,11 +145,20 @@ int main(int argc, char** argv)
     elapsed_seconds = end_time_complete - start_time_complete;
     double complete_time = elapsed_seconds.count();
 
-    std::cout << "\n---------- main performance in seconds ----------" << std::endl;
-    std::cout << "initialization: " << complete_time - (visibility_test_time + save_file_time) << std::endl;
-    std::cout << "visibility test: " << visibility_test_time << std::endl;
-    std::cout << "save file: " << save_file_time << std::endl;
-    std::cout << "complete execution: " << complete_time << std::endl;
+    std::string performance_file_path = pvs_output_file_path;
+    performance_file_path.resize(performance_file_path.size() - 4);
+    performance_file_path += "_performance.txt";
+
+    std::ofstream file_out;
+    file_out.open(performance_file_path, std::ios::app);
+
+    file_out << "---------- main performance in seconds ----------" << std::endl;
+    file_out << "initialization: " << complete_time - (visibility_test_time + save_file_time) << std::endl;
+    file_out << "visibility test: " << visibility_test_time << std::endl;
+    file_out << "save file: " << save_file_time << std::endl;
+    file_out << "complete execution: " << complete_time << std::endl;
+
+    file_out.close();
 #endif
 
     vt->shutdown();

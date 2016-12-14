@@ -58,7 +58,7 @@ void analyze_grid_visibility(const grid* input_grid, const unsigned int& num_ste
     
     for(size_t occlusion_index = 0; occlusion_index < occlusion_percent_interval_counter.size(); ++occlusion_index)
     {
-        float occlusion_local = (float)occlusion_percent_interval_counter[occlusion_index] / (float)num_cells;
+        float occlusion_local = ((float)occlusion_percent_interval_counter[occlusion_index] / (float)num_cells) * 100.0f;
         file_out << "occlusion interval " << occlusion_index << ": " << occlusion_local << "   (" << occlusion_percent_interval_counter[occlusion_index] << "/" << num_cells << ")" << std::endl;
     }
 

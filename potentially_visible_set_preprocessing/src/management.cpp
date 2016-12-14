@@ -405,18 +405,27 @@ MainLoop()
         elapsed_seconds = end_time - start_time;
         double visibility_propagation_time = elapsed_seconds.count();
 
-        std::cout << "\n---------- average performance in seconds ----------" << std::endl;
-        std::cout << "cut update: " << total_cut_update_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
-        std::cout << "rendering: " << total_render_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
-        std::cout << "histogram evaluation: " << total_histogram_evaluation_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+        std::string performance_file_path = pvs_file_path_;
+        performance_file_path.resize(performance_file_path.size() - 4);
+        performance_file_path += "_performance.txt";
 
-        std::cout << "\n---------- total performance in seconds ----------" << std::endl;
-        std::cout << "cut update: " << total_cut_update_time_ << std::endl;
-        std::cout << "rendering: " << total_render_time_ << std::endl;
-        std::cout << "histogram evaluation: " << total_histogram_evaluation_time_ << std::endl;
-        std::cout << "node in cell check: " << node_within_cell_check_time << std::endl;
-        std::cout << "visibility propagation: " << visibility_propagation_time << std::endl;
-        std::cout << std::endl;
+        std::ofstream file_out;
+        file_out.open(performance_file_path);
+
+        file_out << "---------- average performance in seconds ----------" << std::endl;
+        file_out << "cut update: " << total_cut_update_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+        file_out << "rendering: " << total_render_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+        file_out << "histogram evaluation: " << total_histogram_evaluation_time_ / (6 * visibility_grid_->get_cell_count()) << std::endl;
+
+        file_out << "\n---------- total performance in seconds ----------" << std::endl;
+        file_out << "cut update: " << total_cut_update_time_ << std::endl;
+        file_out << "rendering: " << total_render_time_ << std::endl;
+        file_out << "histogram evaluation: " << total_histogram_evaluation_time_ << std::endl;
+        file_out << "node in cell check: " << node_within_cell_check_time << std::endl;
+        file_out << "visibility propagation: " << visibility_propagation_time << std::endl;
+        file_out << std::endl;
+
+        file_out.close();
     #endif
 
     #ifdef LAMURE_PVS_MEASURE_VISIBILITY
@@ -726,6 +735,7 @@ apply_temporal_pvs(const id_histogram& hist)
     tmp_grid.save_visibility_to_file("/home/tiwo9285/tmp.pvs", ids);
 
     pvs_database* pvs = pvs_database::get_instance();
+    pvs->runtime_mode(false);
     pvs->load_pvs_from_file("/home/tiwo9285/tmp.grid", "/home/tiwo9285/tmp.pvs");
 
     for (size_t cell_index = 0; cell_index < pvs->get_visibility_grid()->get_cell_count(); ++cell_index)
