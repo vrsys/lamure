@@ -45,6 +45,7 @@ initialize(int& argc, char** argv)
 
     std::string pvs_output_file_path = "";
     unsigned int grid_size = 1;
+    unsigned int num_steps = 11;
 
 	po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
@@ -57,7 +58,8 @@ initialize(int& argc, char** argv)
       ("mem,m", po::value<unsigned>(&main_memory_budget_)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget_)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
-      ("gridsize,g", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test");
+      ("gridsize,g", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test")
+      ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into");
       ;
 
     po::variables_map vm;
@@ -125,6 +127,8 @@ initialize(int& argc, char** argv)
 	lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     management_ = new management(model_filenames, model_transformations, visible_set, invisible_set);
     glut_wrapper::set_management(management_);
+    management_->set_pvs_file_path(pvs_output_file_path);
+    management_->set_num_occlusion_steps(num_steps);
 
     // Calculate bounding box of whole scene.
     for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)

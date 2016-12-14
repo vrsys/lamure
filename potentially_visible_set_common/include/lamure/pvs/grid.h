@@ -29,6 +29,9 @@ public:
 
 	virtual bool load_grid_from_file(const std::string& file_path) = 0;
 	virtual bool load_visibility_from_file(const std::string& file_path) = 0;
+
+	virtual model_t get_num_models() const = 0;
+	virtual node_t get_num_nodes(const model_t& model_id) const = 0;
 };
 
 }

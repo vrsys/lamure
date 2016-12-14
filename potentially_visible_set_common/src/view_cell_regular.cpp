@@ -83,7 +83,6 @@ get_visible_indices() const
 {
 	std::map<model_t, std::vector<node_t>> indices;
 
-	//for(std::vector<std::vector<bool>>::const_iterator iter = visibility_.begin(); iter != visibility_.end(); ++iter)
 	for(model_t model_index = 0; model_index < visibility_.size(); ++model_index)
 	{
 		const std::vector<bool>& node_visibility = visibility_.at(model_index);

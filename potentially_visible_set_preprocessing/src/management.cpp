@@ -18,6 +18,7 @@
 
 #include "lamure/pvs/pvs_database.h"
 #include "lamure/pvs/grid_regular.h"
+#include "lamure/pvs/pvs_utils.h"
 
 namespace lamure
 {
@@ -49,6 +50,8 @@ management(std::vector<std::string> const& model_filenames,
     current_grid_index_ = 0;
     direction_counter_ = 0;
     update_position_for_pvs_ = true;
+
+    num_occlusion_steps_ = 11;
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     total_cut_update_time_ = 0.0;
@@ -418,7 +421,11 @@ MainLoop()
 
     #ifdef LAMURE_PVS_MEASURE_VISIBILITY
         // Write collected visibility data to file.
-        save_visibility_data();
+        std::string visibility_file_path = pvs_file_path_;
+        visibility_file_path.resize(visibility_file_path.size() - 4);
+        visibility_file_path += "_visibility.txt";
+
+        analyze_grid_visibility(visibility_grid_, num_occlusion_steps_, visibility_file_path);
     #endif
     }
 
@@ -526,50 +533,6 @@ set_node_children_visible(const model_t& model_id, const node_t& node_id, view_c
         }
     } 
 }
-
-#ifdef LAMURE_PVS_MEASURE_VISIBILITY
-void management::
-save_visibility_data()
-{
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-
-    std::ofstream file_out;
-    file_out.open("/home/tiwo9285/test_visibility.txt");
-
-    node_t absolute_visible_nodes = 0;
-    node_t absolute_num_nodes = 0;
-
-    for(size_t cell_index = 0; cell_index < visibility_grid_->get_cell_count(); ++cell_index)
-    {
-        size_t total_visible_nodes = 0;
-        size_t total_num_nodes = 0;
-        std::map<model_t, std::vector<node_t>> visible_indices = visibility_grid_->get_cell_at_index_const(cell_index)->get_visible_indices();
-
-        for(model_t model_index = 0; model_index < num_models_; ++model_index)
-        {
-            node_t visible_nodes = visible_indices[model_index].size();
-            node_t num_nodes = database->get_model(model_index)->get_bvh()->get_num_nodes();
-
-            total_visible_nodes += visible_nodes;
-            total_num_nodes += num_nodes;
-
-            float occlusion = 100.0f - ((float)visible_nodes / (float)num_nodes) * 100.0f;
-            file_out << "cell: " << cell_index << "   model: " << model_index << "   occlusion: " << occlusion << "   nodes: " << visible_nodes << "/" << num_nodes << std::endl;
-        }
-
-        float occlusion = 100.0f - ((float)total_visible_nodes / (float)total_num_nodes) * 100.0f;
-        file_out << "cell: " << cell_index << "   total occlusion: " << occlusion << "   nodes: " << total_visible_nodes << "/" << total_num_nodes << std::endl << std::endl;
-
-        absolute_visible_nodes += total_visible_nodes;
-        absolute_num_nodes += total_num_nodes;
-    }
-
-    float occlusion = (1.0f - (float)absolute_visible_nodes / (float)absolute_num_nodes) * 100.0f;
-    file_out << "absolute occlusion: " << occlusion << "   nodes: " << absolute_visible_nodes << "/" << absolute_num_nodes << std::endl << std::endl;
-
-    file_out.close();
-}
-#endif
 
 void management::
 update_trackball(int x, int y)
@@ -721,20 +684,22 @@ set_grid(grid* visibility_grid)
 }
 
 void management::
+set_pvs_file_path(const std::string& file_path)
+{
+    pvs_file_path_ = file_path;
+}
+
+void management::
+set_num_occlusion_steps(const unsigned int& num_steps)
+{
+    num_occlusion_steps_ = num_steps;
+}
+
+void management::
 apply_temporal_pvs(const id_histogram& hist)
 {
     int numPixels = width_ * height_;
     std::map<model_t, std::vector<node_t>> visible_nodes = hist.get_visible_nodes(numPixels, visibility_threshold_);
-
-    grid_regular tmp_grid(1, 1000.0, scm::math::vec3d(0.0, 0.0, 0.0));
-
-    for(std::map<model_t, std::vector<node_t>>::iterator modelIter = visible_nodes.begin(); modelIter != visible_nodes.end(); ++modelIter)
-    {
-        for(lamure::node_t node_index = 0; node_index < modelIter->second.size(); ++node_index)
-        {
-            tmp_grid.get_cell_at_index(0)->set_visibility(modelIter->first, modelIter->second[node_index], true);
-        }
-    }
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     std::vector<lamure::node_t> ids;
@@ -743,6 +708,16 @@ apply_temporal_pvs(const id_histogram& hist)
     for(model_t model_index = 0; model_index < database->num_models(); ++model_index)
     {
         ids[model_index] = database->get_model(model_index)->get_bvh()->get_num_nodes();
+    }
+
+    grid_regular tmp_grid(1, 1000.0, scm::math::vec3d(0.0, 0.0, 0.0), ids);
+
+    for(std::map<model_t, std::vector<node_t>>::iterator modelIter = visible_nodes.begin(); modelIter != visible_nodes.end(); ++modelIter)
+    {
+        for(lamure::node_t node_index = 0; node_index < modelIter->second.size(); ++node_index)
+        {
+            tmp_grid.get_cell_at_index(0)->set_visibility(modelIter->first, modelIter->second[node_index], true);
+        }
     }
 
     emit_node_visibility(&tmp_grid);

@@ -10,15 +10,21 @@ namespace pvs
 {
 
 grid_regular_runtime::
-grid_regular_runtime() : grid_regular_runtime(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0))
+grid_regular_runtime() : grid_regular_runtime(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0), std::vector<node_t>())
 {
 }
 
 grid_regular_runtime::
-grid_regular_runtime(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center)
+grid_regular_runtime(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
 {
 	file_path_pvs_ = "";
 	create_grid(number_cells, cell_size, position_center);
+
+	ids_.resize(ids.size());
+	for(size_t index = 0; index < ids_.size(); ++index)
+	{
+		ids_[index] = ids[index];
+	}
 }
 
 grid_regular_runtime::

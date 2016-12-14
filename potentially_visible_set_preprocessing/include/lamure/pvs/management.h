@@ -61,6 +61,8 @@ public:
     void                DecreaseErrorThreshold();
 
     void                set_grid(grid* visibility_grid);
+    void                set_pvs_file_path(const std::string& file_path);
+    void                set_num_occlusion_steps(const unsigned int& num_steps);
 
 protected:
 
@@ -71,10 +73,6 @@ protected:
     void                emit_node_visibility(grid* visibility_grid);
     void                set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
     void                set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
-
-#ifdef LAMURE_PVS_MEASURE_VISIBILITY
-    void                save_visibility_data();
-#endif
 
     void                apply_temporal_pvs(const id_histogram& hist);
 
@@ -110,6 +108,9 @@ private:
     unsigned short      direction_counter_;
 
     bool                update_position_for_pvs_;
+
+    std::string         pvs_file_path_;
+    unsigned int        num_occlusion_steps_;
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     // Used to measure performance of preprocessing substeps.

@@ -17,7 +17,7 @@ class grid_regular_runtime : public grid_regular
 {
 public:
 	grid_regular_runtime();
-	grid_regular_runtime(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center);
+	grid_regular_runtime(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids);
 	~grid_regular_runtime();
 
 	virtual view_cell* get_cell_at_index(const size_t& index);

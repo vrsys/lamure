@@ -82,8 +82,6 @@ int main(int argc, char** argv)
 
     lamure::vec3r center_bounds = vt->get_scene_bounds().get_center() + translation_center;
     scm::math::vec3d center(center_bounds);
-    
-    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center);
 
     // Knowledge about how many models containing how many nodes is required to save pvs data.
     std::vector<lamure::node_t> ids;
@@ -92,6 +90,8 @@ int main(int argc, char** argv)
     {
         ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
     }
+
+    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
 
     /*std::string pvs_grid_output_file_path = pvs_output_file_path;
     if(pvs_grid_output_file_path != "")

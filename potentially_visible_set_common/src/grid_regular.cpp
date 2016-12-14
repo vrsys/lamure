@@ -11,14 +11,20 @@ namespace pvs
 {
 
 grid_regular::
-grid_regular() : grid_regular(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0))
+grid_regular() : grid_regular(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0), std::vector<node_t>())
 {
 }
 
 grid_regular::
-grid_regular(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center)
+grid_regular(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
 {
 	create_grid(number_cells, cell_size, position_center);
+	
+	ids_.resize(ids.size());
+	for(size_t index = 0; index < ids_.size(); ++index)
+	{
+		ids_[index] = ids[index];
+	}
 }
 
 grid_regular::
@@ -300,6 +306,18 @@ create_grid(const size_t& num_cells, const double& cell_size, const scm::math::v
 
 	cell_size_ = cell_size;
 	position_center_ = scm::math::vec3d(position_center);
+}
+
+model_t grid_regular::
+get_num_models() const
+{
+	return ids_.size();
+}
+
+node_t grid_regular::
+get_num_nodes(const model_t& model_id) const
+{
+	return ids_[model_id];
 }
 
 }

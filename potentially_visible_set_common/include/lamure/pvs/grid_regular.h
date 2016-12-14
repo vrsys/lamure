@@ -20,7 +20,7 @@ class grid_regular : public grid
 {
 public:
 	grid_regular();
-	grid_regular(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center);
+	grid_regular(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids);
 	~grid_regular();
 
 	virtual size_t get_cell_count() const;
@@ -36,6 +36,9 @@ public:
 
 	virtual bool load_grid_from_file(const std::string& file_path);
 	virtual bool load_visibility_from_file(const std::string& file_path);
+
+	virtual model_t get_num_models() const;
+	virtual node_t get_num_nodes(const model_t& model_id) const;
 
 protected:
 	void create_grid(const size_t& num_cells, const double& cell_size, const scm::math::vec3d& position_center);
