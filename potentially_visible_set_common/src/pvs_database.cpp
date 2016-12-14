@@ -15,6 +15,7 @@ pvs_database()
 	visibility_grid_ = nullptr;
 	viewer_cell_ = nullptr;
 	activated_ = true;
+	runtime_ = true;
 }
 
 pvs_database::
@@ -43,7 +44,15 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	// TODO: currently there is only one grid type, but later on the created grid should depend on the type noted in the grid file.
-	visibility_grid_ = new grid_regular_runtime();
+	if(runtime_)
+	{
+		visibility_grid_ = new grid_regular_runtime();
+	}
+	else
+	{
+		visibility_grid_ = new grid_regular();
+	}
+
 	bool result = visibility_grid_->load_grid_from_file(grid_file_path);
 
 	if(!result)
@@ -113,6 +122,12 @@ is_activated() const
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	return activated_;
+}
+
+void pvs_database::
+runtime_mode(const bool& is_runtime)
+{
+	runtime_ = is_runtime;
 }
 
 const grid* pvs_database::

@@ -70,6 +70,10 @@ int main(int argc, char** argv)
     }
 
     lamure::pvs::pvs_database* pvs_db = lamure::pvs::pvs_database::get_instance();
+
+    // Set pvs to preprocessing setting.
+    pvs_db->runtime_mode(false);
+
     if(!pvs_db->load_pvs_from_file(pvs_grid_input_file_path, pvs_input_file_path))
     {
         std::cout << "not able to load pvs from files " << pvs_input_file_path  << " and " << pvs_grid_input_file_path << std::endl; 

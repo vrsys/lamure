@@ -26,6 +26,8 @@ public:
 	void activate(const bool& act);
 	bool is_activated() const;
 
+	void runtime_mode(const bool& is_runtime);
+
 	const grid* get_visibility_grid() const;
 	void clear_visibility_grid();
 
@@ -41,6 +43,7 @@ private:
 	view_cell* viewer_cell_;
 
 	bool activated_;
+	bool runtime_;
 
 	mutable std::mutex mutex_;
 };
