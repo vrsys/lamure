@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     }
     translation_center /= database->num_models();
 
-    lamure::vec3r center_bounds = vt->get_scene_bounds().get_center() + translation_center;
+    lamure::vec3r center_bounds = vt->get_scene_bounds().get_center();
     scm::math::vec3d center(center_bounds);
 
     // Knowledge about how many models containing how many nodes is required to save pvs data.

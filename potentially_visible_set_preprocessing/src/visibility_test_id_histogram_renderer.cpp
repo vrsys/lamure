@@ -135,8 +135,8 @@ initialize(int& argc, char** argv)
     {
         // Cast required from boxf to bounding_box.
         const scm::gl::boxf& box_model_root = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
-        vec3r min_vertex(box_model_root.min_vertex());
-        vec3r max_vertex(box_model_root.max_vertex());
+        vec3r min_vertex(box_model_root.min_vertex() + database->get_model(model_id)->get_bvh()->get_translation());
+        vec3r max_vertex(box_model_root.max_vertex() + database->get_model(model_id)->get_bvh()->get_translation());
         bounding_box model_root_box(min_vertex, max_vertex);
 
         if(model_id == 0)

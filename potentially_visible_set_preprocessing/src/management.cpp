@@ -467,7 +467,9 @@ check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depth
             {
                 // Create bounding box of node.
                 scm::gl::boxf node_bounding_box = database->get_model(model_index)->get_bvh()->get_bounding_boxes()[node_index];
-                bounding_box node_bounds(vec3r(node_bounding_box.min_vertex()), vec3r(node_bounding_box.max_vertex()));
+                vec3r min_vertex = vec3r(node_bounding_box.min_vertex()) + database->get_model(model_index)->get_bvh()->get_translation();
+                vec3r max_vertex = vec3r(node_bounding_box.max_vertex()) + database->get_model(model_index)->get_bvh()->get_translation();
+                bounding_box node_bounds(min_vertex, max_vertex);
 
                 // check if the bounding boxes collide.
                 if(cell_bounds.intersects(node_bounds))
