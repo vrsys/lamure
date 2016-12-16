@@ -18,11 +18,10 @@ public:
 
 	virtual size_t get_cell_count() const = 0;
 
-	virtual view_cell* get_cell_at_index(const size_t& index) = 0;
-	virtual const view_cell* get_cell_at_index_const(const size_t& index) const = 0;
+	virtual const view_cell* get_cell_at_index(const size_t& index) const = 0;
+	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position) const = 0;
 
-	virtual view_cell* get_cell_at_position(const scm::math::vec3d& position) = 0;
-	virtual const view_cell* get_cell_at_position_const(const scm::math::vec3d& position) = 0;
+	virtual void set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility) = 0;
 
 	virtual void save_grid_to_file(const std::string& file_path, const std::vector<node_t>& ids) const = 0;
 	virtual void save_visibility_to_file(const std::string& file_path, const std::vector<node_t>& ids) const = 0;

@@ -130,7 +130,7 @@ MainLoop()
     
 #ifndef LAMURE_PVS_USE_AS_RENDERER
     int repetition_counter = 0;
-    view_cell* current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
+    const view_cell* current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
 
     scm::math::vec3d look_dir;
     scm::math::vec3d up_dir(0.0, 1.0, 0.0);
@@ -336,7 +336,7 @@ MainLoop()
 
                 for(node_t node_id : iter->second)
                 {
-                    current_cell->set_visibility(model_id, node_id, true);
+                    visibility_grid_->set_cell_visibility(current_grid_index_, model_id, node_id, true);
                 }
             }
 
@@ -451,7 +451,7 @@ check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depth
         for(size_t cell_index = 0; cell_index < visibility_grid_->get_cell_count(); ++cell_index)
         {
             // Create bounding box of view cell.
-            view_cell* current_cell = visibility_grid_->get_cell_at_index(cell_index);
+            const view_cell* current_cell = visibility_grid_->get_cell_at_index(cell_index);
                 
             vec3r min_vertex(current_cell->get_position_center() - (current_cell->get_size() * 0.5f));
             vec3r max_vertex(current_cell->get_position_center() + (current_cell->get_size() * 0.5f));
@@ -474,7 +474,7 @@ check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depth
                 // check if the bounding boxes collide.
                 if(cell_bounds.intersects(node_bounds))
                 {
-                    current_cell->set_visibility(model_index, node_index, true);
+                    visibility_grid_->set_cell_visibility(cell_index, model_index, node_index, true);
                 }
             }
         }
@@ -489,7 +489,7 @@ emit_node_visibility(grid* visibility_grid)
     #pragma omp parallel for
     for(size_t cell_index = 0; cell_index < visibility_grid->get_cell_count(); ++cell_index)
     {
-        view_cell* current_cell = visibility_grid->get_cell_at_index(cell_index);
+        const view_cell* current_cell = visibility_grid->get_cell_at_index(cell_index);
         std::map<model_t, std::vector<node_t>> visible_indices = current_cell->get_visible_indices();
 
         for(std::map<model_t, std::vector<node_t>>::const_iterator map_iter = visible_indices.begin(); map_iter != visible_indices.end(); ++map_iter)
@@ -499,50 +499,60 @@ emit_node_visibility(grid* visibility_grid)
                 node_t visible_node_id = map_iter->second.at(node_index);
 
                 // Communicate visibility to children and parents nodes of visible nodes.
-                set_node_children_visible(map_iter->first, visible_node_id, current_cell);
-                set_node_parents_visible(map_iter->first, visible_node_id, current_cell);
+                set_node_children_visible(cell_index, map_iter->first, visible_node_id);
+                set_node_parents_visible(cell_index, map_iter->first, visible_node_id);
             }       
         }
     }
 }
 
 void management::
-set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_cell* cell)
+set_node_parents_visible(const size_t& cell_id, const model_t& model_id, const node_t& node_id)
 {
     // Set parents of a visible node visible, too.
     // Necessary since only a single LOD-level is rendered during the visibility test.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     node_t parent_id = database->get_model(model_id)->get_bvh()->get_parent_id(node_id);
-
-    if(parent_id != lamure::invalid_node_t && !cell->get_visibility(model_id, parent_id))
+    const view_cell* cell = visibility_grid_->get_cell_at_index(cell_id);
+    
+    if(cell != nullptr)
     {
-        if(cell != nullptr)
+        if(parent_id != lamure::invalid_node_t && !cell->get_visibility(model_id, parent_id))
         {
-            cell->set_visibility(model_id, parent_id, true);
+            visibility_grid_->set_cell_visibility(cell_id, model_id, parent_id, true);
+            set_node_parents_visible(cell_id, model_id, parent_id);
         }
-        set_node_parents_visible(model_id, parent_id, cell);
+    }
+    else
+    {
+        throw std::invalid_argument("null pointer when accessing view cell " + cell_id);
     }
 }
 
 void management::
-set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell)
+set_node_children_visible(const size_t& cell_id, const model_t& model_id, const node_t& node_id)
 {
     // Set children of a visible node visible, too.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     uint32_t fan_factor = database->get_model(model_id)->get_bvh()->get_fan_factor();
+    const view_cell* cell = visibility_grid_->get_cell_at_index(cell_id);
 
-    for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
+    if(cell != nullptr)
     {
-        node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
-        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() && !cell->get_visibility(model_id, child_id))
+        for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
         {
-            if(cell != nullptr)
+            node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
+            if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() && !cell->get_visibility(model_id, child_id))
             {
-                cell->set_visibility(model_id, child_id, true);
+                visibility_grid_->set_cell_visibility(cell_id, model_id, child_id, true);
+                set_node_children_visible(cell_id, model_id, child_id);
             }
-            set_node_children_visible(model_id, child_id, cell);
         }
-    } 
+    }
+    else
+    {
+        throw std::invalid_argument("null pointer when accessing view cell " + cell_id);
+    }
 }
 
 void management::
@@ -727,7 +737,7 @@ apply_temporal_pvs(const id_histogram& hist)
     {
         for(lamure::node_t node_index = 0; node_index < modelIter->second.size(); ++node_index)
         {
-            tmp_grid.get_cell_at_index(0)->set_visibility(modelIter->first, modelIter->second[node_index], true);
+            tmp_grid.set_cell_visibility(0, modelIter->first, modelIter->second[node_index], true);
         }
     }
 
@@ -742,7 +752,7 @@ apply_temporal_pvs(const id_histogram& hist)
 
     for (size_t cell_index = 0; cell_index < pvs->get_visibility_grid()->get_cell_count(); ++cell_index)
     {
-        std::map<model_t, std::vector<node_t>> visible_nodes = pvs->get_visibility_grid()->get_cell_at_index_const(cell_index)->get_visible_indices();
+        std::map<model_t, std::vector<node_t>> visible_nodes = pvs->get_visibility_grid()->get_cell_at_index(cell_index)->get_visible_indices();
 
         for(model_t model_index = 0; model_index < num_models_; ++model_index)
         {

@@ -988,7 +988,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
                 for(size_t cell_index = 0; cell_index < pvs->get_visibility_grid()->get_cell_count(); ++cell_index)
                 {
-                    const lamure::pvs::view_cell* current_cell = pvs->get_visibility_grid()->get_cell_at_index_const(cell_index);
+                    const lamure::pvs::view_cell* current_cell = pvs->get_visibility_grid()->get_cell_at_index(cell_index);
 
                     scm::math::vec3f min_corner(current_cell->get_position_center() - (current_cell->get_size() * 0.5f));
                     scm::math::vec3f max_corner(current_cell->get_position_center() + (current_cell->get_size() * 0.5f));

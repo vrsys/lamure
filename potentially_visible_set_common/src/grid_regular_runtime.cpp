@@ -34,8 +34,8 @@ grid_regular_runtime::
 	file_in_.close();
 }
 
-view_cell* grid_regular_runtime::
-get_cell_at_index(const size_t& index)
+const view_cell* grid_regular_runtime::
+get_cell_at_index(const size_t& index) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -100,14 +100,6 @@ get_cell_at_index(const size_t& index)
 	}
 
 	return current_cell;
-}
-
-const view_cell* grid_regular_runtime::
-get_cell_at_index_const(const size_t& index) const
-{
-	std::lock_guard<std::mutex> lock(mutex_);
-
-	return &cells_.at(index);
 }
 
 bool grid_regular_runtime::

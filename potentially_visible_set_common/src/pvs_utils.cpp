@@ -24,7 +24,7 @@ void analyze_grid_visibility(const grid* input_grid, const unsigned int& num_ste
     for(size_t cell_index = 0; cell_index < num_cells; ++cell_index)
     {
         lamure::model_t num_models = input_grid->get_num_models();
-        std::map<lamure::model_t, std::vector<lamure::node_t>> visibility = input_grid->get_cell_at_index_const(cell_index)->get_visible_indices();
+        std::map<lamure::model_t, std::vector<lamure::node_t>> visibility = input_grid->get_cell_at_index(cell_index)->get_visible_indices();
         
         lamure::node_t model_num_nodes = 0;
         lamure::node_t model_visible_nodes = 0;

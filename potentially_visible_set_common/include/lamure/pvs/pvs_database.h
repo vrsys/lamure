@@ -40,7 +40,7 @@ private:
 	grid* visibility_grid_;
 
 	scm::math::vec3d position_viewer_;
-	view_cell* viewer_cell_;
+	const view_cell* viewer_cell_;
 
 	bool activated_;
 	bool runtime_;

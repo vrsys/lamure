@@ -39,8 +39,8 @@ get_cell_count() const
 	return cells_.size();
 }
 
-view_cell* grid_regular::
-get_cell_at_index(const size_t& index)
+const view_cell* grid_regular::
+get_cell_at_index(const size_t& index) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -48,15 +48,7 @@ get_cell_at_index(const size_t& index)
 }
 
 const view_cell* grid_regular::
-get_cell_at_index_const(const size_t& index) const
-{
-	std::lock_guard<std::mutex> lock(mutex_);
-
-	return  &cells_.at(index);
-}
-
-view_cell* grid_regular::
-get_cell_at_position(const scm::math::vec3d& position)
+get_cell_at_position(const scm::math::vec3d& position) const
 {
 	size_t general_index = 0;
 
@@ -85,10 +77,13 @@ get_cell_at_position(const scm::math::vec3d& position)
 	return get_cell_at_index(general_index);
 }
 
-const view_cell* grid_regular::
-get_cell_at_position_const(const scm::math::vec3d& position)
+void grid_regular::
+set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility)
 {
-	return get_cell_at_position(position);
+	std::lock_guard<std::mutex> lock(mutex_);
+	
+	view_cell* current_visibility_cell = &cells_.at(cell_index);
+	current_visibility_cell->set_visibility(model_id, node_id, visibility);
 }
 
 void grid_regular::

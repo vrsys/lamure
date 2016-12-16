@@ -20,14 +20,13 @@ public:
 	grid_regular_runtime(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids);
 	~grid_regular_runtime();
 
-	virtual view_cell* get_cell_at_index(const size_t& index);
-	virtual const view_cell* get_cell_at_index_const(const size_t& index) const;
+	virtual const view_cell* get_cell_at_index(const size_t& index) const;
 
 	virtual bool load_visibility_from_file(const std::string& file_path);
 
 protected:
 	std::string file_path_pvs_;
-	std::fstream file_in_;
+	mutable std::fstream file_in_;
 };
 
 }

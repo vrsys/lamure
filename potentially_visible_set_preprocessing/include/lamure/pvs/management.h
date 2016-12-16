@@ -71,8 +71,8 @@ protected:
     void                check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depths, const std::vector<std::vector<size_t>>& total_nums);
 
     void                emit_node_visibility(grid* visibility_grid);
-    void                set_node_parents_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
-    void                set_node_children_visible(const model_t& model_id, const node_t& node_id, view_cell* cell);
+    void                set_node_parents_visible(const size_t& cell_id, const model_t& model_id, const node_t& node_id);
+    void                set_node_children_visible(const size_t& cell_id, const model_t& model_id, const node_t& node_id);
 
     void                apply_temporal_pvs(const id_histogram& hist);
 
