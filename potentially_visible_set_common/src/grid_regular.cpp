@@ -87,7 +87,7 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 }
 
 void grid_regular::
-save_grid_to_file(const std::string& file_path, const std::vector<node_t>& ids) const
+save_grid_to_file(const std::string& file_path) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -110,19 +110,19 @@ save_grid_to_file(const std::string& file_path, const std::vector<node_t>& ids) 
 	file_out << position_center_.x << " " << position_center_.y << " " << position_center_.z << std::endl;
 
 	// Save number of models, so we can later simply read the node numbers.
-	file_out << ids.size() << std::endl;
+	file_out << ids_.size() << std::endl;
 
 	// Save the number of node ids of each model.
-	for(size_t model_index = 0; model_index < ids.size(); ++model_index)
+	for(size_t model_index = 0; model_index < ids_.size(); ++model_index)
 	{
-		file_out << ids[model_index] << " ";
+		file_out << ids_[model_index] << " ";
 	}
 
 	file_out.close();
 }
 
 void grid_regular::
-save_visibility_to_file(const std::string& file_path, const std::vector<node_t>& ids) const
+save_visibility_to_file(const std::string& file_path) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -140,17 +140,14 @@ save_visibility_to_file(const std::string& file_path, const std::vector<node_t>&
 		std::string current_cell_data = "";
 
 		// Iterate over models in the scene.
-		for(lamure::model_t model_id = 0; model_id < ids.size(); ++model_id)
+		for(lamure::model_t model_id = 0; model_id < ids_.size(); ++model_id)
 		{
-			node_t num_nodes = ids.at(model_id);
+			node_t num_nodes = ids_.at(model_id);
 			char current_byte = 0x00;
 
 			size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
 			size_t character_counter = 0;
 			std::string current_line_data(line_length, 0x00);
-
-			node_t invisible_counter = 0;
-			node_t node_counter = 0;
 
 			// Iterate over nodes in the model.
 			for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
@@ -159,10 +156,6 @@ save_visibility_to_file(const std::string& file_path, const std::vector<node_t>&
 				{
 					current_byte |= 1 << (node_id % CHAR_BIT);
 				}
-				else
-					invisible_counter++;
-
-				node_counter++;
 
 				// Flush character if either 8 bits are written or if the node id is the last one.
 				if((node_id + 1) % CHAR_BIT == 0 || node_id == (num_nodes - 1))

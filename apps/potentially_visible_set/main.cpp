@@ -131,9 +131,9 @@ int main(int argc, char** argv)
 #endif
 
     std::cout << "Start writing grid file..." << std::endl;
-    test_grid->save_grid_to_file(pvs_grid_output_file_path, ids);
+    test_grid->save_grid_to_file(pvs_grid_output_file_path);
     std::cout << "Finished writing grid file.\nStart writing pvs file..." << std::endl;
-    test_grid->save_visibility_to_file(pvs_output_file_path, ids);
+    test_grid->save_visibility_to_file(pvs_output_file_path);
     std::cout << "Finished writing pvs file." << std::endl;
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE

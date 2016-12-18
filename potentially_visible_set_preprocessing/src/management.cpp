@@ -743,8 +743,8 @@ apply_temporal_pvs(const id_histogram& hist)
 
     emit_node_visibility(&tmp_grid);
 
-    tmp_grid.save_grid_to_file("/home/tiwo9285/tmp.grid", ids);
-    tmp_grid.save_visibility_to_file("/home/tiwo9285/tmp.pvs", ids);
+    tmp_grid.save_grid_to_file("/home/tiwo9285/tmp.grid");
+    tmp_grid.save_visibility_to_file("/home/tiwo9285/tmp.pvs");
 
     pvs_database* pvs = pvs_database::get_instance();
     pvs->runtime_mode(false);
