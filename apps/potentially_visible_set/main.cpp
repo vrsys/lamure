@@ -15,6 +15,7 @@
 #include <lamure/pvs/visibility_test_id_histogram_renderer.h>
 #include <lamure/pvs/grid.h>
 #include <lamure/pvs/grid_regular.h>
+#include <lamure/pvs/grid_octree.h>
 #include <lamure/pvs/pvs_database.h>
 
 #include <lamure/ren/model_database.h>
@@ -69,8 +70,9 @@ int main(int argc, char** argv)
 
     // Create grid based on scene size.
     size_t num_cells = grid_size;
-    double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
-    
+    //double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
+    double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     
     // Models may have their own translation, so calculate their center and add it to the scene bounds calculated from the bounding boxes.
@@ -92,7 +94,8 @@ int main(int argc, char** argv)
         ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
     }
 
-    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
+    //lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
+    lamure::pvs::grid* test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
 
     /*std::string pvs_grid_output_file_path = pvs_output_file_path;
     if(pvs_grid_output_file_path != "")

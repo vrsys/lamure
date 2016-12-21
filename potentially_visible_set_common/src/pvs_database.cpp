@@ -1,6 +1,10 @@
+#include <fstream>
+#include <string>
+
 #include "lamure/pvs/pvs_database.h"
 #include "lamure/pvs/grid_regular.h"
 #include "lamure/pvs/grid_regular_runtime.h"
+#include "lamure/pvs/grid_octree.h"
 
 namespace lamure
 {
@@ -43,14 +47,32 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	// TODO: currently there is only one grid type, but later on the created grid should depend on the type noted in the grid file.
-	if(runtime_)
+	std::fstream file_in;
+	file_in.open(grid_file_path, std::ios::in);
+
+	if(!file_in.is_open())
 	{
-		visibility_grid_ = new grid_regular_runtime();
+		return false;
 	}
-	else
+
+	// Read the grid file header to identify the grid type.
+	std::string grid_type;
+	file_in >> grid_type;
+
+	if(grid_type == "regular")
 	{
-		visibility_grid_ = new grid_regular();
+		if(runtime_)
+		{
+			visibility_grid_ = new grid_regular_runtime();
+		}
+		else
+		{
+			visibility_grid_ = new grid_regular();
+		}
+	}
+	else if(grid_type == "octree")
+	{
+		visibility_grid_ = new grid_octree();
 	}
 
 	bool result = visibility_grid_->load_grid_from_file(grid_file_path);
