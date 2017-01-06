@@ -373,6 +373,21 @@ MainLoop()
                 signal_shutdown = true;
             }
         }
+
+        if(current_grid_index_ % 8 == 0)
+        {
+            // Calculate current rendering state so user gets visual feedback on the preprocessing progress.
+            size_t num_cells = visibility_grid_->get_cell_count();
+            float total_rendering_steps = num_cells * 6;
+            float current_rendering_step = (num_cells * direction_counter_) + current_grid_index_;
+            float current_percentage_done = (current_rendering_step / total_rendering_steps) * 100.0f;
+            std::cout << "\rrendering in progress [" << current_percentage_done << "]       " << std::flush;
+
+            if(current_percentage_done == 100.0f)
+            {
+                std::cout << std::endl;
+            }
+        }
     }
 #endif
 
@@ -484,6 +499,9 @@ check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depth
 void management::
 emit_node_visibility(grid* visibility_grid)
 {
+    float steps_finished = 0.0f;
+    float total_steps = visibility_grid_->get_cell_count();
+
     // Advance node visibility downwards and upwards in the LOD-hierarchy.
     // Since only a single LOD-level was rendered in the visibility test, this is necessary to produce a complete PVS.
     #pragma omp parallel for
@@ -503,7 +521,14 @@ emit_node_visibility(grid* visibility_grid)
                 set_node_parents_visible(cell_index, map_iter->first, visible_node_id);
             }       
         }
+
+        // Calculate current node propagation state so user gets visual feedback on the preprocessing progress.
+        steps_finished++;
+        float current_percentage_done = (steps_finished / total_steps) * 100.0f;
+        std::cout << "\rvisibility propagation in progress [" << current_percentage_done << "]       " << std::flush;
     }
+
+    std::cout << std::endl;
 }
 
 void management::
