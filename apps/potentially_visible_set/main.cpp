@@ -137,7 +137,7 @@ int main(int argc, char** argv)
     // Optimize grid by reducing amount of view cells if possible.
     std::cout << "Start grid optimization..." << std::endl;
     lamure::pvs::grid_optimizer_octree optimizer;
-    optimizer.optimize_grid(test_grid);
+    optimizer.optimize_grid(test_grid, 0.8f);
     std::cout << "Finished grid optimization." << std::endl;
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE

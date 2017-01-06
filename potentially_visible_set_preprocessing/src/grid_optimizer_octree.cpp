@@ -6,14 +6,14 @@ namespace pvs
 {
 
 void grid_optimizer_octree::
-optimize_grid(grid* input_grid)
+optimize_grid(grid* input_grid, const float& equality_threshold)
 {
 	grid_octree* oct_grid = (grid_octree*)input_grid;
 	bool change_detected = true;
 
 	while(change_detected)
 	{
-		change_detected = check_and_optimize_node(oct_grid->get_root_node(), input_grid);
+		change_detected = check_and_optimize_node(oct_grid->get_root_node(), input_grid, equality_threshold);
 	}
 
 	// Grid was possibly changed, so update the indices for fast access.
@@ -21,7 +21,7 @@ optimize_grid(grid* input_grid)
 }
 
 bool grid_optimizer_octree::
-check_and_optimize_node(grid_octree_node* node, grid* input_grid)
+check_and_optimize_node(grid_octree_node* node, grid* input_grid, const float& equality_threshold)
 {
 	bool change_detected = false;
 
@@ -44,7 +44,7 @@ check_and_optimize_node(grid_octree_node* node, grid* input_grid)
 			for(int child_index = 0; child_index < 8; ++child_index)
 			{
 				grid_octree_node* child_node = node->get_child_at_index(child_index);
-				change_detected = check_and_optimize_node(child_node, input_grid);
+				change_detected = check_and_optimize_node(child_node, input_grid, equality_threshold);
 
 				if(change_detected)
 				{
@@ -55,7 +55,7 @@ check_and_optimize_node(grid_octree_node* node, grid* input_grid)
 		else
 		{
 			// Nodes do not go any deeper, so an optimization check is possible.
-			change_detected = try_collapse_node(node, input_grid);
+			change_detected = try_collapse_node(node, input_grid, equality_threshold);
 		}
 	}
 
@@ -63,7 +63,7 @@ check_and_optimize_node(grid_octree_node* node, grid* input_grid)
 }
 
 bool grid_optimizer_octree::
-try_collapse_node(grid_octree_node* node, grid* input_grid)
+try_collapse_node(grid_octree_node* node, grid* input_grid, const float& equality_threshold)
 {
 	if(node->has_children())
 	{
@@ -109,7 +109,8 @@ try_collapse_node(grid_octree_node* node, grid* input_grid)
 				num_visible_nodes_child += child_visibility[model_index].size();
 			}
 
-			if((float)num_visible_nodes_child / (float)num_visible_nodes < 0.6f)
+			// Check if difference of visible nodes is within threshold.
+			if((float)num_visible_nodes_child / (float)num_visible_nodes < equality_threshold)
 			{
 				collapse = false;
 				break;

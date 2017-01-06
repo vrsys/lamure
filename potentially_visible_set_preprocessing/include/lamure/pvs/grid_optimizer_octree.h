@@ -20,11 +20,13 @@ namespace pvs
 class grid_optimizer_octree
 {
 public:
-	void optimize_grid(grid* input_grid);
+	// Equality threshold is the allowed difference in percent used to consider two cells as equal.
+	// E.g. a value of 0.9 means the cells must contain 90% equal elements to be considered equal.
+	void optimize_grid(grid* input_grid, const float& equality_threshold);
 
 protected:
-	bool check_and_optimize_node(grid_octree_node* node, grid* input_grid);
-	bool try_collapse_node(grid_octree_node* node, grid* input_grid);
+	bool check_and_optimize_node(grid_octree_node* node, grid* input_grid, const float& equality_threshold);
+	bool try_collapse_node(grid_octree_node* node, grid* input_grid, const float& equality_threshold);
 };
 
 }
