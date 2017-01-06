@@ -9,15 +9,14 @@ void grid_optimizer_octree::
 optimize_grid(grid* input_grid, const float& equality_threshold)
 {
 	grid_octree* oct_grid = (grid_octree*)input_grid;
-	bool change_detected = true;
 
-	while(change_detected)
+	bool change_detected = check_and_optimize_node(oct_grid->get_root_node(), input_grid, equality_threshold);
+
+	// Grid was changed, so update the indices for fast access.
+	if(change_detected)
 	{
-		change_detected = check_and_optimize_node(oct_grid->get_root_node(), input_grid, equality_threshold);
+		oct_grid->compute_index_access();
 	}
-
-	// Grid was possibly changed, so update the indices for fast access.
-	oct_grid->compute_index_access();
 }
 
 bool grid_optimizer_octree::
@@ -27,28 +26,38 @@ check_and_optimize_node(grid_octree_node* node, grid* input_grid, const float& e
 
 	if(node->has_children())
 	{
-		bool node_children_have_children = false;
+		unsigned int node_children_have_children = 0;
 		for(int child_index = 0; child_index < 8; ++child_index)
 		{
 			grid_octree_node* child_node = node->get_child_at_index(child_index);
 			if(child_node->has_children())
 			{
-				node_children_have_children = true;
-				break;
+				node_children_have_children++;
 			}
 		}
 
-		if(node_children_have_children)
+		if(node_children_have_children > 0)
 		{
+			unsigned int children_changed = 0;
+
 			// If one of the nodes has children, go one level deeper and try to find optimization entry point there.
 			for(int child_index = 0; child_index < 8; ++child_index)
 			{
 				grid_octree_node* child_node = node->get_child_at_index(child_index);
-				change_detected = check_and_optimize_node(child_node, input_grid, equality_threshold);
-
-				if(change_detected)
+				if(check_and_optimize_node(child_node, input_grid, equality_threshold))
 				{
-					return true;
+					children_changed++;
+				}
+			}
+
+			if(children_changed > 0)
+			{
+				change_detected = true;
+
+				// If the number of collapsed child nodes is equal to the number of child nodes that formerly had children, try to collapse this node as well.
+				if(children_changed == node_children_have_children)
+				{
+					try_collapse_node(node, input_grid, equality_threshold);
 				}
 			}
 		}
