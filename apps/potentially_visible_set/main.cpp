@@ -16,6 +16,7 @@
 #include <lamure/pvs/grid.h>
 #include <lamure/pvs/grid_regular.h>
 #include <lamure/pvs/grid_octree.h>
+#include <lamure/pvs/grid_optimizer_octree.h>
 #include <lamure/pvs/pvs_database.h>
 
 #include <lamure/ren/model_database.h>
@@ -133,6 +134,20 @@ int main(int argc, char** argv)
     start_time = std::chrono::system_clock::now();
 #endif
 
+    // Optimize grid by reducing amount of view cells if possible.
+    std::cout << "Start grid optimization..." << std::endl;
+    lamure::pvs::grid_optimizer_octree optimizer;
+    optimizer.optimize_grid(test_grid);
+    std::cout << "Finished grid optimization." << std::endl;
+
+#ifdef PVS_MAIN_MEASURE_PERFORMANCE
+    end_time = std::chrono::system_clock::now();
+    elapsed_seconds = end_time - start_time;
+    double grid_optimization_time = elapsed_seconds.count();
+    start_time = std::chrono::system_clock::now();
+#endif
+
+    // Write grid and contained visibility data to files.
     std::cout << "Start writing grid file..." << std::endl;
     test_grid->save_grid_to_file(pvs_grid_output_file_path);
     std::cout << "Finished writing grid file.\nStart writing pvs file..." << std::endl;
@@ -156,8 +171,9 @@ int main(int argc, char** argv)
     file_out.open(performance_file_path, std::ios::app);
 
     file_out << "---------- main performance in seconds ----------" << std::endl;
-    file_out << "initialization: " << complete_time - (visibility_test_time + save_file_time) << std::endl;
+    file_out << "initialization: " << complete_time - (visibility_test_time + grid_optimization_time + save_file_time) << std::endl;
     file_out << "visibility test: " << visibility_test_time << std::endl;
+    file_out << "grid optimization: " << grid_optimization_time << std::endl;
     file_out << "save file: " << save_file_time << std::endl;
     file_out << "complete execution: " << complete_time << std::endl;
 

@@ -64,7 +64,8 @@ collapse()
 {
 	if(child_nodes_ != nullptr)
 	{
-		delete child_nodes_;
+		delete[] child_nodes_;
+		child_nodes_ = nullptr;
 	}
 }
 

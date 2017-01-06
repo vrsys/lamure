@@ -6,8 +6,6 @@
 #include "lamure/pvs/grid_octree.h"
 #include "lamure/pvs/view_cell_regular.h"
 
-#include <iostream>
-
 namespace lamure
 {
 namespace pvs
@@ -73,8 +71,6 @@ compute_index_access()
 	{
 		view_cell* cell_at_index = find_cell_by_index_recursive(root_node_, cell_index, 0);
 		cells_by_indices_[cell_index] = cell_at_index;
-
-		std::cout << "cell index " << cell_index << " at position " << cell_at_index->get_position_center().x << " " << cell_at_index->get_position_center().y << " " << cell_at_index->get_position_center().z << std::endl;
 	}
 }
 
@@ -132,8 +128,6 @@ const grid_octree_node* grid_octree::
 find_cell_by_index_recursive_const(const grid_octree_node* node, const size_t& index, size_t base_value) const
 {
 	size_t num_cells = cell_count_recursive(node);
-
-	std::cout << "#cells found: " << num_cells << std::endl;
 
 	if(index > (base_value + num_cells - 1))
 	{
@@ -464,6 +458,12 @@ node_t grid_octree::
 get_num_nodes(const model_t& model_id) const
 {
 	return ids_[model_id];
+}
+
+grid_octree_node* grid_octree::
+get_root_node()
+{
+	return root_node_;
 }
 
 }

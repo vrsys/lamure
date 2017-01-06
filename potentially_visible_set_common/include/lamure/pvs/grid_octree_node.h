@@ -35,7 +35,6 @@ public:
 	unsigned int get_depth() const;
 
 protected:
-	std::vector<std::vector<bool>> visibility_;
 	grid_octree_node* child_nodes_;
 	unsigned int depth_;
 };

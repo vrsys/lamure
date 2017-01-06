@@ -41,9 +41,12 @@ public:
 	virtual model_t get_num_models() const;
 	virtual node_t get_num_nodes(const model_t& model_id) const;
 
+	grid_octree_node* get_root_node();
+	
+	void compute_index_access();
+
 protected:
 	void create_grid(grid_octree_node* node, size_t depth);
-	void compute_index_access();
 
 	size_t cell_count_recursive(const grid_octree_node* node) const;
 	grid_octree_node* find_cell_by_index_recursive(const grid_octree_node* node, const size_t& index, size_t base_value);
