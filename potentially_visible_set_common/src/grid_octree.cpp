@@ -202,7 +202,8 @@ find_cell_by_position_recursive_const(const grid_octree_node* node, const scm::m
 void grid_octree::
 set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
+	// If this function is locked, high performance loss in the preprocessing will occur.
+	//std::lock_guard<std::mutex> lock(mutex_);
 
 	view_cell* view_node = cells_by_indices_[cell_index];
 	view_node->set_visibility(model_id, node_id, visibility);

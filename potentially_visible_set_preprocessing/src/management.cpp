@@ -517,66 +517,53 @@ emit_node_visibility(grid* visibility_grid)
                 node_t visible_node_id = map_iter->second.at(node_index);
 
                 // Communicate visibility to children and parents nodes of visible nodes.
-                set_node_children_visible(cell_index, map_iter->first, visible_node_id);
-                set_node_parents_visible(cell_index, map_iter->first, visible_node_id);
+                set_node_children_visible(cell_index, current_cell, map_iter->first, visible_node_id);
+                set_node_parents_visible(cell_index, current_cell, map_iter->first, visible_node_id);
             }       
         }
 
-        // Calculate current node propagation state so user gets visual feedback on the preprocessing progress.
-        steps_finished++;
-        float current_percentage_done = (steps_finished / total_steps) * 100.0f;
-        std::cout << "\rvisibility propagation in progress [" << current_percentage_done << "]       " << std::flush;
+        #pragma omp critical
+        {
+            // Calculate current node propagation state so user gets visual feedback on the preprocessing progress.
+            steps_finished++;
+            float current_percentage_done = (steps_finished / total_steps) * 100.0f;
+            std::cout << "\rvisibility propagation in progress [" << current_percentage_done << "]       " << std::flush;
+        }
     }
 
     std::cout << std::endl;
 }
 
 void management::
-set_node_parents_visible(const size_t& cell_id, const model_t& model_id, const node_t& node_id)
+set_node_parents_visible(const size_t& cell_id, const view_cell* cell, const model_t& model_id, const node_t& node_id)
 {
     // Set parents of a visible node visible, too.
     // Necessary since only a single LOD-level is rendered during the visibility test.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     node_t parent_id = database->get_model(model_id)->get_bvh()->get_parent_id(node_id);
-    const view_cell* cell = visibility_grid_->get_cell_at_index(cell_id);
     
-    if(cell != nullptr)
+    if(parent_id != lamure::invalid_node_t && !cell->get_visibility(model_id, parent_id))
     {
-        if(parent_id != lamure::invalid_node_t && !cell->get_visibility(model_id, parent_id))
-        {
-            visibility_grid_->set_cell_visibility(cell_id, model_id, parent_id, true);
-            set_node_parents_visible(cell_id, model_id, parent_id);
-        }
-    }
-    else
-    {
-        throw std::invalid_argument("null pointer when accessing view cell " + cell_id);
+        visibility_grid_->set_cell_visibility(cell_id, model_id, parent_id, true);
+        set_node_parents_visible(cell_id, cell, model_id, parent_id);
     }
 }
 
 void management::
-set_node_children_visible(const size_t& cell_id, const model_t& model_id, const node_t& node_id)
+set_node_children_visible(const size_t& cell_id, const view_cell* cell, const model_t& model_id, const node_t& node_id)
 {
     // Set children of a visible node visible, too.
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     uint32_t fan_factor = database->get_model(model_id)->get_bvh()->get_fan_factor();
-    const view_cell* cell = visibility_grid_->get_cell_at_index(cell_id);
 
-    if(cell != nullptr)
+    for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
     {
-        for(uint32_t child_index = 0; child_index < fan_factor; ++child_index)
+        node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
+        if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() && !cell->get_visibility(model_id, child_id))
         {
-            node_t child_id = database->get_model(model_id)->get_bvh()->get_child_id(node_id, child_index);
-            if(child_id < database->get_model(model_id)->get_bvh()->get_num_nodes() && !cell->get_visibility(model_id, child_id))
-            {
-                visibility_grid_->set_cell_visibility(cell_id, model_id, child_id, true);
-                set_node_children_visible(cell_id, model_id, child_id);
-            }
+            visibility_grid_->set_cell_visibility(cell_id, model_id, child_id, true);
+            set_node_children_visible(cell_id, cell, model_id, child_id);
         }
-    }
-    else
-    {
-        throw std::invalid_argument("null pointer when accessing view cell " + cell_id);
     }
 }
 

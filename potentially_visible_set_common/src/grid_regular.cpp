@@ -80,7 +80,8 @@ get_cell_at_position(const scm::math::vec3d& position) const
 void grid_regular::
 set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
+	// If this function is locked, high performance loss in the preprocessing will occur.
+	//std::lock_guard<std::mutex> lock(mutex_);
 	
 	view_cell* current_visibility_cell = &cells_.at(cell_index);
 	current_visibility_cell->set_visibility(model_id, node_id, visibility);
