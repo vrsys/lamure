@@ -79,7 +79,7 @@ get_cell_count() const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	return cell_count_recursive(root_node_);
+	return cells_by_indices_.size();
 }
 
 size_t grid_octree::
