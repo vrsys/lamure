@@ -128,7 +128,6 @@ initialize(int& argc, char** argv)
     management_ = new management(model_filenames, model_transformations, visible_set, invisible_set);
     glut_wrapper::set_management(management_);
     management_->set_pvs_file_path(pvs_output_file_path);
-    management_->set_num_occlusion_steps(num_steps);
 
     // Calculate bounding box of whole scene.
     for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)

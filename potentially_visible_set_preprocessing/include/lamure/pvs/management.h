@@ -28,7 +28,6 @@
 //#define ALLOW_INPUT
 //#define LAMURE_PVS_USE_AS_RENDERER
 #define LAMURE_PVS_MEASURE_PERFORMANCE          // Will output some info on runtime in the terminal.
-#define LAMURE_PVS_MEASURE_VISIBILITY           // Will output some info on the calculated visibility into a special file.
 
 namespace lamure
 {
@@ -62,7 +61,6 @@ public:
 
     void                set_grid(grid* visibility_grid);
     void                set_pvs_file_path(const std::string& file_path);
-    void                set_num_occlusion_steps(const unsigned int& num_steps);
 
 protected:
 
@@ -110,7 +108,6 @@ private:
     bool                update_position_for_pvs_;
 
     std::string         pvs_file_path_;
-    unsigned int        num_occlusion_steps_;
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     // Used to measure performance of preprocessing substeps.

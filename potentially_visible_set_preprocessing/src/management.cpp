@@ -18,7 +18,6 @@
 
 #include "lamure/pvs/pvs_database.h"
 #include "lamure/pvs/grid_regular.h"
-#include "lamure/pvs/pvs_utils.h"
 
 namespace lamure
 {
@@ -50,8 +49,6 @@ management(std::vector<std::string> const& model_filenames,
     current_grid_index_ = 0;
     direction_counter_ = 0;
     update_position_for_pvs_ = true;
-
-    num_occlusion_steps_ = 11;
 
 #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
     total_cut_update_time_ = 0.0;
@@ -442,15 +439,6 @@ MainLoop()
 
         file_out.close();
     #endif
-
-    #ifdef LAMURE_PVS_MEASURE_VISIBILITY
-        // Write collected visibility data to file.
-        std::string visibility_file_path = pvs_file_path_;
-        visibility_file_path.resize(visibility_file_path.size() - 4);
-        visibility_file_path += "_visibility.txt";
-
-        analyze_grid_visibility(visibility_grid_, num_occlusion_steps_, visibility_file_path);
-    #endif
     }
 
     return signal_shutdown;
@@ -720,12 +708,6 @@ void management::
 set_pvs_file_path(const std::string& file_path)
 {
     pvs_file_path_ = file_path;
-}
-
-void management::
-set_num_occlusion_steps(const unsigned int& num_steps)
-{
-    num_occlusion_steps_ = num_steps;
 }
 
 void management::

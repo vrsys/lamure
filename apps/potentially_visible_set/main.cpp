@@ -18,12 +18,14 @@
 #include <lamure/pvs/grid_octree.h>
 #include <lamure/pvs/grid_optimizer_octree.h>
 #include <lamure/pvs/pvs_database.h>
+#include "lamure/pvs/pvs_utils.h"
 
 #include <lamure/ren/model_database.h>
 
 #include <boost/program_options.hpp>
 
 #define PVS_MAIN_MEASURE_PERFORMANCE
+#define PVS_MAIN_MEASURE_VISIBILITY           // Will output some info on the calculated visibility into a special file.
 
 int main(int argc, char** argv)
 {
@@ -40,6 +42,7 @@ int main(int argc, char** argv)
     // Read additional data from input parameters.
     std::string pvs_output_file_path = "";
     unsigned int grid_size = 1;
+    unsigned int num_steps = 11;
 
     namespace po = boost::program_options;
     namespace fs = boost::filesystem;
@@ -55,7 +58,8 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
-      ("gridsize,g", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test");
+      ("gridsize,g", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test")
+      ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into");
       ;
 
     po::variables_map vm;
@@ -93,11 +97,11 @@ int main(int argc, char** argv)
     // Create grid based on scene size.
     size_t num_cells = grid_size;
 
-    //double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
-    //lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
+    double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
+    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
     
-    double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
-    lamure::pvs::grid* test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
+    //double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+    //lamure::pvs::grid* test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
 
     /*std::string pvs_grid_output_file_path = pvs_output_file_path;
     if(pvs_grid_output_file_path != "")
@@ -137,14 +141,26 @@ int main(int argc, char** argv)
 
     // Optimize grid by reducing amount of view cells if possible.
     std::cout << "Start grid optimization..." << std::endl;
-    lamure::pvs::grid_optimizer_octree optimizer;
-    optimizer.optimize_grid(test_grid, 0.8f);
+    //lamure::pvs::grid_optimizer_octree optimizer;
+    //optimizer.optimize_grid(test_grid, 0.8f);
     std::cout << "Finished grid optimization." << std::endl;
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE
     end_time = std::chrono::system_clock::now();
     elapsed_seconds = end_time - start_time;
     double grid_optimization_time = elapsed_seconds.count();
+#endif
+
+#ifdef PVS_MAIN_MEASURE_VISIBILITY
+    // Write collected visibility data to file.
+    std::string visibility_file_path = pvs_output_file_path;
+    visibility_file_path.resize(visibility_file_path.size() - 4);
+    visibility_file_path += "_visibility.txt";
+
+    lamure::pvs::analyze_grid_visibility(test_grid, num_steps, visibility_file_path);
+#endif
+
+#ifdef PVS_MAIN_MEASURE_PERFORMANCE
     start_time = std::chrono::system_clock::now();
 #endif
 
