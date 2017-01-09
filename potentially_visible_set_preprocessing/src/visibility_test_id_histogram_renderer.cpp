@@ -44,6 +44,7 @@ initialize(int& argc, char** argv)
     std::string resource_file_path = "";
 
     std::string pvs_output_file_path = "";
+    std::string grid_type = "";
     unsigned int grid_size = 1;
     unsigned int num_steps = 11;
 
@@ -58,6 +59,7 @@ initialize(int& argc, char** argv)
       ("mem,m", po::value<unsigned>(&main_memory_budget_)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget_)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
+      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular' or 'octree')")
       ("gridsize,g", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into");
       ;

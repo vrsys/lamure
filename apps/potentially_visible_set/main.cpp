@@ -41,6 +41,7 @@ int main(int argc, char** argv)
 
     // Read additional data from input parameters.
     std::string pvs_output_file_path = "";
+    std::string grid_type = "";
     unsigned int grid_size = 1;
     unsigned int num_steps = 11;
 
@@ -58,7 +59,8 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
-      ("gridsize,g", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test")
+      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular' or 'octree')")
+      ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into");
       ;
 
@@ -95,13 +97,25 @@ int main(int argc, char** argv)
     }
 
     // Create grid based on scene size.
+    lamure::pvs::grid* test_grid = nullptr;
+
     size_t num_cells = grid_size;
 
-    double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
-    lamure::pvs::grid* test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
-    
-    //double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
-    //lamure::pvs::grid* test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
+    if(grid_type == "regular")
+    {
+        double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
+        test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
+    }
+    else if(grid_type == "octree")
+    {
+        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+        test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
+    }
+    else
+    {
+        std::cout << "Unsupported grid type: " << grid_type << std::endl << desc;
+        return 0;
+    }
 
     /*std::string pvs_grid_output_file_path = pvs_output_file_path;
     if(pvs_grid_output_file_path != "")
@@ -141,8 +155,13 @@ int main(int argc, char** argv)
 
     // Optimize grid by reducing amount of view cells if possible.
     std::cout << "Start grid optimization..." << std::endl;
-    //lamure::pvs::grid_optimizer_octree optimizer;
-    //optimizer.optimize_grid(test_grid, 0.8f);
+    
+    if(grid_type == "octree")
+    {
+        lamure::pvs::grid_optimizer_octree optimizer;
+        optimizer.optimize_grid(test_grid, 0.8f);
+    }
+    
     std::cout << "Finished grid optimization." << std::endl;
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE
