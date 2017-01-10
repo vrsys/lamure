@@ -19,7 +19,7 @@ grid_octree() : grid_octree(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0), std::vector
 grid_octree::
 grid_octree(const size_t& octree_depth, const double& size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
 {
-	root_node_ = new grid_octree_node(size, position_center, 1);
+	root_node_ = new grid_octree_node(size, position_center);
 	bounding_size_ = size;
 	
 	size_t depth = octree_depth;
@@ -356,7 +356,7 @@ load_grid_from_file(const std::string& file_path)
 		delete root_node_;
 	}
 
-	root_node_ = new grid_octree_node(root_size, scm::math::vec3d(pos_x, pos_y, pos_z), 1);
+	root_node_ = new grid_octree_node(root_size, scm::math::vec3d(pos_x, pos_y, pos_z));
 
 	// Read and create octree structure.
 	std::deque<grid_octree_node*> nodes_to_check;

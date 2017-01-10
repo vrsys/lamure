@@ -6,15 +6,14 @@ namespace pvs
 {
 
 grid_octree_node::
-grid_octree_node() : grid_octree_node(1.0, scm::math::vec3d(0.0, 0.0, 0.0), 1)
+grid_octree_node() : grid_octree_node(1.0, scm::math::vec3d(0.0, 0.0, 0.0))
 {
 }
 
 grid_octree_node::
-grid_octree_node(const double& cell_size, const scm::math::vec3d& position_center, const unsigned int& depth) : view_cell_regular(cell_size, position_center)
+grid_octree_node(const double& cell_size, const scm::math::vec3d& position_center) : view_cell_regular(cell_size, position_center)
 {
 	child_nodes_ = nullptr;
-	depth_ = depth;
 }
 
 grid_octree_node::
@@ -54,7 +53,7 @@ split()
 			double new_size = get_size().x * 0.5;
 			new_pos = new_pos + (multiplier * get_size().x * 0.25);
 
-			child_nodes_[child_index] = grid_octree_node(new_size, new_pos, depth_ + 1);
+			child_nodes_[child_index] = grid_octree_node(new_size, new_pos);
 		}
 	}
 }
@@ -95,12 +94,6 @@ get_child_at_index_const(const size_t& index) const
 	}
 	
 	return &child_nodes_[index];
-}
-
-unsigned int grid_octree_node::
-get_depth() const
-{
-	return depth_;
 }
 
 }
