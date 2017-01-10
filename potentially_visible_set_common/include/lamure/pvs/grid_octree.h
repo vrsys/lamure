@@ -55,7 +55,6 @@ protected:
 
 	// Grid is managed as an octree, ech node manages its 8 children. Each node is accessed (in)directly via the root node.
 	grid_octree_node* root_node_;
-	double bounding_size_;
 	std::vector<node_t> ids_;
 
 	mutable std::mutex mutex_;

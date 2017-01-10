@@ -20,7 +20,6 @@ grid_octree::
 grid_octree(const size_t& octree_depth, const double& size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
 {
 	root_node_ = new grid_octree_node(size, position_center);
-	bounding_size_ = size;
 	
 	size_t depth = octree_depth;
 	create_grid(root_node_, depth);
