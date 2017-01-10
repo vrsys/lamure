@@ -20,18 +20,8 @@ layout(location = 0) out vec4 out_color;
 void main() {
   vec2 uv_coords = VertexIn.pass_uv_coords;
 
-  if ( dot(uv_coords, uv_coords)> 1 ) {
+  if ( dot(uv_coords, uv_coords)> 1 )
     discard;
-  }
-
-#if 0
-  vec3 normal = VertexIn.pass_normal;
-  if ( normal.z < 0 ) {
-    normal *= -1.0; 
-  }
-
-  normal = (normal + vec3(1.0, 1.0, 1.0)) / 2.0;
-#endif
 
   out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
 }
