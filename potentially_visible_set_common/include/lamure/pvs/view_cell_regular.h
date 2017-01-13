@@ -28,6 +28,7 @@ public:
 
 	virtual bool contains_visibility_data() const;
 	virtual std::map<model_t, std::vector<node_t>> get_visible_indices() const;
+	virtual void clear_visibility_data();
 
 private:
 	double cell_size_;

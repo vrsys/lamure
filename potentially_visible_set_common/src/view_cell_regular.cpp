@@ -99,5 +99,11 @@ get_visible_indices() const
 	return indices;
 }
 
+void view_cell_regular::
+clear_visibility_data()
+{
+	visibility_.clear();
+}
+
 }
 }

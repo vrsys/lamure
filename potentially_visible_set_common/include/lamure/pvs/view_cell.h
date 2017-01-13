@@ -25,6 +25,7 @@ public:
 
 	virtual bool contains_visibility_data() const = 0;
 	virtual std::map<model_t, std::vector<node_t>> get_visible_indices() const = 0;
+	virtual void clear_visibility_data() = 0;
 };
 
 }

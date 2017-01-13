@@ -5,6 +5,7 @@
 #include "lamure/pvs/grid_regular.h"
 #include "lamure/pvs/grid_regular_runtime.h"
 #include "lamure/pvs/grid_octree.h"
+#include "lamure/pvs/grid_octree_hierarchical.h"
 
 namespace lamure
 {
@@ -73,6 +74,10 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	else if(grid_type == "octree")
 	{
 		visibility_grid_ = new grid_octree();
+	}
+	else if(grid_type == "octree_hierarchical")
+	{
+		visibility_grid_ = new grid_octree_hierarchical();
 	}
 
 	bool result = visibility_grid_->load_grid_from_file(grid_file_path);

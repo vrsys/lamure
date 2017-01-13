@@ -13,10 +13,15 @@
 
 #include <lamure/pvs/visibility_test.h>
 #include <lamure/pvs/visibility_test_id_histogram_renderer.h>
+
 #include <lamure/pvs/grid.h>
 #include <lamure/pvs/grid_regular.h>
 #include <lamure/pvs/grid_octree.h>
+#include <lamure/pvs/grid_octree_hierarchical.h>
+
 #include <lamure/pvs/grid_optimizer_octree.h>
+#include <lamure/pvs/grid_optimizer_octree_hierarchical.h>
+
 #include <lamure/pvs/pvs_database.h>
 #include "lamure/pvs/pvs_utils.h"
 
@@ -111,6 +116,11 @@ int main(int argc, char** argv)
         double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
         test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
     }
+    else if(grid_type == "hierarchical")
+    {
+        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+        test_grid = new lamure::pvs::grid_octree_hierarchical(num_cells, cell_size, center, ids);
+    }
     else
     {
         std::cout << "Unsupported grid type: " << grid_type << std::endl << desc;
@@ -160,6 +170,11 @@ int main(int argc, char** argv)
     {
         lamure::pvs::grid_optimizer_octree optimizer;
         optimizer.optimize_grid(test_grid, 0.8f);
+    }
+    else if(grid_type == "hierarchical")
+    {
+        lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
+        optimizer.optimize_grid(test_grid, 0.9f);
     }
     
     std::cout << "Finished grid optimization." << std::endl;
