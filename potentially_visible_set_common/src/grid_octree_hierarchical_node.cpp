@@ -1,5 +1,7 @@
 #include "lamure/pvs/grid_octree_hierarchical_node.h"
 
+#include <iostream>
+
 namespace lamure
 {
 namespace pvs
@@ -18,73 +20,6 @@ grid_octree_hierarchical_node(const double& cell_size, const scm::math::vec3d& p
 grid_octree_hierarchical_node::
 ~grid_octree_hierarchical_node()
 {
-}
-
-void grid_octree_hierarchical_node::
-set_visibility(const model_t& object_id, const node_t& node_id, const bool& visible)
-{
-	if(visibility_.size() <= object_id)
-	{
-		visibility_.resize(object_id + 1);
-	}
-
-	std::set<node_t>& node_visibility = visibility_[object_id];
-	
-	if(visible)
-	{
-		node_visibility.insert(node_id);
-	}
-	else
-	{
-		std::set<node_t>::iterator element = std::find(node_visibility.begin(), node_visibility.end(), node_id);
-		if(element != node_visibility.end())
-		{
-			node_visibility.erase(element);
-		}
-	}
-}
-
-bool grid_octree_hierarchical_node::
-get_visibility(const model_t& object_id, const node_t& node_id) const
-{
-	if(visibility_.size() < object_id)
-	{
-		return false;
-	}
-
-	const std::set<node_t>& node_visibility = visibility_[object_id];
-	
-	return std::find(node_visibility.begin(), node_visibility.end(), node_id) != node_visibility.end();
-}
-
-bool grid_octree_hierarchical_node::
-contains_visibility_data() const
-{
-	return visibility_.size() > 0;
-}
-
-std::map<model_t, std::vector<node_t>> grid_octree_hierarchical_node::
-get_visible_indices() const
-{
-	std::map<model_t, std::vector<node_t>> indices;
-
-	for(model_t model_index = 0; model_index < visibility_.size(); ++model_index)
-	{
-		const std::set<node_t>& node_visibility = visibility_[model_index];
-
-		for(std::set<node_t>::iterator node_iter = node_visibility.begin(); node_iter != node_visibility.end(); ++node_iter)
-		{
-			indices[model_index].push_back(*node_iter);
-		}
-	}
-
-	return indices;
-}
-
-void grid_octree_hierarchical_node::
-clear_visibility_data()
-{
-	visibility_.clear();
 }
 
 void grid_octree_hierarchical_node::
@@ -135,9 +70,11 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 			current_node->combine_visibility(ids, num_allowed_unequal_elements);
 		}
 
+		size_t mod_counter = 0;
+
 		for(model_t model_index = 0; model_index < ids.size(); ++model_index)
 		{
-			for(node_t node_index = 0; node_index < ids[model_index]; ++model_index)
+			for(node_t node_index = 0; node_index < ids[model_index]; ++node_index)
 			{
 				unsigned short appearance_counter = 0;
 
@@ -159,9 +96,13 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 					{
 						this->get_child_at_index(child_index)->set_visibility(model_index, node_index, false);
 					}
+ 
+					mod_counter++;
 				}
 			}
 		}
+
+		std::cout << "mods done: " << mod_counter << std::endl;
 	}
 }
 
