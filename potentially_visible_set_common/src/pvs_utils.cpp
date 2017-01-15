@@ -65,5 +65,35 @@ void analyze_grid_visibility(const grid* input_grid, const unsigned int& num_ste
     file_out.close();
 }
 
+double calculate_grid_occlusion(const grid* input_grid)
+{
+    // Iterate over view cells and collect visibility data.
+    size_t num_cells = input_grid->get_cell_count();
+    size_t total_num_nodes = 0;
+    size_t total_visible_nodes = 0;
+
+    for(size_t cell_index = 0; cell_index < num_cells; ++cell_index)
+    {
+        lamure::model_t num_models = input_grid->get_num_models();
+        std::map<lamure::model_t, std::vector<lamure::node_t>> visibility = input_grid->get_cell_at_index(cell_index)->get_visible_indices();
+
+        lamure::node_t model_num_nodes = 0;
+        lamure::node_t model_visible_nodes = 0;
+
+        for(lamure::model_t model_index = 0; model_index < num_models; ++model_index)
+        {
+            lamure::node_t num_nodes = input_grid->get_num_nodes(model_index);
+
+            model_num_nodes += num_nodes;
+            model_visible_nodes += visibility[model_index].size();
+        }
+
+        total_num_nodes += model_num_nodes;
+        total_visible_nodes += model_visible_nodes;
+    }
+
+    return 1.0 - ((double)total_visible_nodes / (double)total_num_nodes);
+}
+
 }
 }
