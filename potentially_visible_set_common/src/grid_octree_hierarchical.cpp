@@ -3,6 +3,7 @@
 
 #include "lamure/bounding_box.h"
 #include "lamure/pvs/grid_octree_hierarchical.h"
+#include "lamure/pvs/pvs_utils.h"
 
 namespace lamure
 {
@@ -17,7 +18,7 @@ grid_octree_hierarchical() : grid_octree_hierarchical(1, 1.0, scm::math::vec3d(0
 grid_octree_hierarchical::
 grid_octree_hierarchical(const size_t& octree_depth, const double& size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
 {
-	root_node_ = new grid_octree_hierarchical_node(size, position_center);
+	root_node_ = new grid_octree_hierarchical_node(size, position_center, nullptr);
 	
 	create_grid(root_node_, octree_depth);
 	
@@ -99,6 +100,9 @@ save_grid_to_file(const std::string& file_path) const
 void grid_octree_hierarchical::
 save_visibility_to_file(const std::string& file_path) const
 {
+	// If the occlusion is below 50%, save the indices of occluded nodes instead of visible nodes to save storage.
+	bool save_occlusion = true; //calculate_grid_occlusion(this) < 0.5;
+
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	std::fstream file_out;
@@ -109,6 +113,9 @@ save_visibility_to_file(const std::string& file_path) const
 		throw std::invalid_argument("invalid file path: " + file_path);
 	}
 
+	// First byte is used to save whether visibility or occlusion data are written.
+	file_out.write(reinterpret_cast<char*>(&save_occlusion), sizeof(save_occlusion));	
+
 	// Iterate over view cells.
 	std::deque<const grid_octree_node*> unwritten_nodes;
 	unwritten_nodes.push_back(root_node_);
@@ -118,11 +125,18 @@ save_visibility_to_file(const std::string& file_path) const
 		const grid_octree_hierarchical_node* current_node = (const grid_octree_hierarchical_node*)unwritten_nodes[0];
 		unwritten_nodes.pop_front();
 
-		std::map<model_t, std::vector<node_t>> visible_indices = current_node->get_visible_indices();
-
 		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 		{
-			const std::vector<node_t>& model_visibility = visible_indices[model_index];
+			std::vector<node_t> model_visibility;
+
+			// Collect the visibility nodes depending on the occlusion situation.
+			for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
+			{
+				if(current_node->get_visibility(model_index, node_index) != save_occlusion)
+				{
+					model_visibility.push_back(node_index);
+				}
+			}
 
 			// Write number of values which will be written so it can be read later.
 			node_t number_visibility_elements = model_visibility.size();
@@ -241,6 +255,10 @@ load_visibility_from_file(const std::string& file_path)
 		return false;
 	}
 
+	// First byte is used to save whether visibility or occlusion data are written.
+	bool load_occlusion;
+	file_in.read(reinterpret_cast<char*>(&load_occlusion), sizeof(load_occlusion));
+
 	// Iterate over view cells.
 	std::deque<grid_octree_node*> unread_nodes;
 	unread_nodes.push_back(root_node_);
@@ -252,6 +270,12 @@ load_visibility_from_file(const std::string& file_path)
 
 		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 		{
+			// Set all nodes to proper default value depending on which kind of visibility index is stored.
+			for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
+			{
+				current_node->set_visibility(model_index, node_index, load_occlusion);
+			}
+
 			// Read number of values to be read afterwards.
 			node_t number_visibility_elements;
 			file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
@@ -260,7 +284,7 @@ load_visibility_from_file(const std::string& file_path)
 			{
 				node_t visibility_index;
 				file_in.read(reinterpret_cast<char*>(&visibility_index), sizeof(visibility_index));
-				current_node->set_visibility(model_index, visibility_index, true);
+				current_node->set_visibility(model_index, visibility_index, !load_occlusion);
 			}
 		}
 

@@ -1,7 +1,5 @@
 #include "lamure/pvs/grid_octree_hierarchical_node.h"
 
-#include <iostream>
-
 namespace lamure
 {
 namespace pvs
@@ -10,11 +8,15 @@ namespace pvs
 grid_octree_hierarchical_node::
 grid_octree_hierarchical_node() : grid_octree_node()
 {
+	parent_ = nullptr;
+	hierarchical_storage_ = false;
 }
 
 grid_octree_hierarchical_node::
-grid_octree_hierarchical_node(const double& cell_size, const scm::math::vec3d& position_center) : grid_octree_node(cell_size, position_center)
+grid_octree_hierarchical_node(const double& cell_size, const scm::math::vec3d& position_center, grid_octree_hierarchical_node* parent) : grid_octree_node(cell_size, position_center)
 {
+	parent_ = parent;
+	hierarchical_storage_ = false;
 }
 
 grid_octree_hierarchical_node::
@@ -22,12 +24,45 @@ grid_octree_hierarchical_node::
 {
 }
 
+bool grid_octree_hierarchical_node::
+get_visibility(const model_t& object_id, const node_t& node_id) const
+{
+	bool visible = grid_octree_node::get_visibility(object_id, node_id);
+	
+	// If node is not visible in current node, it might still be in a parent node.
+	if(hierarchical_storage_ && !visible && parent_ != nullptr)
+	{
+		visible = parent_->get_visibility(object_id, node_id);
+	}
+
+	return visible;
+}
+
+std::map<model_t, std::vector<node_t>> grid_octree_hierarchical_node::
+get_visible_indices() const
+{
+	std::map<model_t, std::vector<node_t>> indices = grid_octree_node::get_visible_indices();
+
+	// If visibility is stored hierarchically, parent visibility must be included as well.
+	if(hierarchical_storage_ && parent_ != nullptr)
+	{
+		std::map<model_t, std::vector<node_t>> parent_indices = parent_->get_visible_indices();
+
+		for(std::map<model_t, std::vector<node_t>>::iterator iter = parent_indices.begin(); iter != parent_indices.end(); ++iter)
+		{
+			indices[iter->first].insert(indices[iter->first].end(), iter->second.begin(), iter->second.end());
+		}
+	}
+
+	return indices;
+}
+
 void grid_octree_hierarchical_node::
 split()
 {
 	if(child_nodes_ == nullptr)
 	{
-		child_nodes_ = new grid_octree_node[8];
+		child_nodes_ = new grid_octree_node*[8];
 		
 		for(size_t child_index = 0; child_index < 8; ++child_index)
 		{
@@ -53,7 +88,7 @@ split()
 			double new_size = get_size().x * 0.5;
 			new_pos = new_pos + (multiplier * get_size().x * 0.25);
 
-			child_nodes_[child_index] = grid_octree_hierarchical_node(new_size, new_pos);
+			child_nodes_[child_index] = new grid_octree_hierarchical_node(new_size, new_pos, this);
 		}
 	}
 }
@@ -61,6 +96,8 @@ split()
 void grid_octree_hierarchical_node::
 combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_allowed_unequal_elements)
 {
+	hierarchical_storage_ = true;
+
 	if(this->has_children())
 	{
 		// Make sure all children have been processed recursively.
@@ -78,6 +115,7 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 			{
 				unsigned short appearance_counter = 0;
 
+				// Count how often a node index appears in the children.
 				for(size_t child_index = 0; child_index < 8; ++child_index)
 				{
 					grid_octree_hierarchical_node* current_node = (grid_octree_hierarchical_node*)this->get_child_at_index(child_index);
@@ -101,9 +139,13 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 				}
 			}
 		}
-
-		std::cout << "mods done: " << mod_counter << std::endl;
 	}
+}
+
+const grid_octree_hierarchical_node* grid_octree_hierarchical_node::
+get_parent_node()
+{
+	return parent_;
 }
 
 }
