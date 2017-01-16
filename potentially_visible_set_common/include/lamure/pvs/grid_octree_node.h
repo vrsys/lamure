@@ -25,15 +25,15 @@ public:
 	grid_octree_node(const double& cell_size, const scm::math::vec3d& position_center);
 	~grid_octree_node();
 
-	void split();
-	void collapse();
+	virtual void split();
+	virtual void collapse();
 
-	bool has_children() const;
-	grid_octree_node* get_child_at_index(const size_t& index);
-	const grid_octree_node* get_child_at_index_const(const size_t& index) const;
+	virtual bool has_children() const;
+	virtual grid_octree_node* get_child_at_index(const size_t& index);
+	virtual const grid_octree_node* get_child_at_index_const(const size_t& index) const;
 
 protected:
-	grid_octree_node* child_nodes_;
+	grid_octree_node** child_nodes_;
 };
 
 }

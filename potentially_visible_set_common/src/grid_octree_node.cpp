@@ -27,7 +27,7 @@ split()
 {
 	if(child_nodes_ == nullptr)
 	{
-		child_nodes_ = new grid_octree_node[8];
+		child_nodes_ = new grid_octree_node*[8];
 		
 		for(size_t child_index = 0; child_index < 8; ++child_index)
 		{
@@ -53,7 +53,7 @@ split()
 			double new_size = get_size().x * 0.5;
 			new_pos = new_pos + (multiplier * get_size().x * 0.25);
 
-			child_nodes_[child_index] = grid_octree_node(new_size, new_pos);
+			child_nodes_[child_index] = new grid_octree_node(new_size, new_pos);
 		}
 	}
 }
@@ -63,6 +63,11 @@ collapse()
 {
 	if(child_nodes_ != nullptr)
 	{
+		for(size_t child_index = 0; child_index < 8; ++child_index)
+		{
+			delete child_nodes_[child_index];
+		}
+
 		delete[] child_nodes_;
 		child_nodes_ = nullptr;
 	}
@@ -82,7 +87,7 @@ get_child_at_index(const size_t& index)
 		return nullptr;
 	}
 	
-	return &child_nodes_[index];
+	return child_nodes_[index];
 }
 
 const grid_octree_node* grid_octree_node::
@@ -93,7 +98,7 @@ get_child_at_index_const(const size_t& index) const
 		return nullptr;
 	}
 	
-	return &child_nodes_[index];
+	return child_nodes_[index];
 }
 
 }
