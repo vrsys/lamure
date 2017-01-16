@@ -107,26 +107,30 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 			current_node->combine_visibility(ids, num_allowed_unequal_elements);
 		}
 
-		size_t mod_counter = 0;
-
 		for(model_t model_index = 0; model_index < ids.size(); ++model_index)
 		{
 			for(node_t node_index = 0; node_index < ids[model_index]; ++node_index)
 			{
-				unsigned short appearance_counter = 0;
+				unsigned short non_appearance_counter = 0;
 
-				// Count how often a node index appears in the children.
+				// Count how often the index doesn't appear (allows faster skip of the current ID).
 				for(size_t child_index = 0; child_index < 8; ++child_index)
 				{
 					grid_octree_hierarchical_node* current_node = (grid_octree_hierarchical_node*)this->get_child_at_index(child_index);
-					if(current_node->get_visibility(model_index, node_index))
+
+					if(!current_node->get_visibility(model_index, node_index))
 					{
-						appearance_counter++;
+						non_appearance_counter++;
+
+						if(non_appearance_counter > num_allowed_unequal_elements)
+						{
+							break;
+						}
 					}
 				}
 
 				// If an element is common among all children (or a given threshold of children) it is moved to the parent.
-				if((8 - appearance_counter) <= num_allowed_unequal_elements)
+				if(non_appearance_counter <= num_allowed_unequal_elements)
 				{
 					this->set_visibility(model_index, node_index, true);
 
@@ -134,8 +138,6 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 					{
 						this->get_child_at_index(child_index)->set_visibility(model_index, node_index, false);
 					}
- 
-					mod_counter++;
 				}
 			}
 		}
