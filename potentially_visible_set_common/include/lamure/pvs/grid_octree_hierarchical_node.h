@@ -35,6 +35,7 @@ public:
 	virtual void split();
 
 	void combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_allowed_unequal_elements);
+	void activate_hierarchical_mode(const bool& activate, const bool& propagate);
 
 protected:
 	const grid_octree_hierarchical_node* get_parent_node();

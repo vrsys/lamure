@@ -33,6 +33,9 @@ public:
 	virtual bool load_visibility_from_file(const std::string& file_path);
 
 	void combine_visibility(const unsigned short& num_allowed_unequal_elements);
+
+protected:
+	double calculate_average_node_hierarchy_visibility() const;
 };
 
 }

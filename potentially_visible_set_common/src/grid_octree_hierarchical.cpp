@@ -100,8 +100,11 @@ save_grid_to_file(const std::string& file_path) const
 void grid_octree_hierarchical::
 save_visibility_to_file(const std::string& file_path) const
 {
+	// When saving, the data should only be read from the single nodes, nod collect from their parents.
+	((grid_octree_hierarchical_node*)root_node_)->activate_hierarchical_mode(false, true);
+
 	// If the occlusion is below 50%, save the indices of occluded nodes instead of visible nodes to save storage.
-	bool save_occlusion = true; //calculate_grid_occlusion(this) < 0.5;
+	bool save_occlusion = calculate_average_node_hierarchy_visibility() > 0.5;
 
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -342,6 +345,52 @@ combine_visibility(const unsigned short& num_allowed_unequal_elements)
 {
 	grid_octree_hierarchical_node* root_hierarchical_node = (grid_octree_hierarchical_node*)root_node_;
 	root_hierarchical_node->combine_visibility(ids_, num_allowed_unequal_elements);
+}
+
+double grid_octree_hierarchical::
+calculate_average_node_hierarchy_visibility() const
+{
+	// Iterate over nodes and collect visibility data.
+    size_t total_num_nodes = 0;
+    size_t total_visible_nodes = 0;
+
+    // Iterate over view cells.
+	std::deque<const grid_octree_node*> unchecked_nodes;
+	unchecked_nodes.push_back(root_node_);
+
+	while(unchecked_nodes.size() != 0)
+	{
+		grid_octree_hierarchical_node* current_node = (grid_octree_hierarchical_node*)unchecked_nodes[0];
+		unchecked_nodes.pop_front();
+
+		lamure::model_t num_models = this->get_num_models();
+       	std::map<lamure::model_t, std::vector<lamure::node_t>> visibility = current_node->get_visible_indices();
+
+		lamure::node_t model_num_nodes = 0;
+        lamure::node_t model_visible_nodes = 0;
+
+        for(lamure::model_t model_index = 0; model_index < num_models; ++model_index)
+        {
+            lamure::node_t num_nodes = this->get_num_nodes(model_index);
+
+            model_num_nodes += num_nodes;
+            model_visible_nodes += visibility[model_index].size();
+        }
+
+        total_num_nodes += model_num_nodes;
+        total_visible_nodes += model_visible_nodes;
+
+        // Add child nodes of current nodes to queue.
+		if(current_node->has_children())
+		{
+			for(size_t child_index = 0; child_index < 8; ++child_index)
+			{
+				unchecked_nodes.push_back(current_node->get_child_at_index_const(child_index));
+			}
+		}
+	}
+
+    return (double)total_visible_nodes / (double)total_num_nodes;
 }
 
 }

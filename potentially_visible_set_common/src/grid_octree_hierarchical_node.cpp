@@ -50,7 +50,15 @@ get_visible_indices() const
 
 		for(std::map<model_t, std::vector<node_t>>::iterator iter = parent_indices.begin(); iter != parent_indices.end(); ++iter)
 		{
-			indices[iter->first].insert(indices[iter->first].end(), iter->second.begin(), iter->second.end());
+			const model_t& model_key = iter->first;
+			std::vector<node_t>& old_nodes = indices[model_key];
+			std::vector<node_t>& new_nodes = iter->second;
+
+			for(node_t node_index = 0; node_index < new_nodes.size(); ++node_index)
+			{
+				// For this to work, we assume the code works and the parents do not include any redundant values.
+				old_nodes.push_back(new_nodes[node_index]);
+			}
 		}
 	}
 
@@ -103,8 +111,8 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 		// Make sure all children have been processed recursively.
 		for(size_t child_index = 0; child_index < 8; ++child_index)
 		{
-			grid_octree_hierarchical_node* current_node = (grid_octree_hierarchical_node*)this->get_child_at_index(child_index);
-			current_node->combine_visibility(ids, num_allowed_unequal_elements);
+			grid_octree_hierarchical_node* current_child_node = (grid_octree_hierarchical_node*)this->get_child_at_index(child_index);
+			current_child_node->combine_visibility(ids, num_allowed_unequal_elements);
 		}
 
 		for(model_t model_index = 0; model_index < ids.size(); ++model_index)
@@ -116,9 +124,9 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 				// Count how often the index doesn't appear (allows faster skip of the current ID).
 				for(size_t child_index = 0; child_index < 8; ++child_index)
 				{
-					grid_octree_hierarchical_node* current_node = (grid_octree_hierarchical_node*)this->get_child_at_index(child_index);
+					grid_octree_node* current_child_node = this->get_child_at_index(child_index);
 
-					if(!current_node->get_visibility(model_index, node_index))
+					if(!current_child_node->get_visibility(model_index, node_index))
 					{
 						non_appearance_counter++;
 
@@ -139,6 +147,24 @@ combine_visibility(const std::vector<node_t>& ids, const unsigned short& num_all
 						this->get_child_at_index(child_index)->set_visibility(model_index, node_index, false);
 					}
 				}
+			}
+		}
+	}
+}
+
+void grid_octree_hierarchical_node::
+activate_hierarchical_mode(const bool& activate, const bool& propagate)
+{
+	hierarchical_storage_ = activate;
+
+	if(propagate)
+	{
+		if(this->has_children())
+		{
+			for(size_t child_index = 0; child_index < 8; ++child_index)
+			{
+				grid_octree_hierarchical_node* child_node = (grid_octree_hierarchical_node*)this->get_child_at_index(child_index);
+				child_node->activate_hierarchical_mode(activate, propagate);
 			}
 		}
 	}
