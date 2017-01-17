@@ -49,6 +49,7 @@ int main(int argc, char** argv)
     std::string grid_type = "";
     unsigned int grid_size = 1;
     unsigned int num_steps = 11;
+    float optimization_threshold = 1.0f;
 
     namespace po = boost::program_options;
     namespace fs = boost::filesystem;
@@ -64,10 +65,21 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
-      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular' or 'octree')")
-      ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test")
-      ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into");
+      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'octree', 'hierarchical')")
+      ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
+      ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.")
+      ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only)");
       ;
+
+    // Make sure optimization threshold is within certain bounds (0-100%).
+    if(optimization_threshold > 1.0f)
+    {
+        optimization_threshold = 1.0f;
+    }
+    else if(optimization_threshold < 0.0f)
+    {
+        optimization_threshold = 0.0f;
+    }
 
     po::variables_map vm;
     auto parsed_options = po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
@@ -165,16 +177,16 @@ int main(int argc, char** argv)
 
     // Optimize grid by reducing amount of view cells if possible.
     std::cout << "Start grid optimization..." << std::endl;
-    
+
     if(grid_type == "octree")
     {
         lamure::pvs::grid_optimizer_octree optimizer;
-        optimizer.optimize_grid(test_grid, 0.8f);
+        optimizer.optimize_grid(test_grid, optimization_threshold);
     }
     else if(grid_type == "hierarchical")
     {
         lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
-        optimizer.optimize_grid(test_grid, 0.9f);
+        optimizer.optimize_grid(test_grid, optimization_threshold);
     }
     
     std::cout << "Finished grid optimization." << std::endl;
@@ -183,6 +195,7 @@ int main(int argc, char** argv)
     end_time = std::chrono::system_clock::now();
     elapsed_seconds = end_time - start_time;
     double grid_optimization_time = elapsed_seconds.count();
+    start_time = std::chrono::system_clock::now();
 #endif
 
 #ifdef PVS_MAIN_MEASURE_VISIBILITY
@@ -195,6 +208,9 @@ int main(int argc, char** argv)
 #endif
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE
+    end_time = std::chrono::system_clock::now();
+    elapsed_seconds = end_time - start_time;
+    double visibility_analysis_time = elapsed_seconds.count();
     start_time = std::chrono::system_clock::now();
 #endif
 
@@ -222,9 +238,12 @@ int main(int argc, char** argv)
     file_out.open(performance_file_path, std::ios::app);
 
     file_out << "---------- main performance in seconds ----------" << std::endl;
-    file_out << "initialization: " << complete_time - (visibility_test_time + grid_optimization_time + save_file_time) << std::endl;
+    file_out << "initialization: " << complete_time - (visibility_test_time + grid_optimization_time + visibility_analysis_time + save_file_time) << std::endl;
     file_out << "visibility test: " << visibility_test_time << std::endl;
     file_out << "grid optimization: " << grid_optimization_time << std::endl;
+#ifdef PVS_MAIN_MEASURE_VISIBILITY
+    file_out << "visibility analysis: " << visibility_analysis_time << std::endl;
+#endif    
     file_out << "save file: " << save_file_time << std::endl;
     file_out << "complete execution: " << complete_time << std::endl;
 
