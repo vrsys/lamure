@@ -243,13 +243,6 @@ int main(int argc, char** argv)
     management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, measurement_descriptor);
 
     // PVS basic setup. If no path is given, runtime access to the PVS will always return true (visible).
-    std::vector<lamure::node_t> ids;
-    ids.resize(database->num_models());
-    for(lamure::model_t model_index = 0; model_index < ids.size(); ++model_index)
-    {
-        ids.at(model_index) = database->get_model(model_index)->get_bvh()->get_num_nodes();
-    }
-
     if(pvs_file_path != "")
     {
         std::string pvs_grid_file_path = pvs_file_path;
@@ -257,7 +250,7 @@ int main(int argc, char** argv)
         pvs_grid_file_path = pvs_grid_file_path + "grid";
 
         lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-        pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path, ids);
+        pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path);
 
         // Thread to update viewer position to pvs must be started after the pvs has loaded.
         management_->start_update_viewer_position_thread();
