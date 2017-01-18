@@ -10,6 +10,7 @@
 
 #include <lamure/types.h>
 
+#include "lamure/pvs/glut_management.h"
 #include "lamure/pvs/renderer.h"
 #include "lamure/pvs/grid.h"
 
@@ -34,7 +35,7 @@ namespace lamure
 namespace pvs
 {
 
-class management
+class management : public glut_management
 {
 public:
                         management(std::vector<std::string> const& model_filenames,

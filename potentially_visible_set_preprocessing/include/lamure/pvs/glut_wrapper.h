@@ -1,9 +1,16 @@
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
 #ifndef GLUT_WRAPPER_H
 #define GLUT_WRAPPER_H
 
 #include <GL/freeglut.h>
 
-#include "lamure/pvs/management.h"
+#include "lamure/pvs/glut_management.h"
 
 namespace lamure
 {
@@ -13,8 +20,8 @@ namespace pvs
 class glut_wrapper
 {
 	public:
-		static void initialize(int argc, char** argv, const uint32_t& width, const uint32_t& height, management* manager);
-        static void set_management(management* manager);
+		static void initialize(int argc, char** argv, const uint32_t& width, const uint32_t& height, glut_management* manager);
+        static void set_management(glut_management* manager);
         static void quit();
 
 	private:
@@ -26,7 +33,7 @@ class glut_wrapper
     	static void mousemotion(int x, int y);
     	static void idle();
 
-        static management* manager;
+        static glut_management* manager;
 };
 
 }

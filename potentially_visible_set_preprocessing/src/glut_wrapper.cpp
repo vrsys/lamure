@@ -5,9 +5,9 @@ namespace lamure
 namespace pvs
 {
 
-management* glut_wrapper::manager;
+glut_management* glut_wrapper::manager;
 
-void glut_wrapper::initialize(int argc, char** argv, const uint32_t& width, const uint32_t& height, management* manager)
+void glut_wrapper::initialize(int argc, char** argv, const uint32_t& width, const uint32_t& height, glut_management* manager)
 {
 	glut_wrapper::manager = manager;
 
@@ -35,7 +35,7 @@ void glut_wrapper::initialize(int argc, char** argv, const uint32_t& width, cons
     glutIdleFunc(glut_wrapper::idle);
 }
 
-void glut_wrapper::set_management(management* manager)
+void glut_wrapper::set_management(glut_management* manager)
 {
     glut_wrapper::manager = manager;
 }
