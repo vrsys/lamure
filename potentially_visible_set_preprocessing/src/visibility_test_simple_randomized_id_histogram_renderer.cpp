@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "lamure/pvs/visibility_test_simple_randomized_id_histogram_renderer.h"
 #include "lamure/pvs/glut_wrapper.h"
 #include "lamure/pvs/utils.h"
@@ -42,6 +44,7 @@ initialize(int& argc, char** argv)
     putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
     std::string resource_file_path = "";
+    std::string visibility_test_time = "h1";
 
     // These value are read, but not used. Yet ignoring them in the terminal parameters would lead to misinterpretation.
     std::string pvs_output_file_path = "";
@@ -60,6 +63,8 @@ initialize(int& argc, char** argv)
       ("vram,v", po::value<unsigned>(&video_memory_budget_)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget_)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget_)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
+      ("runtime", po::value<std::string>(&visibility_test_time), "specify the time the visibility test will take\n(start with 'm', 'h' or 'd' followed by an integer duration, for example 'h2' to test for 2 hours)")
+    // The following parameters are used by the main app only, yet must be identified nonetheless since otherwise they are dealt with as file paths.
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'octree', 'hierarchical')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
@@ -112,6 +117,29 @@ initialize(int& argc, char** argv)
 		return 0;
 	}
 
+    // Parse visibility test execution time.
+    char time_type = visibility_test_time[0];
+    std::string duration_string = visibility_test_time.substr(1, std::string::npos);
+    int duration_int = std::stoi(duration_string, nullptr, 10);
+
+    double duration_seconds = (double)duration_int;
+    switch(time_type)
+    {
+        case 'm':
+            duration_seconds = duration_seconds * 60;
+            break;
+        case 'h':
+            duration_seconds = duration_seconds * 60 * 60;
+            break;
+        case 'd':
+            duration_seconds = duration_seconds * 60 * 60 * 24;
+            break;
+        default:
+            std::cout << "Error: No or invalid execution time type given." << std::endl;
+            return 0;
+    }
+
+    // Setup window and render settings.
 	lamure::pvs::glut_wrapper::initialize(argc, argv, resolution_x_, resolution_y_, nullptr);
 
     std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > model_attributes;
@@ -133,6 +161,7 @@ initialize(int& argc, char** argv)
     management_ = new management_simple_randomized(model_filenames, model_transformations, visible_set, invisible_set);
     glut_wrapper::set_management(management_);
     management_->set_pvs_file_path(pvs_output_file_path);
+    management_->set_duration_visibility_test(duration_seconds);
 
     // Calculate bounding box of whole scene.
     for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)

@@ -8,6 +8,8 @@
 #ifndef LAMURE_PVS_MANAGEMENT_SIMPLE_RANDOMIZED_H_
 #define LAMURE_PVS_MANAGEMENT_SIMPLE_RANDOMIZED_H_
 
+#include <chrono>
+
 #include <lamure/types.h>
 
 #include "lamure/pvs/glut_management.h"
@@ -59,6 +61,8 @@ public:
     void                set_grid(grid* visibility_grid);
     void                set_pvs_file_path(const std::string& file_path);
 
+    void                set_duration_visibility_test(const double& duration);
+
 protected:
 
     void                Toggledispatching();
@@ -107,6 +111,18 @@ private:
     // Used to identify the depth of nodes for the check which nodes are inside the grid cells. (model id<grid cell id<data>>)
     std::vector<std::vector<size_t>> total_depth_rendered_nodes_;
     std::vector<std::vector<size_t>> total_num_rendered_nodes_;
+
+    double duration_visibility_test_in_seconds_;
+    double remaining_duration_visibility_test_in_seconds_;
+    std::chrono::time_point<std::chrono::system_clock> current_test_start_time_;
+
+    // Used to manage the random components of the visibility test.
+    std::mt19937 view_cell_rng_;
+    std::uniform_int_distribution<size_t> view_cell_distribution_;
+
+    scm::math::vec3d current_position_in_current_view_cell_;
+
+    std::vector<size_t> num_samples_per_view_cell_;
 };
 
 }

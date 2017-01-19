@@ -10,11 +10,10 @@
 #include <set>
 #include <ctime>
 #include <algorithm>
-#include <fstream>
 #include <lamure/ren/bvh.h>
-#include <sstream>
-#include <chrono>
 #include <thread>
+#include <random>
+#include <fstream>
 
 #include "lamure/pvs/pvs_database.h"
 #include "lamure/pvs/grid_regular.h"
@@ -169,12 +168,18 @@ MainLoop()
     }
 
     active_camera_->set_projection_matrix(opening_angle, aspect_ratio, near_plane, far_plane_);
-    active_camera_->set_view_matrix(scm::math::make_look_at_matrix(current_cell->get_position_center(), current_cell->get_position_center() + look_dir, up_dir));  // look_at(eye, center, up)
+    active_camera_->set_view_matrix(scm::math::make_look_at_matrix(current_position_in_current_view_cell_, current_position_in_current_view_cell_ + look_dir, up_dir));  // look_at(eye, center, up)
 
     if(first_frame_)
     {
         controller->dispatch(context_id, renderer_->device());
         first_frame_ = false;
+
+        current_test_start_time_ = std::chrono::system_clock::now();
+        remaining_duration_visibility_test_in_seconds_ = duration_visibility_test_in_seconds_;
+
+        num_samples_per_view_cell_.resize(visibility_grid_->get_cell_count());
+        view_cell_distribution_ = std::uniform_int_distribution<size_t>(0, visibility_grid_->get_cell_count() - 1);
     }
     else
     {
@@ -276,31 +281,59 @@ MainLoop()
             }
         }
 
-        current_grid_index_++;
-        if(current_grid_index_ == visibility_grid_->get_cell_count())
+        
+        direction_counter_++;
+        if(direction_counter_ == 6)
         {
-            current_grid_index_ = 0;
-            direction_counter_++;
+            direction_counter_ = 0;
 
-            if(direction_counter_ == 6)
+            // Measure time passed during last visibility test from given point and check whether there is time left.
+            std::chrono::duration<double> time_passed_during_last_test = std::chrono::system_clock::now() - current_test_start_time_;
+            current_test_start_time_ = std::chrono::system_clock::now();
+
+            remaining_duration_visibility_test_in_seconds_ -= time_passed_during_last_test.count();
+
+            if(remaining_duration_visibility_test_in_seconds_ < 0)
             {
                 signal_shutdown = true;
             }
+            else
+            {
+                // Re-roll new view cell.
+                size_t current_grid_index_ = view_cell_distribution_(view_cell_rng_);
+                const view_cell* new_current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
+
+                // Re-roll a position within the newly selected view cell.
+                std::uniform_real_distribution<double> position_x_distribution(new_current_cell->get_position_center().x - new_current_cell->get_size().x * 0.5,
+                                                                                new_current_cell->get_position_center().x + new_current_cell->get_size().x * 0.5);
+                double x = position_x_distribution(view_cell_rng_);
+
+                std::uniform_real_distribution<double> position_y_distribution(new_current_cell->get_position_center().y - new_current_cell->get_size().y * 0.5,
+                                                                                new_current_cell->get_position_center().y + new_current_cell->get_size().y * 0.5);
+                double y = position_y_distribution(view_cell_rng_);
+                
+                std::uniform_real_distribution<double> position_z_distribution(new_current_cell->get_position_center().z - new_current_cell->get_size().z * 0.5,
+                                                                                new_current_cell->get_position_center().z + new_current_cell->get_size().z * 0.5);
+                double z = position_z_distribution(view_cell_rng_);
+
+                current_position_in_current_view_cell_ = scm::math::vec3d(x, y, z);
+
+                // Update sample information.
+                num_samples_per_view_cell_[current_grid_index_]++;
+            }
         }
 
-        if(current_grid_index_ % 8 == 0)
-        {
-            // Calculate current rendering state so user gets visual feedback on the preprocessing progress.
-            size_t num_cells = visibility_grid_->get_cell_count();
-            float total_rendering_steps = num_cells * 6;
-            float current_rendering_step = (num_cells * direction_counter_) + current_grid_index_;
-            float current_percentage_done = (current_rendering_step / total_rendering_steps) * 100.0f;
-            std::cout << "\rrendering in progress [" << current_percentage_done << "]       " << std::flush;
+        // Calculate current rendering state so user gets visual feedback on the preprocessing progress.
+        size_t current_days = (size_t)remaining_duration_visibility_test_in_seconds_ / (60 * 60 * 24);
+        size_t current_hours = ((size_t)remaining_duration_visibility_test_in_seconds_ / (60 * 60)) % 24;
+        size_t current_minutes = ((size_t)remaining_duration_visibility_test_in_seconds_ / 60) % 60;
+        size_t current_seconds = (size_t)remaining_duration_visibility_test_in_seconds_ % 60;
+        
+        std::cout << "\rremaining visibility test time: [" << current_days << "d " << current_hours << "h " << current_minutes << "m " << current_seconds << "s]          " << std::flush;
 
-            if(current_percentage_done == 100.0f)
-            {
-                std::cout << std::endl;
-            }
+        if(remaining_duration_visibility_test_in_seconds_ <= 0.0f)
+        {
+            std::cout << std::endl;
         }
     }
 
@@ -316,6 +349,57 @@ MainLoop()
         std::cout << "start visibility propagation..." << std::endl;
         emit_node_visibility(visibility_grid_);
         std::cout << "visibility propagation finished" << std::endl;
+
+        // Write info collected on sampling to file.
+        std::string sample_info_file_path = pvs_file_path_;
+        sample_info_file_path.resize(sample_info_file_path.size() - 4);
+        sample_info_file_path += "_sampling.txt";
+
+        std::ofstream file_out;
+        file_out.open(sample_info_file_path, std::ios::out);
+
+        size_t total_samples_taken = 0;
+        for(size_t index = 0; index < num_samples_per_view_cell_.size(); ++index)
+        {
+            file_out << "view cell " << index << ": " << num_samples_per_view_cell_[index] << std::endl;
+            total_samples_taken += num_samples_per_view_cell_[index];
+        }
+
+        file_out << "\ntotal samples: " << total_samples_taken << std::endl;
+        
+        float average_samples_per_cell = (float)total_samples_taken / (float)num_samples_per_view_cell_.size();
+        file_out << "average samples per view cell: " << average_samples_per_cell << std::endl;
+
+        float total_derivation = 0;
+        size_t smallest_sample_count = 0;
+        size_t largest_sample_count = 0;
+
+        for(size_t index = 0; index < num_samples_per_view_cell_.size(); ++index)
+        {
+            total_derivation += std::abs(num_samples_per_view_cell_[index] - average_samples_per_cell);
+
+            if(index == 0)
+            {
+                smallest_sample_count = num_samples_per_view_cell_[index];
+                largest_sample_count = num_samples_per_view_cell_[index];
+            }
+            else
+            {
+                smallest_sample_count = std::min(smallest_sample_count, num_samples_per_view_cell_[index]);
+                largest_sample_count = std::max(largest_sample_count, num_samples_per_view_cell_[index]);
+            }
+        }
+
+        float average_derivation = total_derivation / (float)num_samples_per_view_cell_.size();
+        file_out << "\naverage sample derivation: " << average_derivation << std::endl;
+        file_out << "smallest number of samples: " << smallest_sample_count << std::endl;
+        file_out << "largest number of samples: " << largest_sample_count << std::endl;
+
+        double total_duration_in_minutes = duration_visibility_test_in_seconds_ / 60.0;
+        float samples_per_minute = (float)total_samples_taken / (float)total_duration_in_minutes;
+        file_out << "\nsamples per minute: " << samples_per_minute << std::endl;
+
+        file_out.close();
     }
 
     return signal_shutdown;
@@ -338,7 +422,11 @@ check_for_nodes_within_cells(const std::vector<std::vector<size_t>>& total_depth
             bounding_box cell_bounds(min_vertex, max_vertex);
 
             // We can get the first and last index of the nodes on a certain depth inside the bvh.
-            unsigned int average_depth = total_depth_rendered_nodes_[model_index][cell_index] / total_num_rendered_nodes_[model_index][cell_index];
+            unsigned int average_depth = database->get_model(model_index)->get_bvh()->get_depth();
+            if(total_num_rendered_nodes_[model_index][cell_index] != 0)
+            {
+                average_depth = total_depth_rendered_nodes_[model_index][cell_index] / total_num_rendered_nodes_[model_index][cell_index];
+            }
 
             node_t start_index = database->get_model(model_index)->get_bvh()->get_first_node_id_of_depth(average_depth);
             node_t end_index = start_index + database->get_model(model_index)->get_bvh()->get_length_of_depth(average_depth);
@@ -511,6 +599,12 @@ void management_simple_randomized::
 set_pvs_file_path(const std::string& file_path)
 {
     pvs_file_path_ = file_path;
+}
+
+void management_simple_randomized::
+set_duration_visibility_test(const double& duration)
+{
+    duration_visibility_test_in_seconds_ = duration;
 }
 
 }
