@@ -300,7 +300,7 @@ MainLoop()
             else
             {
                 // Re-roll new view cell.
-                size_t current_grid_index_ = view_cell_distribution_(view_cell_rng_);
+                current_grid_index_ = view_cell_distribution_(view_cell_rng_);
                 const view_cell* new_current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
 
                 // Re-roll a position within the newly selected view cell.
