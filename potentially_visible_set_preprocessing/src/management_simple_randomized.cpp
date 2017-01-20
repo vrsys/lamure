@@ -128,39 +128,39 @@ MainLoop()
         case 0:
             look_dir = scm::math::vec3d(1.0, 0.0, 0.0);
 
-            near_plane = current_cell->get_size().x * 0.5f;
+            //near_plane = current_cell->get_size().x * 0.5f;
             break;
 
         case 1:
             look_dir = scm::math::vec3d(-1.0, 0.0, 0.0);
 
-            near_plane = current_cell->get_size().x * 0.5f;
+            //near_plane = current_cell->get_size().x * 0.5f;
             break;
 
         case 2:
             look_dir = scm::math::vec3d(0.0, 1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
-            near_plane = current_cell->get_size().y * 0.5f;
+            //near_plane = current_cell->get_size().y * 0.5f;
             break;
 
         case 3:
             look_dir = scm::math::vec3d(0.0, -1.0, 0.0);
             up_dir = scm::math::vec3d(0.0, 0.0, 1.0);
 
-            near_plane = current_cell->get_size().y * 0.5f;
+            //near_plane = current_cell->get_size().y * 0.5f;
             break;
 
         case 4:
             look_dir = scm::math::vec3d(0.0, 0.0, 1.0);
             
-            near_plane = current_cell->get_size().z * 0.5f;
+            //near_plane = current_cell->get_size().z * 0.5f;
             break;
 
         case 5:
             look_dir = scm::math::vec3d(0.0, 0.0, -1.0);
 
-            near_plane = current_cell->get_size().z * 0.5f;
+            //near_plane = current_cell->get_size().z * 0.5f;
             break;
             
         default:
@@ -276,8 +276,8 @@ MainLoop()
             // Count nodes in the current cut.
             for(auto const& node_slot_aggregate : renderable)
             {
-                total_depth_rendered_nodes_[model_index][current_grid_index_] = total_depth_rendered_nodes_[model_index][current_grid_index_] + database->get_model(model_id)->get_bvh()->get_depth_of_node(node_slot_aggregate.node_id_);
-                total_num_rendered_nodes_[model_index][current_grid_index_] = total_num_rendered_nodes_[model_index][current_grid_index_] + 1;
+                total_depth_rendered_nodes_[model_index][current_grid_index_] += database->get_model(model_id)->get_bvh()->get_depth_of_node(node_slot_aggregate.node_id_);
+                total_num_rendered_nodes_[model_index][current_grid_index_] ++;
             }
         }
 
