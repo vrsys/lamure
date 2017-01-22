@@ -114,6 +114,7 @@ private:
 
     double duration_visibility_test_in_seconds_;
     double remaining_duration_visibility_test_in_seconds_;
+    double skipped_duration_visibility_test_in_seconds_;
     std::chrono::time_point<std::chrono::system_clock> current_test_start_time_;
 
     // Used to manage the random components of the visibility test.

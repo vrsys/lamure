@@ -44,10 +44,11 @@ initialize(int& argc, char** argv)
     putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
     std::string resource_file_path = "";
-    std::string visibility_test_time = "h1";
+    std::string visibility_test_time = "";
 
     // These value are read, but not used. Yet ignoring them in the terminal parameters would lead to misinterpretation.
     std::string pvs_output_file_path = "";
+    std::string visibility_test_type = "";
     std::string grid_type = "";
     unsigned int grid_size = 1;
     unsigned int num_steps = 11;
@@ -63,9 +64,10 @@ initialize(int& argc, char** argv)
       ("vram,v", po::value<unsigned>(&video_memory_budget_)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget_)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget_)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
-      ("runtime", po::value<std::string>(&visibility_test_time), "specify the time the visibility test will take\n(start with 'm', 'h' or 'd' followed by an integer duration, for example 'h2' to test for 2 hours)")
+      ("runtime", po::value<std::string>(&visibility_test_time)->default_value("h1"), "specify the time the visibility test will take\n(start with 'm', 'h' or 'd' followed by an integer duration, for example 'h2' to test for 2 hours)")
     // The following parameters are used by the main app only, yet must be identified nonetheless since otherwise they are dealt with as file paths.
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
+      ("vistest", po::value<std::string>(&visibility_test_type)->default_value("histogramrenderer"), "specify type of visibility test to be used. ('histogramrenderer', 'randomhistogramrenderer')")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'octree', 'hierarchical')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
       ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.")

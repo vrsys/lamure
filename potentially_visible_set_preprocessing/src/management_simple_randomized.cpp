@@ -49,6 +49,11 @@ management_simple_randomized(std::vector<std::string> const& model_filenames,
     direction_counter_ = 0;
     update_position_for_pvs_ = true;
 
+    // Initialize timing variables.
+    duration_visibility_test_in_seconds_ = 0.0f;
+    remaining_duration_visibility_test_in_seconds_ = 0.0f;
+    skipped_duration_visibility_test_in_seconds_ = 0.0f;
+
     lamure::pvs::pvs_database::get_instance()->activate(false);
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
@@ -114,7 +119,7 @@ MainLoop()
     lamure::view_t view_id = controller->deduce_view_id(context_id, active_camera_->view_id());
     
     int repetition_counter = 0;
-    const view_cell* current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
+    //const view_cell* current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
 
     scm::math::vec3d look_dir;
     scm::math::vec3d up_dir(0.0, 1.0, 0.0);
@@ -293,7 +298,7 @@ MainLoop()
 
             remaining_duration_visibility_test_in_seconds_ -= time_passed_during_last_test.count();
 
-            if(remaining_duration_visibility_test_in_seconds_ < 0)
+            if(remaining_duration_visibility_test_in_seconds_ <= 0.0)
             {
                 signal_shutdown = true;
             }
@@ -395,9 +400,10 @@ MainLoop()
         file_out << "smallest number of samples: " << smallest_sample_count << std::endl;
         file_out << "largest number of samples: " << largest_sample_count << std::endl;
 
-        double total_duration_in_minutes = duration_visibility_test_in_seconds_ / 60.0;
+        double total_duration_in_minutes = (duration_visibility_test_in_seconds_ - skipped_duration_visibility_test_in_seconds_) / 60.0;
         float samples_per_minute = (float)total_samples_taken / (float)total_duration_in_minutes;
-        file_out << "\nsamples per minute: " << samples_per_minute << std::endl;
+        file_out << "\ntotal minutes rendered: " << total_duration_in_minutes << std::endl;
+        file_out << "samples per minute: " << samples_per_minute << std::endl;
 
         file_out.close();
     }
@@ -533,6 +539,19 @@ RegisterMousePresses(int button, int state, int x, int y)
 void management_simple_randomized::
 dispatchKeyboardInput(unsigned char key)
 {
+    switch(key)
+    {
+        case 's':
+        {
+            // Set remaining time to zero, so the algorithm will finish the visibility test and start saving the results.
+            skipped_duration_visibility_test_in_seconds_ = remaining_duration_visibility_test_in_seconds_;
+            remaining_duration_visibility_test_in_seconds_ = 0.0;
+            break;
+        }
+
+        default:
+            break;
+    }
 }
 
 void management_simple_randomized::

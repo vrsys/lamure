@@ -13,6 +13,7 @@
 
 #include <lamure/pvs/visibility_test.h>
 #include <lamure/pvs/visibility_test_id_histogram_renderer.h>
+#include <lamure/pvs/visibility_test_simple_randomized_id_histogram_renderer.h>
 
 #include <lamure/pvs/grid.h>
 #include <lamure/pvs/grid_regular.h>
@@ -39,13 +40,9 @@ int main(int argc, char** argv)
     start_time_complete = std::chrono::system_clock::now();
 #endif
 
-    // Load scene and analyze scene size.
-    lamure::pvs::visibility_test* vt = new lamure::pvs::visibility_test_id_histogram_renderer();
-    vt->initialize(argc, argv);
-    lamure::vec3r scene_dimensions = vt->get_scene_bounds().get_dimensions();
-
     // Read additional data from input parameters.
     std::string pvs_output_file_path = "";
+    std::string visibility_test_type = "";
     std::string grid_type = "";
     unsigned int grid_size = 1;
     unsigned int num_steps = 11;
@@ -55,7 +52,7 @@ int main(int argc, char** argv)
     namespace fs = boost::filesystem;
 
     const std::string exec_name = (argc > 0) ? fs::basename(argv[0]) : "";
-    scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
+    //scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
 
     putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
@@ -65,32 +62,45 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
+      ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hr"), "specify type of visibility test to be used. (histogram renderer 'hr', simple randomized histogram renderer 'srhr')")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'octree', 'hierarchical')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
       ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only)");
       ;
 
-    // Make sure optimization threshold is within certain bounds (0-100%).
-    if(optimization_threshold > 1.0f)
-    {
-        optimization_threshold = 1.0f;
-    }
-    else if(optimization_threshold < 0.0f)
-    {
-        optimization_threshold = 0.0f;
-    }
-
+    // Parse additonal passed parameters.
     po::variables_map vm;
     auto parsed_options = po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
     po::store(parsed_options, vm);
     po::notify(vm);
 
+    // Check for valid file path to save pvs-file to.
     if(pvs_output_file_path == "")
     {
         std::cout << "Please specifiy PVS output file path.\n" << desc;
         return 0;
     }
+
+    // Load scene and analyze scene size by choosing and analyzing the visibility test.
+    lamure::pvs::visibility_test* vt = nullptr;
+    
+    if(visibility_test_type == "hr")
+    {
+        vt = new lamure::pvs::visibility_test_id_histogram_renderer();
+    }
+    else if(visibility_test_type == "srhr")
+    {
+        vt = new lamure::pvs::visibility_test_simple_randomized_id_histogram_renderer();
+    }
+    else
+    {
+        std::cout << "Invalid visibility test: " << visibility_test_type << ".\n" << desc;
+        return 0;
+    }
+
+    vt->initialize(argc, argv);
+    lamure::vec3r scene_dimensions = vt->get_scene_bounds().get_dimensions();
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     
@@ -137,6 +147,16 @@ int main(int argc, char** argv)
     {
         std::cout << "Unsupported grid type: " << grid_type << std::endl << desc;
         return 0;
+    }
+
+    // Make sure optimization threshold is within certain bounds (0-100%).
+    if(optimization_threshold > 1.0f)
+    {
+        optimization_threshold = 1.0f;
+    }
+    else if(optimization_threshold < 0.0f)
+    {
+        optimization_threshold = 0.0f;
     }
 
     /*std::string pvs_grid_output_file_path = pvs_output_file_path;
