@@ -116,6 +116,8 @@ management(std::vector<std::string> const& model_filenames,
     run_update_thread_ = false;
 
     PrintInfo();
+
+    current_update_timeout_timer_ = 0.0;
 }
 
 management::
@@ -142,6 +144,9 @@ management::
 bool management::
 MainLoop()
 {
+    std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
+    start_time = std::chrono::system_clock::now();
+
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     lamure::ren::controller* controller = lamure::ren::controller::get_instance();
     lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
@@ -185,27 +190,27 @@ MainLoop()
 
     std::string status_string("");
 
-    if(camera_recording_enabled_) {
+    if(camera_recording_enabled_)
+    {
         status_string += "Session recording (#"+std::to_string(current_session_number_) +") : ON\n";
-    } else {
+    }
+    else
+    {
         status_string += "Session recording: OFF\n";
     }
 
-    if (! allow_user_input_) {
-
-
+    if (! allow_user_input_)
+    {
         status_string += std::to_string(measurement_session_descriptor_.recorded_view_vector_.size()+1) + " views left to write.\n";
-
-        if ( !screenshot_session_started_ ) {
-            
-        }
 
         size_t ms_since_update = controller->ms_since_last_node_upload();
 
-        if ( ms_since_update > 3000) {
+        if ( ms_since_update > 3000 || current_update_timeout_timer_ > 30.0)
+        {
             if ( screenshot_session_started_ )
                 
-                if(measurement_session_descriptor_.get_num_taken_screenshots() ) {
+                if(measurement_session_descriptor_.get_num_taken_screenshots() )
+                {
                     auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
                     renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
                                                 measurement_session_descriptor_.get_screenshot_name() );
@@ -213,20 +218,29 @@ MainLoop()
 
                 measurement_session_descriptor_.increment_screenshot_counter();
 
-            if(! measurement_session_descriptor_.recorded_view_vector_.empty() ) {
-                if (! screenshot_session_started_ ) {
+            if(!measurement_session_descriptor_.recorded_view_vector_.empty() )
+            {
+                if (! screenshot_session_started_ )
+                {
                     screenshot_session_started_ = true;
                 }
+
                 active_camera_->set_view_matrix(measurement_session_descriptor_.recorded_view_vector_.back());
                 controller->reset_ms_since_last_node_upload();
                 measurement_session_descriptor_.recorded_view_vector_.pop_back();
-            } else {
+            }
+            else
+            {
                 // leave the main loop
                 signal_shutdown = true;
             }
 
-        } else {
-            status_string += std::to_string( ((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
+            current_update_timeout_timer_ = 0.0;
+        }
+        else
+        {
+            status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
+            status_string += std::to_string((int)(30.0 - current_update_timeout_timer_)) + " s until forced snapshot.\n";
         }
     }
 
@@ -315,8 +329,14 @@ MainLoop()
 
 #endif
 
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+    double frame_time = elapsed_seconds.count();
+    current_update_timeout_timer_ += frame_time;
+
     if(signal_shutdown)
     {
+        run_update_thread_ = false;
         pvs_viewer_position_update_thread_.join();
     }
 

@@ -140,6 +140,7 @@ private:
     float               reset_diameter_;
 
     uint32_t            current_session_number_;
+    double              current_update_timeout_timer_;
 
     lamure::model_t     num_models_;
 
