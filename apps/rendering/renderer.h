@@ -192,7 +192,9 @@ private:
         float                                       point_size_factor_;
 
 	    float                                       blending_threshold_;
+	
 
+	    int                                     render_provenance_;
         bool                                        render_bounding_boxes_;
 
         //variables related to text rendering
@@ -234,6 +236,8 @@ public:
     void clear_line_begin() { line_begin_.clear(); };
     void clear_line_end() { line_end_.clear(); };
 
+
+    void toggle_provenance_rendering();
     void toggle_bounding_box_rendering();
     void change_point_size(float amount);
     void toggle_cut_update_info();

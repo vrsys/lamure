@@ -29,6 +29,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       far_plane_(1000.0f),
       point_size_factor_(1.0f),
       blending_threshold_(0.01f),
+      render_provenance_(0),
       render_bounding_boxes_(false),
       elapsed_ms_since_cut_update_(0),
       render_mode_(RenderMode::HQ_TWO_PASS),
@@ -171,6 +172,7 @@ upload_uniforms(lamure::ren::camera const& camera) const
     LQ_one_pass_program_->uniform("near_plane", near_plane_);
     LQ_one_pass_program_->uniform("far_plane", far_plane_);
     LQ_one_pass_program_->uniform("point_size_factor", point_size_factor_);
+    LQ_one_pass_program_->uniform("render_provenance", render_provenance_);
 
     context_->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, .0f, 1.0f)); // how the image looks like, if nothing is drawn
     context_->clear_default_depth_stencil_buffer();
@@ -326,6 +328,9 @@ render_one_pass_LQ(lamure::context_t context_id,
 
 
                 if( (node_culling_result != 1) ) {
+
+		  LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
+		  
                     context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
@@ -1410,6 +1415,24 @@ calculate_radius_scale_per_model()
      radius_scale_per_model_[model_id] = scm::math::length(model_transformations_[model_id] * x_unit_vec);
     }
 }
+
+
+void Renderer::
+toggle_provenance_rendering()
+{
+  ++render_provenance_;
+  if(render_provenance_ == 3){
+    render_provenance_ = 0;
+  }
+
+  std::cout<<"provenance rendering: ";
+  if(render_provenance_ == 0)
+    std::cout<<"OFF\n\n";
+  else if(render_provenance_ == 1)
+    std::cout<<"difference to average surfel radius\n\n";
+  else
+    std::cout<<"normal\n\n";
+};
 
 //dynamic rendering adjustment functions
 void Renderer::

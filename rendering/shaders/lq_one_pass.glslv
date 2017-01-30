@@ -10,6 +10,8 @@
 uniform mat4 inv_mv_matrix;
 uniform float model_radius_scale;
 uniform float point_size_factor;
+uniform int render_provenance;
+uniform float average_radius;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -51,4 +53,21 @@ void main()
   gl_Position = vec4(in_position, 1.0);
 
   VertexOut.pass_point_color = vec3(in_r, in_g, in_b);
+
+  switch(render_provenance){
+     case 1:
+        {	
+	 float max_fac = 2.0;
+	 VertexOut.pass_point_color = vec3( min(max_fac, in_radius/average_radius) / max_fac );
+         break;
+        }
+     case 2:
+        {
+         VertexOut.pass_point_color = vec3(in_normal * 0.5 + 0.5);
+	 break;
+        }
+     default:
+        break;
+  }
+
 }

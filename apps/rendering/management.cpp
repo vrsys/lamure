@@ -343,6 +343,10 @@ dispatchKeyboardInput(unsigned char key)
 
     switch (key)
     {
+    case 'p':
+      renderer_->toggle_provenance_rendering();
+      break;
+
     case '+':
         importance_ += 0.1f;
         importance_ = std::min(importance_, 1.0f);
