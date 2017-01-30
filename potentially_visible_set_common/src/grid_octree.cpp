@@ -81,6 +81,18 @@ get_cell_count() const
 	return cells_by_indices_.size();
 }
 
+scm::math::vec3d grid_octree::
+get_size() const
+{
+	return root_node_->get_size();
+}
+
+scm::math::vec3d grid_octree::
+get_position_center() const
+{
+	return root_node_->get_position_center();
+}
+
 size_t grid_octree::
 cell_count_recursive(const grid_octree_node* node) const
 {

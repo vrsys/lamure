@@ -17,6 +17,8 @@ public:
 	virtual ~grid() {}
 
 	virtual size_t get_cell_count() const = 0;
+	virtual scm::math::vec3d get_size() const = 0;
+	virtual scm::math::vec3d get_position_center() const = 0;
 
 	virtual const view_cell* get_cell_at_index(const size_t& index) const = 0;
 	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position) const = 0;

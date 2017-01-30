@@ -26,6 +26,8 @@ public:
 	virtual ~grid_octree();
 
 	virtual size_t get_cell_count() const;
+	virtual scm::math::vec3d get_size() const;
+	virtual scm::math::vec3d get_position_center() const;
 
 	virtual const view_cell* get_cell_at_index(const size_t& index) const;
 	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position) const;

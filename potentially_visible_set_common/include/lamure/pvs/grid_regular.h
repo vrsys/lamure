@@ -24,6 +24,8 @@ public:
 	~grid_regular();
 
 	virtual size_t get_cell_count() const;
+	virtual scm::math::vec3d get_size() const;
+	virtual scm::math::vec3d get_position_center() const;
 
 	virtual const view_cell* get_cell_at_index(const size_t& index) const;
 	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position) const;
@@ -43,6 +45,7 @@ protected:
 	void create_grid(const size_t& num_cells, const double& cell_size, const scm::math::vec3d& position_center);
 
 	double cell_size_;
+	scm::math::vec3d size_;
 	scm::math::vec3d position_center_;
 
 	mutable std::vector<view_cell_regular> cells_;

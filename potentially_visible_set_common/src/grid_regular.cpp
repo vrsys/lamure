@@ -39,6 +39,18 @@ get_cell_count() const
 	return cells_.size();
 }
 
+scm::math::vec3d grid_regular::
+get_size() const
+{
+	return size_;
+}
+
+scm::math::vec3d grid_regular::
+get_position_center() const
+{
+	return position_center_;
+}
+
 const view_cell* grid_regular::
 get_cell_at_index(const size_t& index) const
 {
@@ -207,7 +219,8 @@ load_grid_from_file(const std::string& file_path)
 	double pos_x, pos_y, pos_z;
 	file_in >> pos_x >> pos_y >> pos_z;
 
-	create_grid(num_cells, cell_size, scm::math::vec3d(pos_x, pos_y, pos_z));
+	position_center_ = scm::math::vec3d(pos_x, pos_y, pos_z);
+	create_grid(num_cells, cell_size, position_center_);
 
 	// Read the number of models.
 	size_t num_models = 0;
@@ -294,6 +307,7 @@ create_grid(const size_t& num_cells, const double& cell_size, const scm::math::v
 	}
 
 	cell_size_ = cell_size;
+	size_ = scm::math::vec3d((double)num_cells * cell_size, (double)num_cells * cell_size, (double)num_cells * cell_size);
 	position_center_ = scm::math::vec3d(position_center);
 }
 
