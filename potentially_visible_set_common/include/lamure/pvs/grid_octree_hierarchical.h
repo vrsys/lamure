@@ -19,6 +19,9 @@ namespace lamure
 namespace pvs
 {
 
+// Grid that stores the visibility as uint32 IDs using the octree-hierarchy.
+// Common visibility will be stored within parent nodes instead of the children to save storage.
+// Decides to save either visible or occluded IDs for the whole file.
 class grid_octree_hierarchical : public grid_octree
 {
 public:

@@ -19,6 +19,7 @@
 #include <lamure/pvs/grid_regular.h>
 #include <lamure/pvs/grid_octree.h>
 #include <lamure/pvs/grid_octree_hierarchical.h>
+#include <lamure/pvs/grid_octree_hierarchical_v2.h>
 
 #include <lamure/pvs/grid_optimizer_octree.h>
 #include <lamure/pvs/grid_optimizer_octree_hierarchical.h>
@@ -141,7 +142,7 @@ int main(int argc, char** argv)
     else if(grid_type == "hierarchical")
     {
         double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
-        test_grid = new lamure::pvs::grid_octree_hierarchical(num_cells, cell_size, center, ids);
+        test_grid = new lamure::pvs::grid_octree_hierarchical_v2(num_cells, cell_size, center, ids);
     }
     else
     {

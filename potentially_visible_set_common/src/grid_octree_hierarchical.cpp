@@ -1,7 +1,6 @@
 #include <fstream>
 #include <deque>
 
-#include "lamure/bounding_box.h"
 #include "lamure/pvs/grid_octree_hierarchical.h"
 #include "lamure/pvs/pvs_utils.h"
 
