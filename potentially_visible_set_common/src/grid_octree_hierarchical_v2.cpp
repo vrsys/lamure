@@ -26,58 +26,7 @@ grid_octree_hierarchical_v2::
 void grid_octree_hierarchical_v2::
 save_grid_to_file(const std::string& file_path) const
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-
-	std::fstream file_out;
-	file_out.open(file_path, std::ios::out);
-
-	if(!file_out.is_open())
-	{
-		throw std::invalid_argument("invalid file path: " + file_path);
-	}
-
-	// Grid file type.
-	file_out << "octree_hierarchical_v2" << std::endl;
-
-	// Root size and position
-	file_out << root_node_->get_size().x << std::endl;
-	file_out << root_node_->get_position_center().x << " " << root_node_->get_position_center().y << " " << root_node_->get_position_center().z << std::endl;
-
-	// Write octree structure by writing split commands (0 = don't split, 1 = split).
-	std::deque<const grid_octree_node*> unwritten_nodes;
-	unwritten_nodes.push_back(root_node_);
-
-	while(unwritten_nodes.size() != 0)
-	{
-		const grid_octree_node* top_node = unwritten_nodes[0];
-		unwritten_nodes.pop_front();
-		
-		if(top_node->has_children())
-		{
-			file_out << '1';
-			
-			for(size_t child_index = 0; child_index < 8; ++child_index)
-			{
-				unwritten_nodes.push_back(top_node->get_child_at_index_const(child_index));
-			}
-		}
-		else
-		{
-			file_out << '0';
-		}
-	}
-	file_out << std::endl;
-
-	// Save number of models, so we can later simply read the node numbers.
-	file_out << ids_.size() << std::endl;
-
-	// Save the number of node ids of each model.
-	for(size_t model_index = 0; model_index < ids_.size(); ++model_index)
-	{
-		file_out << ids_[model_index] << " ";
-	}
-
-	file_out.close();
+	save_octree_grid(file_path, "octree_hierarchical_v2");
 }
 
 void grid_octree_hierarchical_v2::
@@ -160,79 +109,7 @@ save_visibility_to_file(const std::string& file_path) const
 bool grid_octree_hierarchical_v2::
 load_grid_from_file(const std::string& file_path)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-
-	std::fstream file_in;
-	file_in.open(file_path, std::ios::in);
-
-	if(!file_in.is_open())
-	{
-		return false;
-	}
-
-	// Start reading the header info which is used to recreate the grid.
-	std::string grid_type;
-	file_in >> grid_type;
-	if(grid_type != "octree_hierarchical_v2")
-	{
-		return false;
-	}
-
-	// Read data to create root node.
-	double root_size;
-	file_in >> root_size;
-
-	double pos_x, pos_y, pos_z;
-	file_in >> pos_x >> pos_y >> pos_z;
-
-	if(root_node_ != nullptr)
-	{
-		delete root_node_;
-	}
-
-	root_node_ = new grid_octree_node(root_size, scm::math::vec3d(pos_x, pos_y, pos_z));
-
-	// Read and create octree structure.
-	std::deque<grid_octree_node*> nodes_to_check;
-	nodes_to_check.push_back(root_node_);
-
-	while(nodes_to_check.size() != 0)
-	{
-		grid_octree_node* top_node = nodes_to_check[0];
-		nodes_to_check.pop_front();
-		
-		char split_command;
-		file_in >> split_command;
-
-		if(split_command == '1')
-		{
-			top_node->split();
-			
-			for(size_t child_index = 0; child_index < 8; ++child_index)
-			{
-				nodes_to_check.push_back(top_node->get_child_at_index(child_index));
-			}
-		}
-	}
-
-	// Make sure view cells are accessible.
-	compute_index_access();
-
-	// Read the number of models.
-	size_t num_models = 0;
-	file_in >> num_models;
-	ids_.resize(num_models);
-
-	// Read the number of nodes per model.
-	for(size_t model_index = 0; model_index < ids_.size(); ++model_index)
-	{
-		node_t num_nodes = 0;
-		file_in >> num_nodes;
-		ids_[model_index] = num_nodes;
-	}
-
-	file_in.close();
-	return true;
+	return load_octree_grid(file_path, "octree_hierarchical_v2");
 }
 
 

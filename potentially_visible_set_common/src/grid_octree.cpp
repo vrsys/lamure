@@ -223,6 +223,12 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 void grid_octree::
 save_grid_to_file(const std::string& file_path) const
 {
+	save_octree_grid(file_path, "octree");
+}
+
+void grid_octree::
+save_octree_grid(const std::string& file_path, const std::string& grid_type) const
+{
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	std::fstream file_out;
@@ -234,7 +240,7 @@ save_grid_to_file(const std::string& file_path) const
 	}
 
 	// Grid file type.
-	file_out << "octree" << std::endl;
+	file_out << grid_type << std::endl;
 
 	// Root size and position
 	file_out << root_node_->get_size().x << std::endl;
@@ -337,6 +343,12 @@ save_visibility_to_file(const std::string& file_path) const
 bool grid_octree::
 load_grid_from_file(const std::string& file_path)
 {
+	return load_octree_grid(file_path, "octree");
+}
+
+bool grid_octree::
+load_octree_grid(const std::string& file_path, const std::string& grid_type)
+{
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	std::fstream file_in;
@@ -348,9 +360,9 @@ load_grid_from_file(const std::string& file_path)
 	}
 
 	// Start reading the header info which is used to recreate the grid.
-	std::string grid_type;
-	file_in >> grid_type;
-	if(grid_type != "octree")
+	std::string file_grid_type;
+	file_in >> file_grid_type;
+	if(file_grid_type != grid_type)
 	{
 		return false;
 	}
@@ -411,7 +423,6 @@ load_grid_from_file(const std::string& file_path)
 	file_in.close();
 	return true;
 }
-
 
 bool grid_octree::
 load_visibility_from_file(const std::string& file_path)

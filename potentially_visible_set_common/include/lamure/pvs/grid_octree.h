@@ -49,6 +49,8 @@ public:
 
 protected:
 	void create_grid(grid_octree_node* node, size_t depth);
+	void save_octree_grid(const std::string& file_path, const std::string& grid_type) const;
+	bool load_octree_grid(const std::string& file_path, const std::string& grid_type);
 
 	size_t cell_count_recursive(const grid_octree_node* node) const;
 	grid_octree_node* find_cell_by_index_recursive(const grid_octree_node* node, const size_t& index, size_t base_value);
