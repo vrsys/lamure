@@ -221,7 +221,7 @@ int main(int argc, char** argv)
         lamure::pvs::grid_optimizer_octree optimizer;
         optimizer.optimize_grid(test_grid, optimization_threshold);
     }
-    else if(grid_type == "hierarchical")
+    else if(grid_type == "hierarchical" || grid_type == "hierarchical2")
     {
         lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
         optimizer.optimize_grid(test_grid, optimization_threshold);
