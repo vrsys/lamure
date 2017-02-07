@@ -53,6 +53,7 @@ target_link_libraries(${PROJECT_NAME}
     ${GMP_LIBRARY}
     ${MPFR_LIBRARY}
     optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
+    optimized ${Boost_IOSTREAMS_LIBRARY_RELEASE} debug ${Boost_IOSTREAMS_LIBRARY_DEBUG}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
     optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     )

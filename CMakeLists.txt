@@ -85,7 +85,7 @@ ELSEIF (UNIX)
   set(BOOST_LIBRARYDIR /opt/boost/latest/lib)
 ENDIF ()
 
-find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex system thread timer)
+find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex system thread timer iostreams)
 find_package( Threads )
 
 ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")

@@ -5,6 +5,14 @@
 #include <string>
 #include <climits>
 
+#include <sstream>
+
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+
+#include <iostream>
+
 namespace lamure
 {
 namespace pvs
@@ -147,6 +155,8 @@ save_visibility_to_file(const std::string& file_path) const
 		throw std::invalid_argument("invalid file path: " + file_path);
 	}
 
+	std::vector<std::string> compressed_data_blocks;
+
 	// Iterate over view cells.
 	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
 	{
@@ -183,7 +193,32 @@ save_visibility_to_file(const std::string& file_path) const
 			current_cell_data = current_cell_data + current_line_data;
 		}
 
-		file_out.write(current_cell_data.c_str(), current_cell_data.length());
+		// Compression of binary data using boost gzip.
+		std::stringstream stream_uncompressed, stream_compressed;
+		stream_uncompressed << current_cell_data;
+
+		boost::iostreams::filtering_streambuf<boost::iostreams::input> in;
+		in.push(boost::iostreams::gzip_compressor());
+		in.push(stream_uncompressed);
+		boost::iostreams::copy(in, stream_compressed);
+
+		std::string output_string = stream_compressed.str();
+		compressed_data_blocks.push_back(output_string);
+
+		//file_out.write(current_cell_data.c_str(), current_cell_data.length());
+	}
+
+	// Save sizes of compressed data blocks.
+	for(size_t current_block_index = 0; current_block_index < compressed_data_blocks.size(); ++current_block_index)
+	{
+		uint64_t current_block_size = compressed_data_blocks[current_block_index].size();
+		file_out.write(reinterpret_cast<char*>(&current_block_size), sizeof(current_block_size));
+	}
+
+	// Save compressed data blocks.
+	for(size_t current_block_index = 0; current_block_index < compressed_data_blocks.size(); ++current_block_index)
+	{
+		file_out.write(compressed_data_blocks[current_block_index].c_str(), compressed_data_blocks[current_block_index].length());
 	}
 
 	file_out.close();
@@ -253,10 +288,45 @@ load_visibility_from_file(const std::string& file_path)
 		return false;
 	}
 
+	// Read access points to data blocks.
+	std::vector<uint64_t> block_sizes;
+
+	for(size_t current_block_index = 0; current_block_index < this->get_cell_count(); ++current_block_index)
+	{
+		uint64_t block_size;
+		file_in.read(reinterpret_cast<char*>(&block_size), sizeof(block_size));
+		block_sizes.push_back(block_size);
+	}
+
+	// Read compressed data blocks.
+	std::vector<std::string> compressed_data_blocks;
+
+	for(size_t current_block_index = 0; current_block_index < this->get_cell_count(); ++current_block_index)
+	{
+		size_t block_size = block_sizes[current_block_index];
+
+		char current_block_data[block_size];
+		file_in.read(current_block_data, block_size);
+
+		std::string current_block(current_block_data, block_size);
+		compressed_data_blocks.push_back(current_block);
+	}
+
 	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
 	{
 		view_cell* current_cell = &cells_.at(cell_index);
 		
+		// Decompress.
+		std::stringstream stream_uncompressed, stream_compressed;
+		stream_compressed << compressed_data_blocks[cell_index];
+
+		boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
+		inbuf.push(boost::iostreams::gzip_decompressor());
+		inbuf.push(stream_compressed);
+		boost::iostreams::copy(inbuf, stream_uncompressed);
+
+		std::string decompressed_data = stream_uncompressed.str();
+
 		// One line per model.
 		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 		{
@@ -264,7 +334,8 @@ load_visibility_from_file(const std::string& file_path)
 			size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
 			char current_line_data[line_length];
 
-			file_in.read(current_line_data, line_length);
+			//file_in.read(current_line_data, line_length);
+			stream_uncompressed.read(current_line_data, line_length);
 
 			// Used to avoid continuing resize within visibility data.
 			current_cell->set_visibility(model_index, num_nodes - 1, false);
