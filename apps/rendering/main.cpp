@@ -250,7 +250,7 @@ int main(int argc, char** argv)
         pvs_grid_file_path = pvs_grid_file_path + "grid";
 
         lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-        pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path);
+        pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path, false);
 
         // Thread to update viewer position to pvs must be started after the pvs has loaded.
         management_->start_update_viewer_position_thread();
@@ -281,25 +281,23 @@ void glut_display()
     if (management_ != nullptr)
     {
         signaled_shutdown = management_->MainLoop(); 
-
         glutSwapBuffers();
     }
 
-        if(signaled_shutdown) {
-            glutExit();
-            exit(0);
-        }
+    if(signaled_shutdown)
+    {
+        glutExit();
+        exit(0);
+    }
 }
 
 
 void glut_resize(int w, int h)
 {
-
     if (management_ != nullptr)
     {
         management_->dispatchResize(w, h);
     }
-
 }
 
 void glut_mousefunc(int button, int state, int x, int y)
@@ -308,8 +306,6 @@ void glut_mousefunc(int button, int state, int x, int y)
     {
         management_->RegisterMousePresses(button, state, x, y);
     }
-
-
 }
 
 void glut_mousemotion(int x, int y)
@@ -327,7 +323,6 @@ void glut_idle()
 
 void Cleanup()
 {
-
     if (management_ != nullptr)
     {
         delete management_;
@@ -338,12 +333,10 @@ void Cleanup()
         delete lamure::ren::policy::get_instance();
         delete lamure::ren::ooc_cache::get_instance();
     }
-
 }
 
 void glut_close()
 {
-
     if (management_ != nullptr)
     {
         delete management_;

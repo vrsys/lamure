@@ -17,9 +17,11 @@
 
 #include <lamure/pvs/grid.h>
 #include <lamure/pvs/grid_regular.h>
+#include <lamure/pvs/grid_regular_compressed.h>
 #include <lamure/pvs/grid_octree.h>
 #include <lamure/pvs/grid_octree_hierarchical.h>
 #include <lamure/pvs/grid_octree_hierarchical_v2.h>
+#include <lamure/pvs/grid_octree_hierarchical_v3.h>
 
 #include <lamure/pvs/grid_optimizer_octree.h>
 #include <lamure/pvs/grid_optimizer_octree_hierarchical.h>
@@ -64,7 +66,7 @@ int main(int argc, char** argv)
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
       ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hr"), "specify type of visibility test to be used. (histogram renderer 'hr', simple randomized histogram renderer 'srhr')")
-      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'octree', 'hierarchical')")
+      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'regular_comp', 'octree', 'hierarchical', 'hierarchical2', 'hierarchical3')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
       ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only)");
@@ -134,6 +136,11 @@ int main(int argc, char** argv)
         double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
         test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
     }
+    else if(grid_type == "regular_comp")
+    {
+        double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
+        test_grid = new lamure::pvs::grid_regular_compressed(num_cells, cell_size, center, ids);
+    }
     else if(grid_type == "octree")
     {
         double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
@@ -142,7 +149,17 @@ int main(int argc, char** argv)
     else if(grid_type == "hierarchical")
     {
         double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+        test_grid = new lamure::pvs::grid_octree_hierarchical(num_cells, cell_size, center, ids);
+    }
+    else if(grid_type == "hierarchical2")
+    {
+        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
         test_grid = new lamure::pvs::grid_octree_hierarchical_v2(num_cells, cell_size, center, ids);
+    }
+    else if(grid_type == "hierarchical3")
+    {
+        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+        test_grid = new lamure::pvs::grid_octree_hierarchical_v3(num_cells, cell_size, center, ids);
     }
     else
     {

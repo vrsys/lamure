@@ -28,7 +28,7 @@ public:
 	virtual scm::math::vec3d get_position_center() const;
 
 	virtual const view_cell* get_cell_at_index(const size_t& index) const;
-	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position) const;
+	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const;
 
 	virtual void set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility);
 
@@ -38,17 +38,22 @@ public:
 	virtual bool load_grid_from_file(const std::string& file_path);
 	virtual bool load_visibility_from_file(const std::string& file_path);
 
+	virtual bool load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_index);
+	virtual void clear_cell_visibility(const size_t& cell_index);
+
 	virtual model_t get_num_models() const;
 	virtual node_t get_num_nodes(const model_t& model_id) const;
 
 protected:
 	void create_grid(const size_t& num_cells, const double& cell_size, const scm::math::vec3d& position_center);
+	void save_regular_grid(const std::string& file_path, const std::string& grid_type) const;
+	bool load_regular_grid(const std::string& file_path, const std::string& grid_type);
 
 	double cell_size_;
 	scm::math::vec3d size_;
 	scm::math::vec3d position_center_;
 
-	mutable std::vector<view_cell_regular> cells_;
+	std::vector<view_cell_regular> cells_;
 	std::vector<node_t> ids_;
 
 	mutable std::mutex mutex_;

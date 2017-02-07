@@ -30,7 +30,7 @@ public:
 	virtual scm::math::vec3d get_position_center() const;
 
 	virtual const view_cell* get_cell_at_index(const size_t& index) const;
-	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position) const;
+	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const;
 
 	virtual void set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility);
 
@@ -39,6 +39,9 @@ public:
 
 	virtual bool load_grid_from_file(const std::string& file_path);
 	virtual bool load_visibility_from_file(const std::string& file_path);
+
+	virtual bool load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_index);
+	virtual void clear_cell_visibility(const size_t& cell_index);
 
 	virtual model_t get_num_models() const;
 	virtual node_t get_num_nodes(const model_t& model_id) const;

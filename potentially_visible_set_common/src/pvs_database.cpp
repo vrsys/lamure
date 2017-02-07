@@ -3,10 +3,11 @@
 
 #include "lamure/pvs/pvs_database.h"
 #include "lamure/pvs/grid_regular.h"
-#include "lamure/pvs/grid_regular_runtime.h"
+#include "lamure/pvs/grid_regular_compressed.h"
 #include "lamure/pvs/grid_octree.h"
 #include "lamure/pvs/grid_octree_hierarchical.h"
 #include "lamure/pvs/grid_octree_hierarchical_v2.h"
+#include "lamure/pvs/grid_octree_hierarchical_v3.h"
 
 namespace lamure
 {
@@ -21,7 +22,7 @@ pvs_database()
 	visibility_grid_ = nullptr;
 	viewer_cell_ = nullptr;
 	activated_ = true;
-	runtime_ = true;
+	do_preload_ = false;
 }
 
 pvs_database::
@@ -45,9 +46,11 @@ get_instance()
 }
 
 bool pvs_database::
-load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path)
+load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path, const bool& do_preload)
 {
 	std::lock_guard<std::mutex> lock(mutex_);
+
+	do_preload_ = do_preload;
 
 	std::fstream file_in;
 	file_in.open(grid_file_path, std::ios::in);
@@ -63,14 +66,11 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 
 	if(grid_type == "regular")
 	{
-		if(runtime_)
-		{
-			visibility_grid_ = new grid_regular_runtime();
-		}
-		else
-		{
-			visibility_grid_ = new grid_regular();
-		}
+		visibility_grid_ = new grid_regular();
+	}
+	if(grid_type == "regular_compressed")
+	{
+		visibility_grid_ = new grid_regular_compressed();
 	}
 	else if(grid_type == "octree")
 	{
@@ -84,6 +84,10 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	{
 		visibility_grid_ = new grid_octree_hierarchical_v2();
 	}
+	else if(grid_type == "octree_hierarchical_v3")
+	{
+		visibility_grid_ = new grid_octree_hierarchical_v3();
+	}
 
 	bool result = visibility_grid_->load_grid_from_file(grid_file_path);
 
@@ -96,16 +100,21 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 		return false;
 	}
 	
-	result = visibility_grid_->load_visibility_from_file(pvs_file_path);
-
-	if(!result)
+	if(do_preload_)
 	{
-		// Loading grid file failed.
-		delete visibility_grid_;
-		visibility_grid_ = nullptr;
+		result = visibility_grid_->load_visibility_from_file(pvs_file_path);
 
-		return false;
+		if(!result)
+		{
+			// Loading grid file failed.
+			delete visibility_grid_;
+			visibility_grid_ = nullptr;
+
+			return false;
+		}
 	}
+
+	pvs_file_path_ = pvs_file_path;
 
 	return true;
 }
@@ -120,7 +129,19 @@ set_viewer_position(const scm::math::vec3d& position)
 		if(position != position_viewer_)
 		{
 			position_viewer_ = position;
-			viewer_cell_ = visibility_grid_->get_cell_at_position(position);
+			size_t cell_index = 0;
+			const view_cell* view_cell_at_position = visibility_grid_->get_cell_at_position(position, &cell_index);
+
+			if(view_cell_at_position != viewer_cell_)
+			{
+				viewer_cell_ = view_cell_at_position;
+
+				// If the view cell changed and the visibility data is not preloaded, it should be loaded now.
+				if(!do_preload_)
+				{
+					visibility_grid_->load_cell_visibility_from_file(pvs_file_path_, cell_index);
+				}
+			}
 		}
 	}
 }
@@ -154,12 +175,6 @@ is_activated() const
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	return activated_;
-}
-
-void pvs_database::
-runtime_mode(const bool& is_runtime)
-{
-	runtime_ = is_runtime;
 }
 
 const grid* pvs_database::

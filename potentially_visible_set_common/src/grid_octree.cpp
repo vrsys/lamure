@@ -167,7 +167,7 @@ find_cell_by_index_recursive_const(const grid_octree_node* node, const size_t& i
 }
 
 const view_cell* grid_octree::
-get_cell_at_position(const scm::math::vec3d& position) const
+get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
@@ -175,12 +175,27 @@ get_cell_at_position(const scm::math::vec3d& position) const
     vec3r max_vertex(root_node_->get_position_center() + root_node_->get_size() * 0.5);
     bounding_box root_node_bb(min_vertex, max_vertex);
 
+    const view_cell* result_view_cell = nullptr;
+
     if(root_node_bb.contains(position))
     {
-    	return find_cell_by_position_recursive_const(root_node_, position);
+    	result_view_cell = find_cell_by_position_recursive_const(root_node_, position);
+
+    	// Look for the index of the view cell if required by caller.
+    	if(cell_index != nullptr)
+	    {
+	    	for(size_t tracked_cell_index = 0; tracked_cell_index < cells_by_indices_.size(); ++tracked_cell_index)
+	    	{
+	    		if(result_view_cell == cells_by_indices_[tracked_cell_index])
+	    		{
+	    			(*cell_index) = tracked_cell_index;
+	    			break;
+	    		}
+	    	}
+	    }
     }
 
-	return nullptr;
+	return result_view_cell;
 }
 
 const grid_octree_node* grid_octree::
@@ -469,6 +484,25 @@ load_visibility_from_file(const std::string& file_path)
 
 	file_in.close();
 	return true;
+}
+
+bool grid_octree::
+load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_index)
+{
+	return false;
+}
+
+void grid_octree::
+clear_cell_visibility(const size_t& cell_index)
+{
+	if(this->get_num_models() <= cell_index)
+	{
+		return;
+	}
+
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	cells_by_indices_[cell_index]->clear_visibility_data();
 }
 
 model_t grid_octree::

@@ -156,7 +156,7 @@ int main(int argc, char** argv)
     for(size_t cell_index = 0; cell_index < input_grid->get_cell_count(); ++cell_index)
     {
         // Regular grid has different order than octree, so the proper cell at same position must be found.
-        const lamure::pvs::view_cell* input_cell = input_grid->get_cell_at_position(output_grid->get_cell_at_index(cell_index)->get_position_center());
+        const lamure::pvs::view_cell* input_cell = input_grid->get_cell_at_position(output_grid->get_cell_at_index(cell_index)->get_position_center(), nullptr);
 
         for(lamure::model_t model_index = 0; model_index < ids.size(); ++model_index)
         {

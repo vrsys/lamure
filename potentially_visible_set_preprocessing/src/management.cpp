@@ -741,8 +741,7 @@ apply_temporal_pvs(const id_histogram& hist)
     tmp_grid.save_visibility_to_file("/home/tiwo9285/tmp.pvs");
 
     pvs_database* pvs = pvs_database::get_instance();
-    pvs->runtime_mode(false);
-    pvs->load_pvs_from_file("/home/tiwo9285/tmp.grid", "/home/tiwo9285/tmp.pvs");
+    pvs->load_pvs_from_file("/home/tiwo9285/tmp.grid", "/home/tiwo9285/tmp.pvs", true);
 
     for (size_t cell_index = 0; cell_index < pvs->get_visibility_grid()->get_cell_count(); ++cell_index)
     {
