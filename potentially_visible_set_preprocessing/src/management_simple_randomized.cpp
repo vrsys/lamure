@@ -350,10 +350,14 @@ MainLoop()
         check_for_nodes_within_cells(total_depth_rendered_nodes_, total_num_rendered_nodes_);
         std::cout << "node check finished" << std::endl;
 
-        // ... set visibility of LOD-trees based on rendered nodes.
-        std::cout << "start visibility propagation..." << std::endl;
-        emit_node_visibility(visibility_grid_);
-        std::cout << "visibility propagation finished" << std::endl;
+        // Hardcoded heresy. This grid type applies visibility propagation at runtime.
+        if(visibility_grid_->get_grid_type() != "octree_hierarchical_v3")
+        {
+            // ... set visibility of LOD-trees based on rendered nodes.
+            std::cout << "start visibility propagation..." << std::endl;
+            emit_node_visibility(visibility_grid_);
+            std::cout << "visibility propagation finished" << std::endl;
+        }
 
         // Write info collected on sampling to file.
         std::string sample_info_file_path = pvs_file_path_;

@@ -407,10 +407,14 @@ MainLoop()
         start_time = std::chrono::system_clock::now();
     #endif
 
-        // ... set visibility of LOD-trees based on rendered nodes.
-        std::cout << "start visibility propagation..." << std::endl;
-        emit_node_visibility(visibility_grid_);
-        std::cout << "visibility propagation finished" << std::endl;
+        // Hardcoded heresy. This grid type applies visibility propagation at runtime.
+        if(visibility_grid_->get_grid_type() != "octree_hierarchical_v3")
+        {
+            // ... set visibility of LOD-trees based on rendered nodes.
+            std::cout << "start visibility propagation..." << std::endl;
+            emit_node_visibility(visibility_grid_);
+            std::cout << "visibility propagation finished" << std::endl;
+        }
 
     #ifdef LAMURE_PVS_MEASURE_PERFORMANCE
         end_time = std::chrono::system_clock::now();
