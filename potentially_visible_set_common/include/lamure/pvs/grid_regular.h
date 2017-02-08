@@ -23,6 +23,8 @@ public:
 	grid_regular(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids);
 	~grid_regular();
 
+	virtual std::string get_grid_type() const;
+
 	virtual size_t get_cell_count() const;
 	virtual scm::math::vec3d get_size() const;
 	virtual scm::math::vec3d get_position_center() const;

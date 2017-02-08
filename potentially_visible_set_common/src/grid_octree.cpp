@@ -42,6 +42,12 @@ grid_octree::
 	}
 }
 
+std::string grid_octree::
+get_grid_type() const
+{
+	return "octree";
+}
+
 void grid_octree::
 create_grid(grid_octree_node* node, size_t depth)
 {
@@ -489,7 +495,72 @@ load_visibility_from_file(const std::string& file_path)
 bool grid_octree::
 load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_index)
 {
-	return false;
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	view_cell* current_cell = cells_by_indices_[cell_index];
+
+	// First check if visibility data is already loaded.
+	if(current_cell->contains_visibility_data())
+	{
+		return true;
+	}
+
+	// If no visibility data exists, open the file and load them.
+	std::fstream file_in;
+	file_in.open(file_path, std::ios::in | std::ios::binary);
+
+	if(!file_in.is_open())
+	{
+		return false;
+	}
+
+	// Calculate the number of bytes of a view cell (note: every view cell requires same storage).
+	node_t single_cell_bytes = 0;
+
+	for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+	{
+		node_t num_nodes = ids_.at(model_index);
+
+		// If the number of node IDs is not dividable by 8 there is one additional character.
+		node_t addition = 0;
+		if(num_nodes % CHAR_BIT != 0)
+		{
+			addition = 1;
+		}
+
+		node_t line_size = (num_nodes / CHAR_BIT) + addition;
+		single_cell_bytes += line_size;
+	}
+
+	// Move to proper start point within file.
+	file_in.seekg(cell_index * single_cell_bytes);
+
+	// Read the visibility data.
+	for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+	{
+		node_t num_nodes = ids_.at(model_index);
+		size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
+		char current_line_data[line_length];
+
+		file_in.read(current_line_data, line_length);
+
+		// Used to avoid continuing resize within visibility data.
+		current_cell->set_visibility(model_index, num_nodes - 1, false);
+
+		for(node_t character_index = 0; character_index < line_length; ++character_index)
+		{
+			char current_byte = current_line_data[character_index];
+			
+			for(unsigned short bit_index = 0; bit_index < CHAR_BIT; ++bit_index)
+			{
+				bool visible = ((current_byte >> bit_index) & 1) == 0x01;
+				current_cell->set_visibility(model_index, (character_index * CHAR_BIT) + bit_index, visible);
+			}
+		}
+	}
+
+	file_in.close();
+	return true;
 }
 
 void grid_octree::

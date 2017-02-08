@@ -25,6 +25,8 @@ public:
 	grid_octree(const size_t& octree_depth, const double& size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids);
 	virtual ~grid_octree();
 
+	virtual std::string get_grid_type() const;
+
 	virtual size_t get_cell_count() const;
 	virtual scm::math::vec3d get_size() const;
 	virtual scm::math::vec3d get_position_center() const;

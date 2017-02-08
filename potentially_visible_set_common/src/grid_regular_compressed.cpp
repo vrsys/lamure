@@ -30,6 +30,12 @@ grid_regular_compressed::
 {
 }
 
+std::string grid_regular_compressed::
+get_grid_type() const
+{
+	return "regular_compressed";
+}
+
 void grid_regular_compressed::
 save_grid_to_file(const std::string& file_path) const
 {

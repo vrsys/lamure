@@ -15,6 +15,8 @@ public:
 	grid_regular_compressed(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids);
 	~grid_regular_compressed();
 
+	virtual std::string get_grid_type() const;
+
 	virtual void save_grid_to_file(const std::string& file_path) const;
 	virtual void save_visibility_to_file(const std::string& file_path) const;
 

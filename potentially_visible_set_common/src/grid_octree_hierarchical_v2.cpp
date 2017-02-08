@@ -23,6 +23,12 @@ grid_octree_hierarchical_v2::
 {
 }
 
+std::string grid_octree_hierarchical_v2::
+get_grid_type() const
+{
+	return "octree_hierarchical_v2";
+}
+
 void grid_octree_hierarchical_v2::
 save_grid_to_file(const std::string& file_path) const
 {
@@ -201,6 +207,76 @@ load_visibility_from_file(const std::string& file_path)
 
 			// Clear node visibility since it has been propagated to children.
 			current_node->clear_visibility_data();
+		}
+	}
+
+	file_in.close();
+	return true;
+}
+
+bool grid_octree_hierarchical_v2::
+load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_index)
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	view_cell* current_cell = cells_by_indices_[cell_index];
+
+	// First check if visibility data is already loaded.
+	if(current_cell->contains_visibility_data())
+	{
+		return true;
+	}
+
+	// If no visibility data exists, open the file and load them.
+	std::fstream file_in;
+	file_in.open(file_path, std::ios::in | std::ios::binary);
+
+	if(!file_in.is_open())
+	{
+		return false;
+	}
+
+	// Move to proper start point within file.
+	for(size_t jump_over_index = 0; jump_over_index < cell_index; ++jump_over_index)
+	{	
+		// First byte is used to save whether visibility or occlusion data are written.
+		bool load_occlusion;
+		file_in.read(reinterpret_cast<char*>(&load_occlusion), sizeof(load_occlusion));
+
+		// Read number of values to pass.
+		node_t number_visibility_elements;
+		file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
+
+		file_in.seekg(file_in.tellg() + (std::streampos)number_visibility_elements);
+	}
+
+	// WARNING: currently completely ignoring parent visibility! Therefore, runtime access is not correct!
+	// TODO: implement proper access including parents.
+
+	// Read the visibility data.
+	for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+	{
+		// First byte is used to save whether visibility or occlusion data are written.
+		bool load_occlusion;
+		file_in.read(reinterpret_cast<char*>(&load_occlusion), sizeof(load_occlusion));
+
+		// Set all nodes to proper default value depending on which kind of visibility index is stored.
+		for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
+		{
+			current_cell->set_visibility(model_index, node_index, load_occlusion);
+		}
+
+		// Read number of values to be read afterwards.
+		node_t number_visibility_elements;
+		file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
+
+		// WARNING: amazingly slow!
+		// TODO: improve performance.
+		for(node_t node_index = 0; node_index < number_visibility_elements; ++node_index)
+		{
+			node_t visibility_index;
+			file_in.read(reinterpret_cast<char*>(&visibility_index), sizeof(visibility_index));
+			current_cell->set_visibility(model_index, visibility_index, !load_occlusion);
 		}
 	}
 

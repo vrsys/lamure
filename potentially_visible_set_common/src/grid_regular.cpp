@@ -33,6 +33,12 @@ grid_regular::
 	cells_.clear();
 }
 
+std::string grid_regular::
+get_grid_type() const
+{
+	return "regular";
+}
+
 size_t grid_regular::
 get_cell_count() const
 {

@@ -16,6 +16,8 @@ class grid
 public:
 	virtual ~grid() {}
 
+	virtual std::string get_grid_type() const = 0;
+
 	virtual size_t get_cell_count() const = 0;
 	virtual scm::math::vec3d get_size() const = 0;
 	virtual scm::math::vec3d get_position_center() const = 0;
