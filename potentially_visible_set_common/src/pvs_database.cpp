@@ -64,6 +64,8 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	std::string grid_type;
 	file_in >> grid_type;
 
+	file_in.close();
+
 	if(grid_type == "regular")
 	{
 		visibility_grid_ = new grid_regular();
@@ -79,10 +81,12 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	else if(grid_type == "octree_hierarchical")
 	{
 		visibility_grid_ = new grid_octree_hierarchical();
+		do_preload_ = true;
 	}
 	else if(grid_type == "octree_hierarchical_v2")
 	{
 		visibility_grid_ = new grid_octree_hierarchical_v2();
+		do_preload_ = true;
 	}
 	else if(grid_type == "octree_hierarchical_v3")
 	{

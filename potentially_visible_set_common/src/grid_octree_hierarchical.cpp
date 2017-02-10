@@ -247,14 +247,28 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 	bool load_occlusion;
 	file_in.read(reinterpret_cast<char*>(&load_occlusion), sizeof(load_occlusion));
 
-	// Move to proper start point within file.
-	for(size_t jump_over_index = 0; jump_over_index < cell_index; ++jump_over_index)
-	{	
-		// Read number of values to pass.
-		node_t number_visibility_elements;
-		file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
+	// Must iterate over whole parent nodes from root to leaf level first.
+	size_t num_parents = 0;
+	size_t current_parent_level = cells_by_indices_.size();
 
-		file_in.seekg(file_in.tellg() + (std::streampos)number_visibility_elements);
+	// Sum up parent levels.
+	while(current_parent_level / 8 > 0)
+	{
+		current_parent_level = current_parent_level / 8;
+		num_parents += current_parent_level;
+	}
+
+	// Move to proper start point within file.
+	for(size_t jump_over_index = 0; jump_over_index < (cell_index + num_parents); ++jump_over_index)
+	{	
+		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+		{
+			// Read number of values to pass.
+			node_t number_visibility_elements;
+			file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
+
+			file_in.seekg(file_in.tellg() + (std::streampos)(number_visibility_elements * sizeof(number_visibility_elements)));
+		}
 	}
 
 	// WARNING: currently completely ignoring parent visibility! Therefore, runtime access is not correct!
@@ -273,8 +287,6 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 		node_t number_visibility_elements;
 		file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
 
-		// WARNING: amazingly slow!
-		// TODO: improve performance.
 		for(node_t node_index = 0; node_index < number_visibility_elements; ++node_index)
 		{
 			node_t visibility_index;

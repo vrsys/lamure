@@ -3,6 +3,8 @@
 
 #include "lamure/pvs/grid_octree_hierarchical_v2.h"
 
+#include <iostream>
+
 namespace lamure
 {
 namespace pvs
@@ -11,6 +13,7 @@ namespace pvs
 grid_octree_hierarchical_v2::
 grid_octree_hierarchical_v2() : grid_octree_hierarchical_v2(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0), std::vector<node_t>())
 {
+	std::cout << "hierarchical grid created" << std::endl;
 }
 
 grid_octree_hierarchical_v2::
@@ -236,18 +239,33 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 		return false;
 	}
 
+	// Must iterate over whole parent nodes from root to leaf level first.
+	size_t num_parents = 0;
+	size_t current_parent_level = cells_by_indices_.size();
+
+	// Sum up parent levels.
+	while(current_parent_level / 8 > 0)
+	{
+		current_parent_level = current_parent_level / 8;
+		num_parents += current_parent_level;
+	}
+
+	std::cout << "loading cell " << cell_index << std::endl;
+
 	// Move to proper start point within file.
-	for(size_t jump_over_index = 0; jump_over_index < cell_index; ++jump_over_index)
+	for(size_t jump_over_index = 0; jump_over_index < (cell_index + num_parents); ++jump_over_index)
 	{	
-		// First byte is used to save whether visibility or occlusion data are written.
-		bool load_occlusion;
-		file_in.read(reinterpret_cast<char*>(&load_occlusion), sizeof(load_occlusion));
+		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+		{
+			// First byte is used to save whether visibility or occlusion data are written.
+			file_in.seekg(file_in.tellg() + sizeof(bool));
 
-		// Read number of values to pass.
-		node_t number_visibility_elements;
-		file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
+			// Read number of values to pass.
+			node_t number_visibility_elements;
+			file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
 
-		file_in.seekg(file_in.tellg() + (std::streampos)number_visibility_elements);
+			file_in.seekg(file_in.tellg() + (std::streampos)(number_visibility_elements * sizeof(node_t)));
+		}
 	}
 
 	// WARNING: currently completely ignoring parent visibility! Therefore, runtime access is not correct!
@@ -270,8 +288,6 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 		node_t number_visibility_elements;
 		file_in.read(reinterpret_cast<char*>(&number_visibility_elements), sizeof(number_visibility_elements));
 
-		// WARNING: amazingly slow!
-		// TODO: improve performance.
 		for(node_t node_index = 0; node_index < number_visibility_elements; ++node_index)
 		{
 			node_t visibility_index;
