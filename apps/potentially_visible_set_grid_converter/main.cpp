@@ -14,6 +14,7 @@
 #include <lamure/pvs/pvs_utils.h>
 
 #include <lamure/pvs/grid_regular.h>
+#include <lamure/pvs/grid_regular_compressed.h>
 #include <lamure/pvs/grid_octree.h>
 #include <lamure/pvs/grid_octree_hierarchical.h>
 #include <lamure/pvs/grid_octree_hierarchical_v2.h>
@@ -93,9 +94,17 @@ int main(int argc, char** argv)
     {
         input_grid = new lamure::pvs::grid_regular();
     }
+    else if(input_file_grid_type == "regular_compressed")
+    {
+        input_grid = new lamure::pvs::grid_regular_compressed();
+    }
+    else if(input_file_grid_type == "octree_hierarchical_v3")
+    {
+        input_grid = new lamure::pvs::grid_octree_hierarchical_v3();
+    }
     else
     {
-        std::cout << "Input grid must be of regular grid type." << std::endl;
+        std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type." << std::endl;
         return 0;
     }
 
@@ -133,10 +142,14 @@ int main(int argc, char** argv)
     }
 
     // TODO: check if the input grid uses proper amount of cells to convert into octree.
-    int depth = (int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
-    depth = (int)std::sqrt(depth) + 1;
+    unsigned int cells_per_axis = (int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
+    unsigned int depth = (unsigned int)std::sqrt(cells_per_axis) + 1;
 
-    if(grid_type == "octree")
+    if(grid_type == "regular_compressed")
+    {
+        output_grid = new lamure::pvs::grid_regular_compressed(cells_per_axis, input_grid->get_size().x, input_grid->get_position_center(), ids);
+    }
+    else if(grid_type == "octree")
     {
         output_grid = new lamure::pvs::grid_octree(depth, input_grid->get_size().x, input_grid->get_position_center(), ids);
     }
@@ -147,10 +160,6 @@ int main(int argc, char** argv)
     else if(grid_type == "hierarchical2")
     {
         output_grid = new lamure::pvs::grid_octree_hierarchical_v2(depth, input_grid->get_size().x, input_grid->get_position_center(), ids);
-    }
-    else if(grid_type == "hierarchical3")
-    {
-        output_grid = new lamure::pvs::grid_octree_hierarchical_v3(depth, input_grid->get_size().x, input_grid->get_position_center(), ids);
     }
     else
     {
