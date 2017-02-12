@@ -45,6 +45,7 @@ int main(int argc, char** argv)
 
     // Read additional data from input parameters.
     std::string pvs_output_file_path = "";
+    std::string pvs_input_file_path = "";
     std::string visibility_test_type = "";
     std::string grid_type = "";
     unsigned int grid_size = 1;
@@ -65,6 +66,7 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
+      ("pvs-input-file,p", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data to be continued with further visibility test")
       ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hr"), "specify type of visibility test to be used. (histogram renderer 'hr', simple randomized histogram renderer 'srhr')")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'regular_comp', 'octree', 'hierarchical', 'hierarchical2', 'hierarchical3')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
@@ -129,43 +131,65 @@ int main(int argc, char** argv)
     // Create grid based on scene size.
     lamure::pvs::grid* test_grid = nullptr;
 
-    size_t num_cells = grid_size;
+    if(pvs_input_file_path == "")
+    {
+        // Only create grid if no preexisting pvs-file was given.
+        size_t num_cells = grid_size;
 
-    if(grid_type == "regular")
-    {
-        double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
-        test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
-    }
-    else if(grid_type == "regular_comp")
-    {
-        double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
-        test_grid = new lamure::pvs::grid_regular_compressed(num_cells, cell_size, center, ids);
-    }
-    else if(grid_type == "octree")
-    {
-        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
-        test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
-    }
-    else if(grid_type == "hierarchical")
-    {
-        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
-        test_grid = new lamure::pvs::grid_octree_hierarchical(num_cells, cell_size, center, ids);
-    }
-    else if(grid_type == "hierarchical2")
-    {
-        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
-        test_grid = new lamure::pvs::grid_octree_hierarchical_v2(num_cells, cell_size, center, ids);
-    }
-    else if(grid_type == "hierarchical3")
-    {
-        double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
-        test_grid = new lamure::pvs::grid_octree_hierarchical_v3(num_cells, cell_size, center, ids);
+        if(grid_type == "regular")
+        {
+            double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
+            test_grid = new lamure::pvs::grid_regular(num_cells, cell_size, center, ids);
+        }
+        else if(grid_type == "regular_comp")
+        {
+            double cell_size = (std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) / (double)num_cells) * 1.5;
+            test_grid = new lamure::pvs::grid_regular_compressed(num_cells, cell_size, center, ids);
+        }
+        else if(grid_type == "octree")
+        {
+            double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+            test_grid = new lamure::pvs::grid_octree(num_cells, cell_size, center, ids);
+        }
+        else if(grid_type == "hierarchical")
+        {
+            double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+            test_grid = new lamure::pvs::grid_octree_hierarchical(num_cells, cell_size, center, ids);
+        }
+        else if(grid_type == "hierarchical2")
+        {
+            double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+            test_grid = new lamure::pvs::grid_octree_hierarchical_v2(num_cells, cell_size, center, ids);
+        }
+        else if(grid_type == "hierarchical3")
+        {
+            double cell_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+            test_grid = new lamure::pvs::grid_octree_hierarchical_v3(num_cells, cell_size, center, ids);
+        }
+        else
+        {
+            std::cout << "Unsupported grid type: " << grid_type << std::endl << desc;
+            return 0;
+        }
     }
     else
     {
-        std::cout << "Unsupported grid type: " << grid_type << std::endl << desc;
-        return 0;
+        // If preexisting pvs-file is given, use the grid and its visibility data as base for further tests.
+        std::string pvs_grid_input_file_path = pvs_input_file_path;
+        pvs_grid_input_file_path.resize(pvs_grid_input_file_path.length() - 3);
+        pvs_grid_input_file_path = pvs_grid_input_file_path + "grid";
+
+        test_grid = lamure::pvs::pvs_database::get_instance()->load_pvs_from_file(pvs_grid_input_file_path, pvs_input_file_path);
+
+        if(test_grid == nullptr)
+        {
+            std::cout << "error when loading input pvs file and/or grid: " << pvs_input_file_path << std::endl;
+            return 0;
+        }
+
+        grid_type = test_grid->get_grid_type();
     }
+
 
     // Make sure optimization threshold is within certain bounds (0-100%).
     if(optimization_threshold > 1.0f)

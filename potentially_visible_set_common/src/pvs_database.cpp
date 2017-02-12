@@ -123,6 +123,70 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	return true;
 }
 
+grid* pvs_database::load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path) const
+{
+	grid* vis_grid = nullptr;
+
+	std::fstream file_in;
+	file_in.open(grid_file_path, std::ios::in);
+
+	if(!file_in.is_open())
+	{
+		return nullptr;
+	}
+
+	// Read the grid file header to identify the grid type.
+	std::string grid_type;
+	file_in >> grid_type;
+
+	file_in.close();
+
+	if(grid_type == "regular")
+	{
+		vis_grid = new grid_regular();
+	}
+	if(grid_type == "regular_compressed")
+	{
+		vis_grid = new grid_regular_compressed();
+	}
+	else if(grid_type == "octree")
+	{
+		vis_grid = new grid_octree();
+	}
+	else if(grid_type == "octree_hierarchical")
+	{
+		vis_grid = new grid_octree_hierarchical();
+	}
+	else if(grid_type == "octree_hierarchical_v2")
+	{
+		vis_grid = new grid_octree_hierarchical_v2();
+	}
+	else if(grid_type == "octree_hierarchical_v3")
+	{
+		vis_grid = new grid_octree_hierarchical_v3();
+	}
+
+	bool result = vis_grid->load_grid_from_file(grid_file_path);
+
+	if(!result)
+	{
+		// Loading grid file failed.
+		delete vis_grid;
+		return nullptr;
+	}
+	
+	result = vis_grid->load_visibility_from_file(pvs_file_path);
+
+	if(!result)
+	{
+		// Loading grid file failed.
+		delete vis_grid;
+		return nullptr;
+	}
+
+	return vis_grid;
+}
+
 void pvs_database::
 set_viewer_position(const scm::math::vec3d& position)
 {
