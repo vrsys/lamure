@@ -18,7 +18,7 @@ grid_regular() : grid_regular(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0), std::vect
 grid_regular::
 grid_regular(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
 {
-	create_grid(number_cells, cell_size, position_center);
+	create_grid(number_cells, cell_size / (double)number_cells, position_center);
 	
 	ids_.resize(ids.size());
 	for(size_t index = 0; index < ids_.size(); ++index)
