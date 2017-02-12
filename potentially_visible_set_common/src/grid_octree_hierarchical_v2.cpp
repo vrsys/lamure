@@ -3,8 +3,6 @@
 
 #include "lamure/pvs/grid_octree_hierarchical_v2.h"
 
-#include <iostream>
-
 namespace lamure
 {
 namespace pvs
@@ -13,7 +11,6 @@ namespace pvs
 grid_octree_hierarchical_v2::
 grid_octree_hierarchical_v2() : grid_octree_hierarchical_v2(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0), std::vector<node_t>())
 {
-	std::cout << "hierarchical grid created" << std::endl;
 }
 
 grid_octree_hierarchical_v2::
@@ -249,8 +246,6 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 		current_parent_level = current_parent_level / 8;
 		num_parents += current_parent_level;
 	}
-
-	std::cout << "loading cell " << cell_index << std::endl;
 
 	// Move to proper start point within file.
 	for(size_t jump_over_index = 0; jump_over_index < (cell_index + num_parents); ++jump_over_index)
