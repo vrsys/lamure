@@ -81,12 +81,14 @@ int main(int argc, char** argv)
 
     if(!file_in.is_open())
     {
-        return false;
+        std::cout << "Not able to open input grid file." << std::endl;
+        return 0;
     }
 
     // Read the grid file header to identify the grid type.
     std::string input_file_grid_type;
     file_in >> input_file_grid_type;
+    file_in.close();
 
     lamure::pvs::grid* input_grid = nullptr;
 
@@ -108,6 +110,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    std::cout << "Detected input grid of type '" << input_grid->get_grid_type() << "'." << std::endl; 
+
     if(!input_grid->load_grid_from_file(grid_input_file_path))
     {
         // Loading grid file failed.
@@ -124,7 +128,7 @@ int main(int argc, char** argv)
         delete input_grid;
         input_grid = nullptr;
 
-        std::cout << "Not able to input visibility data." << std::endl;
+        std::cout << "Not able to load input visibility data." << std::endl;
         return 0;
     }
 

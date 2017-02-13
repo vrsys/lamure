@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <climits>
+#include <iostream>
 
 namespace lamure
 {
@@ -16,9 +17,9 @@ grid_regular() : grid_regular(1, 1.0, scm::math::vec3d(0.0, 0.0, 0.0), std::vect
 }
 
 grid_regular::
-grid_regular(const size_t& number_cells, const double& cell_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
+grid_regular(const size_t& number_cells, const double& bounds_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids)
 {
-	create_grid(number_cells, cell_size / (double)number_cells, position_center);
+	create_grid(number_cells, bounds_size / (double)number_cells, position_center);
 	
 	ids_.resize(ids.size());
 	for(size_t index = 0; index < ids_.size(); ++index)
@@ -218,13 +219,14 @@ load_grid_from_file(const std::string& file_path)
 bool grid_regular::
 load_regular_grid(const std::string& file_path, const std::string& grid_type)
 {
-std::lock_guard<std::mutex> lock(mutex_);
+	std::lock_guard<std::mutex> lock(mutex_);
 
 	std::fstream file_in;
 	file_in.open(file_path, std::ios::in);
 
 	if(!file_in.is_open())
 	{
+		std::cout << "Not able to open file: " << file_path << std::endl;
 		return false;
 	}
 
@@ -233,6 +235,7 @@ std::lock_guard<std::mutex> lock(mutex_);
 	file_in >> input_grid_type;
 	if(input_grid_type != grid_type)
 	{
+		std::cout << "Wrong grid type: '" << input_grid_type <<  "'' / '" << grid_type << "'" << std::endl;
 		return false;
 	}
 

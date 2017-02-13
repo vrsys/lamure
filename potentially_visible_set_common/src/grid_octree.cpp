@@ -1,6 +1,7 @@
 #include <fstream>
 #include <climits>
 #include <deque>
+#include <iostream>
 
 #include "lamure/bounding_box.h"
 #include "lamure/pvs/grid_octree.h"
@@ -377,6 +378,7 @@ load_octree_grid(const std::string& file_path, const std::string& grid_type)
 
 	if(!file_in.is_open())
 	{
+		std::cout << "Not able to open file: " << file_path << std::endl;
 		return false;
 	}
 
@@ -385,6 +387,7 @@ load_octree_grid(const std::string& file_path, const std::string& grid_type)
 	file_in >> file_grid_type;
 	if(file_grid_type != grid_type)
 	{
+		std::cout << "Wrong grid type: " << file_grid_type <<  " / " << grid_type << std::endl;
 		return false;
 	}
 
