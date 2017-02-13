@@ -342,8 +342,8 @@ compute_delta_E(std::string const& image_path_1,
         lamure::qm::col3 rgb1(r1,g1,b1);
         lamure::qm::col3 rgb2(r2,g2,b2);
 
-        lamure::qm::col3 lab1 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb1));
-        lamure::qm::col3 lab2 = cc::rgb_to_xyz(cc::xyz_to_lab(rgb2));
+        lamure::qm::col3 lab1 = cc::xyz_to_lab(cc::rgb_to_xyz(rgb1));
+        lamure::qm::col3 lab2 = cc::xyz_to_lab(cc::rgb_to_xyz(rgb2));
 
         double delta_E = cc::calc_delta_E(lab1, lab2);
 
