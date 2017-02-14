@@ -122,7 +122,7 @@ int main(int argc, char** argv)
         return 0;
     }
     
-    if(!input_grid->load_visibility_from_file(pvs_input_file_path))
+    /*if(!input_grid->load_visibility_from_file(pvs_input_file_path))
     {
         // Loading visibility data failed.
         delete input_grid;
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
 
         std::cout << "Not able to load input visibility data." << std::endl;
         return 0;
-    }
+    }*/
 
     std::cout << "Finished loading." << std::endl;
 
@@ -146,8 +146,8 @@ int main(int argc, char** argv)
     }
 
     // TODO: check if the input grid uses proper amount of cells to convert into octree.
-    unsigned int cells_per_axis = (int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
-    unsigned int depth = (unsigned int)std::sqrt(cells_per_axis) + 1;
+    unsigned int cells_per_axis = (unsigned int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
+    unsigned int depth = (unsigned int)std::round(std::sqrt(cells_per_axis)) + 1;
 
     if(grid_type == "regular_compressed")
     {
@@ -179,7 +179,9 @@ int main(int argc, char** argv)
     for(size_t cell_index = 0; cell_index < input_grid->get_cell_count(); ++cell_index)
     {
         // Regular grid has different order than octree, so the proper cell at same position must be found.
-        const lamure::pvs::view_cell* input_cell = input_grid->get_cell_at_position(output_grid->get_cell_at_index(cell_index)->get_position_center(), nullptr);
+        size_t input_cell_index = 0;
+        const lamure::pvs::view_cell* input_cell = input_grid->get_cell_at_position(output_grid->get_cell_at_index(cell_index)->get_position_center(), &input_cell_index);
+        input_grid->load_cell_visibility_from_file(pvs_input_file_path, input_cell_index);
 
         for(lamure::model_t model_index = 0; model_index < ids.size(); ++model_index)
         {
@@ -188,6 +190,11 @@ int main(int argc, char** argv)
                 output_grid->set_cell_visibility(cell_index, model_index, node_index, input_cell->get_visibility(model_index, node_index));
             }
         }
+
+        input_grid->clear_cell_visibility(input_cell_index);
+
+        double current_percentage_done = ((double)cell_index / (double)input_grid->get_cell_count()) * 100.0;
+        std::cout << "\rcopy in progress [" << current_percentage_done << "]       " << std::flush;
     }
 
     std::cout << "Finished copy." << std::endl;
