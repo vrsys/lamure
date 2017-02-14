@@ -33,13 +33,19 @@ grid_regular_compressed::
 std::string grid_regular_compressed::
 get_grid_type() const
 {
+	return get_grid_identifier();
+}
+
+std::string grid_regular_compressed::
+get_grid_identifier()
+{
 	return "regular_compressed";
 }
 
 void grid_regular_compressed::
 save_grid_to_file(const std::string& file_path) const
 {
-	save_regular_grid(file_path, "regular_compressed");
+	save_regular_grid(file_path, get_grid_identifier());
 }
 
 void grid_regular_compressed::
@@ -125,7 +131,7 @@ save_visibility_to_file(const std::string& file_path) const
 bool grid_regular_compressed::
 load_grid_from_file(const std::string& file_path)
 {
-	return load_regular_grid(file_path, "regular_compressed");
+	return load_regular_grid(file_path, get_grid_identifier());
 }
 
 

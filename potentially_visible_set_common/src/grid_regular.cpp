@@ -37,6 +37,12 @@ grid_regular::
 std::string grid_regular::
 get_grid_type() const
 {
+	return get_grid_identifier();
+}
+
+std::string grid_regular::
+get_grid_identifier()
+{
 	return "regular";
 }
 
@@ -115,7 +121,7 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 void grid_regular::
 save_grid_to_file(const std::string& file_path) const
 {
-	save_regular_grid(file_path, "regular");
+	save_regular_grid(file_path, get_grid_identifier());
 }
 
 void grid_regular::
@@ -213,7 +219,7 @@ save_visibility_to_file(const std::string& file_path) const
 bool grid_regular::
 load_grid_from_file(const std::string& file_path)
 {
-	return load_regular_grid(file_path, "regular");
+	return load_regular_grid(file_path, get_grid_identifier());
 }
 
 bool grid_regular::

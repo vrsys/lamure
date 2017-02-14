@@ -26,13 +26,19 @@ grid_octree_hierarchical_v2::
 std::string grid_octree_hierarchical_v2::
 get_grid_type() const
 {
+	return get_grid_identifier();
+}
+
+std::string grid_octree_hierarchical_v2::
+get_grid_identifier()
+{
 	return "octree_hierarchical_v2";
 }
 
 void grid_octree_hierarchical_v2::
 save_grid_to_file(const std::string& file_path) const
 {
-	save_octree_grid(file_path, "octree_hierarchical_v2");
+	save_octree_grid(file_path, get_grid_identifier());
 }
 
 void grid_octree_hierarchical_v2::
@@ -115,7 +121,7 @@ save_visibility_to_file(const std::string& file_path) const
 bool grid_octree_hierarchical_v2::
 load_grid_from_file(const std::string& file_path)
 {
-	return load_octree_grid(file_path, "octree_hierarchical_v2");
+	return load_octree_grid(file_path, get_grid_identifier());
 }
 
 

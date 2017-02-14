@@ -24,6 +24,7 @@ public:
 	~grid_regular();
 
 	virtual std::string get_grid_type() const;
+	static std::string get_grid_identifier();
 
 	virtual size_t get_cell_count() const;
 	virtual scm::math::vec3d get_size() const;

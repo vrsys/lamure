@@ -27,6 +27,7 @@ public:
 	virtual ~grid_octree_hierarchical_v3();
 
 	virtual std::string get_grid_type() const;
+	static std::string get_grid_identifier();
 
 	virtual void save_grid_to_file(const std::string& file_path) const;
 	virtual void save_visibility_to_file(const std::string& file_path) const;

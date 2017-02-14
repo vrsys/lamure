@@ -46,6 +46,12 @@ grid_octree::
 std::string grid_octree::
 get_grid_type() const
 {
+	return get_grid_identifier();
+}
+
+std::string grid_octree::
+get_grid_identifier()
+{
 	return "octree";
 }
 
@@ -245,7 +251,7 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 void grid_octree::
 save_grid_to_file(const std::string& file_path) const
 {
-	save_octree_grid(file_path, "octree");
+	save_octree_grid(file_path, get_grid_identifier());
 }
 
 void grid_octree::
@@ -365,7 +371,7 @@ save_visibility_to_file(const std::string& file_path) const
 bool grid_octree::
 load_grid_from_file(const std::string& file_path)
 {
-	return load_octree_grid(file_path, "octree");
+	return load_octree_grid(file_path, get_grid_identifier());
 }
 
 bool grid_octree::
