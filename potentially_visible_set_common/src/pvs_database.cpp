@@ -51,64 +51,17 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	do_preload_ = do_preload;
+	visibility_grid_ = load_grid_from_file(grid_file_path);
 
-	std::fstream file_in;
-	file_in.open(grid_file_path, std::ios::in);
-
-	if(!file_in.is_open())
-	{
-		return false;
-	}
-
-	// Read the grid file header to identify the grid type.
-	std::string grid_type;
-	file_in >> grid_type;
-
-	file_in.close();
-
-	if(grid_type == "regular")
-	{
-		visibility_grid_ = new grid_regular();
-	}
-	if(grid_type == "regular_compressed")
-	{
-		visibility_grid_ = new grid_regular_compressed();
-	}
-	else if(grid_type == "octree")
-	{
-		visibility_grid_ = new grid_octree();
-	}
-	else if(grid_type == "octree_hierarchical")
-	{
-		visibility_grid_ = new grid_octree_hierarchical();
-		do_preload_ = true;
-	}
-	else if(grid_type == "octree_hierarchical_v2")
-	{
-		visibility_grid_ = new grid_octree_hierarchical_v2();
-		do_preload_ = true;
-	}
-	else if(grid_type == "octree_hierarchical_v3")
-	{
-		visibility_grid_ = new grid_octree_hierarchical_v3();
-	}
-
-	bool result = visibility_grid_->load_grid_from_file(grid_file_path);
-
-	if(!result)
+	if(visibility_grid_ == nullptr)
 	{
 		// Loading grid file failed.
-		delete visibility_grid_;
-		visibility_grid_ = nullptr;
-
 		return false;
 	}
 	
 	if(do_preload_)
 	{
-		result = visibility_grid_->load_visibility_from_file(pvs_file_path);
-
-		if(!result)
+		if(!visibility_grid_->load_visibility_from_file(pvs_file_path))
 		{
 			// Loading grid file failed.
 			delete visibility_grid_;
@@ -123,7 +76,8 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	return true;
 }
 
-grid* pvs_database::load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_file_path) const
+grid* pvs_database::
+load_grid_from_file(const std::string& grid_file_path) const
 {
 	grid* vis_grid = nullptr;
 
@@ -141,43 +95,29 @@ grid* pvs_database::load_pvs_from_file(const std::string& grid_file_path, const 
 
 	file_in.close();
 
-	if(grid_type == "regular")
-	{
-		vis_grid = new grid_regular();
-	}
-	if(grid_type == "regular_compressed")
-	{
-		vis_grid = new grid_regular_compressed();
-	}
-	else if(grid_type == "octree")
-	{
-		vis_grid = new grid_octree();
-	}
-	else if(grid_type == "octree_hierarchical")
-	{
-		vis_grid = new grid_octree_hierarchical();
-	}
-	else if(grid_type == "octree_hierarchical_v2")
-	{
-		vis_grid = new grid_octree_hierarchical_v2();
-	}
-	else if(grid_type == "octree_hierarchical_v3")
-	{
-		vis_grid = new grid_octree_hierarchical_v3();
-	}
+	vis_grid = create_grid_by_type(grid_type);
 
-	bool result = vis_grid->load_grid_from_file(grid_file_path);
-
-	if(!result)
+	if(vis_grid == nullptr || !vis_grid->load_grid_from_file(grid_file_path))
 	{
 		// Loading grid file failed.
 		delete vis_grid;
 		return nullptr;
 	}
-	
-	result = vis_grid->load_visibility_from_file(pvs_file_path);
 
-	if(!result)
+	return vis_grid;	
+}
+
+grid* pvs_database::
+load_grid_from_file(const std::string& grid_file_path, const std::string& pvs_file_path) const
+{
+	grid* vis_grid = load_grid_from_file(grid_file_path);
+
+	if(vis_grid == nullptr)
+	{
+		return nullptr;
+	}
+	
+	if(!vis_grid->load_visibility_from_file(pvs_file_path))
 	{
 		// Loading grid file failed.
 		delete vis_grid;
@@ -185,6 +125,72 @@ grid* pvs_database::load_pvs_from_file(const std::string& grid_file_path, const 
 	}
 
 	return vis_grid;
+}
+
+grid* pvs_database::
+create_grid_by_type(const std::string& grid_type) const
+{
+	grid* output_grid = nullptr;
+
+    if(grid_type == grid_regular::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_regular();
+    }
+    else if(grid_type == grid_regular_compressed::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_regular_compressed();
+    }
+    else if(grid_type == grid_octree::get_grid_identifier())
+    {   
+        output_grid = new lamure::pvs::grid_octree();
+    }
+    else if(grid_type == grid_octree_hierarchical::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_octree_hierarchical();
+    }
+    else if(grid_type == grid_octree_hierarchical_v2::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_octree_hierarchical_v2();
+    }
+    else if(grid_type == grid_octree_hierarchical_v3::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_octree_hierarchical_v3();
+    }
+
+    return output_grid;
+}
+
+grid* pvs_database::
+create_grid_by_type(const std::string& grid_type, const size_t& num_cells, const double& bounds_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids) const
+{
+	grid* output_grid = nullptr;
+
+    if(grid_type == grid_regular::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_regular(num_cells, bounds_size, position_center, ids);
+    }
+    else if(grid_type == grid_regular_compressed::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_regular_compressed(num_cells, bounds_size, position_center, ids);
+    }
+    else if(grid_type == grid_octree::get_grid_identifier())
+    {   
+        output_grid = new lamure::pvs::grid_octree(num_cells, bounds_size, position_center, ids);
+    }
+    else if(grid_type == grid_octree_hierarchical::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_octree_hierarchical(num_cells, bounds_size, position_center, ids);
+    }
+    else if(grid_type == grid_octree_hierarchical_v2::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_octree_hierarchical_v2(num_cells, bounds_size, position_center, ids);
+    }
+    else if(grid_type == grid_octree_hierarchical_v3::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_octree_hierarchical_v3(num_cells, bounds_size, position_center, ids);
+    }
+
+    return output_grid;
 }
 
 void pvs_database::

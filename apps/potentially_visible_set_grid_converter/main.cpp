@@ -46,9 +46,9 @@ int main(int argc, char** argv)
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
     desc.add_options()
-      ("pvs-file", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data")
-      ("output-file", po::value<std::string>(&pvs_output_file_path), "specify output file of converted visibility data")
-      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('octree', 'hierarchical', 'hierarchical2', 'hierarchical3')")
+      ("pvs-file", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data (.pvs)")
+      ("output-file", po::value<std::string>(&pvs_output_file_path), "specify output file of converted visibility data (.pvs)")
+      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data")
       ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.");
       ;
 
@@ -76,63 +76,24 @@ int main(int argc, char** argv)
     grid_input_file_path.resize(grid_input_file_path.length() - 3);
     grid_input_file_path += "grid";
 
-    std::fstream file_in;
-    file_in.open(grid_input_file_path, std::ios::in);
+    // Read the input grid file.
+    lamure::pvs::grid* input_grid = lamure::pvs::pvs_database::get_instance()->load_grid_from_file(grid_input_file_path);
 
-    if(!file_in.is_open())
+    if(input_grid == nullptr)
     {
-        std::cout << "Not able to open input grid file." << std::endl;
+        std::cout << "Error loading input grid: " << grid_input_file_path << std::endl;
         return 0;
     }
 
-    // Read the grid file header to identify the grid type.
-    std::string input_file_grid_type;
-    file_in >> input_file_grid_type;
-    file_in.close();
-
-    lamure::pvs::grid* input_grid = nullptr;
-
-    if(input_file_grid_type == "regular")
-    {
-        input_grid = new lamure::pvs::grid_regular();
-    }
-    else if(input_file_grid_type == "regular_compressed")
-    {
-        input_grid = new lamure::pvs::grid_regular_compressed();
-    }
-    else if(input_file_grid_type == "octree_hierarchical_v3")
-    {
-        input_grid = new lamure::pvs::grid_octree_hierarchical_v3();
-    }
-    else
+    if(input_grid->get_grid_type() != lamure::pvs::grid_regular::get_grid_identifier() && 
+        input_grid->get_grid_type() != lamure::pvs::grid_regular_compressed::get_grid_identifier() && 
+        input_grid->get_grid_type() != lamure::pvs::grid_octree_hierarchical_v3::get_grid_identifier())
     {
         std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type." << std::endl;
         return 0;
     }
 
     std::cout << "Detected input grid of type '" << input_grid->get_grid_type() << "'." << std::endl; 
-
-    if(!input_grid->load_grid_from_file(grid_input_file_path))
-    {
-        // Loading grid file failed.
-        delete input_grid;
-        input_grid = nullptr;
-
-        std::cout << "Not able to load input grid file." << std::endl;
-        return 0;
-    }
-    
-    /*if(!input_grid->load_visibility_from_file(pvs_input_file_path))
-    {
-        // Loading visibility data failed.
-        delete input_grid;
-        input_grid = nullptr;
-
-        std::cout << "Not able to load input visibility data." << std::endl;
-        return 0;
-    }*/
-
-    std::cout << "Finished loading." << std::endl;
 
     // Start conversion into different grid type.
     std::cout << "Preparing new grid..." << std::endl;
@@ -149,23 +110,16 @@ int main(int argc, char** argv)
     unsigned int cells_per_axis = (unsigned int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
     unsigned int depth = (unsigned int)std::round(std::sqrt(cells_per_axis)) + 1;
 
-    if(grid_type == "regular_compressed")
+    size_t num_cells = depth;
+    if(grid_type == lamure::pvs::grid_regular::get_grid_identifier() || 
+        grid_type == lamure::pvs::grid_regular_compressed::get_grid_identifier())
     {
-        output_grid = new lamure::pvs::grid_regular_compressed(cells_per_axis, input_grid->get_size().x, input_grid->get_position_center(), ids);
+        num_cells = cells_per_axis;
     }
-    else if(grid_type == "octree")
-    {
-        output_grid = new lamure::pvs::grid_octree(depth, input_grid->get_size().x, input_grid->get_position_center(), ids);
-    }
-    else if(grid_type == "hierarchical")
-    {
-        output_grid = new lamure::pvs::grid_octree_hierarchical(depth, input_grid->get_size().x, input_grid->get_position_center(), ids);
-    }
-    else if(grid_type == "hierarchical2")
-    {
-        output_grid = new lamure::pvs::grid_octree_hierarchical_v2(depth, input_grid->get_size().x, input_grid->get_position_center(), ids);
-    }
-    else
+
+    output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, input_grid->get_size().x, input_grid->get_position_center(), ids);
+
+    if(output_grid == nullptr)
     {
         std::cout << "Invalid output grid type.\n" << desc;
         return 0;
@@ -193,21 +147,22 @@ int main(int argc, char** argv)
 
         input_grid->clear_cell_visibility(input_cell_index);
 
-        double current_percentage_done = ((double)cell_index / (double)input_grid->get_cell_count()) * 100.0;
+        double current_percentage_done = ((double)cell_index / (double)(input_grid->get_cell_count() - 1)) * 100.0;
         std::cout << "\rcopy in progress [" << current_percentage_done << "]       " << std::flush;
     }
 
-    std::cout << "Finished copy." << std::endl;
+    std::cout << "\nFinished copy." << std::endl;
 
     // Optimize newly created grid.
     std::cout << "Start grid optimization..." << std::endl;
 
-    if(grid_type == "octree")
+    if(grid_type == lamure::pvs::grid_octree::get_grid_identifier())
     {
         lamure::pvs::grid_optimizer_octree optimizer;
         optimizer.optimize_grid(output_grid, optimization_threshold);
     }
-    else if(grid_type == "hierarchical" || grid_type == "hierarchical2")
+    else if(grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
+            grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
     {
         lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
         optimizer.optimize_grid(output_grid, optimization_threshold);
