@@ -30,6 +30,7 @@ int main(int argc, char** argv)
 {
     // Read additional data from input parameters.
     std::string pvs_input_file_path = "";
+    std::string second_pvs_input_file_path = "";
     std::string pvs_output_file_path = "";
     std::string grid_type = "";
     float optimization_threshold = 1.0f;
@@ -47,6 +48,7 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data (.pvs)")
+      ("2nd-pvs-file", po::value<std::string>(&second_pvs_input_file_path), "(optional) specify second input file of calculated pvs data (.pvs) to join visibility with first pvs file")
       ("output-file", po::value<std::string>(&pvs_output_file_path), "specify output file of converted visibility data (.pvs)")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data")
       ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.");
@@ -93,7 +95,42 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    std::cout << "Detected input grid of type '" << input_grid->get_grid_type() << "'." << std::endl; 
+    std::cout << "Detected input grid of type '" << input_grid->get_grid_type() << "'." << std::endl;
+
+    // If second input grid was defined, work on second grid.
+    lamure::pvs::grid* second_input_grid = nullptr;
+
+    if(second_pvs_input_file_path != "")
+    {
+        std::string second_grid_input_file_path = second_pvs_input_file_path;
+        second_grid_input_file_path.resize(second_grid_input_file_path.length() - 3);
+        second_grid_input_file_path += "grid";
+
+        // Read the input grid file.
+        second_input_grid = lamure::pvs::pvs_database::get_instance()->load_grid_from_file(second_grid_input_file_path);
+
+        if(second_input_grid == nullptr)
+        {
+            std::cout << "Error loading second input grid: " << second_grid_input_file_path << std::endl;
+            return 0;
+        }
+
+        if(second_input_grid->get_grid_type() != lamure::pvs::grid_regular::get_grid_identifier() && 
+            second_input_grid->get_grid_type() != lamure::pvs::grid_regular_compressed::get_grid_identifier() && 
+            second_input_grid->get_grid_type() != lamure::pvs::grid_octree_hierarchical_v3::get_grid_identifier())
+        {
+            std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type." << std::endl;
+            return 0;
+        }
+
+        if(second_input_grid->get_cell_count() != input_grid->get_cell_count())
+        {
+            std::cout << "Input grids differ in sizes, it is not possible to join them." << std::endl;
+            return 0;
+        }
+
+        std::cout << "Detected second input grid of type '" << second_input_grid->get_grid_type() << "'." << std::endl;
+    }
 
     // Start conversion into different grid type.
     std::cout << "Preparing new grid..." << std::endl;
@@ -134,21 +171,43 @@ int main(int argc, char** argv)
     {
         // Regular grid has different order than octree, so the proper cell at same position must be found.
         size_t input_cell_index = 0;
+        
         const lamure::pvs::view_cell* input_cell = input_grid->get_cell_at_position(output_grid->get_cell_at_index(cell_index)->get_position_center(), &input_cell_index);
         input_grid->load_cell_visibility_from_file(pvs_input_file_path, input_cell_index);
+
+        const lamure::pvs::view_cell* second_input_cell = nullptr;
+        if(second_input_grid != nullptr)
+        {
+            second_input_cell = second_input_grid->get_cell_at_position(output_grid->get_cell_at_index(cell_index)->get_position_center(), &input_cell_index);
+            second_input_grid->load_cell_visibility_from_file(second_pvs_input_file_path, input_cell_index);
+        }
 
         for(lamure::model_t model_index = 0; model_index < ids.size(); ++model_index)
         {
             for(lamure::node_t node_index = 0; node_index < ids[model_index]; ++node_index)
             {
-                output_grid->set_cell_visibility(cell_index, model_index, node_index, input_cell->get_visibility(model_index, node_index));
+                bool visibility = input_cell->get_visibility(model_index, node_index);
+                output_grid->set_cell_visibility(cell_index, model_index, node_index, visibility);
+
+                if(second_input_cell != nullptr && !visibility)
+                {
+                    output_grid->set_cell_visibility(cell_index, model_index, node_index, second_input_cell->get_visibility(model_index, node_index));
+                }
             }
         }
 
         input_grid->clear_cell_visibility(input_cell_index);
 
-        double current_percentage_done = ((double)cell_index / (double)(input_grid->get_cell_count() - 1)) * 100.0;
-        std::cout << "\rcopy in progress [" << current_percentage_done << "]       " << std::flush;
+        if(second_input_grid != nullptr)
+        {
+            second_input_grid->clear_cell_visibility(input_cell_index);
+        }
+
+        if(cell_index % 8 == 0 || cell_index == (input_grid->get_cell_count() - 1))
+        {
+            double current_percentage_done = ((double)cell_index / (double)(input_grid->get_cell_count() - 1)) * 100.0;
+            std::cout << "\rcopy in progress [" << current_percentage_done << "]       " << std::flush;
+        }
     }
 
     std::cout << "\nFinished copy." << std::endl;
