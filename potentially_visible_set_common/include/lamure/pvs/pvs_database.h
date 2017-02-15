@@ -24,7 +24,7 @@ public:
 	grid* load_grid_from_file(const std::string& grid_file_path) const;
 	grid* load_grid_from_file(const std::string& grid_file_path, const std::string& pvs_file_path) const;
 	grid* create_grid_by_type(const std::string& grid_type) const;
-	grid* create_grid_by_type(const std::string& grid_type, const size_t& num_cells, const double& bounds_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids) const;
+	grid* create_grid_by_type(const std::string& grid_type, const size_t& num_cells_x, const size_t& num_cells_y, const size_t& num_cells_z, const double& bounds_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids) const;
 
 
 	virtual void set_viewer_position(const scm::math::vec3d& position);

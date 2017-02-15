@@ -154,7 +154,7 @@ int main(int argc, char** argv)
         num_cells = cells_per_axis;
     }
 
-    output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, input_grid->get_size().x, input_grid->get_position_center(), ids);
+    output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, 0, 0, input_grid->get_size().x, input_grid->get_position_center(), ids);
 
     if(output_grid == nullptr)
     {

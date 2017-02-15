@@ -8,6 +8,7 @@
 #include "lamure/pvs/grid_octree_hierarchical.h"
 #include "lamure/pvs/grid_octree_hierarchical_v2.h"
 #include "lamure/pvs/grid_octree_hierarchical_v3.h"
+#include "lamure/pvs/grid_irregular.h"
 
 namespace lamure
 {
@@ -156,38 +157,48 @@ create_grid_by_type(const std::string& grid_type) const
     {
         output_grid = new lamure::pvs::grid_octree_hierarchical_v3();
     }
+    else if(grid_type == grid_irregular::get_grid_identifier())
+    {
+        output_grid = new lamure::pvs::grid_irregular();
+    }
 
     return output_grid;
 }
 
 grid* pvs_database::
-create_grid_by_type(const std::string& grid_type, const size_t& num_cells, const double& bounds_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids) const
+create_grid_by_type(const std::string& grid_type, const size_t& num_cells_x, const size_t& num_cells_y, const size_t& num_cells_z, const double& bounds_size, const scm::math::vec3d& position_center, const std::vector<node_t>& ids) const
 {
 	grid* output_grid = nullptr;
 
+	size_t max_num_cells = std::max(num_cells_x, std::max(num_cells_y, num_cells_z));
+
     if(grid_type == grid_regular::get_grid_identifier())
     {
-        output_grid = new lamure::pvs::grid_regular(num_cells, bounds_size, position_center, ids);
+        output_grid = new lamure::pvs::grid_regular(max_num_cells, bounds_size, position_center, ids);
     }
     else if(grid_type == grid_regular_compressed::get_grid_identifier())
     {
-        output_grid = new lamure::pvs::grid_regular_compressed(num_cells, bounds_size, position_center, ids);
+        output_grid = new lamure::pvs::grid_regular_compressed(max_num_cells, bounds_size, position_center, ids);
     }
     else if(grid_type == grid_octree::get_grid_identifier())
     {   
-        output_grid = new lamure::pvs::grid_octree(num_cells, bounds_size, position_center, ids);
+        output_grid = new lamure::pvs::grid_octree(max_num_cells, bounds_size, position_center, ids);
     }
     else if(grid_type == grid_octree_hierarchical::get_grid_identifier())
     {
-        output_grid = new lamure::pvs::grid_octree_hierarchical(num_cells, bounds_size, position_center, ids);
+        output_grid = new lamure::pvs::grid_octree_hierarchical(max_num_cells, bounds_size, position_center, ids);
     }
     else if(grid_type == grid_octree_hierarchical_v2::get_grid_identifier())
     {
-        output_grid = new lamure::pvs::grid_octree_hierarchical_v2(num_cells, bounds_size, position_center, ids);
+        output_grid = new lamure::pvs::grid_octree_hierarchical_v2(max_num_cells, bounds_size, position_center, ids);
     }
     else if(grid_type == grid_octree_hierarchical_v3::get_grid_identifier())
     {
-        output_grid = new lamure::pvs::grid_octree_hierarchical_v3(num_cells, bounds_size, position_center, ids);
+        output_grid = new lamure::pvs::grid_octree_hierarchical_v3(max_num_cells, bounds_size, position_center, ids);
+    }
+    else if(grid_type == grid_irregular::get_grid_identifier())
+    {
+    	output_grid = new lamure::pvs::grid_irregular(num_cells_x, num_cells_y, num_cells_z, bounds_size, position_center, ids);
     }
 
     return output_grid;
