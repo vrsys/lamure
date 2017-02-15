@@ -43,6 +43,7 @@ int main(int argc, char** argv)
     std::string grid_type = "";
     unsigned int grid_size = 1;
     unsigned int num_steps = 11;
+    double oversize_factor = 1.5;
     float optimization_threshold = 1.0f;
 
     namespace po = boost::program_options;
@@ -62,6 +63,7 @@ int main(int argc, char** argv)
       ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hr"), "specify type of visibility test to be used. (histogram renderer 'hr', simple randomized histogram renderer 'srhr')")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'regular_compressed', 'octree', 'octree_hierarchical', 'octree_hierarchical_v2', 'octree_hierarchical_v3')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
+      ("oversize", po::value<double>(&oversize_factor)->default_value(1.5), "factor the grid bounds will be scaled by, default is 1.5 (grid bounds will exceed scene bounds by factor of 1.5)")
       ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only)");
       ;
@@ -125,13 +127,13 @@ int main(int argc, char** argv)
 
     // Note how num_cells is interpreted by grid itself (e.g. octrees use it as depth, regular grids as cells per dimension)
     size_t num_cells = grid_size;
-    double grid_bounds_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * 1.5;
+    double grid_bounds_size = std::max(scene_dimensions.x, std::max(scene_dimensions.y, scene_dimensions.z)) * oversize_factor;
 
     // TODO: calculate num cells of each axis for irregular grid here.
     double cell_size = grid_bounds_size / (double)num_cells;
-    size_t cells_x = std::ceil((scene_dimensions.x * 1.5) / cell_size);
-    size_t cells_y = std::ceil((scene_dimensions.y * 1.5) / cell_size);
-    size_t cells_z = std::ceil((scene_dimensions.z * 1.5) / cell_size);
+    size_t cells_x = std::ceil((scene_dimensions.x * oversize_factor) / cell_size);
+    size_t cells_y = std::ceil((scene_dimensions.y * oversize_factor) / cell_size);
+    size_t cells_z = std::ceil((scene_dimensions.z * oversize_factor) / cell_size);
 
     test_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, cells_x, cells_y, cells_z, grid_bounds_size, center, ids);
 

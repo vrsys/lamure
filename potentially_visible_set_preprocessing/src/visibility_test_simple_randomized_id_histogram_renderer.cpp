@@ -52,6 +52,7 @@ initialize(int& argc, char** argv)
     std::string grid_type = "";
     unsigned int grid_size = 1;
     unsigned int num_steps = 11;
+    double oversize_factor = 1.5;
     float optimization_threshold = 1.0f;
 
 	po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
@@ -70,6 +71,7 @@ initialize(int& argc, char** argv)
       ("vistest", po::value<std::string>(&visibility_test_type)->default_value("histogramrenderer"), "specify type of visibility test to be used. ('histogramrenderer', 'randomhistogramrenderer')")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'octree', 'hierarchical')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
+      ("oversize", po::value<double>(&oversize_factor)->default_value(1.5), "factor the grid bounds will be scaled by, default is 1.5 (grid bounds will exceed scene bounds by factor of 1.5)")
       ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only)");
       ;
