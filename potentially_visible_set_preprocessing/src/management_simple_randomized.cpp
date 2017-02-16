@@ -54,6 +54,10 @@ management_simple_randomized(std::vector<std::string> const& model_filenames,
     remaining_duration_visibility_test_in_seconds_ = 0.0f;
     skipped_duration_visibility_test_in_seconds_ = 0.0f;
 
+    // Initialize sample counters.
+    num_samples_to_finish_ = 0;
+    num_samples_completed_ = 0;
+
     lamure::pvs::pvs_database::get_instance()->activate(false);
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
@@ -87,6 +91,8 @@ management_simple_randomized(std::vector<std::string> const& model_filenames,
     active_camera_ = new lamure::ren::camera(0, reset_matrix, reset_diameter, false, false);
 
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
+
+    view_cell_rng_.seed(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
 }
 
 management_simple_randomized::
@@ -296,7 +302,15 @@ MainLoop()
             std::chrono::duration<double> time_passed_during_last_test = std::chrono::system_clock::now() - current_test_start_time_;
             current_test_start_time_ = std::chrono::system_clock::now();
 
-            remaining_duration_visibility_test_in_seconds_ -= time_passed_during_last_test.count();
+            if(num_samples_to_finish_ > 0)
+            {
+                remaining_duration_visibility_test_in_seconds_ += time_passed_during_last_test.count();
+            }
+            else
+            {
+                remaining_duration_visibility_test_in_seconds_ -= time_passed_during_last_test.count();
+            }
+            
 
             if(remaining_duration_visibility_test_in_seconds_ <= 0.0)
             {
@@ -304,8 +318,19 @@ MainLoop()
             }
             else
             {
-                // Re-roll new view cell.
-                current_grid_index_ = view_cell_distribution_(view_cell_rng_);
+                // Move to next view cell.
+                current_grid_index_++;
+                if(current_grid_index_ == visibility_grid_->get_cell_count())
+                {
+                    current_grid_index_ = 0;
+                    num_samples_completed_++;
+
+                    // Only manage sample counter if samples are termination criterion.
+                    if(num_samples_to_finish_ > 0 && num_samples_completed_ == num_samples_to_finish_)
+                    {
+                        signal_shutdown = true;
+                    }
+                }
                 const view_cell* new_current_cell = visibility_grid_->get_cell_at_index(current_grid_index_);
 
                 // Re-roll a position within the newly selected view cell.
@@ -334,11 +359,23 @@ MainLoop()
         size_t current_minutes = ((size_t)remaining_duration_visibility_test_in_seconds_ / 60) % 60;
         size_t current_seconds = (size_t)remaining_duration_visibility_test_in_seconds_ % 60;
         
-        std::cout << "\rremaining visibility test time: [" << current_days << "d " << current_hours << "h " << current_minutes << "m " << current_seconds << "s]          " << std::flush;
-
-        if(remaining_duration_visibility_test_in_seconds_ <= 0.0f)
+        if(num_samples_to_finish_ == 0)
         {
-            std::cout << std::endl;
+            std::cout << "\rremaining time: [" << current_days << "d " << current_hours << "h " << current_minutes << "m " << current_seconds << "s] [grid " << num_samples_completed_ << "  view cells " << current_grid_index_ << "/" << visibility_grid_->get_cell_count() << "]          " << std::flush;
+        
+            if(remaining_duration_visibility_test_in_seconds_ <= 0.0)
+            {
+                std::cout << std::endl;
+            }
+        }
+        else
+        {
+            std::cout << "\rsamples done: [grid " << num_samples_completed_ << "/" << num_samples_to_finish_ << "  view cells " << current_grid_index_ << "/" << visibility_grid_->get_cell_count() << "] [" << current_days << "d " << current_hours << "h " << current_minutes << "m " << current_seconds << "s]          " << std::flush;
+        
+            if(num_samples_completed_ == num_samples_to_finish_)
+            {
+                std::cout << std::endl;
+            }
         }
     }
 
@@ -628,6 +665,18 @@ void management_simple_randomized::
 set_duration_visibility_test(const double& duration)
 {
     duration_visibility_test_in_seconds_ = duration;
+
+    // Negative duration is not defined.
+    if(duration_visibility_test_in_seconds_ < 0.0)
+    {
+        duration_visibility_test_in_seconds_ = 0.0;
+    }
+}
+
+void management_simple_randomized::
+set_samples_visibility_test(const size_t& num_samples)
+{
+    num_samples_to_finish_ = num_samples;
 }
 
 }

@@ -62,6 +62,7 @@ public:
     void                set_pvs_file_path(const std::string& file_path);
 
     void                set_duration_visibility_test(const double& duration);
+    void                set_samples_visibility_test(const size_t& num_samples);
 
 protected:
 
@@ -116,6 +117,9 @@ private:
     double remaining_duration_visibility_test_in_seconds_;
     double skipped_duration_visibility_test_in_seconds_;
     std::chrono::time_point<std::chrono::system_clock> current_test_start_time_;
+
+    size_t num_samples_to_finish_;
+    size_t num_samples_completed_;
 
     // Used to manage the random components of the visibility test.
     std::mt19937 view_cell_rng_;

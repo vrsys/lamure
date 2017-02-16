@@ -125,6 +125,7 @@ initialize(int& argc, char** argv)
     char time_type = visibility_test_time[0];
     std::string duration_string = visibility_test_time.substr(1, std::string::npos);
     int duration_int = std::stoi(duration_string, nullptr, 10);
+    size_t num_samples = 0;
 
     double duration_seconds = (double)duration_int;
     switch(time_type)
@@ -137,6 +138,10 @@ initialize(int& argc, char** argv)
             break;
         case 'd':
             duration_seconds = duration_seconds * 60 * 60 * 24;
+            break;
+        case 's':
+            num_samples = duration_int;
+            duration_seconds = 0.0;
             break;
         default:
             std::cout << "Error: No or invalid execution time type given." << std::endl;
@@ -164,8 +169,10 @@ initialize(int& argc, char** argv)
 	lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     management_ = new management_simple_randomized(model_filenames, model_transformations, visible_set, invisible_set);
     glut_wrapper::set_management(management_);
+    
     management_->set_pvs_file_path(pvs_output_file_path);
     management_->set_duration_visibility_test(duration_seconds);
+    management_->set_samples_visibility_test(num_samples);
 
     // Calculate bounding box of whole scene.
     for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
