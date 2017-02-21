@@ -16,12 +16,16 @@
 #include <lamure/pvs/grid_regular.h>
 #include <lamure/pvs/grid_regular_compressed.h>
 #include <lamure/pvs/grid_octree.h>
+#include <lamure/pvs/grid_octree_compressed.h>
 #include <lamure/pvs/grid_octree_hierarchical.h>
 #include <lamure/pvs/grid_octree_hierarchical_v2.h>
 #include <lamure/pvs/grid_octree_hierarchical_v3.h>
+#include <lamure/pvs/grid_irregular.h>
+#include <lamure/pvs/grid_irregular_compressed.h>
 
 #include <lamure/pvs/grid_optimizer_octree.h>
 #include <lamure/pvs/grid_optimizer_octree_hierarchical.h>
+#include <lamure/pvs/grid_optimizer_irregular.h>
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -149,12 +153,14 @@ int main(int argc, char** argv)
 
     size_t num_cells = depth;
     if(grid_type == lamure::pvs::grid_regular::get_grid_identifier() || 
-        grid_type == lamure::pvs::grid_regular_compressed::get_grid_identifier())
+        grid_type == lamure::pvs::grid_regular_compressed::get_grid_identifier() ||
+        grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
+        grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
     {
         num_cells = cells_per_axis;
     }
 
-    output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, 0, 0, input_grid->get_size().x, input_grid->get_position_center(), ids);
+    output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, num_cells, num_cells, input_grid->get_size().x, input_grid->get_position_center(), ids);
 
     if(output_grid == nullptr)
     {
@@ -215,7 +221,8 @@ int main(int argc, char** argv)
     // Optimize newly created grid.
     std::cout << "Start grid optimization..." << std::endl;
 
-    if(grid_type == lamure::pvs::grid_octree::get_grid_identifier())
+    if(grid_type == lamure::pvs::grid_octree::get_grid_identifier() ||
+        grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
     {
         lamure::pvs::grid_optimizer_octree optimizer;
         optimizer.optimize_grid(output_grid, optimization_threshold);
@@ -224,6 +231,12 @@ int main(int argc, char** argv)
             grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
     {
         lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
+        optimizer.optimize_grid(output_grid, optimization_threshold);
+    }
+    else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
+            grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
+    {
+        lamure::pvs::grid_optimizer_irregular optimizer;
         optimizer.optimize_grid(output_grid, optimization_threshold);
     }
     
