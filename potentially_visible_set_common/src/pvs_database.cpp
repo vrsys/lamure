@@ -59,6 +59,13 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 		// Loading grid file failed.
 		return false;
 	}
+
+	// Force preload on certain grid types since runtime access is not working properly.
+	if(visibility_grid_->get_grid_type() == grid_octree_hierarchical::get_grid_identifier() ||
+		visibility_grid_->get_grid_type() == grid_octree_hierarchical_v2::get_grid_identifier())
+	{
+		do_preload_ = true;
+	}
 	
 	if(do_preload_)
 	{

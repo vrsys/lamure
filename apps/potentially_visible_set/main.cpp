@@ -16,12 +16,14 @@
 #include <lamure/pvs/visibility_test_simple_randomized_id_histogram_renderer.h>
 
 #include <lamure/pvs/grid.h>
+#include <lamure/pvs/grid_irregular.h>
 
 #include <lamure/pvs/grid_optimizer_octree.h>
 #include <lamure/pvs/grid_optimizer_octree_hierarchical.h>
+#include <lamure/pvs/grid_optimizer_irregular.h>
 
 #include <lamure/pvs/pvs_database.h>
-#include "lamure/pvs/pvs_utils.h"
+#include <lamure/pvs/pvs_utils.h>
 
 #include <lamure/ren/model_database.h>
 
@@ -200,6 +202,11 @@ int main(int argc, char** argv)
     else if(grid_type == "octree_hierarchical" || grid_type == "octree_hierarchical_v2")
     {
         lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
+        optimizer.optimize_grid(test_grid, optimization_threshold);
+    }
+    else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier())
+    {
+        lamure::pvs::grid_optimizer_irregular optimizer;
         optimizer.optimize_grid(test_grid, optimization_threshold);
     }
     
