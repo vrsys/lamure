@@ -28,6 +28,9 @@ public:
 	grid_octree_hierarchical_node(const double& cell_size, const scm::math::vec3d& position_center, grid_octree_hierarchical_node* parent);
 	~grid_octree_hierarchical_node();
 
+	virtual std::string get_cell_type() const;
+	static std::string get_cell_identifier();
+
 	virtual bool get_visibility(const model_t& object_id, const node_t& node_id) const;
 
 	virtual std::map<model_t, std::vector<node_t>> get_visible_indices() const;

@@ -25,6 +25,9 @@ public:
 	grid_octree_node(const double& cell_size, const scm::math::vec3d& position_center);
 	~grid_octree_node();
 
+	virtual std::string get_cell_type() const;
+	static std::string get_cell_identifier();
+
 	virtual void split();
 	virtual void collapse();
 

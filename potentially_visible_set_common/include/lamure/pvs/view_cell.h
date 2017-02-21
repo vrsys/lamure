@@ -3,6 +3,7 @@
 
 #include <map>
 #include <vector>
+#include <string>
 
 #include <scm/core/math.h>
 #include <lamure/types.h>
@@ -16,6 +17,8 @@ class view_cell
 {
 public:
 	virtual ~view_cell() {}
+
+	virtual std::string get_cell_type() const = 0;
 
 	virtual scm::math::vec3d get_size() const = 0;
 	virtual scm::math::vec3d get_position_center() const = 0;

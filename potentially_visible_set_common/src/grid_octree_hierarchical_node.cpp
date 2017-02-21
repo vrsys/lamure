@@ -24,6 +24,18 @@ grid_octree_hierarchical_node::
 {
 }
 
+std::string grid_octree_hierarchical_node::
+get_cell_type() const
+{
+	return get_cell_identifier();
+}
+
+std::string grid_octree_hierarchical_node::
+get_cell_identifier()
+{
+	return "grid_octree_hierarchical_node";
+}
+
 bool grid_octree_hierarchical_node::
 get_visibility(const model_t& object_id, const node_t& node_id) const
 {

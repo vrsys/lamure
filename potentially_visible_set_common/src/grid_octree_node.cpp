@@ -22,6 +22,18 @@ grid_octree_node::
 	collapse();
 }
 
+std::string grid_octree_node::
+get_cell_type() const
+{
+	return get_cell_identifier();
+}
+
+std::string grid_octree_node::
+get_cell_identifier()
+{
+	return "grid_octree_node";
+}
+
 void grid_octree_node::
 split()
 {

@@ -21,6 +21,18 @@ view_cell_irregular_managing::
 {
 }
 
+std::string view_cell_irregular_managing::
+get_cell_type() const
+{
+	return get_cell_identifier();
+}
+
+std::string view_cell_irregular_managing::
+get_cell_identifier()
+{
+	return "view_cell_irregular_managing";
+}
+
 scm::math::vec3d view_cell_irregular_managing::
 get_size() const
 {

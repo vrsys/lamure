@@ -24,6 +24,18 @@ view_cell_regular::
 {
 }
 
+std::string view_cell_regular::
+get_cell_type() const
+{
+	return get_cell_identifier();
+}
+
+std::string view_cell_regular::
+get_cell_identifier()
+{
+	return "view_cell_regular";
+}
+
 scm::math::vec3d view_cell_regular::
 get_size() const
 {

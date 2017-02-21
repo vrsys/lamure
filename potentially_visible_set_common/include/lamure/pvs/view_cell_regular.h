@@ -20,6 +20,9 @@ public:
 	view_cell_regular(const double& cell_size, const scm::math::vec3d& position_center);
 	~view_cell_regular();
 
+	virtual std::string get_cell_type() const;
+	static std::string get_cell_identifier();
+
 	virtual scm::math::vec3d get_size() const;
 	virtual scm::math::vec3d get_position_center() const;
 
