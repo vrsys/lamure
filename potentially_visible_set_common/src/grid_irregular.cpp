@@ -34,7 +34,9 @@ grid_irregular(const size_t& number_cells_x, const size_t& number_cells_y, const
 grid_irregular::
 ~grid_irregular()
 {
-	cells_.clear();
+	original_cells_.clear();
+	managing_cells_.clear();
+	cells_by_indices_.clear();
 }
 
 std::string grid_irregular::
@@ -52,7 +54,7 @@ get_grid_identifier()
 size_t grid_irregular::
 get_cell_count() const
 {
-	return cells_.size();
+	return cells_by_indices_.size();
 }
 
 scm::math::vec3d grid_irregular::
@@ -72,7 +74,7 @@ get_cell_at_index(const size_t& index) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	return &cells_.at(index);
+	return cells_by_indices_[index];
 }
 
 const view_cell* grid_irregular::
@@ -83,27 +85,42 @@ get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
 
-		// position of grid is at grid center, so cells have a offset
-		double half_size_x = (cell_size_ * (double)number_cells_x_) * 0.5;
-		double half_size_y = (cell_size_ * (double)number_cells_y_) * 0.5;
-		double half_size_z = (cell_size_ * (double)number_cells_z_) * 0.5;
-		scm::math::vec3d half_size(half_size_x, half_size_y, half_size_z);
+		size_t original_index = 0;
+		const view_cell* original_cell = this->get_original_cell_at_position(position, &original_index);
 
-		scm::math::vec3d distance = position - (position_center_ - half_size);
-
-		size_t index_x = (size_t)(distance.x / cell_size_);
-		size_t index_y = (size_t)(distance.y / cell_size_);
-		size_t index_z = (size_t)(distance.z / cell_size_);
-
-		// Check calculated index so we know if the position is inside the grid at all.
-		if(index_x < 0 || index_x >= number_cells_x_ ||
-			index_y < 0 || index_y >= number_cells_y_ ||
-			index_z < 0 || index_z >= number_cells_z_)
+		// This means the position is outside of the grid.
+		if(original_cell == nullptr)
 		{
 			return nullptr;
 		}
 
-		general_index = (number_cells_y_ * number_cells_x_ * index_z) + (number_cells_x_ * index_y) + index_x;
+		if(cells_active_states_[original_index])
+		{
+			// Cell is not joined, so the cell must be among the indices for fast access.
+			for(size_t indexed_cell_index = 0; indexed_cell_index < cells_by_indices_.size(); ++indexed_cell_index)
+			{
+				if(original_cell == cells_by_indices_[indexed_cell_index])
+				{
+					general_index = indexed_cell_index;
+					break;
+				}
+			}
+		}
+		else
+		{
+			// Cell is joined, so it must be among the managing view cells.
+			size_t managed_index = original_index_to_cell_mapping_.at(original_index);
+			const view_cell* managed_cell = &managing_cells_[managed_index];
+
+			for(size_t indexed_cell_index = 0; indexed_cell_index < cells_by_indices_.size(); ++indexed_cell_index)
+			{
+				if(managed_cell == cells_by_indices_[indexed_cell_index])
+				{
+					general_index = indexed_cell_index;
+					break;
+				}
+			}
+		}
 	}
 
 	// Optional second return value: the index of the view cell.
@@ -112,16 +129,14 @@ get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 		(*cell_index) = general_index;
 	}
 
+	// This call will automatically map the cell to managed cells if necessary.
 	return get_cell_at_index(general_index);
 }
 
 void grid_irregular::
 set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility)
 {
-	// If this function is locked, high performance loss in the preprocessing will occur.
-	//std::lock_guard<std::mutex> lock(mutex_);
-	
-	view_cell* current_visibility_cell = &cells_.at(cell_index);
+	view_cell* current_visibility_cell = cells_by_indices_[cell_index];
 	current_visibility_cell->set_visibility(model_id, node_id, visibility);
 }
 
@@ -154,6 +169,15 @@ save_irregular_grid(const std::string& file_path, const std::string& grid_type) 
 	file_out << cell_size_ << std::endl;
 	file_out << position_center_.x << " " << position_center_.y << " " << position_center_.z << std::endl;
 
+	// Number of mapping entires.
+	file_out << original_index_to_cell_mapping_.size() << std::endl;
+
+	// Joined view cell IDs.
+	for(std::map<size_t, size_t>::const_iterator iter = original_index_to_cell_mapping_.begin(); iter != original_index_to_cell_mapping_.end(); ++iter)
+	{
+		file_out << iter->first << " " << iter->second << std::endl;
+	}
+
 	// Save number of models, so we can later simply read the node numbers.
 	file_out << ids_.size() << std::endl;
 
@@ -182,7 +206,7 @@ save_visibility_to_file(const std::string& file_path) const
 	std::vector<std::string> compressed_data_blocks;
 
 	// Iterate over view cells.
-	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
+	for(size_t cell_index = 0; cell_index < cells_by_indices_.size(); ++cell_index)
 	{
 		std::string current_cell_data = "";
 
@@ -199,7 +223,7 @@ save_visibility_to_file(const std::string& file_path) const
 			// Iterate over nodes in the model.
 			for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
 			{
-				if(cells_.at(cell_index).get_visibility(model_id, node_id))
+				if(cells_by_indices_[cell_index]->get_visibility(model_id, node_id))
 				{
 					current_byte |= 1 << (node_id % CHAR_BIT);
 				}
@@ -264,6 +288,40 @@ load_irregular_grid(const std::string& file_path, const std::string& grid_type)
 	position_center_ = scm::math::vec3d(pos_x, pos_y, pos_z);
 	create_grid(num_cells_x, num_cells_y, num_cells_z, cell_size, position_center_);
 
+	// Number of mapping entires.
+	size_t num_mappings;
+	file_in >> num_mappings;
+
+	// Joined view cell IDs.
+	original_index_to_cell_mapping_.clear();
+	size_t num_managing_cells = 0;
+
+	for(size_t mapping_index = 0; mapping_index < num_mappings; ++mapping_index)
+	{
+		size_t original_index, managing_index;
+		file_in >> original_index >> managing_index;
+
+		cells_active_states_[original_index] = false;
+		original_index_to_cell_mapping_[original_index] = managing_index;
+
+		// Track highest managing cell index to get total number of managing cells.
+		if(managing_index + 1 > num_managing_cells)
+		{
+			num_managing_cells = managing_index + 1;
+		}
+	}
+
+	// Create managing cells.
+	managing_cells_.resize(num_managing_cells);
+
+	for(std::map<size_t, size_t>::const_iterator iter = original_index_to_cell_mapping_.begin(); iter != original_index_to_cell_mapping_.end(); ++iter)
+	{
+		managing_cells_[iter->second].add_cell(&original_cells_[iter->first]);
+	}
+
+	// Cell layout was changed, reindexing required.
+	this->compute_index_access();
+
 	// Read the number of models.
 	size_t num_models = 0;
 	file_in >> num_models;
@@ -295,9 +353,9 @@ load_visibility_from_file(const std::string& file_path)
 		return false;
 	}
 
-	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
+	for(size_t cell_index = 0; cell_index < cells_by_indices_.size(); ++cell_index)
 	{
-		view_cell* current_cell = &cells_.at(cell_index);
+		view_cell* current_cell = cells_by_indices_[cell_index];
 
 		// One line per model.
 		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
@@ -331,14 +389,9 @@ load_visibility_from_file(const std::string& file_path)
 void grid_irregular::
 clear_cell_visibility(const size_t& cell_index)
 {
-	if(this->get_num_models() <= cell_index)
-	{
-		return;
-	}
-
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	cells_[cell_index].clear_visibility_data();
+	cells_by_indices_[cell_index]->clear_visibility_data();
 }
 
 bool grid_irregular::
@@ -346,7 +399,7 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	view_cell* current_cell = &cells_[cell_index];
+	view_cell* current_cell = cells_by_indices_[cell_index];
 
 	// First check if visibility data is already loaded.
 	if(current_cell->contains_visibility_data())
@@ -416,7 +469,11 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 void grid_irregular::
 create_grid(const size_t& number_cells_x, const size_t& number_cells_y, const size_t& number_cells_z, const double& cell_size, const scm::math::vec3d& position_center)
 {
-	cells_.clear();
+	original_cells_.clear();
+	managing_cells_.clear();
+	cells_active_states_.clear();
+	cells_by_indices_.clear();
+	original_index_to_cell_mapping_.clear();
 
 	// position of grid is at grid center, so cells have a offset
 	double half_size_x = (cell_size * (double)number_cells_x) * 0.5;
@@ -434,9 +491,15 @@ create_grid(const size_t& number_cells_x, const size_t& number_cells_y, const si
 			for(size_t index_x = 0; index_x < number_cells_x; ++index_x)
 			{
 				scm::math::vec3d pos = position_center + (scm::math::vec3d(index_x , index_y, index_z) * cell_size) - half_size + cell_offset;
-				cells_.push_back(view_cell_regular(cell_size, pos));
+				original_cells_.push_back(view_cell_regular(cell_size, pos));
+				cells_active_states_.push_back(true);
 			}
 		}
+	}
+
+	for(size_t original_cell_index = 0; original_cell_index < original_cells_.size(); ++original_cell_index)
+	{
+		cells_by_indices_.push_back(&original_cells_[original_cell_index]);
 	}
 
 	number_cells_x_ = number_cells_x;
@@ -458,6 +521,293 @@ node_t grid_irregular::
 get_num_nodes(const model_t& model_id) const
 {
 	return ids_[model_id];
+}
+
+void grid_irregular::
+compute_index_access()
+{
+	cells_by_indices_.clear();
+
+	for(size_t original_cell_index = 0; original_cell_index < original_cells_.size(); ++original_cell_index)
+	{
+		if(cells_active_states_[original_cell_index])
+		{
+			cells_by_indices_.push_back(&original_cells_[original_cell_index]);
+		}
+	}
+
+	for(size_t managing_cell_index = 0; managing_cell_index < managing_cells_.size(); ++managing_cell_index)
+	{
+		cells_by_indices_.push_back(&managing_cells_[managing_cell_index]);
+	}
+}
+
+size_t grid_irregular::
+get_original_cell_count() const
+{
+	return original_cells_.size();
+}
+
+bool grid_irregular::
+join_cells(const size_t& index_one, const size_t& index_two, const float& error, const float& equality_threshold)
+{
+	bool result = false;
+
+	if(index_one >= cells_by_indices_.size() ||
+		index_two >= cells_by_indices_.size())
+	{
+		return false;
+	}
+
+	view_cell* view_cell_one = cells_by_indices_[index_one];
+	view_cell* view_cell_two = cells_by_indices_[index_two];
+
+	// Type of cells must be known (original or managing).
+	bool view_cell_one_is_original = false;
+	bool view_cell_two_is_original = false;
+
+	// These are used if the view cells are original cells that are later deactivated.
+	size_t original_index_one = 0;
+	size_t original_index_two = 0;
+
+	// Check type of view cells and get their respective indices.
+	for(size_t original_cell_index = 0; original_cell_index < original_cells_.size(); ++original_cell_index)
+	{
+		if(view_cell_one == &original_cells_[original_cell_index])
+		{
+			original_index_one = original_cell_index;
+			view_cell_one_is_original = true;
+		}
+
+		if(view_cell_two == &original_cells_[original_cell_index])
+		{
+			original_index_two = original_cell_index;
+			view_cell_two_is_original = true;
+		}
+	}
+
+	size_t managing_index_one = 0;
+	size_t managing_index_two = 0;
+
+	for(size_t managing_cell_index = 0; managing_cell_index < managing_cells_.size(); ++managing_cell_index)
+	{
+		if(!view_cell_one_is_original && view_cell_one == &managing_cells_[managing_cell_index])
+		{
+			managing_index_one = managing_cell_index;
+		}
+
+		if(!view_cell_two_is_original && view_cell_two == &managing_cells_[managing_cell_index])
+		{
+			managing_index_two = managing_cell_index;
+		}
+	}
+
+	// Join cells.
+	if(view_cell_one_is_original && view_cell_two_is_original)
+	{
+		if((1.0f - error) >= equality_threshold)
+		{
+			// Case 1: both cells are original cells.
+			view_cell_irregular_managing new_managing_cell;
+			new_managing_cell.add_cell(view_cell_one);
+			new_managing_cell.add_cell(view_cell_two);
+		
+			// Copy visibility data.
+			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+			{
+				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
+				{
+					bool node_visibility = view_cell_one->get_visibility(model_index, node_index) || view_cell_two->get_visibility(model_index, node_index);
+					new_managing_cell.set_visibility(model_index, node_index, node_visibility);
+				}
+			}
+
+			new_managing_cell.set_error(error);
+			managing_cells_.push_back(new_managing_cell);
+
+			// Original view cells don't need to manage visibility data anymore.
+			view_cell_one->clear_visibility_data();
+			view_cell_two->clear_visibility_data();
+
+			cells_active_states_[original_index_one] = false;
+			cells_active_states_[original_index_two] = false;
+
+			// Save mapping. Mapped to currently last cell in managing view cells.
+			original_index_to_cell_mapping_[original_index_one] = managing_cells_.size() - 1;
+			original_index_to_cell_mapping_[original_index_two] = managing_cells_.size() - 1;
+
+			result = true;
+		}
+	}
+	else if(view_cell_one_is_original)
+	{
+		view_cell_irregular_managing* cell_managing = &managing_cells_[managing_index_two];
+
+		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
+		{
+			// Case 2a: first index is original cell.
+			// Copy visibility data.
+			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+			{
+				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
+				{
+					bool node_visibility = view_cell_one->get_visibility(model_index, node_index) || view_cell_two->get_visibility(model_index, node_index);
+					view_cell_two->set_visibility(model_index, node_index, node_visibility);
+				}
+			}
+
+			// Original view cells don't need to manage visibility data anymore.
+			view_cell_one->clear_visibility_data();
+			cells_active_states_[original_index_one] = false;
+
+			// Save mapping.
+			original_index_to_cell_mapping_[original_index_one] = managing_index_two;
+
+			cell_managing->add_cell(view_cell_one);
+			cell_managing->set_error(error + cell_managing->get_error());
+
+			result = true;
+		}
+	}
+	else if(view_cell_two_is_original)
+	{
+		view_cell_irregular_managing* cell_managing = &managing_cells_[managing_index_one];
+
+		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
+		{
+			// Case 2b: second index is original cell.
+			// Copy visibility data.
+			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+			{
+				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
+				{
+					bool node_visibility = view_cell_two->get_visibility(model_index, node_index) || view_cell_one->get_visibility(model_index, node_index);
+					view_cell_one->set_visibility(model_index, node_index, node_visibility);
+				}
+			}
+
+			// Original view cells don't need to manage visibility data anymore.
+			view_cell_two->clear_visibility_data();
+			cells_active_states_[original_index_two] = false;
+
+			// Save mapping.
+			original_index_to_cell_mapping_[original_index_two] = managing_index_one;
+
+			cell_managing->add_cell(view_cell_two);
+			cell_managing->set_error(error + cell_managing->get_error());
+
+			result = true;
+		}
+	}
+	else
+	{
+		float combined_error = managing_cells_[managing_index_one].get_error() + managing_cells_[managing_index_two].get_error();
+
+		if((1.0 - error) - combined_error >= equality_threshold)
+		{
+			// Case 3: both are managing cells.
+			// Copy visibility data.
+			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
+			{
+				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
+				{
+					bool node_visibility = view_cell_two->get_visibility(model_index, node_index) || view_cell_one->get_visibility(model_index, node_index);
+					view_cell_one->set_visibility(model_index, node_index, node_visibility);
+				}
+			}
+
+			// Rewrite mapping and move managed view cells.
+			for(std::map<size_t, size_t>::const_iterator iter = original_index_to_cell_mapping_.begin(); iter != original_index_to_cell_mapping_.end(); ++iter)
+			{
+				if(iter->second == managing_index_two)
+				{
+					original_index_to_cell_mapping_[iter->first] = managing_index_one;
+					managing_cells_[managing_index_one].add_cell(&original_cells_[iter->first]);
+				}
+			}
+
+			managing_cells_[managing_index_one].set_error(combined_error + error);
+
+			// Remove the now ununsed managing view cell.
+			managing_cells_.erase(managing_cells_.begin() + managing_index_two);
+
+			// Now that one managing view cell was removed, every mapping with index higher than the removed element must be lowered by one.
+			for(std::map<size_t, size_t>::const_iterator iter = original_index_to_cell_mapping_.begin(); iter != original_index_to_cell_mapping_.end(); ++iter)
+			{
+				if(iter->second > managing_index_two)
+				{
+					original_index_to_cell_mapping_[iter->first] = iter->second - 1;
+				}
+			}
+
+			result = true;
+		}
+	}
+
+	// Keep indices for access up to date.
+	this->compute_index_access();
+
+	return result;
+}
+
+const view_cell* grid_irregular::
+get_original_cell_at_index(const size_t& index) const
+{
+	return &original_cells_[index];
+}
+
+const view_cell* grid_irregular::
+get_original_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
+{
+	size_t general_index = 0;
+
+	// position of grid is at grid center, so cells have a offset
+	double half_size_x = (cell_size_ * (double)number_cells_x_) * 0.5;
+	double half_size_y = (cell_size_ * (double)number_cells_y_) * 0.5;
+	double half_size_z = (cell_size_ * (double)number_cells_z_) * 0.5;
+	scm::math::vec3d half_size(half_size_x, half_size_y, half_size_z);
+
+	scm::math::vec3d distance = position - (position_center_ - half_size);
+
+	size_t index_x = (size_t)(distance.x / cell_size_);
+	size_t index_y = (size_t)(distance.y / cell_size_);
+	size_t index_z = (size_t)(distance.z / cell_size_);
+
+	// Check calculated index so we know if the position is inside the grid at all.
+	if(index_x < 0 || index_x >= number_cells_x_ ||
+		index_y < 0 || index_y >= number_cells_y_ ||
+		index_z < 0 || index_z >= number_cells_z_)
+	{
+		return nullptr;
+	}
+
+	general_index = (number_cells_y_ * number_cells_x_ * index_z) + (number_cells_x_ * index_y) + index_x;
+
+	// Optional second return value: the index of the view cell.
+	if(cell_index != nullptr)
+	{
+		(*cell_index) = general_index;
+	}
+
+	return get_original_cell_at_index(general_index);
+}
+
+bool grid_irregular::
+is_cell_at_index_original(const size_t& index) const
+{
+	bool view_cell_is_original = false;
+	const view_cell* cell_to_test = cells_by_indices_[index];
+
+	for(size_t original_cell_index = 0; original_cell_index < original_cells_.size(); ++original_cell_index)
+	{
+		if(cell_to_test == &original_cells_[original_cell_index])
+		{
+			view_cell_is_original = true;
+			break;
+		}
+	}
+
+	return view_cell_is_original;
 }
 
 }
