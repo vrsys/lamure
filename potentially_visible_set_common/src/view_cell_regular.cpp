@@ -56,14 +56,14 @@ set_visibility(const model_t& object_id, const node_t& node_id, const bool& visi
 		visibility_.resize(object_id + 1);
 	}
 
-	std::vector<bool>* node_visibility = &visibility_.at(object_id);
+	std::vector<bool>& node_visibility = visibility_[object_id];
 	
-	if(node_visibility->size() <= node_id)
+	if(node_visibility.size() <= node_id)
 	{
-		node_visibility->resize(node_id + 1);
+		node_visibility.resize(node_id + 1);
 	}
 
-	node_visibility->at(node_id) = visible;
+	node_visibility[node_id] = visible;
 }
 
 bool view_cell_regular::
@@ -74,14 +74,14 @@ get_visibility(const model_t& object_id, const node_t& node_id) const
 		return false;
 	}
 
-	const std::vector<bool>* node_visibility = &visibility_.at(object_id);
+	const std::vector<bool>& node_visibility = visibility_[object_id];
 	
-	if(node_visibility->size() <= node_id)
+	if(node_visibility.size() <= node_id)
 	{
 		return false;
 	}
 
-	return node_visibility->at(node_id);
+	return node_visibility[node_id];
 }
 
 bool view_cell_regular::
@@ -97,11 +97,11 @@ get_visible_indices() const
 
 	for(model_t model_index = 0; model_index < visibility_.size(); ++model_index)
 	{
-		const std::vector<bool>& node_visibility = visibility_.at(model_index);
+		const std::vector<bool>& node_visibility = visibility_[model_index];
 
 		for(node_t node_index = 0; node_index < node_visibility.size(); ++node_index)
 		{
-			if(node_visibility.at(node_index))
+			if(node_visibility[node_index])
 			{
 				indices[model_index].push_back(node_index);
 			}
