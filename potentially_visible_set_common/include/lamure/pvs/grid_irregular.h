@@ -62,6 +62,9 @@ protected:
 	void save_irregular_grid(const std::string& file_path, const std::string& grid_type) const;
 	bool load_irregular_grid(const std::string& file_path, const std::string& grid_type);
 
+	size_t get_original_index_of_cell(const view_cell* cell) const;
+	size_t get_managing_index_of_cell(const view_cell* cell) const;
+
 	double cell_size_;
 	scm::math::vec3d size_;
 	scm::math::vec3d position_center_;

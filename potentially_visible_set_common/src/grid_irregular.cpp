@@ -203,8 +203,6 @@ save_visibility_to_file(const std::string& file_path) const
 		throw std::invalid_argument("invalid file path: " + file_path);
 	}
 
-	std::vector<std::string> compressed_data_blocks;
-
 	// Iterate over view cells.
 	for(size_t cell_index = 0; cell_index < cells_by_indices_.size(); ++cell_index)
 	{
@@ -563,44 +561,8 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 	view_cell* view_cell_two = cells_by_indices_[index_two];
 
 	// Type of cells must be known (original or managing).
-	bool view_cell_one_is_original = false;
-	bool view_cell_two_is_original = false;
-
-	// These are used if the view cells are original cells that are later deactivated.
-	size_t original_index_one = 0;
-	size_t original_index_two = 0;
-
-	// Check type of view cells and get their respective indices.
-	for(size_t original_cell_index = 0; original_cell_index < original_cells_.size(); ++original_cell_index)
-	{
-		if(view_cell_one == &original_cells_[original_cell_index])
-		{
-			original_index_one = original_cell_index;
-			view_cell_one_is_original = true;
-		}
-
-		if(view_cell_two == &original_cells_[original_cell_index])
-		{
-			original_index_two = original_cell_index;
-			view_cell_two_is_original = true;
-		}
-	}
-
-	size_t managing_index_one = 0;
-	size_t managing_index_two = 0;
-
-	for(size_t managing_cell_index = 0; managing_cell_index < managing_cells_.size(); ++managing_cell_index)
-	{
-		if(!view_cell_one_is_original && view_cell_one == &managing_cells_[managing_cell_index])
-		{
-			managing_index_one = managing_cell_index;
-		}
-
-		if(!view_cell_two_is_original && view_cell_two == &managing_cells_[managing_cell_index])
-		{
-			managing_index_two = managing_cell_index;
-		}
-	}
+	bool view_cell_one_is_original = this->is_cell_at_index_original(index_one);
+	bool view_cell_two_is_original = this->is_cell_at_index_original(index_two);
 
 	// Join cells.
 	if(view_cell_one_is_original && view_cell_two_is_original)
@@ -608,6 +570,9 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 		if((1.0f - error) >= equality_threshold)
 		{
 			// Case 1: both cells are original cells.
+			size_t original_index_one = this->get_original_index_of_cell(view_cell_one);
+			size_t original_index_two = this->get_original_index_of_cell(view_cell_two);
+
 			view_cell_irregular_managing new_managing_cell;
 			new_managing_cell.add_cell(view_cell_one);
 			new_managing_cell.add_cell(view_cell_two);
@@ -641,11 +606,14 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 	}
 	else if(view_cell_one_is_original)
 	{
+		// Case 2a: first index is original cell.
+		size_t original_index_one = this->get_original_index_of_cell(view_cell_one);
+		size_t managing_index_two = this->get_managing_index_of_cell(view_cell_two);
+
 		view_cell_irregular_managing* cell_managing = &managing_cells_[managing_index_two];
 
 		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
 		{
-			// Case 2a: first index is original cell.
 			// Copy visibility data.
 			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 			{
@@ -671,11 +639,14 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 	}
 	else if(view_cell_two_is_original)
 	{
+		// Case 2b: second index is original cell.
+		size_t managing_index_one = this->get_managing_index_of_cell(view_cell_one);
+		size_t original_index_two = this->get_original_index_of_cell(view_cell_two);
+
 		view_cell_irregular_managing* cell_managing = &managing_cells_[managing_index_one];
 
 		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
 		{
-			// Case 2b: second index is original cell.
 			// Copy visibility data.
 			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 			{
@@ -701,11 +672,14 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 	}
 	else
 	{
+		// Case 3: both are managing cells.
+		size_t managing_index_one = this->get_managing_index_of_cell(view_cell_one);
+		size_t managing_index_two = this->get_managing_index_of_cell(view_cell_two);
+
 		float combined_error = managing_cells_[managing_index_one].get_error() + managing_cells_[managing_index_two].get_error();
 
 		if((1.0 - error) - combined_error >= equality_threshold)
 		{
-			// Case 3: both are managing cells.
 			// Copy visibility data.
 			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 			{
@@ -795,19 +769,35 @@ get_original_cell_at_position(const scm::math::vec3d& position, size_t* cell_ind
 bool grid_irregular::
 is_cell_at_index_original(const size_t& index) const
 {
-	bool view_cell_is_original = false;
-	const view_cell* cell_to_test = cells_by_indices_[index];
+	return cells_by_indices_[index]->get_cell_type() == view_cell_regular::get_cell_identifier();
+}
 
+size_t grid_irregular::
+get_original_index_of_cell(const view_cell* cell) const
+{
 	for(size_t original_cell_index = 0; original_cell_index < original_cells_.size(); ++original_cell_index)
 	{
-		if(cell_to_test == &original_cells_[original_cell_index])
+		if(cell == &original_cells_[original_cell_index])
 		{
-			view_cell_is_original = true;
-			break;
+			return original_cell_index;
 		}
 	}
 
-	return view_cell_is_original;
+	return original_cells_.size();
+}
+
+size_t grid_irregular::
+get_managing_index_of_cell(const view_cell* cell) const
+{
+	for(size_t managing_cell_index = 0; managing_cell_index < managing_cells_.size(); ++managing_cell_index)
+	{
+		if(cell == &managing_cells_[managing_cell_index])
+		{
+			return managing_cell_index;
+		}
+	}
+
+	return managing_cells_.size();
 }
 
 }
