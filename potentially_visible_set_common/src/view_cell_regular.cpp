@@ -56,8 +56,8 @@ set_visibility(const model_t& object_id, const node_t& node_id, const bool& visi
 		visibility_.resize(object_id + 1);
 	}
 
-	std::vector<bool>& node_visibility = visibility_[object_id];
-	
+	boost::dynamic_bitset<>& node_visibility = visibility_[object_id];
+
 	if(node_visibility.size() <= node_id)
 	{
 		node_visibility.resize(node_id + 1);
@@ -74,8 +74,8 @@ get_visibility(const model_t& object_id, const node_t& node_id) const
 		return false;
 	}
 
-	const std::vector<bool>& node_visibility = visibility_[object_id];
-	
+	const boost::dynamic_bitset<>& node_visibility = visibility_[object_id];
+
 	if(node_visibility.size() <= node_id)
 	{
 		return false;
@@ -97,7 +97,7 @@ get_visible_indices() const
 
 	for(model_t model_index = 0; model_index < visibility_.size(); ++model_index)
 	{
-		const std::vector<bool>& node_visibility = visibility_[model_index];
+		const boost::dynamic_bitset<>& node_visibility = visibility_[model_index];
 
 		for(node_t node_index = 0; node_index < node_visibility.size(); ++node_index)
 		{
@@ -115,6 +115,28 @@ void view_cell_regular::
 clear_visibility_data()
 {
 	visibility_.clear();
+}
+
+const boost::dynamic_bitset<>& view_cell_regular::
+get_bitset(const model_t& object_id)
+{
+	if(visibility_.size() <= object_id)
+	{
+		visibility_.resize(object_id + 1);
+	}
+
+	return visibility_[object_id];
+}
+
+void view_cell_regular::
+set_bitset(const model_t& object_id, const boost::dynamic_bitset<>& bitset)
+{
+	if(visibility_.size() <= object_id)
+	{
+		visibility_.resize(object_id + 1);
+	}
+
+	visibility_[object_id] = boost::dynamic_bitset<>(bitset);
 }
 
 }

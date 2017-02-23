@@ -578,13 +578,18 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 			new_managing_cell.add_cell(view_cell_two);
 		
 			// Copy visibility data.
+			view_cell_regular* view_cell_regular_one = (view_cell_regular*)view_cell_one;
+			view_cell_regular* view_cell_regular_two = (view_cell_regular*)view_cell_two;
+
 			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 			{
-				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
-				{
-					bool node_visibility = view_cell_one->get_visibility(model_index, node_index) || view_cell_two->get_visibility(model_index, node_index);
-					new_managing_cell.set_visibility(model_index, node_index, node_visibility);
-				}
+				boost::dynamic_bitset<> bitset_one = boost::dynamic_bitset<>(view_cell_regular_one->get_bitset(model_index));
+				bitset_one.resize(this->get_num_nodes(model_index));
+				boost::dynamic_bitset<> bitset_two = boost::dynamic_bitset<>(view_cell_regular_two->get_bitset(model_index));
+				bitset_two.resize(this->get_num_nodes(model_index));
+
+				boost::dynamic_bitset<> combined_visibility = bitset_one | bitset_two;
+				new_managing_cell.set_bitset(model_index, combined_visibility);
 			}
 
 			new_managing_cell.set_error(error);
@@ -615,13 +620,18 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
 		{
 			// Copy visibility data.
+			view_cell_regular* view_cell_regular_one = (view_cell_regular*)view_cell_one;
+			view_cell_regular* view_cell_regular_two = (view_cell_regular*)view_cell_two;
+
 			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 			{
-				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
-				{
-					bool node_visibility = view_cell_one->get_visibility(model_index, node_index) || view_cell_two->get_visibility(model_index, node_index);
-					view_cell_two->set_visibility(model_index, node_index, node_visibility);
-				}
+				boost::dynamic_bitset<> bitset_one = boost::dynamic_bitset<>(view_cell_regular_one->get_bitset(model_index));
+				bitset_one.resize(this->get_num_nodes(model_index));
+				boost::dynamic_bitset<> bitset_two = boost::dynamic_bitset<>(view_cell_regular_two->get_bitset(model_index));
+				bitset_two.resize(this->get_num_nodes(model_index));
+
+				boost::dynamic_bitset<> combined_visibility = bitset_one | bitset_two;
+				view_cell_regular_two->set_bitset(model_index, combined_visibility);
 			}
 
 			// Original view cells don't need to manage visibility data anymore.
@@ -648,13 +658,18 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
 		{
 			// Copy visibility data.
+			view_cell_regular* view_cell_regular_one = (view_cell_regular*)view_cell_one;
+			view_cell_regular* view_cell_regular_two = (view_cell_regular*)view_cell_two;
+
 			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 			{
-				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
-				{
-					bool node_visibility = view_cell_two->get_visibility(model_index, node_index) || view_cell_one->get_visibility(model_index, node_index);
-					view_cell_one->set_visibility(model_index, node_index, node_visibility);
-				}
+				boost::dynamic_bitset<> bitset_one = boost::dynamic_bitset<>(view_cell_regular_one->get_bitset(model_index));
+				bitset_one.resize(this->get_num_nodes(model_index));
+				boost::dynamic_bitset<> bitset_two = boost::dynamic_bitset<>(view_cell_regular_two->get_bitset(model_index));
+				bitset_two.resize(this->get_num_nodes(model_index));
+
+				boost::dynamic_bitset<> combined_visibility = bitset_one | bitset_two;
+				view_cell_regular_one->set_bitset(model_index, combined_visibility);
 			}
 
 			// Original view cells don't need to manage visibility data anymore.
@@ -681,13 +696,18 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 		if((1.0 - error) - combined_error >= equality_threshold)
 		{
 			// Copy visibility data.
+			view_cell_regular* view_cell_regular_one = (view_cell_regular*)view_cell_one;
+			view_cell_regular* view_cell_regular_two = (view_cell_regular*)view_cell_two;
+
 			for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 			{
-				for(node_t node_index = 0; node_index < ids_[model_index]; ++node_index)
-				{
-					bool node_visibility = view_cell_two->get_visibility(model_index, node_index) || view_cell_one->get_visibility(model_index, node_index);
-					view_cell_one->set_visibility(model_index, node_index, node_visibility);
-				}
+				boost::dynamic_bitset<> bitset_one = boost::dynamic_bitset<>(view_cell_regular_one->get_bitset(model_index));
+				bitset_one.resize(this->get_num_nodes(model_index));
+				boost::dynamic_bitset<> bitset_two = boost::dynamic_bitset<>(view_cell_regular_two->get_bitset(model_index));
+				bitset_two.resize(this->get_num_nodes(model_index));
+
+				boost::dynamic_bitset<> combined_visibility = bitset_one | bitset_two;
+				view_cell_regular_one->set_bitset(model_index, combined_visibility);
 			}
 
 			// Rewrite mapping and move managed view cells.

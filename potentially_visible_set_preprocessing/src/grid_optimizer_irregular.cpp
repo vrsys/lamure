@@ -31,17 +31,20 @@ optimize_grid(grid* input_grid, const float& equality_threshold)
 			size_t difference_counter = 0;
 			size_t total_nodes = 0;
 
+			view_cell_regular* current_view_cell_regular = (view_cell_regular*)current_cell;
+			view_cell_regular* compare_view_cell_regular = (view_cell_regular*)compare_cell;
+
 			for(model_t model_index = 0; model_index < irr_grid->get_num_models(); ++model_index)
 			{
-				for(node_t node_index = 0; node_index < irr_grid->get_num_nodes(model_index); ++node_index)
-				{
-					if(current_cell->get_visibility(model_index, node_index) != compare_cell->get_visibility(model_index, node_index))
-					{
-						++difference_counter;
-					}
+				boost::dynamic_bitset<> bitset_one = boost::dynamic_bitset<>(current_view_cell_regular->get_bitset(model_index));
+				bitset_one.resize(input_grid->get_num_nodes(model_index));
+				boost::dynamic_bitset<> bitset_two = boost::dynamic_bitset<>(compare_view_cell_regular->get_bitset(model_index));
+				bitset_two.resize(input_grid->get_num_nodes(model_index));
 
-					++total_nodes;
-				}
+				boost::dynamic_bitset<> common_bits = bitset_one & bitset_two;
+
+				difference_counter += common_bits.size() - common_bits.count();
+				total_nodes += common_bits.size();
 			}
 
 			float error = (float)difference_counter / (float)total_nodes;
