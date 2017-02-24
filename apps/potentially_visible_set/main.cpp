@@ -71,7 +71,7 @@ int main(int argc, char** argv)
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'regular_compressed', 'octree', 'octree_hierarchical', 'octree_hierarchical_v2', 'octree_hierarchical_v3')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
       ("oversize", po::value<double>(&oversize_factor)->default_value(1.5), "factor the grid bounds will be scaled by, default is 1.5 (grid bounds will exceed scene bounds by factor of 1.5)")
-      ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.")
+      ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal. Negative values will deactivate optimization process.")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only)");
       ;
 
@@ -150,14 +150,14 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    // Make sure optimization threshold is within certain bounds (0-100%).
+    // Make sure optimization threshold is within certain bounds (0-100% or disabled).
     if(optimization_threshold > 1.0f)
     {
         optimization_threshold = 1.0f;
     }
     else if(optimization_threshold < 0.0f)
     {
-        optimization_threshold = 0.0f;
+        optimization_threshold = -1.0f;
     }
 
     /*std::string pvs_grid_output_file_path = pvs_output_file_path;
@@ -196,29 +196,36 @@ int main(int argc, char** argv)
     start_time = std::chrono::system_clock::now();
 #endif
 
-    // Optimize grid by reducing amount of view cells if possible.
-    std::cout << "Start grid optimization..." << std::endl;
+    if(optimization_threshold >= 0.0f)
+    {
+        // Optimize grid by reducing amount of view cells if possible.
+        std::cout << "Start grid optimization..." << std::endl;
 
-    if(grid_type == lamure::pvs::grid_octree::get_grid_identifier() ||
-        grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
-    {
-        lamure::pvs::grid_optimizer_octree optimizer;
-        optimizer.optimize_grid(test_grid, optimization_threshold);
+        if(grid_type == lamure::pvs::grid_octree::get_grid_identifier() ||
+            grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
+        {
+            lamure::pvs::grid_optimizer_octree optimizer;
+            optimizer.optimize_grid(test_grid, optimization_threshold);
+        }
+        else if(grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
+            grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
+        {
+            lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
+            optimizer.optimize_grid(test_grid, optimization_threshold);
+        }
+        else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
+            grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
+        {
+            lamure::pvs::grid_optimizer_irregular optimizer;
+            optimizer.optimize_grid(test_grid, optimization_threshold);
+        }
+
+        std::cout << "Finished grid optimization." << std::endl;
     }
-    else if(grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
-        grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
+    else
     {
-        lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
-        optimizer.optimize_grid(test_grid, optimization_threshold);
+        std::cout << "Skipping grid optimization." << std::endl;
     }
-    else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
-        grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
-    {
-        lamure::pvs::grid_optimizer_irregular optimizer;
-        optimizer.optimize_grid(test_grid, optimization_threshold);
-    }
-    
-    std::cout << "Finished grid optimization." << std::endl;
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE
     end_time = std::chrono::system_clock::now();

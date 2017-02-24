@@ -55,7 +55,7 @@ int main(int argc, char** argv)
       ("2nd-pvs-file", po::value<std::string>(&second_pvs_input_file_path), "(optional) specify second input file of calculated pvs data (.pvs) to join visibility with first pvs file")
       ("output-file", po::value<std::string>(&pvs_output_file_path), "specify output file of converted visibility data (.pvs)")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data")
-      ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal.");
+      ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal. Negative values will deactivate optimization process.");
       ;
 
     po::variables_map vm;
@@ -73,6 +73,16 @@ int main(int argc, char** argv)
     {
         std::cout << "Please specifiy PVS output file path.\n" << desc;
         return 0;
+    }
+
+    // Make sure optimization threshold is within certain bounds (0-100% or disabled).
+    if(optimization_threshold > 1.0f)
+    {
+        optimization_threshold = 1.0f;
+    }
+    else if(optimization_threshold < 0.0f)
+    {
+        optimization_threshold = -1.0f;
     }
 
     // Load pvs and grid data.
@@ -219,28 +229,36 @@ int main(int argc, char** argv)
     std::cout << "\nFinished copy." << std::endl;
 
     // Optimize newly created grid.
-    std::cout << "Start grid optimization..." << std::endl;
+    if(optimization_threshold >= 0.0f)
+    {
+        // Optimize grid by reducing amount of view cells if possible.
+        std::cout << "Start grid optimization..." << std::endl;
 
-    if(grid_type == lamure::pvs::grid_octree::get_grid_identifier() ||
-        grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
-    {
-        lamure::pvs::grid_optimizer_octree optimizer;
-        optimizer.optimize_grid(output_grid, optimization_threshold);
-    }
-    else if(grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
+        if(grid_type == lamure::pvs::grid_octree::get_grid_identifier() ||
+            grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
+        {
+            lamure::pvs::grid_optimizer_octree optimizer;
+            optimizer.optimize_grid(test_grid, optimization_threshold);
+        }
+        else if(grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
             grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
-    {
-        lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
-        optimizer.optimize_grid(output_grid, optimization_threshold);
-    }
-    else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
+        {
+            lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
+            optimizer.optimize_grid(test_grid, optimization_threshold);
+        }
+        else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
             grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
-    {
-        lamure::pvs::grid_optimizer_irregular optimizer;
-        optimizer.optimize_grid(output_grid, optimization_threshold);
+        {
+            lamure::pvs::grid_optimizer_irregular optimizer;
+            optimizer.optimize_grid(test_grid, optimization_threshold);
+        }
+
+        std::cout << "Finished grid optimization." << std::endl;
     }
-    
-    std::cout << "Finished grid optimization." << std::endl;
+    else
+    {
+        std::cout << "Skipping grid optimization." << std::endl;
+    }
 
     // Save newly created grid.
     std::string grid_output_file_path = pvs_output_file_path;
