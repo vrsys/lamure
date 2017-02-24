@@ -238,19 +238,19 @@ int main(int argc, char** argv)
             grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
         {
             lamure::pvs::grid_optimizer_octree optimizer;
-            optimizer.optimize_grid(test_grid, optimization_threshold);
+            optimizer.optimize_grid(output_grid, optimization_threshold);
         }
         else if(grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
             grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
         {
             lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
-            optimizer.optimize_grid(test_grid, optimization_threshold);
+            optimizer.optimize_grid(output_grid, optimization_threshold);
         }
         else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
             grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
         {
             lamure::pvs::grid_optimizer_irregular optimizer;
-            optimizer.optimize_grid(test_grid, optimization_threshold);
+            optimizer.optimize_grid(output_grid, optimization_threshold);
         }
 
         std::cout << "Finished grid optimization." << std::endl;
