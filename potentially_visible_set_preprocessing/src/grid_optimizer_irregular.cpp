@@ -1,4 +1,6 @@
 #include <iostream>
+#include <queue>
+#include <utility>
 
 #include "lamure/pvs/grid_optimizer_irregular.h"
 #include "lamure/pvs/grid_irregular.h"
@@ -18,6 +20,8 @@ optimize_grid(grid* input_grid, const float& equality_threshold)
 		bool is_original_cell = irr_grid->is_cell_at_index_original(current_cell_index);
 		const view_cell* current_cell = irr_grid->get_cell_at_index(current_cell_index);
 
+		std::priority_queue<std::pair<float, size_t>, std::vector<std::pair<float, size_t>>, std::greater<std::pair<float, size_t>>> merge_options;
+
 		for(long compare_cell_index = 0; compare_cell_index < irr_grid->get_cell_count(); ++compare_cell_index)
 		{
 			if(compare_cell_index == current_cell_index)
@@ -28,7 +32,7 @@ optimize_grid(grid* input_grid, const float& equality_threshold)
 			const view_cell* compare_cell = irr_grid->get_cell_at_index(compare_cell_index);
 
 			// Check equality.
-			size_t difference_counter = 0;
+			size_t equality_counter = 0;
 			size_t total_nodes = 0;
 
 			view_cell_regular* current_view_cell_regular = (view_cell_regular*)current_cell;
@@ -43,22 +47,30 @@ optimize_grid(grid* input_grid, const float& equality_threshold)
 
 				boost::dynamic_bitset<> common_bits = bitset_one & bitset_two;
 
-				difference_counter += common_bits.size() - common_bits.count();
+				equality_counter += common_bits.count();
 				total_nodes += common_bits.size();
 			}
 
-			float error = (float)difference_counter / (float)total_nodes;
-			float equality = 1.0f - error;
-			
+			float equality = (float)equality_counter / (float)total_nodes;
+			float error = 1.0f - equality;
+
 			// This test will already cancel some unecessary tests, yet a further threshold test will be done within join_cells.
 			if(equality >= equality_threshold)
 			{
-				if(irr_grid->join_cells(current_cell_index, compare_cell_index, error, equality_threshold) && is_original_cell)
-				{
-					--current_cell_index;
-					compare_cell_index = irr_grid->get_cell_count();
-				}
+				merge_options.push(std::pair<float, size_t>(error, compare_cell_index));
 			}
+		}
+
+		// Merge view cells.
+		while(merge_options.size() > 0)
+		{
+			if(irr_grid->join_cells(current_cell_index, merge_options.top().second, merge_options.top().first, equality_threshold) && is_original_cell)
+			{
+				--current_cell_index;
+				break;
+			}
+
+			merge_options.pop();
 		}
 
 		double current_percentage_done = ((double)current_cell_index / (double)irr_grid->get_cell_count()) * 100.0;
