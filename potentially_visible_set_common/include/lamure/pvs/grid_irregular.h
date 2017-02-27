@@ -8,7 +8,7 @@
 #include "lamure/pvs/grid.h"
 #include "lamure/pvs/view_cell.h"
 #include "lamure/pvs/view_cell_regular.h"
-#include "lamure/pvs/view_cell_irregular_managing.h"
+#include "lamure/pvs/view_cell_regular_managing.h"
 
 #include <scm/core/math.h>
 
@@ -77,7 +77,7 @@ protected:
 	std::vector<view_cell_regular> original_cells_;
 
 	// These cells are combinations of the original cells that are referred to if cells were joined.
-	std::vector<view_cell_irregular_managing> managing_cells_;
+	std::vector<view_cell_regular_managing> managing_cells_;
 
 	// Used to allow access to view cells in a fast way without doing necessary calculations over and over again.
 	std::vector<view_cell*> cells_by_indices_;

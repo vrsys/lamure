@@ -573,7 +573,7 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 			size_t original_index_one = this->get_original_index_of_cell(view_cell_one);
 			size_t original_index_two = this->get_original_index_of_cell(view_cell_two);
 
-			view_cell_irregular_managing new_managing_cell;
+			view_cell_regular_managing new_managing_cell;
 			new_managing_cell.add_cell(view_cell_one);
 			new_managing_cell.add_cell(view_cell_two);
 		
@@ -615,7 +615,7 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 		size_t original_index_one = this->get_original_index_of_cell(view_cell_one);
 		size_t managing_index_two = this->get_managing_index_of_cell(view_cell_two);
 
-		view_cell_irregular_managing* cell_managing = &managing_cells_[managing_index_two];
+		view_cell_regular_managing* cell_managing = &managing_cells_[managing_index_two];
 
 		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
 		{
@@ -653,7 +653,7 @@ join_cells(const size_t& index_one, const size_t& index_two, const float& error,
 		size_t managing_index_one = this->get_managing_index_of_cell(view_cell_one);
 		size_t original_index_two = this->get_original_index_of_cell(view_cell_two);
 
-		view_cell_irregular_managing* cell_managing = &managing_cells_[managing_index_one];
+		view_cell_regular_managing* cell_managing = &managing_cells_[managing_index_one];
 
 		if((1.0 - error) - cell_managing->get_error() >= equality_threshold)
 		{

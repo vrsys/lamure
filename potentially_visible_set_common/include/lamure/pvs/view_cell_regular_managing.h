@@ -8,12 +8,12 @@ namespace lamure
 namespace pvs
 {
 
-class view_cell_irregular_managing : public view_cell_regular
+class view_cell_regular_managing : public view_cell_regular
 {
 public:
-	view_cell_irregular_managing();
-	view_cell_irregular_managing(const double& cell_size, const scm::math::vec3d& position_center);
-	~view_cell_irregular_managing();
+	view_cell_regular_managing();
+	view_cell_regular_managing(const double& cell_size, const scm::math::vec3d& position_center);
+	~view_cell_regular_managing();
 
 	virtual std::string get_cell_type() const;
 	static std::string get_cell_identifier();

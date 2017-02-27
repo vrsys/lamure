@@ -1,4 +1,4 @@
-#include "lamure/pvs/view_cell_irregular_managing.h"
+#include "lamure/pvs/view_cell_regular_managing.h"
 #include "lamure/bounding_box.h"
 
 namespace lamure
@@ -6,34 +6,34 @@ namespace lamure
 namespace pvs
 {
 
-view_cell_irregular_managing::
-view_cell_irregular_managing() : view_cell_irregular_managing(0.0, scm::math::vec3d(0.0, 0.0, 0.0))
+view_cell_regular_managing::
+view_cell_regular_managing() : view_cell_regular_managing(0.0, scm::math::vec3d(0.0, 0.0, 0.0))
 {
 }
 
-view_cell_irregular_managing::
-view_cell_irregular_managing(const double& cell_size, const scm::math::vec3d& position_center) : view_cell_regular(cell_size, position_center)
+view_cell_regular_managing::
+view_cell_regular_managing(const double& cell_size, const scm::math::vec3d& position_center) : view_cell_regular(cell_size, position_center)
 {
 }
 
-view_cell_irregular_managing::
-~view_cell_irregular_managing()
+view_cell_regular_managing::
+~view_cell_regular_managing()
 {
 }
 
-std::string view_cell_irregular_managing::
+std::string view_cell_regular_managing::
 get_cell_type() const
 {
 	return get_cell_identifier();
 }
 
-std::string view_cell_irregular_managing::
+std::string view_cell_regular_managing::
 get_cell_identifier()
 {
-	return "view_cell_irregular_managing";
+	return "view_cell_regular_managing";
 }
 
-scm::math::vec3d view_cell_irregular_managing::
+scm::math::vec3d view_cell_regular_managing::
 get_size() const
 {
 	const view_cell* cell = managed_view_cells_[0];
@@ -49,7 +49,7 @@ get_size() const
 	return bb.get_dimensions();
 }
 
-scm::math::vec3d view_cell_irregular_managing::
+scm::math::vec3d view_cell_regular_managing::
 get_position_center() const
 {
 	const view_cell* cell = managed_view_cells_[0];
@@ -65,19 +65,19 @@ get_position_center() const
 	return bb.get_center();
 }
 
-void view_cell_irregular_managing::
+void view_cell_regular_managing::
 add_cell(const view_cell* cell)
 {
 	managed_view_cells_.push_back(cell);
 }
 
-void view_cell_irregular_managing::
+void view_cell_regular_managing::
 set_error(const float& error)
 {
 	current_error_ = error;
 }
 
-float view_cell_irregular_managing::
+float view_cell_regular_managing::
 get_error() const
 {
 	return current_error_;
