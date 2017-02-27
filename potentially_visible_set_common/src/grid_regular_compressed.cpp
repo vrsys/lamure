@@ -81,7 +81,7 @@ save_visibility_to_file(const std::string& file_path) const
 			// Iterate over nodes in the model.
 			for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
 			{
-				if(cells_.at(cell_index).get_visibility(model_id, node_id))
+				if(cells_[cell_index]->get_visibility(model_id, node_id))
 				{
 					current_byte |= 1 << (node_id % CHAR_BIT);
 				}
@@ -174,7 +174,7 @@ load_visibility_from_file(const std::string& file_path)
 
 	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
 	{
-		view_cell* current_cell = &cells_.at(cell_index);
+		view_cell* current_cell = cells_[cell_index];
 		
 		// Decompress.
 		std::stringstream stream_uncompressed, stream_compressed;
@@ -219,7 +219,7 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	view_cell* current_cell = &cells_[cell_index];
+	view_cell* current_cell = cells_[cell_index];
 
 	// First check if visibility data is already loaded.
 	if(current_cell->contains_visibility_data())

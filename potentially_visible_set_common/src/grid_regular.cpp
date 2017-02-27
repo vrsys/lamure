@@ -31,6 +31,11 @@ grid_regular(const size_t& number_cells, const double& bounds_size, const scm::m
 grid_regular::
 ~grid_regular()
 {
+	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
+	{
+		delete cells_[cell_index];
+	}
+
 	cells_.clear();
 }
 
@@ -69,7 +74,7 @@ get_cell_at_index(const size_t& index) const
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	return &cells_.at(index);
+	return cells_[index];
 }
 
 const view_cell* grid_regular::
@@ -114,7 +119,7 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 	// If this function is locked, high performance loss in the preprocessing will occur.
 	//std::lock_guard<std::mutex> lock(mutex_);
 	
-	view_cell* current_visibility_cell = &cells_.at(cell_index);
+	view_cell* current_visibility_cell = cells_[cell_index];
 	current_visibility_cell->set_visibility(model_id, node_id, visibility);
 }
 
@@ -192,7 +197,7 @@ save_visibility_to_file(const std::string& file_path) const
 			// Iterate over nodes in the model.
 			for(lamure::node_t node_id = 0; node_id < num_nodes; ++node_id)
 			{
-				if(cells_.at(cell_index).get_visibility(model_id, node_id))
+				if(cells_[cell_index]->get_visibility(model_id, node_id))
 				{
 					current_byte |= 1 << (node_id % CHAR_BIT);
 				}
@@ -290,7 +295,7 @@ load_visibility_from_file(const std::string& file_path)
 
 	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
 	{
-		view_cell* current_cell = &cells_.at(cell_index);
+		view_cell* current_cell = cells_[cell_index];
 
 		// One line per model.
 		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
@@ -331,7 +336,7 @@ clear_cell_visibility(const size_t& cell_index)
 
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	cells_[cell_index].clear_visibility_data();
+	cells_[cell_index]->clear_visibility_data();
 }
 
 bool grid_regular::
@@ -339,7 +344,7 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 {
 	std::lock_guard<std::mutex> lock(mutex_);
 
-	view_cell* current_cell = &cells_[cell_index];
+	view_cell* current_cell = cells_[cell_index];
 
 	// First check if visibility data is already loaded.
 	if(current_cell->contains_visibility_data())
@@ -409,6 +414,11 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 void grid_regular::
 create_grid(const size_t& num_cells, const double& cell_size, const scm::math::vec3d& position_center)
 {
+	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
+	{
+		delete cells_[cell_index];
+	}
+	
 	cells_.clear();
 
 	double half_size = (cell_size * (double)num_cells) * 0.5;		// position of grid is at grid center, so cells have a offset
@@ -421,7 +431,7 @@ create_grid(const size_t& num_cells, const double& cell_size, const scm::math::v
 			for(size_t index_x = 0; index_x < num_cells; ++index_x)
 			{
 				scm::math::vec3d pos = position_center + (scm::math::vec3d(index_x , index_y, index_z) * cell_size) - half_size + cell_offset;
-				cells_.push_back(view_cell_regular(cell_size, pos));
+				cells_.push_back(new view_cell_regular(cell_size, pos));
 			}
 		}
 	}

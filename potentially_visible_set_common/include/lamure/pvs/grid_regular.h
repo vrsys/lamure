@@ -56,7 +56,7 @@ protected:
 	scm::math::vec3d size_;
 	scm::math::vec3d position_center_;
 
-	std::vector<view_cell_regular> cells_;
+	std::vector<view_cell_regular*> cells_;
 	std::vector<node_t> ids_;
 
 	mutable std::mutex mutex_;
