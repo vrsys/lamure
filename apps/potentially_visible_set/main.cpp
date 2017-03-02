@@ -27,6 +27,8 @@
 #include <lamure/pvs/grid_optimizer_octree_hierarchical.h>
 #include <lamure/pvs/grid_optimizer_irregular.h>
 
+#include <lamure/pvs/pvs_bounds_extrapolator_from_outer_cells.h>
+
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/pvs/pvs_utils.h>
 
@@ -256,6 +258,17 @@ int main(int argc, char** argv)
     std::cout << "Finished writing grid file.\nStart writing pvs file..." << std::endl;
     test_grid->save_visibility_to_file(pvs_output_file_path);
     std::cout << "Finished writing pvs file." << std::endl;
+
+    std::cout << "Creating and saving bounding visibility data..." << std::endl;
+    lamure::pvs::pvs_bounds_extrapolator_from_outer_cells extrapolator;
+    lamure::pvs::grid* bounding_grid = extrapolator.extrapolate_from_grid(test_grid);
+
+    std::string bounding_pvs_output_file_path = pvs_output_file_path;
+    bounding_pvs_output_file_path.resize(bounding_pvs_output_file_path.size() - 4);
+    bounding_pvs_output_file_path += "_bounding.pvs";
+
+    bounding_grid->save_visibility_to_file(bounding_pvs_output_file_path);
+    std::cout << "Finished saving bounding visibility data." << std::endl;
 
 #ifdef PVS_MAIN_MEASURE_PERFORMANCE
     end_time = std::chrono::system_clock::now();

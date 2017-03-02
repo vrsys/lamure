@@ -29,13 +29,15 @@ public:
 
 	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const;
 
-	/*virtual void save_grid_to_file(const std::string& file_path) const;
-	virtual bool load_grid_from_file(const std::string& file_path);*/
+	virtual void save_grid_to_file(const std::string& file_path) const;
+	virtual bool load_grid_from_file(const std::string& file_path);
 
 protected:
 	void create_grid(const grid* core_grid);
-	/*void save_regular_grid(const std::string& file_path, const std::string& grid_type) const;
-	bool load_regular_grid(const std::string& file_path, const std::string& grid_type);*/
+	void create_grid(const scm::math::vec3d& center_cell_size, const scm::math::vec3d& position_center);
+
+	void save_bounding_grid(const std::string& file_path, const std::string& grid_type) const;
+	bool load_bounding_grid(const std::string& file_path, const std::string& grid_type);
 };
 
 }

@@ -18,7 +18,13 @@ pvs_bounds_extrapolator_from_outer_cells::
 grid_bounding* pvs_bounds_extrapolator_from_outer_cells::
 extrapolate_from_grid(const grid* input_grid) const
 {
-	grid_bounding* bounding_grid = new grid_bounding(input_grid, std::vector<node_t>());
+	std::vector<node_t> ids;
+	for(model_t model_index = 0; model_index < input_grid->get_num_models(); ++model_index)
+	{
+		ids.push_back(input_grid->get_num_nodes(model_index));
+	}
+
+	grid_bounding* bounding_grid = new grid_bounding(input_grid, ids);
 
 	if(input_grid->get_cell_count() < 1)
 	{

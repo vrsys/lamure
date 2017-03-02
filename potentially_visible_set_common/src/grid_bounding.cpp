@@ -1,7 +1,8 @@
 #include "lamure/pvs/grid_bounding.h"
 #include "lamure/pvs/view_cell_irregular.h"
 
-#include <climits>
+#include <fstream>
+#include <iostream>
 
 namespace lamure
 {
@@ -50,7 +51,6 @@ get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 	{
 		std::lock_guard<std::mutex> lock(mutex_);
 
-		// This cats is required because the parent class grid_regular stores a vector of view_cell_regular (no pointer, so no polymorphism applied).
 		view_cell* center_cell = cells_[13];
 
 		int num_cells = 3;
@@ -91,18 +91,18 @@ get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 	return get_cell_at_index(general_index);
 }
 
-/*void grid_regular_compressed::
+void grid_bounding::
 save_grid_to_file(const std::string& file_path) const
 {
-	save_regular_grid(file_path, get_grid_identifier());
-}*/
+	this->save_bounding_grid(file_path, get_grid_identifier());
+}
 
 
-/*bool grid_regular_compressed::
+bool grid_bounding::
 load_grid_from_file(const std::string& file_path)
 {
-	return load_regular_grid(file_path, get_grid_identifier());
-}*/
+	return this->load_bounding_grid(file_path, get_grid_identifier());
+}
 
 void grid_bounding::
 create_grid(const grid* core_grid)
@@ -116,7 +116,7 @@ create_grid(const grid* core_grid)
 	cells_.resize(27);
 
 	size_t cell_index = 0;
-	scm::math::vec3d cell_size = core_grid->get_size();	// TODO: requires irregular view cell to work for irregular grids
+	scm::math::vec3d cell_size = core_grid->get_size();
 
 	for(int z_dir = -1; z_dir <= 1; ++z_dir)
 	{
@@ -124,7 +124,7 @@ create_grid(const grid* core_grid)
 		{
 			for(int x_dir = -1; x_dir <= 1; ++x_dir)
 			{
-				scm::math::vec3d position_center = core_grid->get_position_center() + core_grid->get_size() * scm::math::vec3d(x_dir, y_dir, z_dir);
+				scm::math::vec3d position_center = core_grid->get_position_center() + cell_size * scm::math::vec3d(x_dir, y_dir, z_dir);
 				cells_[cell_index] = new view_cell_irregular(cell_size, position_center);
 
 				++cell_index;
@@ -134,6 +134,120 @@ create_grid(const grid* core_grid)
 
 	size_ = cell_size * 3.0;
 	position_center_ = scm::math::vec3d(core_grid->get_position_center());
+}
+
+void grid_bounding::
+create_grid(const scm::math::vec3d& center_cell_size, const scm::math::vec3d& position_center)
+{
+	for(size_t cell_index = 0; cell_index < cells_.size(); ++cell_index)
+	{
+		delete cells_[cell_index];
+	}
+
+	cells_.clear();
+	cells_.resize(27);
+
+	size_t cell_index = 0;
+
+	for(int z_dir = -1; z_dir <= 1; ++z_dir)
+	{
+		for(int y_dir = -1; y_dir <= 1; ++y_dir)
+		{
+			for(int x_dir = -1; x_dir <= 1; ++x_dir)
+			{
+				scm::math::vec3d local_position_center = position_center + center_cell_size * scm::math::vec3d(x_dir, y_dir, z_dir);
+				cells_[cell_index] = new view_cell_irregular(center_cell_size, local_position_center);
+
+				++cell_index;
+			}
+		}
+	}
+
+	size_ = center_cell_size * 3.0;
+	position_center_ = position_center;
+}
+
+void grid_bounding::
+save_bounding_grid(const std::string& file_path, const std::string& grid_type) const
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	std::fstream file_out;
+	file_out.open(file_path, std::ios::out);
+
+	if(!file_out.is_open())
+	{
+		throw std::invalid_argument("invalid file path: " + file_path);
+	}
+
+	// Grid file type.
+	file_out << grid_type << std::endl;
+
+	// Center cell size and position.
+	file_out << cells_[13]->get_size().x << " " << cells_[13]->get_size().y << " " << cells_[13]->get_size().z << std::endl;
+	file_out << position_center_.x << " " << position_center_.y << " " << position_center_.z << std::endl;
+
+	// Save number of models, so we can later simply read the node numbers.
+	file_out << ids_.size() << std::endl;
+
+	// Save the number of node ids of each model.
+	for(size_t model_index = 0; model_index < ids_.size(); ++model_index)
+	{
+		file_out << ids_[model_index] << " ";
+	}
+
+	file_out.close();
+}
+
+bool grid_bounding::
+load_bounding_grid(const std::string& file_path, const std::string& grid_type)
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	std::fstream file_in;
+	file_in.open(file_path, std::ios::in);
+
+	if(!file_in.is_open())
+	{
+		std::cout << "Not able to open file: " << file_path << std::endl;
+		return false;
+	}
+
+	// Start reading the header info which is used to recreate the grid.
+	std::string input_grid_type;
+	file_in >> input_grid_type;
+	if(input_grid_type != grid_type)
+	{
+		std::cout << "Wrong grid type: '" << input_grid_type <<  "'' / '" << grid_type << "'" << std::endl;
+		return false;
+	}
+
+	double cell_size_x, cell_size_y, cell_size_z;
+	file_in >> cell_size_x >> cell_size_y >> cell_size_z;
+
+	double pos_x, pos_y, pos_z;
+	file_in >> pos_x >> pos_y >> pos_z;
+
+	scm::math::vec3d center_cell_size(cell_size_x, cell_size_y, cell_size_z);
+	scm::math::vec3d position_center(pos_x, pos_y, pos_z);
+
+	this->create_grid(center_cell_size, position_center_);
+
+	// Read the number of models.
+	size_t num_models = 0;
+	file_in >> num_models;
+	ids_.resize(num_models);
+
+	// Read the number of nodes per model.
+	for(size_t model_index = 0; model_index < ids_.size(); ++model_index)
+	{
+		node_t num_nodes = 0;
+		file_in >> num_nodes;
+		ids_[model_index] = num_nodes;
+	}
+
+	file_in.close();
+	return true;
 }
 
 }

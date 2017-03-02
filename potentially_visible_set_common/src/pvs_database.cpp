@@ -11,6 +11,9 @@
 #include "lamure/pvs/grid_octree_hierarchical_v3.h"
 #include "lamure/pvs/grid_irregular.h"
 #include "lamure/pvs/grid_irregular_compressed.h"
+#include "lamure/pvs/grid_bounding.h"
+
+#include <iostream>
 
 namespace lamure
 {
@@ -23,6 +26,7 @@ pvs_database::
 pvs_database()
 {
 	visibility_grid_ = nullptr;
+	bounding_grid_ = nullptr;
 	viewer_cell_ = nullptr;
 	activated_ = true;
 	do_preload_ = false;
@@ -82,6 +86,28 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 	}
 
 	pvs_file_path_ = pvs_file_path;
+
+	// Try to load bounding data.
+	std::string bounding_pvs_file_path = pvs_file_path_;
+    bounding_pvs_file_path.resize(bounding_pvs_file_path.size() - 4);
+    bounding_pvs_file_path += "_bounding.pvs";
+
+    std::vector<node_t> ids;
+    for(model_t model_index = 0; model_index < visibility_grid_->get_num_models(); ++model_index)
+    {
+    	ids.push_back(visibility_grid_->get_num_nodes(model_index));
+    }
+
+    bounding_grid_ = new grid_bounding(visibility_grid_, ids);
+    if(!bounding_grid_->load_visibility_from_file(bounding_pvs_file_path))
+    {
+    	delete bounding_grid_;
+    	bounding_grid_ = nullptr;
+    }
+    else
+    {
+    	std::cout << "successfully loaded bounding visibility from " << bounding_pvs_file_path << std::endl;
+    }
 
 	return true;
 }
@@ -242,12 +268,20 @@ set_viewer_position(const scm::math::vec3d& position)
 			size_t cell_index = 0;
 			const view_cell* view_cell_at_position = visibility_grid_->get_cell_at_position(position, &cell_index);
 
+			// Position is outside of major grid. Use bounding grid instead.
+			bool outside_vis_grid = false;
+			if(view_cell_at_position == nullptr && bounding_grid_ != nullptr)
+			{
+				view_cell_at_position = bounding_grid_->get_cell_at_position(position, &cell_index);
+				outside_vis_grid = true;
+			}
+
 			if(view_cell_at_position != viewer_cell_)
 			{
 				viewer_cell_ = view_cell_at_position;
 
 				// If the view cell changed and the visibility data is not preloaded, it should be loaded now.
-				if(!do_preload_)
+				if(!do_preload_ && !outside_vis_grid)
 				{
 					visibility_grid_->load_cell_visibility_from_file(pvs_file_path_, cell_index);
 				}
@@ -293,6 +327,14 @@ get_visibility_grid() const
 	std::lock_guard<std::mutex> lock(mutex_);
 
 	return visibility_grid_;
+}
+
+const grid* pvs_database::
+get_bounding_grid() const
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+	
+	return bounding_grid_;
 }
 
 void pvs_database::

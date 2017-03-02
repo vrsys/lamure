@@ -34,6 +34,7 @@ public:
 	bool is_activated() const;
 
 	const grid* get_visibility_grid() const;
+	const grid* get_bounding_grid() const;
 	void clear_visibility_grid();
 
 protected:
@@ -42,7 +43,11 @@ protected:
 	static pvs_database* instance_;
 
 private:
+	// Grid storing the major visibility data of the scene.
 	grid* visibility_grid_;
+
+	// Grid storing the visibility data from further away to fill the room that is left by the visibility grid.
+	grid* bounding_grid_;
 
 	// The PVS needs the current viewer position to properly answer visibility requests.
 	scm::math::vec3d position_viewer_;
