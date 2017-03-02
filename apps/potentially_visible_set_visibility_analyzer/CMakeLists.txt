@@ -22,11 +22,7 @@ InitApp(${CMAKE_PROJECT_NAME}_potentially_visible_set_visibility_analyzer)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${PVS_COMMON_LIBRARY}
-    ${OpenGL_LIBRARIES} 
-    ${GLUT_LIBRARY}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
-    optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
-    optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     )
 
 add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set_common lamure_common)
