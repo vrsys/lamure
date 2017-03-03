@@ -5,8 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef LAMURE_PVS_MANAGEMENT_H_
-#define LAMURE_PVS_MANAGEMENT_H_
+#ifndef LAMURE_PVS_MANAGEMENT_BASE_H_
+#define LAMURE_PVS_MANAGEMENT_BASE_H_
 
 #include <lamure/types.h>
 
@@ -21,9 +21,7 @@
 #include <lamure/ren/cut_update_pool.h>
 
 #include <GL/freeglut.h>
-
 #include <FreeImagePlus.h>
-
 #include <lamure/ren/ray.h>
 
 //#define ALLOW_INPUT
@@ -35,20 +33,20 @@ namespace lamure
 namespace pvs
 {
 
-class management : public glut_management
+class management_base : public glut_management
 {
 public:
-                        management(std::vector<std::string> const& model_filenames,
-                            std::vector<scm::math::mat4f> const& model_transformations,
-                            const std::set<lamure::model_t>& visible_set,
-                            const std::set<lamure::model_t>& invisible_set);
+                        management_base(std::vector<std::string> const& model_filenames,
+                            			std::vector<scm::math::mat4f> const& model_transformations,
+                            			const std::set<lamure::model_t>& visible_set,
+                            			const std::set<lamure::model_t>& invisible_set);
                         
-    virtual             ~management();
+	virtual             ~management_base();
 
-                        management(const management&) = delete;
-                        management& operator=(const management&) = delete;
+                        management_base(const management_base&) = delete;
+                        management_base& operator=(const management_base&) = delete;
 
-    bool                MainLoop();
+    virtual bool        MainLoop() = 0;
     void                update_trackball(int x, int y);
     void                RegisterMousePresses(int button, int state, int x, int y);
     void                dispatchKeyboardInput(unsigned char key);
@@ -75,7 +73,6 @@ protected:
 
     void                apply_temporal_pvs(const id_histogram& hist);
 
-private:
     lamure::ren::camera::mouse_state mouse_state_;
 
     Renderer* renderer_;

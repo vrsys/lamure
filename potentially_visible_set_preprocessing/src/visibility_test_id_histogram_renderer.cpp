@@ -135,7 +135,7 @@ initialize(int& argc, char** argv)
     policy->set_window_height(resolution_y_);
 
 	lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-    management_ = new management(model_filenames, model_transformations, visible_set, invisible_set);
+    management_ = new management_id_histogram_renderer(model_filenames, model_transformations, visible_set, invisible_set);
     glut_wrapper::set_management(management_);
     management_->set_pvs_file_path(pvs_output_file_path);
 

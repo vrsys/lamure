@@ -2,7 +2,7 @@
 #define LAMURE_PVS_VISIBILITY_TEST_ID_HISTOGRAM_RENDERER_H
 
 #include "lamure/pvs/visibility_test.h"
-#include "lamure/pvs/management.h"
+#include "lamure/pvs/management_id_histogram_renderer.h"
 #include "lamure/pvs/grid.h"
 
 namespace lamure
@@ -29,7 +29,7 @@ private:
     unsigned int video_memory_budget_;
     unsigned int max_upload_budget_;
 
-    management* management_;
+    management_id_histogram_renderer* management_;
     bounding_box scene_bounds_;
 };
 
