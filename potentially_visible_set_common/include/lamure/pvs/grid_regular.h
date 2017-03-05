@@ -34,6 +34,7 @@ public:
 	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const;
 
 	virtual void set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility);
+	virtual void set_cell_visibility(const scm::math::vec3d& position, const model_t& model_id, const node_t& node_id, const bool& visibility);
 
 	virtual void save_grid_to_file(const std::string& file_path) const;
 	virtual void save_visibility_to_file(const std::string& file_path) const;
@@ -49,6 +50,9 @@ public:
 
 protected:
 	void create_grid(const size_t& num_cells, const double& cell_size, const scm::math::vec3d& position_center);
+
+	view_cell* calculate_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const;
+
 	void save_regular_grid(const std::string& file_path, const std::string& grid_type) const;
 	bool load_regular_grid(const std::string& file_path, const std::string& grid_type);
 

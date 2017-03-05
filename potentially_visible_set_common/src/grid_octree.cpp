@@ -192,7 +192,7 @@ get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 
     if(root_node_bb.contains(position))
     {
-    	result_view_cell = find_cell_by_position_recursive_const(root_node_, position);
+    	result_view_cell = this->find_cell_by_position_recursive_const(root_node_, position);
 
     	// Look for the index of the view cell if required by caller.
     	if(cell_index != nullptr)
@@ -209,6 +209,13 @@ get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
     }
 
 	return result_view_cell;
+}
+
+grid_octree_node* grid_octree::
+find_cell_by_position_recursive(grid_octree_node* node, const scm::math::vec3d& position) const
+{
+	//  Ugly again, for notes see above in find_cell_by_index_recursive.
+	return const_cast<grid_octree_node*>(static_cast<const grid_octree&>(*this).find_cell_by_position_recursive_const(node, position));
 }
 
 const grid_octree_node* grid_octree::
@@ -244,9 +251,32 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 	// If this function is locked, high performance loss in the preprocessing will occur.
 	//std::lock_guard<std::mutex> lock(mutex_);
 
-	view_cell* view_node = cells_by_indices_[cell_index];
+	view_cell* view_node = nullptr;
 	view_node->set_visibility(model_id, node_id, visibility);
 }
+
+void grid_octree::
+set_cell_visibility(const scm::math::vec3d& position, const model_t& model_id, const node_t& node_id, const bool& visibility)
+{
+	std::lock_guard<std::mutex> lock(mutex_);
+
+	vec3r min_vertex(root_node_->get_position_center() - root_node_->get_size() * 0.5);
+    vec3r max_vertex(root_node_->get_position_center() + root_node_->get_size() * 0.5);
+    bounding_box root_node_bb(min_vertex, max_vertex);
+
+    view_cell* result_view_cell = nullptr;
+
+    if(root_node_bb.contains(position))
+    {
+    	result_view_cell = find_cell_by_position_recursive(root_node_, position);
+    }
+
+    if(result_view_cell != nullptr)
+    {
+    	result_view_cell->set_visibility(model_id, node_id, visibility);
+    }
+}
+
 
 void grid_octree::
 save_grid_to_file(const std::string& file_path) const

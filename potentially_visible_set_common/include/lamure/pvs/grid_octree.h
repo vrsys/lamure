@@ -36,6 +36,7 @@ public:
 	virtual const view_cell* get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const;
 
 	virtual void set_cell_visibility(const size_t& cell_index, const model_t& model_id, const node_t& node_id, const bool& visibility);
+	virtual void set_cell_visibility(const scm::math::vec3d& position, const model_t& model_id, const node_t& node_id, const bool& visibility);
 
 	virtual void save_grid_to_file(const std::string& file_path) const;
 	virtual void save_visibility_to_file(const std::string& file_path) const;
@@ -59,8 +60,11 @@ protected:
 	bool load_octree_grid(const std::string& file_path, const std::string& grid_type);
 
 	size_t cell_count_recursive(const grid_octree_node* node) const;
+
 	grid_octree_node* find_cell_by_index_recursive(const grid_octree_node* node, const size_t& index, size_t base_value);
 	const grid_octree_node* find_cell_by_index_recursive_const(const grid_octree_node* node, const size_t& index, size_t base_value) const;
+
+	grid_octree_node* find_cell_by_position_recursive(grid_octree_node* node, const scm::math::vec3d& position) const;
 	const grid_octree_node* find_cell_by_position_recursive_const(const grid_octree_node* node, const scm::math::vec3d& position) const;
 
 	// Grid is managed as an octree, ech node manages its 8 children. Each node is accessed (in)directly via the root node.

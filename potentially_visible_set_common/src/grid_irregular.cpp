@@ -80,6 +80,12 @@ get_cell_at_index(const size_t& index) const
 const view_cell* grid_irregular::
 get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 {
+	return this->calculate_cell_at_position(position, cell_index);
+}
+
+view_cell* grid_irregular::
+calculate_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
+{
 	size_t general_index = 0;
 
 	{
@@ -129,8 +135,7 @@ get_cell_at_position(const scm::math::vec3d& position, size_t* cell_index) const
 		(*cell_index) = general_index;
 	}
 
-	// This call will automatically map the cell to managed cells if necessary.
-	return get_cell_at_index(general_index);
+	return cells_by_indices_[general_index];
 }
 
 void grid_irregular::
@@ -138,6 +143,17 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 {
 	view_cell* current_visibility_cell = cells_by_indices_[cell_index];
 	current_visibility_cell->set_visibility(model_id, node_id, visibility);
+}
+
+void grid_irregular::
+set_cell_visibility(const scm::math::vec3d& position, const model_t& model_id, const node_t& node_id, const bool& visibility)
+{
+	view_cell* current_visibility_cell = calculate_cell_at_position(position, nullptr);
+	
+	if(current_visibility_cell != nullptr)
+	{
+		current_visibility_cell->set_visibility(model_id, node_id, visibility);
+	}
 }
 
 void grid_irregular::
