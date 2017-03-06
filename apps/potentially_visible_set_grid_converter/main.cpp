@@ -103,9 +103,11 @@ int main(int argc, char** argv)
 
     if(input_grid->get_grid_type() != lamure::pvs::grid_regular::get_grid_identifier() && 
         input_grid->get_grid_type() != lamure::pvs::grid_regular_compressed::get_grid_identifier() && 
-        input_grid->get_grid_type() != lamure::pvs::grid_octree_hierarchical_v3::get_grid_identifier())
+        input_grid->get_grid_type() != lamure::pvs::grid_octree_hierarchical_v3::get_grid_identifier() &&
+        input_grid->get_grid_type() != lamure::pvs::grid_irregular::get_grid_identifier() &&
+        input_grid->get_grid_type() != lamure::pvs::grid_irregular_compressed::get_grid_identifier())
     {
-        std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type." << std::endl;
+        std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type. Irregular works as well, yet should be unoptimized." << std::endl;
         return 0;
     }
 
@@ -131,9 +133,11 @@ int main(int argc, char** argv)
 
         if(second_input_grid->get_grid_type() != lamure::pvs::grid_regular::get_grid_identifier() && 
             second_input_grid->get_grid_type() != lamure::pvs::grid_regular_compressed::get_grid_identifier() && 
-            second_input_grid->get_grid_type() != lamure::pvs::grid_octree_hierarchical_v3::get_grid_identifier())
+            second_input_grid->get_grid_type() != lamure::pvs::grid_octree_hierarchical_v3::get_grid_identifier() &&
+            second_input_grid->get_grid_type() != lamure::pvs::grid_irregular::get_grid_identifier() &&
+            second_input_grid->get_grid_type() != lamure::pvs::grid_irregular_compressed::get_grid_identifier())
         {
-            std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type." << std::endl;
+            std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type. Irregular works as well, yet should be unoptimized." << std::endl;
             return 0;
         }
 
@@ -157,20 +161,54 @@ int main(int argc, char** argv)
         ids.push_back(input_grid->get_num_nodes(model_index));
     }
 
-    // TODO: check if the input grid uses proper amount of cells to convert into octree.
-    unsigned int cells_per_axis = (unsigned int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
-    unsigned int depth = (unsigned int)std::round(std::sqrt(cells_per_axis)) + 1;
-
-    size_t num_cells = depth;
-    if(grid_type == lamure::pvs::grid_regular::get_grid_identifier() || 
-        grid_type == lamure::pvs::grid_regular_compressed::get_grid_identifier() ||
-        grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
+    if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
         grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
     {
-        num_cells = cells_per_axis;
-    }
+        // Special case if grid is irregular. Get smallest cell size and calculate number cells per axis.
+        scm::math::vec3d smallest_cell_size = input_grid->get_cell_at_index(0)->get_size();
 
-    output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, num_cells, num_cells, input_grid->get_size().x, input_grid->get_position_center(), ids);
+        // Find the smallest cell size in each dimension in the grid.
+        for(size_t cell_index = 1; cell_index < input_grid->get_cell_count(); ++cell_index)
+        {
+            scm::math::vec3d current_cell_size = input_grid->get_cell_at_index(cell_index)->get_size();
+            
+            if(current_cell_size.x < smallest_cell_size.x)
+            {
+                smallest_cell_size.x = current_cell_size.x;
+            }
+            if(current_cell_size.y < smallest_cell_size.y)
+            {
+                smallest_cell_size.y = current_cell_size.y;
+            }
+            if(current_cell_size.z < smallest_cell_size.z)
+            {
+                smallest_cell_size.z = current_cell_size.z;
+            }
+        }
+
+        size_t num_cells_x = std::round(input_grid->get_size().x / smallest_cell_size.x);
+        size_t num_cells_y = std::round(input_grid->get_size().y / smallest_cell_size.y);
+        size_t num_cells_z = std::round(input_grid->get_size().z / smallest_cell_size.z);
+
+        double longest_axis = std::max(input_grid->get_size().x, std::max(input_grid->get_size().y, input_grid->get_size().z));
+        output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells_x, num_cells_y, num_cells_z, longest_axis, input_grid->get_position_center(), ids);
+    }
+    else
+    {
+        // Usual case for anything based on regular grid or octree.
+        // TODO: check if the input grid uses proper amount of cells to convert into octree.
+        unsigned int cells_per_axis = (unsigned int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
+        unsigned int depth = (unsigned int)std::round(std::sqrt(cells_per_axis)) + 1;
+
+        size_t num_cells = depth;
+        if(grid_type == lamure::pvs::grid_regular::get_grid_identifier() || 
+            grid_type == lamure::pvs::grid_regular_compressed::get_grid_identifier())
+        {
+            num_cells = cells_per_axis;
+        }
+
+        output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, num_cells, num_cells, input_grid->get_size().x, input_grid->get_position_center(), ids);
+    }
 
     if(output_grid == nullptr)
     {
