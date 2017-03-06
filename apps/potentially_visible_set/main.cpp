@@ -13,6 +13,7 @@
 
 #include <lamure/pvs/visibility_test.h>
 #include <lamure/pvs/visibility_test_id_histogram_renderer.h>
+#include <lamure/pvs/visibility_test_id_histogram_renderer_corners.h>
 #include <lamure/pvs/visibility_test_simple_randomized_id_histogram_renderer.h>
 
 #include <lamure/pvs/grid.h>
@@ -69,7 +70,7 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
-      ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hr"), "specify type of visibility test to be used. (histogram renderer 'hr', simple randomized histogram renderer 'srhr')")
+      ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hr"), "specify type of visibility test to be used. (histogram renderer 'hr', histogram renderer with corners 'hrc', simple randomized histogram renderer 'srhr')")
       ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'regular_compressed', 'octree', 'octree_hierarchical', 'octree_hierarchical_v2', 'octree_hierarchical_v3')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
       ("oversize", po::value<double>(&oversize_factor)->default_value(1.5), "factor the grid bounds will be scaled by, default is 1.5 (grid bounds will exceed scene bounds by factor of 1.5)")
@@ -96,6 +97,10 @@ int main(int argc, char** argv)
     if(visibility_test_type == "hr")
     {
         vt = new lamure::pvs::visibility_test_id_histogram_renderer();
+    }
+    else if(visibility_test_type == "hrc")
+    {
+        vt = new lamure::pvs::visibility_test_id_histogram_renderer_corners();
     }
     else if(visibility_test_type == "srhr")
     {
