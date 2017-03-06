@@ -117,7 +117,7 @@ clear_visibility_data()
 	visibility_.clear();
 }
 
-const boost::dynamic_bitset<>& view_cell_regular::
+boost::dynamic_bitset<> view_cell_regular::
 get_bitset(const model_t& object_id) const
 {
 	if(visibility_.size() <= object_id)
