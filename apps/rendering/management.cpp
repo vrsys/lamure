@@ -54,7 +54,7 @@ management(std::vector<std::string> const& model_filenames,
         detail_angle_(0.f),
         error_threshold_(LAMURE_DEFAULT_THRESHOLD),
         near_plane_(0.001f),
-        far_plane_(100.f),
+        far_plane_(1000.f),
         importance_(1.f)
 
 {
@@ -444,6 +444,11 @@ dispatchKeyboardInput(unsigned char key)
     {
         // Toggle the rendering of the view cells of the loaded pvs.
         renderer_->toggle_pvs_grid_cell_rendering();
+        break;
+    }
+    case '4':
+    {
+        renderer_->toggle_culling();
         break;
     }
     case 't':

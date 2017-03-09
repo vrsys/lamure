@@ -197,6 +197,7 @@ private:
 
         bool                                        render_bounding_boxes_;
         bool                                        render_pvs_grid_cells_;
+        bool                                        render_occluded_geometry_;
 
         //variables related to text rendering
         scm::gl::text_renderer_ptr                              text_renderer_;
@@ -245,6 +246,8 @@ public:
     void take_screenshot(std::string const& screenshot_path, std::string const& screenshot_name);
     void toggle_visible_set();
     void toggle_display_info();
+
+    void toggle_culling();
 };
 
 #endif // REN_OLD_RENDERER_H_

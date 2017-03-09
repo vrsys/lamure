@@ -50,6 +50,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       radius_scale_(1.f)
 {
     render_pvs_grid_cells_ = false;
+    render_occluded_geometry_ = true;
 
     lamure::ren::policy* policy = lamure::ren::policy::get_instance();
     win_x_ = policy->window_width();
@@ -303,14 +304,14 @@ render_one_pass_LQ(lamure::context_t context_id,
 
         node_t node_counter = 0;
         node_t non_culled_node_idx = 0;
-        for (auto& model_id : current_set) {
+        for (auto& model_id : current_set)
+        {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
-
             std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
+            {
                 continue;
             }
 
@@ -319,20 +320,23 @@ render_one_pass_LQ(lamure::context_t context_id,
 
             std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
 
-
             upload_transformation_matrices(camera, model_id, RenderPass::ONE_PASS_LQ);
 
             scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
 
+            for(auto const& node_slot_aggregate : renderable)
+            {
+                // Drop potentially occluded nodes.
+                if(!render_occluded_geometry_ && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_))
+                {
+                    continue;
+                }
 
-            for(auto const& node_slot_aggregate : renderable) {
-                uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
+                uint32_t node_culling_result = camera.cull_against_frustum(frustum_by_model ,bounding_box_vector[node_slot_aggregate.node_id_]);
+                frustum_culling_results[node_counter] = node_culling_result;
 
-
-                 frustum_culling_results[node_counter] = node_culling_result;
-
-
-                if( (node_culling_result != 1) ) {
+                if( (node_culling_result != 1) )
+                {
                     context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
@@ -351,12 +355,14 @@ render_one_pass_LQ(lamure::context_t context_id,
 
                 ++node_counter;
             }
-       }
+        }
 
         rendered_splats_ = non_culled_node_idx * database->get_primitives_per_node();
     }
 
 }
+
+
 
 void Renderer::
 render_one_pass_HQ(lamure::context_t context_id, 
@@ -377,190 +383,159 @@ render_one_pass_HQ(lamure::context_t context_id,
 
     size_t number_of_surfels_per_node = database->get_primitives_per_node();
 
-                /***************************************************************************************
-                *******************************BEGIN LINKED_LIST_ACCUMULATION PASS**********************
-                ****************************************************************************************/
+    /***************************************************************************************
+    *******************************BEGIN LINKED_LIST_ACCUMULATION PASS**********************
+    ****************************************************************************************/
 
-                    context_->clear_color_buffer(atomic_image_fbo_, 0, vec4f(0.0, 0.0, 0.0, 0.0) );
-                    context_->clear_color_buffer(atomic_image_fbo_, 1, vec4f(0.0, 0.0, 0.0, 0.0) );
+    context_->clear_color_buffer(atomic_image_fbo_, 0, vec4f(0.0, 0.0, 0.0, 0.0) );
+    context_->clear_color_buffer(atomic_image_fbo_, 1, vec4f(0.0, 0.0, 0.0, 0.0) );
 
-                    context_->clear_depth_stencil_buffer(pass1_visibility_fbo_);
-
-
-                    context_->set_frame_buffer(pass1_visibility_fbo_);
+    context_->clear_depth_stencil_buffer(pass1_visibility_fbo_);
 
 
-                    context_->bind_image(linked_list_buffer_texture_, FORMAT_RGBA_16UI, scm::gl::access_mode::ACCESS_READ_WRITE, 0);
-                    context_->bind_image(atomic_fragment_count_image_, atomic_fragment_count_image_->format(), scm::gl::access_mode::ACCESS_READ_WRITE,1);
-                    context_->bind_image(min_es_distance_image_, min_es_distance_image_->format(), scm::gl::access_mode::ACCESS_READ_WRITE,2);
+    context_->set_frame_buffer(pass1_visibility_fbo_);
 
 
-                    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-                    context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
-
-                    context_->bind_program(pass1_linked_list_accumulate_program_);
-
-                    context_->bind_vertex_array(render_VAO);
-                    context_->apply();
+    context_->bind_image(linked_list_buffer_texture_, FORMAT_RGBA_16UI, scm::gl::access_mode::ACCESS_READ_WRITE, 0);
+    context_->bind_image(atomic_fragment_count_image_, atomic_fragment_count_image_->format(), scm::gl::access_mode::ACCESS_READ_WRITE,1);
+    context_->bind_image(min_es_distance_image_, min_es_distance_image_->format(), scm::gl::access_mode::ACCESS_READ_WRITE,2);
 
 
+    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+    context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
+
+    context_->bind_program(pass1_linked_list_accumulate_program_);
+
+    context_->bind_vertex_array(render_VAO);
+    context_->apply();
+
+    auto compute_dist = [](lamure::vec3f const& v3, lamure::vec4r const& v4)
+    {
+        lamure::vec3r dist_vec(real(v3[2]) - v4[2]);
+        return scm::math::length_sqr(dist_vec);
+    };
+
+    uint32_t swap_operations_performed = 0;
+    uint32_t node_counter = 0;
+    uint32_t non_culled_node_idx = 0;
+
+    for (auto& model_id : current_set)
+    {
+        const bvh* bvh = database->get_model(model_id)->get_bvh();
+
+        if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
+        {
+            continue;
+        }
+
+        cut& cut = cuts->get_cut(context_id, view_id, model_id);
+        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+        scm::math::mat4 inv_m_matrix = (  (( (camera.get_view_matrix()) ) * mat4(model_transformations_[model_id]) ) );
+
+        std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
+        std::sort(renderable.begin(), renderable.end(), [&](cut::node_slot_aggregate const & lhs,
+                                                            cut::node_slot_aggregate const & rhs)
+                                                            {  
+                                                                bool result = compute_dist(scm::math::vec3f(0), vec4r(inv_m_matrix *  scm::math::vec4(bounding_box_vector[lhs.node_id_].center(),1)) ) <
+                                                                             compute_dist(scm::math::vec3f(0), vec4r(inv_m_matrix *  scm::math::vec4(bounding_box_vector[rhs.node_id_].center(),1) ) );
 
 
+                                                                if (result == false) {
+                                                                    ++swap_operations_performed;
+                                                                }
+                                                                return  result;
+                                                            } 
+                  );
+        
+        upload_transformation_matrices(camera, model_id, RenderPass::LINKED_LIST_ACCUMULATION);
+        
+        scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
 
-                    auto compute_dist = [](lamure::vec3f const& v3, lamure::vec4r const& v4) {
-                      lamure::vec3r dist_vec(
-                                       real(v3[2]) - v4[2]);
+        size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
 
-                        return scm::math::length_sqr(dist_vec);
-                    };
+        for(auto const& node_slot_aggregate : renderable)
+        {
+            // Drop potentially occluded nodes.
+            if(!render_occluded_geometry_ && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_))
+            {
+                continue;
+            }
 
+            uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
 
-                    uint32_t swap_operations_performed = 0;
-
-
-                    uint32_t node_counter = 0;
-
-                    uint32_t non_culled_node_idx = 0;
-
-
-
-                    for (auto& model_id : current_set) {
-
-
-                        const bvh* bvh = database->get_model(model_id)->get_bvh();
-
-                        if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
-                            continue;
-                        }
-
-                            cut& cut = cuts->get_cut(context_id, view_id, model_id);
-
-                            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
-                        scm::math::mat4 inv_m_matrix = (  (( (camera.get_view_matrix()) ) * mat4(model_transformations_[model_id]) ) );
-
-                        
-
-                        std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
-
-                        std::sort(renderable.begin(), renderable.end(), [&](cut::node_slot_aggregate const & lhs,
-                                                                            cut::node_slot_aggregate const & rhs)
-                                                                            {  
-                                                                                bool result = compute_dist(scm::math::vec3f(0), vec4r(inv_m_matrix *  scm::math::vec4(bounding_box_vector[lhs.node_id_].center(),1)) ) <
-                                                                                             compute_dist(scm::math::vec3f(0), vec4r(inv_m_matrix *  scm::math::vec4(bounding_box_vector[rhs.node_id_].center(),1) ) );
-
-
-                                                                                if (result == false) {
-                                                                                    ++swap_operations_performed;
-                                                                                }
-                                                                                return  result;
-                                                                            } 
-                                  );
-                        
-                        
-                        upload_transformation_matrices(camera, model_id, RenderPass::LINKED_LIST_ACCUMULATION);
-
-
-                            scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
-
-
-
-
-                            
-                            size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
-
-                            for(auto const& node_slot_aggregate : renderable) {
-                                uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
-
-
-                            if( (node_culling_result != 1) ) {
-
-                                context_->apply();
+            if( (node_culling_result != 1) )
+            {
+                context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-                                scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
-                                context_->begin_query(depth_pass_timer_query);
+                scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
+                context_->begin_query(depth_pass_timer_query);
 #endif
+                context_->draw_arrays(PRIMITIVE_POINT_LIST, (node_slot_aggregate.slot_id_) * number_of_surfels_per_node, surfels_per_node_of_model);
+                ++non_culled_node_idx;
+            }
 
-                                context_->draw_arrays(PRIMITIVE_POINT_LIST, (node_slot_aggregate.slot_id_) * number_of_surfels_per_node, surfels_per_node_of_model);
+            ++node_counter;
+        }
 
-                                ++non_culled_node_idx;
-                            }
+        rendered_splats_ = non_culled_node_idx * database->get_primitives_per_node();
+    }
 
+    /***************************************************************************************
+    *******************************BEGIN LINKED_LIST_RESOLVE PASS***************************
+    ****************************************************************************************/
+    {
+        //context_->set_default_frame_buffer();
+        context_->clear_color_buffer(pass3_normalization_fbo_, 0, vec4( 0.0, 0.0, 0.0, 0.0) );
+        context_->clear_color_buffer(pass3_normalization_fbo_, 1, vec3( 0.0, 0.0, 0.0) );
 
-                            ++node_counter;
-                        }
+        context_->set_frame_buffer(pass3_normalization_fbo_);
+        context_->set_depth_stencil_state(depth_state_disable_);
+        context_->bind_program(pass2_linked_list_resolve_program_);
 
-                    rendered_splats_ = non_culled_node_idx * database->get_primitives_per_node();
+        context_->bind_image(linked_list_buffer_texture_, FORMAT_RGBA_16UI, scm::gl::access_mode::ACCESS_READ_ONLY, 0);
+        context_->bind_image(atomic_fragment_count_image_, atomic_fragment_count_image_->format(), scm::gl::access_mode::ACCESS_READ_ONLY,1);
+        context_->bind_image(min_es_distance_image_, min_es_distance_image_->format(), scm::gl::access_mode::ACCESS_READ_ONLY, 2);
 
-                }
-
-
-                /***************************************************************************************
-                *******************************BEGIN LINKED_LIST_RESOLVE PASS***************************
-                ****************************************************************************************/
-                {
-
-                    //context_->set_default_frame_buffer();
-                    context_->clear_color_buffer(pass3_normalization_fbo_, 0, vec4( 0.0, 0.0, 0.0, 0.0) );
-                    context_->clear_color_buffer(pass3_normalization_fbo_, 1, vec3( 0.0, 0.0, 0.0) );
-
-                    context_->set_frame_buffer(pass3_normalization_fbo_);
-
-                    context_->set_depth_stencil_state(depth_state_disable_);
-
-                    context_->bind_program(pass2_linked_list_resolve_program_);
-
-
-                    context_->bind_image(linked_list_buffer_texture_, FORMAT_RGBA_16UI, scm::gl::access_mode::ACCESS_READ_ONLY, 0);
-                    context_->bind_image(atomic_fragment_count_image_, atomic_fragment_count_image_->format(), scm::gl::access_mode::ACCESS_READ_ONLY,1);
-                    context_->bind_image(min_es_distance_image_, min_es_distance_image_->format(), scm::gl::access_mode::ACCESS_READ_ONLY, 2);
-
-
-                    bind_storage_buffer(controller::get_instance()->get_context_buffer(0, device_));
-
-                    context_->apply();
+        bind_storage_buffer(controller::get_instance()->get_context_buffer(0, device_));
+        context_->apply();
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-                    scm::gl::timer_query_ptr normalization_pass_timer_query = device_->create_timer_query();
-                    context_->begin_query(normalization_pass_timer_query);
+        scm::gl::timer_query_ptr normalization_pass_timer_query = device_->create_timer_query();
+        context_->begin_query(normalization_pass_timer_query);
 #endif
-                    screen_quad_->draw(context_);
+        screen_quad_->draw(context_);
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-                    context_->end_query(normalization_pass_timer_query);
-                    context_->collect_query_results(normalization_pass_timer_query);
-                    normalization_pass_time += normalization_pass_timer_query->result();
+        context_->end_query(normalization_pass_timer_query);
+        context_->collect_query_results(normalization_pass_timer_query);
+        normalization_pass_time += normalization_pass_timer_query->result();
 #endif
+    }
 
+    /***************************************************************************************
+    *******************************BEGIN HOLE_FILLING PASS**********************************
+    ****************************************************************************************/
+    {
+        context_->set_default_frame_buffer();
+        context_->bind_program(pass3_repair_program_);
 
-                }
-
-                /***************************************************************************************
-                *******************************BEGIN HOLE_FILLING PASS**********************************
-                ****************************************************************************************/
-                {
-                    context_->set_default_frame_buffer();
-
-                    context_->bind_program(pass3_repair_program_);
-
-
-
-                    context_->bind_texture(pass3_normalization_color_texture_, filter_nearest_,   0);
-                    context_->bind_texture(min_es_distance_image_, filter_nearest_,   1);
-                    context_->apply();
+        context_->bind_texture(pass3_normalization_color_texture_, filter_nearest_,   0);
+        context_->bind_texture(min_es_distance_image_, filter_nearest_,   1);
+        context_->apply();
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-                    scm::gl::timer_query_ptr hole_filling_pass_timer_query = device_->create_timer_query();
-                    context_->begin_query(hole_filling_pass_timer_query);
+        scm::gl::timer_query_ptr hole_filling_pass_timer_query = device_->create_timer_query();
+        context_->begin_query(hole_filling_pass_timer_query);
 #endif
-                    screen_quad_->draw(context_);
+        screen_quad_->draw(context_);
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
-                    context_->end_query(hole_filling_pass_timer_query);
-                    context_->collect_query_results(hole_filling_pass_timer_query);
-                    hole_filling_pass_time += hole_filling_pass_timer_query->result();
+        context_->end_query(hole_filling_pass_timer_query);
+        context_->collect_query_results(hole_filling_pass_timer_query);
+        hole_filling_pass_time += hole_filling_pass_timer_query->result();
 #endif
-
-                }
+    }
 }
+
+
 
 void Renderer::
 render_two_pass_HQ(lamure::context_t context_id, 
@@ -568,8 +543,8 @@ render_two_pass_HQ(lamure::context_t context_id,
                    const lamure::view_t view_id, 
                    scm::gl::vertex_array_ptr const& render_VAO, 
                    std::set<lamure::model_t> const& current_set, 
-                   std::vector<uint32_t>& frustum_culling_results) {
-
+                   std::vector<uint32_t>& frustum_culling_results)
+{
     using namespace lamure;
     using namespace lamure::ren;
 
@@ -584,10 +559,8 @@ render_two_pass_HQ(lamure::context_t context_id,
     /***************************************************************************************
     *******************************BEGIN DEPTH PASS*****************************************
     ****************************************************************************************/
-
     {
         context_->clear_depth_stencil_buffer(pass1_visibility_fbo_);
-
 
         context_->set_frame_buffer(pass1_visibility_fbo_);
 
@@ -595,44 +568,45 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
 
         context_->bind_program(pass1_visibility_shader_program_);
-
-
         context_->bind_vertex_array(render_VAO);
         context_->apply();
 
         node_t node_counter = 0;
 
-        for (auto& model_id : current_set) {
+        for (auto& model_id : current_set)
+        {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
-
             std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
+            {
                 continue;
             }
-
 
             size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
             //store culling result and push it back for second pass#
 
             std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
 
-
             upload_transformation_matrices(camera, model_id, RenderPass::DEPTH);
 
             scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
 
+            for(auto const& node_slot_aggregate : renderable)
+            {
+                // Drop potentially occluded nodes.
+                if(!render_occluded_geometry_ && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_))
+                {
+                    continue;
+                }
 
-            for(auto const& node_slot_aggregate : renderable) {
                 uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
 
+                frustum_culling_results[node_counter] = node_culling_result;
 
-                 frustum_culling_results[node_counter] = node_culling_result;
-
-
-                if( (node_culling_result != 1) ) {
+                if( (node_culling_result != 1) )
+                {
                     context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
@@ -652,7 +626,6 @@ render_two_pass_HQ(lamure::context_t context_id,
             }
        }
     }
-
 
     /***************************************************************************************
     *******************************BEGIN ACCUMULATION PASS**********************************
@@ -676,19 +649,17 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->bind_vertex_array(render_VAO);
         context_->apply();
 
-       node_t node_counter = 0;
+        node_t node_counter = 0;
+        node_t actually_rendered_nodes = 0;
 
-       node_t actually_rendered_nodes = 0;
-
-
-        for (auto& model_id : current_set) {
+        for (auto& model_id : current_set)
+        {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
-
             std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
+            {
                 continue;
             }
 
@@ -697,7 +668,13 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             upload_transformation_matrices(camera, model_id, RenderPass::ACCUMULATION);
 
-            for( auto const& node_slot_aggregate : renderable ) {
+            for( auto const& node_slot_aggregate : renderable )
+            {
+                // Drop potentially occluded nodes.
+                if(!render_occluded_geometry_ && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_))
+                {
+                    continue;
+                }
 
                 if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
                 {
@@ -719,8 +696,7 @@ render_two_pass_HQ(lamure::context_t context_id,
 
                 ++node_counter;
             }
-
-       }
+        }
         rendered_splats_ = actually_rendered_nodes * database->get_primitives_per_node();
 
     }
@@ -729,9 +705,7 @@ render_two_pass_HQ(lamure::context_t context_id,
     *******************************BEGIN NORMALIZATION PASS*********************************
     ****************************************************************************************/
 
-
     {
-
         //context_->set_default_frame_buffer();
         context_->clear_color_buffer(pass3_normalization_fbo_, 0, vec4( 0.0, 0.0, 0.0, 0.0) );
         context_->clear_color_buffer(pass3_normalization_fbo_, 1, vec3( 0.0, 0.0, 0.0) );
@@ -756,8 +730,6 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->collect_query_results(normalization_pass_timer_query);
         normalization_pass_time += normalization_pass_timer_query->result();
 #endif
-
-
     }
 
     /***************************************************************************************
@@ -765,10 +737,7 @@ render_two_pass_HQ(lamure::context_t context_id,
     ****************************************************************************************/
     {
         context_->set_default_frame_buffer();
-
         context_->bind_program(pass_filling_program_);
-
-
 
         context_->bind_texture(pass3_normalization_color_texture_, filter_nearest_,   0);
         context_->bind_texture(pass1_depth_buffer_, filter_nearest_,   1);
@@ -784,7 +753,6 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->collect_query_results(hole_filling_pass_timer_query);
         hole_filling_pass_time += hole_filling_pass_timer_query->result();
 #endif
-
     }
 }
 
@@ -1569,4 +1537,10 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
 void Renderer::
 switch_render_mode(RenderMode const& render_mode) {
     render_mode_ = render_mode;
+}
+
+void Renderer::
+toggle_culling()
+{
+    render_occluded_geometry_ = !render_occluded_geometry_;
 }
