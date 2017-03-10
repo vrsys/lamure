@@ -89,6 +89,8 @@ public:
 
     void                start_update_viewer_position_thread();
 
+    void                interpolate_between_measurement_transforms(const bool& allow_interpolation);
+
 protected:
 
     void                Toggledispatching();
@@ -154,6 +156,8 @@ private:
 
     snapshot_session_descriptor& measurement_session_descriptor_;
     //std::vector<scm::math::mat4d>& recorded_view_vector_;
+    float interpolation_time_point_;
+    bool use_interpolation_on_measurement_session_;
 
     bool                is_updating_pvs_position_;
     bool                run_update_thread_;

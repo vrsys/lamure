@@ -17,6 +17,9 @@
 #include <lamure/ren/bvh.h>
 #include <lamure/pvs/pvs_database.h>
 
+#include <glm/glm.hpp>
+#include "MatrixInterpolation.hpp"
+
 management::
 management(std::vector<std::string> const& model_filenames,
     std::vector<scm::math::mat4f> const& model_transformations,
@@ -118,6 +121,8 @@ management(std::vector<std::string> const& model_filenames,
     PrintInfo();
 
     current_update_timeout_timer_ = 0.0;
+    interpolation_time_point_ = 0.0f;
+    use_interpolation_on_measurement_session_ = false;
 }
 
 management::
@@ -199,48 +204,113 @@ MainLoop()
         status_string += "Session recording: OFF\n";
     }
 
-    if (! allow_user_input_)
+    // Session file handling. Used to capture screenshots for test or error measurement purpose.
+    if(!allow_user_input_)
     {
         status_string += std::to_string(measurement_session_descriptor_.recorded_view_vector_.size()+1) + " views left to write.\n";
 
-        size_t ms_since_update = controller->ms_since_last_node_upload();
-
-        if ( ms_since_update > 3000 || current_update_timeout_timer_ > 30.0)
+        if(use_interpolation_on_measurement_session_)
         {
-            if ( screenshot_session_started_ )
-                
-                if(measurement_session_descriptor_.get_num_taken_screenshots() )
-                {
+            // Interpolation between session files saved transformations. Allows to follow a track through the scene.
+            if( measurement_session_descriptor_.recorded_view_vector_.size() > 1)
+            {
+                scm::math::mat4d& from_transform = measurement_session_descriptor_.recorded_view_vector_[measurement_session_descriptor_.recorded_view_vector_.size() - 1];
+                scm::math::mat4d& to_transform = measurement_session_descriptor_.recorded_view_vector_[measurement_session_descriptor_.recorded_view_vector_.size() - 2];
+
+                glm::mat4 glm_from_transform(from_transform[0], from_transform[1], from_transform[2], from_transform[3],
+                                            from_transform[4], from_transform[5], from_transform[6], from_transform[7],
+                                            from_transform[8], from_transform[9], from_transform[10], from_transform[11],
+                                            from_transform[12], from_transform[13], from_transform[14], from_transform[15]);
+                glm::mat4 glm_to_transform(to_transform[0], to_transform[1], to_transform[2], to_transform[3],
+                                            to_transform[4], to_transform[5], to_transform[6], to_transform[7],
+                                            to_transform[8], to_transform[9], to_transform[10], to_transform[11],
+                                            to_transform[12], to_transform[13], to_transform[14], to_transform[15]);
+
+                glm::mat4 glm_interpolated_transform = interpolate(glm_from_transform, glm_to_transform, interpolation_time_point_);
+
+                // Cast back to schism matrix to set camera view matrix.
+                scm::math::mat4d interpolated_transform(glm_interpolated_transform[0][0], glm_interpolated_transform[0][1], glm_interpolated_transform[0][2], glm_interpolated_transform[0][3],
+                                                        glm_interpolated_transform[1][0], glm_interpolated_transform[1][1], glm_interpolated_transform[1][2], glm_interpolated_transform[1][3],
+                                                        glm_interpolated_transform[2][0], glm_interpolated_transform[2][1], glm_interpolated_transform[2][2], glm_interpolated_transform[2][3],
+                                                        glm_interpolated_transform[3][0], glm_interpolated_transform[3][1], glm_interpolated_transform[3][2], glm_interpolated_transform[3][3]);
+                active_camera_->set_view_matrix(interpolated_transform);
+
+                // Take screenshots.
+                size_t ms_since_update = controller->ms_since_last_node_upload();
+
+                if(ms_since_update > 3000 || current_update_timeout_timer_ > 30.0)
+                {                
                     auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
                     renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
                                                 measurement_session_descriptor_.get_screenshot_name() );
+
+                    measurement_session_descriptor_.increment_screenshot_counter();
+                    controller->reset_ms_since_last_node_upload();
+
+                    current_update_timeout_timer_ = 0.0;
+                    interpolation_time_point_+= 0.005f;
                 }
-
-                measurement_session_descriptor_.increment_screenshot_counter();
-
-            if(!measurement_session_descriptor_.recorded_view_vector_.empty() )
-            {
-                if (! screenshot_session_started_ )
+                else
                 {
-                    screenshot_session_started_ = true;
+                    status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
+                    status_string += std::to_string((int)(30.0 - current_update_timeout_timer_)) + " s until forced snapshot.\n";
                 }
 
-                active_camera_->set_view_matrix(measurement_session_descriptor_.recorded_view_vector_.back());
-                controller->reset_ms_since_last_node_upload();
-                measurement_session_descriptor_.recorded_view_vector_.pop_back();
+                // Interpolate between next two points if finished goal.
+                if(interpolation_time_point_ > 1.0f)
+                {
+                    interpolation_time_point_ = 0.0f;
+                    measurement_session_descriptor_.recorded_view_vector_.pop_back();
+                }
             }
             else
             {
                 // leave the main loop
                 signal_shutdown = true;
             }
-
-            current_update_timeout_timer_ = 0.0;
         }
         else
         {
-            status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
-            status_string += std::to_string((int)(30.0 - current_update_timeout_timer_)) + " s until forced snapshot.\n";
+            // Classic way. Take screenshots only at transformations saved in session file.
+            size_t ms_since_update = controller->ms_since_last_node_upload();
+
+            if ( ms_since_update > 3000 || current_update_timeout_timer_ > 30.0)
+            {
+                if ( screenshot_session_started_ )
+                    
+                    if(measurement_session_descriptor_.get_num_taken_screenshots() )
+                    {
+                        auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
+                        renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
+                                                    measurement_session_descriptor_.get_screenshot_name() );
+                    }
+
+                    measurement_session_descriptor_.increment_screenshot_counter();
+
+                if(!measurement_session_descriptor_.recorded_view_vector_.empty() )
+                {
+                    if (! screenshot_session_started_ )
+                    {
+                        screenshot_session_started_ = true;
+                    }
+
+                    active_camera_->set_view_matrix(measurement_session_descriptor_.recorded_view_vector_.back());
+                    controller->reset_ms_since_last_node_upload();
+                    measurement_session_descriptor_.recorded_view_vector_.pop_back();
+                }
+                else
+                {
+                    // leave the main loop
+                    signal_shutdown = true;
+                }
+
+                current_update_timeout_timer_ = 0.0;
+            }
+            else
+            {
+                status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
+                status_string += std::to_string((int)(30.0 - current_update_timeout_timer_)) + " s until forced snapshot.\n";
+            }
         }
     }
 
@@ -916,4 +986,10 @@ update_viewer_position_thread_call()
         // Go for roughly 60 updates per second.
         std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
+}
+
+void management::
+interpolate_between_measurement_transforms(const bool& allow_interpolation)
+{
+    use_interpolation_on_measurement_session_ = allow_interpolation;
 }
