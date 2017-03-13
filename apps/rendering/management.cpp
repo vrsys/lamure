@@ -123,6 +123,8 @@ management(std::vector<std::string> const& model_filenames,
     current_update_timeout_timer_ = 0.0;
     interpolation_time_point_ = 0.0f;
     use_interpolation_on_measurement_session_ = false;
+    snapshot_framerate_counter_ = 0.0;
+    snapshot_frame_counter_ = 0;
 }
 
 management::
@@ -208,6 +210,7 @@ MainLoop()
     if(!allow_user_input_)
     {
         status_string += std::to_string(measurement_session_descriptor_.recorded_view_vector_.size()+1) + " views left to write.\n";
+        const double max_timeout_timer_time = 60.0;
 
         if(use_interpolation_on_measurement_session_)
         {
@@ -238,11 +241,25 @@ MainLoop()
                 // Take screenshots.
                 size_t ms_since_update = controller->ms_since_last_node_upload();
 
-                if(ms_since_update > 3000 || current_update_timeout_timer_ > 30.0)
-                {                
+                // Used to determine average frame rate over 1 second before taking the screenshot.
+                if(ms_since_update > 2000 || current_update_timeout_timer_ > (max_timeout_timer_time - 1.0))
+                {
+                    snapshot_framerate_counter_ += renderer_->get_fps();
+                    ++snapshot_frame_counter_;
+                }
+                else
+                {
+                    snapshot_framerate_counter_ = 0.0f;
+                    snapshot_frame_counter_ = 0;
+                }
+                
+                if(ms_since_update > 3000 || current_update_timeout_timer_ > max_timeout_timer_time)
+                {
+                    double average_framerate = snapshot_framerate_counter_ / (double)snapshot_frame_counter_;
+
                     auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
                     renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
-                                                measurement_session_descriptor_.get_screenshot_name() );
+                                                measurement_session_descriptor_.get_screenshot_name() + "_fps_" + std::to_string(average_framerate));
 
                     measurement_session_descriptor_.increment_screenshot_counter();
                     controller->reset_ms_since_last_node_upload();
@@ -253,7 +270,7 @@ MainLoop()
                 else
                 {
                     status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
-                    status_string += std::to_string((int)(30.0 - current_update_timeout_timer_)) + " s until forced snapshot.\n";
+                    status_string += std::to_string((int)(max_timeout_timer_time - current_update_timeout_timer_)) + " s until forced snapshot.\n";
                 }
 
                 // Interpolate between next two points if finished goal.
@@ -274,7 +291,7 @@ MainLoop()
             // Classic way. Take screenshots only at transformations saved in session file.
             size_t ms_since_update = controller->ms_since_last_node_upload();
 
-            if ( ms_since_update > 3000 || current_update_timeout_timer_ > 30.0)
+            if ( ms_since_update > 3000 || current_update_timeout_timer_ > max_timeout_timer_time)
             {
                 if ( screenshot_session_started_ )
                     
@@ -309,7 +326,7 @@ MainLoop()
             else
             {
                 status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
-                status_string += std::to_string((int)(30.0 - current_update_timeout_timer_)) + " s until forced snapshot.\n";
+                status_string += std::to_string((int)(max_timeout_timer_time - current_update_timeout_timer_)) + " s until forced snapshot.\n";
             }
         }
     }

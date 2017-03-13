@@ -248,6 +248,7 @@ public:
     void toggle_display_info();
 
     void toggle_culling();
+    double get_fps() const;
 };
 
 #endif // REN_OLD_RENDERER_H_

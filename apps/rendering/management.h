@@ -158,6 +158,8 @@ private:
     //std::vector<scm::math::mat4d>& recorded_view_vector_;
     float interpolation_time_point_;
     bool use_interpolation_on_measurement_session_;
+    double snapshot_framerate_counter_;
+    size_t snapshot_frame_counter_;
 
     bool                is_updating_pvs_position_;
     bool                run_update_thread_;

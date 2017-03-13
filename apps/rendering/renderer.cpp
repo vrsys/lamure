@@ -1544,3 +1544,8 @@ toggle_culling()
 {
     render_occluded_geometry_ = !render_occluded_geometry_;
 }
+
+double Renderer::get_fps() const
+{
+    return fps_;
+}
