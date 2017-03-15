@@ -221,21 +221,22 @@ update_trackball(int x, int y, int window_width, int window_height, mouse_state 
     double nx = 2.0 * double(x - (window_width/2))/double(window_width);
     double ny = 2.0 * double(window_height - y - (window_height/2))/double(window_height);
 
-    if (mouse_state.lb_down_) {
+    if (mouse_state.lb_down_)
+    {
         trackball_.rotate(trackball_init_x_, trackball_init_y_, nx, ny);
     }
-    if (mouse_state.rb_down_) {
+    if (mouse_state.rb_down_)
+    {
         trackball_.dolly(dolly_sens_*0.5 * (ny - trackball_init_y_));
     }
-    if (mouse_state.mb_down_) {
+    if (mouse_state.mb_down_)
+    {
         double f = dolly_sens_ < 1.0 ? 0.02 : 0.3;
         trackball_.translate(f*(nx - trackball_init_x_), f*(ny - trackball_init_y_));
     }
 
     trackball_init_y_ = ny;
     trackball_init_x_ = nx;
-
-
 }
 
 void camera::
@@ -331,6 +332,40 @@ std::vector<scm::math::vec3d> camera::get_frustum_corners() const
 
   return result;
 
+}
+
+void camera::
+translate(const float& x, const float& y, const float& z)
+{
+    if(cam_state_ == CAM_STATE_GUA)
+    {
+        view_matrix_ = scm::math::make_translation(x, y, z) * view_matrix_;
+    }
+    else if(cam_state_ == CAM_STATE_LAMURE)
+    {
+        scm::math::mat4d trackball_trans = trackball_.transform();
+        trackball_.set_transform(scm::math::make_translation((double)x, (double)y, (double)z) * trackball_trans);
+    }
+}
+
+void camera::
+rotate(const float& x, const float& y, const float& z)
+{
+    if(cam_state_ == CAM_STATE_GUA)
+    {
+        view_matrix_ = scm::math::make_rotation(x, scm::math::vec3f(1.0f, 0.0f, 0.0f)) * 
+                      scm::math::make_rotation(y, scm::math::vec3f(0.0f, 1.0f, 0.0f)) * 
+                      scm::math::make_rotation(z, scm::math::vec3f(0.0f, 0.0f, 1.0f)) * 
+                      view_matrix_;
+    }
+    else if(cam_state_ == CAM_STATE_LAMURE)
+    {
+        scm::math::mat4d trackball_trans = trackball_.transform();
+        trackball_.set_transform(scm::math::make_rotation((double)x, scm::math::vec3d(1.0, 0.0, 0.0)) * 
+                                scm::math::make_rotation((double)y, scm::math::vec3d(0.0, 1.0, 0.0)) * 
+                                scm::math::make_rotation((double)z, scm::math::vec3d(0.0, 0.0, 1.0)) * 
+                                trackball_trans);
+    }
 }
 
 

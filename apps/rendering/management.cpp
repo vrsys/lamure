@@ -125,6 +125,8 @@ management(std::vector<std::string> const& model_filenames,
     use_interpolation_on_measurement_session_ = false;
     snapshot_framerate_counter_ = 0.0;
     snapshot_frame_counter_ = 0;
+
+    use_wasd_camera_control_sceme_ = true;
 }
 
 management::
@@ -434,7 +436,27 @@ MainLoop()
 void management::
 update_trackball(int x, int y)
 {
-    active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
+    if(use_wasd_camera_control_sceme_)
+    {
+        if(mouse_state_.lb_down_)
+        {
+            double delta_x = 100.0 * double(x - mouse_last_x_) / double(width_);
+            double delta_y = 100.0 * double(y - mouse_last_y_) / float(height_);
+            active_camera_->rotate((double)delta_y, (double)delta_x, 0.0);
+        }
+        else if(mouse_state_.rb_down_)
+        {
+            double delta_x = 100.0 * double(x - mouse_last_x_) / double(width_);
+            active_camera_->rotate(0.0, 0.0, (double)delta_x);
+        }
+
+        mouse_last_x_ = x;
+        mouse_last_y_ = y;
+    }
+    else
+    {
+        active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
+    }
 }
 
 
@@ -442,40 +464,50 @@ update_trackball(int x, int y)
 void management::
 RegisterMousePresses(int button, int state, int x, int y)
 {
-    if(! allow_user_input_) {
+    if(! allow_user_input_)
+    {
         return;
     }
 
-    switch (button) {
+    switch (button)
+    {
         case GLUT_LEFT_BUTTON:
             {
                 mouse_state_.lb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
         case GLUT_MIDDLE_BUTTON:
             {
                 mouse_state_.mb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
         case GLUT_RIGHT_BUTTON:
             {
                 mouse_state_.rb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
     }
 
+    if(use_wasd_camera_control_sceme_)
+    {
+        mouse_last_x_ = x;
+        mouse_last_y_ = y;
+    }
+    else
+    {
+        float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
+        float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
 
-
-    float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
-    float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
-
-    active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
-
+        active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
+    }
 }
 
 
 void management::
 dispatchKeyboardInput(unsigned char key)
 {
-
-    if(! allow_user_input_) {
+    if(! allow_user_input_)
+    {
         return;
     }
 
@@ -533,7 +565,7 @@ dispatchKeyboardInput(unsigned char key)
         renderer_->toggle_pvs_grid_cell_rendering();
         break;
     }
-    case '4':
+    case '5':
     {
         renderer_->toggle_culling();
         break;
@@ -830,6 +862,57 @@ dispatchKeyboardInput(unsigned char key)
     case 'i':
         IncreaseErrorThreshold();
         std::cout << "error threshold: " << error_threshold_ << std::endl;
+        break;
+
+    // Change camera movement mode.
+    case '4':
+        use_wasd_camera_control_sceme_ = !use_wasd_camera_control_sceme_;
+        break;
+
+    // Camera movement forward and backward.
+    case 'h':
+        if(fast_travel_)
+        {
+            active_camera_->translate(0.0f, 0.0f, 10.0f);
+        }
+        else
+        {
+            active_camera_->translate(0.0f, 0.0f, 1.0f);
+        }
+        break;
+
+    case 'n':
+        if(fast_travel_)
+        {
+            active_camera_->translate(0.0f, 0.0f, -10.0f);
+        }
+        else
+        {
+            active_camera_->translate(0.0f, 0.0f, -1.0f);
+        }
+        break;
+
+    // Camera movement left and right.
+    case 'b':
+        if(fast_travel_)
+        {
+            active_camera_->translate(10.0f, 0.0f, 0.0f);
+        }
+        else
+        {
+            active_camera_->translate(1.0f, 0.0f, 0.0f);
+        }
+        break;
+
+    case 'm':
+        if(fast_travel_)
+        {
+            active_camera_->translate(-10.0f, 0.0f, 0.0f);
+        }
+        else
+        {
+            active_camera_->translate(-1.0f, 0.0f, 0.0f);
+        }
         break;
     }
 }

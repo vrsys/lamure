@@ -166,6 +166,10 @@ private:
     std::thread         pvs_viewer_position_update_thread_;
     void                update_viewer_position_thread_call();
 
+    bool                use_wasd_camera_control_sceme_;
+    int                 mouse_last_x_;
+    int                 mouse_last_y_;
+
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;
     boost::timer::cpu_timer system_result_timer_;
