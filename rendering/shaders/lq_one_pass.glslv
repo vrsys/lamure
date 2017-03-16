@@ -63,7 +63,12 @@ void main()
         }
      case 2:
         {
-         VertexOut.pass_point_color = vec3(in_normal * 0.5 + 0.5);
+         vec3 provenance_normal = VertexOut.pass_normal;
+         if( provenance_normal.z < 0 )
+            provenance_normal = provenance_normal * -1; 
+
+         //VertexOut.pass_point_color = vec3(in_normal * 0.5 + 0.5);
+         VertexOut.pass_point_color = vec3(provenance_normal * 0.5 + 0.5);
 	 break;
         }
      default:
