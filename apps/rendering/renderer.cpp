@@ -330,6 +330,13 @@ render_one_pass_LQ(lamure::context_t context_id,
                 if( (node_culling_result != 1) ) {
 
 		  LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
+
+                    if(3 == render_provenance_){
+                        const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
+		                LQ_one_pass_program_->uniform("accuracy", accuracy);
+                    }
+
+
 		  
                     context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
@@ -1421,7 +1428,7 @@ void Renderer::
 toggle_provenance_rendering()
 {
   ++render_provenance_;
-  if(render_provenance_ == 3){
+  if(render_provenance_ == 4){
     render_provenance_ = 0;
   }
 
@@ -1430,8 +1437,10 @@ toggle_provenance_rendering()
     std::cout<<"OFF\n\n";
   else if(render_provenance_ == 1)
     std::cout<<"difference to average surfel radius\n\n";
-  else
+  else if(render_provenance_ == 2)
     std::cout<<"normal\n\n";
+  else
+    std::cout<<"accuracy\n\n";
 };
 
 //dynamic rendering adjustment functions

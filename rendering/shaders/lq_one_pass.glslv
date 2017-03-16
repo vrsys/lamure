@@ -12,6 +12,7 @@ uniform float model_radius_scale;
 uniform float point_size_factor;
 uniform int render_provenance;
 uniform float average_radius;
+uniform float accuracy;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -69,8 +70,13 @@ void main()
 
          //VertexOut.pass_point_color = vec3(in_normal * 0.5 + 0.5);
          VertexOut.pass_point_color = vec3(provenance_normal * 0.5 + 0.5);
-	 break;
         }
+	 break;
+     case 3:
+        {
+         VertexOut.pass_point_color = VertexOut.pass_point_color + vec3(accuracy);
+        }
+	 break;
      default:
         break;
   }
