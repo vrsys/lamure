@@ -18,7 +18,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
-void compare_grid_visibility(std::string visibility_path_one, std::string visibility_path_two);
+void compare_grid_visibility(std::string visibility_path_one, std::string visibility_path_two, unsigned int num_steps);
 
 int main(int argc, char** argv)
 {
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
                                "Allowed Options");
     desc.add_options()
       ("pvs-file,p", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data")
-      ("2nd-pvs-file,p", po::value<std::string>(&second_pvs_input_file_path), "specify input file of calculated pvs data")
+      ("2nd-pvs-file", po::value<std::string>(&second_pvs_input_file_path), "specify input file of calculated pvs data")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into");
       ;
 
@@ -91,7 +91,7 @@ int main(int argc, char** argv)
     else
     {
         // Two data sets given. Check difference between data sets.
-        compare_grid_visibility(pvs_input_file_path, second_pvs_input_file_path);
+        compare_grid_visibility(pvs_input_file_path, second_pvs_input_file_path, num_steps);
     }
 
     std::cout << "done" << std::endl;
@@ -99,8 +99,11 @@ int main(int argc, char** argv)
     return 0;
 }
 
-void compare_grid_visibility(std::string visibility_path_one, std::string visibility_path_two)
+void compare_grid_visibility(std::string visibility_path_one, std::string visibility_path_two, unsigned int num_steps)
 {
+    std::vector<size_t> difference_percent_interval_counter;
+    difference_percent_interval_counter.resize(num_steps);
+
     std::cout << "Loading visibility data of input grids..." << std::endl;
 
     // Load pvs and grid data.
@@ -168,11 +171,13 @@ void compare_grid_visibility(std::string visibility_path_one, std::string visibi
             cell_num_nodes += grid_one->get_num_nodes(model_index);
         }
 
+        // Calculate visibilities.
         double cell_visibility_one = ((double)cell_num_visible_nodes_one / (double)cell_num_nodes) * 100.0;
         double cell_visibility_two = ((double)cell_num_visible_nodes_two / (double)cell_num_nodes) * 100.0;
         double cell_visibility_common = ((double)cell_num_visible_nodes_common / (double)cell_num_nodes) * 100.0;
         double cell_visibility_difference = std::abs(cell_visibility_one - cell_visibility_two);
         
+        // Check for highest or lowest visibility in grid.
         if(cell_visibility_difference > highest_visibility_difference)
         {
             highest_visibility_difference = cell_visibility_difference;
@@ -182,6 +187,14 @@ void compare_grid_visibility(std::string visibility_path_one, std::string visibi
             lowest_visibility_difference = cell_visibility_difference;
         }
 
+        // Put visibility difference into proper difference interval.
+        double interval_size = 100.0 / (double)num_steps;
+        int difference_index = std::round((cell_visibility_difference - interval_size * 0.5) / interval_size);
+        difference_index = std::max(0, std::min(difference_index, (int)(num_steps - 1)));
+
+        difference_percent_interval_counter[difference_index] += 1;
+
+        // Update total nodes.
         total_num_visible_nodes_common += cell_num_visible_nodes_common;
         total_num_visible_nodes_one += cell_num_visible_nodes_one;
         total_num_visible_nodes_two += cell_num_visible_nodes_two;
@@ -212,6 +225,15 @@ void compare_grid_visibility(std::string visibility_path_one, std::string visibi
     file_out << "visible only by two: " << visibility_two_only << std::endl;
     file_out << "\nhighest difference in cell: " << highest_visibility_difference << std::endl;
     file_out << "lowest difference in cell: " << lowest_visibility_difference << std::endl;
+
+    size_t num_cells = grid_one->get_cell_count();
+    file_out << std::endl;
+
+    for(size_t difference_index = 0; difference_index < difference_percent_interval_counter.size(); ++difference_index)
+    {
+        double difference_local = ((double)difference_percent_interval_counter[difference_index] / (double)num_cells) * 100.0;
+        file_out << "difference interval " << difference_index << ": " << difference_local << "   (" << difference_percent_interval_counter[difference_index] << "/" << num_cells << ")" << std::endl;
+    }
 
     file_out.close();
 
