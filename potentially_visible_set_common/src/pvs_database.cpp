@@ -66,6 +66,27 @@ load_pvs_from_file(const std::string& grid_file_path, const std::string& pvs_fil
 		return false;
 	}
 
+	// Calculate smallest cell size in the grid;
+	smallest_cell_size_ = scm::math::vec3d(visibility_grid_->get_cell_at_index(0)->get_size());
+
+	for(size_t grid_cell_index = 1; grid_cell_index < visibility_grid_->get_cell_count(); ++grid_cell_index)
+	{
+		scm::math::vec3d cell_size = visibility_grid_->get_cell_at_index(grid_cell_index)->get_size();
+
+		if(cell_size.x < smallest_cell_size_.x)
+		{
+			smallest_cell_size_.x = cell_size.x;
+		}
+		if(cell_size.y < smallest_cell_size_.y)
+		{
+			smallest_cell_size_.y = cell_size.y;
+		}
+		if(cell_size.z < smallest_cell_size_.z)
+		{
+			smallest_cell_size_.z = cell_size.z;
+		}
+	}
+
 	// Force preload on certain grid types since runtime access is not working properly.
 	if(visibility_grid_->get_grid_type() == grid_octree_hierarchical::get_grid_identifier() ||
 		visibility_grid_->get_grid_type() == grid_octree_hierarchical_v2::get_grid_identifier())
@@ -269,21 +290,68 @@ set_viewer_position(const scm::math::vec3d& position)
 			const view_cell* view_cell_at_position = visibility_grid_->get_cell_at_position(position, &cell_index);
 
 			// Position is outside of major grid. Use bounding grid instead.
-			bool outside_vis_grid = false;
-			if(view_cell_at_position == nullptr && bounding_grid_ != nullptr)
+			if(view_cell_at_position != nullptr)
 			{
-				view_cell_at_position = bounding_grid_->get_cell_at_position(position, &cell_index);
-				outside_vis_grid = true;
-			}
-
-			if(view_cell_at_position != viewer_cell_)
-			{
-				viewer_cell_ = view_cell_at_position;
-
-				// If the view cell changed and the visibility data is not preloaded, it should be loaded now.
-				if(!do_preload_ && !outside_vis_grid)
+				// Only set viewer cell if it changed.
+				if(view_cell_at_position != viewer_cell_)
 				{
-					visibility_grid_->load_cell_visibility_from_file(pvs_file_path_, cell_index);
+					viewer_cell_ = view_cell_at_position;
+
+					// If the view cell changed and the visibility data is not preloaded, it should be loaded now.
+					if(!do_preload_)
+					{
+						scm::math::vec3d center = view_cell_at_position->get_position_center();
+
+						std::set<size_t> cell_indices_to_load;
+						cell_indices_to_load.insert(cell_index);
+
+						for(double z = -1.0; z < 1.5; z += 1.0)
+						{
+							for(double y = -1.0; y < 1.5; y += 1.0)
+							{
+								for(double x = -1.0; x < 1.5; x += 1.0)
+								{
+									size_t local_cell_index = 0;
+									scm::math::vec3d direction = smallest_cell_size_ * scm::math::vec3d(x, y, z);
+									const view_cell* local_view_cell_at_position = visibility_grid_->get_cell_at_position(center + direction, &local_cell_index);
+
+									if(local_view_cell_at_position != nullptr)
+									{
+										cell_indices_to_load.insert(local_cell_index);
+									}
+								}
+							}
+						}
+
+						for (std::set<size_t>::iterator iter = cell_indices_to_load.begin(); iter != cell_indices_to_load.end(); ++iter)
+						{
+							visibility_grid_->load_cell_visibility_from_file(pvs_file_path_, *iter);
+						}
+
+						// Release visibility data not within current neighbourhood.
+						for (std::set<size_t>::iterator iter = previously_loaded_cell_indices_.begin(); iter != previously_loaded_cell_indices_.end(); ++iter)
+						{
+							if(cell_indices_to_load.find(*iter) == cell_indices_to_load.end())
+							{
+								visibility_grid_->clear_cell_visibility(*iter);
+							}
+						}
+
+						previously_loaded_cell_indices_ = std::set<size_t>(cell_indices_to_load);
+					}
+				}
+			}
+			else
+			{
+				if(bounding_grid_ != nullptr)
+				{
+					view_cell_at_position = bounding_grid_->get_cell_at_position(position, &cell_index);
+
+					// Only set viewer cell if it changed.
+					if(view_cell_at_position != viewer_cell_)
+					{
+						viewer_cell_ = view_cell_at_position;
+					}
 				}
 			}
 		}

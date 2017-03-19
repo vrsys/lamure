@@ -1,6 +1,7 @@
 #ifndef LAMURE_PVS_PVS_DATABASE_H
 #define LAMURE_PVS_PVS_DATABASE_H
 
+#include <set>
 #include <string>
 #include <vector>
 #include <mutex>
@@ -60,6 +61,9 @@ private:
 	// If false, visibilibity of view cells will be loaded depending on the necessity to do so (e.g. if the user enters a view cell).
 	bool do_preload_;
 	std::string pvs_file_path_;
+
+	scm::math::vec3d smallest_cell_size_;
+	std::set<size_t> previously_loaded_cell_indices_;
 
 	// Used to achieve thread safety.
 	mutable std::mutex mutex_;
