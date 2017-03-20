@@ -136,6 +136,7 @@ int main(int argc, char** argv)
     std::string resource_file_path = "";
     std::string measurement_file_path = "";
     bool measurement_file_interpolation = false;
+    float measurement_interpolation_stepsize = 1.0f;
 
     std::string pvs_file_path = "";
 
@@ -151,6 +152,7 @@ int main(int argc, char** argv)
       ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
       ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")")
       ("measurement-interpolate", po::value<bool>(&measurement_file_interpolation)->default_value(false), "allow interpolation between measurement transformations (default=false)")
+      ("measurement-stepsize", po::value<float>(&measurement_interpolation_stepsize)->default_value(1.0f), "if interpolation is activated, this will be the stepsize in spatial units between interpolation points")
       ("pvs-file,p", po::value<std::string>(&pvs_file_path), "specify potentially visible set file.");
       ;
 
@@ -244,6 +246,7 @@ int main(int argc, char** argv)
 
     management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, measurement_descriptor);
     management_->interpolate_between_measurement_transforms(measurement_file_interpolation);
+    management_->set_interpolation_step_size(measurement_interpolation_stepsize);
 
     // PVS basic setup. If no path is given, runtime access to the PVS will always return true (visible).
     if(pvs_file_path != "")

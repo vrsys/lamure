@@ -123,6 +123,7 @@ management(std::vector<std::string> const& model_filenames,
     current_update_timeout_timer_ = 0.0;
     interpolation_time_point_ = 0.0f;
     use_interpolation_on_measurement_session_ = false;
+    movement_on_interpolation_per_frame_ = 10.0f;
     snapshot_framerate_counter_ = 0.0;
     snapshot_frame_counter_ = 0;
 
@@ -267,7 +268,12 @@ MainLoop()
                     controller->reset_ms_since_last_node_upload();
 
                     current_update_timeout_timer_ = 0.0;
-                    interpolation_time_point_+= 0.005f;
+
+                    scm::math::vec3d start_pos(from_transform[12], from_transform[13], from_transform[14]);
+                    scm::math::vec3d end_pos(to_transform[12], to_transform[13], to_transform[14]);
+                    double total_distance = scm::math::length(start_pos - end_pos);
+
+                    interpolation_time_point_ += movement_on_interpolation_per_frame_ / total_distance;
                 }
                 else
                 {
@@ -276,7 +282,7 @@ MainLoop()
                 }
 
                 // Interpolate between next two points if finished goal.
-                if(interpolation_time_point_ > 1.0f)
+                if(interpolation_time_point_ >= 1.0f)
                 {
                     interpolation_time_point_ = 0.0f;
                     measurement_session_descriptor_.recorded_view_vector_.pop_back();
@@ -1092,4 +1098,10 @@ void management::
 interpolate_between_measurement_transforms(const bool& allow_interpolation)
 {
     use_interpolation_on_measurement_session_ = allow_interpolation;
+}
+
+void management::
+set_interpolation_step_size(const float& interpolation_step_size)
+{
+    movement_on_interpolation_per_frame_ = interpolation_step_size;
 }

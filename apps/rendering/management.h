@@ -90,6 +90,7 @@ public:
     void                start_update_viewer_position_thread();
 
     void                interpolate_between_measurement_transforms(const bool& allow_interpolation);
+    void                set_interpolation_step_size(const float& interpolation_step_size);
 
 protected:
 
@@ -158,6 +159,7 @@ private:
     //std::vector<scm::math::mat4d>& recorded_view_vector_;
     float interpolation_time_point_;
     bool use_interpolation_on_measurement_session_;
+    float movement_on_interpolation_per_frame_;
     double snapshot_framerate_counter_;
     size_t snapshot_frame_counter_;
 
