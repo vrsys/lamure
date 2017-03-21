@@ -361,8 +361,6 @@ set_viewer_position(const scm::math::vec3d& position)
 bool pvs_database::
 get_viewer_visibility(const model_t& model_id, const node_t node_id) const
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-
 	if(!activated_ || viewer_cell_ == nullptr)
 	{
 		return true;
@@ -384,24 +382,18 @@ activate(const bool& act)
 bool pvs_database::
 is_activated() const
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-
 	return activated_;
 }
 
 const grid* pvs_database::
 get_visibility_grid() const
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-
 	return visibility_grid_;
 }
 
 const grid* pvs_database::
 get_bounding_grid() const
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-	
 	return bounding_grid_;
 }
 
