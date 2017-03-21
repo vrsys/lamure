@@ -139,6 +139,7 @@ int main(int argc, char** argv)
     float measurement_interpolation_stepsize = 1.0f;
 
     std::string pvs_file_path = "";
+    bool pvs_culling = false;
 
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
@@ -153,7 +154,8 @@ int main(int argc, char** argv)
       ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")")
       ("measurement-interpolate", po::value<bool>(&measurement_file_interpolation)->default_value(false), "allow interpolation between measurement transformations (default=false)")
       ("measurement-stepsize", po::value<float>(&measurement_interpolation_stepsize)->default_value(1.0f), "if interpolation is activated, this will be the stepsize in spatial units between interpolation points")
-      ("pvs-file,p", po::value<std::string>(&pvs_file_path), "specify potentially visible set file.");
+      ("pvs-file,p", po::value<std::string>(&pvs_file_path), "specify potentially visible set file.")
+      ("pvs-culling", po::value<bool>(&pvs_culling)->default_value(false), "pvs will optimize drawn level of detail, yet if pvs culling is set to true, potentially occluded geometry will not be renderer");
       ;
 
     po::positional_options_description p;
@@ -247,6 +249,7 @@ int main(int argc, char** argv)
     management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, measurement_descriptor);
     management_->interpolate_between_measurement_transforms(measurement_file_interpolation);
     management_->set_interpolation_step_size(measurement_interpolation_stepsize);
+    management_->enable_culling(pvs_culling);
 
     // PVS basic setup. If no path is given, runtime access to the PVS will always return true (visible).
     if(pvs_file_path != "")

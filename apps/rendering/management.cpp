@@ -1105,3 +1105,9 @@ set_interpolation_step_size(const float& interpolation_step_size)
 {
     movement_on_interpolation_per_frame_ = interpolation_step_size;
 }
+
+void management::
+enable_culling(const bool& enable)
+{
+    renderer_->enable_culling(enable);
+}

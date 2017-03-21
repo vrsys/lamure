@@ -92,6 +92,8 @@ public:
     void                interpolate_between_measurement_transforms(const bool& allow_interpolation);
     void                set_interpolation_step_size(const float& interpolation_step_size);
 
+    void                enable_culling(const bool& enable);
+
 protected:
 
     void                Toggledispatching();

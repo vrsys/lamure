@@ -248,6 +248,7 @@ public:
     void toggle_display_info();
 
     void toggle_culling();
+    void enable_culling(const bool& enable);
     double get_fps() const;
 };
 
