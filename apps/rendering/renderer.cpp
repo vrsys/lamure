@@ -30,6 +30,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       point_size_factor_(1.0f),
       blending_threshold_(0.01f),
       render_provenance_(0),
+      do_measurement_(false),
       render_bounding_boxes_(false),
       elapsed_ms_since_cut_update_(0),
       render_mode_(RenderMode::HQ_TWO_PASS),
@@ -45,7 +46,8 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       max_lines_(256),
 #endif
       model_transformations_(model_transformations),
-      radius_scale_(1.f)
+      radius_scale_(1.f),
+      measurement_()
 {
 
     lamure::ren::policy* policy = lamure::ren::policy::get_instance();
@@ -226,6 +228,12 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
 	    break;
 
         case RenderPass::ONE_PASS_LQ:
+	  {
+	    const scm::math::mat4f viewport_scale = scm::math::make_scale(win_x_ * 0.5f, win_y_ * 0.5f, 0.5f);;
+	    const scm::math::mat4f viewport_translate = scm::math::make_translation(1.0f,1.0f,1.0f);
+	    const scm::math::mat4d model_to_screen =  scm::math::mat4d(viewport_scale) * scm::math::mat4d(viewport_translate) * mvpd;
+	    LQ_one_pass_program_->uniform("model_to_screen_matrix", scm::math::mat4f(model_to_screen));
+	  }
             LQ_one_pass_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
             LQ_one_pass_program_->uniform("model_view_matrix", model_view_matrix);
             LQ_one_pass_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
@@ -329,11 +337,21 @@ render_one_pass_LQ(lamure::context_t context_id,
 
                 if( (node_culling_result != 1) ) {
 
-		  LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
+		            LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
 
                     if(3 == render_provenance_){
-                        const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
-		                LQ_one_pass_program_->uniform("accuracy", accuracy);
+		      const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
+		      LQ_one_pass_program_->uniform("accuracy", accuracy);
+#if 0
+		      const float min_accuracy = 0.1f;
+		      const float max_accuracy = 0.0001f;
+		      const float accuracy = std::max(max_accuracy, std::min(min_accuracy, bvh->get_avg_primitive_extent(bvh->get_num_nodes() - (bvh->get_num_nodes()/4))));
+		      auto interpolate = [](float a, float b, float v){
+			const float t = (v - a)/(b - a);
+			return (1.0 - t) * 0.0 + t * 1.0;
+		      };
+		      LQ_one_pass_program_->uniform("accuracy", interpolate(min_accuracy, max_accuracy, accuracy));
+#endif
                     }
 
 
@@ -361,6 +379,20 @@ render_one_pass_LQ(lamure::context_t context_id,
         rendered_splats_ = non_culled_node_idx * database->get_primitives_per_node();
     }
 
+    
+    scm::math::mat4f view_matrix = scm::math::mat4f(camera.get_high_precision_view_matrix());
+    measurement_.drawInfo(device_, context_, text_renderer_, renderable_text_, win_x_, win_y_,
+			  camera.get_projection_matrix(), view_matrix, do_measurement_);
+    
+}
+
+void
+Renderer::mouse(int button, int state, int x, int y, lamure::ren::camera const& camera){
+  if(do_measurement_ && render_mode_ == RenderMode::LQ_ONE_PASS){
+    scm::math::mat4f view_matrix = scm::math::mat4f(camera.get_high_precision_view_matrix());
+    measurement_.mouse(device_, button, state, x, y, win_x_, win_y_,
+		       camera.get_projection_matrix(), view_matrix);
+  }
 }
 
 void Renderer::
@@ -1077,7 +1109,23 @@ void Renderer::display_status(std::string const& information_to_display)
             break;
 
         case(RenderMode::LQ_ONE_PASS):
-            os << "LQ One-Pass\n";
+            os << "LQ One-Pass:\nPress p for additional visualizations\n";
+	  switch(render_provenance_){
+	  case 0:
+	    os << "Additional visualization: none\n";
+	    break;
+	  case 1:
+	    os << "Output-sensitivity visualization (blue is good, red is bad)\n";
+	    break;
+	  case 2:
+	    os << "View space normal mapped to color\n";
+	    break;
+	  case 3:
+	    os << "Distance to highest data density (red means far away)\n";
+	    break;
+	  default:
+	    break;
+	  }
             break;
 
         default:
@@ -1439,9 +1487,19 @@ toggle_provenance_rendering()
     std::cout<<"difference to average surfel radius\n\n";
   else if(render_provenance_ == 2)
     std::cout<<"normal\n\n";
-  else
+  else// if(render_provenance_ == 3)
     std::cout<<"accuracy\n\n";
+
 };
+
+
+void Renderer::
+toggle_do_measurement(){
+  if(render_mode_ == RenderMode::LQ_ONE_PASS){
+    do_measurement_ = !do_measurement_;
+  }
+};
+
 
 //dynamic rendering adjustment functions
 void Renderer::

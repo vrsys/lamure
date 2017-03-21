@@ -8,6 +8,8 @@
 #ifndef REN_OLD_RENDERER_H_
 #define REN_OLD_RENDERER_H_
 
+#include "measurement.h"
+
 #include <lamure/ren/camera.h>
 #include <lamure/ren/cut.h>
 
@@ -194,7 +196,8 @@ private:
 	    float                                       blending_threshold_;
 	
 
-	    int                                     render_provenance_;
+	int                                         render_provenance_;
+	bool                                        do_measurement_;
         bool                                        render_bounding_boxes_;
 
         //variables related to text rendering
@@ -212,6 +215,8 @@ private:
         std::vector<scm::math::mat4f>                           model_transformations_;
         std::vector<float>                                      radius_scale_per_model_;
         float                                                   radius_scale_;
+
+	Measurement                                             measurement_;
 
         size_t                                                  elapsed_ms_since_cut_update_;
 
@@ -236,8 +241,9 @@ public:
     void clear_line_begin() { line_begin_.clear(); };
     void clear_line_end() { line_end_.clear(); };
 
-
+    void mouse(int button, int state, int x, int y, lamure::ren::camera const& camera);
     void toggle_provenance_rendering();
+    void toggle_do_measurement();
     void toggle_bounding_box_rendering();
     void change_point_size(float amount);
     void toggle_cut_update_info();

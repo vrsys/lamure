@@ -179,7 +179,7 @@ MainLoop()
     if(camera_recording_enabled_) {
         status_string += "Session recording (#"+std::to_string(current_session_number_) +") : ON\n";
     } else {
-        status_string += "Session recording: OFF\n";
+      //status_string += "Session recording: OFF\n";
     }
 
     if (! allow_user_input_) {
@@ -328,6 +328,7 @@ RegisterMousePresses(int button, int state, int x, int y)
 
     active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
 
+    renderer_->mouse(button, state, x, y, *active_camera_);
 }
 
 
@@ -345,6 +346,9 @@ dispatchKeyboardInput(unsigned char key)
     {
     case 'p':
       renderer_->toggle_provenance_rendering();
+      break;
+    case 'm':
+      renderer_->toggle_do_measurement();
       break;
 
     case '+':

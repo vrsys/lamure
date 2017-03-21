@@ -31,6 +31,7 @@ out VertexData {
   vec2 pass_uv_coords;
 } VertexOut;
 
+
 void main() {
    
   // --------------------------- common attributes -----------------------------------
@@ -55,13 +56,16 @@ void main() {
     VertexOut.pass_uv_coords        = vec2(u_multiplier, v_multiplier);
     vec4 q_pos_ms         = vec4( ( (s_pos_ms + (u_multiplier * step_u) ) + (v_multiplier * step_v) ) ,1.0);
     gl_Position           = mvp_matrix * q_pos_ms;
+
+    // steppo thinks below was useless and does not make sense
+#if 0
     float es_linear_depth_corner = (model_view_matrix * q_pos_ms).z;
 
     es_shift       = abs(es_linear_depth_corner - es_linear_depth_center) * es_shift_scale;
     gl_Position.z  = ( ( -(es_linear_depth_corner + es_shift ) ) / far_plane);
     gl_Position.z  = (gl_Position.z - 0.5) * 2.0;
     gl_Position.z  *= gl_Position.w;
-
+#endif
     EmitVertex();
   }
 
