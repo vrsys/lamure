@@ -260,9 +260,6 @@ int main(int argc, char** argv)
 
         lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
         pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path, false);
-
-        // Thread to update viewer position to pvs must be started after the pvs has loaded.
-        management_->start_update_viewer_position_thread();
     }
 
     // Start rendering main loop.

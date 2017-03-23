@@ -116,8 +116,6 @@ management(std::vector<std::string> const& model_filenames,
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
 #endif
     
-    run_update_thread_ = false;
-
     PrintInfo();
 
     current_update_timeout_timer_ = 0.0;
@@ -146,9 +144,6 @@ management::
         delete renderer_;
         renderer_ = nullptr;
     }
-
-    run_update_thread_ = false;
-    pvs_viewer_position_update_thread_.join();
 }
 
 bool management::
@@ -163,6 +158,14 @@ MainLoop()
     lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
     bool signal_shutdown = false;
+
+    // PVS position update.
+    if(is_updating_pvs_position_)
+    {
+        scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
+        scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
+        pvs->set_viewer_position(cam_pos);
+    }
 
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
@@ -428,12 +431,6 @@ MainLoop()
     std::chrono::duration<double> elapsed_seconds = end_time - start_time;
     double frame_time = elapsed_seconds.count();
     current_update_timeout_timer_ += frame_time;
-
-    if(signal_shutdown)
-    {
-        run_update_thread_ = false;
-        pvs_viewer_position_update_thread_.join();
-    }
 
     return signal_shutdown;
 }
@@ -1065,33 +1062,6 @@ create_quality_measurement_resources() {
     std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);
     active_camera_->write_view_matrix(camera_session_file);
     camera_session_file.close();
-}
-
-void management::
-start_update_viewer_position_thread()
-{
-    // Start thread to feed the PVS system with the current camera position.
-    run_update_thread_ = true;
-    pvs_viewer_position_update_thread_ = std::thread(&management::update_viewer_position_thread_call, this);
-}
-
-void management::
-update_viewer_position_thread_call()
-{
-    while(run_update_thread_)
-    {
-        if(is_updating_pvs_position_)
-        {
-            scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
-            scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
-
-            lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-            pvs->set_viewer_position(cam_pos);
-        }
-
-        // Go for roughly 60 updates per second.
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-    }
 }
 
 void management::

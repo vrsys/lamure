@@ -35,6 +35,11 @@ pvs_database()
 pvs_database::
 ~pvs_database()
 {
+	if(visibility_data_loading_thread_.joinable())
+	{
+		visibility_data_loading_thread_.join();
+	}
+	
 	if(visibility_grid_ != nullptr)
 	{
 		delete visibility_grid_;
@@ -279,7 +284,7 @@ create_grid_by_type(const std::string& grid_type, const size_t& num_cells_x, con
 void pvs_database::
 set_viewer_position(const scm::math::vec3d& position)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
+	//std::lock_guard<std::mutex> lock(mutex_);
 
 	if(activated_ && visibility_grid_ != nullptr)
 	{
@@ -300,44 +305,13 @@ set_viewer_position(const scm::math::vec3d& position)
 					// If the view cell changed and the visibility data is not preloaded, it should be loaded now.
 					if(!do_preload_)
 					{
-						scm::math::vec3d center = view_cell_at_position->get_position_center();
-
-						std::set<size_t> cell_indices_to_load;
-						cell_indices_to_load.insert(cell_index);
-
-						for(double z = -1.0; z < 1.5; z += 1.0)
+						// Make sure old thread has finished before starting a new one.
+						if(visibility_data_loading_thread_.joinable())
 						{
-							for(double y = -1.0; y < 1.5; y += 1.0)
-							{
-								for(double x = -1.0; x < 1.5; x += 1.0)
-								{
-									size_t local_cell_index = 0;
-									scm::math::vec3d direction = smallest_cell_size_ * scm::math::vec3d(x, y, z);
-									const view_cell* local_view_cell_at_position = visibility_grid_->get_cell_at_position(center + direction, &local_cell_index);
-
-									if(local_view_cell_at_position != nullptr)
-									{
-										cell_indices_to_load.insert(local_cell_index);
-									}
-								}
-							}
+							visibility_data_loading_thread_.join();
 						}
 
-						for (std::set<size_t>::iterator iter = cell_indices_to_load.begin(); iter != cell_indices_to_load.end(); ++iter)
-						{
-							visibility_grid_->load_cell_visibility_from_file(pvs_file_path_, *iter);
-						}
-
-						// Release visibility data not within current neighbourhood.
-						for (std::set<size_t>::iterator iter = previously_loaded_cell_indices_.begin(); iter != previously_loaded_cell_indices_.end(); ++iter)
-						{
-							if(cell_indices_to_load.find(*iter) == cell_indices_to_load.end())
-							{
-								visibility_grid_->clear_cell_visibility(*iter);
-							}
-						}
-
-						previously_loaded_cell_indices_ = std::set<size_t>(cell_indices_to_load);
+						visibility_data_loading_thread_ = std::thread(&pvs_database::load_visibility_data_async, this);
 					}
 				}
 			}
@@ -358,10 +332,60 @@ set_viewer_position(const scm::math::vec3d& position)
 	}
 }
 
+void pvs_database::
+load_visibility_data_async()
+{
+	scm::math::vec3d center = viewer_cell_->get_position_center();
+
+	std::set<size_t> cell_indices_to_load;
+
+	for(double z = -1.0; z < 1.5; z += 1.0)
+	{
+		for(double y = -1.0; y < 1.5; y += 1.0)
+		{
+			for(double x = -1.0; x < 1.5; x += 1.0)
+			{
+				size_t local_cell_index = 0;
+				scm::math::vec3d direction = smallest_cell_size_ * scm::math::vec3d(x, y, z);
+				const view_cell* local_view_cell_at_position = visibility_grid_->get_cell_at_position(center + direction, &local_cell_index);
+
+				if(local_view_cell_at_position != nullptr)
+				{
+					cell_indices_to_load.insert(local_cell_index);
+				}
+			}
+		}
+	}
+
+	// Load required visibility data which is not yet loaded.
+	for (std::set<size_t>::iterator iter = cell_indices_to_load.begin(); iter != cell_indices_to_load.end(); ++iter)
+	{
+		std::lock_guard<std::mutex> lock(mutex_);
+
+		if(previously_loaded_cell_indices_.find(*iter) == previously_loaded_cell_indices_.end())
+		{
+			visibility_grid_->load_cell_visibility_from_file(pvs_file_path_, *iter);
+		}
+	}
+
+	// Release visibility data not within current neighbourhood.
+	for (std::set<size_t>::iterator iter = previously_loaded_cell_indices_.begin(); iter != previously_loaded_cell_indices_.end(); ++iter)
+	{
+		std::lock_guard<std::mutex> lock(mutex_);
+
+		if(cell_indices_to_load.find(*iter) == cell_indices_to_load.end())
+		{
+			visibility_grid_->clear_cell_visibility(*iter);
+		}
+	}
+
+	previously_loaded_cell_indices_ = std::set<size_t>(cell_indices_to_load);
+}
+
 bool pvs_database::
 get_viewer_visibility(const model_t& model_id, const node_t node_id) const
 {
-	if(!activated_ || viewer_cell_ == nullptr)
+	if(!activated_ || viewer_cell_ == nullptr || !viewer_cell_->contains_visibility_data())
 	{
 		return true;
 	}

@@ -3,6 +3,7 @@
 
 #include <set>
 #include <string>
+#include <thread>
 #include <vector>
 #include <mutex>
 
@@ -44,6 +45,8 @@ protected:
 	static pvs_database* instance_;
 
 private:
+	void load_visibility_data_async();
+
 	// Grid storing the major visibility data of the scene.
 	grid* visibility_grid_;
 
@@ -64,6 +67,8 @@ private:
 
 	scm::math::vec3d smallest_cell_size_;
 	std::set<size_t> previously_loaded_cell_indices_;
+
+	std::thread visibility_data_loading_thread_;
 
 	// Used to achieve thread safety.
 	mutable std::mutex mutex_;
