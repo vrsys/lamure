@@ -36,7 +36,7 @@ int main(int argc, char** argv)
     std::string pvs_input_file_path = "";
     std::string second_pvs_input_file_path = "";
     std::string pvs_output_file_path = "";
-    std::string grid_type = "";
+    std::string output_grid_type = "";
     float optimization_threshold = 1.0f;
 
     namespace po = boost::program_options;
@@ -54,8 +54,8 @@ int main(int argc, char** argv)
       ("pvs-file", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data (.pvs)")
       ("2nd-pvs-file", po::value<std::string>(&second_pvs_input_file_path), "(optional) specify second input file of calculated pvs data (.pvs) to join visibility with first pvs file")
       ("output-file", po::value<std::string>(&pvs_output_file_path), "specify output file of converted visibility data (.pvs)")
-      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data")
-      ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal. Negative values will deactivate optimization process.");
+      ("gridtype", po::value<std::string>(&output_grid_type), "specify type of grid to store visibility data. If no grid type is given, the input grid type will be used. ('regular', 'regular_compressed', 'irregular', 'irregular_compressed', octree', 'octree_compressed', octree_hierarchical', 'octree_hierarchical_v2', 'octree_hierarchical_v3')")
+      ("optithresh", po::value<float>(&optimization_threshold)->default_value(-1.0f), "specify the threshold at which common data are converged (percent value between 0 and 1). Negative values will deactivate optimization process. Default value is -1.0, so grid optimization is deactivated.");
       ;
 
     po::variables_map vm;
@@ -110,6 +110,13 @@ int main(int argc, char** argv)
         std::cout << "Input grid must be of regular, regular compressed or hierarchical v3 grid type. Irregular works as well, yet should be unoptimized." << std::endl;
         return 0;
     }
+    else
+    {
+        if(output_grid_type == "")
+        {
+            output_grid_type = input_grid->get_grid_type();
+        }
+    }
 
     std::cout << "Detected input grid of type '" << input_grid->get_grid_type() << "'." << std::endl;
 
@@ -161,8 +168,8 @@ int main(int argc, char** argv)
         ids.push_back(input_grid->get_num_nodes(model_index));
     }
 
-    if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
-        grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
+    if(output_grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
+        output_grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
     {
         // Special case if grid is irregular. Get smallest cell size and calculate number cells per axis.
         scm::math::vec3d smallest_cell_size = input_grid->get_cell_at_index(0)->get_size();
@@ -191,7 +198,7 @@ int main(int argc, char** argv)
         size_t num_cells_z = std::round(input_grid->get_size().z / smallest_cell_size.z);
 
         double longest_axis = std::max(input_grid->get_size().x, std::max(input_grid->get_size().y, input_grid->get_size().z));
-        output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells_x, num_cells_y, num_cells_z, longest_axis, input_grid->get_position_center(), ids);
+        output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(output_grid_type, num_cells_x, num_cells_y, num_cells_z, longest_axis, input_grid->get_position_center(), ids);
     }
     else
     {
@@ -201,13 +208,13 @@ int main(int argc, char** argv)
         unsigned int depth = (unsigned int)std::round(std::sqrt(cells_per_axis)) + 1;
 
         size_t num_cells = depth;
-        if(grid_type == lamure::pvs::grid_regular::get_grid_identifier() || 
-            grid_type == lamure::pvs::grid_regular_compressed::get_grid_identifier())
+        if(output_grid_type == lamure::pvs::grid_regular::get_grid_identifier() || 
+            output_grid_type == lamure::pvs::grid_regular_compressed::get_grid_identifier())
         {
             num_cells = cells_per_axis;
         }
 
-        output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(grid_type, num_cells, num_cells, num_cells, input_grid->get_size().x, input_grid->get_position_center(), ids);
+        output_grid = lamure::pvs::pvs_database::get_instance()->create_grid_by_type(output_grid_type, num_cells, num_cells, num_cells, input_grid->get_size().x, input_grid->get_position_center(), ids);
     }
 
     if(output_grid == nullptr)
@@ -272,20 +279,20 @@ int main(int argc, char** argv)
         // Optimize grid by reducing amount of view cells if possible.
         std::cout << "Start grid optimization..." << std::endl;
 
-        if(grid_type == lamure::pvs::grid_octree::get_grid_identifier() ||
-            grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
+        if(output_grid_type == lamure::pvs::grid_octree::get_grid_identifier() ||
+            output_grid_type == lamure::pvs::grid_octree_compressed::get_grid_identifier())
         {
             lamure::pvs::grid_optimizer_octree optimizer;
             optimizer.optimize_grid(output_grid, optimization_threshold);
         }
-        else if(grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
-            grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
+        else if(output_grid_type == lamure::pvs::grid_octree_hierarchical::get_grid_identifier() ||
+            output_grid_type == lamure::pvs::grid_octree_hierarchical_v2::get_grid_identifier())
         {
             lamure::pvs::grid_optimizer_octree_hierarchical optimizer;
             optimizer.optimize_grid(output_grid, optimization_threshold);
         }
-        else if(grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
-            grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
+        else if(output_grid_type == lamure::pvs::grid_irregular::get_grid_identifier() ||
+            output_grid_type == lamure::pvs::grid_irregular_compressed::get_grid_identifier())
         {
             lamure::pvs::grid_optimizer_irregular optimizer;
             optimizer.optimize_grid(output_grid, optimization_threshold);

@@ -39,8 +39,8 @@ int main(int argc, char** argv)
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
     desc.add_options()
-      ("pvs-file,p", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data")
-      ("2nd-pvs-file", po::value<std::string>(&second_pvs_input_file_path), "specify input file of calculated pvs data")
+      ("pvs-file,p", po::value<std::string>(&pvs_input_file_path), "specify input file of calculated pvs data (.pvs)")
+      ("2nd-pvs-file", po::value<std::string>(&second_pvs_input_file_path), "specify input file of calculated pvs data (.pvs)")
       ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into");
       ;
 

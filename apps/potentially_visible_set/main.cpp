@@ -69,13 +69,13 @@ int main(int argc, char** argv)
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
     desc.add_options()
-      ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data")
-      ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hr"), "specify type of visibility test to be used. (histogram renderer 'hr', histogram renderer with corners 'hrc', simple randomized histogram renderer 'srhr')")
-      ("gridtype", po::value<std::string>(&grid_type)->default_value("octree"), "specify type of grid to store visibility data ('regular', 'regular_compressed', 'octree', 'octree_hierarchical', 'octree_hierarchical_v2', 'octree_hierarchical_v3')")
+      ("pvs-file,p", po::value<std::string>(&pvs_output_file_path), "specify output file of calculated pvs data (.pvs)")
+      ("vistest", po::value<std::string>(&visibility_test_type)->default_value("hrc"), "specify type of visibility test to be used. Default is histogram renderer with corners. (histogram renderer 'hr', histogram renderer with corners 'hrc', simple randomized histogram renderer 'srhr')")
+      ("gridtype", po::value<std::string>(&grid_type)->default_value("irregular_compressed"), "specify type of grid to store visibility data. Default is irregular compressed grid. ('regular', 'regular_compressed', 'irregular', 'irregular_compressed', octree', 'octree_compressed', octree_hierarchical', 'octree_hierarchical_v2', 'octree_hierarchical_v3')")
       ("gridsize", po::value<unsigned int>(&grid_size)->default_value(1), "specify size/depth of the grid used for the visibility test (depends on chosen grid type)")
-      ("oversize", po::value<double>(&oversize_factor)->default_value(1.5), "factor the grid bounds will be scaled by, default is 1.5 (grid bounds will exceed scene bounds by factor of 1.5)")
-      ("optithresh", po::value<float>(&optimization_threshold)->default_value(1.0f), "specify the threshold at which common data are converged. Default is 1.0, which means data must be 100 percent equal. Negative values will deactivate optimization process.")
-      ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only)");
+      ("oversize", po::value<double>(&oversize_factor)->default_value(1.5), "factor the grid bounds will be scaled by. Default is 1.5 (so grid bounds will exceed scene bounds by factor of 1.5)")
+      ("optithresh", po::value<float>(&optimization_threshold)->default_value(-1.0f), "specify the threshold at which common data are converged (percent value between 0 and 1). Negative values will deactivate optimization process. Default value is -1.0, so grid optimization is deactivated.")
+      ("numsteps,n", po::value<unsigned int>(&num_steps)->default_value(11), "specify the number of intervals the occlusion values will be split into (visibility analysis only). Default value is 11.");
       ;
 
     // Parse additonal passed parameters.
