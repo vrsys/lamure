@@ -52,7 +52,7 @@ class Measurement{
 		scm::gl::text_ptr renderable_text,
 		int screen_width, int screen_height,
 		scm::math::mat4f projection_matrix,
-		scm::math::mat4f view_matrix, bool do_measurement);
+		scm::math::mat4f view_matrix, bool do_measurement, bool display_info);
 
   void mouse(scm::shared_ptr<scm::gl::render_device> device,
 	     int button, int state, int mouse_h, int mouse_v,

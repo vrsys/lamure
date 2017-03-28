@@ -198,6 +198,7 @@ private:
 
 	int                                         render_provenance_;
 	bool                                        do_measurement_;
+	bool                                        use_black_background_;
         bool                                        render_bounding_boxes_;
 
         //variables related to text rendering
@@ -244,6 +245,7 @@ public:
     void mouse(int button, int state, int x, int y, lamure::ren::camera const& camera);
     void toggle_provenance_rendering();
     void toggle_do_measurement();
+    void toggle_use_black_background();
     void toggle_bounding_box_rendering();
     void change_point_size(float amount);
     void toggle_cut_update_info();

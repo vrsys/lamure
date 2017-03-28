@@ -663,9 +663,14 @@ dispatchKeyboardInput(unsigned char key)
         active_camera_->set_trackball_matrix(scm::math::mat4d(reset_matrix_));
         break;
 
+    case '8':
+        renderer_->toggle_use_black_background();
+        break;
+
     case '9':
         renderer_->toggle_display_info();
         break;
+
 
     case 'k':
         DecreaseErrorThreshold();

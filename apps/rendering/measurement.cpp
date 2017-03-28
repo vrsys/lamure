@@ -39,7 +39,7 @@ Measurement::drawInfo(scm::shared_ptr<scm::gl::render_device> device,
 		      scm::gl::text_ptr renderable_text,
 		      int screen_width, int screen_height,
 		      scm::math::mat4f projection_matrix,
-		      scm::math::mat4f view_matrix, bool do_measurement){
+		      scm::math::mat4f view_matrix, bool do_measurement, bool display_info){
 
 
 
@@ -84,16 +84,17 @@ Measurement::drawInfo(scm::shared_ptr<scm::gl::render_device> device,
 
   }
 
-  std::stringstream os;
-  if(do_measurement){
-    os << "3D measurement enabled: Right click to add a new measurement point, middle click to delete last measurement point\n";
+  if(display_info){
+    std::stringstream os;
+    if(do_measurement){
+      os << "3D measurement enabled: Right click to add a new measurement point, middle click to delete last measurement point\n";
+    }
+    else{
+      os << "Press m for 3D measurement\n";
+    }
+    renderable_text->text_string(os.str());
+    text_renderer->draw_shadowed(context, scm::math::vec2i( 20, 40), renderable_text);
   }
-  else{
-    os << "Press m for 3D measurement\n";
-  }
-  renderable_text->text_string(os.str());
-  text_renderer->draw_shadowed(context, scm::math::vec2i( 20, 40), renderable_text);
-  
 }
 
 

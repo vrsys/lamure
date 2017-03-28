@@ -31,6 +31,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       blending_threshold_(0.01f),
       render_provenance_(0),
       do_measurement_(false),
+      use_black_background_(true),
       render_bounding_boxes_(false),
       elapsed_ms_since_cut_update_(0),
       render_mode_(RenderMode::HQ_TWO_PASS),
@@ -289,8 +290,10 @@ render_one_pass_LQ(lamure::context_t context_id,
     ****************************************************************************************/
 
     {
-        context_->clear_default_depth_stencil_buffer();
-        context_->clear_default_color_buffer();
+      
+      context_->clear_default_depth_stencil_buffer();
+      context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_black_background_ ? vec4f(0.0f, 0.0f, 0.0f, 1.0f) : vec4f(1.0f, 1.0f, 1.0f, 1.0f));
+      //context_->clear_default_color_buffer();
 
 
         context_->set_default_frame_buffer();
@@ -382,7 +385,7 @@ render_one_pass_LQ(lamure::context_t context_id,
     
     scm::math::mat4f view_matrix = scm::math::mat4f(camera.get_high_precision_view_matrix());
     measurement_.drawInfo(device_, context_, text_renderer_, renderable_text_, win_x_, win_y_,
-			  camera.get_projection_matrix(), view_matrix, do_measurement_);
+			  camera.get_projection_matrix(), view_matrix, do_measurement_, display_info_);
     
 }
 
@@ -1063,9 +1066,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 #endif
 
 
-    //if(display_info_)
-      //display_status(current_camera_session);
-
     context_->reset();
 
 
@@ -1093,6 +1093,11 @@ void Renderer::send_model_transform(const lamure::model_t model_id, const scm::m
 
 void Renderer::display_status(std::string const& information_to_display)
 {
+
+  if(!display_info_){
+    return;
+  }
+
     std::stringstream os;
    // os.setprecision(5);
     os
@@ -1498,6 +1503,11 @@ toggle_do_measurement(){
   if(render_mode_ == RenderMode::LQ_ONE_PASS){
     do_measurement_ = !do_measurement_;
   }
+};
+
+void Renderer::
+toggle_use_black_background(){
+  use_black_background_ = !use_black_background_;
 };
 
 
