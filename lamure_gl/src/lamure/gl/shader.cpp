@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 shader_t::shader_t()
 : program_(0),
   linked_(false)
@@ -18,7 +18,7 @@ shader_t::shader_t()
 
 }
 
-inline
+
 shader_t::~shader_t()
 {
   disable();
@@ -27,7 +27,7 @@ shader_t::~shader_t()
   }
 }
 
-inline void
+void
 shader_t::attach(
   GLenum type,
   const std::string& filename)
@@ -36,26 +36,26 @@ shader_t::attach(
   shaders_.push_back(load(type, filename));
 }
 
-inline GLuint
+GLuint
 shader_t::get_program() const
 {
   return program_;
 }
 
-inline void
+void
 shader_t::enable()
 {
   LAMURE_ASSERT(linked_, "cannot enable non-linked program");
   glUseProgram(program_);
 }
 
-inline void
+void
 shader_t::disable()
 {
   glUseProgram(0);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const lamure::math::mat4f_t& matrix)
@@ -64,7 +64,7 @@ shader_t::set(
   glUniformMatrix4fv(glGetUniformLocation(program_, uniform.c_str()), 1, GL_FALSE, &matrix.data_[0]);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const lamure::math::vec2f_t& vector)
@@ -73,7 +73,7 @@ shader_t::set(
   glUniform2fv(glGetUniformLocation(program_, uniform.c_str()), 1, &vector.data_[0]);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const lamure::math::vec3f_t& vector)
@@ -82,7 +82,7 @@ shader_t::set(
   glUniform3fv(glGetUniformLocation(program_, uniform.c_str()), 1, &vector.data_[0]);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const int32_t value)
@@ -91,7 +91,7 @@ shader_t::set(
   glUniform1i(glGetUniformLocation(program_, uniform.c_str()), value);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const float32_t value)
@@ -100,7 +100,7 @@ shader_t::set(
   glUniform1f(glGetUniformLocation(program_, uniform.c_str()), value);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const uint32_t slot,
@@ -112,7 +112,7 @@ shader_t::set(
   frame_buffer->bind_texture(0);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const uint32_t slot,
@@ -125,7 +125,7 @@ shader_t::set(
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding_point_idx, storage_buffer->get_buffer()); 
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const uint32_t slot,
@@ -137,7 +137,7 @@ shader_t::set(
   texture_buffer->bind_texture();
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const uint32_t slot,
@@ -149,7 +149,7 @@ shader_t::set(
   texture->enable(slot, GL_READ_ONLY);
 }
 
-inline void
+void
 shader_t::set(
   const std::string& uniform,
   const uint32_t slot,
@@ -162,7 +162,7 @@ shader_t::set(
 }
 
 
-inline void
+void
 shader_t::link()
 {
   if (!linked_) {
@@ -201,7 +201,7 @@ shader_t::link()
 }
 
 
-inline GLuint
+GLuint
 shader_t::load(
   GLenum shader_type,
   const std::string& filename)
@@ -209,6 +209,7 @@ shader_t::load(
   std::string source = load_file(filename.c_str());
 
   source = std::string("#version "+LAMURE_GLSL_VERSION+"\n"+source);
+  
   GLuint shader = glCreateShader(shader_type);
   const char* filedata = source.c_str();
 
@@ -241,7 +242,7 @@ shader_t::load(
   return shader;
 }
 
-inline std::string
+std::string
 shader_t::load_file(
   const std::string& filename)
 {
@@ -285,7 +286,7 @@ shader_t::load_file(
     }
   }
   file.close();
-
+  
   return source;
 }
 

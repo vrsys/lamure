@@ -5,9 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 420 core
-
-
 in VertexData {
   //output to fragment shader
   vec3 pass_point_color;
@@ -22,13 +19,17 @@ void main() {
 
   if ( dot(uv_coords, uv_coords)> 1 )
     discard;
+    
+  vec3 pass_normal = VertexIn.pass_normal;
 
-  if( VertexIn.pass_normal.z < 0 )
-    VertexIn.pass_normal = VertexIn.pass_normal * -1; 
+  if( pass_normal.z < 0 ) {
+    pass_normal = pass_normal * -1; 
+  }
 
-  VertexIn.pass_normal = (VertexIn.pass_normal + vec3(1.0, 1.0, 1.0)) / 2.0;
+  pass_normal = (pass_normal + vec3(1.0, 1.0, 1.0)) / 2.0;
 
   out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
+  //out_color = vec4(1.0, 1.0, 1.0, 1.0);
 }
 
 

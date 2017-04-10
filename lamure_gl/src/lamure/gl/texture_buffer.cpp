@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 texture_buffer_t::texture_buffer_t(
   uint32_t num_elements,
   uint32_t element_size,
@@ -26,14 +26,14 @@ texture_buffer_t::texture_buffer_t(
   glBindBuffer(GL_TEXTURE_BUFFER, 0);
 }
 
-inline
+
 texture_buffer_t::~texture_buffer_t()
 {
   glDeleteBuffers(1, &buffer_);
   glDeleteTextures(1, &texture_);
 }
 
-inline void*
+void*
 texture_buffer_t::map(
   GLuint map_mode)
 {
@@ -43,7 +43,7 @@ texture_buffer_t::map(
   return mapped;
 }
 
-inline void
+void
 texture_buffer_t::unmap()
 {
   glBindBuffer(GL_TEXTURE_BUFFER, buffer_);
@@ -51,7 +51,7 @@ texture_buffer_t::unmap()
   glBindBuffer(GL_TEXTURE_BUFFER, 0);
 }
 
-inline void
+void
 texture_buffer_t::bind_texture()
 {
   glBindTexture(GL_TEXTURE_BUFFER, texture_);

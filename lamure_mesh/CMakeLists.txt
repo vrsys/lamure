@@ -17,7 +17,7 @@ SOURCE_GROUP("mesh" FILES ${PROJECT_INLCUDES})
 SOURCE_GROUP("mesh" FILES ${PROJECT_INLINES})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
-                    ${CORE_INCLUDE_DIR}
+                    ${LAMURE_CORE_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR}
                     ${CGAL_INCLUDE_DIR}
                     ${GMP_INCLUDE_DIR} 
@@ -35,15 +35,15 @@ IF (MSVC)
 ENDIF(MSVC)
 
 
-set(MESH_INCLUDE_DIR ${PROJECT_INCLUDE_DIR} PARENT_SCOPE)
-set(MESH_LIBRARY ${PROJECT_NAME} PARENT_SCOPE)
-set(MESH_LIBRARY ${PROJECT_NAME})
+set(LAMURE_MESH_INCLUDE_DIR ${PROJECT_INCLUDE_DIR} PARENT_SCOPE)
+set(LAMURE_MESH_LIBRARY ${PROJECT_NAME} PARENT_SCOPE)
+set(LAMURE_MESH_LIBRARY ${PROJECT_NAME})
 
 ############################################################
 # Libraries
 
 target_link_libraries(${PROJECT_NAME}
-    ${CORE_LIBRARY}
+    ${LAMURE_CORE_LIBRARY}
     ${PROJECT_LIBS}
     ${GMP_LIBRARY}
     ${MPFR_LIBRARY}

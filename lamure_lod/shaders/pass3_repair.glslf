@@ -4,8 +4,6 @@
 // Virtual Reality and Visualization Research Group 
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
-
-#version 440 core
  
 layout(binding  = 0) uniform sampler2D in_color_texture;
 layout(binding  = 1) uniform sampler2D depth_texture;

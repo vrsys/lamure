@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 texture_2d_t::texture_2d_t(
   uint32_t width,
   uint32_t height,
@@ -26,7 +26,7 @@ texture_2d_t::texture_2d_t(
   create();
 }
 
-inline
+
 texture_2d_t::texture_2d_t(
   uint32_t width,
   uint32_t height, 
@@ -45,7 +45,7 @@ texture_2d_t::texture_2d_t(
   create();
 }
 
-inline void
+void
 texture_2d_t::create()
 {
   uint32_t size = width_ * height_ * sizeof(GLubyte) * bytes_per_pixel_;
@@ -66,13 +66,13 @@ texture_2d_t::create()
   glTexImage2D(GL_TEXTURE_2D, 0, internal_format_, width_, height_, 0, format_, internal_type_, NULL);
 }
 
-inline
+
 texture_2d_t::~texture_2d_t()
 {
   glDeleteBuffers(1, &buffer_);
 }
 
-inline void
+void
 texture_2d_t::set_pixels(
   char* data)
 {
@@ -82,7 +82,7 @@ texture_2d_t::set_pixels(
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-inline void
+void
 texture_2d_t::get_pixels(
   char** data)
 {
@@ -95,7 +95,7 @@ texture_2d_t::get_pixels(
 
 }
 
-inline void
+void
 texture_2d_t::enable(
   uint32_t slot,
   GLenum access)
@@ -104,12 +104,12 @@ texture_2d_t::enable(
   glBindTexture(GL_TEXTURE_2D, texture_);
 }
 
-inline void texture_2d_t::
+void texture_2d_t::
 disable() {
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-inline void
+void
 texture_2d_t::draw()
 {
   glBindTexture(GL_TEXTURE_2D, texture_);
@@ -145,31 +145,31 @@ texture_2d_t::draw()
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-inline uint32_t
+uint32_t
 texture_2d_t::get_num_elements() const
 {
   return num_elements_;
 }
 
-inline uint32_t
+uint32_t
 texture_2d_t::get_element_size() const
 {
   return element_size_;
 }
 
-inline uint32_t
+uint32_t
 texture_2d_t::get_size() const
 {
   return element_size_*num_elements_;
 }
 
-inline uint32_t
+uint32_t
 texture_2d_t::get_width() const
 {
   return width_;
 }
 
-inline uint32_t
+uint32_t
 texture_2d_t::get_height() const
 {
   return height_;

@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 array_buffer_t::array_buffer_t(
   uint32_t num_vertices,
   uint32_t vertex_size)
@@ -23,13 +23,13 @@ array_buffer_t::array_buffer_t(
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-inline
+
 array_buffer_t::~array_buffer_t()
 {
   glDeleteBuffers(1, &buffer_);
 }
 
-inline void*
+void*
 array_buffer_t::map(GLuint map_mode)
 {
   glBindBuffer(GL_ARRAY_BUFFER, buffer_);
@@ -38,7 +38,7 @@ array_buffer_t::map(GLuint map_mode)
   return mapped;
 }
 
-inline void
+void
 array_buffer_t::unmap()
 {
   glBindBuffer(GL_ARRAY_BUFFER, buffer_);

@@ -1,9 +1,9 @@
 ############################################################
 # CMake Build Script for the bvh_modifier executable
 
-include_directories(${XYZ_INCLUDE_DIR} 
-                    ${CORE_INCLUDE_DIR}
-                    ${GL_INCLUDE_DIR})
+include_directories(${LAMURE_XYZ_INCLUDE_DIR} 
+                    ${LAMURE_CORE_INCLUDE_DIR}
+                    ${LAMURE_GL_INCLUDE_DIR})
 
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
@@ -14,9 +14,9 @@ InitApp(${CMAKE_PROJECT_NAME}_bvh_modifier)
 
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
-    ${XYZ_LIBRARY}
-    ${CORE_LIBRARY}
-    ${GL_LIBRARY}
+    ${LAMURE_XYZ_LIBRARY}
+    ${LAMURE_CORE_LIBRARY}
+    ${LAMURE_GL_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}

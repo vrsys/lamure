@@ -36,8 +36,8 @@ public:
     const bool is_mapped() const { return is_mapped_; };
     const bool has_layout() const { return has_layout_; };
 
-    const lamure::gl::array_buffer_t* get_buffer() { return buffer_; };
-    const lamure::gl::vertex_array_t* get_memory(bvh::primitive_type type);
+    lamure::gl::array_buffer_t* get_buffer();
+    lamure::gl::vertex_array_t* get_memory(bvh::primitive_type type);
 
     static const size_t query_video_memory_in_mb();
 

@@ -327,7 +327,7 @@ is_model_present(const gua_model_desc_t model_desc) {
 }
 
 
-const lamure::gl::array_buffer_t* controller::
+lamure::gl::array_buffer_t* controller::
 get_context_buffer(const context_t context_id) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 
@@ -341,7 +341,7 @@ get_context_buffer(const context_t context_id) {
 }
 
 
-const lamure::gl::vertex_array_t* controller::
+lamure::gl::vertex_array_t* controller::
 get_context_memory(const context_t context_id, bvh::primitive_type type) {
     auto gpu_context_it = gpu_contexts_.find(context_id);
 

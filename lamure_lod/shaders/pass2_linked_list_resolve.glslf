@@ -5,8 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 440 core
-
 //#extension GL_NV_gpu_shader5 : enable
 
 struct PointAttributeData {

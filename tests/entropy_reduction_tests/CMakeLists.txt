@@ -1,8 +1,8 @@
 ############################################################
 # CMake Build Script for the preprocessing executable
 
-include_directories(${XYZ_INCLUDE_DIR} 
-                    ${CORE_INCLUDE_DIR})
+include_directories(${LAMURE_XYZ_INCLUDE_DIR} 
+                    ${LAMURE_CORE_INCLUDE_DIR})
 
 include_directories(SYSTEM ${Boost_INCLUDE_DIR}
                            ${CMAKE_SOURCE_DIR}/third_party)
@@ -14,8 +14,8 @@ InitTest(${CMAKE_PROJECT_NAME}_entropy_reduction_tests)
 
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
-    ${XYZ_LIBRARY}
-    ${CORE_LIBRARY}
+    ${LAMURE_XYZ_LIBRARY}
+    ${LAMURE_CORE_LIBRARY}
     )
 
 add_dependencies(${PROJECT_NAME} lamure_xyz lamure_core)

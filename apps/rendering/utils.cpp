@@ -10,34 +10,34 @@
 
 namespace {
 
-scm::math::mat4f loadMatrix(const std::string& filename)
+lamure::math::mat4d_t loadMatrix(const std::string& filename)
 {
 
     std::ifstream f(filename);
     if (!f.is_open()) {
         std::cerr << "Unable to open transformation file: \"" 
             << filename << "\"\n";
-        return scm::math::mat4f::identity();
+        return lamure::math::mat4d_t::identity();
     }
-    scm::math::mat4f mat = scm::math::mat4f::identity();
+    lamure::math::mat4d_t mat = lamure::math::mat4d_t::identity();
     std::string matrix_values_string;
     std::getline(f, matrix_values_string);
     std::stringstream sstr(matrix_values_string);
     for (int i = 0; i < 16; ++i)
         sstr >> mat[i];
-    return scm::math::transpose(mat);
+    return lamure::math::transpose(mat);
 }
 
 }
 
-std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > 
+std::pair< std::vector<std::string>, std::vector<lamure::math::mat4d_t> > 
 read_model_string(std::string const& path_to_resource_file, 
                 std::set<lamure::model_t>* visible_set, 
                 std::set<lamure::model_t>* invisible_set)
 {
     namespace fs = boost::filesystem;
 
-    std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > model_vec_pair;
+    std::pair< std::vector<std::string>, std::vector<lamure::math::mat4d_t> > model_vec_pair;
 
     auto filename = fs::canonical(path_to_resource_file);
 
@@ -61,7 +61,7 @@ read_model_string(std::string const& path_to_resource_file,
                 if( !(one_line.substr(0,2) == "//") )
                 {
                   std::string model_path;
-                  scm::math::mat4f model_transf = scm::math::mat4f::identity();
+		  lamure::math::mat4d_t model_transf = lamure::math::mat4d_t::identity();
 
                   model_ss >> model_path;
 

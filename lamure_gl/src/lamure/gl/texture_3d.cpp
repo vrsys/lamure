@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 texture_3d_t::texture_3d_t(
   uint32_t width,
   uint32_t height,
@@ -32,7 +32,7 @@ texture_3d_t::texture_3d_t(
 }
 
 
-inline void
+void
 texture_3d_t::create()
 {
   uint32_t size = width_ * height_ * depth_ * sizeof(GLubyte) * bytes_per_pixel_;
@@ -57,13 +57,13 @@ texture_3d_t::create()
 
 }
 
-inline
+
 texture_3d_t::~texture_3d_t()
 {
   glDeleteBuffers(1, &buffer_);
 }
 
-inline void
+void
 texture_3d_t::set_pixels(
   char* data)
 {
@@ -73,7 +73,7 @@ texture_3d_t::set_pixels(
   glBindTexture(GL_TEXTURE_3D, 0);
 }
 
-inline void
+void
 texture_3d_t::get_pixels(
   char** data)
 {
@@ -86,7 +86,7 @@ texture_3d_t::get_pixels(
 
 }
 
-inline void
+void
 texture_3d_t::enable(
   uint32_t slot,
   GLenum access)
@@ -95,43 +95,43 @@ texture_3d_t::enable(
   glBindTexture(GL_TEXTURE_3D, texture_);
 }
 
-inline void
+void
 texture_3d_t::disable()
 {
   glBindTexture(GL_TEXTURE_3D, 0);
 }
 
-inline uint32_t
+uint32_t
 texture_3d_t::get_num_elements() const
 {
   return num_elements_;
 }
 
-inline uint32_t
+uint32_t
 texture_3d_t::get_element_size() const
 {
   return element_size_;
 }
 
-inline uint32_t
+uint32_t
 texture_3d_t::get_size() const
 {
   return element_size_*num_elements_;
 }
 
-inline uint32_t
+uint32_t
 texture_3d_t::get_width() const
 {
   return width_;
 }
 
-inline uint32_t
+ uint32_t
 texture_3d_t::get_height() const
 {
   return height_;
 }
 
-inline uint32_t
+ uint32_t
 texture_3d_t::get_depth() const
 {
   return depth_;

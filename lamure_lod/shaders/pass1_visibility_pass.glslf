@@ -5,8 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 420 core
-
 in VertexData {
   vec2 pass_uv_coords;
   float pass_es_shift;

@@ -5,8 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 420 core
-
 layout (location = 0) in vec4 vertex_position;
 layout (location = 1) in vec4 vertex_normal;
 layout (location = 2) in vec2 vertex_coord;

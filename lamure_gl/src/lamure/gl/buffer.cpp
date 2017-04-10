@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 buffer_t::buffer_t(
   uint32_t num_elements,
   uint32_t element_size,
@@ -22,43 +22,43 @@ buffer_t::buffer_t(
 
 }
 
-inline
+
 buffer_t::~buffer_t()
 {
 
 }
 
-inline uint32_t
+uint32_t
 buffer_t::get_num_elements() const
 {
   return num_elements_;
 }
 
-inline uint32_t
+uint32_t
 buffer_t::get_element_size() const
 {
   return element_size_;
 }
 
-inline uint32_t
+uint32_t
 buffer_t::get_element_components() const
 {
   return element_components_;
 }
 
-inline uint32_t
+uint32_t
 buffer_t::get_size() const
 {
   return num_elements_*element_size_;
 }
 
-inline const GLuint
+const GLuint
 buffer_t::get_buffer() const
 {
   return buffer_;
 }
 
-inline void
+void
 buffer_t::set_data(
   const char* data,
   size_t length)
@@ -70,7 +70,7 @@ buffer_t::set_data(
   unmap();
 }
 
-inline void
+void
 buffer_t::set_zero()
 {
   char* mapped_buffer = (char*)map(GL_WRITE_ONLY);

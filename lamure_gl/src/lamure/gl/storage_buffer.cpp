@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 storage_buffer_t::storage_buffer_t(
   uint32_t num_elements,
   uint32_t element_size)
@@ -23,13 +23,13 @@ storage_buffer_t::storage_buffer_t(
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
-inline
+
 storage_buffer_t::~storage_buffer_t()
 {
   glDeleteBuffers(1, &buffer_);
 }
 
-inline void*
+void*
 storage_buffer_t::map(
   GLuint map_mode)
 {
@@ -39,7 +39,7 @@ storage_buffer_t::map(
   return mapped;
 }
 
-inline void
+void
 storage_buffer_t::unmap()
 {
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer_);
@@ -47,14 +47,14 @@ storage_buffer_t::unmap()
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
-inline void
+void
 storage_buffer_t::enable(
   uint32_t slot)
 {
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot, buffer_);
 }
 
-inline void
+void
 storage_buffer_t::disable()
 {
 

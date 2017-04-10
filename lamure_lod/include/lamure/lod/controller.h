@@ -46,8 +46,8 @@ public:
     void                dispatch(const context_t context_id);
     const bool          is_cut_update_in_progress(const context_t context_id);
 
-    const lamure::gl::array_buffer_t* get_context_buffer(const context_t context_id);
-    const lamure::gl::vertex_array_t* get_context_memory(const context_t context_id, bvh::primitive_type type);
+    lamure::gl::array_buffer_t* get_context_buffer(const context_t context_id);
+    lamure::gl::vertex_array_t* get_context_memory(const context_t context_id, bvh::primitive_type type);
 
     size_t              ms_since_last_node_upload() {return ms_since_last_node_upload_; };
     void                reset_ms_since_last_node_upload() { ms_since_last_node_upload_ = 0;};

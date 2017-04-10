@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 frame_buffer_t::frame_buffer_t(
   uint32_t num_buffers,
   uint32_t width,
@@ -60,7 +60,7 @@ frame_buffer_t::frame_buffer_t(
 
 }
 
-inline
+
 frame_buffer_t::~frame_buffer_t()
 {
   for (uint32_t i = 0; i < num_buffers_; i++) {
@@ -71,7 +71,7 @@ frame_buffer_t::~frame_buffer_t()
   glDeleteFramebuffers(1, &buffer_);
 }
 
-inline void
+ void
 frame_buffer_t::enable()
 {
   glBindFramebuffer(GL_FRAMEBUFFER, buffer_);
@@ -79,13 +79,13 @@ frame_buffer_t::enable()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-inline void
+void
 frame_buffer_t::disable()
 {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-inline void
+void
 frame_buffer_t::bind_texture(uint32_t index)
 {
   LAMURE_ASSERT(index < num_buffers_, "index " + lamure::util::to_string(index) + "is out of bounds");
@@ -93,7 +93,7 @@ frame_buffer_t::bind_texture(uint32_t index)
   glBindTexture(GL_TEXTURE_2D, textures_[index]);
 }
 
-inline void
+void
 frame_buffer_t::unbind_texture(
   uint32_t index)
 {
@@ -102,19 +102,19 @@ frame_buffer_t::unbind_texture(
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-inline uint32_t
+uint32_t
 frame_buffer_t::get_width() const
 {
   return width_;
 }
 
-inline uint32_t
+uint32_t
 frame_buffer_t::get_height() const
 {
   return height_;
 }
 
-inline void
+void
 frame_buffer_t::draw(
   uint32_t index)
 {
@@ -153,7 +153,7 @@ frame_buffer_t::draw(
   glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-inline void
+void
 frame_buffer_t::get_pixels(
   uint32_t index,
   char** data)

@@ -80,7 +80,7 @@ unmap() {
     }
 }
 
-const lamure::gl::vertex_array_t* gpu_access::
+lamure::gl::vertex_array_t* gpu_access::
 get_memory(bvh::primitive_type type) {
   switch (type) {
     case bvh::primitive_type::POINTCLOUD:
@@ -93,6 +93,12 @@ get_memory(bvh::primitive_type type) {
     "lamure: gpu_access::Invalid primitive type");
   return nullptr;
 
+};
+
+
+lamure::gl::array_buffer_t* gpu_access::
+get_buffer() {
+  return buffer_;
 };
 
 const size_t gpu_access::

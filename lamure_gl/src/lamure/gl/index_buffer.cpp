@@ -10,7 +10,7 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 index_buffer_t::index_buffer_t(
   uint32_t num_indices)
 : buffer_t(num_indices, sizeof(uint32_t), 1)
@@ -22,13 +22,13 @@ index_buffer_t::index_buffer_t(
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-inline
+
 index_buffer_t::~index_buffer_t()
 {
   glDeleteBuffers(1, &buffer_);
 }
 
-inline void*
+void*
 index_buffer_t::map(
   GLuint map_mode)
 {
@@ -38,7 +38,7 @@ index_buffer_t::map(
   return mapped;
 }
 
-inline void
+void
 index_buffer_t::unmap()
 {
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer_);

@@ -5,8 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 440 core
-
 layout(location = 0) in vec3 in_position;
 
 out vec2 pos;

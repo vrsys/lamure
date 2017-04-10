@@ -55,8 +55,8 @@ public:
     const bool          is_loaded() const { return is_loaded_; };
     const bvh*          get_bvh() const { return bvh_; };
     
-    void                set_transform(const mat4f_t& transform) { transform_ = transform; };
-    const mat4f_t       transform() const { return transform_; };
+    void                set_transform(const mat4d_t& transform) { transform_ = transform; };
+    const mat4d_t       transform() const { return transform_; };
 
 protected:
     void                load(const std::string& filename);
@@ -69,7 +69,7 @@ private:
     bool                is_loaded_;
     bvh*                bvh_;
 
-    mat4f_t             transform_;
+    mat4d_t             transform_;
 
 };
 

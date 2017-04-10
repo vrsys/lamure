@@ -39,8 +39,8 @@ public:
 
     temporary_storages get_temporary_storages() { return temporary_storages_; };
 
-    const lamure::gl::array_buffer_t* get_context_buffer();
-    const lamure::gl::vertex_array_t* get_context_memory(bvh::primitive_type type);
+    lamure::gl::array_buffer_t* get_context_buffer();
+    lamure::gl::vertex_array_t* get_context_memory(bvh::primitive_type type);
 
     const node_t upload_budget_in_nodes() const { return upload_budget_in_nodes_; };
     const node_t render_budget_in_nodes() const { return render_budget_in_nodes_; };

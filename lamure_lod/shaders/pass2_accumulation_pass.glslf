@@ -5,8 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 420 core
-
 layout(early_fragment_tests) in;
 
 const float gaussian[32] = float[](

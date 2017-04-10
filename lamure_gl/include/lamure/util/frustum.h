@@ -34,9 +34,9 @@ public:
   };
 
   enum classification_result_t {
-    INSIDE,
-    OUTSIDE,
-    INTERSECTING
+    INSIDE = 0,
+    OUTSIDE = 1,
+    INTERSECTING = 2
   };
 
   const lamure::math::plane_t& get_plane(uint32_t _p) const;

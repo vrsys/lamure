@@ -5,8 +5,11 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#include <GL/glew.h>
+#include <GL/freeglut.h>
+
 #include "utils.h"
-#include <lamure/ren/camera.h>
+#include <lamure/lod/camera.h>
 
 #include <memory>
 #include <cmath>
@@ -20,15 +23,16 @@
 #include <GL/freeglut.h>
 
 #include <lamure/types.h>
-#include <lamure/ren/config.h>
-#include <lamure/ren/model_database.h>
-#include <lamure/ren/cut_database.h>
-#include <lamure/ren/dataset.h>
-#include <lamure/ren/policy.h>
+#include <lamure/lod/config.h>
+#include <lamure/lod/model_database.h>
+#include <lamure/lod/cut_database.h>
+#include <lamure/lod/dataset.h>
+#include <lamure/lod/policy.h>
 
-#include <scm/core/math.h>
+#include <lamure/types.h>
 
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
 
 
 void initialize_glut();
@@ -43,16 +47,16 @@ void glut_keyboard_release(unsigned char key, int x, int y);
 void glut_timer(int value);
 void glut_close();
 
-std::vector<scm::math::mat4d> const parse_camera_session_file( std::string const& session_file_path ) {
+std::vector<lamure::mat4r_t> const parse_camera_session_file( std::string const& session_file_path ) {
 
     std::ifstream camera_session_file(session_file_path);
 
     std::string view_matrix_as_string;
 
-    std::vector<scm::math::mat4d> read_view_matrices;
+    std::vector<lamure::mat4r_t> read_view_matrices;
 
     while( std::getline(camera_session_file, view_matrix_as_string) ) {
-        scm::math::mat4d curr_view_matrix;
+        lamure::mat4r_t curr_view_matrix;
         std::istringstream view_matrix_as_strstream(view_matrix_as_string);
 
         for(int matrix_element_idx = 0; 
@@ -73,13 +77,13 @@ std::vector<scm::math::mat4d> const parse_camera_session_file( std::string const
 void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
 {
     glutInit(&argc, argv);
-    glutInitContextVersion(4, 4);
+    glutInitContextVersion(3, 1);
     glutInitContextProfile(GLUT_CORE_PROFILE);
 
-	glutSetOption(
-        GLUT_ACTION_ON_WINDOW_CLOSE,
-		GLUT_ACTION_GLUTMAINLOOP_RETURNS
-		);
+    glutSetOption(
+      GLUT_ACTION_ON_WINDOW_CLOSE,
+      GLUT_ACTION_GLUTMAINLOOP_RETURNS
+    );
 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA | GLUT_ALPHA | GLUT_MULTISAMPLE);
 
@@ -97,22 +101,21 @@ void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
     glutMouseFunc(glut_mousefunc);
     glutMotionFunc(glut_mousemotion);
     glutIdleFunc(glut_idle);
+    glewExperimental = GL_TRUE;
+    auto err = glewInit();
+    
+    
+    if (GLEW_OK != err)
+{
+    /* Problem: glewInit failed, something is seriously wrong. */
+    fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
+
+  }
+    
 }
 
 management* management_ = nullptr;
 bool quality_measurement_mode_enabled_ = false;
-
-char* get_cmd_option(char** begin, char** end, const std::string & option) {
-    char** it = std::find(begin, end, option);
-    if (it != end && ++it != end)
-        return *it;
-    return 0;
-}
-
-bool cmd_option_exists(char** begin, char** end, const std::string& option) {
-    return std::find(begin, end, option) != end;
-}
-
 
 int main(int argc, char** argv)
 {
@@ -120,7 +123,6 @@ int main(int argc, char** argv)
     namespace fs = boost::filesystem;
 
     const std::string exec_name = (argc > 0) ? fs::basename(argv[0]) : "";
-    scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
 
     putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
@@ -197,26 +199,26 @@ int main(int argc, char** argv)
 
     initialize_glut(argc, argv, window_width, window_height);
 
-    std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > model_attributes;
+    std::pair< std::vector<std::string>, std::vector<lamure::mat4r_t> > model_attributes;
     std::set<lamure::model_t> visible_set;
     std::set<lamure::model_t> invisible_set;
     model_attributes = read_model_string(resource_file_path, &visible_set, &invisible_set);
 
     //std::string scene_name;
     //create_scene_name_from_vector(model_attributes.first, scene_name);
-    std::vector<scm::math::mat4f> & model_transformations = model_attributes.second;
+    std::vector<lamure::mat4r_t> & model_transformations = model_attributes.second;
     std::vector<std::string> const& model_filenames = model_attributes.first;
 
-    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
+    lamure::lod::policy* policy = lamure::lod::policy::get_instance();
     policy->set_max_upload_budget_in_mb(max_upload_budget); //8
     policy->set_render_budget_in_mb(video_memory_budget); //2048
     policy->set_out_of_core_budget_in_mb(main_memory_budget); //4096, 8192
     policy->set_window_width(window_width);
     policy->set_window_height(window_height);
 
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    lamure::lod::model_database* database = lamure::lod::model_database::get_instance();
 
-    std::vector<scm::math::mat4d> parsed_views = std::vector<scm::math::mat4d>();
+    std::vector<lamure::mat4r_t> parsed_views = std::vector<lamure::math::mat4d_t>();
 
     std::string measurement_filename = "";
 
@@ -224,7 +226,7 @@ int main(int argc, char** argv)
 
     if( ! measurement_file_path.empty() ) {
       measurement_descriptor.recorded_view_vector_ = parse_camera_session_file(measurement_file_path);
-      measurement_descriptor.snapshot_resolution_ = scm::math::vec2ui(window_width, window_height);
+      measurement_descriptor.snapshot_resolution_ = lamure::math::vector_t<uint32_t, 2>(window_width, window_height);
       size_t last_dot_in_filename_pos = measurement_file_path.find_last_of('.');
       size_t first_slash_before_filename_pos = measurement_file_path.find_last_of("/\\", last_dot_in_filename_pos);
 
@@ -241,11 +243,11 @@ int main(int argc, char** argv)
 
     if (management_ != nullptr)
     {
-        delete lamure::ren::cut_database::get_instance();
-        delete lamure::ren::controller::get_instance();
-        delete lamure::ren::model_database::get_instance();
-        delete lamure::ren::policy::get_instance();
-        delete lamure::ren::ooc_cache::get_instance();
+        delete lamure::lod::cut_database::get_instance();
+        delete lamure::lod::controller::get_instance();
+        delete lamure::lod::model_database::get_instance();
+        delete lamure::lod::policy::get_instance();
+        delete lamure::lod::ooc_cache::get_instance();
 
     }
 
@@ -311,11 +313,11 @@ void Cleanup()
     {
         delete management_;
         management_ = nullptr;
-        delete lamure::ren::cut_database::get_instance();
-        delete lamure::ren::controller::get_instance();
-        delete lamure::ren::model_database::get_instance();
-        delete lamure::ren::policy::get_instance();
-        delete lamure::ren::ooc_cache::get_instance();
+        delete lamure::lod::cut_database::get_instance();
+        delete lamure::lod::controller::get_instance();
+        delete lamure::lod::model_database::get_instance();
+        delete lamure::lod::policy::get_instance();
+        delete lamure::lod::ooc_cache::get_instance();
     }
 
 }
@@ -327,11 +329,11 @@ void glut_close()
     {
         delete management_;
         management_ = nullptr;
-        delete lamure::ren::cut_database::get_instance();
-        delete lamure::ren::controller::get_instance();
-        delete lamure::ren::model_database::get_instance();
-        delete lamure::ren::policy::get_instance();
-        delete lamure::ren::ooc_cache::get_instance();
+        delete lamure::lod::cut_database::get_instance();
+        delete lamure::lod::controller::get_instance();
+        delete lamure::lod::model_database::get_instance();
+        delete lamure::lod::policy::get_instance();
+        delete lamure::lod::ooc_cache::get_instance();
     }
 }
 

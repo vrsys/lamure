@@ -13,37 +13,25 @@ layout (location = 3) in vec4 in_normal;
 uniform mat4 inv_mv_matrix;
 uniform float model_radius_scale;
 uniform float point_size_factor;
+uniform mat4 projection_matrix;
+uniform mat4 mvp_matrix;
+uniform mat4 model_view_matrix;
+
 
 out VertexData {
-  //output to geometry shader
-  vec3 pass_ms_u;
-  vec3 pass_ms_v;
-
+  //output to fragment shader
   vec3 pass_point_color;
   vec3 pass_normal;
+  vec2 pass_uv_coords;
 } VertexOut;
 
 void main()
 {
-  vec3 ms_n = normalize(in_normal.xyz);
-  vec3 ms_u;
-
-  //compute tangent vectors
-  if(ms_n.z != 0.0) {
-    ms_u = vec3( 1, 1, (-ms_n.x -ms_n.y)/ms_n.z);
-  } else if (ms_n.y != 0.0) {
-    ms_u = vec3( 1, (-ms_n.x -ms_n.z)/ms_n.y, 1);
-  } else {
-    ms_u = vec3( (-ms_n.y -ms_n.z)/ms_n.x, 1, 1);
-  }
-
-  //assign tangent vectors
-  VertexOut.pass_ms_u = normalize(ms_u) * point_size_factor * model_radius_scale * in_radius;
-  VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * point_size_factor * model_radius_scale * in_radius;
-
   VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal.xyz, 0.0)).xyz );
 
-  gl_Position = vec4(in_position.xyz, 1.0);
+  gl_PointSize = 3.0;
+  //gl_Position = vec4(0.5,0.5,0.5, 1.0);
+  gl_Position = (projection_matrix * model_view_matrix) * vec4(in_position.xyz, 1.0);
 
   VertexOut.pass_point_color = in_color.rgb;
 }

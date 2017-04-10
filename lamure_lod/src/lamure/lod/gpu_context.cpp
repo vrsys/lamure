@@ -151,7 +151,7 @@ test_video_memory() {
 
 }
 
-const lamure::gl::array_buffer_t* gpu_context::
+lamure::gl::array_buffer_t* gpu_context::
 get_context_buffer() {
     if (!is_created_)
         create();
@@ -159,7 +159,7 @@ get_context_buffer() {
     return primary_buffer_->get_buffer();
 }
 
-const lamure::gl::vertex_array_t* gpu_context::
+lamure::gl::vertex_array_t* gpu_context::
 get_context_memory(bvh::primitive_type type) {
     if (!is_created_)
         create();

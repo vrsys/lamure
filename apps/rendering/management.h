@@ -8,28 +8,25 @@
 #ifndef REN_APP_MANAGEMENT_H_
 #define REN_APP_MANAGEMENT_H_
 
-#include <lamure/utils.h>
 #include <lamure/types.h>
 
 #include "renderer.h"
-#include <lamure/ren/config.h>
+#include <lamure/lod/config.h>
 
-#include <lamure/ren/model_database.h>
-#include <lamure/ren/controller.h>
-#include <lamure/ren/cut.h>
-#include <lamure/ren/cut_update_pool.h>
+#include <lamure/lod/model_database.h>
+#include <lamure/lod/controller.h>
+#include <lamure/lod/cut.h>
+#include <lamure/lod/cut_update_pool.h>
 
 #include <GL/freeglut.h>
 
 #include <FreeImagePlus.h>
 
-#include <lamure/ren/ray.h>
-
 struct snapshot_session_descriptor {
     snapshot_session_descriptor() : num_taken_screenshots(0),
                                     session_filename_(""),
                                     recorded_view_vector_(),
-                                    snapshot_resolution_(scm::math::vec2ui(0,0)),
+                                    snapshot_resolution_(lamure::math::vector_t<uint32_t, 2>(0,0)),
                                     snapshot_session_enabled_(false)
                                     {}
 
@@ -52,8 +49,8 @@ struct snapshot_session_descriptor {
 
     unsigned num_taken_screenshots;
     std::string session_filename_;
-    std::vector<scm::math::mat4d> recorded_view_vector_;
-    scm::math::vec2ui snapshot_resolution_;
+    std::vector<lamure::math::mat4d_t> recorded_view_vector_;
+    lamure::math::vector_t<uint32_t, 2> snapshot_resolution_;
     bool snapshot_session_enabled_;
 };
 
@@ -61,7 +58,7 @@ class management
 {
 public:
                         management(std::vector<std::string> const& model_filenames,
-                            std::vector<scm::math::mat4f> const& model_transformations,
+                            std::vector<lamure::mat4r_t> const& model_transformations,
                             const std::set<lamure::model_t>& visible_set,
                             const std::set<lamure::model_t>& invisible_set,
                             snapshot_session_descriptor& snap_descriptor);
@@ -101,9 +98,11 @@ private:
     std::string         current_session_file_path_;
     unsigned            num_recorded_camera_positions_;
 
+#ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     Renderer* renderer_;
+#endif
 
-    lamure::ren::camera*   active_camera_;
+    lamure::lod::camera*   active_camera_;
 
     int32_t             width_;
     int32_t             height_;
@@ -113,32 +112,31 @@ private:
     bool test_send_rendered_;
 
     lamure::view_t         num_cameras_;
-    std::vector<lamure::ren::camera*> cameras_;
+    std::vector<lamure::lod::camera*> cameras_;
 
-    lamure::ren::camera::mouse_state mouse_state_;
+    lamure::lod::camera::mouse_state mouse_state_;
 
     bool                fast_travel_;
 
     bool                dispatch_;
     bool                trigger_one_update_;
 
-    scm::math::mat4f    reset_matrix_;
+    lamure::mat4r_t     reset_matrix_;
     float               reset_diameter_;
 
     uint32_t            current_session_number_;
 
     lamure::model_t     num_models_;
 
-    scm::math::vec3f    detail_translation_;
+    lamure::vec3r_t     detail_translation_;
     float               detail_angle_;
     float               near_plane_;
     float               far_plane_;
 
-    std::vector<scm::math::mat4f> model_transformations_;
+    std::vector<lamure::mat4r_t> model_transformations_;
     std::vector<std::string> model_filenames_;
 
     snapshot_session_descriptor& measurement_session_descriptor_;
-    //std::vector<scm::math::mat4d>& recorded_view_vector_; 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;

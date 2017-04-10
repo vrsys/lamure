@@ -5,8 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 420 core
-
 uniform mat4 projection_matrix;
 uniform mat4 view_matrix;
 
@@ -18,3 +16,4 @@ void main()
 {
      gl_Position = projection_matrix * view_matrix * vec4(in_position, 1.0);
 }
+

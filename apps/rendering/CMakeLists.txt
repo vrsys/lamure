@@ -1,31 +1,35 @@
 ############################################################
 # CMake Build Script for the rendering executable
 
-link_directories(${SCHISM_LIBRARY_DIRS})
-
-include_directories(${REND_INCLUDE_DIR}
-                    ${COMMON_INCLUDE_DIR}
+include_directories(${LAMURE_CORE_INCLUDE_DIR}
+                    ${LAMURE_GL_INCLUDE_DIR}
+                    ${LAMURE_LOD_INCLUDE_DIR}
                     ${GLUT_INCLUDE_DIR}
                     ${FREEIMAGE_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR})
 
-include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
-                           ${Boost_INCLUDE_DIR})
+include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
 InitApp(${CMAKE_PROJECT_NAME}_rendering)
 
 ############################################################
 # Libraries
 
+#message(ERROR "hello ${GL_LIBRARY} ${CORE_LIBRARY}")
+
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
-    ${REND_LIBRARY}
+    "GL"
+    "GLEW"
     ${OpenGL_LIBRARIES} 
     ${GLUT_glut_LIBRARY}
-    ${SCHISM_LIBRARIES}
+    ${LAMURE_GL_LIBRARY}
+    ${LAMURE_CORE_LIBRARY}
+    ${LAMURE_XYZ_LIBRARY}
+    ${LAMURE_LOD_LIBRARY}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_lod lamure_gl lamure_core)
 
 MsvcPostBuild(${PROJECT_NAME})
 

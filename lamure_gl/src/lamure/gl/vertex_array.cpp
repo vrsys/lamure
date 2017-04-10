@@ -10,19 +10,19 @@
 namespace lamure {
 namespace gl {
 
-inline
+
 vertex_array_t::vertex_array_t(uint32_t num_elements) 
 : element_size_(0),
   element_components_(0) {
 
 }
 
-inline
+
 vertex_array_t::~vertex_array_t() {
 
 }
 
-inline void
+void
 vertex_array_t::add_attribute(
   const attribute_t attribute,
   uint32_t layout_location,
@@ -61,7 +61,7 @@ vertex_array_t::add_attribute(
   element_components_ += a.num_components_;
 }
 
-inline void
+void
 vertex_array_t::declare_attributes(
   uint32_t location_offset) const
 {
@@ -91,7 +91,7 @@ vertex_array_t::declare_attributes(
   }
 }
 
-inline void
+void
 vertex_array_t::undeclare_attributes(
   uint32_t location_offset) const
 {

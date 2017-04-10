@@ -5,8 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 440 core
-
 uniform float point_size_factor;
 uniform float model_radius_scale;
 
