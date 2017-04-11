@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the rendering executable
+# CMake Build Script for the simple_plod executable
 
 include_directories(${LAMURE_CORE_INCLUDE_DIR}
                     ${LAMURE_GL_INCLUDE_DIR}
@@ -10,7 +10,7 @@ include_directories(${LAMURE_CORE_INCLUDE_DIR}
 
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
-InitApp(${CMAKE_PROJECT_NAME}_rendering)
+InitApp(${CMAKE_PROJECT_NAME}_simple_plod)
 
 ############################################################
 # Libraries

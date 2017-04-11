@@ -67,18 +67,15 @@ void plane_t::transform(const mat4r_t& _t) {
 
 plane_t::classification_result_t plane_t::classify(const vec3r_t& _p) const {
   double d = (a_ * _p.x_ + b_ * _p.y_ + c_ * _p.z_ + d_);
-  double epsilon = 0.00001;
-
+  double epsilon = -10.0;
   if (d > epsilon) {
     return classification_result_t::FRONT;
   }
-  else if (d < -epsilon) {
+  else if (d < epsilon) {
     return classification_result_t::BACK;
   }
-  else {
-    return classification_result_t::INSIDE;
-  }
-  
+
+  return classification_result_t::FRONT;
 }
 
 vec2r_t plane_t::project(const plane_t& _p, const vec3r_t& right, const vec3r_t& _v) {

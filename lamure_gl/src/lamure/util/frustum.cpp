@@ -43,6 +43,7 @@ classify(const lamure::math::bounding_box_t& _box) const {
       && max_result == lamure::math::plane_t::classification_result_t::BACK) {
       return classification_result_t::OUTSIDE;
     }
+    /*
     else if (min_result == lamure::math::plane_t::classification_result_t::FRONT
       && max_result == lamure::math::plane_t::classification_result_t::BACK) {
       return classification_result_t::INTERSECTING;
@@ -51,6 +52,7 @@ classify(const lamure::math::bounding_box_t& _box) const {
       && max_result == lamure::math::plane_t::classification_result_t::FRONT) {
       return classification_result_t::INTERSECTING;
     }
+    */
   }
 
   return classification_result_t::INSIDE;
