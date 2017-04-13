@@ -90,6 +90,8 @@ scalar_callback(const std::string& element_name, const std::string& property_nam
             return [this](float value) { current_surfel_.normal().y = value; };
         else if (property_name == "nz")
             return [this](float value) { current_surfel_.normal().z = value; };
+        else if (property_name == "scalar_C2C_absolute_distances")
+	  return [this](uint8_t value) { /*ignore*/; };
 	else
           throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }
@@ -109,7 +111,7 @@ scalar_callback(const std::string& element_name, const std::string& property_nam
         else if (property_name == "blue")
             return [this](uint8_t value) { current_surfel_.color().z = value; };
         else if (property_name == "alpha")
-	  return [this](uint8_t value) { /*current_surfel_.color().z = value*/; };
+	  return [this](uint8_t value) { /*ignore alpha*/; };
         else
           throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }
