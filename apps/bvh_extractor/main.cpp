@@ -162,10 +162,6 @@ int main(int argc, char *argv[]) {
               ++num_surfels_excluded;
               continue;
             }
-            if (s.x_ == 0.0f && s.y_ == 0.0f && s.z_ == 0.0f) {
-              ++num_surfels_excluded;
-              continue;
-            }
             
 
             ss << std::setprecision(DEFAULT_PRECISION) << translation.x + s.x_ << " ";
