@@ -57,7 +57,7 @@ Measurement::drawInfo(scm::shared_ptr<scm::gl::render_device> device,
     //std::cout << "pos_image: " << pos_image << std::endl;
 
     std::stringstream os;
-    os << "+" << (i + 1);
+    os << "+" << (i + 1) << "(" << pos_world[0] << ", " << pos_world[1] << ", " << pos_world[2] << ")";
     renderable_text->text_string(os.str());
     text_renderer->draw_shadowed(context, scm::math::vec2i( (unsigned int) pos_image[0] - 4, (unsigned int) pos_image[1]) - 7, renderable_text);
 
