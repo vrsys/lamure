@@ -22,8 +22,9 @@ public:
 
     collision_detector(const object& bvh_l,
                       const object& bvh_r,
-                      int stop_level_a,
-                      int stop_level_b);
+		       int stop_level_a,
+		       int stop_level_b,
+		       const scm::math::vec3f& extend_bbx_max, const scm::math::vec3f& extend_bbx_min);
 
     void search_intersections(const callback_func& callback) const;
     const aabb_array& boxes() const { return boxes_; };
@@ -47,9 +48,9 @@ public:
     TreeModifier(collision_detector::objectArray& bvhs)
         : bvhs_(bvhs) {}
 
-    void complementOnFirstTree(int relax_levels);
+      void complementOnFirstTree(int relax_levels, const scm::math::vec3f& extend_bbx_max, const scm::math::vec3f& extend_bbx_min);
 
-    void histogrammatchSecondTree();
+    void histogrammatchSecondTree(const scm::math::vec3f& extend_bbx_max, const scm::math::vec3f& extend_bbx_min);
 
     void MultRadii(lamure::real factor);
 
