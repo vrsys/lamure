@@ -42,6 +42,7 @@ management(std::vector<std::string> const& model_filenames,
         num_models_(0),
         num_cameras_(1),
         fast_travel_(false),
+	travel_speed_mode_(0),
         dispatch_(true),
         trigger_one_update_(false),
         reset_matrix_(scm::math::mat4f::identity()),
@@ -489,27 +490,21 @@ dispatchKeyboardInput(unsigned char key)
 
 
     case 'f':
-        std::cout<<"fast travel: ";
-        if(fast_travel_)
-        {
-            for (auto& cam : cameras_)
-            {
-                cam->set_dolly_sens_(0.5f);
-            }
-            std::cout<<"OFF\n\n";
-        }
-        else
-        {
-            for (auto& cam : cameras_)
-            {
-                cam->set_dolly_sens_(20.5f);
-            }
-            std::cout<<"ON\n\n";
-        }
-
-        fast_travel_ = ! fast_travel_;
-
-        break;
+      {
+	++travel_speed_mode_;
+	if(travel_speed_mode_ > 3){
+	  travel_speed_mode_ = 0;
+	}
+	const float travel_speed = (travel_speed_mode_ == 0 ? 0.5f
+				    : travel_speed_mode_ == 1 ? 20.5f
+				    : travel_speed_mode_ == 2 ? 100.5f
+				    : 300.5f);
+	std::cout << "setting travel speed to " << travel_speed << std::endl;
+	for (auto& cam : cameras_){ 
+	  cam->set_dolly_sens_(travel_speed);
+	}
+      }
+      break;
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     
  
