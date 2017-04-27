@@ -12,7 +12,7 @@ include_directories(${REND_INCLUDE_DIR}
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
                            ${Boost_INCLUDE_DIR})
 
-InitApp(${CMAKE_PROJECT_NAME}_rendering)
+InitApp(${CMAKE_PROJECT_NAME}_nvm_explorer)
 
 ############################################################
 # Libraries
