@@ -5,102 +5,22 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include "utils.h"
-#include <lamure/ren/camera.h>
-
-#include <memory>
-#include <cmath>
 #include <iostream>
-#include <sstream>
+#include <fstream>
 #include <string>
+#include <sstream>
+#include <vector>
 #include <algorithm>
-
-#include "management.h"
-
-#include <GL/freeglut.h>
+#include <lamure/ren/model_database.h>
+#include <lamure/bounding_box.h>
 
 #include <lamure/types.h>
-#include <lamure/ren/config.h>
-#include <lamure/ren/model_database.h>
-#include <lamure/ren/cut_database.h>
 #include <lamure/ren/dataset.h>
-#include <lamure/ren/policy.h>
+#include <lamure/ren/bvh.h>
+#include <lamure/ren/lod_stream.h>
 
-#include <scm/core/math.h>
-
-#include <boost/program_options.hpp>
-
-
-void initialize_glut();
-
-void glut_display();
-void glut_resize(int w, int h);
-void glut_mousefunc(int button, int state, int x, int y);
-void glut_mousemotion(int x, int y);
-void glut_idle();
-void glut_keyboard(unsigned char key, int x, int y);
-void glut_keyboard_release(unsigned char key, int x, int y);
-void glut_timer(int value);
-void glut_close();
-
-std::vector<scm::math::mat4d> const parse_camera_session_file( std::string const& session_file_path ) {
-
-    std::ifstream camera_session_file(session_file_path);
-
-    std::string view_matrix_as_string;
-
-    std::vector<scm::math::mat4d> read_view_matrices;
-
-    while( std::getline(camera_session_file, view_matrix_as_string) ) {
-        scm::math::mat4d curr_view_matrix;
-        std::istringstream view_matrix_as_strstream(view_matrix_as_string);
-
-        for(int matrix_element_idx = 0; 
-                matrix_element_idx < 16; 
-                ++matrix_element_idx) {
-            view_matrix_as_strstream >> curr_view_matrix[matrix_element_idx];
-        }
-
-        read_view_matrices.push_back(curr_view_matrix);
-
-    }
-
-    //reverse vector in order to pop_back elements in correct order
-    std::reverse(read_view_matrices.begin(), read_view_matrices.end());
-    return read_view_matrices;
-}
-
-void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
-{
-    glutInit(&argc, argv);
-    glutInitContextVersion(4, 4);
-    glutInitContextProfile(GLUT_CORE_PROFILE);
-
-	glutSetOption(
-        GLUT_ACTION_ON_WINDOW_CLOSE,
-		GLUT_ACTION_GLUTMAINLOOP_RETURNS
-		);
-
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA | GLUT_ALPHA | GLUT_MULTISAMPLE);
-
-    glutInitWindowPosition(400,300);
-    glutInitWindowSize(width, height);
-
-    int wh1 = glutCreateWindow("Point Renderer");
-
-    glutSetWindow(wh1);
-
-    glutReshapeFunc(glut_resize);
-    glutDisplayFunc(glut_display);
-    glutKeyboardFunc(glut_keyboard);
-    glutKeyboardUpFunc(glut_keyboard_release);
-    glutMouseFunc(glut_mousefunc);
-    glutMotionFunc(glut_mousemotion);
-    glutIdleFunc(glut_idle);
-}
-
-management* management_ = nullptr;
-bool quality_measurement_mode_enabled_ = false;
+#define VERBOSE
+#define DEFAULT_PRECISION 15
 
 char* get_cmd_option(char** begin, char** end, const std::string & option) {
     char** it = std::find(begin, end, option);
@@ -113,255 +33,172 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
     return std::find(begin, end, option) != end;
 }
 
+struct xyzall_surfel_t {
+    float x_, y_, z_;
+    uint8_t r_, g_, b_, fake_;
+    float size_;
+    float nx_, ny_, nz_;
+};
 
-int main(int argc, char** argv)
-{
-    namespace po = boost::program_options;
-    namespace fs = boost::filesystem;
+enum type_t {
+    TYPE_INVALID = 0,
+    TYPE_XYZ = 1,
+    TYPE_XYZ_ALL = 2,
+};
 
-    const std::string exec_name = (argc > 0) ? fs::basename(argv[0]) : "";
-    scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
+int main(int argc, char *argv[]) {
 
-    putenv((char *)"__GL_SYNC_TO_VBLANK=0");
+    if (argc == 1 ||
+        cmd_option_exists(argv, argv+argc, "-h") ||
+        !cmd_option_exists(argv, argv+argc, "-f")) {
 
-    int window_width;
-    int window_height;
-    unsigned int main_memory_budget;
-    unsigned int video_memory_budget ;
-    unsigned int max_upload_budget;
+        std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>" << std::endl <<
+                  "INFO: bvh_leaf_extractor " << std::endl <<
+                  "\t-f: selects .bvh input file" << std::endl <<
+                  "\t    (-f flag is required) " << std::endl <<
+                  "\t-m: select output file extension" << std::endl <<
+                  "\t    (options: \"xyz\", \"xyz_all\")" << std::endl <<
+                  "\t    (default: \"xyz_all\")" << std::endl <<
+                  "\t-d: select depth to extract (optional)" << std::endl <<
+                  std::endl;
+        return 0;
+    }
 
-    std::string resource_file_path = "";
-    std::string measurement_file_path = "";
+    std::string bvh_filename = std::string(get_cmd_option(argv, argv + argc, "-f"));
 
-    po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
-                               "Allowed Options");
-    desc.add_options()
-      ("help", "print help message")
-      ("width,w", po::value<int>(&window_width)->default_value(1920), "specify window width (default=1920)")
-      ("height,h", po::value<int>(&window_height)->default_value(1080), "specify window height (default=1080)")
-      ("resource-file,f", po::value<std::string>(&resource_file_path), "specify resource input-file")
-      ("vram,v", po::value<unsigned>(&video_memory_budget)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
-      ("mem,m", po::value<unsigned>(&main_memory_budget)->default_value(4096), "specify main memory budget in MB (default=4096)")
-      ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
-      ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")");
-      ;
+    std::string ext = bvh_filename.substr(bvh_filename.size()-3);
+    if (ext.compare("bvh") != 0) {
+        std::cout << "please specify a .bvh file as input" << std::endl;
+        return 0;
+    }
 
-    po::positional_options_description p;
-    po::variables_map vm;
-
-    try {    
-      auto parsed_options = po::command_line_parser(argc, argv).options(desc).allow_unregistered().run();
-      po::store(parsed_options, vm);
-      po::notify(vm);
-
-      std::vector<std::string> to_pass_further = po::collect_unrecognized(parsed_options.options, po::include_positional);
-      bool no_input = !vm.count("input") && to_pass_further.empty();
-
-      if (resource_file_path == "") {
-        if (vm.count("help") || no_input)
-        {
-          std::cout << desc;
-          return 0;
+    type_t type = TYPE_XYZ_ALL;
+    if (cmd_option_exists(argv, argv+argc, "-m")) {
+        std::string mode = get_cmd_option(argv, argv+argc, "-m");
+        if (mode.compare("xyz") == 0) {
+            type = TYPE_XYZ;
         }
-      }
+    }
 
-      // no explicit input -> use unknown options
-      if (!vm.count("input") && resource_file_path == "") 
-      {
-        resource_file_path = "auto_generated.rsc";
-        std::fstream ofstr(resource_file_path, std::ios::out);
-        if (ofstr.good()) 
-        {
-          for (auto argument : to_pass_further)
-          {
-            ofstr << argument << std::endl;
-          }
-        } else {
-          throw std::runtime_error("Cannot open file");
+    std::string xyz_filename = bvh_filename.substr(0, bvh_filename.size()-3) + "xyz_all";
+    if (type == TYPE_XYZ) {
+        xyz_filename = bvh_filename.substr(0, bvh_filename.size()-3) + "xyz";
+    }
+
+    if (cmd_option_exists(argv, argv+argc, "-o")) {
+        xyz_filename = std::string(get_cmd_option(argv, argv + argc, "-o"));
+        if (type == TYPE_XYZ_ALL) {
+            if ((xyz_filename.substr(xyz_filename.size()-7)).compare("xyz_all") != 0) {
+                std::cout << "inconsistent output file extension encountered" << std::endl;
+                std::cout << "terminating..." << std::endl;
+                return 0;
+            }
         }
-        ofstr.close();
-      }
-
-
-    } catch (std::exception& e) {
-      std::cout << "Warning: No input file specified. \n" << desc;
-      return 0;
-    }
-
-    // set min and max
-    window_width        = std::max(std::min(window_width, 4096), 1);
-    window_height       = std::max(std::min(window_height, 2160), 1);
-    main_memory_budget  = std::max(int(main_memory_budget), 1);
-    video_memory_budget = std::max(int(video_memory_budget), 1);
-    max_upload_budget   = std::max(int(max_upload_budget), 64);
-
-    initialize_glut(argc, argv, window_width, window_height);
-
-    std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > model_attributes;
-    std::set<lamure::model_t> visible_set;
-    std::set<lamure::model_t> invisible_set;
-    model_attributes = read_model_string(resource_file_path, &visible_set, &invisible_set);
-
-    //std::string scene_name;
-    //create_scene_name_from_vector(model_attributes.first, scene_name);
-    std::vector<scm::math::mat4f> & model_transformations = model_attributes.second;
-    std::vector<std::string> const& model_filenames = model_attributes.first;
-
-    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
-    policy->set_max_upload_budget_in_mb(max_upload_budget); //8
-    policy->set_render_budget_in_mb(video_memory_budget); //2048
-    policy->set_out_of_core_budget_in_mb(main_memory_budget); //4096, 8192
-    policy->set_window_width(window_width);
-    policy->set_window_height(window_height);
-
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-
-    std::vector<scm::math::mat4d> parsed_views = std::vector<scm::math::mat4d>();
-
-    std::string measurement_filename = "";
-
-    snapshot_session_descriptor measurement_descriptor;
-
-    if( ! measurement_file_path.empty() ) {
-      measurement_descriptor.recorded_view_vector_ = parse_camera_session_file(measurement_file_path);
-      measurement_descriptor.snapshot_resolution_ = scm::math::vec2ui(window_width, window_height);
-      size_t last_dot_in_filename_pos = measurement_file_path.find_last_of('.');
-      size_t first_slash_before_filename_pos = measurement_file_path.find_last_of("/\\", last_dot_in_filename_pos);
-
-      measurement_descriptor.session_filename_ = measurement_file_path.substr(first_slash_before_filename_pos+1, last_dot_in_filename_pos);
-      quality_measurement_mode_enabled_ = true;
-      measurement_descriptor.snapshot_session_enabled_ = true;
-      glutFullScreenToggle();
-    }
-
-    management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, measurement_descriptor);
-
-    glutMainLoop();
-
-
-    if (management_ != nullptr)
-    {
-        delete lamure::ren::cut_database::get_instance();
-        delete lamure::ren::controller::get_instance();
-        delete lamure::ren::model_database::get_instance();
-        delete lamure::ren::policy::get_instance();
-        delete lamure::ren::ooc_cache::get_instance();
+        else {
+            if ((xyz_filename.substr(xyz_filename.size()-3)).compare("xyz") != 0) {
+                std::cout << "inconsistent output file extension encountered" << std::endl;
+                std::cout << "terminating..." << std::endl;
+                return 0;
+            }
+        }
 
     }
+
+    int32_t depth = -1;
+    if (cmd_option_exists(argv, argv+argc, "-d")) {
+        depth = atoi(get_cmd_option(argv, argv+argc, "-d"));
+    }
+
+    std::cout << "input: " << bvh_filename << std::endl;
+    std::cout << "output: " << xyz_filename << std::endl;
+
+
+    lamure::ren::bvh* bvh = new lamure::ren::bvh(bvh_filename);
+
+    if (depth > bvh->get_depth() || depth < 0) {
+        depth = bvh->get_depth();
+    }
+    std::cout << "extracting depth " << depth << std::endl;
+
+    std::string lod_filename = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
+    lamure::ren::lod_stream* in_access = new lamure::ren::lod_stream();
+    in_access->open(lod_filename);
+
+    size_t size_of_node = (uint64_t)bvh->get_primitives_per_node() * sizeof(lamure::ren::dataset::serialized_surfel);
+    xyzall_surfel_t* surfels = new xyzall_surfel_t[bvh->get_primitives_per_node()];
+
+    lamure::node_t first_leaf = bvh->get_first_node_id_of_depth(depth);
+    lamure::node_t num_leafs = bvh->get_length_of_depth(depth);
+
+    std::ofstream out_stream;
+    out_stream.open(xyz_filename, std::ios::out | std::ios::trunc);
+    out_stream.close();
+
+    //consider hidden translation
+    const scm::math::vec3f& translation = bvh->get_translation();
+
+    uint64_t num_surfels_excluded = 0;
+
+    for (lamure::node_t leaf_id = first_leaf; leaf_id < first_leaf + num_leafs; ++leaf_id) {
+
+#ifdef VERBOSE
+        if ((leaf_id-first_leaf) % 1000 == 0) {
+            std::cout << leaf_id-first_leaf << " / " << num_leafs << " writing: " << xyz_filename << std::endl;
+        }
+#endif
+
+        in_access->read((char*)surfels, leaf_id * size_of_node, size_of_node);
+
+        std::ios::openmode mode = std::ios::out | std::ios::app;
+        out_stream.open(xyz_filename, mode);
+
+        std::string filestr;
+        std::stringstream ss(filestr);
+
+        for (unsigned int i = 0; i < bvh->get_primitives_per_node(); ++i) {
+            const xyzall_surfel_t& s = surfels[i];
+
+            if (s.size_ <= 0.0f) {
+                ++num_surfels_excluded;
+                continue;
+            }
+
+
+            ss << std::setprecision(DEFAULT_PRECISION) << translation.x + s.x_ << " ";
+            ss << std::setprecision(DEFAULT_PRECISION) << translation.y + s.y_ << " ";
+            ss << std::setprecision(DEFAULT_PRECISION) << translation.z + s.z_ << " ";
+
+            if (type == TYPE_XYZ_ALL) {
+                ss << std::setprecision(DEFAULT_PRECISION) << s.nx_ << " ";
+                ss << std::setprecision(DEFAULT_PRECISION) << s.ny_ << " ";
+                ss << std::setprecision(DEFAULT_PRECISION) << s.nz_ << " ";
+            }
+
+            ss << (unsigned int)s.r_ << " ";
+            ss << (unsigned int)s.g_ << " ";
+            ss << (unsigned int)s.b_ << " ";
+
+            if (type == TYPE_XYZ_ALL) {
+                ss << std::setprecision(DEFAULT_PRECISION) << s.size_;
+            }
+
+            ss << std::endl;
+        }
+
+
+        out_stream << std::setprecision(DEFAULT_PRECISION) << ss.rdbuf();
+        out_stream.close();
+
+    }
+
+    std::cout << "done. (" << num_surfels_excluded << " surfels excluded)" << std::endl;
+
+    delete[] surfels;
+    delete in_access;
+    delete bvh;
+
 
     return 0;
-}
-
-
-
-void glut_display()
-{
-    bool signaled_shutdown = false;
-    if (management_ != nullptr)
-    {
-        signaled_shutdown = management_->MainLoop(); 
-
-        glutSwapBuffers();
-    }
-
-        if(signaled_shutdown) {
-            glutExit();
-            exit(0);
-        }
-}
-
-
-void glut_resize(int w, int h)
-{
-    if (management_ != nullptr)
-    {
-        management_->dispatchResize(w, h);
-    }
-
-}
-
-void glut_mousefunc(int button, int state, int x, int y)
-{
-    if (management_ != nullptr)
-    {
-        management_->RegisterMousePresses(button, state, x, y);
-    }
-
-
-}
-
-void glut_mousemotion(int x, int y)
-{
-    if (management_ != nullptr)
-    {
-        management_->update_trackball(x, y);
-    }
-}
-
-void glut_idle()
-{
-    glutPostRedisplay();
-}
-
-void Cleanup()
-{
-
-    if (management_ != nullptr)
-    {
-        delete management_;
-        management_ = nullptr;
-        delete lamure::ren::cut_database::get_instance();
-        delete lamure::ren::controller::get_instance();
-        delete lamure::ren::model_database::get_instance();
-        delete lamure::ren::policy::get_instance();
-        delete lamure::ren::ooc_cache::get_instance();
-    }
-
-}
-
-void glut_close()
-{
-
-    if (management_ != nullptr)
-    {
-        delete management_;
-        management_ = nullptr;
-        delete lamure::ren::cut_database::get_instance();
-        delete lamure::ren::controller::get_instance();
-        delete lamure::ren::model_database::get_instance();
-        delete lamure::ren::policy::get_instance();
-        delete lamure::ren::ooc_cache::get_instance();
-    }
-}
-
-
-void glut_keyboard(unsigned char key, int x, int y)
-{
-    switch(key)
-    {
-        case 27:
-            //Cleanup();
-            glutExit();
-            exit(0);
-            break;
-        case '.':
-            if(!quality_measurement_mode_enabled_)
-                glutFullScreenToggle();
-            break;
-
-        default:
-            if (management_ != nullptr)
-            {
-                management_->dispatchKeyboardInput(key);
-            }
-            break;
-
-    }
-}
-
-void glut_keyboard_release(unsigned char key, int x, int y)
-{
-
 }
 
 
