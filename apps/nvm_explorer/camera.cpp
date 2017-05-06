@@ -45,3 +45,5 @@ camera::camera(const image &_still_image, double _focal_length, const quat<doubl
                                                                            _focal_length(_focal_length),
                                                                            _orientation(_orientation), _center(_center),
                                                                            _radial_distortion(_radial_distortion) {}
+
+camera::camera():_still_image() {}

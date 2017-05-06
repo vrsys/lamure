@@ -4,16 +4,13 @@
 #include "camera.h"
 #include "point.h"
 #include <iostream>
+#include <scm/core/math.h>
 
 namespace utils {
-    static bool read_environment(ifstream &in,
+    bool read_nvm(ifstream &in,
                                  vector<camera> &camera_vec,
                                  vector<point> &point_vec,
-                                 vector<measurement> &measurements,
-                                 vector<int> &ptidx,
-                                 vector<int> &camidx,
-                                 vector<string> &names,
-                                 vector<int> &ptc);
+                                 vector<image> &images);
 
     template<typename T>
     vec<T, 2> pair_to_vec2(T *arr);

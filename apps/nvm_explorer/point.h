@@ -1,34 +1,55 @@
 #ifndef LAMURE_POINT_H
 #define LAMURE_POINT_H
 
-#include "measurement.h"
-#include <scm/core/math/vec3.h>
-#include <unordered_set>
+#include <scm/core.h>
+#include <scm/core/math.h>
+#include "image.h"
 
 using namespace std;
+using namespace scm::math;
 
 class point {
-private:
-
-    vec<double, 3> _center;
-    vec<int, 3> _color;
-    unordered_set<measurement> _measurements;
-
 public:
 
-    point(const vec<double, 3> &_center, const vec<int, 3> &_color, const unordered_set<measurement> &_measurements);
+    class measurement {
+    public:
+        measurement(const image &_still_image, const vec2f &_position);
 
-    const vec<double, 3> &get_center() const;
+        const image &get_still_image() const;
 
-    void set_center(vec<float, 3> _center);
+        void set_still_image(const image &_still_image);
 
-    const vec<int, 3> &get_color() const;
+        const vec2f &get_position() const;
 
-    void set_color(const vec<int, 3> &_color);
+        void set_position(const vec2f &_position);
 
-    const unordered_set<measurement> &get_measurements() const;
+    private:
+        image _still_image;
+        vec2f _position;
+    };
 
-    void set_measurements(const unordered_set<measurement> &_measurements);
+private:
+
+    vec3f _center;
+    vec3i _color;
+    vector<measurement> _measurements;
+
+public:
+    point();
+
+    point(const vec3f &_center, const vec3i &_color, const vector<measurement> &_measurements);
+
+    const vec3f &get_center() const;
+
+    void set_center(const vec3f &_center);
+
+    const vec3i &get_color() const;
+
+    void set_color(const vec3i &_color);
+
+    const vector<measurement> &get_measurements() const;
+
+    void set_measurements(const vector<measurement> &_measurements);
 };
 
 

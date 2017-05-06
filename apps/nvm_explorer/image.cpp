@@ -31,3 +31,5 @@ image image::read_from_file(const string &_file_name) {
     // TODO: read actual properties
     return image(256, 256, _file_name);
 }
+
+image::image() {}

@@ -16,6 +16,8 @@ private:
 
 public:
 
+    image();
+
     image(int _height, int _width, const string &_file_name);
 
     int get_height() const;

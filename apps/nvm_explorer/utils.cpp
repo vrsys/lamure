@@ -1,6 +1,5 @@
 #include "utils.h"
 #include <boost/filesystem.hpp>
-#include <scm/core/math.h>
 
 namespace utils {
 
@@ -25,9 +24,8 @@ namespace utils {
     bool read_nmv(ifstream &in,
                           vector<camera> &camera_vec,
                           vector<point> &point_vec,
-                          vector<measurement> &measurements,
                           vector<image> &images) {
-        int rotation_parameter_num = 4;
+        unsigned int rotation_parameter_num = 4;
         bool format_r9t = false;
         string token;
         if (in.peek() == 'N') {
@@ -39,7 +37,7 @@ namespace utils {
             getline(in, token);
         }
 
-        int nproj = 0;
+        unsigned int nproj = 0;
         unsigned long npoint = 0;
         unsigned long ncam = 0;
         // read # of cameras
@@ -49,10 +47,10 @@ namespace utils {
         // read the camera parameters
         camera_vec.resize(ncam);
         images.resize(ncam);
-        for (int i = 0; i < ncam; ++i) {
+        for (unsigned int i = 0; i < ncam; ++i) {
             double f, q[9], c[3], d[2];
             in >> token >> f;
-            for (int j = 0; j < rotation_parameter_num; ++j) in >> q[j];
+            for (unsigned int j = 0; j < rotation_parameter_num; ++j) in >> q[j];
             in >> c[0] >> c[1] >> c[2] >> d[0] >> d[1];
 
             camera_vec[i].set_focal_length(f);
@@ -75,20 +73,20 @@ namespace utils {
 
         // read image projections and 3D points.
         point_vec.resize(npoint);
-        for (int i = 0; i < npoint; ++i) {
+        for (unsigned int i = 0; i < npoint; ++i) {
             float pt[3];
-            int cc[3], npj;
+            int cc[3];
+            unsigned int npj;
             in >> pt[0] >> pt[1] >> pt[2] >> cc[0] >> cc[1] >> cc[2] >> npj;
             point_vec[i].set_center(arr3_to_vec3(pt));
             point_vec[i].set_color(arr3_to_vec3(cc));
-            for (int j = 0; j < npj; ++j) {
+            for (unsigned int j = 0; j < npj; ++j) {
                 int cidx, fidx;
                 float imx, imy;
                 in >> cidx >> fidx >> imx >> imy;
 
-                measurements.push_back(measurement(camera_vec[cidx].get_still_image(),
-                                                   point_vec[i],
-                                                   pair_to_vec2(imx, imy)));
+                vector<point::measurement> measurements = point_vec[i].get_measurements();
+                measurements.push_back(point::measurement(camera_vec[cidx].get_still_image(),pair_to_vec2(imx, imy)));
                 nproj++;
             }
         }

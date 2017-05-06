@@ -37,6 +37,8 @@ public:
 
     void set_radial_distortion(double _radial_distortion);
 
+    camera();
+
     camera(const image &_still_image, double _focal_length, const quat<double> &_orientation,
            const vec<double, 3> &_center, double _radial_distortion);
 
