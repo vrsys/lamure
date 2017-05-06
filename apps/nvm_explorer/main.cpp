@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <lamure/ren/model_database.h>
 #include "utils.h"
+// #include "scene.h"
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -23,7 +24,6 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option) {
 }
 
 int main(int argc, char *argv[]) {
-
     if (argc == 1 ||
         cmd_option_exists(argv, argv + argc, "-h") ||
         !cmd_option_exists(argv, argv + argc, "-f")) {
@@ -44,9 +44,22 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    // TODO: read input nvm
+    ifstream in(nvm_filename);
+    vector<camera>        camera_vec;    //camera (input/ouput)
+    vector<point>        point_vec;     //3D point(input/output)
+    vector<image>        images;   //measurment/projection vector
 
-    // read_environment();
+    utils::read_nvm(in, camera_vec, point_vec, images);
+    std::cout << "cameras: " << camera_vec.size() << std::endl;
+    std::cout << "points: " << point_vec.size() << std::endl;
+    // for(std::vector<point>::iterator it = point_vec.begin(); it != point_vec.end(); ++it) {
+    //     if((*it).get_measurements().size() != 0)
+    //         std::cout << (*it).get_measurements().size() << std::endl;
+    // }
+    std::cout << "images: " << images.size() << std::endl;
+
+    // Scene scene(camera_vec, point_vec, images);
+    // scene.start_rendering();
 
     return 0;
 }

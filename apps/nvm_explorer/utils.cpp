@@ -21,7 +21,7 @@ namespace utils {
     };
 
     // function definition in accordance with Util.h of VisualSfM pipeline
-    bool read_nmv(ifstream &in,
+    bool read_nvm(ifstream &in,
                           vector<camera> &camera_vec,
                           vector<point> &point_vec,
                           vector<image> &images) {
@@ -87,6 +87,7 @@ namespace utils {
 
                 vector<point::measurement> measurements = point_vec[i].get_measurements();
                 measurements.push_back(point::measurement(camera_vec[cidx].get_still_image(),pair_to_vec2(imx, imy)));
+                point_vec[i].set_measurements(measurements);
                 nproj++;
             }
         }
