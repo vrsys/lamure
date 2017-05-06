@@ -4,23 +4,23 @@
 #include <scm/core/math/quat.h>
 #include <scm/core/math/vec3.h>
 #include <scm/core/math.h>
-#include "image.h"
+#include "Image.h"
 
 using namespace scm::math;
 
-class camera {
+class Camera {
 private:
 
-    image _still_image;
+    Image _still_image;
     double _focal_length;
     quat<double> _orientation;
     vec3d _center;
     double _radial_distortion;
 
 public:
-    const image &get_still_image() const;
+    const Image &get_still_image() const;
 
-    void set_still_image(const image &_still_image);
+    void set_still_image(const Image &_still_image);
 
     double get_focal_length() const;
 
@@ -38,9 +38,9 @@ public:
 
     void set_radial_distortion(double _radial_distortion);
 
-    camera();
+    Camera();
 
-    camera(const image &_still_image, double _focal_length, const quat<double> &_orientation,
+    Camera(const Image &_still_image, double _focal_length, const quat<double> &_orientation,
            const vec<double, 3> &_center, double _radial_distortion);
 
 };

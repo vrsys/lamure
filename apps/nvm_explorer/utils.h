@@ -1,16 +1,16 @@
 #ifndef REN_UTILS_H_
 #define REN_UTILS_H_
 
-#include "camera.h"
-#include "point.h"
+#include "Camera.h"
+#include "Point.h"
 #include <iostream>
 #include <scm/core/math.h>
 
 namespace utils {
     bool read_nvm(ifstream &in,
-                                 vector<camera> &camera_vec,
-                                 vector<point> &point_vec,
-                                 vector<image> &images);
+                                 vector<Camera> &camera_vec,
+                                 vector<Point> &point_vec,
+                                 vector<Image> &images);
 
     template<typename T>
     vec<T, 2> pair_to_vec2(T *arr);

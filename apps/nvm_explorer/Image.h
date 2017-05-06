@@ -5,7 +5,7 @@
 
 using namespace std;
 
-class image {
+class Image {
 private:
 
     int _height;
@@ -16,9 +16,9 @@ private:
 
 public:
 
-    image();
+    Image();
 
-    image(int _height, int _width, const string &_file_name);
+    Image(int _height, int _width, const string &_file_name);
 
     int get_height() const;
 
@@ -32,7 +32,7 @@ public:
 
     void set_file_name(const string &_file_name);
 
-    static image read_from_file(const string &_file_name);
+    static Image read_from_file(const string &_file_name);
 };
 
 #endif //LAMURE_IMAGE_H

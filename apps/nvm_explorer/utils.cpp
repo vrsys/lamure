@@ -22,9 +22,9 @@ namespace utils {
 
     // function definition in accordance with Util.h of VisualSfM pipeline
     bool read_nvm(ifstream &in,
-                          vector<camera> &camera_vec,
-                          vector<point> &point_vec,
-                          vector<image> &images) {
+                          vector<Camera> &camera_vec,
+                          vector<Point> &point_vec,
+                          vector<Image> &images) {
         unsigned int rotation_parameter_num = 4;
         bool format_r9t = false;
         string token;
@@ -44,7 +44,7 @@ namespace utils {
         in >> ncam;
         if (ncam <= 1) return false;
 
-        // read the camera parameters
+        // read the Camera parameters
         camera_vec.resize(ncam);
         images.resize(ncam);
         for (unsigned int i = 0; i < ncam; ++i) {
@@ -64,14 +64,14 @@ namespace utils {
                 camera_vec[i].set_center(arr3_to_vec3(c));
             }
             camera_vec[i].set_radial_distortion(d[0]);
-            images[i] = image::read_from_file(token);
+            images[i] = Image::read_from_file(token);
             camera_vec[i].set_still_image(images[i]);
         }
 
         in >> npoint;
         if (npoint <= 0) return false;
 
-        // read image projections and 3D points.
+        // read Image projections and 3D points.
         point_vec.resize(npoint);
         for (unsigned int i = 0; i < npoint; ++i) {
             float pt[3];
@@ -85,8 +85,8 @@ namespace utils {
                 float imx, imy;
                 in >> cidx >> fidx >> imx >> imy;
 
-                vector<point::measurement> measurements = point_vec[i].get_measurements();
-                measurements.push_back(point::measurement(camera_vec[cidx].get_still_image(),pair_to_vec2(imx, imy)));
+                vector<Point::measurement> measurements = point_vec[i].get_measurements();
+                measurements.push_back(Point::measurement(camera_vec[cidx].get_still_image(),pair_to_vec2(imx, imy)));
                 point_vec[i].set_measurements(measurements);
                 nproj++;
             }

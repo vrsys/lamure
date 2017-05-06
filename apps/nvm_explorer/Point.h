@@ -3,28 +3,28 @@
 
 #include <scm/core.h>
 #include <scm/core/math.h>
-#include "image.h"
+#include "Image.h"
 
 using namespace std;
 using namespace scm::math;
 
-class point {
+class Point {
 public:
 
     class measurement {
     public:
-        measurement(const image &_still_image, const vec2f &_position);
+        measurement(const Image &_still_image, const vec2f &_position);
 
-        const image &get_still_image() const;
+        const Image &get_still_image() const;
 
-        void set_still_image(const image &_still_image);
+        void set_still_image(const Image &_still_image);
 
         const vec2f &get_position() const;
 
         void set_position(const vec2f &_position);
 
     private:
-        image _still_image;
+        Image _still_image;
         vec2f _position;
     };
 
@@ -35,9 +35,9 @@ private:
     vector<measurement> _measurements;
 
 public:
-    point();
+    Point();
 
-    point(const vec3f &_center, const vec3i &_color, const vector<measurement> &_measurements);
+    Point(const vec3f &_center, const vec3i &_color, const vector<measurement> &_measurements);
 
     const vec3f &get_center() const;
 

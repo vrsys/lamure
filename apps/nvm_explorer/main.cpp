@@ -36,29 +36,29 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    std::string nvm_filename = std::string(get_cmd_option(argv, argv + argc, "-f"));
+    std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-f"));
 
-    std::string ext = nvm_filename.substr(nvm_filename.size() - 3);
+    std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
     if (ext.compare("nvm") != 0) {
         std::cout << "please specify a .nvm file as input" << std::endl;
         return 0;
     }
 
-    ifstream in(nvm_filename);
-    vector<camera>        camera_vec;    //camera (input/ouput)
-    vector<point>        point_vec;     //3D point(input/output)
-    vector<image>        images;   //measurment/projection vector
+    ifstream in(name_file_nvm);
+    vector<Camera>        vec_camera;
+    vector<Point>        vec_point;
+    vector<Image>        vec_image;
 
-    utils::read_nvm(in, camera_vec, point_vec, images);
-    std::cout << "cameras: " << camera_vec.size() << std::endl;
-    std::cout << "points: " << point_vec.size() << std::endl;
-    // for(std::vector<point>::iterator it = point_vec.begin(); it != point_vec.end(); ++it) {
+    utils::read_nvm(in, vec_camera, vec_point, vec_image);
+    std::cout << "cameras: " << vec_camera.size() << std::endl;
+    std::cout << "points: " << vec_point.size() << std::endl;
+    // for(std::vector<Point>::iterator it = vec_point.begin(); it != vec_point.end(); ++it) {
     //     if((*it).get_measurements().size() != 0)
     //         std::cout << (*it).get_measurements().size() << std::endl;
     // }
-    std::cout << "images: " << images.size() << std::endl;
+    std::cout << "vec_image: " << vec_image.size() << std::endl;
 
-    // Scene scene(camera_vec, point_vec, images);
+    // Scene scene(vec_camera, vec_point, vec_image);
     // scene.start_rendering();
 
     return 0;
