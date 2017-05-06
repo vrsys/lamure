@@ -3,6 +3,7 @@
 
 #include <scm/core/math/quat.h>
 #include <scm/core/math/vec3.h>
+#include <scm/core/math.h>
 #include "image.h"
 
 using namespace scm::math;
@@ -13,7 +14,7 @@ private:
     image _still_image;
     double _focal_length;
     quat<double> _orientation;
-    vec<double, 3> _center;
+    vec3d _center;
     double _radial_distortion;
 
 public:
@@ -29,7 +30,7 @@ public:
 
     void set_orientation(const quat<double> &_orientation);
 
-    const vec<double, 3> &get_center() const;
+    const vec3d &get_center() const;
 
     void set_center(const vec<double, 3> &_center);
 

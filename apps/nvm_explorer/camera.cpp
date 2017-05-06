@@ -24,11 +24,11 @@ void camera::set_orientation(const quat<double> &_orientation) {
     camera::_orientation = _orientation;
 }
 
-const vec<double, 3> &camera::get_center() const {
+const vec3d &camera::get_center() const {
     return _center;
 }
 
-void camera::set_center(const vec<double, 3> &_center) {
+void camera::set_center(const vec3d &_center) {
     camera::_center = _center;
 }
 
@@ -41,7 +41,7 @@ void camera::set_radial_distortion(double _radial_distortion) {
 }
 
 camera::camera(const image &_still_image, double _focal_length, const quat<double> &_orientation,
-               const vec<double, 3> &_center, double _radial_distortion) : _still_image(_still_image),
+               const vec3d &_center, double _radial_distortion) : _still_image(_still_image),
                                                                            _focal_length(_focal_length),
                                                                            _orientation(_orientation), _center(_center),
                                                                            _radial_distortion(_radial_distortion) {}
