@@ -1,28 +1,25 @@
-// Copyright (c) 2014 Bauhaus-Universitaet Weimar
-// This Software is distributed under the Modified BSD License, see license.txt.
-//
-// Virtual Reality and Visualization Research Group 
-// Faculty of Media, Bauhaus-Universitaet Weimar
-// http://www.uni-weimar.de/medien/vr
-
 #ifndef REN_UTILS_H_
 #define REN_UTILS_H_
 
+#include "Camera.h"
+#include "Point.h"
+#include <iostream>
 #include <scm/core/math.h>
 
-#include <vector>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <set>
-#include <lamure/types.h>
+namespace utils {
+    bool read_nvm(ifstream &in,
+                                 vector<Camera> &camera_vec,
+                                 vector<Point> &point_vec,
+                                 vector<Image> &images);
 
+    template<typename T>
+    vec<T, 2> pair_to_vec2(T *arr);
 
-std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > read_model_string(std::string const& path_to_resource_file, std::set<lamure::model_t>* visible_set, std::set<lamure::model_t>* invisible_set);
+    template<typename T>
+    vec<T, 3> arr3_to_vec3(T arr[3]);
 
-void create_scene_name_from_vector(std::vector<std::string> const&, std::string&);
-
-void create_scene_name_from_camera_session_file(std::string const& session_file, std::string& name);
+    template<typename T>
+    mat<T, 3, 3> arr9_to_mat3(T arr[9]);
+};
 
 #endif
