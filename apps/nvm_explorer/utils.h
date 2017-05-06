@@ -21,5 +21,5 @@ namespace utils {
     template<typename T>
     mat<T, 3, 3> arr9_to_mat3(T arr[9]);
 };
-
 #endif
+
