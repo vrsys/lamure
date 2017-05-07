@@ -50,13 +50,14 @@ int main(int argc, char *argv[]) {
   vector<Image> vec_image;
 
   utils::read_nvm(in, vec_camera, vec_point, vec_image);
-  std::cout << "cameras: " << vec_camera.size() << std::endl;
-  std::cout << "points: " << vec_point.size() << std::endl;
+
+  //  std::cout << "cameras: " << vec_camera.size() << std::endl;
+  //  std::cout << "points: " << vec_point.size() << std::endl;
   // for(std::vector<Point>::iterator it = vec_point.begin(); it != vec_point.end(); ++it) {
   //     if((*it).get_measurements().size() != 0)
   //         std::cout << (*it).get_measurements().size() << std::endl;
   // }
-  std::cout << "vec_image: " << vec_image.size() << std::endl;
+  //  std::cout << "vec_image: " << vec_image.size() << std::endl;
 
   // Scene scene(vec_camera, vec_point, vec_image);
   // scene.start_rendering();

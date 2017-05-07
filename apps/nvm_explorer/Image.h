@@ -2,6 +2,11 @@
 #define LAMURE_IMAGE_H
 
 #include <string>
+#include "exif.h"
+#include <scm/core.h>
+#include <scm/core/math.h>
+#include <scm/core/math/vec.h>
+#include <scm/core/math/vec2.h>
 
 using namespace std;
 
@@ -11,14 +16,20 @@ class Image {
   int _height;
   int _width;
   string _file_name;
-
-  // TODO: EXIF data
+  double _focal_length;
+  double _fp_resolution_x;
+  double _fp_resolution_y;
 
  public:
 
   Image();
 
-  Image(int _height, int _width, const string &_file_name);
+  Image(int _height,
+        int _width,
+        const string &_file_name,
+        double _focal_length,
+        double _fp_resolution_x,
+        double _fp_resolution_y);
 
   int get_height() const;
 
@@ -31,6 +42,18 @@ class Image {
   const string &get_file_name() const;
 
   void set_file_name(const string &_file_name);
+
+  double get_focal_length() const;
+
+  void set_focal_length(double _focal_length);
+
+  double get_fp_resolution_x() const;
+
+  void set_fp_resolution_x(double _fp_resolution_x);
+
+  double get_fp_resolution_y() const;
+
+  void set_fp_resolution_y(double _fp_resolution_y);
 
   static Image read_from_file(const string &_file_name);
 };
