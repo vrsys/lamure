@@ -3,7 +3,13 @@
 Controller::Controller(Scene scene, char** argv)
 {
 	_scene = scene;
-	_renderer.init(argv);
+	// initialize context
+    scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
+    // initialize device
+    _device.reset(new scm::gl::render_device());
+
+	_renderer.init(argv, _device);
+	_scene.init(_device);
 }
 
 bool Controller::update()

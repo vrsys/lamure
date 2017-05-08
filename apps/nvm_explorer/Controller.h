@@ -9,6 +9,7 @@ class Controller {
 	private:
 		Scene _scene;
 		Renderer _renderer;
+        scm::shared_ptr<scm::gl::render_device> _device;
 	public:
 		Controller(Scene scene, char** argv);
 		

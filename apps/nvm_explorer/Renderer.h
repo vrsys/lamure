@@ -55,19 +55,16 @@
 
 class Renderer {
 	private:
-        scm::shared_ptr<scm::gl::render_device> _device;
         scm::shared_ptr<scm::gl::render_context> _context;
         scm::gl::program_ptr _program;
 
-	    scm::gl::vertex_array_ptr _pcl_memory;
-	    scm::gl::buffer_ptr _buffer;
     	lamure::ren::camera*   _active_camera;
         scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
 
 
 	public:
 		Renderer();
-		void init(char** argv);
+		void init(char** argv, scm::shared_ptr<scm::gl::render_device> device);
 		void render(Scene scene);
 
 
