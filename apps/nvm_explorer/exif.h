@@ -36,12 +36,14 @@
 
 #include <string>
 
-namespace easyexif {
+namespace easyexif
+{
 
 //
 // Class responsible for storing and parsing EXIF information from a JPEG blob
 //
-class EXIFInfo {
+class EXIFInfo
+{
  public:
   // Parsing function for an entire JPEG image buffer.
   //
@@ -49,17 +51,17 @@ class EXIFInfo {
   // PARAM 'length': The length of the JPEG image.
   // RETURN:  PARSE_EXIF_SUCCESS (0) on succes with 'result' filled out
   //          error code otherwise, as defined by the PARSE_EXIF_ERROR_* macros
-  int parseFrom(const unsigned char *data, unsigned length);
+  int parseFrom (const unsigned char *data, unsigned length);
 
-  int parseFrom(const std::string &data);
+  int parseFrom (const std::string &data);
 
   // Parsing function for an EXIF segment. This is used internally by parseFrom()
   // but can be called for special cases where only the EXIF section is
   // available (i.e., a blob starting with the bytes "Exif\0\0").
-  int parseFromEXIFSegment(const unsigned char *buf, unsigned len);
+  int parseFromEXIFSegment (const unsigned char *buf, unsigned len);
 
   // Set all data members to default values.
-  void clear();
+  void clear ();
 
   // Data fields filled out by parseFrom()
   char ByteAlign;                   // 0 = Motorola byte alignment, 1 = Intel
@@ -117,32 +119,37 @@ class EXIFInfo {
   // 5: multi-segment
   unsigned ImageWidth;              // Image width reported in EXIF data
   unsigned ImageHeight;             // Image height reported in EXIF data
-  struct Geolocation_t {            // GPS information embedded in file
+  struct Geolocation_t
+  {            // GPS information embedded in file
     double Latitude;                  // Image latitude expressed as decimal
     double Longitude;                 // Image longitude expressed as decimal
     double Altitude;                  // Altitude in meters, relative to sea level
     char AltitudeRef;                 // 0 = above sea level, -1 = below sea level
     double DOP;                       // GPS degree of precision (DOP)
-    struct Coord_t {
+    struct Coord_t
+    {
       double degrees;
       double minutes;
       double seconds;
       char direction;
     } LatComponents, LonComponents;   // Latitude, Longitude expressed in deg/min/sec
   } GeoLocation;
-  struct LensInfo_t {               // Lens information
+  struct LensInfo_t
+  {               // Lens information
     double FStopMin;                // Min aperture (f-stop)
     double FStopMax;                // Max aperture (f-stop)
     double FocalLengthMin;          // Min focal length (mm)
     double FocalLengthMax;          // Max focal length (mm)
+    unsigned short FocalPlaneResolutionUnit;   // Focal plane X-resolution
     double FocalPlaneXResolution;   // Focal plane X-resolution
     double FocalPlaneYResolution;   // Focal plane Y-resolution
     std::string Make;               // Lens manufacturer
     std::string Model;              // Lens model
   } LensInfo;
 
-  EXIFInfo() {
-    clear();
+  EXIFInfo ()
+  {
+      clear ();
   }
 };
 
