@@ -2,8 +2,8 @@
 #define LAMURE_CONTROLLER_H
 
 #include <vector>
-#include "../Renderer.h"
-#include "../Scene.h"	
+#include "Renderer.h"
+#include "Scene.h"	
 
 class Controller {
 	private:
