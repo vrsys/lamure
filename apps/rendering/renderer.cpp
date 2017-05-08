@@ -296,16 +296,16 @@ render_one_pass_LQ(lamure::context_t context_id,
       //context_->clear_default_color_buffer();
 
 
-        context_->set_default_frame_buffer();
+      context_->set_default_frame_buffer();
 
-        context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-        context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
+      context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+      context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
 
-        context_->bind_program(LQ_one_pass_program_);
+      context_->bind_program(LQ_one_pass_program_);
 
 
-        context_->bind_vertex_array(render_VAO);
-        context_->apply();
+      context_->bind_vertex_array(render_VAO);
+      context_->apply();
 
         node_t node_counter = 0;
         node_t non_culled_node_idx = 0;
@@ -1155,7 +1155,7 @@ initialize_VBOs()
 
     filter_nearest_ = device_->create_sampler_state(FILTER_MIN_MAG_LINEAR, WRAP_CLAMP_TO_EDGE);
 
-    no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, false, false, 0.0, false, false);
+    no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, false, false, 0.0, false, false, point_raster_state(true));
 
     pass1_visibility_fbo_ = device_->create_frame_buffer();
 

@@ -6,7 +6,7 @@
 #include <GL/freeglut.h>
 #include "utils.h"
 #include "Scene.h"
-#include "Controller.h"
+#include "controller/Controller.h"
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+
     std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-f"));
 
     std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
@@ -68,7 +69,7 @@ int main(int argc, char *argv[]) {
 
     Scene scene(vec_camera, vec_point, vec_image);
 
-    controller = new Controller(scene);
+    controller = new Controller(scene, argv);
 
     glutMainLoop();
 
