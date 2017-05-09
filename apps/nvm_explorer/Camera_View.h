@@ -1,13 +1,5 @@
-#ifndef LAMURE_RENDERER_H
-#define LAMURE_RENDERER_H
-
-
-// #include <lamure/utils.h>
-// #include <lamure/types.h>
-#include "utils.h"
-#include "Scene.h"
-
-#include <iostream>
+#ifndef LAMURE_CAMERA_VIEW_H
+#define LAMURE_CAMERA_VIEW_H
 
 #include <scm/core.h>
 #include <scm/log.h>
@@ -51,25 +43,27 @@
 
 #include <lamure/ren/cut.h>
 #include <lamure/ren/cut_update_pool.h>
+#include <vector>
 
+#include "Camera.h"
+#include "Point.h"
+#include "Struct_Point.h"
 
-class Renderer {
+class Camera_View {
+
 	private:
-        scm::shared_ptr<scm::gl::render_context> _context;
-        scm::gl::program_ptr _program_points;
-        scm::gl::program_ptr _program_cameras;
-        scm::gl::program_ptr _program_images;
-
-        scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
-        int _width_window;
-        int _height_window;
-
+		scm::math::vec3f _position = scm::math::vec3f(0.0f, 0.0f, -20.0f);
+		scm::math::vec3f _rotation = scm::math::vec3f(0.0f, 0.0f, 1.0f);
+		scm::math::mat4f _matrix_view;
+		scm::math::mat4f _matrix_perspective;
 	public:
-		Renderer();
-		void init(char** argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
-		void render(Scene scene);
+		Camera_View();
 
+		void translate(scm::math::vec3f offset);
+		scm::math::mat4f &get_matrix_view();
+		scm::math::mat4f &get_matrix_perspective();
 
+		void set_rotation(scm::math::vec3f rotation);
 };
 
-#endif //LAMURE_RENDERER_H
+#endif //LAMURE_CAMERA_VIEW_H

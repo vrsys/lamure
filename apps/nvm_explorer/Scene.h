@@ -48,6 +48,9 @@
 #include "Camera.h"
 #include "Point.h"
 #include "Struct_Point.h"
+#include "Struct_Camera.h"
+#include "Struct_Image.h"
+#include "Camera_View.h"
 
 class Scene {
 
@@ -56,16 +59,30 @@ class Scene {
 		std::vector<Point> _vector_point;
 		std::vector<Image> _vector_image;
 
-	    scm::gl::vertex_array_ptr _vertex_array_object;
-	    scm::gl::buffer_ptr _vertex_buffer_object;
+	    scm::gl::vertex_array_ptr _vertex_array_object_points;
+	    scm::gl::vertex_array_ptr _vertex_array_object_cameras;
+	    scm::gl::vertex_array_ptr _vertex_array_object_images;
+		
+		Camera_View _camera_view;
 
 		std::vector<Struct_Point> convert_points_to_struct_point();
+		std::vector<Struct_Camera> convert_cameras_to_struct_camera();
+		std::vector<Struct_Image> convert_images_to_struct_image();
 	public:
 		Scene();
 		Scene(std::vector<Camera> vector_camera, std::vector<Point> vector_point, std::vector<Image> vector_image);
 
 		void init(scm::shared_ptr<scm::gl::render_device> device);
-	    scm::gl::vertex_array_ptr get_vertex_array_object();
+	    scm::gl::vertex_array_ptr get_vertex_array_object_points();
+	    scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
+	    scm::gl::vertex_array_ptr get_vertex_array_object_images();
+
+	    Camera_View &get_camera_view();
+	    int count_points();
+	    int count_cameras();
+	    int count_images();
+
+	    // camera::projection_perspective(float fovy, float aspect, float near_z, float far_z)
 
 };
 

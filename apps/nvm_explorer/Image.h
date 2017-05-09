@@ -7,6 +7,7 @@
 #include <scm/core/math.h>
 #include <scm/core/math/vec.h>
 #include <scm/core/math/vec2.h>
+#include <scm/gl_util/primitives/quad.h>
 
 using namespace std;
 
@@ -21,7 +22,10 @@ class Image
   double _fp_resolution_x;
   double _fp_resolution_y;
 
+
+
  public:
+  scm::shared_ptr<scm::gl::quad_geometry> _quad;
 
   Image ();
 

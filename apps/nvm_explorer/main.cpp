@@ -14,8 +14,15 @@
 using namespace utils;
 
 Controller* controller = nullptr;
+int time_since_start = 0;
+int width_window = 1920;
+int height_window = 1080;
 
+void glut_idle();
 void glut_display();
+void glut_mouse_movement(int x, int y);
+void glut_keyboard(unsigned char key, int x, int y);
+void glut_keyboard_release(unsigned char key, int x, int y);
 void initialize_glut(int argc, char** argv, int width, int height);
 
 char *get_cmd_option(char **begin, char **end, const std::string &option) 
@@ -55,7 +62,7 @@ int main (int argc, char *argv[])
             return 0;
         }
 
-    initialize_glut(argc, argv, 800, 600);
+    initialize_glut(argc, argv, width_window, height_window);
 
     ifstream in (name_file_nvm);
     vector<Camera> vec_camera;
@@ -74,7 +81,7 @@ int main (int argc, char *argv[])
 
     Scene scene(vec_camera, vec_point, vec_image);
 
-    controller = new Controller(scene, argv);
+    controller = new Controller(scene, argv, width_window, height_window);
 
     glutMainLoop();
 
@@ -82,13 +89,17 @@ int main (int argc, char *argv[])
     return 0;
 }
     
-
 void glut_display()
 {
     bool signaled_shutdown = false;
     if (controller != nullptr)
     {
-        signaled_shutdown = controller->update();
+
+        int new_time_since_start = glutGet(GLUT_ELAPSED_TIME);
+        int time_delta = new_time_since_start - time_since_start;
+        time_since_start = new_time_since_start;
+
+        signaled_shutdown = controller->update(time_delta);
 
         glutSwapBuffers();
     }
@@ -121,9 +132,56 @@ void initialize_glut(int argc, char** argv, int width, int height)
 
     // glutReshCapeFunc(glut_resize);
     glutDisplayFunc(glut_display);
-    // glutKeyboardFunc(glut_keyboard);
-    // glutKeyboardUpFunc(glut_keyboard_release);
-    // glutMouseFunc(glut_mousefunc);
-    // glutMotionFunc(glut_mousemotion);
-    // glutIdleFunc(glut_idle);
+    glutKeyboardFunc(glut_keyboard);
+    glutKeyboardUpFunc(glut_keyboard_release);
+    // glutMouseFunc(mouse_callback);
+    glutPassiveMotionFunc(glut_mouse_movement);
+    glutIdleFunc(glut_idle);
+    // glutFullScreen();
+    // glutSetCursor(GLUT_CURSOR_NONE);
+    // glutFullScreenToggle();
+}
+// static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+// {
+//     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+//         glfwSetWindowShouldClose(window, GL_TRUE);
+
+//     if (action == GLFW_PRESS)
+//         keys[key] = true;
+//     else if (action == GLFW_RELEASE)
+//         keys[key] = false;
+// }
+
+void glut_mouse_movement(int x, int y)
+{
+    // controller->handle_mouse_movement(x, y);
+    // glutWarpPointer(1920/2, 1080/2);
+}
+
+
+void glut_keyboard(unsigned char key, int x, int y)
+{
+    switch(key)
+    {
+        case 27:
+            glutExit();
+            exit(0);
+            break;
+        case '.':
+            glutFullScreenToggle();
+        default:
+            controller->handle_key_pressed(key);
+            break;
+
+    }
+}
+
+void glut_keyboard_release(unsigned char key, int x, int y)
+{
+    controller->handle_key_released(key);
+}
+
+void glut_idle()
+{
+    glutPostRedisplay();
 }
