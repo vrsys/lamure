@@ -52,10 +52,14 @@
 class Camera_View {
 
 	private:
-		scm::math::vec3f _position = scm::math::vec3f(0.0f, 0.0f, -20.0f);
-		scm::math::vec3f _rotation = scm::math::vec3f(0.0f, 0.0f, 1.0f);
+		scm::math::vec3f _position_initial = scm::math::vec3f(0.0f, 0.0f, -20.0f);
+		scm::math::quat<double>  _rotation_initial = scm::math::quat<double>::from_euler(0.0, 0.0, 0.0);
+		scm::math::vec3f _position = _position_initial;
+		scm::math::quat<double>  _rotation = _rotation_initial;
 		scm::math::mat4f _matrix_view;
 		scm::math::mat4f _matrix_perspective;
+
+		void update_matrices();
 	public:
 		Camera_View();
 
@@ -63,7 +67,10 @@ class Camera_View {
 		scm::math::mat4f &get_matrix_view();
 		scm::math::mat4f &get_matrix_perspective();
 
-		void set_rotation(scm::math::vec3f rotation);
+		void set_position(scm::math::vec3f position);
+		void set_rotation(scm::math::quat<double> rotation);
+
+		void reset();
 };
 
 #endif //LAMURE_CAMERA_VIEW_H

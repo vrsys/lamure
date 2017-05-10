@@ -82,7 +82,7 @@ void Controller::handle_mouse_movement(int x, int y)
 	front.y = scm::math::sin(scm::math::deg2rad(_pitch));
 	front.z = scm::math::sin(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
 
-	_scene.get_camera_view().set_rotation(front);
+	// _scene.get_camera_view().set_rotation(front);
 	// render_manager.direction_camera = glm::normalize(front);
 }
 void Controller::handle_key_pressed(char key)
@@ -93,4 +93,13 @@ void Controller::handle_key_released(char key)
 {
 	// std::cout << key << " " << (char)int(key) << std::endl;
 	_keys[int(key)] = false;
+
+	if(key == 'i')
+	{
+		_scene.toggle_camera();
+	} else if (key == 'u') {
+		_scene.previous_camera();
+	} else if (key == 'o') {
+		_scene.next_camera();
+	}
 }

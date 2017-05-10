@@ -30,7 +30,7 @@ void Image::set_file_name (const string &_file_name)
     Image::_file_name = _file_name;
 }
 
-Image Image::read_from_file (const string &_file_name)
+Image Image::read_from_file (const string &_file_name, scm::math::mat4f transformation)
 {
     FILE *fp = fopen (_file_name.c_str (), "rb");
     if (!fp)
@@ -62,12 +62,25 @@ Image Image::read_from_file (const string &_file_name)
             resolution_x,
             resolution_y);
 
+    // scm::math::translate(transformation, scm::math::vec3f(0.0, 0.0, 0.0));
+    // scm::math::mat4f transformation_scale = scm::math::mat4f::identity();
+
+    float scale = 0.5f * (1.0f/resolution_x) * result.ImageWidth * 10;
+    float aspect_ratio = float(result.ImageHeight)/result.ImageWidth;
+    scm::math::mat4f matrix_scale = scm::math::make_scale(scm::math::vec3f(scale, scale * aspect_ratio, scale));
+
+
+    transformation = transformation * matrix_scale;
+
+
     return Image (result.ImageHeight,
                   result.ImageWidth,
                   _file_name,
                   focal_length_m,
                   resolution_x,
-                  resolution_y);
+                  resolution_y,
+                  transformation
+                  );
 }
 
 Image::Image ()
@@ -78,13 +91,15 @@ Image::Image (int _height,
               const string &_file_name,
               double _focal_length,
               double _fp_resolution_x,
-              double _fp_resolution_y)
+              double _fp_resolution_y,
+              scm::math::mat4f transformation)
     : _height (_height),
       _width (_width),
       _file_name (_file_name),
       _focal_length (_focal_length),
       _fp_resolution_x (_fp_resolution_x),
-      _fp_resolution_y (_fp_resolution_y)
+      _fp_resolution_y (_fp_resolution_y),
+      _transformation (transformation)
 {}
 
 double Image::get_focal_length () const
@@ -115,4 +130,9 @@ double Image::get_fp_resolution_y () const
 void Image::set_fp_resolution_y (double _fp_resolution_y)
 {
     Image::_fp_resolution_y = _fp_resolution_y;
+}
+
+scm::math::mat4f &Image::get_transformation()
+{
+    return _transformation; 
 }

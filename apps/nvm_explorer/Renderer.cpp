@@ -99,9 +99,13 @@ void Renderer::render(Scene scene)
     _program_images->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
     _program_images->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    _context->bind_vertex_array(scene.get_vertex_array_object_images());
-    _context->apply();
+    for(std::vector<Image>::iterator it = scene.get_vector_image().begin(); it != scene.get_vector_image().end(); ++it) 
+    {
+        Image image = (*it);
+        _program_images->uniform("matrix_model", image.get_transformation());
 
-    _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, scene.count_images());
+        scene.get_quad()->draw(_context);
+    }
+
 }
 

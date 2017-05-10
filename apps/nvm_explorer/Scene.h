@@ -50,6 +50,7 @@
 #include "Struct_Point.h"
 #include "Struct_Camera.h"
 #include "Struct_Image.h"
+#include <scm/gl_util/primitives/quad.h>
 #include "Camera_View.h"
 
 class Scene {
@@ -61,13 +62,15 @@ class Scene {
 
 	    scm::gl::vertex_array_ptr _vertex_array_object_points;
 	    scm::gl::vertex_array_ptr _vertex_array_object_cameras;
-	    scm::gl::vertex_array_ptr _vertex_array_object_images;
+  		scm::shared_ptr<scm::gl::quad_geometry> _quad;
 		
 		Camera_View _camera_view;
 
 		std::vector<Struct_Point> convert_points_to_struct_point();
 		std::vector<Struct_Camera> convert_cameras_to_struct_camera();
-		std::vector<Struct_Image> convert_images_to_struct_image();
+
+		bool is_default_camera = true;
+		int index_current_image_camera = 0;
 	public:
 		Scene();
 		Scene(std::vector<Camera> vector_camera, std::vector<Point> vector_point, std::vector<Image> vector_image);
@@ -75,12 +78,18 @@ class Scene {
 		void init(scm::shared_ptr<scm::gl::render_device> device);
 	    scm::gl::vertex_array_ptr get_vertex_array_object_points();
 	    scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
-	    scm::gl::vertex_array_ptr get_vertex_array_object_images();
+	    scm::shared_ptr<scm::gl::quad_geometry> get_quad();
 
 	    Camera_View &get_camera_view();
+	    std::vector<Image> &get_vector_image();
+
 	    int count_points();
 	    int count_cameras();
 	    int count_images();
+
+	    void toggle_camera();
+	    void previous_camera();
+	    void next_camera();
 
 	    // camera::projection_perspective(float fovy, float aspect, float near_z, float far_z)
 

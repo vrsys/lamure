@@ -130,6 +130,7 @@ void initialize_glut(int argc, char** argv, int width, int height)
 
     glutSetWindow(wh1);
 
+    // glutFullScreenToggle();
     // glutReshCapeFunc(glut_resize);
     glutDisplayFunc(glut_display);
     glutKeyboardFunc(glut_keyboard);
@@ -139,21 +140,11 @@ void initialize_glut(int argc, char** argv, int width, int height)
     glutIdleFunc(glut_idle);
     // glutFullScreen();
     // glutSetCursor(GLUT_CURSOR_NONE);
-    // glutFullScreenToggle();
 }
-// static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-// {
-//     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-//         glfwSetWindowShouldClose(window, GL_TRUE);
-
-//     if (action == GLFW_PRESS)
-//         keys[key] = true;
-//     else if (action == GLFW_RELEASE)
-//         keys[key] = false;
-// }
 
 void glut_mouse_movement(int x, int y)
 {
+    // std::cout << x << std::endl;
     // controller->handle_mouse_movement(x, y);
     // glutWarpPointer(1920/2, 1080/2);
 }

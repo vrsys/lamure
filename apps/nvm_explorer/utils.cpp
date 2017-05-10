@@ -75,8 +75,20 @@ bool read_nvm (ifstream &in,
                     camera_vec[i].set_center (arr3_to_vec3 (c));
                 }
             camera_vec[i].set_radial_distortion (d[0]);
-            images[i] = Image::read_from_file (token);
-            camera_vec[i].set_still_image (images[i]);
+            
+            scm::math::mat4f transformation = scm::math::mat4f::identity();
+
+            // scm::math::mat4f matrix_scale = scm::math::make_scale(scm::math::vec3f(0.1f, 0.1f, 0.1f));
+            scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(camera_vec[i].get_center()));
+            scm::math::mat4f matrix_rotation = scm::math::mat4f(camera_vec[i].get_orientation().to_matrix());
+
+            // transformation = matrix_translation;
+            transformation = matrix_translation * matrix_rotation;
+            // transformation = matrix_translation * matrix_scale * matrix_rotation;
+
+            images[i] = Image::read_from_file(token, transformation);
+
+            camera_vec[i].set_still_image(images[i]);
         }
 
     in >> npoint;
