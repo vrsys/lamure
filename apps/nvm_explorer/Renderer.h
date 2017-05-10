@@ -52,23 +52,22 @@
 #include <lamure/ren/cut.h>
 #include <lamure/ren/cut_update_pool.h>
 
+class Renderer
+{
+ private:
+  scm::shared_ptr<scm::gl::render_context> _context;
+  scm::gl::program_ptr _program_points;
+  scm::gl::program_ptr _program_cameras;
+  scm::gl::program_ptr _program_images;
 
-class Renderer {
-	private:
-        scm::shared_ptr<scm::gl::render_context> _context;
-        scm::gl::program_ptr _program_points;
-        scm::gl::program_ptr _program_cameras;
-        scm::gl::program_ptr _program_images;
+  scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
+  int _width_window;
+  int _height_window;
 
-        scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
-        int _width_window;
-        int _height_window;
-
-	public:
-		Renderer();
-		void init(char** argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
-		void render(Scene scene);
-
+ public:
+  Renderer();
+  void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
+  void render(Scene scene);
 
 };
 

@@ -19,30 +19,30 @@ class Camera
   double _radial_distortion;
 
  public:
-  const Image &get_still_image () const;
+  const Image &get_still_image() const;
 
-  void set_still_image (const Image &_still_image);
+  void set_still_image(const Image &_still_image);
 
-  double get_focal_length () const;
+  double get_focal_length() const;
 
-  void set_focal_length (double _focal_length);
+  void set_focal_length(double _focal_length);
 
-  const quat<double> &get_orientation () const;
+  const quat<double> &get_orientation() const;
 
-  void set_orientation (const quat<double> &_orientation);
+  void set_orientation(const quat<double> &_orientation);
 
-  const vec3d &get_center () const;
+  const vec3d &get_center() const;
 
-  void set_center (const vec<double, 3> &_center);
+  void set_center(const vec<double, 3> &_center);
 
-  double get_radial_distortion () const;
+  double get_radial_distortion() const;
 
-  void set_radial_distortion (double _radial_distortion);
+  void set_radial_distortion(double _radial_distortion);
 
-  Camera ();
+  Camera();
 
-  Camera (const Image &_still_image, double _focal_length, const quat<double> &_orientation,
-          const vec<double, 3> &_center, double _radial_distortion);
+  Camera(const Image &_still_image, double _focal_length, const quat<double> &_orientation,
+         const vec<double, 3> &_center, double _radial_distortion);
 
 };
 

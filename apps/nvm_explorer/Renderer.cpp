@@ -1,25 +1,24 @@
 #include "Renderer.h"
 
-
 Renderer::Renderer()
 {
-	// wie camera erstellen
-	// wie data in buffer laden
+    // wie camera erstellen
+    // wie data in buffer laden
 
-	//1.
-	//scm context initialisieren (see main.cpp in lamure_rendering (l:123))
+    //1.
+    //scm context initialisieren (see main.cpp in lamure_rendering (l:123))
 
-	//2. create new scm device (app: renderer.cpp l: 1301)
+    //2. create new scm device (app: renderer.cpp l: 1301)
 
-	//3. retrieve rendering context from device (app: renderer.cpp l:1303)
+    //3. retrieve rendering context from device (app: renderer.cpp l:1303)
 
-	//4. VBO (scm::gl::buffer_ptr) && VAO (scm::gl::vertex_array_ptr) (lib: gpu_access.h l:54&&55; gpu_access.cpp, ll:37)
+    //4. VBO (scm::gl::buffer_ptr) && VAO (scm::gl::vertex_array_ptr) (lib: gpu_access.h l:54&&55; gpu_access.cpp, ll:37)
 
-	//5. set states & render: 
-	// = renderer.cpp (see render_one_pass_LQ func: ll. 270)
+    //5. set states & render:
+    // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
 }
 
-void Renderer::init(char** argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
+void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
 {
     // get main/default context from device
     _context = device->main_context();
@@ -32,43 +31,42 @@ void Renderer::init(char** argv, scm::shared_ptr<scm::gl::render_device> device,
     std::string visibility_fs_source;
 
     // create shader program for points
-    scm::io::read_text_file(root_path +  "/nvm_explorer_vertex_points.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_vertex_points.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_points.glslf", visibility_fs_source);
     _program_points = device->create_program(
-		boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
-		(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
-	);
+        boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
+            (device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
+    );
 
     // create shader program for cameras
-    scm::io::read_text_file(root_path +  "/nvm_explorer_vertex_cameras.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_vertex_cameras.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_cameras.glslf", visibility_fs_source);
     _program_cameras = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
-        (device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
+            (device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
     );
 
     // create shader program for images
-    scm::io::read_text_file(root_path +  "/nvm_explorer_vertex_images.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_vertex_images.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_images.glslf", visibility_fs_source);
     _program_images = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
-        (device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
+            (device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
     );
 
     no_backface_culling_rasterizer_state_ = device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
 
-
 }
 
-void Renderer::render(Scene scene) 
-{   
+void Renderer::render(Scene scene)
+{
 
     _context->set_rasterizer_state(no_backface_culling_rasterizer_state_);
     _context->set_viewport(scm::gl::viewport(vec2ui(0, 0), 1 * vec2ui(_width_window, _height_window)));
 
     _context->clear_default_depth_stencil_buffer();
     _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, 0.0f, 1.0f));
-  
+
     _context->set_default_frame_buffer();
 
     // draw points

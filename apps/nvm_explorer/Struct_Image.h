@@ -6,7 +6,7 @@
 
 struct Struct_Image
 {
-    scm::math::vec3f position;
+  scm::math::vec3f position;
 };
 
 #endif //STRUCT_IMAGE_H

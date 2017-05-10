@@ -6,8 +6,8 @@
 
 struct Struct_Point
 {
-    scm::math::vec3f position;
-    scm::math::vec3f color;
+  scm::math::vec3f position;
+  scm::math::vec3f color;
 };
 
 #endif //STRUCT_POINT_H

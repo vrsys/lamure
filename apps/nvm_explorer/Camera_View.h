@@ -49,21 +49,22 @@
 #include "Point.h"
 #include "Struct_Point.h"
 
-class Camera_View {
+class Camera_View
+{
 
-	private:
-		scm::math::vec3f _position = scm::math::vec3f(0.0f, 0.0f, -20.0f);
-		scm::math::vec3f _rotation = scm::math::vec3f(0.0f, 0.0f, 1.0f);
-		scm::math::mat4f _matrix_view;
-		scm::math::mat4f _matrix_perspective;
-	public:
-		Camera_View();
+ private:
+  scm::math::vec3f _position = scm::math::vec3f(0.0f, 0.0f, -20.0f);
+  scm::math::vec3f _rotation = scm::math::vec3f(0.0f, 0.0f, 1.0f);
+  scm::math::mat4f _matrix_view;
+  scm::math::mat4f _matrix_perspective;
+ public:
+  Camera_View();
 
-		void translate(scm::math::vec3f offset);
-		scm::math::mat4f &get_matrix_view();
-		scm::math::mat4f &get_matrix_perspective();
+  void translate(scm::math::vec3f offset);
+  scm::math::mat4f &get_matrix_view();
+  scm::math::mat4f &get_matrix_perspective();
 
-		void set_rotation(scm::math::vec3f rotation);
+  void set_rotation(scm::math::vec3f rotation);
 };
 
 #endif //LAMURE_CAMERA_VIEW_H
