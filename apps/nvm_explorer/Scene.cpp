@@ -131,9 +131,13 @@ void Scene::next_camera()
  {
  	return _camera_view;
  }
- std::vector<Image> &Scene::get_vector_image()
+ // std::vector<Image> &Scene::get_vector_image()
+ // {
+ // 	return _vector_image;
+ // }
+ std::vector<Camera> &Scene::get_vector_camera()
  {
- 	return _vector_image;
+ 	return _vector_camera;
  }
 
  int Scene::count_points()

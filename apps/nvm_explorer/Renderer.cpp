@@ -99,10 +99,10 @@ void Renderer::render(Scene scene)
     _program_images->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
     _program_images->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    for(std::vector<Image>::iterator it = scene.get_vector_image().begin(); it != scene.get_vector_image().end(); ++it) 
+    for(std::vector<Camera>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it) 
     {
-        Image image = (*it);
-        _program_images->uniform("matrix_model", image.get_transformation());
+        Camera camera = (*it);
+        _program_images->uniform("matrix_model", camera.get_transformation());
 
         scene.get_quad()->draw(_context);
     }

@@ -113,7 +113,7 @@ void glut_display()
 void initialize_glut(int argc, char** argv, int width, int height)
 {
     glutInit(&argc, argv);
-    glutInitContextVersion(4, 4);
+    glutInitContextVersion(3, 0);
     glutInitContextProfile(GLUT_CORE_PROFILE);
 
     glutSetOption(

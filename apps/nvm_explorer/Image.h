@@ -59,9 +59,6 @@ class Image
   double _focal_length;
   double _fp_resolution_x;
   double _fp_resolution_y;
-
-  scm::math::mat4f _transformation;
-
  public:
 
   Image ();
@@ -71,8 +68,7 @@ class Image
          const string &_file_name,
          double _focal_length,
          double _fp_resolution_x,
-         double _fp_resolution_y,
-         scm::math::mat4f _transformation);
+         double _fp_resolution_y);
 
   int get_height () const;
 
@@ -98,9 +94,7 @@ class Image
 
   void set_fp_resolution_y (double _fp_resolution_y);
 
-  scm::math::mat4f &get_transformation();
-
-  static Image read_from_file(const string &_file_name, scm::math::mat4f transformation);
+  static Image read_from_file(const string &_file_name);
 };
 
 #endif //LAMURE_IMAGE_H

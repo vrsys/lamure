@@ -81,7 +81,8 @@ class Scene {
 	    scm::shared_ptr<scm::gl::quad_geometry> get_quad();
 
 	    Camera_View &get_camera_view();
-	    std::vector<Image> &get_vector_image();
+	    // std::vector<Image> &get_vector_image();
+	    std::vector<Camera> &get_vector_camera();
 
 	    int count_points();
 	    int count_cameras();

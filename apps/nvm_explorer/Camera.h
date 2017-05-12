@@ -18,6 +18,9 @@ class Camera
   vec3d _center;
   double _radial_distortion;
 
+  scm::math::mat4f _transformation = scm::math::mat4f::identity();
+
+
  public:
   const Image &get_still_image () const;
 
@@ -38,6 +41,10 @@ class Camera
   double get_radial_distortion () const;
 
   void set_radial_distortion (double _radial_distortion);
+
+  scm::math::mat4f &get_transformation();
+
+  void set_transformation(scm::math::mat4f transformation);
 
   Camera ();
 
