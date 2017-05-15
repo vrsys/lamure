@@ -251,7 +251,7 @@ set_cell_visibility(const size_t& cell_index, const model_t& model_id, const nod
 	// If this function is locked, high performance loss in the preprocessing will occur.
 	//std::lock_guard<std::mutex> lock(mutex_);
 
-	view_cell* view_node = nullptr;
+	view_cell* view_node = cells_by_indices_[cell_index];
 	view_node->set_visibility(model_id, node_id, visibility);
 }
 
