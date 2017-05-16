@@ -23,6 +23,40 @@ mat<T, 3, 3> arr9_to_mat3 (T *arr)
                          arr[3], arr[4], arr[5],
                          arr[6], arr[7], arr[8]);
 };
+scm::math::mat3d SetQuaternionRotation(const scm::math::quat<double> q)
+    {
+        scm::math::mat3d m = scm::math::mat3d::identity();
+        double qw = q.w; 
+        double qx = q.i; 
+        double qy = q.j; 
+        double qz = q.k; 
+        m[0]=(qw*qw + qx*qx- qz*qz- qy*qy );
+        m[1]=(2*qx*qy -2*qz*qw );
+        m[2]=(2*qy*qw + 2*qz*qx);
+        m[3]=(2*qx*qy+ 2*qw*qz);
+        m[4]=(qy*qy+ qw*qw - qz*qz- qx*qx);
+        m[5]=(2*qz*qy- 2*qx*qw);
+        m[6]=(2*qx*qz- 2*qy*qw);
+        m[7]=(2*qy*qz + 2*qw*qx );
+        m[8]=(qz*qz+ qw*qw- qy*qy- qx*qx);
+        return m;
+    }
+   // mat<scal_type, 4, 4> ret = mat<scal_type, 4, 4>::zero();
+
+   //  ret.data_array[0 * 4 + 0] = scal_type(1) - scal_type(2) * y * y - scal_type(2) * z * z;
+   //  ret.data_array[1 * 4 + 0] = scal_type(2) * x * y - scal_type(2) * w * z;
+   //  ret.data_array[2 * 4 + 0] = scal_type(2) * x * z + scal_type(2) * w * y;
+
+   //  ret.data_array[0 * 4 + 1] = scal_type(2) * x * y + scal_type(2) * w * z;
+   //  ret.data_array[1 * 4 + 1] = scal_type(1) - scal_type(2) * x * x - scal_type(2) * z * z;
+   //  ret.data_array[2 * 4 + 1] = scal_type(2) * y * z - scal_type(2) * w * x;
+    
+   //  ret.data_array[0 * 4 + 2] = scal_type(2) * x * z - scal_type(2) * w * y;
+   //  ret.data_array[1 * 4 + 2] = scal_type(2) * y * z + scal_type(2) * w * x;
+   //  ret.data_array[2 * 4 + 2] = scal_type(1) - scal_type(2) * x * x - scal_type(2) * y * y;
+
+   //  ret.data_array[3 * 4 + 3] = scal_type(1);
+
 
 // function definition in accordance with Util.h of VisualSfM pipeline
 bool read_nvm (ifstream &in,
@@ -71,8 +105,49 @@ bool read_nvm (ifstream &in,
             else
                 {
                     // quaternion input
-                    camera_vec[i].set_orientation (quat<double> (q[0], q[1], q[3], q[4]));
-                    camera_vec[i].set_center (arr3_to_vec3 (c));
+
+                    scm::math::quat<double> quat = scm::math::quat<double>(q[0], q[1], q[2], q[3]);
+                    // scm::math::vec3d axis;
+                    // double angle;
+                    // quat.retrieve_axis_angle(angle, axis);    
+
+                    // scm::math::quat<double> quat_rot = scm::math::quat<double>::from_axis(180+angle, axis);
+                    
+                    // scm::math::quat<double> quat = scm::math::quat<double>::from_axis(180.0, scm::math::vec3d(0.0, 1.0, 0.0));
+                    // scm::math::quat<double> quat = scm::math::quat<double>::from_axis(0.0, scm::math::vec3d(0.0, 1.0, 0.0));
+                    // scm::math::quat<double> quat = scm::math::quat<double> (-0.979892074788, -0.127325981533, 0.150984070102, -0.0283534293648);
+                    // scm::math::quat<double> quat = scm::math::quat<double> (0.979892074788, -0.127325981533, 0.150984070102, -0.0283534293648);
+                    // scm::math::quat<double> quat = scm::math::quat<double> (0.979892074788, 0.127325981533, -0.150984070102, 0.0283534293648);
+                    // scm::math::quat<double> quat = scm::math::quat<double> (-0.979892074788, 0.127325981533, -0.150984070102, 0.0283534293648);
+                    // scm::math::quat<double> quat = scm::math::quat<double> (-0.979892074788, 0.127325981533, -0.150984070102, 0.0283534293648);
+                    // scm::math::quat<double> quat = scm::math::quat<double> (1.0, 0.0, 0.0, 0.0);
+                    // scm::math::quat<double> quat = scm::math::quat<double> (3.1685, 3.7559, -0.7056, 0.4955);
+                    // quat = quat * quat_rot;
+                    // std::cout << quat << std::endl; 
+                    // quat = scm::math::normalize(quat);
+                    // std::cout << quat << std::endl; 
+                    // quat = scm::math::conjugate(quat);
+                    // std::cout << quat << std::endl; 
+                    // scm::math::mat4d matrix_rotation = quat.to_matrix();
+                    // std::cout << matrix_rotation[2]<<" " << matrix_rotation[6]<< " " << matrix_rotation[10] << std::endl;
+                    // std::cout << M_PI+angle <<" " << angle << " " << axis << std::endl;
+                    // quat = quat * (1.0 / scm::math::normalize(quat));
+                    // std::cout << quat << std::endl;
+                    // quat = scm::math::quat<double>::from_axis(180.0, scm::math::vec3d(0.0, 1.0, 0.0));
+
+                    // std::cout << quat << std::endl; 
+                    // conjugate().scale(1/norm());
+
+                    // quat *= scm::math::quat<double>::from_axis(180.0, scm::math::vec3d(0.0, 1.0, 0.0)); 
+
+                    // scm::math::quat<double> old_orientation = camera.get_orientation();
+                    scm::math::quat<double> new_orientation = scm::math::quat<double>::from_axis(180, scm::math::vec3d(1.0, 0.0, 0.0));
+                    quat = scm::math::normalize(quat);
+                    // ;
+                    // camera_vec[i].set_orientation(scm::math::quat<double>::from_matrix(quat.to_matrix()));
+                    camera_vec[i].set_orientation(scm::math::quat<double>::from_matrix(SetQuaternionRotation(quat)) * new_orientation);
+                    // camera_vec[i].set_orientation(scm::math::quat<double>::from_matrix(scm::math::inverse(new_orientation.to_matrix()) * quat.to_matrix() * new_orientation.to_matrix()));
+                    camera_vec[i].set_center(arr3_to_vec3(c));
                 }
             camera_vec[i].set_radial_distortion (d[0]);
 

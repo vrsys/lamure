@@ -59,6 +59,10 @@ class Image
   double _focal_length;
   double _fp_resolution_x;
   double _fp_resolution_y;
+  scm::gl::texture_2d_ptr _texture;
+
+  scm::math::mat4f _transformation = scm::math::mat4f::identity();
+
  public:
 
   Image ();
@@ -94,7 +98,17 @@ class Image
 
   void set_fp_resolution_y (double _fp_resolution_y);
 
+  float get_width_world();
+  float get_height_world();
+
+  const scm::math::mat4f& get_transformation() const;
+
+  void update_transformation(scm::math::mat4f transformation, float scale);
+
   static Image read_from_file(const string &_file_name);
+
+  void load_texture(scm::shared_ptr<scm::gl::render_device> device);
+  scm::gl::texture_2d_ptr get_texture();
 };
 
 #endif //LAMURE_IMAGE_H

@@ -10,6 +10,18 @@ Scene::Scene(vector<Camera> vector_camera, vector<Point> vector_point, vector<Im
 	_vector_image = vector_image;
 
 }
+bool Scene::update(int time_delta)
+{
+	for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it) 
+    {
+        Camera& camera = (*it);
+        scm::math::quat<double> old_orientation = camera.get_orientation();
+		scm::math::quat<double> new_orientation = scm::math::quat<double>::from_axis(0.1 * time_delta, scm::math::vec3d(0.0, 1.0, 0.0));
+
+        // camera.set_orientation(old_orientation * new_orientation);
+
+    }
+}
 
 void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
 {
@@ -37,9 +49,16 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
     _vertex_array_object_cameras = device->create_vertex_array(scm::gl::vertex_format
         (0, 0, scm::gl::TYPE_VEC3D, sizeof(double) * 3),
         boost::assign::list_of(vertex_buffer_object_cameras));
-    device->main_context()->apply();
 
 	_quad.reset(new scm::gl::quad_geometry(device, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
+
+	for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it) 
+    {
+        Camera& camera = (*it);
+        camera.init(device);
+        // break;
+    }
+    device->main_context()->apply();
 }
 
 std::vector<Struct_Point> Scene::convert_points_to_struct_point()
@@ -84,6 +103,14 @@ scm::shared_ptr<scm::gl::quad_geometry> Scene::get_quad()
 	return _quad;
 }
 
+void Scene::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset)
+{
+	for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it) 
+    {
+        (*it).update_scale_frustum(device, offset);
+    }
+}
+
 void Scene::toggle_camera()
 {
 	is_default_camera = !is_default_camera;
@@ -92,6 +119,7 @@ void Scene::toggle_camera()
 		_camera_view.reset();
 	} else {
 		Camera camera = _vector_camera[index_current_image_camera];
+		std::cout << scm::math::vec3f(camera.get_center()) << " " << camera.get_orientation() << std::endl;
 		_camera_view.set_position(scm::math::vec3f(camera.get_center()));
 		_camera_view.set_rotation(camera.get_orientation());
 	}

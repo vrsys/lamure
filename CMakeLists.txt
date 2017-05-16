@@ -106,6 +106,11 @@ find_package(GLUT REQUIRED)
 #add_definitions(${GLUT_DEFINITIONS})
 
 ################################
+# glfw
+################################
+# find_package(GLFW3 REQUIRED)
+
+################################
 # OpenGL
 ################################
 if (UNIX)

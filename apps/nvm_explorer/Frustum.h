@@ -1,13 +1,5 @@
-#ifndef LAMURE_RENDERER_H
-#define LAMURE_RENDERER_H
-
-
-// #include <lamure/utils.h>
-// #include <lamure/types.h>
-#include "utils.h"
-#include "Scene.h"
-
-#include <iostream>
+#ifndef LAMURE_FRUSTUM_H
+#define LAMURE_FRUSTUM_H
 
 #include <scm/core.h>
 #include <scm/log.h>
@@ -51,27 +43,28 @@
 
 #include <lamure/ren/cut.h>
 #include <lamure/ren/cut_update_pool.h>
+#include <vector>
 
+#include "Struct_Line.h"
 
-class Renderer {
+class Frustum {
+
 	private:
-        scm::shared_ptr<scm::gl::render_context> _context;
-        scm::gl::program_ptr _program_points;
-        scm::gl::program_ptr _program_cameras;
-        scm::gl::program_ptr _program_images;
-        scm::gl::program_ptr _program_frustra;
+		scm::math::vec3f _near_left_top = scm::math::vec3f(-0.5, 0.5, 0.0);
+		scm::math::vec3f _near_right_top = scm::math::vec3f(0.5, 0.5, 0.0);
+		scm::math::vec3f _near_left_bottom = scm::math::vec3f(-0.5, -0.5, 0.0);
+		scm::math::vec3f _near_right_bottom = scm::math::vec3f(0.5, -0.5, 0.0);
+		scm::math::vec3f _far_left_top = scm::math::vec3f(-1.0, 1.0, 0.0);
+		scm::math::vec3f _far_right_top = scm::math::vec3f(1.0, 1.0, 0.0);
+		scm::math::vec3f _far_left_bottom = scm::math::vec3f(-1.0, -1.0, 0.0);
+		scm::math::vec3f _far_right_bottom = scm::math::vec3f(1.0, -1.0, 0.0);
+	    scm::gl::vertex_array_ptr _vertex_array_object;
 
-        scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
-        int _width_window;
-		scm::gl::texture_2d_ptr _texture;
-        int _height_window;
-
+		std::vector<Struct_Line> convert_frustum_to_struct_line();
 	public:
-		Renderer();
-		void init(char** argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
-		void render(Scene scene);
-
-
+		Frustum();
+    	void init(scm::shared_ptr<scm::gl::render_device> device, std::vector<scm::math::vec3f> vertices);
+	    scm::gl::vertex_array_ptr get_vertex_array_object();
 };
 
-#endif //LAMURE_RENDERER_H
+#endif //LAMURE_FRUSTUM_H

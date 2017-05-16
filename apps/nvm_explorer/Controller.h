@@ -18,6 +18,7 @@ class Controller {
 		float _y_last = 0;
 		float _yaw = 90.0f;
 		float _pitch = 0.0f;
+		bool tmp = true;
 
 		void handle_movements(int time_delta);
 

@@ -83,6 +83,10 @@ class Scene {
 	    Camera_View &get_camera_view();
 	    // std::vector<Image> &get_vector_image();
 	    std::vector<Camera> &get_vector_camera();
+		bool update(int time_delta);
+		void update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset);
+
+
 
 	    int count_points();
 	    int count_cameras();

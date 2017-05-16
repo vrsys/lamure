@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
+// #include <GLFW/glfw3.h>
 #include <GL/freeglut.h>
 #include "utils.h"
 #include "Scene.h"
@@ -62,6 +63,11 @@ int main (int argc, char *argv[])
             return 0;
         }
 
+    // if(!glfwInit())
+    // {
+    //     // Initialization failed
+    // }
+
     initialize_glut(argc, argv, width_window, height_window);
 
     ifstream in (name_file_nvm);
@@ -82,6 +88,7 @@ int main (int argc, char *argv[])
     Scene scene(vec_camera, vec_point, vec_image);
 
     controller = new Controller(scene, argv, width_window, height_window);
+    std::cout << "start rendering" << std::endl;
 
     glutMainLoop();
 
@@ -149,7 +156,6 @@ void glut_mouse_movement(int x, int y)
     // glutWarpPointer(1920/2, 1080/2);
 }
 
-
 void glut_keyboard(unsigned char key, int x, int y)
 {
     switch(key)
@@ -161,6 +167,7 @@ void glut_keyboard(unsigned char key, int x, int y)
         case '.':
             glutFullScreenToggle();
         default:
+        // std::cout << key << std::endl;
             controller->handle_key_pressed(key);
             break;
 
