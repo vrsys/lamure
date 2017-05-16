@@ -205,7 +205,7 @@ int main(int argc, char** argv)
         // Usual case for anything based on regular grid or octree.
         // TODO: check if the input grid uses proper amount of cells to convert into octree.
         unsigned int cells_per_axis = (unsigned int)std::round(std::pow(input_grid->get_cell_count(), 1.0/3.0));
-        unsigned int depth = (unsigned int)std::round(std::sqrt(cells_per_axis)) + 1;
+        unsigned int depth = (unsigned int)std::round(std::log2(cells_per_axis)) + 1;
 
         size_t num_cells = depth;
         if(output_grid_type == lamure::pvs::grid_regular::get_grid_identifier() || 
