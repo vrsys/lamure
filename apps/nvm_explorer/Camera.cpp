@@ -25,7 +25,7 @@ std::vector<scm::math::vec3f> Camera::calc_frustum()
     float width_world_half = width_world / 2;
     float height_world = _still_image.get_height_world();
     float height_world_half = height_world / 2;
-    std::cout << _still_image.get_width_world() << std::endl;
+    // std::cout << _still_image.get_width_world() << std::endl;
 
     width_world_half *= _scale;
     height_world_half *= _scale;
@@ -45,7 +45,8 @@ std::vector<scm::math::vec3f> Camera::calc_frustum()
 }
 void Camera::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset)
 {
-    _scale += offset;
+    float new_scale = std::max(_scale + offset, 0.0f);
+    _scale = new_scale;
     update_transformation();
     _frustum.init(device, calc_frustum());
 }
