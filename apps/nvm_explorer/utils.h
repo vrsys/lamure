@@ -46,6 +46,7 @@
 #include <scm/core/platform/platform.h>
 #include <scm/core/utilities/platform_warning_disable.h>
 #include <scm/gl_util/primitives/geometry.h>
+#include "tinyply.h"
 
 namespace utils
 {
@@ -53,6 +54,9 @@ bool read_nvm (ifstream &in,
                vector<Camera> &camera_vec,
                vector<Point> &point_vec,
                vector<Image> &images);
+
+bool read_ply(ifstream &in,
+              vector<Point> &point_vec);
 
 template<typename T>
 vec<T, 2> pair_to_vec2 (T *arr);
