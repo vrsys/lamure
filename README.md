@@ -8,17 +8,78 @@ This repository is a fork of [LAMURE](https://github.com/vrsys/lamure) by [Virtu
 
 &nbsp;<details open><summary>Contributions here are going to be focused at following applications</summary>
 
-### NVM Explorer
+### Lamure Visual Provenance Viewer
 
-Functional requirements:
+Lamure Visual Provenance Viewer is a [LAMURE](https://github.com/vrsys/lamure) app,
+capable of displaying arbitrary sparse and dense point clouds representing
+3D reconstruction output from structure from motion (SfM) tools.
 
-1. Consume SfM workspace from [NVM](http://ccwu.me/vsfm/doc.html#nvm) input file via:
+### Sparse data file format
+
+Bytewise specification (following the guidelines of [Fadden](http://www.fadden.com/tech/file-formats.html)). Numerical values in double.
+
     ```
-    ./lamure_nvm_explorer -f <input_file.nvm>
+    +00     2B Magic number (0xAFFE)
+    +02     4B CRC-32
+    +06     4B Length of data
+    +0A     2B Number of cameras
+
+        [start camera]
+
+        +00     2B  Camera index
+        +02     8B  Focal length
+        +0A     32B Quaternion, WXYZ
+        +2A     24B Camera center, XYZ
+        +42     2B  Length of file path (YY)
+        +44     YY  File path
+        +44+YY  4B  Length of meta data (ZZ)
+        +48+YY  ZZ  Meta data
+
+        [end camera]
+
+    +??     4B Number of sparse points
+
+        [start sparse point]
+
+        +00     4B  Point index
+        +04     24B Position, XYZ
+        +1C     24B Color, RGB
+        +20     2B  Number of measurements
+
+            [start measurement]
+
+            +00     2B Camera index
+            +02     4B Occurence, X
+            +06     4B Occurence, Y
+
+            [end measurement]
+
+        +??      4B  Length of meta data (ZZ)
+        +??+4B   ZZ  Meta data
+
+        [end sparse point]
+
     ```
-2. Display camera objects while rendering image textures at their respective positions/quaternions.
-3. Display sparse point cloud while highlighting corresponding measurements in respective image textures during interaction.
-4. Allow for intuitive navigation through the rendered scene.
+
+### Dense (LoD) data file format
+
+    ```
+    +00     2B Magic number (0xAFFE)
+    +02     4B CRC-32
+    +06     4B Length of data
+    +0A     4B Number of points
+
+    [start dense point]
+
+    +00     4B  Point index
+    +04     24B Position, XYZ
+    +1C     24B Color, RGB
+    +40     24B Normal, XYZ
+    +58     4B  Length of meta data (ZZ)
+    +5C     ZZ  Meta data
+
+    [end dense point]
+    ```
 
 </details>
 

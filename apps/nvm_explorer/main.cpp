@@ -1,13 +1,13 @@
-#include <iostream>
+#include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <vector>
-#include <algorithm>
 // #include <GLFW/glfw3.h>
-#include <GL/freeglut.h>
-#include "utils.h"
-#include "Scene.h"
 #include "Controller.h"
+#include "Scene.h"
+#include "utils.h"
+#include <GL/freeglut.h>
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -34,34 +34,28 @@ char *get_cmd_option(char **begin, char **end, const std::string &option)
     return 0;
 }
 
-bool cmd_option_exists(char **begin, char **end, const std::string &option)
-{
-    return std::find(begin, end, option) != end;
-}
+bool cmd_option_exists(char **begin, char **end, const std::string &option) { return std::find(begin, end, option) != end; }
 
 int main(int argc, char *argv[])
 {
-    if(argc == 1 ||
-       cmd_option_exists(argv, argv + argc, "-h") ||
-       !cmd_option_exists(argv, argv + argc, "-f"))
-        {
-
-            std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>.nvm" << std::endl <<
-                      "INFO: nvm_explorer " << std::endl <<
-                      "\t-f: selects .nvm input file" << std::endl <<
-                      "\t    (-f flag is required) " << std::endl <<
-                      std::endl;
-            return 0;
-        }
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-f"))
+    {
+        std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>.nvm" << std::endl
+                  << "INFO: nvm_explorer " << std::endl
+                  << "\t-f: selects .nvm input file" << std::endl
+                  << "\t    (-f flag is required) " << std::endl
+                  << std::endl;
+        return 0;
+    }
 
     std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-f"));
 
     std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
     if(ext.compare("nvm") != 0)
-        {
-            std::cout << "please specify a .nvm file as input" << std::endl;
-            return 0;
-        }
+    {
+        std::cout << "please specify a .nvm file as input" << std::endl;
+        return 0;
+    }
 
     // if(!glfwInit())
     // {
@@ -104,22 +98,21 @@ void glut_display()
 {
     bool signaled_shutdown = false;
     if(controller != nullptr)
-        {
+    {
+        int new_time_since_start = glutGet(GLUT_ELAPSED_TIME);
+        int time_delta = new_time_since_start - time_since_start;
+        time_since_start = new_time_since_start;
 
-            int new_time_since_start = glutGet(GLUT_ELAPSED_TIME);
-            int time_delta = new_time_since_start - time_since_start;
-            time_since_start = new_time_since_start;
+        signaled_shutdown = controller->update(time_delta);
 
-            signaled_shutdown = controller->update(time_delta);
-
-            glutSwapBuffers();
-        }
+        glutSwapBuffers();
+    }
 
     if(signaled_shutdown)
-        {
-            glutExit();
-            exit(0);
-        }
+    {
+        glutExit();
+        exit(0);
+    }
 }
 
 void initialize_glut(int argc, char **argv, int width, int height)
@@ -128,10 +121,7 @@ void initialize_glut(int argc, char **argv, int width, int height)
     glutInitContextVersion(3, 0);
     glutInitContextProfile(GLUT_CORE_PROFILE);
 
-    glutSetOption(
-        GLUT_ACTION_ON_WINDOW_CLOSE,
-        GLUT_ACTION_GLUTMAINLOOP_RETURNS
-    );
+    glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA | GLUT_ALPHA | GLUT_MULTISAMPLE);
 
@@ -164,25 +154,20 @@ void glut_mouse_movement(int x, int y)
 void glut_keyboard(unsigned char key, int x, int y)
 {
     switch(key)
-        {
-            case 27:glutExit();
-            exit(0);
-            break;
-            case '.':glutFullScreenToggle();
-            default:
-                // std::cout << key << std::endl;
-                controller->handle_key_pressed(key);
-            break;
-
-        }
+    {
+    case 27:
+        glutExit();
+        exit(0);
+        break;
+    case '.':
+        glutFullScreenToggle();
+    default:
+        // std::cout << key << std::endl;
+        controller->handle_key_pressed(key);
+        break;
+    }
 }
 
-void glut_keyboard_release(unsigned char key, int x, int y)
-{
-    controller->handle_key_released(key);
-}
+void glut_keyboard_release(unsigned char key, int x, int y) { controller->handle_key_released(key); }
 
-void glut_idle()
-{
-    glutPostRedisplay();
-}
+void glut_idle() { glutPostRedisplay(); }

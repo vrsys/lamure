@@ -1,72 +1,68 @@
 #ifndef LAMURE_CAMERA_H
 #define LAMURE_CAMERA_H
 
+#include "Frustum.h"
+#include "Image.h"
+#include <FreeImagePlus.h>
+#include <scm/core/math.h>
 #include <scm/core/math/quat.h>
 #include <scm/core/math/vec3.h>
-#include <scm/core/math.h>
-#include <FreeImagePlus.h>
-#include "Image.h"
-#include "Frustum.h"
 
 using namespace scm::math;
 
 class Camera
 {
- private:
+  private:
+    Image _still_image;
+    double _focal_length;
+    quat<double> _orientation;
+    vec3d _center;
+    double _radial_distortion;
+    float _scale = 20.0f;
 
-  Image _still_image;
-  double _focal_length;
-  quat<double> _orientation;
-  vec3d _center;
-  double _radial_distortion;
-  float _scale = 20.0f;
+    scm::gl::sampler_state_ptr _state;
+    scm::math::mat4f _transformation = scm::math::mat4f::identity();
 
-
-  scm::gl::sampler_state_ptr _state;
-  scm::math::mat4f _transformation = scm::math::mat4f::identity();
-
-  Frustum _frustum;
+    Frustum _frustum;
 
     std::vector<scm::math::vec3f> calc_frustum();
- public:
-  const Image &get_still_image () const;
 
-  void set_still_image (const Image &_still_image);
+  public:
+    const Image &get_still_image() const;
 
-  double get_focal_length () const;
+    void set_still_image(const Image &_still_image);
 
-  void set_focal_length (double _focal_length);
+    double get_focal_length() const;
 
-  const quat<double> &get_orientation () const;
+    void set_focal_length(double _focal_length);
 
-  void set_orientation (const quat<double> &_orientation);
+    const quat<double> &get_orientation() const;
 
-  const vec3d &get_center () const;
+    void set_orientation(const quat<double> &_orientation);
 
-  void set_center (const vec<double, 3> &_center);
+    const vec3d &get_center() const;
 
-  double get_radial_distortion () const;
+    void set_center(const vec<double, 3> &_center);
 
-  void set_radial_distortion (double _radial_distortion);
+    double get_radial_distortion() const;
 
-  scm::math::mat4f &get_transformation();
+    void set_radial_distortion(double _radial_distortion);
 
-  void update_transformation();
+    scm::math::mat4f &get_transformation();
 
-  void update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset);
+    void update_transformation();
 
-  Frustum &get_frustum();
+    void update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset);
 
-  void bind_texture(scm::shared_ptr<scm::gl::render_context> context);
+    Frustum &get_frustum();
 
-  Camera ();
+    void bind_texture(scm::shared_ptr<scm::gl::render_context> context);
 
-  Camera (const Image &_still_image, double _focal_length, const quat<double> &_orientation,
-          const vec<double, 3> &_center, double _radial_distortion);
+    Camera();
 
-  void init(scm::shared_ptr<scm::gl::render_device> device);
+    Camera(const Image &_still_image, double _focal_length, const quat<double> &_orientation, const vec<double, 3> &_center, double _radial_distortion);
 
-
+    void init(scm::shared_ptr<scm::gl::render_device> device);
 };
 
-#endif //LAMURE_CAMERA_H
+#endif // LAMURE_CAMERA_H

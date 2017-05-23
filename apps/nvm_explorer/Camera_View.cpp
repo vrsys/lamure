@@ -4,7 +4,6 @@ Camera_View::Camera_View()
 {
     _matrix_perspective = scm::math::make_perspective_matrix(60.0f, 1920.0f / 1080.0f, 0.01f, 1000.0f);
     update_matrices();
-
 }
 void Camera_View::translate(scm::math::vec3f offset)
 {
@@ -14,7 +13,6 @@ void Camera_View::translate(scm::math::vec3f offset)
 void Camera_View::update_matrices()
 {
     scm::math::mat4f matrix_view_new = scm::math::mat4f::identity();
-
 
     scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(_position));
 
@@ -33,11 +31,8 @@ void Camera_View::update_matrices()
     scm::math::mat4f matrix_rotation = scm::math::mat4f(_rotation.to_matrix());
     // std::cout << matrix_rotation << std::endl;
 
-    
-
     // std::cout << "pitch " << quat_pitch << std::endl;
     // std::cout << "yaw " << quat_yaw << std::endl;
-
 
     // scm::math::vec3f front;
     // front.x = scm::math::rad2deg(scm::math::cos(scm::math::deg2rad(_pitch)) * scm::math::sin(scm::math::deg2rad(_yaw)));
@@ -49,7 +44,7 @@ void Camera_View::update_matrices()
     // cos(verticalAngle) * sin(horizontalAngle),
     // sin(verticalAngle),
     // cos(verticalAngle) * cos(horizontalAngle)
-// );
+    // );
 
     // _matrix_view = scm::math::make_look_at_matrix(_position, _position + scm::math::vec3f(matrix_rotation[2], matrix_rotation[6], matrix_rotation[10]), scm::math::vec3f(0.0, 1.0, 0.0));
     // scm::math::mat4f matrix_rotation = scm::math::mat4f(
@@ -68,9 +63,7 @@ void Camera_View::update_matrices()
     // std::cout << -matrix_view_new[2]<<" " << -matrix_view_new[6]<< " " << -matrix_view_new[10] << std::endl;
     // std::cout << _matrix_view[2]<<" " << _matrix_view[6]<< " " << _matrix_view[10] << std::endl;
 
-
     // std::cout << rot_mat << std::endl;
-
 
     _matrix_view = matrix_view_new;
 }
@@ -81,19 +74,13 @@ scm::math::mat4f &Camera_View::get_matrix_view()
     // std::cout << _position << std::endl;
     return _matrix_view;
 }
-scm::math::mat4f &Camera_View::get_matrix_perspective()
-{
-    return _matrix_perspective;
-}
+scm::math::mat4f &Camera_View::get_matrix_perspective() { return _matrix_perspective; }
 void Camera_View::set_position(scm::math::vec3f position)
 {
     _position = position;
     update_matrices();
 }
-scm::math::quat<double> Camera_View::get_rotation()
-{
-    return _rotation;
-}
+scm::math::quat<double> Camera_View::get_rotation() { return _rotation; }
 void Camera_View::set_rotation(scm::math::quat<double> rotation)
 {
     _rotation = scm::math::normalize(rotation);

@@ -1,16 +1,10 @@
 #include "Camera.h"
 
-const Image &Camera::get_still_image () const
-{
-    return _still_image;
-}
+const Image &Camera::get_still_image() const { return _still_image; }
 
 void Camera::init(scm::shared_ptr<scm::gl::render_device> device)
 {
-    
-    
     _still_image.load_texture(device);
-
 
     _state = device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
     _frustum.init(device, calc_frustum());
@@ -49,12 +43,9 @@ void Camera::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device
     update_transformation();
     _frustum.init(device, calc_frustum());
 }
-void Camera::bind_texture(scm::shared_ptr<scm::gl::render_context> context)
-{
-    context->bind_texture(_still_image.get_texture(), _state,  0);
-}
+void Camera::bind_texture(scm::shared_ptr<scm::gl::render_context> context) { context->bind_texture(_still_image.get_texture(), _state, 0); }
 
-void Camera::set_still_image (const Image &_still_image)
+void Camera::set_still_image(const Image &_still_image)
 {
     Camera::_still_image = _still_image;
     update_transformation();
@@ -65,8 +56,6 @@ void Camera::update_transformation()
     scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(_center));
     scm::math::mat4f matrix_rotation = scm::math::mat4f(_orientation.to_matrix());
 
-    
-
     // _transformation = matrix_translation;
     // _transformation =  matrix_rotation;
     // _transformation =  scm::math::inverse(matrix_rotation) * matrix_translation;
@@ -75,64 +64,37 @@ void Camera::update_transformation()
     _still_image.update_transformation(_transformation, _scale);
 }
 
-double Camera::get_focal_length () const
-{
-    return _focal_length;
-}
+double Camera::get_focal_length() const { return _focal_length; }
 
-void Camera::set_focal_length (double _focal_length)
-{
-    Camera::_focal_length = _focal_length;
-}
+void Camera::set_focal_length(double _focal_length) { Camera::_focal_length = _focal_length; }
 
-const quat<double> &Camera::get_orientation () const
-{
-    return _orientation;
-}
+const quat<double> &Camera::get_orientation() const { return _orientation; }
 
-void Camera::set_orientation (const quat<double> &orientation)
+void Camera::set_orientation(const quat<double> &orientation)
 {
     Camera::_orientation = scm::math::normalize(orientation);
     update_transformation();
 }
 
-const vec3d &Camera::get_center () const
-{
-    return _center;
-}
+const vec3d &Camera::get_center() const { return _center; }
 
-void Camera::set_center (const vec3d &_center)
+void Camera::set_center(const vec3d &_center)
 {
     Camera::_center = _center;
     update_transformation();
 }
 
-double Camera::get_radial_distortion () const
+double Camera::get_radial_distortion() const { return _radial_distortion; }
+
+void Camera::set_radial_distortion(double _radial_distortion) { Camera::_radial_distortion = _radial_distortion; }
+
+scm::math::mat4f &Camera::get_transformation() { return _transformation; }
+
+Frustum &Camera::get_frustum() { return _frustum; }
+
+Camera::Camera(const Image &_still_image, double _focal_length, const quat<double> &_orientation, const vec3d &_center, double _radial_distortion)
+    : _still_image(_still_image), _focal_length(_focal_length), _orientation(_orientation), _center(_center), _radial_distortion(_radial_distortion)
 {
-    return _radial_distortion;
 }
 
-void Camera::set_radial_distortion (double _radial_distortion)
-{
-    Camera::_radial_distortion = _radial_distortion;
-}
-
-scm::math::mat4f &Camera::get_transformation()
-{
-    return _transformation; 
-}
-
-Frustum &Camera::get_frustum()
-{
-    return _frustum;
-}
-
-Camera::Camera (const Image &_still_image, double _focal_length, const quat<double> &_orientation,
-                const vec3d &_center, double _radial_distortion) : _still_image (_still_image),
-                                                                   _focal_length (_focal_length),
-                                                                   _orientation (_orientation), _center (_center),
-                                                                   _radial_distortion (_radial_distortion)
-{}
-
-Camera::Camera () : _still_image ()
-{}
+Camera::Camera() : _still_image() {}
