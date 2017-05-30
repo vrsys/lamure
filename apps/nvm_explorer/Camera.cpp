@@ -7,15 +7,11 @@ const Image &Camera::get_still_image () const
 
 void Camera::init(scm::shared_ptr<scm::gl::render_device> device)
 {
-    
-    
     _still_image.load_texture(device);
 
-
-    _state = device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
-    _frustum.init(device, calc_frustum());
+    _frustum.init(device, calc_frustum_points());
 }
-std::vector<scm::math::vec3f> Camera::calc_frustum()
+std::vector<scm::math::vec3f> Camera::calc_frustum_points()
 {
     std::vector<scm::math::vec3f> result;
 
@@ -48,11 +44,11 @@ void Camera::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device
     float new_scale = std::max(_scale + offset, 0.0f);
     _scale = new_scale;
     update_transformation();
-    _frustum.init(device, calc_frustum());
+    _frustum.init(device, calc_frustum_points());
 }
 void Camera::bind_texture(scm::shared_ptr<scm::gl::render_context> context)
 {
-    context->bind_texture(_still_image.get_texture(), _state,  0);
+    context->bind_texture(_still_image.get_texture(), _still_image.get_state(),  0);
 }
 
 void Camera::set_still_image (const Image &_still_image)

@@ -22,12 +22,19 @@ void Image::set_width (int _width)
     Image::_width = _width;
 }
 
+scm::gl::sampler_state_ptr Image::get_state()
+{
+    return _state;
+}
+
 void Image::load_texture(scm::shared_ptr<scm::gl::render_device> device)
 {
     scm::gl::texture_loader tl;
-    // std::cout << "creating texture" << std::endl;
+    std::cout << "creating texture" << std::endl;
     _texture.reset();
     _texture = tl.load_texture_2d(*device, _file_name, true, false);
+    
+    _state = device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 }
 
 scm::gl::texture_2d_ptr Image::get_texture()

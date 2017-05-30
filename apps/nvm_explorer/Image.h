@@ -60,6 +60,7 @@ class Image
   double _fp_resolution_x;
   double _fp_resolution_y;
   scm::gl::texture_2d_ptr _texture;
+  scm::gl::sampler_state_ptr _state;
 
   scm::math::mat4f _transformation = scm::math::mat4f::identity();
 
@@ -97,6 +98,8 @@ class Image
   double get_fp_resolution_y () const;
 
   void set_fp_resolution_y (double _fp_resolution_y);
+
+  scm::gl::sampler_state_ptr get_state();
 
   float get_width_world();
   float get_height_world();

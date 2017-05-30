@@ -56,7 +56,7 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
     {
         Camera& camera = (*it);
         camera.init(device);
-        // break;
+        break;
     }
     device->main_context()->apply();
 }
@@ -86,7 +86,6 @@ std::vector<Struct_Camera> Scene::convert_cameras_to_struct_camera()
 
         vector_struct_camera.push_back(camera);
     }
-
     return vector_struct_camera;
 }
 

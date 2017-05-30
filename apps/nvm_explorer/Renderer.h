@@ -56,22 +56,31 @@
 class Renderer {
 	private:
         scm::shared_ptr<scm::gl::render_context> _context;
+        scm::shared_ptr<scm::gl::render_device> _device;
         scm::gl::program_ptr _program_points;
+        scm::gl::program_ptr _program_points_dense;
         scm::gl::program_ptr _program_cameras;
         scm::gl::program_ptr _program_images;
         scm::gl::program_ptr _program_frustra;
 
-        scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
+        scm::gl::rasterizer_state_ptr _rasterizer_state;
         int _width_window;
-		scm::gl::texture_2d_ptr _texture;
         int _height_window;
 
+		lamure::ren::camera* _camera = new lamure::ren::camera();
+
+		void draw_points_sparse(Scene scene);
+		void draw_cameras(Scene scene);
+		void draw_images(Scene scene);
+		void draw_frustra(Scene scene);
+		void draw_points_dense(Scene scene);
 	public:
 		Renderer();
 		void init(char** argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
 		void render(Scene scene);
-
-
+		
+		bool mode_draw_points_dense = false;
+		bool mode_draw_images = true;
 };
 
 #endif //LAMURE_RENDERER_H

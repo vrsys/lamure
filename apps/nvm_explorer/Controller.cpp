@@ -149,5 +149,9 @@ void Controller::handle_key_released(char key)
 		_scene.previous_camera();
 	} else if (key == 'o') {
 		_scene.next_camera();
+	} else if (key == 'n') {
+		_renderer.mode_draw_points_dense = !_renderer.mode_draw_points_dense;
+	} else if (key == 'm') {
+		_renderer.mode_draw_images = !_renderer.mode_draw_images;
 	}
 }
