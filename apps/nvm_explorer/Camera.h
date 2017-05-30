@@ -52,7 +52,6 @@ class Camera
 
         scm::math::mat4f &get_transformation();
 
-
         void update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset);
 
         Frustum &get_frustum();
