@@ -66,10 +66,15 @@ int main(int argc, char *argv[])
 
     ifstream in(name_file_nvm);
     vector<Camera> vec_camera;
-    vector<Point> vec_point;
+    vector<Point> vec_point_sparse;
+    vector<Point> vec_point_dense;
     vector<Image> vec_image;
 
-    utils::read_nvm(in, vec_camera, vec_point, vec_image);
+    utils::read_nvm(in, vec_camera, vec_point_sparse, vec_image);
+
+    ifstream in_ply(name_file_nvm + ".cmvs/00/models/option-0000.ply", ifstream::binary);
+
+    utils::read_ply(in_ply, vec_point_dense);
 
     //  std::cout << "cameras: " << vec_camera.size() << std::endl;
     //  std::cout << "points: " << vec_point.size() << std::endl;
@@ -79,7 +84,7 @@ int main(int argc, char *argv[])
     // }
     //  std::cout << "vec_image: " << vec_image.size() << std::endl;
 
-    Scene scene(vec_camera, vec_point, vec_image);
+    Scene scene(vec_camera, vec_point_sparse, vec_image);
 
     controller = new Controller(scene, argv, width_window, height_window);
     std::cout << "start rendering" << std::endl;

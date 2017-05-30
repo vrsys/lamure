@@ -1,5 +1,4 @@
 #include "utils.h"
-#include <boost/filesystem.hpp>
 
 namespace utils
 {
@@ -20,6 +19,7 @@ mat<T, 3, 3> arr9_to_mat3(T *arr)
 {
     return mat<T, 3, 3>(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5], arr[6], arr[7], arr[8]);
 };
+
 scm::math::mat3d SetQuaternionRotation(const scm::math::quat<double> q)
 {
     scm::math::mat3d m = scm::math::mat3d::identity();
@@ -179,6 +179,48 @@ bool read_nvm(ifstream &in, vector<Camera> &camera_vec, vector<Point> &point_vec
     }
 
     std::cout << ncam << " cameras; " << npoint << " 3D points; " << nproj << " projections\n";
+
+    return true;
+}
+
+bool read_ply(ifstream &in, vector<Point> &point_vec)
+{
+    tinyply::PlyFile file(in);
+
+    for(tinyply::PlyElement e : file.get_elements())
+    {
+        std::cout << "element - " << e.name << " (" << e.size << ")" << std::endl;
+        for(auto p : e.properties)
+        {
+            std::cout << "\tproperty - " << p.name << " (" << tinyply::PropertyTable[p.propertyType].str << ")" << std::endl;
+        }
+    }
+    std::cout << std::endl;
+
+    for(string c : file.comments)
+    {
+        std::cout << "Comment: " << c << std::endl;
+    }
+
+    std::vector<float> verts;
+    std::vector<float> norms;
+    std::vector<uint8_t> colors;
+
+    file.request_properties_from_element("vertex", {"x", "y", "z"}, verts);
+    file.request_properties_from_element("vertex", {"nx", "ny", "nz"}, norms);
+    file.request_properties_from_element("vertex", {"diffuse_red", "diffuse_green", "diffuse_blue"}, colors);
+
+    file.read(in);
+
+    point_vec.resize(verts.size() / 3);
+
+    for(int i = 0; i < verts.size() / 3; i++)
+    {
+        point_vec[i].set_center(vec3f(verts[i], verts[i + 1], verts[i + 2]));
+        point_vec[i].set_color(vec3i(colors[i], colors[i + 1], colors[i + 2]));
+        // TODO: set normals
+        // std::cout << "Color: " << point_vec[i].get_color() << " Center: " << point_vec[i].get_center() << std::endl;
+    }
 
     return true;
 }
