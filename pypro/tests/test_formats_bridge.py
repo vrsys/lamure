@@ -11,7 +11,7 @@ class NVMFormatSparseTestSuite(unittest.TestCase):
         self.format_sparse_nvm = FormatSparseNVMV3('/home/anton/Downloads/mvs_output/out_1.nvm')
         elapsed_time = time() - init_time
         print("ProFormatsTestSuite : read took " + str(elapsed_time) + " sec")
-
+        
     def tearDown(self):
         print("ProFormatsTestSuite : tearDown")
 
