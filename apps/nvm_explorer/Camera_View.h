@@ -59,6 +59,11 @@ class Camera_View
     scm::math::quat<double> _rotation = _rotation_initial;
     scm::math::mat4f _matrix_view;
     scm::math::mat4f _matrix_perspective;
+    float _plane_near = 0.01f;
+    float _plane_far = 1000.0f;
+    float _fov = 60.0f;
+    int _width_window;
+    int _height_window;
 
     void update_matrices();
 
@@ -66,11 +71,14 @@ class Camera_View
     Camera_View();
 
     void translate(scm::math::vec3f offset);
+    void update_window_size(int width_window, int height_window);
     scm::math::mat4f &get_matrix_view();
     scm::math::mat4f &get_matrix_perspective();
 
     void set_position(scm::math::vec3f position);
     scm::math::quat<double> get_rotation();
+    int& get_width_window();
+    int& get_height_window();
     void set_rotation(scm::math::quat<double> rotation);
 
     void reset();

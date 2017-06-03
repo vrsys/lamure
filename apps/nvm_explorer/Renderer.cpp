@@ -21,13 +21,11 @@ Renderer::Renderer()
     // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
 }
 
-void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
+void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
 {
     _device = device;
     // get main/default context from device
     _context = device->main_context();
-    _width_window = width_window;
-    _height_window = height_window;
 
     // load shaders
     std::string root_path = LAMURE_SHADERS_DIR;
@@ -75,9 +73,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     lamure::ren::policy *policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(64);
     policy->set_render_budget_in_mb(1024 * 6);
-    policy->set_out_of_core_budget_in_mb(1024 * 5);
-    policy->set_window_width(_width_window);
-    policy->set_window_height(_height_window);
+    policy->set_out_of_core_budget_in_mb(1024 * 2);
 
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
@@ -155,11 +151,13 @@ void Renderer::draw_points_dense(Scene scene)
 
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(0));
 
-    cuts->send_transform(context_id, m_id, scm::math::mat4f(scm::math::mat4d::identity()));
+    const lamure::ren::bvh *bvh = database->get_model(m_id)->get_bvh();
+    scm::math::mat4d model_matrix = scm::math::mat4d(scm::math::make_translation(bvh->get_translation()));
+
+    database->get_model(m_id)->set_transform(scm::math::mat4f(model_matrix));
+    cuts->send_transform(context_id, m_id, scm::math::mat4f(model_matrix));
     cuts->send_threshold(context_id, m_id, 1.01f);
     cuts->send_rendered(context_id, m_id);
-
-    database->get_model(m_id)->set_transform(scm::math::mat4f(scm::math::mat4d::identity()));
 
     // set camera values
     _camera->set_view_matrix(scm::math::mat4d(scene.get_camera_view().get_matrix_view()));
@@ -193,11 +191,9 @@ void Renderer::draw_points_dense(Scene scene)
     // std::cout << surfels_per_node << std::endl;
     // std::cout << renderable.size() << std::endl;
 
-    const lamure::ren::bvh *bvh = database->get_model(0)->get_bvh();
     std::vector<scm::gl::boxf> const &bounding_box_vector = bvh->get_bounding_boxes();
-    scm::gl::frustum frustum_by_model = _camera->get_frustum_by_model(scm::math::mat4f::identity());
+    scm::gl::frustum frustum_by_model = _camera->get_frustum_by_model(scm::math::mat4f(model_matrix));
 
-    scm::math::mat4d model_matrix = scm::math::mat4d(scm::math::make_translation(bvh->get_translation()));
     // scm::math::mat4d model_matrix = scm::math::mat4d::identity();
     scm::math::mat4d projection_matrix = scm::math::mat4d(_camera->get_projection_matrix());
     scm::math::mat4d view_matrix = _camera->get_high_precision_view_matrix();
@@ -229,14 +225,13 @@ void Renderer::draw_points_dense(Scene scene)
 void Renderer::render(Scene scene)
 {
     _context->set_rasterizer_state(_rasterizer_state);
-    _context->set_viewport(scm::gl::viewport(vec2ui(0, 0), 1 * vec2ui(_width_window, _height_window)));
+    _context->set_viewport(scm::gl::viewport(vec2ui(0, 0), 1 * vec2ui(scene.get_camera_view().get_width_window(), scene.get_camera_view().get_height_window())));
 
     _context->clear_default_depth_stencil_buffer();
     _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, 0.0f, 1.0f));
 
     _context->set_default_frame_buffer();
 
-    draw_points_sparse(scene);
     draw_cameras(scene);
     draw_frustra(scene);
     if(mode_draw_images)
@@ -246,5 +241,9 @@ void Renderer::render(Scene scene)
     if(mode_draw_points_dense)
     {
         draw_points_dense(scene);
+    }
+    else
+    {
+        draw_points_sparse(scene);
     }
 }

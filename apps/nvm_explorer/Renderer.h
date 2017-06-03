@@ -63,8 +63,6 @@ class Renderer
     scm::gl::program_ptr _program_frustra;
 
     scm::gl::rasterizer_state_ptr _rasterizer_state;
-    int _width_window;
-    int _height_window;
 
     lamure::ren::camera *_camera = new lamure::ren::camera();
 
@@ -76,7 +74,7 @@ class Renderer
 
   public:
     Renderer();
-    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
+    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device);
     void render(Scene scene);
 
     bool mode_draw_points_dense = false;

@@ -76,7 +76,7 @@ class Scene
     Scene();
     Scene(std::vector<Camera> vector_camera, std::vector<Point> vector_point, std::vector<Image> vector_image);
 
-    void init(scm::shared_ptr<scm::gl::render_device> device);
+    void init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
     scm::gl::vertex_array_ptr get_vertex_array_object_points();
     scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
     scm::shared_ptr<scm::gl::quad_geometry> get_quad();

@@ -19,8 +19,9 @@ bool Scene::update(int time_delta)
     }
 }
 
-void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
+void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
 {
+	_camera_view.update_window_size(width_window, height_window);
     // create buffer for the points
     std::vector<Struct_Point> vector_struct_point = convert_points_to_struct_point();
 
@@ -40,11 +41,16 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
 
     _quad.reset(new scm::gl::quad_geometry(device, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
 
+    int counter = 0;
     for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
     {
         Camera &camera = (*it);
         camera.init(device);
-        break;
+        counter++;
+        if(counter == 1)
+        {
+        	break;
+        }
     }
     device->main_context()->apply();
 }

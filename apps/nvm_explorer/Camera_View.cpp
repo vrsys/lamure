@@ -2,13 +2,25 @@
 
 Camera_View::Camera_View()
 {
-    _matrix_perspective = scm::math::make_perspective_matrix(60.0f, 1920.0f / 1080.0f, 0.01f, 1000.0f);
+    _matrix_perspective = scm::math::make_perspective_matrix(_fov, float(_width_window) / float(_height_window), _plane_near, _plane_far);
+    std::cout << "aspect ratio: " << float(_width_window) / float(_height_window) << std::endl;
     update_matrices();
 }
 void Camera_View::translate(scm::math::vec3f offset)
 {
     _position += offset;
     update_matrices();
+}
+void Camera_View::update_window_size(int width_window, int height_window)
+{
+    _width_window = width_window;
+    _height_window = height_window;
+
+    _matrix_perspective = scm::math::make_perspective_matrix(_fov, float(_width_window) / float(_height_window), _plane_near, _plane_far);
+
+    lamure::ren::policy *policy = lamure::ren::policy::get_instance();
+    policy->set_window_width(_width_window);
+    policy->set_window_height(_height_window);
 }
 void Camera_View::update_matrices()
 {
@@ -73,6 +85,14 @@ scm::math::mat4f &Camera_View::get_matrix_view()
     // std::cout << _rotation << std::endl;
     // std::cout << _position << std::endl;
     return _matrix_view;
+}
+int& Camera_View::get_width_window()
+{
+    return _width_window;
+}
+int& Camera_View::get_height_window()
+{
+    return _height_window;
 }
 scm::math::mat4f &Camera_View::get_matrix_perspective() { return _matrix_perspective; }
 void Camera_View::set_position(scm::math::vec3f position)

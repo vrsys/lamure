@@ -8,8 +8,8 @@ Controller::Controller(Scene scene, char **argv, int width_window, int height_wi
     // initialize device
     _device.reset(new scm::gl::render_device());
 
-    _renderer.init(argv, _device, width_window, height_window);
-    _scene.init(_device);
+    _renderer.init(argv, _device);
+    _scene.init(_device, width_window, height_window);
 }
 
 bool Controller::update(int time_delta)
