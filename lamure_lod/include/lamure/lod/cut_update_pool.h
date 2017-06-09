@@ -25,6 +25,7 @@
 #include <lamure/lod/cut_update_index.h>
 
 #include <vector>
+#include <chrono>
 
 namespace lamure {
 namespace lod {
@@ -83,10 +84,10 @@ private:
 
     bool                    shutdown_;
 
-    cut_update_queue          job_queue_;
+    cut_update_queue        job_queue_;
 
-    gpu_cache*               gpu_cache_;
-    cut_update_index*         index_;
+    gpu_cache*              gpu_cache_;
+    cut_update_index*       index_;
 
     std::vector<cut_database_record::slot_update_desc> transfer_list_;
     std::vector<std::vector<std::vector<cut::node_slot_aggregate>>> render_list_;
@@ -119,9 +120,8 @@ private:
 
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_REPEAT_MODE
-    boost::timer::cpu_timer master_timer_;
-
-    boost::timer::nanosecond_type last_frame_elapsed_;
+    std::chrono::high_resolution_clock::time_point last_frame_time_;
+    std::chrono::duration<double> last_frame_elapsed_;
 #endif
 
     semaphore               master_semaphore_;

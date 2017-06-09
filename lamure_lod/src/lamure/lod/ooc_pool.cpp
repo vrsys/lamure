@@ -141,6 +141,9 @@ run() {
 #endif
 
         }
+        
+        
+        std::cout << priority_queue_.num_jobs() << std::endl;
 
     }
 
@@ -164,6 +167,8 @@ run() {
             local_cache = nullptr;
         }
     }
+    
+    
 }
 
 void ooc_pool::
@@ -193,6 +198,7 @@ perform_queue_maintenance(cache_index* index) {
         index->unreserve_slot(job.slot_id_);
 
     }
+    
 }
 
 bool ooc_pool::

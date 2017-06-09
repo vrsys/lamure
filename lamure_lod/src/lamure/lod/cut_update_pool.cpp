@@ -120,10 +120,8 @@ dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B) {
     ASSERT(current_gpu_storage_B != nullptr);
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_REPEAT_MODE
-    master_timer_.stop();
-    boost::timer::cpu_times const last_frame_time(master_timer_.elapsed());
-    last_frame_elapsed_ = last_frame_time.system + last_frame_time.user;
-    master_timer_.start();
+    last_frame_elapsed_ = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - last_frame_time_);
+    last_frame_time_ = std::chrono::high_resolution_clock::now();
 #endif
 
     if (!master_dispatched_) {
@@ -303,19 +301,14 @@ cut_master() {
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_REPEAT_MODE
-
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     uint32_t num_cut_updates = 0;
-    auto_timer tmr;
-
     while (true) {
-        boost::timer::cpu_times const elapsed_times(tmr.elapsed());
-        boost::timer::nanosecond_type const elapsed(elapsed_times.system + elapsed_times.user);
-
         {
             std::lock_guard<std::mutex> lock(mutex_);
-
-            if ((num_cut_updates > 0 && elapsed >= last_frame_elapsed_*0.5f) || num_cut_updates >= LAMURE_CUT_UPDATE_MAX_NUM_UPDATES_PER_FRAME) {
-                tmr.stop();
+            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+            if ((num_cut_updates > 0 && time_span >= last_frame_elapsed_*0.5) || num_cut_updates >= LAMURE_CUT_UPDATE_MAX_NUM_UPDATES_PER_FRAME) {
                 break;
             }
         }
@@ -662,6 +655,8 @@ cut_update() {
     ooc_cache->lock();
     ooc_cache->refresh();
     gpu_cache_->lock();
+    
+    //std::cout << ooc_cache->num_free_slots() << std::endl;
 
     bool check_residency = true;
 
@@ -994,6 +989,8 @@ compile_render_list() {
             std::vector<cut::node_slot_aggregate> model_render_lists;
 
             const std::set<node_t>& current_cut = index_->get_current_cut(view_id, model_id);
+
+            //std::cout << "cut: " << current_cut.size() << std::endl;
 
             for (const auto& node_id : current_cut) {
                 model_render_lists.push_back(cut::node_slot_aggregate(node_id, gpu_cache_->slot_id(model_id, node_id)));

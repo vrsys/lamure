@@ -88,62 +88,6 @@ test_video_memory() {
     upload_budget_in_nodes_ = max_upload_budget_in_nodes;
     
 
-#if 1
-   // upload_budget_in_nodes_ = max_upload_budget_in_nodes/4;
-
-#else
-    gpu_access* test_temp = new gpu_access(1, database->surfels_per_node(), false);
-    gpu_access* test_main = new gpu_access(1, database->surfels_per_node(), true);
-    LodPointCloud::serializedsurfel* node_data = (LodPointCloud::serializedsurfel*)new char[size_of_node_in_bytes];
-    memset((char*)node_data, 0, size_of_node_in_bytes);
-    char* mapped_temp = test_temp->map();
-    memcpy(mapped_temp, node_data, size_of_node_in_bytes);
-    test_temp->unmap();
-
-    auto frame_duration_in_ns = boost::timer::nanosecond_type(16.0 * 1000 * 1000);
-
-    boost::timer::cpu_timer upload_timer;
-
-    unsigned int iteration = 0;
-    while (true) {
-
-        upload_timer.start();
-
-        for (unsigned int i = 0; i < upload_budget_in_nodes_; ++i) {
-            size_t offset_in_temp_VBO = 0;
-            size_t offset_in_render_VBO = 0;
-            device->main_context()->copy_buffer_data(test_main->buffer(), test_temp->buffer(), offset_in_render_VBO, offset_in_temp_VBO, size_of_node_in_bytes);
-        }
-
-        upload_timer.stop();
-
-        boost::timer::cpu_times const elapsed(upload_timer.elapsed());
-        boost::timer::nanosecond_type const elapsed_ns(elapsed.system + elapsed.user);
-
-        if (iteration++ > 1) {
-            if (elapsed_ns < frame_duration_in_ns) {
-                if (upload_budget_in_nodes_ < max_upload_budget_in_nodes) {
-                    ++upload_budget_in_nodes_;
-                }
-                else {
-                    break;
-                }
-            }
-            else {
-                break;
-            }
-        }
-
-
-    }
-
-    delete test_temp;
-    delete test_main;
-    delete[] node_data;
-
-    device->main_context()->apply();
-#endif
-
 #ifdef LAMURE_ENABLE_INFO
     std::cout << "lamure: context " << context_id_ << " render budget (MB): " << render_budget_in_mb << std::endl;
     std::cout << "lamure: context " << context_id_ << " upload budget (MB): " << max_upload_budget_in_mb << std::endl;
@@ -277,6 +221,8 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer) 
         default: break;
 
     }
+    
+    //std::cout << uploaded_nodes << " nodes uploaded" << std::endl;
 
     return uploaded_nodes != 0;
 }

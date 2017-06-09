@@ -82,5 +82,6 @@ ENDIF (MSVC)
 
 # install header files and license
 install(DIRECTORY ${PROJECT_INCLUDE_DIR}/lamure DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY ${PROJECT_INCLUDE_DIR}/lamure DESTINATION include FILES_MATCHING PATTERN "*.inl")
 install(FILES ${LAMURE_CONFIG_DIR}/lamure/config.h DESTINATION include/lamure)
 install(FILES ${CMAKE_SOURCE_DIR}/license.txt DESTINATION .)

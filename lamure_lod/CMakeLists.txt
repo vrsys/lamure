@@ -90,6 +90,7 @@ ENDIF (MSVC)
 
 # header files 
 install(DIRECTORY ${PROJECT_INCLUDE_DIR}/lamure DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY ${PROJECT_INCLUDE_DIR}/lamure DESTINATION include FILES_MATCHING PATTERN "*.inl")
 
 # shader and material resources
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure

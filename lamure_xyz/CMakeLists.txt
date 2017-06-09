@@ -82,3 +82,4 @@ ENDIF (MSVC)
 
 # header files 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/xyz DESTINATION include/lamure FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/xyz DESTINATION include/lamure FILES_MATCHING PATTERN "*.inl")
