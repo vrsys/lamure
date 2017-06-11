@@ -31,23 +31,23 @@ int main(int argc, char *argv[])
 {
     if(argc == 1 || !cmd_option_exists(argv, argv + argc, "-s") || !cmd_option_exists(argv, argv + argc, "-d"))
     {
-        cout << "Usage: " << argv[0] << "<flags> -s <project>.sparse.pro  -d <project>.dense.pro" << endl << endl;
+        cout << "Usage: " << argv[0] << " <flags> -s <project>.sparse.prov  -d <project>.dense.prov" << endl << endl;
         return -1;
     }
 
     string name_file_sparse = string(get_cmd_option(argv, argv + argc, "-s"));
     string name_file_dense = string(get_cmd_option(argv, argv + argc, "-d"));
 
-    if(check_file_extensions(name_file_sparse, "sparse.pro") && check_file_extensions(name_file_dense, "dense.pro"))
+    if(check_file_extensions(name_file_sparse, "sparse.prov") && check_file_extensions(name_file_dense, "dense.prov"))
     {
-        return -1;
+        throw std::runtime_error("File format is incompatible");
     }
 
-    prov::ifstream in_sparse(name_file_sparse);
-    prov::ifstream in_dense(name_file_dense);
+    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+    prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
 
-    prov::SparseData sparseData;
-    prov::DenseData denseData;
+    prov::SparseData sparseData = prov::SparseData();
+    prov::DenseData denseData = prov::DenseData();
 
     if(in_sparse.is_open())
     {

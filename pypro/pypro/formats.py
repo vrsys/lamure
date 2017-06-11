@@ -6,16 +6,9 @@ class Format(object):
         pass
 
 
-class FormatSparse(Format):
-    cameras = []
+class FormatSparsePro(Format):
     spoints = []
-
-
-class FormatDense(Format):
-    dpoints = []
-
-
-class FormatSparsePro(FormatSparse):
+    cameras = []
     magic_bytes = bytes([0xAF, 0xFE])
 
     def out(self):
@@ -40,7 +33,8 @@ class FormatSparsePro(FormatSparse):
         out_file.close()
 
 
-class FormatDensePro(FormatDense):
+class FormatDensePro(Format):
+    dpoints = []
     magic_bytes = bytes([0xAF, 0xFE])
 
     def out(self):

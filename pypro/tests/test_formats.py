@@ -1,7 +1,6 @@
 import unittest
 
-from pypro.entities_dense import *
-from pypro.entities_sparse import *
+from pypro.entities import *
 from pypro.formats import *
 
 

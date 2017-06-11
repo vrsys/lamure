@@ -12,6 +12,11 @@ class DenseData : public Data<DensePoint>
   public:
     DenseData(){};
     ~DenseData(){};
+    friend ifstream &operator>>(ifstream &is, DenseData &data)
+    {
+        data.read_header(is);
+        data.read_points(is);
+    }
 };
 }
 
