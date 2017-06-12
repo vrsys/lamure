@@ -4,6 +4,8 @@ Camera_View::Camera_View()
 {
     _matrix_perspective = scm::math::make_perspective_matrix(_fov, float(_width_window) / float(_height_window), _plane_near, _plane_far);
     std::cout << "aspect ratio: " << float(_width_window) / float(_height_window) << std::endl;
+    // _matrix_view = scm::math::make_look_at_matrix(_position, _position + scm::math::vec3f(0.0, 0.0, -1.0), scm::math::vec3f(0.0, -1.0, 0.0));
+
     update_matrices();
 }
 void Camera_View::translate(scm::math::vec3f offset)

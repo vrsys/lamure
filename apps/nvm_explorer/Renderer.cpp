@@ -58,12 +58,17 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for dense points
-    scm::io::read_text_file(root_path + "/nvm_explorer_vertex_points_dense_simple.glslv", visibility_vs_source);
-    scm::io::read_text_file(root_path + "/nvm_explorer_geometry_points_dense.glslg", visibility_gs_source);
-    scm::io::read_text_file(root_path + "/nvm_explorer_fragment_points_dense_simple.glslf", visibility_fs_source);
-    _program_points_dense = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
-                                                   // (device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))
-                                                   (device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+    scm::io::read_text_file(root_path + "/lq_one_pass.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/lq_one_pass.glslg", visibility_gs_source);
+    scm::io::read_text_file(root_path + "/lq_one_pass.glslf", visibility_fs_source);
+    _program_points_dense = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
+        device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+    // scm::io::read_text_file(root_path + "/nvm_explorer_vertex_points_dense_simple.glslv", visibility_vs_source);
+    // scm::io::read_text_file(root_path + "/nvm_explorer_geometry_points_dense.glslg", visibility_gs_source);
+    // scm::io::read_text_file(root_path + "/nvm_explorer_fragment_points_dense_simple.glslf", visibility_fs_source);
+    // _program_points_dense = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))
+    //                                                // (device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))
+    //                                                (device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
     if(!_program_points_dense)
     {
         std::cout << "error creating shader programs" << std::endl;
@@ -81,6 +86,29 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
     // bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
 }
 
+void Renderer::update_state_lense()
+{
+    _state_lense = ++_state_lense % 3;
+    // std::cout << _state_lense << std::endl;
+}
+
+void Renderer::translate_sphere(scm::math::vec3f offset)
+{
+    _position_sphere += offset;
+}
+void Renderer::update_radius_sphere(float offset)
+{
+    _radius_sphere += offset;
+}
+
+void Renderer::translate_sphere_screen(scm::math::vec3f offset)
+{
+    _position_sphere_screen += scm::math::vec2f(offset[0], -offset[2]);
+}
+void Renderer::update_radius_sphere_screen(float offset)
+{
+    _radius_sphere_screen += offset;
+}
 void Renderer::draw_points_sparse(Scene scene)
 {
     _context->bind_program(_program_points);
@@ -169,7 +197,6 @@ void Renderer::draw_points_dense(Scene scene)
     std::vector<scm::math::vec3d> corner_values = _camera->get_frustum_corners();
     double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
     float height_divided_by_top_minus_bottom = lamure::ren::policy::get_instance()->window_height() / top_minus_bottom;
-    // std::cout << height_divided_by_top_minus_bottom << std::endl;
 
     cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
 
@@ -203,14 +230,26 @@ void Renderer::draw_points_dense(Scene scene)
     // std::cout << model_view_projection_matrix << std::endl;
     _program_points_dense->uniform("near_plane", 0.01f);
     _program_points_dense->uniform("far_plane", 1000.0f);
-    _program_points_dense->uniform("point_size_factor", 5);
+    _program_points_dense->uniform("point_size_factor", 5.0f);
     _program_points_dense->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
     _program_points_dense->uniform("model_matrix", scm::math::mat4f(model_matrix));
     _program_points_dense->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     _program_points_dense->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
-    _program_points_dense->uniform("model_radius_scale", 1.f);
+    _program_points_dense->uniform("model_radius_scale", scene.get_model_radius_scale());
     _program_points_dense->uniform("projection_matrix", scm::math::mat4f(projection_matrix));
+    _program_points_dense->uniform("width_window", scene.get_camera_view().get_width_window());
+    _program_points_dense->uniform("height_window", scene.get_camera_view().get_height_window());
 
+    _program_points_dense->uniform("state_lense", _state_lense);
+    _program_points_dense->uniform("radius_sphere", _radius_sphere);
+    _program_points_dense->uniform("position_sphere", _position_sphere);
+    _program_points_dense->uniform("radius_sphere_screen", _radius_sphere_screen);
+    _program_points_dense->uniform("position_sphere_screen", _position_sphere_screen);
+    // _radius_sphere = 1.0;
+    // scm::math::vec3f _position_sphere
+
+    _context->apply();
+    int counter = 0;
     for(auto const &node_slot_aggregate : renderable)
     {
         uint32_t node_culling_result = _camera->cull_against_frustum(frustum_by_model, bounding_box_vector[node_slot_aggregate.node_id_]);
@@ -219,6 +258,7 @@ void Renderer::draw_points_dense(Scene scene)
         {
             _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, surfels_per_node);
         }
+        // if(++counter == 10) break;
     }
 }
 
@@ -234,6 +274,7 @@ void Renderer::render(Scene scene)
 
     draw_cameras(scene);
     draw_frustra(scene);
+
     if(mode_draw_images)
     {
         draw_images(scene);

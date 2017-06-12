@@ -24,6 +24,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
                      const uint32_t num_surfels_per_node,
                      bool create_layout)
 : num_slots_(num_slots),
+  // size_of_surfel_(9*sizeof(float)),
   size_of_surfel_(8*sizeof(float)),
   is_mapped_(false),
   has_layout_(create_layout) {
@@ -32,12 +33,30 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
     assert(sizeof(float) == 4);
 
     num_slots_ = num_slots;
+    std::cout << "slots: " << num_slots << std::endl;
     size_of_slot_ = num_surfels_per_node * size_of_surfel_;
+    std::cout << "size of surfel: " << size_of_surfel_ << std::endl;
+    std::cout << "size of slot: " << size_of_slot_ << std::endl;
 
     buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
                                     scm::gl::USAGE_DYNAMIC_COPY,
                                     num_slots_ * size_of_slot_,
                                     0);
+
+    std::vector<float> vector_data;
+
+    int counter = 0;
+    int end = num_slots_ * num_surfels_per_node;
+    for( int i = 0; i < end; i++ ) {
+      vector_data.push_back(float(i % 20));
+   }
+
+    scm::gl::buffer_ptr prov_buffer = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
+                                    scm::gl::USAGE_STATIC_DRAW,
+                                    num_slots_ * num_surfels_per_node * 4,
+                                    &vector_data[0]);
+
+
 
     if (has_layout_) {
         pcl_memory_ = device->create_vertex_array(scm::gl::vertex_format
@@ -47,8 +66,12 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
             (0, 3, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)
             (0, 4, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)
             (0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_)
-            (0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_),
-            boost::assign::list_of(buffer_));
+            (0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_)
+            
+            (1, 7, scm::gl::TYPE_FLOAT, 4),
+            // boost::assign::list_of(buffer_));
+            boost::assign::list_of(buffer_)(prov_buffer));
+        
         tri_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
             (0, 1, scm::gl::TYPE_VEC3F, size_of_surfel_)

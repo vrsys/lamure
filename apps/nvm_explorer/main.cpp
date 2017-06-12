@@ -14,6 +14,23 @@
 
 using namespace utils;
 
+// KEY-BINDINGS:
+// [w,a,s,d,q,e] - move camera through world
+// [4,5,6,8] (numpad) - rotate camera
+// [j,k] - in-/decrease camera frustra scales
+// i - toggle between user-camera and image-camera
+// u - switch to previous image-camera
+// o - switch to next image-camera
+// m - enable/disable image-rendering
+// n - toggle between sparse- and dense-rendering
+// [v,b] - in-/decrease servlets radii
+
+// t - toggle lense modes (none, world-lense, screen-lense)
+// alt + [w,a,s,d] - move screen-lense over screen
+// shift + [w,a,s,d,q,e] - move world-lense through world
+// shift + [x,c] - increase/decrease radius of world-lense
+// alt + [x,c] - in-/decrease radius of screen-lense
+
 Controller *controller = nullptr;
 int time_since_start = 0;
 int width_window = 1920;
@@ -24,6 +41,8 @@ void glut_display();
 void glut_mouse_movement(int x, int y);
 void glut_keyboard(unsigned char key, int x, int y);
 void glut_keyboard_release(unsigned char key, int x, int y);
+void glut_keyboard_special(int key, int x, int y);
+void glut_keyboard_special_release(int key, int x, int y);
 void initialize_glut(int argc, char **argv, int width, int height);
 
 char *get_cmd_option(char **begin, char **end, const std::string &option)
@@ -34,10 +53,24 @@ char *get_cmd_option(char **begin, char **end, const std::string &option)
     return 0;
 }
 
+bool write_dummy_binary_file()
+{
+    std::ofstream ofile("dummy_binary_file.bin", std::ios::binary);
+    for (int i = 0; i < 4434885; ++i)
+    {
+        const float f = 1.0f;
+        ofile.write((char*) &f, sizeof(float));
+        // std::cout << i << std::endl;
+    }
+    return true;
+}
+
 bool cmd_option_exists(char **begin, char **end, const std::string &option) { return std::find(begin, end, option) != end; }
 
 int main(int argc, char *argv[])
 {
+    // return write_dummy_binary_file();
+
     if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-f"))
     {
         std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>.nvm" << std::endl
@@ -137,6 +170,8 @@ void initialize_glut(int argc, char **argv, int width, int height)
     glutDisplayFunc(glut_display);
     glutKeyboardFunc(glut_keyboard);
     glutKeyboardUpFunc(glut_keyboard_release);
+    glutSpecialFunc(glut_keyboard_special);
+    glutSpecialUpFunc(glut_keyboard_special_release);
     // glutMouseFunc(mouse_callback);
     glutPassiveMotionFunc(glut_mouse_movement);
     glutIdleFunc(glut_idle);
@@ -149,6 +184,12 @@ void glut_mouse_movement(int x, int y)
     // std::cout << x << std::endl;
     // controller->handle_mouse_movement(x, y);
     // glutWarpPointer(1920/2, 1080/2);
+}
+
+void glut_keyboard_special(int key, int x, int y)
+{
+        // std::cout << key << std::endl;
+        controller->handle_key_special_pressed(key);
 }
 
 void glut_keyboard(unsigned char key, int x, int y)
@@ -168,6 +209,7 @@ void glut_keyboard(unsigned char key, int x, int y)
     }
 }
 
+void glut_keyboard_special_release(int key, int x, int y) { controller->handle_key_special_released(key); }
 void glut_keyboard_release(unsigned char key, int x, int y) { controller->handle_key_released(key); }
 
 void glut_idle() { glutPostRedisplay(); }

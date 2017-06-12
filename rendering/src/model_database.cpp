@@ -81,6 +81,10 @@ add_model(const std::string& filepath, const std::string& model_key) {
     if (model->is_loaded()) {
         const bvh* bvh = model->get_bvh();
 
+        std::cout << "#get_num_nodes: " << bvh->get_num_nodes() << std::endl;
+        std::cout << "#get_primitives_per_node: " << bvh->get_primitives_per_node() << std::endl;
+        std::cout << "#get_size_of_primitive: " << bvh->get_size_of_primitive() << std::endl;
+
         if (num_datasets_ == 0) {
             std::lock_guard<std::mutex> lock(mutex_);
             if (num_datasets_ == 0) {

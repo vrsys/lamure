@@ -25,6 +25,7 @@ ooc_cache(const slot_t num_slots)
     model_database* database = model_database::get_instance();
 
     cache_data_ = new char[num_slots * database->get_slot_size()];
+    // cache_data_ = new char[num_slots * database->get_slot_size()];
     pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, database->get_slot_size());
 
 #ifdef LAMURE_ENABLE_INFO

@@ -21,7 +21,7 @@ bool Scene::update(int time_delta)
 
 void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
 {
-	_camera_view.update_window_size(width_window, height_window);
+    _camera_view.update_window_size(width_window, height_window);
     // create buffer for the points
     std::vector<Struct_Point> vector_struct_point = convert_points_to_struct_point();
 
@@ -42,16 +42,16 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_windo
     _quad.reset(new scm::gl::quad_geometry(device, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
 
     int counter = 0;
-    for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
-    {
-        Camera &camera = (*it);
-        camera.init(device);
-        counter++;
-        if(counter == 1)
-        {
-        	break;
-        }
-    }
+    // for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    // {
+    //     Camera &camera = (*it);
+    //     camera.init(device);
+    //     counter++;
+    //     if(counter == 20)
+    //     {
+    //      break;
+    //     }
+    // }
     device->main_context()->apply();
 }
 
@@ -93,6 +93,12 @@ void Scene::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device,
     {
         (*it).update_scale_frustum(device, offset);
     }
+}
+
+void Scene::update_model_radius_scale(float offset)
+{
+    float new_scale = std::max(_model_radius_scale + offset, 0.0f);
+    _model_radius_scale = new_scale;
 }
 
 void Scene::toggle_camera()
@@ -140,12 +146,11 @@ void Scene::next_camera()
         _camera_view.set_rotation(camera.get_orientation());
     }
 }
+float &Scene::get_model_radius_scale() { return _model_radius_scale; }
+void Scene::set_model_radius_scale(float scale) { _model_radius_scale = scale; }
 
 Camera_View &Scene::get_camera_view() { return _camera_view; }
-// std::vector<Image> &Scene::get_vector_image()
-// {
-// 	return _vector_image;
-// }
+
 std::vector<Camera> &Scene::get_vector_camera() { return _vector_camera; }
 
 int Scene::count_points() { return _vector_point.size(); }

@@ -71,6 +71,7 @@ class Scene
 
     bool is_default_camera = true;
     int index_current_image_camera = 0;
+    float _model_radius_scale = 0.1f;
 
   public:
     Scene();
@@ -82,6 +83,9 @@ class Scene
     scm::shared_ptr<scm::gl::quad_geometry> get_quad();
 
     Camera_View &get_camera_view();
+    float &get_model_radius_scale();
+    void set_model_radius_scale(float scale);
+    void update_model_radius_scale(float scale);
     // std::vector<Image> &get_vector_image();
     std::vector<Camera> &get_vector_camera();
     bool update(int time_delta);

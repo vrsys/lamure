@@ -1114,6 +1114,7 @@ compile_transfer_list() {
             char* node_data = ooc_cache->node_data(model_id, node_id);
 
             memcpy(current_gpu_storage_ + slot_count*database->get_slot_size(), node_data, database->get_slot_size());
+            // memcpy(current_gpu_storage_ + slot_count*database->get_slot_size(), node_data, database->get_slot_size());
 
             transfer_list_.push_back(cut_database_record::slot_update_desc(slot_count, slot_id));
 
