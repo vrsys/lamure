@@ -7,36 +7,37 @@
 
 #include <lamure/pre/bvh_node.h>
 
-namespace lamure {
+namespace lamure
+{
 namespace pre
 {
 
 bvh_node::
 bvh_node(const node_id_type id,
-        const uint32_t depth,
-        const bounding_box& bounding_box,
-        const surfel_mem_array& array)
-: node_id_(id),
-  depth_(depth),
-  bounding_box_(bounding_box),
-  reduction_error_(0.0),
-  avg_surfel_radius_(0.0),
-  centroid_(vec3r(0.0))
+         const uint32_t depth,
+         const bounding_box &bounding_box,
+         const surfel_mem_array &array)
+    : node_id_(id),
+      depth_(depth),
+      bounding_box_(bounding_box),
+      reduction_error_(0.0),
+      avg_surfel_radius_(0.0),
+      centroid_(vec3r(0.0))
 {
     reset(array);
 }
 
 bvh_node::
 bvh_node(const node_id_type id,
-        const uint32_t depth,
-        const bounding_box& bounding_box,
-        const surfel_disk_array& array)
-: node_id_(id),
-  depth_(depth),
-  bounding_box_(bounding_box),
-  reduction_error_(0.0),
-  avg_surfel_radius_(0.0),
-  centroid_(vec3r(0.0))
+         const uint32_t depth,
+         const bounding_box &bounding_box,
+         const surfel_disk_array &array)
+    : node_id_(id),
+      depth_(depth),
+      bounding_box_(bounding_box),
+      reduction_error_(0.0),
+      avg_surfel_radius_(0.0),
+      centroid_(vec3r(0.0))
 {
     reset(array);
 }
@@ -49,9 +50,9 @@ bvh_node::
 
 void bvh_node::
 calculate_statistics()
-{ 
-  node_stats_.calculate_statistics(mem_array_);
-  node_stats_.set_dirty(false);
+{
+    node_stats_.calculate_statistics(mem_array_);
+    node_stats_.set_dirty(false);
 }
 
 void bvh_node::
@@ -62,14 +63,14 @@ reset()
 }
 
 void bvh_node::
-reset(const surfel_mem_array& array)
+reset(const surfel_mem_array &array)
 {
     reset();
     mem_array_ = array;
 }
 
 void bvh_node::
-reset(const surfel_disk_array& array)
+reset(const surfel_disk_array &array)
 {
     reset();
     disk_array_ = array;
@@ -83,9 +84,9 @@ load_from_disk()
 }
 
 void bvh_node::
-flush_to_disk(const shared_file& file,
-            const size_t offset_in_file,
-            const bool dealloc_mem_array)
+flush_to_disk(const shared_file &file,
+              const size_t offset_in_file,
+              const bool dealloc_mem_array)
 {
     assert(is_in_core());
 
@@ -108,6 +109,6 @@ flush_to_disk(const bool dealloc_mem_array)
         mem_array_.reset();
 }
 
-
-} } // namespace lamure
+}
+} // namespace lamure
 

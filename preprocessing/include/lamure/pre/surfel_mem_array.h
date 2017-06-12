@@ -10,39 +10,46 @@
 
 #include <lamure/pre/surfel_array_abstract.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
-class PREPROCESSING_DLL surfel_mem_array : public surfel_array_abstract
+class PREPROCESSING_DLL surfel_mem_array: public surfel_array_abstract
 {
 public:
 
-    explicit            surfel_mem_array()
-                            : surfel_array_abstract() { reset(); }
+    explicit surfel_mem_array()
+        : surfel_array_abstract()
+    { reset(); }
 
-    explicit            surfel_mem_array(const surfel_mem_array& other,
-                                       const size_t offset,
-                                       const size_t length)
-                            : surfel_array_abstract() { reset(other.mem_data_, offset, length); }
-
-    explicit            surfel_mem_array(const shared_surfel_vector& mem_data,
-                                       const size_t offset,
-                                       const size_t length)
-                            : surfel_array_abstract() { reset(mem_data, offset, length); }
-
-    surfel              read_surfel(const size_t index) const override;
-    surfel const&       read_surfel_ref(const size_t index) const;
-    void                write_surfel(const surfel& surfel, const size_t index) const override;
-
-    shared_surfel_vector&
-                        mem_data() { return mem_data_; }
-    const shared_surfel_vector&
-                        mem_data() const { return mem_data_; }
-
-    void                reset() override;
-    void                reset(const shared_surfel_vector& mem_data,
+    explicit surfel_mem_array(const surfel_mem_array &other,
                               const size_t offset,
-                              const size_t length);
+                              const size_t length)
+        : surfel_array_abstract()
+    { reset(other.mem_data_, offset, length); }
+
+    explicit surfel_mem_array(const shared_surfel_vector &mem_data,
+                              const size_t offset,
+                              const size_t length)
+        : surfel_array_abstract()
+    { reset(mem_data, offset, length); }
+
+    surfel read_surfel(const size_t index) const override;
+    surfel const &read_surfel_ref(const size_t index) const;
+    void write_surfel(const surfel &surfel, const size_t index) const override;
+
+    shared_surfel_vector &
+    mem_data()
+    { return mem_data_; }
+    const shared_surfel_vector &
+    mem_data() const
+    { return mem_data_; }
+
+    void reset() override;
+    void reset(const shared_surfel_vector &mem_data,
+               const size_t offset,
+               const size_t length);
 
 private:
 
@@ -50,7 +57,7 @@ private:
 
 };
 
-template <>
+template<>
 struct surfel_array_traits<surfel_mem_array>
 {
     static const bool is_out_of_core = false;

@@ -15,48 +15,56 @@
 #include <vector>
 #include <list>
 
-namespace lamure {
-namespace pre{
+namespace lamure
+{
+namespace pre
+{
 
 class PREPROCESSING_DLL reduction_normal_deviation_clustering: public reduction_strategy
 {
 public:
 
-    explicit            reduction_normal_deviation_clustering() {}
+    explicit reduction_normal_deviation_clustering()
+    {}
 
-    surfel_mem_array      create_lod(real& reduction_error,
-                                  const std::vector<surfel_mem_array*>& input,
-                                  const uint32_t surfels_per_node,
-                                  const bvh& tree,
-                                  const size_t start_node_id) const override;
+    surfel_mem_array create_lod(real &reduction_error,
+                                const std::vector<surfel_mem_array *> &input,
+                                const uint32_t surfels_per_node,
+                                const bvh &tree,
+                                const size_t start_node_id) const override;
 
 private:
 
     using value_index_pair = std::pair<real, uint16_t>;
 
-    struct surfel_cluster_with_error {
-        std::list<surfel>* cluster;
+    struct surfel_cluster_with_error
+    {
+        std::list<surfel> *cluster;
         float merge_treshold;
     };
 
-    struct order_by_size {
-        bool operator() (const surfel_cluster_with_error& left, 
-                         const surfel_cluster_with_error& right) {
+    struct order_by_size
+    {
+        bool operator()(const surfel_cluster_with_error &left,
+                        const surfel_cluster_with_error &right)
+        {
             return left.cluster->size() < right.cluster->size();
         }
     };
 
-    static surfel create_representative(const std::vector<surfel>& input);
-    
-    std::pair<vec3ui, vec3b> compute_grid_dimensions(const std::vector<surfel_mem_array*>& input,
-                                                     const bounding_box& bounding_box,
+    static surfel create_representative(const std::vector<surfel> &input);
+
+    std::pair<vec3ui, vec3b> compute_grid_dimensions(const std::vector<surfel_mem_array *> &input,
+                                                     const bounding_box &bounding_box,
                                                      const uint32_t surfels_per_node) const;
 
-    static bool comp (const value_index_pair& l, const value_index_pair& r) {
+    static bool comp(const value_index_pair &l, const value_index_pair &r)
+    {
         return l.first < r.first;
     }
 
-    static bool compare_radius(const surfel& left, const surfel& right) {
+    static bool compare_radius(const surfel &left, const surfel &right)
+    {
         return left.radius() < right.radius();
     }
 };

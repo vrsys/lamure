@@ -11,32 +11,34 @@
 #include <lamure/pre/reduction_strategy.h>
 #include <lamure/pre/surfel.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
-class PREPROCESSING_DLL reduction_region_growing : public reduction_strategy
+class PREPROCESSING_DLL reduction_region_growing: public reduction_strategy
 {
 public:
 
-	explicit reduction_region_growing();
+    explicit reduction_region_growing();
 
-    surfel_mem_array create_lod(real& reduction_error,
-    							const std::vector<surfel_mem_array*>& input,
+    surfel_mem_array create_lod(real &reduction_error,
+                                const std::vector<surfel_mem_array *> &input,
                                 const uint32_t surfels_per_node,
-          						const bvh& tree,
-          						const size_t start_node_id) const override;
+                                const bvh &tree,
+                                const size_t start_node_id) const override;
 
 private:
 
-	real find_maximum_bound(const std::vector<surfel*>& input_cluster) const;
+    real find_maximum_bound(const std::vector<surfel *> &input_cluster) const;
 
-	bool reached_maximum_bound(const std::vector<surfel*>& input_cluster, const real& maximum_bound) const;
+    bool reached_maximum_bound(const std::vector<surfel *> &input_cluster, const real &maximum_bound) const;
 
-	surfel* sample_point_from_cluster(const std::vector<surfel*>& input_cluster) const;
+    surfel *sample_point_from_cluster(const std::vector<surfel *> &input_cluster) const;
 
-	std::vector<std::pair<surfel*, real>> find_neighbours(const std::vector<surfel*>& cluster, const surfel* core_surfel, const uint32_t& number_neighbours) const;
+    std::vector<std::pair<surfel *, real>> find_neighbours(const std::vector<surfel *> &cluster, const surfel *core_surfel, const uint32_t &number_neighbours) const;
 
-	uint32_t neighbour_growth_rate_;
+    uint32_t neighbour_growth_rate_;
 };
 
 } // namespace pre

@@ -7,14 +7,16 @@
 
 #include <lamure/pre/logger.h>
 
-namespace lamure {
+namespace lamure
+{
 namespace pre
 {
 
 std::mutex logger::mutex_;
+
 logger logger::single_;
 
-logger::logger() 
+logger::logger()
 {
 
 }
@@ -24,14 +26,14 @@ logger::
 {
 }
 
-logger& logger::
-get_instance() 
+logger &logger::
+get_instance()
 {
     std::lock_guard<std::mutex> lock(mutex_);
     return single_;
 }
 
-
-} } //namespace lamure
+}
+} //namespace lamure
 
 

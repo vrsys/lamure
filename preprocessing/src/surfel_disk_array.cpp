@@ -8,8 +8,10 @@
 #include <lamure/pre/surfel_disk_array.h>
 #include <lamure/pre/logger.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 surfel surfel_disk_array::
 read_surfel(const size_t index) const
@@ -21,7 +23,7 @@ read_surfel(const size_t index) const
 }
 
 void surfel_disk_array::
-write_surfel(const surfel& surfel, const size_t index) const
+write_surfel(const surfel &surfel, const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
@@ -37,7 +39,7 @@ reset()
 }
 
 void surfel_disk_array::
-reset(const shared_file& file,
+reset(const shared_file &file,
       const size_t offset,
       const size_t length)
 {
@@ -61,8 +63,8 @@ read_all() const
 }
 
 void surfel_disk_array::
-write_all(const shared_surfel_vector& data,
-         const size_t offset_in_vector)
+write_all(const shared_surfel_vector &data,
+          const size_t offset_in_vector)
 {
     if (is_empty()) {
         LOGGER_ERROR("Attempt to write to an empty surfel_disk_array");

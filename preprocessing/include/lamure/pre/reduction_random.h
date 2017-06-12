@@ -10,21 +10,23 @@
 
 #include <lamure/pre/reduction_strategy.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
-class PREPROCESSING_DLL reduction_random : public reduction_strategy
+class PREPROCESSING_DLL reduction_random: public reduction_strategy
 {
 public:
 
-    surfel_mem_array      create_lod(real& reduction_error,
-                                  const std::vector<surfel_mem_array*>& input,
-                                  const uint32_t surfels_per_node,
-          						  const bvh& tree,
-          						  const size_t start_node_id) const override;
+    surfel_mem_array create_lod(real &reduction_error,
+                                const std::vector<surfel_mem_array *> &input,
+                                const uint32_t surfels_per_node,
+                                const bvh &tree,
+                                const size_t start_node_id) const override;
 private:
 
-	//void subsample(surfel_mem_array& joined_input, real const avg_radius) const;    
+    //void subsample(surfel_mem_array& joined_input, real const avg_radius) const;
 };
 
 } // namespace pre

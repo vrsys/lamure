@@ -9,7 +9,7 @@ namespace prov
 class Point : public MetaContainer
 {
   public:
-    Point(uint32_t _index, const vec3d &_position, const vec3d &_color, const vec<char> &_metadata) : MetaContainer(_metadata), _index(_index), _position(_position), _color(_color) {}
+    Point(uint32_t _index, const vec3d &_position, const vec3d &_color, const vec<uint8_t> &_metadata) : MetaContainer(_metadata), _index(_index), _position(_position), _color(_color) {}
     Point() : MetaContainer()
     {
         _position = vec3d();

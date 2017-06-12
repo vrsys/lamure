@@ -2,6 +2,7 @@
 #include "lamure/pro/data/DenseData.h"
 #include "lamure/pro/data/SparseData.h"
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <iostream>
 
@@ -51,13 +52,19 @@ int main(int argc, char *argv[])
 
     if(in_sparse.is_open())
     {
+        auto start = std::chrono::high_resolution_clock::now();
         in_sparse >> sparseData;
+        auto end = std::chrono::high_resolution_clock::now();
+        printf("Reading sparse data took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
         in_sparse.close();
     }
 
     if(in_dense.is_open())
     {
+        auto start = std::chrono::high_resolution_clock::now();
         in_dense >> denseData;
+        auto end = std::chrono::high_resolution_clock::now();
+        printf("Reading dense data took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
         in_dense.close();
     }
 

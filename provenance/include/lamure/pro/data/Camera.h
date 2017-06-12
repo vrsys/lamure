@@ -12,7 +12,7 @@ class Camera : public MetaContainer
     class Frustum;
 
     Camera() : MetaContainer() {}
-    Camera(uint16_t _index, const string &_im_file_name, const quatd &_orientation, const vec3d &_translation, const vec<char> &_metadata)
+    Camera(uint16_t _index, const string &_im_file_name, const quatd &_orientation, const vec3d &_translation, const vec<uint8_t> &_metadata)
         : MetaContainer(_metadata), _index(_index), _im_file_name(_im_file_name), _orientation(_orientation), _translation(_translation)
     {
         prepare();
@@ -82,9 +82,12 @@ class Camera : public MetaContainer
         if(DEBUG)
             printf("\nFile path length: %i ", file_path_length);
 
-        char byte_buffer[file_path_length];
-        is.read(byte_buffer, file_path_length);
-        camera._im_file_name = string(byte_buffer);
+        std::vector<char> byte_buffer(file_path_length, 0);
+        is.read(reinterpret_cast<char *>(&byte_buffer[0]), file_path_length);
+        camera._im_file_name = string(byte_buffer.data());
+
+        if(DEBUG)
+            printf("\nFile path: %s", camera._im_file_name.c_str());
 
         camera.read_metadata(is);
 

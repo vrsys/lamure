@@ -51,14 +51,14 @@ class Data
         is.clear();
         is.seekg(10);
 
-        uint8_t byte_buffer[data_length];
-        is.read(reinterpret_cast<char *>(byte_buffer), data_length);
+        std::vector<uint8_t> byte_buffer(data_length, 0);
+        is.read(reinterpret_cast<char *>(&byte_buffer[0]), data_length);
 
         is.clear();
         is.seekg(10);
 
         boost::crc_32_type crc;
-        crc.process_bytes(byte_buffer, data_length);
+        crc.process_bytes(byte_buffer.data(), data_length);
         if(crc.checksum() != crc_32)
         {
             std::stringstream cstr;
@@ -93,6 +93,7 @@ class Data
 
   protected:
     const vec<TPoint> &get_points() const { return _points; }
+
   protected:
     vec<TPoint> _points;
 };

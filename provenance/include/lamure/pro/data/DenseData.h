@@ -16,6 +16,8 @@ class DenseData : public Data<DensePoint>
     {
         data.read_header(is);
         data.read_points(is);
+
+        return is;
     }
 };
 }

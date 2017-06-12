@@ -44,7 +44,7 @@ class SparsePoint : public Point
     };
 
     SparsePoint() { _measurements = vec<Measurement>(); }
-    SparsePoint(uint32_t _index, const vec3d &_center, const vec3d &_color, const vec<char> &_metadata, const vec<Measurement> &_measurements)
+    SparsePoint(uint32_t _index, const vec3d &_center, const vec3d &_color, const vec<uint8_t> &_metadata, const vec<Measurement> &_measurements)
         : Point(_index, _center, _color, _metadata), _measurements(_measurements)
     {
     }

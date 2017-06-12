@@ -10,7 +10,7 @@ class DensePoint : public Point
 {
   public:
     DensePoint() { _normal = vec3d(); }
-    DensePoint(long _index, const vec3d &_center, const vec3d &_color, const vec<char> &_metadata, const vec3d &_normal) : Point(_index, _center, _color, _metadata), _normal(_normal) {}
+    DensePoint(long _index, const vec3d &_center, const vec3d &_color, const vec<uint8_t> &_metadata, const vec3d &_normal) : Point(_index, _center, _color, _metadata), _normal(_normal) {}
     ~DensePoint() {}
     const vec3d &get_normal() const { return _normal; }
     friend ifstream &operator>>(ifstream &is, DensePoint &dense_point)
@@ -26,6 +26,8 @@ class DensePoint : public Point
 
         if(DEBUG)
             printf("\nNormal: %f %f %f", dense_point._normal[0], dense_point._normal[1], dense_point._normal[2]);
+
+        dense_point.read_metadata(is);
 
         return is;
     }

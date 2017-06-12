@@ -13,7 +13,8 @@
 
 #include <lamure/pre/logger.h>
 
-namespace lamure {
+namespace lamure
+{
 namespace pre
 {
 
@@ -27,29 +28,29 @@ file::
 }
 
 void file::
-open(const std::string& file_name, const bool truncate)
+open(const std::string &file_name, const bool truncate)
 {
     if (is_open()) {
         LOGGER_ERROR("Attempt to open file when the instance of "
-                                "pre::file is already in open state. "
-                                "file: \"" << file_name << "\" "
-                                "opened file: \"" << file_name_ << "\"");
+                         "pre::file is already in open state. "
+                         "file: \"" << file_name << "\" "
+            "opened file: \"" << file_name_ << "\"");
         exit(1);
     }
 
     file_name_ = file_name;
     std::ios::openmode mode = std::ios::in |
-                              std::ios::out |
-                              std::ios::binary;
+        std::ios::out |
+        std::ios::binary;
     if (truncate)
         mode |= std::ios::trunc;
 
-    
+
     stream_.open(file_name_, mode);
 
     if (!is_open()) {
-        LOGGER_ERROR("Failed to open file: \"" << file_name_ << 
-                                "\". " << strerror(errno));
+        LOGGER_ERROR("Failed to open file: \"" << file_name_ <<
+                                               "\". " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
@@ -61,15 +62,15 @@ close(const bool remove)
         stream_.flush();
         stream_.close();
         if (stream_.fail()) {
-            LOGGER_ERROR("Failed to close file: \"" << file_name_ << 
-                                     "\". " << strerror(errno));
+            LOGGER_ERROR("Failed to close file: \"" << file_name_ <<
+                                                    "\". " << strerror(errno));
         }
         stream_.exceptions(std::ifstream::failbit);
 
         if (remove)
             if (std::remove(file_name_.c_str())) {
-                LOGGER_WARN("Unable to delete file: \"" << file_name_ << 
-                                       "\". " << strerror(errno));
+                LOGGER_WARN("Unable to delete file: \"" << file_name_ <<
+                                                        "\". " << strerror(errno));
             }
         file_name_ = "";
     }
@@ -92,14 +93,14 @@ get_size() const
     stream_.seekg(0, stream_.beg);
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("get_size failed. file: \"" << file_name_ << 
-                                "\". " << strerror(errno));
+        LOGGER_ERROR("get_size failed. file: \"" << file_name_ <<
+                                                 "\". " << strerror(errno));
     }
     return len / sizeof(surfel);
 }
 
 void file::
-append(const surfel_vector* data,
+append(const surfel_vector *data,
        const size_t offset_in_mem,
        const size_t length)
 {
@@ -110,26 +111,26 @@ append(const surfel_vector* data,
     assert(offset_in_mem + length <= data->size());
 
     stream_.seekp(0, stream_.end);
-    stream_.write(reinterpret_cast<char*>(
-                  const_cast<surfel*>(&(*data)[offset_in_mem])),
+    stream_.write(reinterpret_cast<char *>(
+                      const_cast<surfel *>(&(*data)[offset_in_mem])),
                   length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("append failed. file: \"" << file_name_ << 
-                                "\". (mem offset: " << offset_in_mem << 
-                                ", len: " << length << "). " << strerror(errno));
+        LOGGER_ERROR("append failed. file: \"" << file_name_ <<
+                                               "\". (mem offset: " << offset_in_mem <<
+                                               ", len: " << length << "). " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
 void file::
-append(const surfel_vector* data)
+append(const surfel_vector *data)
 {
     append(data, 0, data->size());
 }
 
 void file::
-write(const surfel_vector* data,
+write(const surfel_vector *data,
       const size_t offset_in_mem,
       const size_t offset_in_file,
       const size_t length)
@@ -137,20 +138,20 @@ write(const surfel_vector* data,
     assert(length > 0);
     assert(offset_in_mem + length <= data->size());
 
-    write_data(reinterpret_cast<char*>(
-              const_cast<surfel*>(&(*data)[offset_in_mem])),
-              offset_in_file, length);
+    write_data(reinterpret_cast<char *>(
+                   const_cast<surfel *>(&(*data)[offset_in_mem])),
+               offset_in_file, length);
 }
 
 void file::
-write(const surfel& srfl, const size_t pos_in_file)
+write(const surfel &srfl, const size_t pos_in_file)
 {
-  write_data(reinterpret_cast<char*>(const_cast<surfel*>(&srfl)),
-              pos_in_file, 1);
+    write_data(reinterpret_cast<char *>(const_cast<surfel *>(&srfl)),
+               pos_in_file, 1);
 }
 
 void file::
-read(surfel_vector* data,
+read(surfel_vector *data,
      const size_t offset_in_mem,
      const size_t offset_in_file,
      const size_t length) const
@@ -158,18 +159,17 @@ read(surfel_vector* data,
     assert(length > 0);
     assert(offset_in_mem + length <= data->size());
 
-    read_data(reinterpret_cast<char*>(&(*data)[offset_in_mem]),
-             offset_in_file, length);
+    read_data(reinterpret_cast<char *>(&(*data)[offset_in_mem]),
+              offset_in_file, length);
 }
 
 const surfel file::
 read(const size_t pos_in_file) const
 {
     surfel s;
-    read_data(reinterpret_cast<char*>(&s), pos_in_file, 1);
+    read_data(reinterpret_cast<char *>(&s), pos_in_file, 1);
     return s;
 }
-
 
 void file::
 write_data(char *data, const size_t offset_in_file, const size_t length)
@@ -181,9 +181,9 @@ write_data(char *data, const size_t offset_in_file, const size_t length)
     stream_.write(data, length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("write failed. file: \"" << file_name_ << 
-                                "\". (offset: " << offset_in_file << 
-                                ", len: " << length << "). " << strerror(errno));
+        LOGGER_ERROR("write failed. file: \"" << file_name_ <<
+                                              "\". (offset: " << offset_in_file <<
+                                              ", len: " << length << "). " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
@@ -198,12 +198,13 @@ read_data(char *data, const size_t offset_in_file, const size_t length) const
     stream_.read(data, length * sizeof(surfel));
 
     if (stream_.fail() || stream_.bad()) {
-        LOGGER_ERROR("read failed. file: \"" << file_name_ << 
-                                "\". (offset: " << offset_in_file << 
-                                ", len: " << length << "). " << strerror(errno));
+        LOGGER_ERROR("read failed. file: \"" << file_name_ <<
+                                             "\". (offset: " << offset_in_file <<
+                                             ", len: " << length << "). " << strerror(errno));
     }
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
-} } // namespace lamure
+}
+} // namespace lamure
 

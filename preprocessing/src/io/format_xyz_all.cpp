@@ -12,17 +12,19 @@
 #include <fstream>
 #include <sstream>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 void format_xyzall::
-read(const std::string& filename, surfel_callback_funtion callback)
+read(const std::string &filename, surfel_callback_funtion callback)
 {
     std::ifstream xyz_file_stream(filename);
 
     if (!xyz_file_stream.is_open())
         throw std::runtime_error("Unable to open input file: " +
-                                 filename);
+            filename);
 
     std::string line;
 
@@ -31,17 +33,17 @@ read(const std::string& filename, surfel_callback_funtion callback)
     unsigned int color[3];
     real radius;
 
-    xyz_file_stream.seekg (0, std::ios::end);
+    xyz_file_stream.seekg(0, std::ios::end);
     std::streampos end_pos = xyz_file_stream.tellg();
-    xyz_file_stream.seekg (0, std::ios::beg);
+    xyz_file_stream.seekg(0, std::ios::beg);
     uint8_t percent_processed = 0;
 
     while (getline(xyz_file_stream, line)) {
 
-        uint8_t new_percent_processed = (xyz_file_stream.tellg()/float(end_pos)) * 100;
+        uint8_t new_percent_processed = (xyz_file_stream.tellg() / float(end_pos)) * 100;
         if (percent_processed + 1 == new_percent_processed) {
             percent_processed = new_percent_processed;
-            std::cout << "\r" << (int)percent_processed << "% processed" << std::flush;
+            std::cout << "\r" << (int) percent_processed << "% processed" << std::flush;
         }
 
         std::stringstream sstream;
@@ -69,7 +71,7 @@ read(const std::string& filename, surfel_callback_funtion callback)
 }
 
 void format_xyzall::
-write(const std::string& filename, buffer_callback_function callback)
+write(const std::string &filename, buffer_callback_function callback)
 {
     throw std::runtime_error("Not implemented yet!");
 }

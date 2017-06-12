@@ -12,21 +12,26 @@
 // #include <lamure/pre/bvh.h>
 #include <lamure/pre/surfel.h>
 
-namespace lamure{
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 class bvh;
 
-class normal_computation_strategy {
+class normal_computation_strategy
+{
 public:
-	virtual ~normal_computation_strategy() {};
-	virtual vec3f compute_normal(const bvh& tree,
-								 const surfel_id_t surfel,
-                       			 std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const = 0;
-	uint16_t const number_of_neighbours() const {return number_of_neighbours_;}
+    virtual ~normal_computation_strategy()
+    {};
+    virtual vec3f compute_normal(const bvh &tree,
+                                 const surfel_id_t surfel,
+                                 std::vector<std::pair<surfel_id_t, real>> const &nearest_neighbours) const = 0;
+    uint16_t const number_of_neighbours() const
+    { return number_of_neighbours_; }
 
 protected:
-	uint16_t number_of_neighbours_;
+    uint16_t number_of_neighbours_;
 };
 
 } // namespace pre

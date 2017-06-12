@@ -9,17 +9,17 @@
 #define PREPROCESSING_PLATFORM_H_
 
 #ifdef _MSC_VER
-  #pragma warning (disable: 4251) // needs to have dll-interface to be used by clients of class
+#pragma warning (disable: 4251) // needs to have dll-interface to be used by clients of class
 #endif
 
 #if WIN32
-  #if defined(LAMURE_PREPROCESSING_LIBRARY)
-    #define PREPROCESSING_DLL __declspec( dllexport )
-  #else
-    #define PREPROCESSING_DLL __declspec( dllimport )
-  #endif
+#if defined(LAMURE_PREPROCESSING_LIBRARY)
+#define PREPROCESSING_DLL __declspec( dllexport )
 #else
-  #define PREPROCESSING_DLL
+#define PREPROCESSING_DLL __declspec( dllimport )
+#endif
+#else
+#define PREPROCESSING_DLL
 #endif
 
 #endif // PREPROCESSING_PLATFORM_H_
