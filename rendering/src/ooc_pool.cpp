@@ -92,12 +92,14 @@ run() {
     std::vector<lod_stream*> lod_streams;
 #else
     std::vector<std::string> lod_files;
+    std::vector<std::string> provenance_files;
 #endif
 
 
     for (model_t model_id = 0; model_id < num_models; ++model_id) {
         std::string bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
         std::string lod_file_name = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
+        std::string provenance_file_name = bvh_filename.substr(0, bvh_filename.size()-3) + "prov";
 
 #ifdef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
         lod_stream* access = new lod_stream();
@@ -105,10 +107,12 @@ run() {
         lod_streams.push_back(access);
 #else
         lod_files.push_back(lod_file_name);
+        provenance_files.push_back(provenance_file_name);
 #endif
     }
 
     char* local_cache = new char[size_of_slot_];
+    char* local_cache_provenance = new char[size_of_slot_];
 
     while (true) {
         semaphore_.wait();
@@ -120,6 +124,7 @@ run() {
 
         if (job.node_id_ != invalid_node_t) {
             assert(job.slot_mem_ != nullptr);
+            // assert(job.slot_mem_provenance_ != nullptr);
 
             size_t stride_in_bytes = database->get_node_size(job.model_id_);
             size_t offset_in_bytes = job.node_id_ * stride_in_bytes;
@@ -128,18 +133,31 @@ run() {
             lod_streams[job.model_id_]->read(local_cache, offset_in_bytes, stride_in_bytes);
 #else
             lod_stream access;
+            provenance_stream access_provenance;
             access.open(lod_files[job.model_id_]);
+            access_provenance.open(provenance_files[job.model_id_]);
+
+            // std::cout << "provenance_file_name" << std::endl;
+            // std::cout << sizeof(provenance_data) << std::endl;
             access.read(local_cache, offset_in_bytes, stride_in_bytes);
+
+            size_t stride_in_bytes_provenance = database->get_primitives_per_node() * sizeof(provenance_data);
+            size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
+            access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
 #endif
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 bytes_loaded_ += stride_in_bytes;
+                // ASK CARL should create new member?
+                bytes_loaded_ += stride_in_bytes_provenance;
                 memcpy(job.slot_mem_, local_cache, stride_in_bytes);
+                memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
                 history_.push_back(job);
             }
 
 #ifndef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
             access.close();
+            access_provenance.close();
 #endif
 
         }
@@ -159,11 +177,16 @@ run() {
         lod_streams.clear();
 #else
         lod_files.clear();
+        provenance_files.clear();
 #endif
 
         if (local_cache != nullptr) {
             delete[] local_cache;
             local_cache = nullptr;
+        }
+        if (local_cache_provenance != nullptr) {
+            delete[] local_cache_provenance;
+            local_cache_provenance = nullptr;
         }
     }
 }

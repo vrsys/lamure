@@ -42,19 +42,25 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
                                     scm::gl::USAGE_DYNAMIC_COPY,
                                     num_slots_ * size_of_slot_,
                                     0);
+    // HARDCODED size of provenance data
+    size_of_slot_provenance_ = num_surfels_per_node * 4;
+    buffer_provenance_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
+                                    scm::gl::USAGE_DYNAMIC_COPY,
+                                    num_slots_ * size_of_slot_provenance_,
+                                    0);
 
-    std::vector<float> vector_data;
+   //  std::vector<float> vector_data;
 
-    int counter = 0;
-    int end = num_slots_ * num_surfels_per_node;
-    for( int i = 0; i < end; i++ ) {
-      vector_data.push_back(float(i % 20));
-   }
+   //  int counter = 0;
+   //  int end = num_slots_ * num_surfels_per_node;
+   //  for( int i = 0; i < end; i++ ) {
+   //    vector_data.push_back(float(i % 20));
+   // }
 
-    scm::gl::buffer_ptr prov_buffer = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
-                                    scm::gl::USAGE_STATIC_DRAW,
-                                    num_slots_ * num_surfels_per_node * 4,
-                                    &vector_data[0]);
+   //  scm::gl::buffer_ptr prov_buffer = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
+   //                                  scm::gl::USAGE_STATIC_DRAW,
+   //                                  num_slots_ * num_surfels_per_node * 4,
+   //                                  &vector_data[0]);
 
 
 
@@ -70,7 +76,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
             
             (1, 7, scm::gl::TYPE_FLOAT, 4),
             // boost::assign::list_of(buffer_));
-            boost::assign::list_of(buffer_)(prov_buffer));
+            boost::assign::list_of(buffer_)(buffer_provenance_));
         
         tri_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
@@ -90,6 +96,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
 gpu_access::
 ~gpu_access() {
     buffer_.reset();
+    buffer_provenance_.reset();
     if (has_layout_) {
         pcl_memory_.reset();
         tri_memory_.reset();

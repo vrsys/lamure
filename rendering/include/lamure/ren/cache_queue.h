@@ -51,25 +51,29 @@ public:
             const node_t node_id,
             const slot_t slot_id,
             const int32_t priority,
-            char* const slot_mem)
+            char* const slot_mem,
+            char* const slot_mem_provenance)
             : model_id_(model_id),
             node_id_(node_id),
             slot_id_(slot_id),
             priority_(priority),
-            slot_mem_(slot_mem) {};
+            slot_mem_(slot_mem),
+            slot_mem_provenance_(slot_mem_provenance) {};
 
         explicit job()
             : model_id_(invalid_model_t),
             node_id_(invalid_node_t),
             slot_id_(invalid_slot_t),
             priority_(0),
-            slot_mem_(nullptr) {};
+            slot_mem_(nullptr),
+            slot_mem_provenance_(nullptr) {};
 
         model_t         model_id_;
         node_t          node_id_;
         slot_t          slot_id_;
         int32_t         priority_;
         char*           slot_mem_;
+        char*           slot_mem_provenance_;
     };
 
                         cache_queue();

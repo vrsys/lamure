@@ -19,8 +19,10 @@
 #include <lamure/ren/config.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/lod_stream.h>
+#include <lamure/ren/provenance_stream.h>
 #include <lamure/ren/cache_queue.h>
 #include <lamure/ren/cache_index.h>
+#include <lamure/ren/provenance.h>
 
 
 
