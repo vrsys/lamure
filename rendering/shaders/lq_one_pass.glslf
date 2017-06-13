@@ -50,7 +50,8 @@ void main() {
         discard;
     }
 
-    if(state_lense == 2 && is_in_sphere() && VertexIn.pass_prov_float == 0.0f)
+    if(state_lense == 2 && is_in_sphere() && VertexIn.pass_prov_float < 0.5f)
+    // if(state_lense == 2 && is_in_sphere() && VertexIn.pass_prov_float > 0.5f)
     {
         out_color = vec4(0.0, 1.0, 0.0, 1.0);
     } else {

@@ -34,6 +34,8 @@ public:
 
     char* map(scm::gl::render_device_ptr const& device);
     void unmap(scm::gl::render_device_ptr const& device);
+    char* map_provenance(scm::gl::render_device_ptr const& device);
+    void unmap_provenance(scm::gl::render_device_ptr const& device);
     const bool is_mapped() const { return is_mapped_; };
     const bool has_layout() const { return has_layout_; };
 
@@ -51,6 +53,7 @@ private:
     size_t size_of_surfel_;
 
     bool is_mapped_;
+    bool is_mapped_provenance_;
     bool has_layout_;
 
     scm::gl::vertex_array_ptr pcl_memory_;

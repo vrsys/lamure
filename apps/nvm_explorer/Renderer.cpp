@@ -77,8 +77,18 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
 
     lamure::ren::policy *policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(64);
-    policy->set_render_budget_in_mb(1024 * 6);
-    policy->set_out_of_core_budget_in_mb(1024 * 2);
+
+    policy->set_render_budget_in_mb(0);
+    // policy->set_render_budget_in_mb(1024 * 6);
+    // policy->set_render_budget_in_mb(1024 * 40);
+    // policy->set_render_budget_in_mb(256);
+
+    policy->set_out_of_core_budget_in_mb(0);
+    // policy->set_out_of_core_budget_in_mb(1024 * 3);
+    // policy->set_out_of_core_budget_in_mb(1024 * 20);
+    // policy->set_out_of_core_budget_in_mb(256);
+
+    std::cout << "SETTING POLICY" << std::endl;
 
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();

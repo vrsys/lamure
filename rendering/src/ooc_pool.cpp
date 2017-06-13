@@ -14,9 +14,10 @@ namespace ren
 {
 
 ooc_pool::
-ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes)
+ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes, const size_t size_of_slot_provenance_in_bytes)
 : locked_(false),
   size_of_slot_(size_of_slot_in_bytes),
+  size_of_slot_provenance_(size_of_slot_provenance_in_bytes),
   num_threads_(num_threads),
   shutdown_(false),
   bytes_loaded_(0) {
@@ -112,7 +113,7 @@ run() {
     }
 
     char* local_cache = new char[size_of_slot_];
-    char* local_cache_provenance = new char[size_of_slot_];
+    char* local_cache_provenance = new char[size_of_slot_provenance_];
 
     while (true) {
         semaphore_.wait();
@@ -137,8 +138,6 @@ run() {
             access.open(lod_files[job.model_id_]);
             access_provenance.open(provenance_files[job.model_id_]);
 
-            // std::cout << "provenance_file_name" << std::endl;
-            // std::cout << sizeof(provenance_data) << std::endl;
             access.read(local_cache, offset_in_bytes, stride_in_bytes);
 
             size_t stride_in_bytes_provenance = database->get_primitives_per_node() * sizeof(provenance_data);

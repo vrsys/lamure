@@ -27,6 +27,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
   // size_of_surfel_(9*sizeof(float)),
   size_of_surfel_(8*sizeof(float)),
   is_mapped_(false),
+  is_mapped_provenance_(false),
   has_layout_(create_layout) {
 
     assert(device);
@@ -119,6 +120,25 @@ unmap(scm::gl::render_device_ptr const& device) {
         assert(device);
         device->main_context()->unmap_buffer(buffer_);
         is_mapped_ = false;
+    }
+}
+
+char* gpu_access::
+map_provenance(scm::gl::render_device_ptr const& device) {
+    if (!is_mapped_provenance_) {
+        assert(device);
+        is_mapped_provenance_ = true;
+        return (char*)device->main_context()->map_buffer(buffer_provenance_, scm::gl::ACCESS_READ_WRITE);
+    }
+    return nullptr;
+}
+
+void gpu_access::
+unmap_provenance(scm::gl::render_device_ptr const& device) {
+    if (is_mapped_provenance_) {
+        assert(device);
+        device->main_context()->unmap_buffer(buffer_provenance_);
+        is_mapped_provenance_ = false;
     }
 }
 

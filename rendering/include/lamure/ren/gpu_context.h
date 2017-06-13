@@ -12,6 +12,7 @@
 #include <lamure/ren/gpu_access.h>
 #include <lamure/ren/cut_database_record.h>
 #include <lamure/ren/bvh.h>
+#include <lamure/ren/provenance.h>
 
 namespace lamure
 {
@@ -39,6 +40,7 @@ public:
     const bool is_created() const { return is_created_; };
 
     temporary_storages get_temporary_storages() { return temporary_storages_; };
+    temporary_storages get_temporary_storages_provenance() { return temporary_storages_provenance_; };
 
     scm::gl::buffer_ptr get_context_buffer(scm::gl::render_device_ptr device);
     scm::gl::vertex_array_ptr get_context_memory(bvh::primitive_type type, scm::gl::render_device_ptr device);
@@ -64,6 +66,7 @@ private:
     gpu_access* primary_buffer_;
 
     temporary_storages temporary_storages_;
+    temporary_storages temporary_storages_provenance_;
     node_t upload_budget_in_nodes_;
     node_t render_budget_in_nodes_;
 

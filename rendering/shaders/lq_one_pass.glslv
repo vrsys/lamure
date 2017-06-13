@@ -65,7 +65,8 @@ void main()
   VertexOut.pass_prov_float = prov_float;
 
 #if 1
-  if(state_lense == 1 && is_in_sphere() && prov_float == 0.0f)
+  if(state_lense == 1 && is_in_sphere() && prov_float > 0.5f)
+  // if(state_lense == 1 && is_in_sphere() && prov_float < 0.5f)
   {
     VertexOut.pass_point_color = vec3(0.0, 1.0, 0.0);
   } else {

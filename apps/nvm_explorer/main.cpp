@@ -7,7 +7,7 @@
 #include "Controller.h"
 #include "Scene.h"
 #include "utils.h"
-#include <GL/freeglut.h>
+#include <GL/freeglut.h> 
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -58,7 +58,8 @@ bool write_dummy_binary_file()
     std::ofstream ofile("dummy_binary_file.bin", std::ios::binary);
     for (int i = 0; i < 4434885; ++i)
     {
-        const float f = 1.0f;
+        const float f = double(rand()) / double(RAND_MAX);
+        // const float f = 1.0f;
         ofile.write((char*) &f, sizeof(float));
         // std::cout << i << std::endl;
     }
@@ -69,6 +70,7 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option) { re
 
 int main(int argc, char *argv[])
 {
+    // return 1;
     // return write_dummy_binary_file();
 
     if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-f"))
