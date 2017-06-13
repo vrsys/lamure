@@ -25,7 +25,7 @@ ooc_cache(const slot_t num_slots)
     model_database* database = model_database::get_instance();
 
     cache_data_ = new char[num_slots * database->get_slot_size()];
-    // cache_data_ = new char[num_slots * database->get_slot_size()];
+    cache_data__provenance = new char[num_slots * database->get_slot_size()];
     pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, database->get_slot_size());
 
 #ifdef LAMURE_ENABLE_INFO
@@ -48,12 +48,16 @@ ooc_cache::
     if (cache_data_ != nullptr) {
         delete[] cache_data_;
         cache_data_ = nullptr;
+    }
+
+    if (cache_data__provenance != nullptr) {
+        delete[] cache_data__provenance;
+        cache_data__provenance = nullptr;
+    }
 
 #ifdef LAMURE_ENABLE_INFO
         std::cout << "lamure: ooc-cache shutdown" << std::endl;
 #endif
-    }
-
 }
 
 ooc_cache* ooc_cache::
@@ -88,7 +92,8 @@ register_node(const model_t model_id, const node_t node_id, const int32_t priori
         case cache_queue::query_result::NOT_INDEXED:
         {
             slot_t slot_id = index_->reserve_slot();
-            cache_queue::job job(model_id, node_id, slot_id, priority, cache_data_ + slot_id * slot_size());
+            // ASK CARL really duplicate each memory?
+            cache_queue::job job(model_id, node_id, slot_id, priority, cache_data_ + slot_id * slot_size(), cache_data__provenance + slot_id * slot_size());
             if (!pool_->acknowledge_request(job)) {
                 index_->unreserve_slot(slot_id);
             }
