@@ -154,6 +154,7 @@ run() {
 
         //dequeue job
         cut_update_queue::job job = job_queue_.pop_front_job();
+        std::cout << "test" << std::endl;
 
         if (job.task_ != cut_update_queue::task_t::CUT_INVALID_TASK) {
             switch (job.task_) {
