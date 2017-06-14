@@ -100,11 +100,6 @@ test_video_memory(scm::gl::render_device_ptr device) {
 
     long node_size_total = database->get_primitives_per_node() * sizeof(provenance_data) + database->get_slot_size();
     render_budget_in_nodes_ = (render_budget_in_mb * 1024 * 1024) / node_size_total;
-    // std::cout << "RENDER1: " << render_budget_in_mb << std::endl;
-    // std::cout << "RENDER1: " << render_budget_in_mb * 0.75 << std::endl;
-    // std::cout << "RENDER1: " << node_size_total << std::endl;
-    // std::cout << "RENDER1: " << (render_budget_in_mb * 0.75) / node_size_total << std::endl;
-    // std::cout << "RENDER1: " << render_budget_in_nodes_ << std::endl;
 
     // render_budget_in_mb = policy->render_budget_in_mb();
 
@@ -119,8 +114,8 @@ test_video_memory(scm::gl::render_device_ptr device) {
     size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
     max_upload_budget_in_mb = max_upload_budget_in_mb < LAMURE_MIN_UPLOAD_BUDGET ? LAMURE_MIN_UPLOAD_BUDGET : max_upload_budget_in_mb;
     max_upload_budget_in_mb = max_upload_budget_in_mb > video_ram_free_in_mb * 0.125 ? video_ram_free_in_mb * 0.125 : max_upload_budget_in_mb;
-    size_t max_upload_budget_in_nodes = (max_upload_budget_in_mb * 1024u * 1024u) / database->get_slot_size();
-    upload_budget_in_nodes_ = max_upload_budget_in_nodes;
+    
+    upload_budget_in_nodes_ = (max_upload_budget_in_mb * 1024u * 1024u) / node_size_total;
     
 
 #if 1
