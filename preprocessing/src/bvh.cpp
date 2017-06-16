@@ -1235,6 +1235,7 @@ thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
         current_node.set_avg_surfel_radius(props.rep_radius);
         current_node.set_centroid(props.centroid);
         current_node.set_bounding_box(props.bbox);
+        current_node.set_max_surfel_radius_deviation(props.max_radius_deviation);
     }
 }
 

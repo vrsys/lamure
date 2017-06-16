@@ -160,6 +160,23 @@ set_avg_primitive_extent(const node_t node_id, const float radius) {
     avg_primitive_extent_[node_id] = radius;
 }
 
+const float bvh::
+get_max_surfel_radius_deviation(const node_t node_id) const {
+    assert(node_id >= 0 && node_id < num_nodes_);
+    return max_primitive_extent_deviation_[node_id];
+}
+
+void bvh::
+set_max_surfel_radius_deviation(const node_t node_id, const float max_radius_deviation) {
+    assert(node_id >= 0 && node_id < num_nodes_);
+    while (max_primitive_extent_deviation_.size() <= node_id) {
+       max_primitive_extent_deviation_.push_back(0.f);
+    }
+    max_primitive_extent_deviation_[node_id] = max_radius_deviation;
+}
+
+
+
 const bvh::
 node_visibility bvh::get_visibility(const node_t node_id) const {
     assert(node_id >= 0 && node_id < num_nodes_);

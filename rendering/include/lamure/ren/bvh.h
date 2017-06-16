@@ -59,6 +59,7 @@ public:
     const scm::gl::boxf& get_bounding_box(const node_t node_id) const; 
     const scm::math::vec3f& get_centroid(const node_t node_id) const;
     const float         get_avg_primitive_extent(const node_t node_id) const;
+    const float         get_max_surfel_radius_deviation(const node_t node_id) const;
     const node_visibility get_visibility(const node_t node_id) const;
     const primitive_type get_primitive() const { return primitive_; }
     
@@ -71,6 +72,7 @@ public:
     void                set_bounding_box(const node_t node_id, const scm::gl::boxf& bounding_box);
     void                set_centroid(const node_t node_id, const scm::math::vec3f& centroid);
     void                set_avg_primitive_extent(const node_t node_id, const float radius);
+    void                set_max_surfel_radius_deviation(const node_t node_id, const float max_radius_deviation);
     void                set_visibility(const node_t node_id, const node_visibility visibility);
     void                set_primitive(const primitive_type primitive) { primitive_ = primitive; };
 
@@ -93,6 +95,8 @@ private:
     std::vector<node_visibility> visibility_;
 
     std::vector<float>  avg_primitive_extent_;
+    std::vector<float>  max_primitive_extent_deviation_; //new for radius quantization
+
     std::string         filename_;
 
     vec3f               translation_;

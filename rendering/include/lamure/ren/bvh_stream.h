@@ -316,7 +316,7 @@ protected:
         float avg_surfel_radius_;
         
         bvh_node_visibility visibility_;
-        uint32_t reserved_;
+        float max_surfel_radius_deviation_;
 
         bvh_bounding_box bounding_box_;
         
@@ -349,7 +349,7 @@ protected:
             file.write((char*)&reduction_error_, 4);
             file.write((char*)&avg_surfel_radius_, 4);
             file.write((char*)&visibility_, 4);
-            file.write((char*)&reserved_, 4);
+            file.write((char*)&max_surfel_radius_deviation_, 4);
             file.write((char*)&bounding_box_.min_.x_, 4);
             file.write((char*)&bounding_box_.min_.y_, 4);
             file.write((char*)&bounding_box_.min_.z_, 4);
@@ -371,7 +371,7 @@ protected:
             file.read((char*)&reduction_error_, 4);
             file.read((char*)&avg_surfel_radius_, 4);
             file.read((char*)&visibility_, 4);
-            file.read((char*)&reserved_, 4);
+            file.read((char*)&max_surfel_radius_deviation_, 4);
             file.read((char*)&bounding_box_.min_.x_, 4);
             file.read((char*)&bounding_box_.min_.y_, 4);
             file.read((char*)&bounding_box_.min_.z_, 4);

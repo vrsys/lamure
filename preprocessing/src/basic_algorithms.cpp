@@ -315,12 +315,15 @@ compute_properties(const surfel_mem_array& sa,
            rep_radius_algo == rep_radius_algorithm::geometric_mean ||
            rep_radius_algo == rep_radius_algorithm::harmonic_mean);
 
-    surfel_group_properties props = {0.0, vec3r(0.0), bounding_box()};
+    surfel_group_properties props = {0.0, 0.0, vec3r(0.0), bounding_box()};
 
 //    if (rep_radius_algo == rep_radius_algorithm::geometric_mean)
 //        props.rep_radius = 1.0;
 
     size_t counter = 0;
+
+    float max_radius = 0.0;
+    float min_radius = std::numeric_limits<float>::max();
 
     for (size_t i = 0; i < sa.length(); ++i) {
         surfel s = sa.read_surfel_ref(i);
@@ -329,6 +332,9 @@ compute_properties(const surfel_mem_array& sa,
 
         if (s.radius() <= 0.0)
             continue;
+
+        max_radius = std::max(s.radius(), lamure::real(max_radius) ); 
+        min_radius = std::min(s.radius(), lamure::real(min_radius) ); 
 
         switch (rep_radius_algo) {
             case rep_radius_algorithm::arithmetic_mean: props.rep_radius += s.radius(); break;
@@ -347,6 +353,8 @@ compute_properties(const surfel_mem_array& sa,
             case rep_radius_algorithm::geometric_mean:  props.rep_radius = exp(props.rep_radius / static_cast<real>(counter)); break;
             case rep_radius_algorithm::harmonic_mean:   props.rep_radius = static_cast<real>(counter) / props.rep_radius; break;
         }
+
+        props.max_radius_deviation = std::max( std::fabs(props.rep_radius - min_radius), std::fabs(max_radius - props.rep_radius)  );
 
         props.centroid /= static_cast<real>(counter);
 

@@ -33,7 +33,8 @@ public:
                               reduction_error_(0.0),
                               avg_surfel_radius_(0.0),
                               centroid_(vec3r(0.0)),
-                              visibility_(node_visibility::node_visible) {}
+                              visibility_(node_visibility::node_visible),
+                              max_surfel_radius_deviation_(0.0) {}
 
     explicit            bvh_node(const node_id_type id,
                                 const uint32_t depth,
@@ -44,7 +45,8 @@ public:
                               reduction_error_(0.0),
                               avg_surfel_radius_(0.0),
                               centroid_(vec3r(0.0)),
-                              visibility_(node_visibility::node_visible) {}
+                              visibility_(node_visibility::node_visible),
+                              max_surfel_radius_deviation_(0.0) {}
 
     explicit            bvh_node(const node_id_type id,
                                 const uint32_t depth,
@@ -87,6 +89,10 @@ public:
     const node_visibility visibility() const { return visibility_; }
     void                set_visibility(const node_visibility visibility)
                             { visibility_ = visibility; }
+
+    const real          max_surfel_radius_deviation() const { return max_surfel_radius_deviation_; }
+    void                set_max_surfel_radius_deviation(const real value)
+                            { max_surfel_radius_deviation_ = value; }
 
     void calculate_statistics();
 
@@ -171,6 +177,7 @@ private:
     real                 avg_surfel_radius_;
     vec3r                centroid_;
     node_visibility      visibility_;
+    real                 max_surfel_radius_deviation_;
 
     surfel_mem_array     mem_array_;
     surfel_disk_array    disk_array_;
