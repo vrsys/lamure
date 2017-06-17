@@ -60,7 +60,7 @@ builder::~builder()
 reduction_strategy *builder::get_reduction_strategy(reduction_algorithm algo) const
 {
     switch (algo) {
-        case reduction_algorithm::ndc:return new reduction_normal_deviation_clustering();
+        case reduction_algorithm::ndc:return (reduction_strategy *) new reduction_normal_deviation_clustering();
         case reduction_algorithm::constant:return new reduction_constant();
         case reduction_algorithm::every_second:return new reduction_every_second();
         case reduction_algorithm::random:return new reduction_random();

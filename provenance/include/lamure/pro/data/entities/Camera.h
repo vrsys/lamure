@@ -1,19 +1,21 @@
 #ifndef LAMURE_CAMERA_H
 #define LAMURE_CAMERA_H
 
-#include "MetaContainer.h"
+#include "MetaData.h"
 #include "lamure/pro/common.h"
 
 namespace prov
 {
-class Camera : public MetaContainer
+class Camera
 {
   public:
+    uint16_t MAX_LENGTH_FILE_PATH;
+
     class Frustum;
 
-    Camera() : MetaContainer() {}
+    Camera() {}
     Camera(uint16_t _index, const string &_im_file_name, const quatd &_orientation, const vec3d &_translation, const vec<uint8_t> &_metadata)
-        : MetaContainer(_metadata), _index(_index), _im_file_name(_im_file_name), _orientation(_orientation), _translation(_translation)
+        : _index(_index), _im_file_name(_im_file_name), _orientation(_orientation), _translation(_translation)
     {
         prepare();
     }
@@ -75,21 +77,16 @@ class Camera : public MetaContainer
             printf("\nXYZ: %f %f %f", x, y, z);
 
         camera._translation = vec3d(x, y, z);
-        uint16_t file_path_length;
-        is.read(reinterpret_cast<char *>(&file_path_length), 2);
-        file_path_length = swap(file_path_length, true);
+
+        char byte_buffer[camera.MAX_LENGTH_FILE_PATH];
+        is.read(byte_buffer, camera.MAX_LENGTH_FILE_PATH);
+        camera._im_file_name = string(byte_buffer);
+        camera._im_file_name = trim(camera._im_file_name);
 
         if(DEBUG)
-            printf("\nFile path length: %i ", file_path_length);
+            printf("\nFile path: \'%s\'", camera._im_file_name.c_str());
 
-        std::vector<char> byte_buffer(file_path_length, 0);
-        is.read(reinterpret_cast<char *>(&byte_buffer[0]), file_path_length);
-        camera._im_file_name = string(byte_buffer.data());
-
-        if(DEBUG)
-            printf("\nFile path: %s", camera._im_file_name.c_str());
-
-        camera.read_metadata(is);
+        //        camera.read_metadata(is);
 
         return is;
     }
@@ -101,7 +98,7 @@ class Camera : public MetaContainer
         if(!fp)
         {
             std::stringstream sstr;
-            sstr << "Can't open file: " << _im_file_name;
+            sstr << "Can't open file: \'" << _im_file_name << '\'';
             throw std::runtime_error(sstr.str());
         }
         fseek(fp, 0, SEEK_END);
@@ -112,7 +109,7 @@ class Camera : public MetaContainer
         {
             delete[] buf;
             std::stringstream sstr;
-            sstr << "Can't read file: " << _im_file_name;
+            sstr << "Can't read file: \'" << _im_file_name << '\'';
             throw std::runtime_error(sstr.str());
         }
         fclose(fp);

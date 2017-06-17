@@ -4,6 +4,7 @@
 #include "Camera.h"
 #include "Point.h"
 #include "lamure/pro/common.h"
+#include "MetaData.h"
 
 namespace prov
 {
@@ -45,14 +46,21 @@ class SparsePoint : public Point
 
     SparsePoint() { _measurements = vec<Measurement>(); }
     SparsePoint(uint32_t _index, const vec3d &_center, const vec3d &_color, const vec<uint8_t> &_metadata, const vec<Measurement> &_measurements)
-        : Point(_index, _center, _color, _metadata), _measurements(_measurements)
+        : Point(_center, _color, _metadata), _measurements(_measurements)
     {
     }
     ~SparsePoint() {}
     const vec<Measurement> &get_measurements() const { return _measurements; }
     friend ifstream &operator>>(ifstream &is, SparsePoint &sparse_point)
     {
+        is.read(reinterpret_cast<char *>(&sparse_point._index), 4);
+        sparse_point._index = swap(sparse_point._index, true);
+
+        if(DEBUG)
+            printf("\nPoint index: %i", sparse_point._index);
+
         sparse_point.read_essentials(is);
+
         uint16_t measurements_length;
         is.read(reinterpret_cast<char *>(&measurements_length), 2);
 
@@ -68,12 +76,12 @@ class SparsePoint : public Point
             sparse_point._measurements.push_back(measurement);
         }
 
-        sparse_point.read_metadata(is);
-
         return is;
     }
 
-  protected:
+    uint32_t get_index() const { return _index; }
+protected:
+    uint32_t _index;
     vec<Measurement> _measurements;
 };
 }

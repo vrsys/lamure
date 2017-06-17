@@ -14,8 +14,8 @@ class Point(Entity):
         self.meta_data = meta_data
 
     def out(self):
-        out_bytes = bytearray();
-        out_bytes.extend(self.index.to_bytes(4, byteorder='big'))
+        out_bytes = bytearray()
+        # out_bytes.extend(self.index.to_bytes(4, byteorder='big'))
         out_bytes.extend(self.position.out())
         out_bytes.extend(self.color.out())
         return out_bytes
@@ -71,7 +71,7 @@ class MetaData(Entity):
 
     def out(self):
         out_bytes = bytearray()
-        out_bytes.extend(len(self.charbuff).to_bytes(4, byteorder='big'))
+        # out_bytes.extend(len(self.charbuff).to_bytes(4, byteorder='big'))
         out_bytes.extend(self.charbuff)
         return out_bytes
 
@@ -99,7 +99,7 @@ class DensePoint(Point):
         out_bytes = bytearray()
         out_bytes.extend(super(DensePoint, self).out())
         out_bytes.extend(self.normal.out())
-        out_bytes.extend(self.meta_data.out())
+        # out_bytes.extend(self.meta_data.out())
         return out_bytes
 
 
@@ -118,9 +118,9 @@ class Camera(Entity):
         out_bytes.extend(struct.pack(">d", self.focal_length))
         out_bytes.extend(self.quat.out())
         out_bytes.extend(self.center.out())
-        out_bytes.extend(len(bytearray(self.file_path, encoding='UTF-8')).to_bytes(2, byteorder='big'))
-        out_bytes.extend(bytearray(self.file_path, encoding='UTF-8'))
-        out_bytes.extend(self.meta_data.out())
+        # out_bytes.extend(len(bytearray(self.file_path, encoding='UTF-8')).to_bytes(2, byteorder='big'))
+        # out_bytes.extend(bytearray(self.file_path, encoding='UTF-8'))
+        # out_bytes.extend(self.meta_data.out())
         return out_bytes
 
 
@@ -131,11 +131,12 @@ class SparsePoint(Point):
 
     def out(self):
         out_bytes = bytearray()
+        out_bytes.extend(self.index.to_bytes(4, byteorder='big'))
         out_bytes.extend(super(SparsePoint, self).out())
         out_bytes.extend(len(self.measurements).to_bytes(2, byteorder='big'))
         for measurement in self.measurements:
             out_bytes.extend(measurement.out())
-        out_bytes.extend(self.meta_data.out())
+        # out_bytes.extend(self.meta_data.out())
         return out_bytes
 
 

@@ -20,24 +20,9 @@ Bytewise specification (following the guidelines of [Fadden](http://www.fadden.c
 
     ```
     +00     2B Magic number (0xAFFE)
-    +02     4B CRC-32
-    +06     4B Length of data
-    +0A     2B Number of cameras
-
-        [start camera]
-
-        +00     2B  Camera index
-        +02     8B  Focal length
-        +0A     32B Quaternion, WXYZ
-        +2A     24B Camera center, XYZ
-        +42     2B  Length of file path (YY)
-        +44     YY  File path
-        +44+YY  4B  Length of meta data (ZZ)
-        +48+YY  ZZ  Meta data
-
-        [end camera]
-
-    +??     4B Number of sparse points
+    +02     4B Length of data
+    +06     4B Number of sparse points
+    +0A     4B Length of sparse point meta data (ZZ)
 
         [start sparse point]
 
@@ -54,31 +39,71 @@ Bytewise specification (following the guidelines of [Fadden](http://www.fadden.c
 
             [end measurement]
 
-        +??      4B  Length of meta data (ZZ)
-        +??+4B   ZZ  Meta data
-
         [end sparse point]
+
+    +??     2B Number of cameras
+    +??     4B Length of camera meta data (ZZ)
+    +??     2B Max length of file path (YY)
+
+
+        [start camera]
+
+        +00     2B  Camera index
+        +02     8B  Focal length
+        +0A     32B Quaternion, WXYZ
+        +2A     24B Camera center, XYZ
+        +42     YY  File path
+
+        [end camera]
 
     ```
 
-### Dense (LoD) data file format
+### Dense data file format
 
     ```
     +00     2B Magic number (0xAFFE)
-    +02     4B CRC-32
-    +06     4B Length of data
-    +0A     4B Number of points
+    +02     4B Length of data
+    +06     4B Number of points
+    +0A     4B Length of dense point meta data (ZZ)
 
-    [start dense point]
+    [start dense point] // length == 0x48
 
-    +00     4B  Point index
-    +04     24B Position, XYZ
-    +1C     24B Color, RGB
-    +40     24B Normal, XYZ
-    +58     4B  Length of meta data (ZZ)
-    +5C     ZZ  Meta data
+    +00     24B Position, XYZ
+    +18     24B Color, RGB
+    +30     24B Normal, XYZ
 
     [end dense point]
+
+    ```
+
+### LoD data file format
+
+    ```
+    +00    2B Magic number (0xAFFE)
+    +02    4B Length of data
+    +06    4B Number of points
+    +0A    4B Length of meta data (ZZ)
+
+    [start LoD point] // length == 0x08
+
+    +00    8B Deviation of normals
+
+    [end LoD point]
+
+    ```
+
+### Meta data file format
+
+    ```
+    +00    2B Magic number (0xAFFE)
+    +02    4B Length of data
+
+    [start meta data entry] // length == ZZ
+
+    +00    ZZ Meta data
+
+    [end meta data entry]
+
     ```
 
 </details>

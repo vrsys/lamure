@@ -62,7 +62,7 @@ class EXIFInfo
     // Set all data members to default values.
     void clear();
 
-    // Data fields filled out by parseFrom()
+    // Cacheable fields filled out by parseFrom()
     char ByteAlign;               // 0 = Motorola byte alignment, 1 = Intel
     std::string ImageDescription; // Image description
     std::string Make;             // Camera manufacturer's name

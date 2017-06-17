@@ -1,31 +1,25 @@
 #ifndef LAMURE_POINT_H
 #define LAMURE_POINT_H
 
-#include "MetaContainer.h"
+#include "MetaData.h"
 #include "lamure/pro/common.h"
 
 namespace prov
 {
-class Point : public MetaContainer
+class Point
 {
   public:
-    Point(uint32_t _index, const vec3d &_position, const vec3d &_color, const vec<uint8_t> &_metadata) : MetaContainer(_metadata), _index(_index), _position(_position), _color(_color) {}
-    Point() : MetaContainer()
+    Point(const vec3d &_position, const vec3d &_color, const vec<uint8_t> &_metadata) : _position(_position), _color(_color) {}
+    Point()
     {
         _position = vec3d();
         _color = vec3d();
     }
     ~Point() {}
-    uint32_t get_index() const { return _index; }
     const vec3d &get_position() const { return _position; }
     const vec3d &get_color() const { return _color; };
     ifstream &read_essentials(ifstream &is)
     {
-        is.read(reinterpret_cast<char *>(&_index), 4);
-        _index = swap(_index, true);
-
-        if(DEBUG)
-            printf("\nPoint index: %i", _index);
 
         is.read(reinterpret_cast<char *>(&_position[0]), 8);
         _position[0] = swap(_position[0], true);
@@ -51,7 +45,6 @@ class Point : public MetaContainer
     }
 
   protected:
-    uint32_t _index;
     vec3d _position;
     vec3d _color;
 };

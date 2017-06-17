@@ -19,6 +19,14 @@ file(GLOB 3DPARTY_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/3dparty/*.h)
 file(GLOB DATA_SRC ${PROJECT_SOURCE_DIR}/data/*.cpp)
 file(GLOB DATA_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/*.h)
 
+# entities
+file(GLOB ENTITIES_SRC ${PROJECT_SOURCE_DIR}/data/entities/*.cpp)
+file(GLOB ENTITIES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/entities/*.h)
+
+# interfaces
+file(GLOB INTERFACES_SRC ${PROJECT_SOURCE_DIR}/data/interfaces/*.cpp)
+file(GLOB INTERFACES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/interfaces/*.h)
+
 SOURCE_GROUP("provenance" FILES ${MAIN_SRC})
 SOURCE_GROUP("provenance" FILES ${MAIN_INC})
 
@@ -28,8 +36,8 @@ SOURCE_GROUP("3dparty" FILES ${3DPARTY_INC})
 SOURCE_GROUP("data" FILES ${DATA_SRC})
 SOURCE_GROUP("data" FILES ${DATA_INC})
 
-set(PROJECT_SOURCES ${MAIN_SRC} ${3DPARTY_SRC} ${DATA_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${3DPARTY_INC} ${DATA_INC})
+set(PROJECT_SOURCES ${MAIN_SRC} ${3DPARTY_SRC} ${DATA_SRC} ${ENTITIES_SRC} ${INTERFACES_SRC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${3DPARTY_INC} ${DATA_INC} ${ENTITIES_INC} ${INTERFACES_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}
