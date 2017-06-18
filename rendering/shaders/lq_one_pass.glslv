@@ -27,6 +27,10 @@ layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
 layout(location = 7) in float prov_float;
 
+const vec4 GREEN = vec4( 0.0, 1.0, 0.0, 1.0 );
+const vec4 WHITE = vec4( 1.0, 1.0, 1.0, 1.0 );
+const vec4 RED   = vec4( 1.0, 0.0, 0.0, 1.0 );
+
 out VertexData {
   //output to geometry shader
   vec3 pass_ms_u;
@@ -42,6 +46,11 @@ bool is_in_sphere()
     return length(in_position - position_sphere) < radius_sphere;
     // return length((inv_mv_matrix * vec4(in_position, 1.0)).xyz - position_sphere) < radius_sphere;
 }
+
+float remap(float minval, float maxval, float curval)
+{
+    return (curval - minval ) / ( maxval - minval);
+} 
 
 void main()
 {
@@ -68,7 +77,16 @@ void main()
   if(state_lense == 1 && is_in_sphere() && prov_float > 0.5f)
   // if(state_lense == 1 && is_in_sphere() && prov_float < 0.5f)
   {
-    VertexOut.pass_point_color = vec3(0.0, 1.0, 0.0);
+    float u = clamp( prov_float, 0.0, 1.0 );
+    if( u < 0.5 )
+    {
+        VertexOut.pass_point_color = mix( GREEN, WHITE, remap( 0.0, 0.5, u ) ).xyz;
+    }
+    else
+    {
+        VertexOut.pass_point_color = mix( WHITE, RED, remap( 0.5, 1.0, u ) ).xyz;
+    }
+    // VertexOut.pass_point_color = vec3(0.0, 1.0, 0.0);
   } else {
     VertexOut.pass_point_color = vec3(in_r, in_g, in_b);
   }

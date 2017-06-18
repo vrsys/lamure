@@ -50,9 +50,15 @@ void main() {
         discard;
     }
 
-    if(state_lense == 2 && is_in_sphere() && VertexIn.pass_prov_float < 0.5f)
+    if(state_lense == 2 && is_in_sphere())
     // if(state_lense == 2 && is_in_sphere() && VertexIn.pass_prov_float > 0.5f)
     {
+        // float u = clamp( VertexIn.pass_prov_float, 0.0, 1.0 );
+        // if( u < 0.5 )
+        //     out_color = mix( GREEN, WHITE, remap( 0.0, 0.5, u ) );
+        // else
+        //     out_color = mix( WHITE, RED, remap( 0.5, 1.0, u ) );
+        // out_color = vec4(0.0, 1.0, 0.0, 1.0);
         out_color = vec4(0.0, 1.0, 0.0, 1.0);
     } else {
         out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
