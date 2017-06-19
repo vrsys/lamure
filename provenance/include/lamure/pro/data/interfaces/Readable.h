@@ -8,14 +8,14 @@ namespace prov
 class Readable
 {
   public:
-    static const uint32_t HEADER_LENGTH = 6;
+    static const uint64_t HEADER_LENGTH = 0x0A;
 
   protected:
     static bool read_header(ifstream &is)
     {
         uint16_t magic_bytes;
         //        uint32_t crc_32;
-        uint32_t data_length;
+        uint64_t data_length;
         is.read(reinterpret_cast<char *>(&magic_bytes), 2);
         magic_bytes = swap(magic_bytes, true);
         if(magic_bytes != 0xAFFE)
@@ -25,7 +25,7 @@ class Readable
             throw std::runtime_error("File format is incompatible: magic bytes " + sstr.str() + " not equal 0xAFFE");
         }
         //        is.read(reinterpret_cast<char *>(&crc_32), 4);
-        is.read(reinterpret_cast<char *>(&data_length), 4);
+        is.read(reinterpret_cast<char *>(&data_length), 8);
         //        crc_32 = swap(crc_32, true);
         data_length = swap(data_length, true);
 
@@ -43,7 +43,7 @@ class Readable
         }
 
         is.clear();
-        is.seekg(6);
+        is.seekg(HEADER_LENGTH);
 
         //        std::vector<uint8_t> byte_buffer(data_length, 0);
         //        is.read(reinterpret_cast<char *>(&byte_buffer[0]), data_length);

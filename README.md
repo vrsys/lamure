@@ -20,7 +20,7 @@ Bytewise specification (following the guidelines of [Fadden](http://www.fadden.c
 
     ```
     +00     2B Magic number (0xAFFE)
-    +02     4B Length of data
+    +02     8B Length of data
     +06     4B Number of sparse points
     +0A     4B Length of sparse point meta data (ZZ)
 
@@ -62,7 +62,7 @@ Bytewise specification (following the guidelines of [Fadden](http://www.fadden.c
 
     ```
     +00     2B Magic number (0xAFFE)
-    +02     4B Length of data
+    +02     8B Length of data
     +06     4B Number of points
     +0A     4B Length of dense point meta data (ZZ)
 
@@ -76,33 +76,33 @@ Bytewise specification (following the guidelines of [Fadden](http://www.fadden.c
 
     ```
 
-### LoD data file format
-
-    ```
-    +00    2B Magic number (0xAFFE)
-    +02    4B Length of data
-    +06    4B Number of points
-    +0A    4B Length of meta data (ZZ)
-
-    [start LoD point] // length == 0x08
-
-    +00    8B Deviation of normals
-
-    [end LoD point]
-
-    ```
-
 ### Meta data file format
 
     ```
     +00    2B Magic number (0xAFFE)
-    +02    4B Length of data
+    +02    8B Length of data
 
     [start meta data entry] // length == ZZ
 
     +00    ZZ Meta data
 
     [end meta data entry]
+
+    ```
+
+### LoD meta data file format
+
+    ```
+    +00    2B Magic number (0xAFFE)
+    +02    8B Length of data
+
+    [start LoD point] // length == 0x18
+
+    +00    8B Mean absolute deviation of normals
+    +08    8B Standard deviation of normals
+    +10    8B Coefficient of variation of normals
+
+    [end LoD point]
 
     ```
 

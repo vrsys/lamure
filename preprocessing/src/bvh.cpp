@@ -1037,8 +1037,8 @@ void bvh::thread_create_lod(const uint32_t start_marker, const uint32_t end_mark
             real reduction_error;
 
             // TODO: Inject a call to provenance method, collecting deviations from lod
-            reduction_strategy *p_reduction_strgy = (reduction_strategy *) &reduction_strgy;
-            if(provenance_reduction_strategy *cast = dynamic_cast<provenance_reduction_strategy*>(p_reduction_strgy))
+            reduction_strategy *p_reduction_strgy = (reduction_strategy *)&reduction_strgy;
+            if(provenance_reduction_strategy *cast = dynamic_cast<provenance_reduction_strategy *>(p_reduction_strgy))
             {
                 std::vector<provenance_reduction_strategy::LoDMetaData> deviations;
                 reduction_result = cast->create_lod(reduction_error, input_mem_arrays, deviations, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0));
@@ -1387,6 +1387,35 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
         }
         mean_radius_sd = mean_radius_sd / counter;
         std::cout << "average radius deviation pro level: " << mean_radius_sd << "\n";
+    }
+
+    // TODO: Inject a call to provenance method, collecting level data into one file
+    reduction_strategy *p_reduction_strgy = (reduction_strategy *)&reduction_strgy;
+    if(provenance_reduction_strategy *cast = dynamic_cast<provenance_reduction_strategy *>(p_reduction_strgy))
+    {
+        for(uint32_t w_level = 0; w_level < depth_; ++w_level)
+        {
+            std::cout << "Entering w_level: " << w_level << std::endl;
+
+            uint32_t first_node_of_level = get_first_node_id_of_depth(w_level);
+            uint32_t last_node_of_level = get_first_node_id_of_depth(w_level) + get_length_of_depth(w_level);
+
+            uint16_t percentage = 0;
+
+            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+            {
+                std::cout << "Entering node: " << node_index << std::endl;
+
+                cast->pack_node(node_index);
+
+                uint16_t new_percentage = int32_t(float(node_index - first_node_of_level) / (last_node_of_level)*100);
+                if(percentage < new_percentage)
+                {
+                    percentage = new_percentage;
+                    std::cout << "\r" << percentage << "% processed" << std::flush;
+                }
+            }
+        }
     }
 
     state_ = state_type::after_upsweep;

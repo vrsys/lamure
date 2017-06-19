@@ -3,6 +3,7 @@
 #include "lamure/pro/data/SparseCache.h"
 #include <chrono>
 #include <lamure/pro/data/DenseStream.h>
+#include <lamure/pro/data/LoDMetaStream.h>
 
 using namespace std;
 
@@ -36,6 +37,7 @@ int main(int argc, char *argv[])
 
     string name_file_sparse = string(get_cmd_option(argv, argv + argc, "-s"));
     string name_file_dense = string(get_cmd_option(argv, argv + argc, "-d"));
+    string name_file_lod = string(get_cmd_option(argv, argv + argc, "-l"));
 
     if(check_file_extensions(name_file_sparse, "sparse.prov") && check_file_extensions(name_file_dense, "dense.prov"))
     {
@@ -46,6 +48,7 @@ int main(int argc, char *argv[])
     prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
     prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
     prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
+    prov::ifstream in_lod_meta(name_file_lod + ".meta", std::ios::in | std::ios::binary);
 
     prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
     prov::DenseCache cache_dense(in_dense, in_dense_meta);
@@ -72,24 +75,42 @@ int main(int argc, char *argv[])
 
     prov::DenseStream stream_dense = prov::DenseStream(in_dense);
 
-    auto start = std::chrono::high_resolution_clock::now();
+    if(in_dense.is_open()) {
 
-    for(uint32_t i = 0; i < cache_dense.get_points().size(); i++)
-    {
-        stream_dense.access_at_implicit(i);
+        auto start = std::chrono::high_resolution_clock::now();
+
+        for (uint32_t i = 0; i < cache_dense.get_points().size(); i++) {
+            stream_dense.access_at_implicit(i);
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        printf("Streaming dense data one-by-one took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
+
+        start = std::chrono::high_resolution_clock::now();
+
+        std::vector<prov::DensePoint> vector = stream_dense.access_at_implicit_range(0, (uint32_t) cache_dense.get_points().size());
+
+        end = std::chrono::high_resolution_clock::now();
+        printf("Streaming dense data by range took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    printf("Streaming dense data one-by-one took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
-
-    start = std::chrono::high_resolution_clock::now();
-
-    std::vector<prov::DensePoint> vector = stream_dense.access_at_implicit_range(0, (uint32_t)cache_dense.get_points().size());
-
-    end = std::chrono::high_resolution_clock::now();
-    printf("Streaming dense data by range took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
-
     in_dense.close();
+
+    prov::LoDMetaStream stream_lod = prov::LoDMetaStream(in_lod_meta);
+
+    if(in_lod_meta.is_open()) {
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        for (uint32_t i = 0; i < cache_dense.get_points().size(); i++) {
+            stream_lod.access_at_implicit(i);
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        printf("Streaming %lu LoD deviations one-by-one took: %f ms\n", cache_dense.get_points().size(), std::chrono::duration<double, std::milli>(end - start));
+    }
+
+    in_lod_meta.close();
 
     return 0;
 }

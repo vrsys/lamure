@@ -35,13 +35,13 @@ class FormatSparsePro(Format):
 
         out_file = open('sparse.prov', 'wb')
         out_file.write(self.magic_bytes)
-        out_file.write(len(out_bytes_prov).to_bytes(4, byteorder='big'))
+        out_file.write(len(out_bytes_prov).to_bytes(8, byteorder='big'))
         out_file.write(out_bytes_prov)
         out_file.close()
 
         out_file = open('sparse.prov.meta', 'wb')
         out_file.write(self.magic_bytes)
-        out_file.write(len(out_bytes_meta).to_bytes(4, byteorder='big'))
+        out_file.write(len(out_bytes_meta).to_bytes(8, byteorder='big'))
         out_file.write(out_bytes_meta)
         out_file.close()
 
@@ -65,12 +65,12 @@ class FormatDensePro(Format):
 
         out_file = open('dense.prov', 'wb')
         out_file.write(self.magic_bytes)
-        out_file.write(len(out_bytes).to_bytes(4, byteorder='big'))
+        out_file.write(len(out_bytes).to_bytes(8, byteorder='big'))
         out_file.write(out_bytes)
         out_file.close()
 
         out_file = open('dense.prov.meta', 'wb')
         out_file.write(self.magic_bytes)
-        out_file.write(len(out_bytes_meta).to_bytes(4, byteorder='big'))
+        out_file.write(len(out_bytes_meta).to_bytes(8, byteorder='big'))
         out_file.write(out_bytes_meta)
         out_file.close()

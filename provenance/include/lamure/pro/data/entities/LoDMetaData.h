@@ -15,21 +15,22 @@ class LoDMetaData : public MetaData
     double get_standard_deviation() const { return _standard_deviation; }
     double get_coefficient_of_variation() const { return _coefficient_of_variation; }
 
-    virtual void read_metadata(ifstream &is, uint32_t meta_data_length) override
+    virtual void read_metadata(ifstream &is, uint64_t meta_data_length) override
     {
         MetaData::read_metadata(is, meta_data_length);
-        _mean_absolute_deviation = atof(reinterpret_cast<char *>(_metadata.data()));
+        _mean_absolute_deviation = atof(reinterpret_cast<char *>(&_metadata[0], 8));
         swap(_mean_absolute_deviation, true);
-        _standard_deviation = atof(reinterpret_cast<char *>(_metadata.data()));
+        _standard_deviation = atof(reinterpret_cast<char *>(&_metadata[8], 8));
         swap(_standard_deviation, true);
-        _coefficient_of_variation = atof(reinterpret_cast<char *>(_metadata.data()));
+        _coefficient_of_variation = atof(reinterpret_cast<char *>(&_metadata[16], 8));
         swap(_coefficient_of_variation, true);
     }
 
     double _mean_absolute_deviation;
     double _standard_deviation;
     double _coefficient_of_variation;
-    static const uint32_t ENTITY_LENGTH = 8;
+
+    static const uint32_t ENTITY_LENGTH = 0x18;
 };
 };
 

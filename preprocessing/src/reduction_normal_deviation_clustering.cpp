@@ -303,9 +303,8 @@ std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering::compute_grid_dim
     return std::make_pair(grid_dimensions, locked_grid_dimensions);
 }
 
-surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reduction_error, const std::vector<surfel_mem_array *> &input,
-                                                                   std::vector<LoDMetaData> &deviations, const uint32_t surfels_per_node, const bvh &tree,
-                                                                   const size_t start_node_id) const
+surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reduction_error, const std::vector<surfel_mem_array *> &input, std::vector<LoDMetaData> &deviations,
+                                                                   const uint32_t surfels_per_node, const bvh &tree, const size_t start_node_id) const
 {
     // compute bounding box for actual surfels
     bounding_box bbox = basic_algorithms::compute_aabb(*input[0], true);
@@ -582,7 +581,7 @@ reduction_normal_deviation_clustering::LoDMetaData reduction_normal_deviation_cl
 
     data._mean_absolute_deviation = 0;
     data._standard_deviation = 0;
-    data._coefficient_of_variation = 0;
+    data._coefficient_of_variation = -1;
 
     if(input.size() == 1)
         return data;
@@ -592,16 +591,21 @@ reduction_normal_deviation_clustering::LoDMetaData reduction_normal_deviation_cl
     for(const auto &surfel : input)
     {
         vec3f normal = surfel.normal();
-        double absolute_deviation = acos(scm::math::abs(scm::math::dot(repr_normal, normal))) / (0.5 * M_PI);
+
+        double absolute_deviation = scm::math::abs(acos(scm::math::dot(repr_normal, normal)) / (0.5 * M_PI));
         double sq_deviation = scm::math::sqr(absolute_deviation);
 
         data._mean_absolute_deviation += absolute_deviation;
         data._standard_deviation += sq_deviation;
     }
 
-    data._mean_absolute_deviation /= input.size();
-    data._standard_deviation = scm::math::sqrt(data._standard_deviation / input.size());
-    data._coefficient_of_variation = data._standard_deviation / data._mean_absolute_deviation;
+    data._mean_absolute_deviation /= (double)input.size();
+    data._standard_deviation = scm::math::sqrt(data._standard_deviation / (double)input.size());
+    data._coefficient_of_variation = data._mean_absolute_deviation != 0 ? data._standard_deviation / data._mean_absolute_deviation : -1;
+
+    //    printf("\nMAD: %e ", data._mean_absolute_deviation);
+    //    printf("\nSTD: %e ", data._standard_deviation);
+    //    printf("\nCoV: %e ", data._coefficient_of_variation);
 
     return data;
 }
