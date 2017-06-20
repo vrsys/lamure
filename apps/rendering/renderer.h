@@ -158,7 +158,9 @@ private:
         scm::gl::program_ptr                        LQ_one_pass_program_;
 
         scm::gl::program_ptr                        pass1_visibility_shader_program_;
+        scm::gl::program_ptr                        pass1_compressed_visibility_shader_program_;
         scm::gl::program_ptr                        pass2_accumulation_shader_program_;
+        scm::gl::program_ptr                        pass2_compressed_accumulation_shader_program_;
         scm::gl::program_ptr                        pass3_pass_through_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
@@ -196,9 +198,9 @@ private:
 	    float                                       blending_threshold_;
 	
 
-	int                                         render_provenance_;
-	bool                                        do_measurement_;
-	bool                                        use_black_background_;
+	    int                                         render_provenance_;
+	    bool                                        do_measurement_;
+	    bool                                        use_black_background_;
         bool                                        render_bounding_boxes_;
 
         //variables related to text rendering
@@ -217,7 +219,7 @@ private:
         std::vector<float>                                      radius_scale_per_model_;
         float                                                   radius_scale_;
 
-	Measurement                                             measurement_;
+	    Measurement                                             measurement_;
 
         size_t                                                  elapsed_ms_since_cut_update_;
 

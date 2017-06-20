@@ -43,12 +43,14 @@ public:
 
     const size_t        get_slot_size() const;
     const size_t        get_primitives_per_node() const;
+
+    static bool         contains_only_compressed_data_;
 protected:
 
                         model_database();
     static bool         is_instanced_;
     static model_database* single_;
-    static bool contains_only_compressed_data_;
+
 private:
     static std::mutex   mutex_;
 

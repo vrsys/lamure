@@ -51,12 +51,12 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
             (0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_),
             boost::assign::list_of(buffer_));
         pcl_qz_memory_ = device->create_vertex_array(scm::gl::vertex_format
-            (0, 0, scm::gl::TYPE_USHORT, size_of_surfel_qz_, scm::gl::INT_FLOAT_NORMALIZE)  // quant. pos x 16b
-            (0, 1, scm::gl::TYPE_USHORT, size_of_surfel_qz_, scm::gl::INT_FLOAT_NORMALIZE)  // quant. pos y 16b
-            (0, 2, scm::gl::TYPE_USHORT, size_of_surfel_qz_, scm::gl::INT_FLOAT_NORMALIZE)  // quant. pos z 16b
+            (0, 0, scm::gl::TYPE_USHORT, size_of_surfel_qz_)  // quant. pos x 16b
+            (0, 1, scm::gl::TYPE_USHORT, size_of_surfel_qz_)  // quant. pos y 16b
+            (0, 2, scm::gl::TYPE_USHORT, size_of_surfel_qz_)  // quant. pos z 16b
             (0, 3, scm::gl::TYPE_USHORT, size_of_surfel_qz_)  // enum norm xyz 16b
             (0, 4, scm::gl::TYPE_USHORT, size_of_surfel_qz_)  // color RGB_565 b
-            (0, 5, scm::gl::TYPE_USHORT, size_of_surfel_qz_, scm::gl::INT_FLOAT_NORMALIZE), // quant rad. 16b
+            (0, 5, scm::gl::TYPE_USHORT, size_of_surfel_qz_), // quant rad. 16b
             boost::assign::list_of(buffer_));
         tri_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)

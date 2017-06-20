@@ -71,7 +71,9 @@ Renderer::
     depth_state_disable_.reset();
 
     pass1_visibility_shader_program_.reset();
+    pass1_compressed_visibility_shader_program_.reset();
     pass2_accumulation_shader_program_.reset();
+    pass2_compressed_accumulation_shader_program_.reset();
     pass3_pass_through_shader_program_.reset();
 
     trimesh_shader_program_.reset();
@@ -133,9 +135,17 @@ upload_uniforms(lamure::ren::camera const& camera) const
     pass1_visibility_shader_program_->uniform("far_plane", far_plane_);
     pass1_visibility_shader_program_->uniform("point_size_factor", point_size_factor_);
 
+    pass1_compressed_visibility_shader_program_->uniform("near_plane", near_plane_);
+    pass1_compressed_visibility_shader_program_->uniform("far_plane", far_plane_);
+    pass1_compressed_visibility_shader_program_->uniform("point_size_factor", point_size_factor_);
+
     pass2_accumulation_shader_program_->uniform("near_plane", near_plane_);
     pass2_accumulation_shader_program_->uniform("far_plane", far_plane_ );
     pass2_accumulation_shader_program_->uniform("point_size_factor", point_size_factor_);
+
+    pass2_compressed_accumulation_shader_program_->uniform("near_plane", near_plane_);
+    pass2_compressed_accumulation_shader_program_->uniform("far_plane", far_plane_);
+    pass2_compressed_accumulation_shader_program_->uniform("point_size_factor", point_size_factor_);
 
     pass3_pass_through_shader_program_->uniform_sampler("in_color_texture", 0);
     pass3_pass_through_shader_program_->uniform_sampler("in_normal_texture", 1);
@@ -212,6 +222,11 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
             pass1_visibility_shader_program_->uniform("model_view_matrix", model_view_matrix);
             pass1_visibility_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
             pass1_visibility_shader_program_->uniform("model_radius_scale", total_radius_scale);
+
+            pass1_compressed_visibility_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd) );
+            pass1_compressed_visibility_shader_program_->uniform("model_view_matrix", model_view_matrix);
+            pass1_compressed_visibility_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
+            pass1_compressed_visibility_shader_program_->uniform("model_radius_scale", total_radius_scale);
             break;
 
         case RenderPass::ACCUMULATION:
@@ -219,6 +234,11 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
             pass2_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
             pass2_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
             pass2_accumulation_shader_program_->uniform("model_radius_scale", total_radius_scale);
+
+            pass2_compressed_accumulation_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
+            pass2_compressed_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
+            pass2_compressed_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
+            pass2_compressed_accumulation_shader_program_->uniform("model_radius_scale", total_radius_scale);
             break;            
 
         case RenderPass::LINKED_LIST_ACCUMULATION:
@@ -606,7 +626,7 @@ void Renderer::
 render_two_pass_HQ(lamure::context_t context_id, 
                    lamure::ren::camera const& camera, 
                    const lamure::view_t view_id, 
-                   scm::gl::vertex_array_ptr const& render_VAO, 
+                   scm::gl::vertex_array_ptr const& dummy_VAO, 
                    std::set<lamure::model_t> const& current_set, 
                    std::vector<uint32_t>& frustum_culling_results) {
 
@@ -634,11 +654,6 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
         context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
 
-        context_->bind_program(pass1_visibility_shader_program_);
-
-
-        context_->bind_vertex_array(render_VAO);
-        context_->apply();
 
         node_t node_counter = 0;
 
@@ -650,11 +665,28 @@ render_two_pass_HQ(lamure::context_t context_id,
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
 
+            bvh::primitive_type primitive_type_to_use = bvh->get_primitive();
+
+            scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
+
+
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+              context_->bind_program(pass1_compressed_visibility_shader_program_);
+            } else {
+              std::cout << "BINDING NORMAL VISIBILITY PASS\n";
+              context_->bind_program(pass1_visibility_shader_program_);
+            }
+
+
+            context_->bind_vertex_array(render_VAO);
+            context_->apply();
+
+/*
             if (bvh->get_primitive() == bvh::primitive_type::POINTCLOUD_QZ) {
                 std::cout << "TRYING TO RENDER COMPRESSED DATA SET\n";
             }
-
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+*/
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD && bvh->get_primitive() != bvh::primitive_type::POINTCLOUD_QZ) {
                 continue;
             }
 
@@ -678,6 +710,14 @@ render_two_pass_HQ(lamure::context_t context_id,
 
 
                 if( (node_culling_result != 1) ) {
+
+                    if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+                      pass1_compressed_visibility_shader_program_->uniform("bb_min", bounding_box_vector[node_slot_aggregate.node_id_].min_vertex());
+                      pass1_compressed_visibility_shader_program_->uniform("bb_max", bounding_box_vector[node_slot_aggregate.node_id_].max_vertex());
+                      pass1_compressed_visibility_shader_program_->uniform("rad_min", float(bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) + bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) );
+                      pass1_compressed_visibility_shader_program_->uniform("rad_max", float(bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) - bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) );
+                    }
+
                     context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
@@ -713,13 +753,11 @@ render_two_pass_HQ(lamure::context_t context_id,
 
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
         context_->set_blend_state(color_blending_state_);
-
+/*
         context_->set_depth_stencil_state(depth_state_test_without_writing_);
 
         context_->bind_program(pass2_accumulation_shader_program_);
-
-        context_->bind_vertex_array(render_VAO);
-        context_->apply();
+*/
 
        node_t node_counter = 0;
 
@@ -733,7 +771,24 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
+
+            bvh::primitive_type primitive_type_to_use = bvh->get_primitive();
+
+            scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
+
+
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+              context_->bind_program(pass2_compressed_accumulation_shader_program_);
+            } else {
+                              std::cout << "BINDING NORMAL ACCUMULUATION PASS\n";
+              context_->bind_program(pass2_accumulation_shader_program_);
+            }
+
+
+            context_->bind_vertex_array(render_VAO);
+            context_->apply();
+
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD  && bvh->get_primitive() != bvh::primitive_type::POINTCLOUD_QZ) {
                 continue;
             }
 
@@ -742,10 +797,20 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             upload_transformation_matrices(camera, model_id, RenderPass::ACCUMULATION);
 
+            std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
+
             for( auto const& node_slot_aggregate : renderable ) {
 
                 if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
                 {
+
+                    if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+                      pass2_compressed_accumulation_shader_program_->uniform("bb_min", bounding_box_vector[node_slot_aggregate.node_id_].min_vertex());
+                      pass2_compressed_accumulation_shader_program_->uniform("bb_max", bounding_box_vector[node_slot_aggregate.node_id_].max_vertex());
+                      pass2_compressed_accumulation_shader_program_->uniform("rad_min", float(bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) + bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) );
+                      pass2_compressed_accumulation_shader_program_->uniform("rad_max", float(bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) - bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) );
+                    }
+
                     context_->apply();
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
@@ -1221,6 +1286,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string root_path = LAMURE_SHADERS_DIR;
 
     std::string visibility_vs_source;
+    std::string compressed_visibility_vs_source; //compressed_version
     std::string visibility_gs_source;
     std::string visibility_fs_source;
 
@@ -1228,6 +1294,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string pass_trough_fs_source;
 
     std::string accumulation_vs_source;
+    std::string compressed_accumulation_vs_source; //compressed_version
     std::string accumulation_gs_source;
     std::string accumulation_fs_source;
 
@@ -1263,9 +1330,11 @@ initialize_schism_device_and_shaders(int resX, int resY)
         using scm::io::read_text_file;
 
         if (!read_text_file(root_path +  "/pass1_visibility_pass.glslv", visibility_vs_source)
+            || !read_text_file(root_path + "/pass1_compressed_visibility_pass.glslv", compressed_visibility_vs_source)
             || !read_text_file(root_path + "/pass1_visibility_pass.glslg", visibility_gs_source)
             || !read_text_file(root_path + "/pass1_visibility_pass.glslf", visibility_fs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslv", accumulation_vs_source)
+            || !read_text_file(root_path + "/pass2_compressed_accumulation_pass.glslv", compressed_accumulation_vs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslg", accumulation_gs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslf", accumulation_fs_source)
             || !read_text_file(root_path + "/pass3_pass_through.glslv", pass_trough_vs_source)
@@ -1316,11 +1385,23 @@ initialize_schism_device_and_shaders(int resX, int resY)
                                                                         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
                                                               );
 
+    pass1_compressed_visibility_shader_program_ = device_->create_program(
+                                                  boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, compressed_visibility_vs_source))
+                                                                        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))
+                                                                        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
+                                                              );
+
     pass2_accumulation_shader_program_ = device_->create_program(
                                                     boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, accumulation_vs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
                                                                 );
+
+    pass2_compressed_accumulation_shader_program_ = device_->create_program(
+                                                    boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, compressed_accumulation_vs_source))
+                                                                          (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
+                                                                          (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
+                                                              );
 
     pass3_pass_through_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pass_trough_vs_source))
                                                                 (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pass_trough_fs_source)));
@@ -1363,7 +1444,9 @@ initialize_schism_device_and_shaders(int resX, int resY)
        boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, trimesh_vs_source))
                              (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, trimesh_fs_source)) );
 
-    if (    !pass1_visibility_shader_program_ || !pass2_accumulation_shader_program_ || !pass3_pass_through_shader_program_ || !pass_filling_program_ 
+    if (    !pass1_visibility_shader_program_ || !pass1_compressed_visibility_shader_program_ 
+         || !pass2_accumulation_shader_program_ || !pass2_compressed_accumulation_shader_program_ 
+         || !pass3_pass_through_shader_program_ || !pass_filling_program_ 
          || !pass1_linked_list_accumulate_program_ || !pass2_linked_list_resolve_program_ || !pass3_repair_program_ || !trimesh_shader_program_
          || !LQ_one_pass_program_
          || !bounding_box_vis_shader_program_
