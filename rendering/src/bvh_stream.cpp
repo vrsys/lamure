@@ -303,7 +303,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
 
    bvh_file_seg seg;
    seg.major_version_ = 1;
-   seg.minor_version_ = 0;
+   seg.minor_version_ = 1;
    seg.reserved_ = 0;
 
    write(seg);
@@ -341,7 +341,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
        node.reduction_error_ = 0.f;
        node.avg_surfel_radius_ = bvh.get_avg_primitive_extent(node_id);
        node.visibility_ = (bvh_node_visibility)bvh.get_visibility(node_id);
-       node.max_surfel_radius_deviation_ = 0;
+       node.max_surfel_radius_deviation_ = bvh.get_max_surfel_radius_deviation(node_id);
        const scm::gl::boxf box = bvh.get_bounding_box(node_id);
        node.bounding_box_.min_.x_ = box.min_vertex().x;
        node.bounding_box_.min_.y_ = box.min_vertex().y;

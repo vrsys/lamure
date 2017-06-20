@@ -376,7 +376,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
    file_.seekp(0, std::ios::beg);
 
    bvh_file_seg seg;
-   seg.major_version_ = 0;
+   seg.major_version_ = 1;
    seg.minor_version_ = 1;
    seg.reserved_ = 0;
 
