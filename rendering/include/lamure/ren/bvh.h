@@ -28,9 +28,12 @@ class RENDERING_DLL bvh
 
 
 public:
+    
+    //LOD type
     enum primitive_type {
-       POINTCLOUD = 0,
-       TRIMESH = 1
+       POINTCLOUD = 0,   // uncompressed point cloud
+       TRIMESH = 1,      // uncompressed tri mesh 
+       POINTCLOUD_QZ = 2 // point cloud with quantized attributes
     };
     enum node_visibility {
        NODE_VISIBLE = 0,

@@ -49,6 +49,14 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
             (0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_)
             (0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_),
             boost::assign::list_of(buffer_));
+        pcl_qz_memory_ = device->create_vertex_array(scm::gl::vertex_format
+            (0, 0, scm::gl::TYPE_USHORT, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)  // quant. pos x 16b
+            (0, 1, scm::gl::TYPE_USHORT, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)  // quant. pos y 16b
+            (0, 2, scm::gl::TYPE_USHORT, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)  // quant. pos z 16b
+            (0, 3, scm::gl::TYPE_USHORT, size_of_surfel_)  // enum norm xyz 16b
+            (0, 4, scm::gl::TYPE_USHORT, size_of_surfel_)  // color RGB_565 b
+            (0, 5, scm::gl::TYPE_USHORT, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE), // quant rad. 16b
+            boost::assign::list_of(buffer_));
         tri_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
             (0, 1, scm::gl::TYPE_VEC3F, size_of_surfel_)
@@ -69,6 +77,7 @@ gpu_access::
     buffer_.reset();
     if (has_layout_) {
         pcl_memory_.reset();
+        pcl_qz_memory_.reset();
         tri_memory_.reset();
     }
 }
@@ -97,6 +106,8 @@ get_memory(bvh::primitive_type type) {
   switch (type) {
     case bvh::primitive_type::POINTCLOUD:
       return pcl_memory_;
+    case bvh::primitive_type::POINTCLOUD_QZ:
+      return pcl_qz_memory_;
     case bvh::primitive_type::TRIMESH:
       return tri_memory_;
     default: break;

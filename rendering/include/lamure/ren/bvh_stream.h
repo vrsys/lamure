@@ -66,7 +66,8 @@ protected:
     };
     enum bvh_primitive_type {
         BVH_POINTCLOUD = 0,
-        BVH_TRIMESH = 1
+        BVH_TRIMESH = 1,
+        BHV_POINTCLOUD_QZ = 2
     };
     enum bvh_node_visibility {
         BVH_NODE_VISIBLE = 0,
