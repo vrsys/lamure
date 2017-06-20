@@ -143,61 +143,16 @@ class provenance_reduction_strategy : public reduction_strategy
 
             is.close();
 
-            struct stat buffer;
-            if((stat("lod.meta", &buffer) == 0))
-            {
-                // file exists
-                uint64_t _length_of_data = 0;
-
-
-                std::ifstream hs("lod.meta", std::ios::in | std::ios::binary);
-                if(hs.is_open())
-                {
-                    hs.ignore(0x02);
-
-                    hs.read(reinterpret_cast<char *>(&_length_of_data), sizeof(_length_of_data));
-                    _length_of_data = swap(_length_of_data, true);
-
-                    std::vector<uint8_t> _byte_buffer(_length_of_data, 0);
-                    hs.read(reinterpret_cast<char *>(&_byte_buffer[0]), _length_of_data);
-
-                    hs.close();
-
-                    std::ofstream os("lod.meta", std::ios::out | std::ios::binary | std::ios::trunc);
-
-                    if(os.is_open())
-                    {
-                        uint16_t magic_bytes = 0xAFFE;
-                        magic_bytes = swap(magic_bytes, true);
-                        os.write(reinterpret_cast<char *>(&magic_bytes), sizeof(magic_bytes));
-
-                        uint64_t e_length = length_of_data + _length_of_data;
-                        e_length = swap(e_length, true);
-                        os.write(reinterpret_cast<char *>(&e_length), sizeof(e_length));
-
-                        os.write(reinterpret_cast<char *>(&_byte_buffer[0]), _length_of_data);
-                        os.write(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);
-                    }
-                    else
-                    {
-                        throw std::ios_base::failure("Can not open the lod.meta file");
-                    }
-
-                    os.close();
-                }
-            }
-            else
-            {
-                std::ofstream os("lod.meta", std::ios::out | std::ios::binary);
+            std::ofstream os("lod.meta", std::ios::out | std::ios::binary | std::ios::app);
 
                 if(os.is_open())
                 {
-                    uint16_t magic_bytes = 0xAFFE;
-                    magic_bytes = swap(magic_bytes, true);
-                    os.write(reinterpret_cast<char *>(&magic_bytes), sizeof(magic_bytes));
+                    // uint16_t magic_bytes = 0xAFFE;
+                    // magic_bytes = swap(magic_bytes, true);
+                    // os.write(reinterpret_cast<char *>(&magic_bytes), sizeof(magic_bytes));
 
-                    length_of_data = swap(length_of_data, true);
-                    os.write(reinterpret_cast<char *>(&length_of_data), sizeof(length_of_data));
+                    // length_of_data = swap(length_of_data, true);
+                    // os.write(reinterpret_cast<char *>(&length_of_data), sizeof(length_of_data));
 
                     os.write(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);
                 }
@@ -207,7 +162,72 @@ class provenance_reduction_strategy : public reduction_strategy
                 }
 
                 os.close();
-            }
+
+            // struct stat buffer;
+            // if((stat("lod.meta", &buffer) == 0))
+            // {
+            //     // file exists
+            //     uint64_t _length_of_data = 0;
+
+
+            //     std::ifstream hs("lod.meta", std::ios::in | std::ios::binary);
+            //     if(hs.is_open())
+            //     {
+            //         hs.ignore(0x02);
+
+            //         hs.read(reinterpret_cast<char *>(&_length_of_data), sizeof(_length_of_data));
+            //         _length_of_data = swap(_length_of_data, true);
+
+            //         std::vector<uint8_t> _byte_buffer(_length_of_data, 0);
+            //         hs.read(reinterpret_cast<char *>(&_byte_buffer[0]), _length_of_data);
+
+            //         hs.close();
+
+            //         std::ofstream os("lod.meta", std::ios::out | std::ios::binary | std::ios::trunc);
+
+            //         if(os.is_open())
+            //         {
+            //             uint16_t magic_bytes = 0xAFFE;
+            //             magic_bytes = swap(magic_bytes, true);
+            //             os.write(reinterpret_cast<char *>(&magic_bytes), sizeof(magic_bytes));
+
+            //             uint64_t e_length = length_of_data + _length_of_data;
+            //             e_length = swap(e_length, true);
+            //             os.write(reinterpret_cast<char *>(&e_length), sizeof(e_length));
+
+            //             os.write(reinterpret_cast<char *>(&_byte_buffer[0]), _length_of_data);
+            //             os.write(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);
+            //         }
+            //         else
+            //         {
+            //             throw std::ios_base::failure("Can not open the lod.meta file");
+            //         }
+
+            //         os.close();
+            //     }
+            // }
+            // else
+            // {
+            //     std::ofstream os("lod.meta", std::ios::out | std::ios::binary);
+
+            //     if(os.is_open())
+            //     {
+            //         uint16_t magic_bytes = 0xAFFE;
+            //         magic_bytes = swap(magic_bytes, true);
+            //         os.write(reinterpret_cast<char *>(&magic_bytes), sizeof(magic_bytes));
+
+            //         length_of_data = swap(length_of_data, true);
+            //         os.write(reinterpret_cast<char *>(&length_of_data), sizeof(length_of_data));
+
+            //         os.write(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);
+            //     }
+            //     else
+            //     {
+            //         throw std::ios_base::failure("Can not open the lod.meta file");
+            //     }
+
+            //     os.close();
+            // }
         }
         else
         {
