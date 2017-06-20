@@ -652,7 +652,10 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->set_frame_buffer(pass1_visibility_fbo_);
 
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-        context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
+        context_->set_viewport(viewport(vec2ui(0, 0), vec2ui(win_x_, win_y_)));
+
+        context_->bind_vertex_array(dummy_VAO);
+        context_->apply();
 
 
         node_t node_counter = 0;
@@ -667,19 +670,20 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             bvh::primitive_type primitive_type_to_use = bvh->get_primitive();
 
-            scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
 
 
             if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
               context_->bind_program(pass1_compressed_visibility_shader_program_);
-            } else {
-              std::cout << "BINDING NORMAL VISIBILITY PASS\n";
+            } else  {
               context_->bind_program(pass1_visibility_shader_program_);
             }
 
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+              scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
 
-            context_->bind_vertex_array(render_VAO);
-            context_->apply();
+              context_->bind_vertex_array(render_VAO);
+              context_->apply();
+            }
 
 /*
             if (bvh->get_primitive() == bvh::primitive_type::POINTCLOUD_QZ) {
@@ -712,10 +716,11 @@ render_two_pass_HQ(lamure::context_t context_id,
                 if( (node_culling_result != 1) ) {
 
                     if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+
                       pass1_compressed_visibility_shader_program_->uniform("bb_min", bounding_box_vector[node_slot_aggregate.node_id_].min_vertex());
                       pass1_compressed_visibility_shader_program_->uniform("bb_max", bounding_box_vector[node_slot_aggregate.node_id_].max_vertex());
-                      pass1_compressed_visibility_shader_program_->uniform("rad_min", float(bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) + bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) );
-                      pass1_compressed_visibility_shader_program_->uniform("rad_max", float(bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) - bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) );
+                      pass1_compressed_visibility_shader_program_->uniform("rad_max", float(bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) + bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) );
+                      pass1_compressed_visibility_shader_program_->uniform("rad_min", float(bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) - bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) );
                     }
 
                     context_->apply();
@@ -753,15 +758,20 @@ render_two_pass_HQ(lamure::context_t context_id,
 
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
         context_->set_blend_state(color_blending_state_);
-/*
-        context_->set_depth_stencil_state(depth_state_test_without_writing_);
 
+
+              context_->apply();
+
+
+        context_->set_depth_stencil_state(depth_state_test_without_writing_);
+/*
         context_->bind_program(pass2_accumulation_shader_program_);
 */
 
        node_t node_counter = 0;
 
        node_t actually_rendered_nodes = 0;
+
 
 
         for (auto& model_id : current_set) {
@@ -774,19 +784,19 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             bvh::primitive_type primitive_type_to_use = bvh->get_primitive();
 
-            scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
-
-
             if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
               context_->bind_program(pass2_compressed_accumulation_shader_program_);
             } else {
-                              std::cout << "BINDING NORMAL ACCUMULUATION PASS\n";
               context_->bind_program(pass2_accumulation_shader_program_);
             }
 
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+              scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
+              context_->bind_vertex_array(render_VAO);
+              context_->apply();
+            }
 
-            context_->bind_vertex_array(render_VAO);
-            context_->apply();
+
 
             if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD  && bvh->get_primitive() != bvh::primitive_type::POINTCLOUD_QZ) {
                 continue;
@@ -805,10 +815,10 @@ render_two_pass_HQ(lamure::context_t context_id,
                 {
 
                     if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
-                      pass2_compressed_accumulation_shader_program_->uniform("bb_min", bounding_box_vector[node_slot_aggregate.node_id_].min_vertex());
-                      pass2_compressed_accumulation_shader_program_->uniform("bb_max", bounding_box_vector[node_slot_aggregate.node_id_].max_vertex());
-                      pass2_compressed_accumulation_shader_program_->uniform("rad_min", float(bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) + bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) );
-                      pass2_compressed_accumulation_shader_program_->uniform("rad_max", float(bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) - bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) );
+                          pass2_compressed_accumulation_shader_program_->uniform("bb_min", bounding_box_vector[node_slot_aggregate.node_id_].min_vertex());
+                          pass2_compressed_accumulation_shader_program_->uniform("bb_max", bounding_box_vector[node_slot_aggregate.node_id_].max_vertex());
+                          pass2_compressed_accumulation_shader_program_->uniform("rad_max", float(bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) + bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) );
+                          pass2_compressed_accumulation_shader_program_->uniform("rad_min", float(bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_)) - bvh->get_max_surfel_radius_deviation(node_slot_aggregate.node_id_) );
                     }
 
                     context_->apply();

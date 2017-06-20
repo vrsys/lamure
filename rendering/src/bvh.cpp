@@ -49,7 +49,7 @@ bvh(const std::string& filename)
 
     std::string extension = filename.substr(filename.find_last_of(".") + 1);
 
-    if (extension.compare("bvhqz") == 0 || extension.compare("bvh") == 0) {
+    if ( (extension.compare("bvhqz") == 0) || (extension.compare("bvh") == 0) ) {
        load_bvh_file(filename);
     }
     else {
