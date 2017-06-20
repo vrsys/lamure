@@ -7,8 +7,10 @@
 
 #include <lamure/pre/io/format_abstract.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 } // namespace pre
 } // namespace lamure

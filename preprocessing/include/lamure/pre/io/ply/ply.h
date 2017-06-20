@@ -10,21 +10,32 @@
 
 #include <cstdint>
 
-namespace lamure {
-  namespace pre {
-    namespace io {
-      namespace ply {
+namespace lamure
+{
+namespace pre
+{
+namespace io
+{
+namespace ply
+{
 
 typedef int8_t int8;
+
 typedef int16_t int16;
+
 typedef int32_t int32;
+
 typedef uint8_t uint8;
+
 typedef uint16_t uint16;
+
 typedef uint32_t uint32;
+
 typedef float float32;
+
 typedef double float64;
 
-template <typename ScalarType>
+template<typename ScalarType>
 struct type_traits;
 
 #ifdef PLY_TYPE_TRAITS
@@ -52,11 +63,15 @@ PLY_TYPE_TRAITS(float64, "float64", "double")
 #undef PLY_TYPE_TRAITS
 
 typedef int format_type;
-enum format { ascii_format, binary_little_endian_format, binary_big_endian_format };
 
-      }
-    }
-  }
+enum format
+{
+    ascii_format, binary_little_endian_format, binary_big_endian_format
+};
+
+}
+}
+}
 } // namespace lamure::pre::io::ply
 
 #endif // PRE_IO_PLY_PLY_H_

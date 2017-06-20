@@ -13,31 +13,34 @@
 
 #include <vector>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 class bvh;
 
 class normal_computation_plane_fitting: public normal_computation_strategy
 {
 public:
-	explicit normal_computation_plane_fitting(const uint16_t number_of_neighbours) {
-			// base class attribute
-			number_of_neighbours_ = number_of_neighbours;
-		}
+    explicit normal_computation_plane_fitting(const uint16_t number_of_neighbours)
+    {
+        // base class attribute
+        number_of_neighbours_ = number_of_neighbours;
+    }
 
-	void eigsrt_jacobi(
-	    int dim,
-	    double* eigenvalues, 
-	    double** eigenvectors) const;
+    void eigsrt_jacobi(
+        int dim,
+        double *eigenvalues,
+        double **eigenvectors) const;
 
-	void jacobi_rotation(const scm::math::mat3d& _matrix,
-	                     double* eigenvalues,
-	                     double** eigenvectors) const;
+    void jacobi_rotation(const scm::math::mat3d &_matrix,
+                         double *eigenvalues,
+                         double **eigenvectors) const;
 
-	vec3f  compute_normal(const bvh& tree,
-						  const surfel_id_t surfel,
-                       	  std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const override;
+    vec3f compute_normal(const bvh &tree,
+                         const surfel_id_t surfel,
+                         std::vector<std::pair<surfel_id_t, real>> const &nearest_neighbours) const override;
 };
 
 }// namespace pre

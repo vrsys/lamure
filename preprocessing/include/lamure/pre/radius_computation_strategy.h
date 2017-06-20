@@ -11,22 +11,27 @@
 
 #include <lamure/pre/surfel.h>
 
-namespace lamure{
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 class bvh;
 
-class radius_computation_strategy {
+class radius_computation_strategy
+{
 public:
-	virtual ~radius_computation_strategy() {};
-	virtual real compute_radius(const bvh& tree,
-								const surfel_id_t surfel,
-                       			std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const = 0;
+    virtual ~radius_computation_strategy()
+    {};
+    virtual real compute_radius(const bvh &tree,
+                                const surfel_id_t surfel,
+                                std::vector<std::pair<surfel_id_t, real>> const &nearest_neighbours) const = 0;
 
-		uint16_t const number_of_neighbours() const {return number_of_neighbours_;}
+    uint16_t const number_of_neighbours() const
+    { return number_of_neighbours_; }
 
 protected:
-	uint16_t number_of_neighbours_;
+    uint16_t number_of_neighbours_;
 };
 
 } // namespace pre

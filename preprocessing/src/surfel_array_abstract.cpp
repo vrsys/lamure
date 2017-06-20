@@ -7,12 +7,13 @@
 
 #include <lamure/pre/surfel_array_abstract.h>
 
-namespace lamure {
+namespace lamure
+{
 namespace pre
 {
 
 surfel_array_abstract::
-~surfel_array_abstract() 
+~surfel_array_abstract()
 {
     try {
         reset();
@@ -20,6 +21,6 @@ surfel_array_abstract::
     catch (...) {}
 }
 
-
-} } // namespace lamure
+}
+} // namespace lamure
 
