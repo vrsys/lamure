@@ -3,7 +3,8 @@
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
-include_directories(${REND_INCLUDE_DIR} 
+include_directories(${REND_INCLUDE_DIR}
+					${PREPROC_INCLUDE_DIR}
                     ${COMMON_INCLUDE_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
@@ -18,6 +19,7 @@ InitApp(${CMAKE_PROJECT_NAME}_bvh_compressor)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${REND_LIBRARY}
+    ${PREPROC_INCLUDE_DIR}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     )

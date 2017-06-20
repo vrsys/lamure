@@ -5,6 +5,7 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -15,8 +16,15 @@
 
 #include <lamure/types.h>
 
+//for convenient access to the node attributes
 #include <lamure/ren/bvh.h>
+#include <lamure/ren/bvh_stream.h>
 #include <lamure/ren/lod_stream.h>
+
+// for rewriting of changed attributes (primitive size, avg radius deviation if needed)
+#include <lamure/pre/bvh.h>
+#include <lamure/pre/bvh_stream.h>
+
 
 #include "file_handler.h"
 
@@ -46,18 +54,20 @@ struct quantized_surfel {
   uint16_t pos_16ui_components[3];
   uint16_t normal_16ui;
   uint16_t color_565ui_combined;
-  uint8_t  radius_scale;
+  uint16_t  radius_scale;
 };
 
 void quantize_position(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel, scm::gl::boxf const& node_extents) {
   double quantization_steps[3] = {0.0, 0.0, 0.0};
   double range_per_axis[3] = {0.0, 0.0, 0.0};
+
+  int64_t max_position_quantization_index = std::pow(2,16);
   for(int dim_idx = 0; dim_idx < 3; ++dim_idx) {
 
     range_per_axis[dim_idx] = (((double)node_extents.max_vertex()[dim_idx]) - ((double)node_extents.min_vertex()[dim_idx]));
-    quantization_steps[dim_idx] = range_per_axis[dim_idx] / 65536.0;
+    quantization_steps[dim_idx] = range_per_axis[dim_idx] / max_position_quantization_index;
 
-    double normalized_position = (in_uncompressed_surfel.pos[dim_idx] - ((double)node_extents.min_vertex()[dim_idx]) )  / range_per_axis[dim_idx];
+    //double normalized_position = (in_uncompressed_surfel.pos[dim_idx] - ((double)node_extents.min_vertex()[dim_idx]) )  / range_per_axis[dim_idx];
 
     int32_t overflow_protected_pos = 0;
 
@@ -66,25 +76,38 @@ void quantize_position(surfel const& in_uncompressed_surfel, quantized_surfel& o
     out_compressed_surfel.pos_16ui_components[dim_idx] = std::min(int32_t(std::numeric_limits<uint16_t>::max()), std::max(int32_t(std::numeric_limits<uint16_t>::min()), overflow_protected_pos));
   }
 }
-
+/*
+void unquantize_position(quantized_surfel const& in_compressed_surfel, surfel& out_uncompressed_surfel, scm::gl::boxf const& node_extents) {
+  unquantized_pos[dim_idx] = qz_surfel.pos_16ui_components[dim_idx] * ((((double)bvh_bounding_boxes[node_idx].max_vertex()[dim_idx]) - ((double)bvh_bounding_boxes[node_idx].min_vertex()[dim_idx])) / 65536.0 ) + ((double)bvh_bounding_boxes[node_idx].min_vertex()[dim_idx] );
+}
+*/
 
 void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel, float const avg_surfel_radius, float const max_surfel_radius_deviation) {
   //currently, min and max radius are not exposed in the tree, so we should use the avg radius
   //to not introduce large errors, we need to calculate the range from avg rad to min and max rad and use the max range to quantize (this does not filter outliers)
+
+  if(max_surfel_radius_deviation < 0.0 ) {
+    std::cout << "MAX SURFEL RADIUS DEVIATION SMALLER THAN ZERO\n";
+  }
+
+  //std::cout << std::setprecision(16) << max_surfel_radius_deviation << "\n";
   double one_sided_quantization_step = 0.0;
 
-  one_sided_quantization_step = ((double)max_surfel_radius_deviation) / 127.0;
+  int64_t max_quantization_idx = std::pow(2, sizeof(quantized_surfel::radius_scale) * 8);
+  int half_range_minus_one = max_quantization_idx / 2 - 1;
+
+  one_sided_quantization_step = ((double)max_surfel_radius_deviation) / half_range_minus_one;
 
   if( 0.0 == one_sided_quantization_step ) { //avoid division by zero
-    out_compressed_surfel.radius_scale = 127;
+    out_compressed_surfel.radius_scale = max_quantization_idx - 1; //(max_quantization index - 1) marks invalid surfels (with radius zero)  (=> 255 for 8 bit, 65535 for 16 bit)
     return;
   }
 
   double reference_min_range = avg_surfel_radius - max_surfel_radius_deviation;
   double normalized_float_radius = ((double)in_uncompressed_surfel.size - reference_min_range) / (2*max_surfel_radius_deviation);
 
-  int32_t overflow_protected_rad = std::round(normalized_float_radius * 254); //skip 1 out of 256 steps for convenience
-  out_compressed_surfel.radius_scale = std::min( int32_t(254), std::max( int32_t(0), overflow_protected_rad) );
+  int32_t overflow_protected_rad = std::round(normalized_float_radius * half_range_minus_one * 2); //skip 1 out of 256 steps for convenience
+  out_compressed_surfel.radius_scale = std::min( int32_t(half_range_minus_one*2), std::max( int32_t(0), overflow_protected_rad) );
 }
 
 void quantize_color(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel) {
@@ -95,9 +118,9 @@ void quantize_color(surfel const& in_uncompressed_surfel, quantized_surfel& out_
   int8_t g6 = int32_t( std::round(in_uncompressed_surfel.rgbf[1] /  (double)g_quantization_step) );
   int8_t b5 = int32_t( std::round(in_uncompressed_surfel.rgbf[2] / (double)rb_quantization_step) );
 
-  r5 = std::max(int8_t(31), r5);
-  g6 = std::max(int8_t(63), g6);
-  b5 = std::max(int8_t(31), b5);
+  r5 = std::min(int8_t(31), r5);
+  g6 = std::min(int8_t(63), g6);
+  b5 = std::min(int8_t(31), b5);
 
   uint8_t rb_combination_mask = 0x1F;
   uint8_t  g_combination_mask = 0x3F;
@@ -132,11 +155,14 @@ void quantize_normal(surfel const& in_uncompressed_surfel, quantized_surfel& out
   int32_t face_positions_u = 104;
   int32_t face_positions_v = 105;
 
+  //int32_t face_positions_u = 147;
+  //int32_t face_positions_v = 148;
+
   int32_t normal_positions_per_face = face_positions_u*face_positions_v;
 
   //face ids based on dominant axes: -x = 0; +x = 1; -y = 2; +y=3; -z = 4; +z = 5 
-  int32_t dominant_face_idx = dominant_axis_idx*2 - ( in_uncompressed_surfel.normal[dominant_axis_idx] < 0.0 ? 1 : 0 );
-
+  int32_t dominant_face_idx = dominant_axis_idx*2 + ( in_uncompressed_surfel.normal[dominant_axis_idx] < 0.0 ? 1 : 0 );
+  //int32_t dominant_face_idx = dominant_axis_idx;//+ ( in_uncompressed_surfel.normal[dominant_axis_idx] < 0.0 ? 1 : 0 );
   //quantize dom_axis_idx + 1 with 104 positions and dom_axis_idx+2 with 105 positions
 
 
@@ -155,6 +181,78 @@ void quantize_normal(surfel const& in_uncompressed_surfel, quantized_surfel& out
 
     out_compressed_surfel.normal_16ui = quantized_normal_enumerator;
 }
+
+
+//Assume normalized input on +Z hemisphere.
+//Output is on [-1, 1].
+void float32x3_to_hemioct(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel) {
+//Project the hemisphere onto the hemi-octahedron,
+//and then into the xy plane
+
+
+  double tmp_normal[3] = {in_uncompressed_surfel.normal[0], in_uncompressed_surfel.normal[1], in_uncompressed_surfel.normal[2]};
+
+  if(tmp_normal[2] < 0.0) {
+    tmp_normal[0] *= -1;
+    tmp_normal[1] *= -1;
+    tmp_normal[2] *= -1;
+  }
+
+double p[2];
+p[0] = tmp_normal[0] * (1.0 / ( std::fabs(tmp_normal[0]) + std::fabs(tmp_normal[1]) + tmp_normal[2] )  );
+p[1] = tmp_normal[1] * (1.0 / ( std::fabs(tmp_normal[0]) + std::fabs(tmp_normal[1]) + tmp_normal[2] )  );
+
+
+uint16_t compressed_first_part_8_bit = ( std::max(0, std::min(255, int32_t(std::round((((p[0] + p[1]) + 1.0) / 2.0) * 255)) ) )) << 8 ;
+uint16_t compressed_second_part_8_bit = ( std::max(0, std::min(255, int32_t(std::round((((p[0] - p[1]) + 1.0) / 2.0) * 255)) ) )) << 0 ;
+
+out_compressed_surfel.normal_16ui = compressed_first_part_8_bit | compressed_second_part_8_bit;
+//Rotate and scale the center diamond to the unit square
+//return vec2(p.x + p.y, p.x - p.y);
+}
+
+
+
+void hemioct_to_float32x3(quantized_surfel const& in_compressed_surfel, surfel& out_uncompressed_surfel) {
+
+  uint16_t looked_up_compressed_normal = in_compressed_surfel.normal_16ui;
+
+  double e[2] = {0.0, 0.0};
+
+  e[0] = (((looked_up_compressed_normal >> 8) / 255.0) - 1.0) * 2.0;
+  e[1] = (((looked_up_compressed_normal & 0xFF) / 255.0) - 1.0) * 2.0;
+
+  //double tmp_compr_normal[2] = {in_uncompressed_surfel.normal[0], in_uncompressed_surfel.normal[1], in_uncompressed_surfel.normal[2]};
+  double temp[2];
+  temp[0] = (e[0] + e[1]) * 0.5;
+  temp[1] = (e[0] - e[1]) * 0.5;
+
+  out_uncompressed_surfel.normal[0] = temp[0];
+  out_uncompressed_surfel.normal[1] = temp[1];
+  out_uncompressed_surfel.normal[2] = 1.0 - std::fabs(temp[0]) - std::fabs(temp[1]);
+
+
+  double vector_length = std::sqrt(out_uncompressed_surfel.normal[0]*out_uncompressed_surfel.normal[0] +
+                                   out_uncompressed_surfel.normal[1]*out_uncompressed_surfel.normal[1] +
+                                   out_uncompressed_surfel.normal[2]*out_uncompressed_surfel.normal[2] );
+
+
+  out_uncompressed_surfel.normal[0] /= vector_length;
+  out_uncompressed_surfel.normal[1] /= vector_length;
+  out_uncompressed_surfel.normal[2] /= vector_length;
+  // //TODO
+  //vec3 v = vec3(temp, 1.0 - abs(temp.x) - abs(temp.y));
+  //return normalize(v);
+}
+
+/*
+vec3 hemioct_to_float32x3(vec2 e) {
+//Rotate and scale the unit square back to the center diamond
+vec2 temp = vec2(e.x + e.y, e.x - e.y) * 0.5;
+vec3 v = vec3(temp, 1.0 - abs(temp.x) - abs(temp.y));
+return normalize(v);
+}
+*/
 
 
 void quantize_complete_surfel(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel, scm::gl::boxf const& node_extents, float const avg_surfel_radius, float const max_surfel_radius_deviation ) {
@@ -206,7 +304,7 @@ int main(int argc, char *argv[]) {
 
     lamure::ren::bvh* bvh = new lamure::ren::bvh(input_uncompressed_bvh_file_name);
     
-    size_t depth = 0;
+    size_t depth = -1;
     if (depth > bvh->get_depth() || depth < 0) {
       depth = bvh->get_depth();
     }
@@ -216,7 +314,9 @@ int main(int argc, char *argv[]) {
     in_access->open(input_uncompressed_lod_file_name);
 
     size_t size_of_node = (uint64_t)bvh->get_primitives_per_node() * sizeof(lamure::ren::dataset::serialized_surfel);
-    surfel* surfels = new surfel[bvh->get_primitives_per_node()];
+
+    std::vector<surfel>           surfels(bvh->get_primitives_per_node());
+    std::vector<quantized_surfel> qz_surfels(bvh->get_primitives_per_node());
 
     lamure::node_t first_leaf = bvh->get_first_node_id_of_depth(depth);
     lamure::node_t num_leafs = bvh->get_length_of_depth(depth);
@@ -233,11 +333,29 @@ int main(int argc, char *argv[]) {
 
     auto const& bvh_bounding_boxes = bvh->get_bounding_boxes();
 
-    //iterate over all nodes
-    for (lamure::node_t node_idx = 0; node_idx < first_leaf + num_leafs; ++node_idx) {
+    int global_max_r_error = 0;
+    int global_max_g_error = 0;
+    int global_max_b_error = 0;
 
+    double max_position_error_per_level = 0.0;
+    double max_relative_radius_error = 0.0;
+    double avg_relative_radius_error = 0.0;
+    int64_t contribs_rel_rad_error = 0;
+    double max_angle_error = 0.0;
+    double hemioct_max_angle_error = 0.0;
+
+    double max_rel_rad_error_surfel_0_rad = 0.0;
+    double max_rel_rad_error_surfel_1_rad = 0.0;
+    //iterate over all nodes
+
+
+    std::ios::openmode mode = std::ios::out | std::ios::binary;
+    out_stream.open(out_lodqz_file, mode);
+
+    for (lamure::node_t node_idx = 0; node_idx < first_leaf + num_leafs; ++node_idx) {
+      std::cout << "Starting with: " << node_idx << "\n";
       auto const& avg_surfel_radius = bvh->get_avg_primitive_extent(node_idx);
-      auto const& max_radius_deviation = bvh->get_max_surfel_radius_deviation(node_idx);
+      auto max_radius_deviation = bvh->get_max_surfel_radius_deviation(node_idx);
 
 #ifdef VERBOSE
         if ((leaf_id-first_leaf) % 1000 == 0) {
@@ -245,10 +363,9 @@ int main(int argc, char *argv[]) {
         }
 #endif
         
-        in_access->read((char*)surfels, node_idx * size_of_node, size_of_node);
+        in_access->read((char*)&surfels[0], node_idx * size_of_node, size_of_node);
 
-        std::ios::openmode mode = std::ios::out | std::ios::app;
-        out_stream.open(out_lodqz_file, mode);
+
    
         std::string filestr;
         std::stringstream ss(filestr);
@@ -256,9 +373,34 @@ int main(int argc, char *argv[]) {
 
         double unquantized_pos[3];
 
+        //recompute max_radius_deviation if it was not set (in order to be able to compress bvhs prev v1.1)
+        if( 0.0 == max_radius_deviation ) {
+          double accumulated_radius = 0.0;
+          int64_t valid_surfel_count = 0;
+          float max_radius = 0.0f;
+          float min_radius = std::numeric_limits<float>::max();
+
+          for ( auto const& current_surfel : surfels) {
+            //quantized_surfel qz_surfel;
+            //const surfel& current_surfel = surfels[surfel_idx];
+
+            if( 0.0 < current_surfel.size ) {
+              max_radius = std::max(max_radius, current_surfel.size);
+              min_radius = std::min(min_radius, current_surfel.size);
+            }
+
+          }
+
+          max_radius_deviation = std::max( std::fabs(max_radius - avg_surfel_radius), std::fabs( avg_surfel_radius - min_radius )  );
+          bvh->set_max_surfel_radius_deviation(node_idx, max_radius_deviation);
+        }
+
+
         for (unsigned int i = 0; i < bvh->get_primitives_per_node(); ++i) {
-            quantized_surfel qz_surfel;
+            //quantized_surfel qz_surfel;
             const surfel& s = surfels[i];
+
+            quantized_surfel& qz_surfel = qz_surfels[i];
 
             //quantization
             quantize_complete_surfel(s, qz_surfel, bvh_bounding_boxes[node_idx], avg_surfel_radius, max_radius_deviation);
@@ -273,51 +415,182 @@ int main(int argc, char *argv[]) {
 
             double pos_quant_error = std::sqrt(squared_pos_error_comps);
             
-
+/*
             std::cout << "Quantized surfel position: " << s.pos[0] << ", " << s.pos[1] << ", " << s.pos[2] << " to: " << unquantized_pos[0] << ", " << unquantized_pos[1] << ", " << unquantized_pos[2] << "\n";
             std::cout << "Pos Quantization Error: " << pos_quant_error << "\n";
+*/
 
 
             //quantization error measurement check
             double radius_quantization_error = 0.0;
-            float unquantized_radius = qz_surfel.radius_scale * ((((double) ( max_radius_deviation + avg_surfel_radius ) ) - ((double) ( avg_surfel_radius - max_radius_deviation ) )) / 255.0 ) + ((double)avg_surfel_radius - max_radius_deviation);
+            int64_t max_quantization_idx = std::pow(2, sizeof(quantized_surfel::radius_scale) * 8);
+            int64_t quantization_divisor = max_quantization_idx - 2;
+
+
+            float min_radius = ((double)avg_surfel_radius - max_radius_deviation);
+            float max_radius = ((double) ( max_radius_deviation + avg_surfel_radius ) );
+
+            float unquantized_radius = qz_surfel.radius_scale * ( ( max_radius - min_radius) / quantization_divisor ) + min_radius;
             radius_quantization_error = std::abs(s.size - unquantized_radius);
             
             
+            //std::cout << "radii: " << s.size << "\t" << unquantized_radius << "\n";
 
-            std::cout << "Quantized surfel radius: " << s.size << " to: " << unquantized_radius << "\n";
-            std::cout << "Rad Quantization Error: " << radius_quantization_error << "\n";
-            /*
+            if(s.size > 0.0) {
+              max_position_error_per_level = std::max(max_position_error_per_level, pos_quant_error);
+
+          
+              double denom_rad = std::max(s.size, unquantized_radius);
+              double enum_val = std::fabs(s.size - unquantized_radius);
+
+              double rad_error = enum_val / denom_rad;
+              avg_relative_radius_error += rad_error;
+              ++contribs_rel_rad_error;
+              if(rad_error > max_relative_radius_error) {
+                max_relative_radius_error = rad_error;
+
+                max_rel_rad_error_surfel_0_rad = s.size;
+                max_rel_rad_error_surfel_1_rad = unquantized_radius;
+
+              }
+            }
             
+            int r_error = 0;
+            int g_error = 0;
+            int b_error = 0;
 
-            ss << s.pos[0] << " ";
-            ss << s.pos[1] << " ";
-            ss << s.pos[2] << " ";
-             
-            ss << s.normal[0] << " ";
-            ss << s.normal[1] << " ";
-            ss << s.normal[2] << " ";
+            int32_t unquantized_r = (0x1F & (qz_surfel.color_565ui_combined >> 11) ) * 8;
+            int32_t unquantized_g = (0x3F & (qz_surfel.color_565ui_combined >> 5 ) ) * 4;
+            int32_t unquantized_b = (0x1F & (qz_surfel.color_565ui_combined >> 0 ) ) * 8;           
 
-            ss << (unsigned int)s.rgbf[0]<< " ";
-            ss << (unsigned int)s.rgbf[1] << " ";
-            ss << (unsigned int)s.rgbf[2] << " ";
+            r_error = std::abs(unquantized_r - s.rgbf[0]); 
+            g_error = std::abs(unquantized_g - s.rgbf[1]); 
+            b_error = std::abs(unquantized_b - s.rgbf[2]); 
 
-            ss << s.size;
+            global_max_r_error = std::max(global_max_r_error, r_error);
+            global_max_g_error = std::max(global_max_g_error, g_error);
+            global_max_b_error = std::max(global_max_b_error, b_error);            
+/*
+            std::cout << "Real Red (quantized Red): " << (int32_t)(s.rgbf[0]) << "("<< unquantized_r << ")" << "\n";
+            std::cout << "Real Green (quantized Green): " << (int32_t)(s.rgbf[1]) << "("<< unquantized_g << ")" << "\n";
+            std::cout << "Real Blue (quantized Blue): " << (int32_t)(s.rgbf[2]) << "("<< unquantized_b << ")" << "\n";
+*/
+
+            int32_t num_points_u = 104;
+            int32_t num_points_v = 105;
+            int32_t face_divisor = 2;
+/*
+            int32_t num_points_u = 147;
+            int32_t num_points_v = 148;
+            int32_t face_divisor = 1;
+*/
+            float unquantized_normal[3] = {0.0, 0.0, 0.0};
+
+            uint16_t compressed_normal_enumerator = qz_surfel.normal_16ui;
+
+            //uint32_t face_id = compressed_normal_enumerator / (104*105);
+            uint32_t face_id = compressed_normal_enumerator / (num_points_u * num_points_v);
+
+            int8_t is_main_axis_negative = (face_id % 2) == 1 ? -1 : 1 ;
+            compressed_normal_enumerator -= face_id * ((num_points_u * num_points_v));
+            uint32_t v_component = compressed_normal_enumerator / num_points_u;
+            uint32_t u_component = compressed_normal_enumerator % num_points_u;
+
+            uint32_t main_axis = face_id / face_divisor;
+
+            uint32_t first_comp_axis = (main_axis + 1) % 3;
+            uint32_t second_comp_axis = (main_axis + 2) % 3;
+
+            float first_component = (u_component / (float)(num_points_u) ) * 2.0 - 1.0;
+            float second_component = (v_component / (float)(num_points_v) ) * 2.0 - 1.0;
+
+            unquantized_normal[first_comp_axis] = first_component;
+            unquantized_normal[second_comp_axis] = second_component;
+
+            unquantized_normal[main_axis] = is_main_axis_negative * std::sqrt(-(first_component*first_component) - (second_component*second_component) + 1);
+
+
+            double unquantized_normal_length = std::sqrt(unquantized_normal[0]*unquantized_normal[0] + unquantized_normal[1]*unquantized_normal[1]  + unquantized_normal[2]*unquantized_normal[2]  );
+
+            for( int dim_idx = 0; dim_idx < 3; ++dim_idx ) {
+              unquantized_normal[dim_idx] /= unquantized_normal_length;
+            }
+
+/*
+            std::cout << "Original Normal: " << s.normal[0] << ", " << s.normal[1] << ", " << s.normal[2]<< "\n";
+            std::cout << "Unquantized Normal: " << unquantized_normal[0] << ", " << unquantized_normal[1] << ", " << unquantized_normal[2] << "\n";
+*/
+            double angle_error = 180.0 * std::acos(unquantized_normal[0] * s.normal[0] + unquantized_normal[1] * s.normal[1] + unquantized_normal[2] * s.normal[2] ) / 3.14159265359;
+
+            if(s.size > 0.0) {
+              max_angle_error = std::max(angle_error, max_angle_error);
+            }
             
+//            std::cout << "angle error (in deg): " << angle_error << "\n";
 
-            ss << std::endl;
-            */
+
+
+/*
+
+            float32x3_to_hemioct(s, qz_surfel);
+
+            surfel ref_surfel;
+            hemioct_to_float32x3(qz_surfel, ref_surfel);
+
+            surfel flipped_z_surfel = s;
+
+            if(flipped_z_surfel.normal[2] < 0.0) {
+              flipped_z_surfel.normal[0] *= -1.0;
+              flipped_z_surfel.normal[1] *= -1.0;
+              flipped_z_surfel.normal[2] *= -1.0;
+            }
+
+            std::cout << "Hemioct Normal: " << ref_surfel.normal[0] << ", " << ref_surfel.normal[1] << ", " << ref_surfel.normal[2] << "\n";
+
+            double hemioct_angle_error = 180.0 * std::acos(ref_surfel.normal[0] * flipped_z_surfel.normal[0] + ref_surfel.normal[1] * flipped_z_surfel.normal[1] + ref_surfel.normal[2] * flipped_z_surfel.normal[2] ) / 3.14159265359;
+
+            hemioct_max_angle_error = std::max(hemioct_angle_error, hemioct_max_angle_error);
+*/
+
+ 
+
+          //out_stream.write((char*) )
+
         }
 
+        out_stream.write((char*) &qz_surfels[0], bvh->get_primitives_per_node() * sizeof(quantized_surfel) );
 
-        out_stream << ss.rdbuf();
-        out_stream.close();
+
 
     }
+    out_stream.close();
+
+       
+    std::cout << "Writing!!\n";
+    std::cout << "Global max r g b error: " << global_max_r_error << ", " << global_max_g_error << ", " << global_max_b_error << "\n";
+    std::cout << "Max angular error: " << max_angle_error << "\n";
+    std::cout << "Max hemioct angular error: " << hemioct_max_angle_error << "\n";
+
+    std::cout << "Max relative radius error: " << max_relative_radius_error << "\n";
+    std::cout << "Corresponding radii: " << max_rel_rad_error_surfel_0_rad << ", " << max_rel_rad_error_surfel_1_rad << "\n";
+    std::cout << "Max position error: " << max_position_error_per_level << "\n";
+
+    if( contribs_rel_rad_error ) {
+
+       avg_relative_radius_error /= contribs_rel_rad_error;
+    }
+
+
+    bvh->set_size_of_primitive( sizeof(lamure::ren::dataset::serialized_surfel_qz) );
+    bvh->set_primitive(lamure::ren::bvh::primitive_type::POINTCLOUD_QZ);
+
+    lamure::ren::bvh_stream bvh_ofstream;
+    bvh_ofstream.write_bvh(out_bvhqz_file, *bvh);
+
+    std::cout << "AVG RAD ERROR: " << avg_relative_radius_error << "\n";
 
     std::cout << "done. (" << num_surfels_excluded << " surfels excluded)" << std::endl;
 
-    delete[] surfels;
     delete in_access;
     delete bvh;
 
