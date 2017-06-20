@@ -66,13 +66,28 @@ void main()
   // dequantized normal
   int compressed_normal_enumerator = in_qz_normal_enumerator;
   int face_id = compressed_normal_enumerator / (total_num_points_per_face);
-  int is_main_axis_negative = face_id % 2 == 1 ? -1 : 1;
+  int is_main_axis_negative = ((face_id % 2) == 1 ) ? -1 : 1;
   compressed_normal_enumerator -= face_id * (total_num_points_per_face);
   int v_component = compressed_normal_enumerator / num_points_u;
   int u_component = compressed_normal_enumerator % num_points_u;
 
   int main_axis = face_id / face_divisor;
 
+  float first_component = (u_component / float(num_points_u) ) * 2.0 - 1.0;
+  float second_component = (v_component / float(num_points_v) ) * 2.0 - 1.0;
+
+  vec3 unswizzled_components = vec3(first_component, 
+                                    second_component,
+                                    is_main_axis_negative * sqrt(-(first_component*first_component) - (second_component*second_component) + 1) );
+
+  vec3 in_normal = unswizzled_components.zxy;
+
+  if(1 == main_axis) {
+    in_normal.xyz = unswizzled_components.yzx;
+  } else if(2 == main_axis) {
+    in_normal.xyz = unswizzled_components.xyz;    
+  }
+/*
   int first_comp_axis = (main_axis + 1) % 3;
   int second_comp_axis = (main_axis + 2) % 3;
 
@@ -82,8 +97,7 @@ void main()
   vec3 in_normal = vec3(first_component, 
                         second_component,
                         is_main_axis_negative * sqrt(-(first_component*first_component) - (second_component*second_component) + 1) );
-  in_normal = normalize(in_normal);
-
+*/
   vec3 ms_n = normalize(in_normal.xyz);
   vec3 ms_u;
 
