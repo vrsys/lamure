@@ -19,7 +19,6 @@ InitApp(${CMAKE_PROJECT_NAME}_bvh_compressor)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${REND_LIBRARY}
-    ${PREPROC_INCLUDE_DIR}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     )

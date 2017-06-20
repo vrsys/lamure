@@ -17,6 +17,7 @@ namespace ren
 std::mutex model_database::mutex_;
 bool model_database::is_instanced_ = false;
 model_database* model_database::single_ = nullptr;
+bool model_database::contains_only_compressed_data_ = true;
 
 model_database::
 model_database()
@@ -80,6 +81,10 @@ add_model(const std::string& filepath, const std::string& model_key) {
 
     if (model->is_loaded()) {
         const bvh* bvh = model->get_bvh();
+
+        if( lamure::ren::bvh::primitive_type::POINTCLOUD_QZ != bvh->get_primitive() ) {
+            model_database::contains_only_compressed_data_ = false;
+        }
 
         if (num_datasets_ == 0) {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -184,7 +189,7 @@ get_node_size(const model_t model_id) const {
     auto model_it = datasets_.find(model_id);
     if (model_it != datasets_.end()) {
         const bvh* bvh = model_it->second->get_bvh();
-        return sizeof(dataset::serialized_surfel) * bvh->get_primitives_per_node();
+        return get_primitive_size(bvh->get_primitive()) * bvh->get_primitives_per_node();
     }
     throw std::runtime_error(
         "lamure: model_database::Model was not found:" + std::to_string(model_id));
@@ -195,7 +200,11 @@ get_node_size(const model_t model_id) const {
 const size_t model_database::
 get_slot_size() const {
     //return the combined slot size in bytes for both trimeshes and pointclouds
-    return primitives_per_node_ * sizeof(dataset::serialized_surfel);
+    if( model_database::contains_only_compressed_data_ ) {
+        return primitives_per_node_ * sizeof(dataset::serialized_surfel_qz);
+    } else {
+        return primitives_per_node_ * sizeof(dataset::serialized_surfel);
+    }
 
 }
 

@@ -48,7 +48,7 @@ protected:
                         model_database();
     static bool         is_instanced_;
     static model_database* single_;
-
+    static bool contains_only_compressed_data_;
 private:
     static std::mutex   mutex_;
 
