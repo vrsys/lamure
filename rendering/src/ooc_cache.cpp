@@ -24,12 +24,13 @@ ooc_cache(const slot_t num_slots)
   maintenance_counter_(0) {
     model_database* database = model_database::get_instance();
 
+    Data_Provenance data_provenance;
     cache_data_ = new char[num_slots * database->get_slot_size()];
-    cache_data_provenance_ = new char[num_slots * database->get_primitives_per_node() * sizeof(provenance_data)];
+    cache_data_provenance_ = new char[num_slots * database->get_primitives_per_node() * data_provenance.get_size_in_bytes()];
     pool_ = new ooc_pool(
         LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, 
         database->get_slot_size(), 
-        database->get_primitives_per_node() * sizeof(provenance_data)
+        database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
     );
 
 #ifdef LAMURE_ENABLE_INFO
@@ -97,8 +98,8 @@ get_instance() {
             {
                 std::cout << "##### " << policy->out_of_core_budget_in_mb() << " MB will be used for the out of core budget #####" << std::endl;
             }
-
-            long node_size_total = database->get_primitives_per_node() * sizeof(provenance_data) + database->get_slot_size();
+            Data_Provenance data_provenance;
+            long node_size_total = database->get_primitives_per_node() * data_provenance.get_size_in_bytes() + database->get_slot_size();
             size_t out_of_core_budget_in_nodes = out_of_core_budget_in_bytes / node_size_total;
 
             single_ = new ooc_cache(out_of_core_budget_in_nodes);
@@ -123,6 +124,7 @@ register_node(const model_t model_id, const node_t node_id, const int32_t priori
     switch (query_result) {
         case cache_queue::query_result::NOT_INDEXED:
         {
+            Data_Provenance data_provenance;
             model_database* database = model_database::get_instance();
             slot_t slot_id = index_->reserve_slot();
             // ASK CARL really duplicate each memory?
@@ -132,7 +134,7 @@ register_node(const model_t model_id, const node_t node_id, const int32_t priori
                 slot_id, 
                 priority, 
                 cache_data_ + slot_id * slot_size(), 
-                cache_data_provenance_ + slot_id * database->get_primitives_per_node() * sizeof(provenance_data)
+                cache_data_provenance_ + slot_id * database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
             );
             if (!pool_->acknowledge_request(job)) {
                 index_->unreserve_slot(slot_id);
@@ -163,7 +165,8 @@ node_data(const model_t model_id, const node_t node_id) {
 char* ooc_cache::
 node_data_provenance(const model_t model_id, const node_t node_id) {
     model_database* database = model_database::get_instance();
-    return cache_data_provenance_ + index_->get_slot(model_id, node_id) * database->get_primitives_per_node() * sizeof(provenance_data);
+    Data_Provenance data_provenance;
+    return cache_data_provenance_ + index_->get_slot(model_id, node_id) * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
 
 }
 

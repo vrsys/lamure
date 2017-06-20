@@ -1117,7 +1117,7 @@ compile_transfer_list() {
     const std::vector<std::unordered_set<node_t>>& transfer_list = gpu_cache_->transfer_list();
 
     slot_t slot_count = gpu_cache_->transfer_slots_written();
-
+    Data_Provenance data_provenance;
     for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
         for (const auto& node_id : transfer_list[model_id]) {
             slot_t slot_id = gpu_cache_->slot_id(model_id, node_id);
@@ -1130,9 +1130,9 @@ compile_transfer_list() {
             memcpy(current_gpu_storage_ + slot_count * database->get_slot_size(), node_data, database->get_slot_size());
 
             memcpy(
-                current_gpu_storage_provenance_ + slot_count * database->get_primitives_per_node() * sizeof(provenance_data), 
+                current_gpu_storage_provenance_ + slot_count * database->get_primitives_per_node() * data_provenance.get_size_in_bytes(), 
                 node_data_provenance, 
-                database->get_primitives_per_node() * sizeof(provenance_data)
+                database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
             );
 
             transfer_list_.push_back(cut_database_record::slot_update_desc(slot_count, slot_id));

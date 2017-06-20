@@ -22,7 +22,7 @@
 #include <lamure/ren/provenance_stream.h>
 #include <lamure/ren/cache_queue.h>
 #include <lamure/ren/cache_index.h>
-#include <lamure/ren/provenance.h>
+#include <lamure/ren/Data_Provenance.h>
 
 
 

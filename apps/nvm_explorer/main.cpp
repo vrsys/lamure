@@ -8,6 +8,9 @@
 #include "Scene.h"
 #include "utils.h"
 #include <GL/freeglut.h> 
+#include <lamure/ren/Data_Provenance.h>
+#include <lamure/ren/Item_Provenance.h>
+
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -70,6 +73,28 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option) { re
 
 int main(int argc, char *argv[])
 {
+    lamure::ren::Data_Provenance data_provenance;
+
+    lamure::ren::Item_Provenance item_float(
+        lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
+        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    );
+    data_provenance.add_item(item_float);
+
+    lamure::ren::Item_Provenance item_vec3f(
+        lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
+        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    );
+    data_provenance.add_item(item_vec3f);
+
+    lamure::ren::Item_Provenance item_int(
+        lamure::ren::Item_Provenance::type_item::TYPE_INT,
+        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    );
+    data_provenance.add_item(item_int);
+
+
+    std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
     // return 1;
     // return write_dummy_binary_file();
 

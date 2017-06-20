@@ -140,7 +140,9 @@ run() {
 
             access.read(local_cache, offset_in_bytes, stride_in_bytes);
 
-            size_t stride_in_bytes_provenance = database->get_primitives_per_node() * sizeof(provenance_data);
+            Data_Provenance data_provenance;
+            size_t stride_in_bytes_provenance = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+            // size_t stride_in_bytes_provenance = database->get_primitives_per_node() * sizeof(data_provenance);
             size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
             access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
 #endif

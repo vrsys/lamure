@@ -97,8 +97,8 @@ test_video_memory(scm::gl::render_device_ptr device) {
     {
         std::cout << "##### " << policy->render_budget_in_mb() << " MB will be used for the render budget #####" << std::endl;
     }
-
-    long node_size_total = database->get_primitives_per_node() * sizeof(provenance_data) + database->get_slot_size();
+    Data_Provenance data_provenance;
+    long node_size_total = database->get_primitives_per_node() * data_provenance.get_size_in_bytes() + database->get_slot_size();
     render_budget_in_nodes_ = (render_budget_in_mb * 1024 * 1024) / node_size_total;
 
     // render_budget_in_mb = policy->render_budget_in_mb();
@@ -108,7 +108,7 @@ test_video_memory(scm::gl::render_device_ptr device) {
     // render_budget_in_mb = render_budget_in_mb > video_ram_free_in_mb * 0.75 ? video_ram_free_in_mb * 0.75 : render_budget_in_mb;
 
 
-    // render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / (database->get_primitives_per_node() * sizeof(provenance_data) + database->get_slot_size());
+    // render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / (database->get_primitives_per_node() * sizeof(data_provenance) + database->get_slot_size());
     // std::cout << "RENDER2: " << render_budget_in_nodes_ << std::endl;
 
     size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
@@ -272,6 +272,8 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
     cut_database* cuts = cut_database::get_instance();
 
     size_t uploaded_nodes = 0;
+    
+    Data_Provenance data_provenance;
 
     switch (from_buffer) {
         case cut_database_record::temporary_buffer::BUFFER_A:
@@ -296,15 +298,14 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
                         database->get_slot_size()
                     );
 
-
-                    size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * sizeof(provenance_data);
-                    size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * sizeof(provenance_data);
+                    size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                    size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
                     device->main_context()->copy_buffer_data(
                         primary_buffer_->get_buffer_provenance(), 
                         temp_buffer_a_->get_buffer_provenance(), 
                         offset_in_render_VBO_provenance, 
                         offset_in_temp_VBO_provenance, 
-                        database->get_primitives_per_node() * sizeof(provenance_data)
+                        database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
                     );
                 }
             }
@@ -333,14 +334,14 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
                     );
 
 
-                    size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * sizeof(provenance_data);
-                    size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * sizeof(provenance_data);
+                    size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                    size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
                     device->main_context()->copy_buffer_data(
                         primary_buffer_->get_buffer_provenance(), 
                         temp_buffer_b_->get_buffer_provenance(), 
                         offset_in_render_VBO_provenance, 
                         offset_in_temp_VBO_provenance, 
-                        database->get_primitives_per_node() * sizeof(provenance_data)
+                        database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
                     );
                 }
             }
