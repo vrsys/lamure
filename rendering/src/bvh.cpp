@@ -47,8 +47,9 @@ bvh(const std::string& filename)
   filename_(""),
   translation_(scm::math::vec3f(0.f)) {
 
-    std::string extension = filename.substr(filename.size()-3);
-    if (extension.compare("bvh") == 0) {
+    std::string extension = filename.substr(filename.find_last_of(".") + 1);
+
+    if (extension.compare("bvhqz") == 0 || extension.compare("bvh") == 0) {
        load_bvh_file(filename);
     }
     else {

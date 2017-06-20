@@ -122,6 +122,12 @@ add_model(const std::string& filepath, const std::string& model_key) {
 #endif
             break;
 
+
+          case bvh::primitive_type::POINTCLOUD_QZ:
+#ifdef LAMURE_ENABLE_INFO
+            std::cout << "lamure: pointcloud_qz " << model_id << ": " << filepath << std::endl;
+#endif
+
           case bvh::primitive_type::TRIMESH:
 #ifdef LAMURE_ENABLE_INFO
             std::cout << "lamure: trimesh " << model_id << ": " << filepath << std::endl;
@@ -130,7 +136,7 @@ add_model(const std::string& filepath, const std::string& model_key) {
 
           default:
             throw std::runtime_error(
-                "lamure: unknwown primitive type: " + std::to_string(bvh->get_primitive()));
+                "lamure: unknown primitive type: " + std::to_string(bvh->get_primitive()));
             break; 
 
         }
@@ -162,6 +168,8 @@ get_primitive_size(const bvh::primitive_type type) const {
     switch (type) {
         case bvh::primitive_type::POINTCLOUD:
             return sizeof(dataset::serialized_surfel);
+        case bvh::primitive_type::POINTCLOUD_QZ:
+            return sizeof(dataset::serialized_surfel_qz);
         case bvh::primitive_type::TRIMESH:
             return sizeof(dataset::serialized_triangle);
         default: break;

@@ -649,6 +649,11 @@ render_two_pass_HQ(lamure::context_t context_id,
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
+
+            if (bvh->get_primitive() == bvh::primitive_type::POINTCLOUD_QZ) {
+                std::cout << "TRYING TO RENDER COMPRESSED DATA SET\n";
+            }
+
             if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD) {
                 continue;
             }
