@@ -375,8 +375,6 @@ int main(int argc, char *argv[]) {
 
         //recompute max_radius_deviation if it was not set (in order to be able to compress bvhs prev v1.1)
         if( 0.0 == max_radius_deviation ) {
-          double accumulated_radius = 0.0;
-          int64_t valid_surfel_count = 0;
           float max_radius = 0.0f;
           float min_radius = std::numeric_limits<float>::max();
 

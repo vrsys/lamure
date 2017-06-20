@@ -47,7 +47,8 @@ private:
     slot_t num_slots_;
     size_t size_of_slot_;
     size_t size_of_surfel_;
-
+    size_t size_of_surfel_qz_;
+    
     bool is_mapped_;
     bool has_layout_;
 
