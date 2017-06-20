@@ -58,13 +58,27 @@ char *get_cmd_option(char **begin, char **end, const std::string &option)
 
 bool write_dummy_binary_file()
 {
+    std::cout << "sizes: " << std::endl;
+    std::cout << "size of int: " << sizeof(int) << std::endl;
+    std::cout << "size of float: " << sizeof(float) << std::endl;
+    std::cout << "size of double: " << sizeof(double) << std::endl;
     std::ofstream ofile("dummy_binary_file.bin", std::ios::binary);
     for (int i = 0; i < 4434885; ++i)
     {
-        const float f = double(rand()) / double(RAND_MAX);
-        // const float f = 1.0f;
+        float f = 0.0f;
         ofile.write((char*) &f, sizeof(float));
-        // std::cout << i << std::endl;
+        ofile.write((char*) &f, sizeof(float));
+        f = 1.0f;
+        ofile.write((char*) &f, sizeof(float));
+
+        // const float f = double(rand()) / double(RAND_MAX);
+        // ofile.write((char*) &f, sizeof(float));
+
+        // const float f = double(rand()) / double(RAND_MAX);
+        // ofile.write((char*) &f, sizeof(float));
+
+        // const double f = double(rand()) / double(RAND_MAX);
+        // ofile.write((char*) &f, sizeof(double));
     }
     return true;
 }
@@ -92,7 +106,6 @@ int main(int argc, char *argv[])
         lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
     );
     data_provenance.add_item(item_int);
-
 
     std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
     // return 1;

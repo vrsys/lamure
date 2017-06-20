@@ -40,12 +40,12 @@ public:
                             const size_t start_in_file,
                             const size_t length_in_bytes) const;
                             
-    void                write(char* const data,
-                            const size_t start_in_file,
-                            const size_t length_in_bytes);
+    // void                write(char* const data,
+    //                         const size_t start_in_file,
+    //                         const size_t length_in_bytes);
 
 private:
-    mutable std::fstream stream_;
+    mutable std::ifstream stream_;
 
     std::string         file_name_;
     bool                is_file_open_;

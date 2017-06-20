@@ -25,7 +25,9 @@ layout(location = 3) in float in_b;
 layout(location = 4) in float empty;
 layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
+// layout(location = 7) in vec3 prov_float;
 layout(location = 7) in float prov_float;
+// layout(location = 7) in double prov_float;
 
 const vec4 GREEN = vec4( 0.0, 1.0, 0.0, 1.0 );
 const vec4 WHITE = vec4( 1.0, 1.0, 1.0, 1.0 );
@@ -71,13 +73,15 @@ void main()
   VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * point_size_factor * model_radius_scale * in_radius;
 
   VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
-  VertexOut.pass_prov_float = prov_float;
+  // VertexOut.pass_prov_float = 4.0f;
+  VertexOut.pass_prov_float = float(prov_float);
 
 #if 1
   if(state_lense == 1 && is_in_sphere())
-  // if(state_lense == 1 && is_in_sphere() && prov_float < 0.5f)
+  // if(state_lense == 1 && is_in_sphere() && float(prov_float) < 0.5f)
   {
-    float u = clamp( prov_float, 0.0, 1.0 );
+    // float u = clamp( 4.0f, 0.0, 1.0 );
+    float u = clamp( float(prov_float), 0.0, 1.0 );
     if( u < 0.5 )
     {
         VertexOut.pass_point_color = mix( GREEN, WHITE, remap( 0.0, 0.5, u ) ).xyz;
@@ -88,6 +92,7 @@ void main()
     }
     // VertexOut.pass_point_color = vec3(0.0, 1.0, 0.0);
   } else {
+    // VertexOut.pass_point_color = prov_float;
     VertexOut.pass_point_color = vec3(in_r, in_g, in_b);
   }
 #else

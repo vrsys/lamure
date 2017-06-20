@@ -37,6 +37,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
 
     Data_Provenance data_provenance;
     lamure::ren::Item_Provenance item_float(
+        // lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
         lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
         lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
     );
@@ -48,6 +49,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
     size_of_slot_ = num_surfels_per_node * size_of_surfel_;
     std::cout << "size of surfel: " << size_of_surfel_ << std::endl;
     std::cout << "size of slot: " << size_of_slot_ << std::endl;
+    std::cout << "size of prov: " << data_provenance.get_size_in_bytes() << std::endl;
 
     buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
                                     scm::gl::USAGE_DYNAMIC_COPY,
@@ -68,19 +70,23 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
         vertex_format.push_back(scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
         vertex_format.push_back(scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_));
         vertex_format.push_back(scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_));
+        // vertex_format.push_back(scm::gl::vertex_format::element(1, 7, scm::gl::TYPE_DOUBLE, 8));
 
         int counter = 7;
-        for(std::vector<Item_Provenance>::iterator it = data_provenance.get_items().begin(); it != data_provenance.get_items().end(); ++it)
+        for(Item_Provenance item:  data_provenance.get_items()) 
+        // for(std::vector<Item_Provenance>::iterator it = data_provenance.get_items().begin(); it != data_provenance.get_items().end(); ++it)
         {
-            Item_Provenance &item = (*it);
+            // Item_Provenance &item = (*it);
             if(item.get_visualization() == Item_Provenance::visualization_item::VISUALIZATION_COLOR)
             {
+                std::cout << item.get_type() << std::endl;
                 switch(item.get_type()) 
                 {
-                    case Item_Provenance::type_item::TYPE_INT: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_INT, data_provenance.get_size_in_bytes())); break;
-                    case Item_Provenance::type_item::TYPE_FLOAT: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_FLOAT, data_provenance.get_size_in_bytes())); break;
-                    case Item_Provenance::type_item::TYPE_VEC3I: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3I, data_provenance.get_size_in_bytes())); break;
-                    case Item_Provenance::type_item::TYPE_VEC3F: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3F, data_provenance.get_size_in_bytes())); break;
+                    case Item_Provenance::type_item::TYPE_INT: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_INT, data_provenance.get_size_in_bytes()));std::cout << item.get_type() << std::endl; break;
+                    // case Item_Provenance::type_item::TYPE_FLOAT: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_DOUBLE, data_provenance.get_size_in_bytes())); break;
+                    case Item_Provenance::type_item::TYPE_FLOAT: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_FLOAT, data_provenance.get_size_in_bytes()));std::cout << item.get_type() << std::endl; break;
+                    case Item_Provenance::type_item::TYPE_VEC3I: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3I, data_provenance.get_size_in_bytes()));std::cout << item.get_type() << std::endl; break;
+                    case Item_Provenance::type_item::TYPE_VEC3F: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3F, data_provenance.get_size_in_bytes()));std::cout << item.get_type() << std::endl; break;
                 }
                 counter++;
             }

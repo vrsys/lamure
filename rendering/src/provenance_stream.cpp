@@ -94,17 +94,17 @@ read(char* const data,
 }
 
                             
-void provenance_stream::
-write(char* const data,
-      const size_t start_in_file,
-      const size_t length_in_bytes) {
-    assert(length_in_bytes > 0);
-    assert(is_file_open_);
-    assert(data != nullptr);
+// void provenance_stream::
+// write(char* const data,
+//       const size_t start_in_file,
+//       const size_t length_in_bytes) {
+//     assert(length_in_bytes > 0);
+//     assert(is_file_open_);
+//     assert(data != nullptr);
     
-    stream_.seekp(start_in_file);
-    stream_.write(data, length_in_bytes);
+//     stream_.seekp(start_in_file);
+//     stream_.write(data, length_in_bytes);
     
-}
+// }
 
 } } // namespace lamure
