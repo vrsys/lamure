@@ -127,7 +127,7 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
     lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
     lamure::ren::policy*         policy   = lamure::ren::policy::get_instance();
 
-    size_t size_of_nodes_in_bytes = database->get_primitive_size(lamure::ren::bvh::primitive_type::POINTCLOUD) * database->get_primitives_per_node();
+    size_t size_of_nodes_in_bytes = database->get_primitive_size(lamure::ren::bvh::primitive_type::POINTCLOUD_QZ) * database->get_primitives_per_node();
     size_t render_budget_in_mb    = policy->render_budget_in_mb();
 
     size_t num_slots              = (render_budget_in_mb * 1024u * 1024u) / size_of_nodes_in_bytes;
@@ -175,6 +175,9 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
 
 
                 for(int i = 0; i < 8; ++i) {
+                    int64_t write_idx = 8*node_slot_index_pair.slot_id_ + i;
+                    if( write_idx < 0 || write_idx >= num_slots * 8)
+                        std::cout << "CURRENT WRITE IDX: " << write_idx << "; MAX_WRITE IDX: " << num_slots * 8 - 1 << "\n";
                     mapped_ssbo[8*node_slot_index_pair.slot_id_ + i] = bvh_data_to_write[i];
                 }
             //fast_update_index_map[node_slot_index_pair.slot_id_] = std::make_pair(model_id, node_slot_index_pair.node_id_);

@@ -353,7 +353,9 @@ int main(int argc, char *argv[]) {
     out_stream.open(out_lodqz_file, mode);
 
     for (lamure::node_t node_idx = 0; node_idx < first_leaf + num_leafs; ++node_idx) {
-      std::cout << "Starting with: " << node_idx << "\n";
+      if(node_idx % 1000 == 0)
+      std::cout << "Starting with: " << node_idx << "\r";
+      std::cout.flush();
       auto const& avg_surfel_radius = bvh->get_avg_primitive_extent(node_idx);
       auto max_radius_deviation = bvh->get_max_surfel_radius_deviation(node_idx);
 

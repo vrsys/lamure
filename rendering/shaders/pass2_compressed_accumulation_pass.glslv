@@ -117,17 +117,7 @@ void main()
   } else if(2 == main_axis) {
     in_normal.xyz = unswizzled_components.xyz;    
   }
-/*
-  int first_comp_axis = (main_axis + 1) % 3;
-  int second_comp_axis = (main_axis + 2) % 3;
 
-  float first_component = (u_component / float(num_points_u) ) * 2.0 - 1.0;
-  float second_component = (v_component / float(num_points_v) ) * 2.0 - 1.0;
-
-  vec3 in_normal = vec3(first_component, 
-                        second_component,
-                        is_main_axis_negative * sqrt(-(first_component*first_component) - (second_component*second_component) + 1) );
-*/
   vec3 ms_n = normalize(in_normal.xyz);
   vec3 ms_u;
 
