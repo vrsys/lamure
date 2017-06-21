@@ -351,6 +351,9 @@ dispatchKeyboardInput(unsigned char key)
     case 'm':
       renderer_->toggle_do_measurement();
       break;
+    case 's':
+      renderer_->toggle_ssbo_update();
+      break;
 
     case '+':
         importance_ += 0.1f;

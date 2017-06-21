@@ -15,7 +15,7 @@ struct bvh_auxiliary {
   vec4 bb_and_rad_max;
 };
 
-layout(std430, binding = 1) buffer bvh_auxiliary_struct {
+layout(std430, binding = 1) coherent readonly buffer bvh_auxiliary_struct {
      bvh_auxiliary data_bvh[];
 };
 

@@ -225,6 +225,7 @@ private:
         size_t                                                  elapsed_ms_since_cut_update_;
 
         RenderMode                                              render_mode_;
+        bool                                                    stop_ssbo_update_ = false;
 
         std::set<lamure::model_t> visible_set_;
         std::set<lamure::model_t> invisible_set_;
@@ -237,6 +238,7 @@ private:
         std::vector<scm::math::vec3f> line_begin_;
         std::vector<scm::math::vec3f> line_end_;
 
+        std::map<lamure::context_t, std::vector<float>> bvh_ssbo_cpu_data;
         std::map<lamure::context_t, scm::gl::buffer_ptr> bvh_ssbos_per_context;
         unsigned int max_lines_;
 
@@ -258,6 +260,7 @@ public:
     void take_screenshot(std::string const& screenshot_path, std::string const& screenshot_name);
     void toggle_visible_set();
     void toggle_display_info();
+    void toggle_ssbo_update();
 };
 
 #endif // REN_OLD_RENDERER_H_
