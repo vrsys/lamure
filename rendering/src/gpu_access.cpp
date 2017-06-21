@@ -88,7 +88,7 @@ map(scm::gl::render_device_ptr const& device) {
     if (!is_mapped_) {
         assert(device);
         is_mapped_ = true;
-        return (char*)device->main_context()->map_buffer(buffer_, scm::gl::ACCESS_READ_WRITE);
+        return (char*)device->main_context()->map_buffer(buffer_, scm::gl::ACCESS_WRITE_ONLY);
     }
     return nullptr;
 }
