@@ -114,6 +114,7 @@ protected:
     void                update_frustum_dependent_parameters(lamure::ren::camera const& camera);
 
     void                bind_storage_buffer(scm::gl::buffer_ptr buffer);
+    void                bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lamure::context_t context_id, std::set<lamure::model_t> const& current_set, lamure::view_t const view_id);
 
     void                upload_uniforms(lamure::ren::camera const& camera) const;
     void                upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
@@ -235,6 +236,8 @@ private:
         scm::gl::program_ptr trimesh_shader_program_;
         std::vector<scm::math::vec3f> line_begin_;
         std::vector<scm::math::vec3f> line_end_;
+
+        std::map<lamure::context_t, scm::gl::buffer_ptr> bvh_ssbos_per_context;
         unsigned int max_lines_;
 
 //methods for changing rendering settings dynamically

@@ -7,6 +7,19 @@
 
 #version 420 core
 
+#extension GL_ARB_shader_storage_buffer_object : require
+
+
+
+struct bvh_auxiliary {
+  vec4 bb_and_rad_min;
+  vec4 bb_and_rad_max;
+};
+
+layout(std430, binding = 1) buffer bvh_auxiliary_struct {
+     bvh_auxiliary data_bvh[];
+};
+
 uniform mat4 inv_mv_matrix;
 uniform float model_radius_scale;
 uniform float point_size_factor;
@@ -23,10 +36,14 @@ layout(location = 6) in vec3 in_normal;
 
 */
 
+
+/*
 uniform vec3 bb_min = vec3(0.0, 0.0, 0.0);
 uniform vec3 bb_max = vec3(0.0, 0.0, 0.0);
 uniform float rad_min = 0.0;
 uniform float rad_max = 0.0;
+*/
+uniform int num_primitives_per_node;
 
 out VertexData {
   vec3 pass_ms_u;
@@ -50,11 +67,16 @@ void main()
   ivec3 rgb_multiplier = (ivec3(in_qz_color_rgb_565) >> rgb_565_shift_vec) & rgb_565_mask_vec;
   vec3 in_rgb = rgb_multiplier * rgb_565_quant_steps / 255.0;
 */
+
+  int ssbo_node_id = gl_VertexID / num_primitives_per_node;
+
+  bvh_auxiliary test = data_bvh[ssbo_node_id];
+
   // dequantize position
-  vec3 in_position = bb_min + ivec3(in_qz_pos_x, in_qz_pos_y, in_qz_pos_z) * ( (bb_max - bb_min)/65535.0 );
+  vec3 in_position = test.bb_and_rad_min.xyz + ivec3(in_qz_pos_x, in_qz_pos_y, in_qz_pos_z) * ( (test.bb_and_rad_max.xyz - test.bb_and_rad_min.xyz)/65535.0 );
 
   // dequantize radius
-  float in_radius = rad_min + in_qz_radius * ( (rad_max - rad_min) / 65535.0);
+  float in_radius = test.bb_and_rad_min.a + in_qz_radius * ( (test.bb_and_rad_max.a  - test.bb_and_rad_min.a) / 65535.0);
 
   // dummy normal dequantization
   //vec3 in_normal = vec3(0.5, 0.5, 0.5);

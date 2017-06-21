@@ -66,7 +66,6 @@ private:
     temporary_storages temporary_storages_;
     node_t upload_budget_in_nodes_;
     node_t render_budget_in_nodes_;
-
 };
 
 

@@ -121,6 +121,105 @@ bind_storage_buffer(scm::gl::buffer_ptr buffer) {
 }
 
 void Renderer::
+bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lamure::context_t context_id, std::set<lamure::model_t> const& current_set, lamure::view_t const view_id) {
+    
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+    lamure::ren::policy*         policy   = lamure::ren::policy::get_instance();
+
+    size_t size_of_nodes_in_bytes = database->get_primitive_size(lamure::ren::bvh::primitive_type::POINTCLOUD) * database->get_primitives_per_node();
+    size_t render_budget_in_mb    = policy->render_budget_in_mb();
+
+    size_t num_slots              = (render_budget_in_mb * 1024u * 1024u) / size_of_nodes_in_bytes;
+    size_t size_of_node_compression_slot = sizeof(float) * 8;
+    if(nullptr == buffer) {
+        std::cout << "INITIALIZED SSBO! \n";
+        buffer = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER,
+                                         scm::gl::USAGE_DYNAMIC_COPY,
+                                         num_slots * size_of_node_compression_slot,
+                                         0);
+    }
+
+
+
+    auto const& update_set = cuts->get_updated_set(context_id);
+
+    //float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_READ_WRITE);
+    float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+    std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
+    for (auto& model_id : current_set) {
+        lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+        //only nodes that are in the cut could have been updated. Therefore, we write the complete cut into the map.
+
+
+        const lamure::ren::bvh*  bvh = database->get_model(model_id)->get_bvh();
+
+        for(auto const& node_slot_index_pair : cut.complete_set() ) {
+            //std::cout << node_slot_index_pair.node_id_ << "\n";
+            auto const& current_bounding_box = bvh->get_bounding_boxes()[node_slot_index_pair.node_id_];
+            float avg_surfel_radius = bvh->get_avg_primitive_extent(node_slot_index_pair.node_id_);
+            float max_radius_deviation = bvh->get_max_surfel_radius_deviation(node_slot_index_pair.node_id_);
+
+            float min_radius = avg_surfel_radius - max_radius_deviation;
+            float max_radius = avg_surfel_radius + max_radius_deviation;
+
+            float bvh_data_to_write[8];
+            bvh_data_to_write[0] = current_bounding_box.min_vertex()[0];
+            bvh_data_to_write[1] = current_bounding_box.min_vertex()[1];
+            bvh_data_to_write[2] = current_bounding_box.min_vertex()[2];
+            bvh_data_to_write[3] = min_radius;
+            bvh_data_to_write[4] = current_bounding_box.max_vertex()[0];
+            bvh_data_to_write[5] = current_bounding_box.max_vertex()[1];
+            bvh_data_to_write[6] = current_bounding_box.max_vertex()[2];
+            bvh_data_to_write[7] = max_radius;
+
+
+                for(int i = 0; i < 8; ++i) {
+                    mapped_ssbo[8*node_slot_index_pair.slot_id_ + i] = bvh_data_to_write[i];
+                }
+            //fast_update_index_map[node_slot_index_pair.slot_id_] = std::make_pair(model_id, node_slot_index_pair.node_id_);
+        }
+    }
+
+    device_->main_context()->unmap_buffer(buffer);
+
+    /*
+    std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
+    float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+    for( auto const& slot_to_update : update_set) {
+        int64_t ssbo_slot_to_write = slot_to_update.dst_;
+        auto const& model_node_info_to_fetch = fast_update_index_map[ssbo_slot_to_write];
+        const lamure::ren::bvh*  bvh = database->get_model(model_node_info_to_fetch.first)->get_bvh();
+        auto const& current_bounding_box = bvh->get_bounding_boxes()[model_node_info_to_fetch.second];
+        float avg_surfel_radius = bvh->get_avg_primitive_extent(model_node_info_to_fetch.second);
+        float max_radius_deviation = bvh->get_max_surfel_radius_deviation(model_node_info_to_fetch.second);
+
+        float min_radius = avg_surfel_radius - max_radius_deviation;
+        float max_radius = avg_surfel_radius + max_radius_deviation;
+
+        float bvh_data_to_write[8] = {current_bounding_box.min_vertex()[0], current_bounding_box.min_vertex()[1], current_bounding_box.min_vertex()[2], min_radius,
+            current_bounding_box.max_vertex()[0], current_bounding_box.max_vertex()[1], current_bounding_box.max_vertex()[2],  max_radius};
+
+
+            //mapped_ssbo[8*slot_to_update.dst_] =
+            memcpy( (void*)&mapped_ssbo[8*slot_to_update.dst_], (void*)&bvh_data_to_write[0], size_of_node_compression_slot);
+
+
+
+           // float* mapped           device_->main_context()->buffer_sub_data(buffer, size_of_node_compression_slot * slot_to_update.dst_, size_of_node_compression_slot, &bvh_data_to_write[0]);
+
+    //}
+    //device_->main_context()->unmap_buffer(buffer);
+*/
+    pass1_compressed_visibility_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
+    //std::cout << "NUM PRIMS PER NODE: " << int(database->get_primitives_per_node()) << "\n";
+    pass1_compressed_visibility_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
+    pass2_compressed_accumulation_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
+    pass2_compressed_accumulation_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
+    context_->bind_storage_buffer(buffer, 1, 0, int(num_slots * size_of_node_compression_slot) );
+}
+
+void Renderer::
 upload_uniforms(lamure::ren::camera const& camera) const
 {
     using namespace lamure::ren;
@@ -332,7 +431,7 @@ render_one_pass_LQ(lamure::context_t context_id,
         for (auto& model_id : current_set) {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+            std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
@@ -495,7 +594,7 @@ render_one_pass_HQ(lamure::context_t context_id,
 
                             cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-                            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+                            std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
                         scm::math::mat4 inv_m_matrix = (  (( (camera.get_view_matrix()) ) * mat4(model_transformations_[model_id]) ) );
 
@@ -641,6 +740,7 @@ render_two_pass_HQ(lamure::context_t context_id,
 
     size_t number_of_surfels_per_node = database->get_primitives_per_node();
 
+
     /***************************************************************************************
     *******************************BEGIN DEPTH PASS*****************************************
     ****************************************************************************************/
@@ -663,7 +763,7 @@ render_two_pass_HQ(lamure::context_t context_id,
         for (auto& model_id : current_set) {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+            std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
@@ -673,7 +773,11 @@ render_two_pass_HQ(lamure::context_t context_id,
 
 
             if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+
               context_->bind_program(pass1_compressed_visibility_shader_program_);
+
+              bind_bvh_attributes_for_compression_ssbo_buffer(bvh_ssbos_per_context[context_id], context_id, current_set, view_id);
+
             } else  {
               context_->bind_program(pass1_visibility_shader_program_);
             }
@@ -714,7 +818,7 @@ render_two_pass_HQ(lamure::context_t context_id,
 
 
                 if( (node_culling_result != 1) ) {
-
+/*
                     if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
 
                       pass1_compressed_visibility_shader_program_->uniform("bb_min", bounding_box_vector[node_slot_aggregate.node_id_].min_vertex());
@@ -724,6 +828,7 @@ render_two_pass_HQ(lamure::context_t context_id,
                     }
 
                     context_->apply();
+*/
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
                     context_->begin_query(depth_pass_timer_query);
@@ -777,7 +882,7 @@ render_two_pass_HQ(lamure::context_t context_id,
         for (auto& model_id : current_set) {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+            std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
@@ -814,6 +919,7 @@ render_two_pass_HQ(lamure::context_t context_id,
                 if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
                 {
 
+/*
                     if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
                           pass2_compressed_accumulation_shader_program_->uniform("bb_min", bounding_box_vector[node_slot_aggregate.node_id_].min_vertex());
                           pass2_compressed_accumulation_shader_program_->uniform("bb_max", bounding_box_vector[node_slot_aggregate.node_id_].max_vertex());
@@ -822,7 +928,7 @@ render_two_pass_HQ(lamure::context_t context_id,
                     }
 
                     context_->apply();
-
+*/
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr accumulation_pass_timer_query = device_->create_timer_query();
                     context_->begin_query(accumulation_pass_timer_query);
@@ -957,7 +1063,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
     for (auto& model_id : current_set) {
         cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+        std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
         size_of_culling_result_vector += renderable.size();
     }
@@ -1020,7 +1126,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
             if (bvh->get_primitive() == bvh::primitive_type::TRIMESH) {
                cut& cut = cuts->get_cut(context_id, view_id, model_id);
-               std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+               std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
                upload_transformation_matrices(camera, model_id, RenderPass::TRIMESH);
                
@@ -1059,7 +1165,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
             {
                 cut& c = cuts->get_cut(context_id, view_id, model_id);
 
-                std::vector<cut::node_slot_aggregate> renderable = c.complete_set();
+                std::vector<cut::node_slot_aggregate>& renderable = c.complete_set();
 
 
                 upload_transformation_matrices(camera, model_id, RenderPass::BOUNDING_BOX);
