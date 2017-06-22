@@ -24,12 +24,14 @@ uniform mat4 inv_mv_matrix;
 uniform float model_radius_scale;
 uniform float point_size_factor;
 
-layout(location = 0) in int in_qz_pos_x;
-layout(location = 1) in int in_qz_pos_y;
-layout(location = 2) in int in_qz_pos_z;
-layout(location = 3) in int in_qz_normal_enumerator;
+layout(location = 0) in uint in_qz_pos_xy;
+layout(location = 1) in uint in_qz_pos_z_normal_enum;
+layout(location = 2) in uint in_rgb777_and_radius_11;
+//layout(location = 1) in uint in_qz_pos_y;
+//layout(location = 2) in uint in_qz_pos_z;
+//layout(location = 3) in uint in_qz_normal_enumerator;
 //layout(location = 5) in int in_qz_radius;
-layout(location = 4) in uint in_rgb777_and_radius_11;
+
 /*
 layout(location = 0) in vec3 in_position;
 layout(location = 5) in float in_radius;
@@ -72,6 +74,12 @@ void main()
   int ssbo_node_id = gl_VertexID / num_primitives_per_node;
 
   bvh_auxiliary test = data_bvh[ssbo_node_id];
+
+
+  uint in_qz_pos_y = ( in_qz_pos_xy >> 16 ) & 0xFFFF;
+  uint in_qz_pos_x = in_qz_pos_xy & 0xFFFF;
+  uint in_qz_pos_z = ( in_qz_pos_z_normal_enum ) & 0xFFFF;
+  int in_qz_normal_enumerator = int (( in_qz_pos_z_normal_enum >> 16 ) & 0xFFFF);
 
   // dequantize position
   vec3 in_position = test.bb_and_rad_min.xyz + ivec3(in_qz_pos_x, in_qz_pos_y, in_qz_pos_z) * ( (test.bb_and_rad_max.xyz - test.bb_and_rad_min.xyz)/65535.0 );

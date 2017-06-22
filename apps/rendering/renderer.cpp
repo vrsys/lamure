@@ -144,7 +144,7 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
     }
 
 
-/*
+
     if(!stop_ssbo_update_) {
 
 
@@ -193,7 +193,7 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
 
     }
 
-    */
+    
 
     std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
     auto const& update_set = cuts->get_updated_set(context_id);
