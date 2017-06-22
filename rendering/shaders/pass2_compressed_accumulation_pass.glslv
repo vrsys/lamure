@@ -28,8 +28,9 @@ layout(location = 0) in int in_qz_pos_x;
 layout(location = 1) in int in_qz_pos_y;
 layout(location = 2) in int in_qz_pos_z;
 layout(location = 3) in int in_qz_normal_enumerator;
-layout(location = 4) in int in_qz_color_rgb_565;
-layout(location = 5) in int in_qz_radius;
+layout(location = 4) in uint in_rgb777_and_radius_11;
+//layout(location = 4) in int in_qz_color_rgb_565;
+//layout(location = 5) in int in_qz_radius;
 
 /*
 layout(location = 0) in vec3 in_position;
@@ -58,9 +59,9 @@ out VertexData {
   vec3 pass_normal;
 } VertexOut;
 
-const ivec3 rgb_565_shift_vec   = ivec3(11, 5, 0);
-const ivec3 rgb_565_mask_vec    = ivec3(0x1F, 0x3F, 0x1F);
-const ivec3 rgb_565_quant_steps = ivec3(8, 4, 8); 
+const ivec3 rgb_777_shift_vec   = ivec3(25, 18, 11);
+const ivec3 rgb_777_mask_vec    = ivec3(0x7F, 0x7F, 0x7F);
+const ivec3 rgb_777_quant_steps = ivec3(2, 2, 2); 
 
 const int num_points_u = 104;
 const int num_points_v = 105;
@@ -84,14 +85,20 @@ void main()
   bvh_auxiliary test = data_bvh[ssbo_node_id];
 */
   // dequantize color
-  ivec3 rgb_multiplier = (ivec3(in_qz_color_rgb_565) >> rgb_565_shift_vec) & rgb_565_mask_vec;
-  vec3 in_rgb = rgb_multiplier * rgb_565_quant_steps / 255.0;
+  ivec3 rgb_multiplier = (ivec3(in_rgb777_and_radius_11) >> rgb_777_shift_vec) & rgb_777_mask_vec;
+  vec3 in_rgb = rgb_multiplier * rgb_777_quant_steps / 255.0;
 
   // dequantize position
   vec3 in_position = test.bb_and_rad_min.xyz + ivec3(in_qz_pos_x, in_qz_pos_y, in_qz_pos_z) * ( (test.bb_and_rad_max.xyz - test.bb_and_rad_min.xyz)/65535.0 );
 
   // dequantize radius
-  float in_radius = test.bb_and_rad_min.a + in_qz_radius * ( (test.bb_and_rad_max.a  - test.bb_and_rad_min.a) / 65535.0);
+  uint radius_quantization_index = (in_rgb777_and_radius_11 & 0x7FF);
+
+  float in_radius = 0.0;
+
+  if( 2047 != radius_quantization_index) {
+    in_radius = test.bb_and_rad_min.a + (in_rgb777_and_radius_11 & 0x7FF) * ( (test.bb_and_rad_max.a  - test.bb_and_rad_min.a) / 2047.0);
+  }
 
   // dequantized normal
   int compressed_normal_enumerator = in_qz_normal_enumerator;

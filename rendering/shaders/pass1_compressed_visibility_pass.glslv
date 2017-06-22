@@ -28,7 +28,8 @@ layout(location = 0) in int in_qz_pos_x;
 layout(location = 1) in int in_qz_pos_y;
 layout(location = 2) in int in_qz_pos_z;
 layout(location = 3) in int in_qz_normal_enumerator;
-layout(location = 5) in int in_qz_radius;
+//layout(location = 5) in int in_qz_radius;
+layout(location = 4) in uint in_rgb777_and_radius_11;
 /*
 layout(location = 0) in vec3 in_position;
 layout(location = 5) in float in_radius;
@@ -53,9 +54,9 @@ out VertexData {
 
 
 
-const ivec3 rgb_565_shift_vec   = ivec3(11, 5, 0);
-const ivec3 rgb_565_mask_vec    = ivec3(0x1F, 0x3F, 0x1F);
-const ivec3 rgb_565_quant_steps = ivec3(8, 4, 8);
+//const ivec3 rgb_565_shift_vec   = ivec3(11, 5, 0);
+//const ivec3 rgb_565_mask_vec    = ivec3(0x1F, 0x3F, 0x1F);
+//const ivec3 rgb_565_quant_steps = ivec3(8, 4, 8);
 
 const int num_points_u = 104;
 const int num_points_v = 105;
@@ -76,7 +77,14 @@ void main()
   vec3 in_position = test.bb_and_rad_min.xyz + ivec3(in_qz_pos_x, in_qz_pos_y, in_qz_pos_z) * ( (test.bb_and_rad_max.xyz - test.bb_and_rad_min.xyz)/65535.0 );
 
   // dequantize radius
-  float in_radius = test.bb_and_rad_min.a + in_qz_radius * ( (test.bb_and_rad_max.a  - test.bb_and_rad_min.a) / 65535.0);
+  uint radius_quantization_index = (in_rgb777_and_radius_11 & 0x7FF);
+
+  float in_radius = 0.0;
+
+  if( 2047 != radius_quantization_index) {
+    in_radius = test.bb_and_rad_min.a + (in_rgb777_and_radius_11 & 0x7FF) * ( (test.bb_and_rad_max.a  - test.bb_and_rad_min.a) / 2047.0);
+  }
+
 
   // dummy normal dequantization
   //vec3 in_normal = vec3(0.5, 0.5, 0.5);

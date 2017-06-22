@@ -53,8 +53,9 @@ struct surfel {
 struct quantized_surfel {
   uint16_t pos_16ui_components[3];
   uint16_t normal_16ui;
-  uint16_t color_565ui_combined;
-  uint16_t  radius_scale;
+  uint32_t color777ui_and_radius11ui_combined;
+  //uint16_t color_565ui_combined;
+  //uint16_t  radius_scale;
 };
 
 void quantize_position(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel, scm::gl::boxf const& node_extents) {
@@ -92,14 +93,15 @@ void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out
 
   //std::cout << std::setprecision(16) << max_surfel_radius_deviation << "\n";
   double one_sided_quantization_step = 0.0;
-
-  int64_t max_quantization_idx = std::pow(2, sizeof(quantized_surfel::radius_scale) * 8);
+  uint32_t num_radius_bit = 11;
+  int64_t max_quantization_idx = std::pow(2, num_radius_bit);
   int half_range_minus_one = max_quantization_idx / 2 - 1;
 
   one_sided_quantization_step = ((double)max_surfel_radius_deviation) / half_range_minus_one;
 
   if( 0.0 == one_sided_quantization_step ) { //avoid division by zero
-    out_compressed_surfel.radius_scale = max_quantization_idx - 1; //(max_quantization index - 1) marks invalid surfels (with radius zero)  (=> 255 for 8 bit, 65535 for 16 bit)
+
+    out_compressed_surfel.color777ui_and_radius11ui_combined = (out_compressed_surfel.color777ui_and_radius11ui_combined & (0xFFFFF800)) | ( max_quantization_idx - 1 ); //(max_quantization index - 1) marks invalid surfels (with radius zero)  (=> 255 for 8 bit, 65535 for 16 bit)
     return;
   }
 
@@ -107,10 +109,13 @@ void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out
   double normalized_float_radius = ((double)in_uncompressed_surfel.size - reference_min_range) / (2*max_surfel_radius_deviation);
 
   int32_t overflow_protected_rad = std::round(normalized_float_radius * half_range_minus_one * 2); //skip 1 out of 256 steps for convenience
-  out_compressed_surfel.radius_scale = std::min( int32_t(half_range_minus_one*2), std::max( int32_t(0), overflow_protected_rad) );
+
+  uint32_t quantized_radius_to_write = std::min( uint32_t(half_range_minus_one*2), std::max( uint32_t(0), uint32_t(overflow_protected_rad) ) );
+  out_compressed_surfel.color777ui_and_radius11ui_combined =  ((out_compressed_surfel.color777ui_and_radius11ui_combined & (0xFFFFF800)) | quantized_radius_to_write );
 }
 
 void quantize_color(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel) {
+  /*
   int32_t rb_quantization_step = 8;
   int32_t g_quantization_step  = 4;
 
@@ -134,6 +139,29 @@ void quantize_color(surfel const& in_uncompressed_surfel, quantized_surfel& out_
 
 
   out_compressed_surfel.color_565ui_combined = quantized_and_combined_color;
+  */
+
+  int32_t rb_quantization_step = 2;
+  int32_t g_quantization_step  = 2;
+
+  int16_t r7 = int32_t( std::round(in_uncompressed_surfel.rgbf[0] / (double)rb_quantization_step) );
+  int16_t g7 = int32_t( std::round(in_uncompressed_surfel.rgbf[1] /  (double)g_quantization_step) );
+  int16_t b7 = int32_t( std::round(in_uncompressed_surfel.rgbf[2] / (double)rb_quantization_step) );
+
+  r7 = std::min(int16_t(127), r7);
+  g7 = std::min(int16_t(127), g7);
+  b7 = std::min(int16_t(127), b7);
+
+  uint16_t rb_combination_mask = 0x7F;
+  uint16_t  g_combination_mask = 0x7F;
+
+
+  //bit pattern: rrrrr gggggg bbbbb  <----- 16 bit
+  uint32_t quantized_and_combined_color =  ((r7 & rb_combination_mask) << 14) |
+                                           ((g7 &  g_combination_mask) <<  7) |
+                                           ((b7 & rb_combination_mask) <<  0);
+
+  out_compressed_surfel.color777ui_and_radius11ui_combined = (out_compressed_surfel.color777ui_and_radius11ui_combined & (0x7FF) ) | ( quantized_and_combined_color << 11 );
 }
 
 void quantize_normal(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel) {
@@ -153,7 +181,7 @@ void quantize_normal(surfel const& in_uncompressed_surfel, quantized_surfel& out
 
   //we use 104*105 normals per face (6*104*105 slightly < 2**16)
   int32_t face_positions_u = 104;
-  int32_t face_positions_v = 105;
+  int32_t face_positions_v = 105; 
 
   //int32_t face_positions_u = 147;
   //int32_t face_positions_v = 148;
@@ -423,14 +451,14 @@ int main(int argc, char *argv[]) {
 
             //quantization error measurement check
             double radius_quantization_error = 0.0;
-            int64_t max_quantization_idx = std::pow(2, sizeof(quantized_surfel::radius_scale) * 8);
+            int64_t max_quantization_idx = std::pow(2, 11);
             int64_t quantization_divisor = max_quantization_idx - 2;
 
 
             float min_radius = ((double)avg_surfel_radius - max_radius_deviation);
             float max_radius = ((double) ( max_radius_deviation + avg_surfel_radius ) );
 
-            float unquantized_radius = qz_surfel.radius_scale * ( ( max_radius - min_radius) / quantization_divisor ) + min_radius;
+            float unquantized_radius = (qz_surfel.color777ui_and_radius11ui_combined & (0x7FF )) * ( ( max_radius - min_radius) / quantization_divisor ) + min_radius;
             radius_quantization_error = std::abs(s.size - unquantized_radius);
             
             
@@ -459,9 +487,9 @@ int main(int argc, char *argv[]) {
             int g_error = 0;
             int b_error = 0;
 
-            int32_t unquantized_r = (0x1F & (qz_surfel.color_565ui_combined >> 11) ) * 8;
-            int32_t unquantized_g = (0x3F & (qz_surfel.color_565ui_combined >> 5 ) ) * 4;
-            int32_t unquantized_b = (0x1F & (qz_surfel.color_565ui_combined >> 0 ) ) * 8;           
+            int32_t unquantized_r = (0x7F & (qz_surfel.color777ui_and_radius11ui_combined >> 25) ) * 2;
+            int32_t unquantized_g = (0x7F & (qz_surfel.color777ui_and_radius11ui_combined >> 18 ) ) * 2;
+            int32_t unquantized_b = (0x7F & (qz_surfel.color777ui_and_radius11ui_combined >> 11 ) ) * 2;           
 
             r_error = std::abs(unquantized_r - s.rgbf[0]); 
             g_error = std::abs(unquantized_g - s.rgbf[1]); 
