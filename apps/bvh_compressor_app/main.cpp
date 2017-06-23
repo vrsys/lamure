@@ -99,11 +99,16 @@ void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out
 
   one_sided_quantization_step = ((double)max_surfel_radius_deviation) / half_range_minus_one;
 
-  if( 0.0 == one_sided_quantization_step ) { //avoid division by zero
+  if(  (0.0 == in_uncompressed_surfel.size) ) { //find surfel with radius 0 and set them to the invalid value (max_quantization_idx - 1)
 
     out_compressed_surfel.color777ui_and_radius11ui_combined = (out_compressed_surfel.color777ui_and_radius11ui_combined & (0xFFFFF800)) | ( max_quantization_idx - 1 ); //(max_quantization index - 1) marks invalid surfels (with radius zero)  (=> 255 for 8 bit, 65535 for 16 bit)
     return;
-  }
+  } else if ((0.0 == one_sided_quantization_step) ) { //if it was not a zero surfel, make sure, handle the division by zero case (=> all surfels have exactly the same size)
+    out_compressed_surfel.color777ui_and_radius11ui_combined = (out_compressed_surfel.color777ui_and_radius11ui_combined & (0xFFFFF800)) | ( half_range_minus_one );
+    return;
+  } // if it was not a zero surfel, handle
+
+  if ((0.0 == one_sided_quantization_step) ||)
 
   double reference_min_range = avg_surfel_radius - max_surfel_radius_deviation;
   double normalized_float_radius = ((double)in_uncompressed_surfel.size - reference_min_range) / (2*max_surfel_radius_deviation);
@@ -423,7 +428,7 @@ int main(int argc, char *argv[]) {
           bvh->set_max_surfel_radius_deviation(node_idx, max_radius_deviation);
         }
 
-
+        #pragma omp parallel for
         for (unsigned int i = 0; i < bvh->get_primitives_per_node(); ++i) {
             //quantized_surfel qz_surfel;
             const surfel& s = surfels[i];

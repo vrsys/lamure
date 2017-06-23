@@ -798,7 +798,20 @@ render_two_pass_HQ(lamure::context_t context_id,
 
 
         node_t node_counter = 0;
-              bind_bvh_attributes_for_compression_ssbo_buffer(bvh_ssbos_per_context[context_id], context_id, current_set, view_id);
+        bool is_any_model_compressed = false;
+        for (auto& model_id : current_set) {
+            const bvh* bvh = database->get_model(model_id)->get_bvh();
+
+            if( bvh::primitive_type::POINTCLOUD_QZ == bvh->get_primitive() ) {
+                is_any_model_compressed = true;
+            }
+
+        }
+
+        if(is_any_model_compressed) {
+            bind_bvh_attributes_for_compression_ssbo_buffer(bvh_ssbos_per_context[context_id], context_id, current_set, view_id);
+        }
+
         for (auto& model_id : current_set) {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
