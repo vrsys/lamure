@@ -108,7 +108,7 @@ void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out
     return;
   } // if it was not a zero surfel, handle
 
-  if ((0.0 == one_sided_quantization_step) ||)
+  //if ((0.0 == one_sided_quantization_step) ||)
 
   double reference_min_range = avg_surfel_radius - max_surfel_radius_deviation;
   double normalized_float_radius = ((double)in_uncompressed_surfel.size - reference_min_range) / (2*max_surfel_radius_deviation);

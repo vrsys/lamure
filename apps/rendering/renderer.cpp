@@ -146,9 +146,6 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
 
 
     if(!stop_ssbo_update_) {
-
-
-
     //float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_READ_WRITE);
     float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
     std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
@@ -194,7 +191,7 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
     }
 
     
-
+/*
     std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
     auto const& update_set = cuts->get_updated_set(context_id);
 
@@ -221,14 +218,7 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
 
             float bvh_data_to_write[8] = {current_bounding_box.min_vertex()[0], current_bounding_box.min_vertex()[1], current_bounding_box.min_vertex()[2], min_radius,
                 current_bounding_box.max_vertex()[0], current_bounding_box.max_vertex()[1], current_bounding_box.max_vertex()[2],  max_radius};
-/*
-            for(int i = 0; i < 8; ++i) {
-                int64_t write_idx = 8*slot_to_update.dst_+ i;
-                if( write_idx < 0 || write_idx >= num_slots * 8)
-                    std::cout << "CURRENT WRITE IDX: " << write_idx << "; MAX_WRITE IDX: " << num_slots * 8 - 1 << "\n";
-                bvh_ssbo_cpu_data[int(context_id)][write_idx] = bvh_data_to_write[i];
-            }
-*/
+
                 //mapped_ssbo[8*slot_to_update.dst_] =
             memcpy( (void*)&(bvh_ssbo_cpu_data[int(context_id)][8*slot_to_update.dst_]), (void*)&(bvh_data_to_write[0]), size_of_node_compression_slot);
 
@@ -236,19 +226,14 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
                // float* mapped           device_->main_context()->buffer_sub_data(buffer, size_of_node_compression_slot * slot_to_update.dst_, size_of_node_compression_slot, &bvh_data_to_write[0]);
 
         }
-/*
-        buffer = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER,
-                                         scm::gl::USAGE_DYNAMIC_COPY,
-                                         num_slots * size_of_node_compression_slot,
-                                         (void*)&(bvh_ssbo_cpu_data[context_id][0]) );
-*/
+
 
         float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
         memcpy( (void*)&mapped_ssbo[0], (void*)&(bvh_ssbo_cpu_data[context_id][0]), int64_t(bvh_ssbo_cpu_data[context_id].size()) * sizeof(float));
         device_->main_context()->unmap_buffer(buffer);
   
     }
-
+*/
 
     pass1_compressed_visibility_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
     //std::cout << "NUM PRIMS PER NODE: " << int(database->get_primitives_per_node()) << "\n";
