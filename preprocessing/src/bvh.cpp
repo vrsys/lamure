@@ -1393,7 +1393,7 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
     reduction_strategy *p_reduction_strgy = (reduction_strategy *)&reduction_strgy;
     if(provenance_reduction_strategy *cast = dynamic_cast<provenance_reduction_strategy *>(p_reduction_strgy))
     {
-        for(uint32_t w_level = 0; w_level < depth_; ++w_level)
+        for(uint32_t w_level = 0; w_level <= depth_; ++w_level)
         {
             std::cout << "Entering w_level: " << w_level << std::endl;
 

@@ -599,9 +599,9 @@ reduction_normal_deviation_clustering::LoDMetaData reduction_normal_deviation_cl
         data._standard_deviation += sq_deviation;
     }
 
-    data._mean_absolute_deviation /= (double)input.size();
-    data._standard_deviation = scm::math::sqrt(data._standard_deviation / (double)input.size());
-    data._coefficient_of_variation = data._mean_absolute_deviation != 0 ? data._standard_deviation / data._mean_absolute_deviation : -1;
+    data._mean_absolute_deviation /= (float)input.size();
+    data._standard_deviation = (float) scm::math::sqrt(data._standard_deviation / (double)input.size());
+    data._coefficient_of_variation = (float) data._mean_absolute_deviation != 0 ? data._standard_deviation / data._mean_absolute_deviation : -1;
 
     //    printf("\nMAD: %e ", data._mean_absolute_deviation);
     //    printf("\nSTD: %e ", data._standard_deviation);

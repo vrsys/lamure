@@ -78,12 +78,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
     lamure::ren::policy *policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(64);
 
-    policy->set_render_budget_in_mb(0);
+    policy->set_render_budget_in_mb(3000);
     // policy->set_render_budget_in_mb(1024 * 6);
     // policy->set_render_budget_in_mb(1024 * 40);
     // policy->set_render_budget_in_mb(256);
 
-    policy->set_out_of_core_budget_in_mb(0);
+    policy->set_out_of_core_budget_in_mb(3000);
     // policy->set_out_of_core_budget_in_mb(1024 * 3);
     // policy->set_out_of_core_budget_in_mb(1024 * 20);
     // policy->set_out_of_core_budget_in_mb(256);
@@ -210,7 +210,8 @@ void Renderer::draw_points_dense(Scene scene)
 
     cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
 
-    controller->dispatch(context_id, _device);
+    if(dispatch)
+        controller->dispatch(context_id, _device);
 
     lamure::view_t view_id = controller->deduce_view_id(context_id, _camera->view_id());
 
@@ -255,6 +256,7 @@ void Renderer::draw_points_dense(Scene scene)
     _program_points_dense->uniform("position_sphere", _position_sphere);
     _program_points_dense->uniform("radius_sphere_screen", _radius_sphere_screen);
     _program_points_dense->uniform("position_sphere_screen", _position_sphere_screen);
+    _program_points_dense->uniform("mode_prov_data", mode_prov_data);
     // _radius_sphere = 1.0;
     // scm::math::vec3f _position_sphere
 

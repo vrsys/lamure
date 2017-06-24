@@ -47,10 +47,10 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_windo
     //     Camera &camera = (*it);
     //     camera.init(device);
     //     counter++;
-    //     if(counter == 20)
-    //     {
-    //      break;
-    //     }
+    //     // if(counter == 20)
+    //     // {
+    //     //  break;
+    //     // }
     // }
     device->main_context()->apply();
 }

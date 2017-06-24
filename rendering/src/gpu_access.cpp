@@ -41,7 +41,19 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
         lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
         lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
     );
+    lamure::ren::Item_Provenance item_float1(
+        // lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
+        lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
+        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    );
+    lamure::ren::Item_Provenance item_float2(
+        // lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
+        lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
+        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    );
     data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float1);
+    data_provenance.add_item(item_float2);
 
 
     num_slots_ = num_slots;

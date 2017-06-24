@@ -18,9 +18,9 @@ class provenance_reduction_strategy : public reduction_strategy
     class LoDMetaData
     {
       public:
-        double _mean_absolute_deviation;
-        double _standard_deviation;
-        double _coefficient_of_variation;
+        float _mean_absolute_deviation;
+        float _standard_deviation;
+        float _coefficient_of_variation;
     };
 
     virtual ~provenance_reduction_strategy() {}
@@ -66,7 +66,7 @@ class provenance_reduction_strategy : public reduction_strategy
             uint16_t magic_bytes = 0xAFFE;
             ofstream.write(reinterpret_cast<char *>(&magic_bytes), sizeof(magic_bytes));
 
-            uint64_t length_of_data = deviations.size() * 0x18;
+            uint64_t length_of_data = deviations.size() * 0x0C;
 
             ofstream.write(reinterpret_cast<char *>(&length_of_data), sizeof(length_of_data));
 
@@ -76,9 +76,9 @@ class provenance_reduction_strategy : public reduction_strategy
                 //                printf("\nSTD: %e ", (*rit)._standard_deviation);
                 //                printf("\nCoV: %e ", (*rit)._coefficient_of_variation);
 
-                ofstream.write(reinterpret_cast<char *>(&(*rit)._mean_absolute_deviation), 8);
-                ofstream.write(reinterpret_cast<char *>(&(*rit)._standard_deviation), 8);
-                ofstream.write(reinterpret_cast<char *>(&(*rit)._coefficient_of_variation), 8);
+                ofstream.write(reinterpret_cast<char *>(&(*rit)._mean_absolute_deviation), 4);
+                ofstream.write(reinterpret_cast<char *>(&(*rit)._standard_deviation), 4);
+                ofstream.write(reinterpret_cast<char *>(&(*rit)._coefficient_of_variation), 4);
             }
         }
         ofstream.close();
@@ -93,8 +93,8 @@ class provenance_reduction_strategy : public reduction_strategy
         {
             is.ignore(0x02);
 
-            uint64_t length_of_data = 0;
-            is.read(reinterpret_cast<char *>(&length_of_data), sizeof(length_of_data));
+            uint64_t length_of_data;
+            is.read(reinterpret_cast<char *>(&length_of_data), 8);
 
 //            printf("\nNode data length: %lu ", length_of_data);
 

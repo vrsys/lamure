@@ -66,7 +66,7 @@ class Renderer
 
     lamure::ren::camera *_camera = new lamure::ren::camera();
 
-    float _radius_sphere = 1.0;
+    float _radius_sphere = 3.0;
     scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
     float _radius_sphere_screen = 0.2;
     scm::math::vec2f _position_sphere_screen = scm::math::vec2f(0.0f, 0.0f);
@@ -91,6 +91,8 @@ class Renderer
 
     bool mode_draw_points_dense = false;
     bool mode_draw_images = true;
+    int mode_prov_data = 0;
+    bool dispatch = true;
 };
 
 #endif // LAMURE_RENDERER_H

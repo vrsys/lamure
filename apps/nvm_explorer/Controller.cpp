@@ -205,6 +205,22 @@ void Controller::handle_key_released(char key)
     {
         _renderer.update_state_lense();
     }
+    else if(key == '1')
+    {
+        _renderer.mode_prov_data = 0;
+    }
+    else if(key == '2')
+    {
+        _renderer.mode_prov_data = 1;
+    }
+    else if(key == '3')
+    {
+        _renderer.mode_prov_data = 2;
+    }
+    else if(key == 'p')
+    {
+        _renderer.dispatch = !_renderer.dispatch;
+    }
 
     if(key == 'w' || key == 'W')
     {

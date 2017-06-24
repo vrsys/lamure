@@ -31,8 +31,13 @@ using namespace utils;
 // t - toggle lense modes (none, world-lense, screen-lense)
 // alt + [w,a,s,d] - move screen-lense over screen
 // shift + [w,a,s,d,q,e] - move world-lense through world
-// shift + [x,c] - increase/decrease radius of world-lense
-// alt + [x,c] - in-/decrease radius of screen-lense
+// shift + [x,c] - increase/decrease radius of world-le
+
+// mogrify 30%
+// heatmap
+// downsampling images
+// ui imgui
+// lines
 
 Controller *controller = nullptr;
 int time_since_start = 0;
@@ -63,13 +68,14 @@ bool write_dummy_binary_file()
     std::cout << "size of float: " << sizeof(float) << std::endl;
     std::cout << "size of double: " << sizeof(double) << std::endl;
     std::ofstream ofile("dummy_binary_file.bin", std::ios::binary);
-    for (int i = 0; i < 4434885; ++i)
+    for (int i = 0; i < 36022860/4.0f; ++i)
+    // for (int i = 0; i < 4434885; ++i)
     {
         float f = 0.0f;
         ofile.write((char*) &f, sizeof(float));
-        ofile.write((char*) &f, sizeof(float));
-        f = 1.0f;
-        ofile.write((char*) &f, sizeof(float));
+        // ofile.write((char*) &f, sizeof(float));
+        // f = 1.0f;
+        // ofile.write((char*) &f, sizeof(float));
 
         // const float f = double(rand()) / double(RAND_MAX);
         // ofile.write((char*) &f, sizeof(float));
