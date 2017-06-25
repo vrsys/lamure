@@ -88,14 +88,8 @@ scm::math::mat4f &Camera_View::get_matrix_view()
     // std::cout << _position << std::endl;
     return _matrix_view;
 }
-int& Camera_View::get_width_window()
-{
-    return _width_window;
-}
-int& Camera_View::get_height_window()
-{
-    return _height_window;
-}
+int &Camera_View::get_width_window() { return _width_window; }
+int &Camera_View::get_height_window() { return _height_window; }
 scm::math::mat4f &Camera_View::get_matrix_perspective() { return _matrix_perspective; }
 void Camera_View::set_position(scm::math::vec3f position)
 {

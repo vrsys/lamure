@@ -7,17 +7,16 @@
 #include "Controller.h"
 #include "Scene.h"
 // #include "utils.h"
-#include <GL/freeglut.h> 
+#include <GL/freeglut.h>
 #include <lamure/ren/Data_Provenance.h>
 #include <lamure/ren/Item_Provenance.h>
 
+#include <chrono>
 #include <lamure/pro/common.h>
 #include <lamure/pro/data/DenseCache.h>
-#include <lamure/pro/data/SparseCache.h>
-#include <chrono>
 #include <lamure/pro/data/DenseStream.h>
 #include <lamure/pro/data/LoDMetaStream.h>
-
+#include <lamure/pro/data/SparseCache.h>
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -75,11 +74,11 @@ bool write_dummy_binary_file()
     std::cout << "size of float: " << sizeof(float) << std::endl;
     std::cout << "size of double: " << sizeof(double) << std::endl;
     std::ofstream ofile("dummy_binary_file.bin", std::ios::binary);
-    for (int i = 0; i < 36022860/4.0f; ++i)
+    for(int i = 0; i < 36022860 / 4.0f; ++i)
     // for (int i = 0; i < 4434885; ++i)
     {
         float f = 0.0f;
-        ofile.write((char*) &f, sizeof(float));
+        ofile.write((char *)&f, sizeof(float));
         // ofile.write((char*) &f, sizeof(float));
         // f = 1.0f;
         // ofile.write((char*) &f, sizeof(float));
@@ -179,7 +178,7 @@ int main(int argc, char *argv[])
     // }
     //  std::cout << "vec_image: " << vec_image.size() << std::endl;
 
-    //Scene scene = Scene(in_sparse,in_sparse_meta);
+    // Scene scene = Scene(in_sparse,in_sparse_meta);
     Scene scene(vec_point, vec_camera);
     // Scene scene(cache_sparse);
 
@@ -252,8 +251,8 @@ void glut_mouse_movement(int x, int y)
 
 void glut_keyboard_special(int key, int x, int y)
 {
-        // std::cout << key << std::endl;
-        controller->handle_key_special_pressed(key);
+    // std::cout << key << std::endl;
+    controller->handle_key_special_pressed(key);
 }
 
 void glut_keyboard(unsigned char key, int x, int y)

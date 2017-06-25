@@ -77,8 +77,8 @@ class Camera_View
 
     void set_position(scm::math::vec3f position);
     scm::math::quat<double> get_rotation();
-    int& get_width_window();
-    int& get_height_window();
+    int &get_width_window();
+    int &get_height_window();
     void set_rotation(scm::math::quat<double> rotation);
 
     void reset();

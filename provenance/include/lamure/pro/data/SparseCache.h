@@ -10,7 +10,6 @@ namespace prov
 class SparseCache : public Cacheable<SparsePoint>
 {
   public:
-
     SparseCache(ifstream &is_prov, ifstream &is_meta) : Cacheable(is_prov, is_meta)
     {
         _cameras = vec<Camera>();
@@ -34,21 +33,21 @@ class SparseCache : public Cacheable<SparsePoint>
         cameras_length = swap(cameras_length, true);
 
         // if(DEBUG)
-            printf("\nCameras length: %i", cameras_length);
+        printf("\nCameras length: %i", cameras_length);
 
         uint32_t meta_data_length;
         (*is_prov).read(reinterpret_cast<char *>(&meta_data_length), 4);
         meta_data_length = swap(meta_data_length, true);
 
         // if(DEBUG)
-            printf("\nCamera meta data length: %i ", meta_data_length);
+        printf("\nCamera meta data length: %i ", meta_data_length);
 
         uint16_t max_len_fpath;
         (*is_prov).read(reinterpret_cast<char *>(&max_len_fpath), 2);
         max_len_fpath = swap(max_len_fpath, true);
 
         // if(DEBUG)
-            printf("\nMax file path length: %i ", max_len_fpath);
+        printf("\nMax file path length: %i ", max_len_fpath);
 
         for(uint16_t i = 0; i < cameras_length; i++)
         {

@@ -15,9 +15,12 @@ class DenseStream : public Streamable<DensePoint>
     {
         uint32_t sought_pos = Readable::HEADER_LENGTH + DensePoint::ENTITY_LENGTH * index;
 
-        if(is.tellg() < sought_pos) {
+        if(is.tellg() < sought_pos)
+        {
             is.ignore(sought_pos - is.tellg());
-        } else {
+        }
+        else
+        {
             is.clear();
             is.seekg(sought_pos);
         }
@@ -32,9 +35,12 @@ class DenseStream : public Streamable<DensePoint>
     {
         uint32_t sought_pos = Readable::HEADER_LENGTH + DensePoint::ENTITY_LENGTH * index_start;
 
-        if(is.tellg() < sought_pos) {
+        if(is.tellg() < sought_pos)
+        {
             is.ignore(sought_pos - is.tellg());
-        } else {
+        }
+        else
+        {
             is.clear();
             is.seekg(sought_pos);
         }
