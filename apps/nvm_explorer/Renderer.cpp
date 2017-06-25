@@ -108,23 +108,11 @@ void Renderer::update_state_lense()
     // std::cout << _state_lense << std::endl;
 }
 
-void Renderer::translate_sphere(scm::math::vec3f offset)
-{
-    _position_sphere += offset;
-}
-void Renderer::update_radius_sphere(float offset)
-{
-    _radius_sphere += offset;
-}
+void Renderer::translate_sphere(scm::math::vec3f offset) { _position_sphere += offset; }
+void Renderer::update_radius_sphere(float offset) { _radius_sphere += offset; }
 
-void Renderer::translate_sphere_screen(scm::math::vec3f offset)
-{
-    _position_sphere_screen += scm::math::vec2f(offset[0], -offset[2]);
-}
-void Renderer::update_radius_sphere_screen(float offset)
-{
-    _radius_sphere_screen += offset;
-}
+void Renderer::translate_sphere_screen(scm::math::vec3f offset) { _position_sphere_screen += scm::math::vec2f(offset[0], -offset[2]); }
+void Renderer::update_radius_sphere_screen(float offset) { _radius_sphere_screen += offset; }
 void Renderer::draw_points_sparse(Scene scene)
 {
     _context->bind_program(_program_points);
