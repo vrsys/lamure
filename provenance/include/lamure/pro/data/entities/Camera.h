@@ -87,13 +87,13 @@ class Camera
         camera._index = swap(camera._index, true);
 
         // if(DEBUG)
-            printf("\nIndex: %i", camera._index);
+        printf("\nIndex: %i", camera._index);
 
         is.read(reinterpret_cast<char *>(&camera._focal_length), 8);
         camera._focal_length = swap(camera._focal_length, true);
 
         // if(DEBUG)
-            printf("\nFocal length: %f", camera._focal_length);
+        printf("\nFocal length: %f", camera._focal_length);
 
         float w, x, y, z;
         is.read(reinterpret_cast<char *>(&w), 8);
@@ -106,7 +106,7 @@ class Camera
         z = swap(z, true);
 
         // if(DEBUG)
-            printf("\nWXYZ: %f %f %f %f", w, x, y, z);
+        printf("\nWXYZ: %f %f %f %f", w, x, y, z);
 
         camera._orientation = quatd(w, x, y, z);
         is.read(reinterpret_cast<char *>(&x), 8);
@@ -117,7 +117,7 @@ class Camera
         z = swap(z, true);
 
         // if(DEBUG)
-            printf("\nXYZ: %f %f %f", x, y, z);
+        printf("\nXYZ: %f %f %f", x, y, z);
 
         camera._translation = vec3d(x, y, z);
 
@@ -127,7 +127,7 @@ class Camera
         camera._im_file_name = trim(camera._im_file_name);
 
         // if(DEBUG)
-            printf("\nFile path: \'%s\'\n", camera._im_file_name.c_str());
+        printf("\nFile path: \'%s\'\n", camera._im_file_name.c_str());
 
         //        camera.read_metadata(is);
 
@@ -165,7 +165,7 @@ class Camera
         _fp_resolution_y = result.LensInfo.FocalPlaneResolutionUnit == 2 ? result.LensInfo.FocalPlaneYResolution / 0.0254 : result.LensInfo.FocalPlaneYResolution / 0.01;
 
         // if(DEBUG)
-            // printf("Focal length: %f, FP Resolution X: %f, Y: %f\n", _focal_length, _fp_resolution_x, _fp_resolution_y);
+        // printf("Focal length: %f, FP Resolution X: %f, Y: %f\n", _focal_length, _fp_resolution_x, _fp_resolution_y);
     }
 
     void calculate_frustum()
@@ -187,7 +187,6 @@ class Camera
 
     void update_transformation()
     {
-        
         scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(_translation));
         std::cout << _translation << std::endl;
         // std::cout << _orientation << std::endl;
@@ -202,10 +201,8 @@ class Camera
     quatd _orientation;
     vec3d _translation;
 
-
     scm::math::mat4f _transformation = scm::math::mat4f::identity();
     scm::gl::vertex_array_ptr _vertex_array_object_frustum;
-
 
     int _im_height;
     int _im_width;

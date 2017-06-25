@@ -2,9 +2,9 @@
 #define LAMURE_SPARSE_POINT_H
 
 #include "Camera.h"
+#include "MetaData.h"
 #include "Point.h"
 #include "lamure/pro/common.h"
-#include "MetaData.h"
 
 namespace prov
 {
@@ -57,7 +57,7 @@ class SparsePoint : public Point
         sparse_point._index = swap(sparse_point._index, true);
 
         // if(DEBUG)
-            // printf("\nPoint index: %i", sparse_point._index);
+        // printf("\nPoint index: %i", sparse_point._index);
 
         sparse_point.read_essentials(is);
 
@@ -80,7 +80,8 @@ class SparsePoint : public Point
     }
 
     uint32_t get_index() const { return _index; }
-protected:
+
+  protected:
     uint32_t _index;
     vec<Measurement> _measurements;
 };

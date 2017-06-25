@@ -20,7 +20,6 @@ class Point
     const vec3d &get_color() const { return _color; };
     ifstream &read_essentials(ifstream &is)
     {
-
         is.read(reinterpret_cast<char *>(&_position[0]), 8);
         _position[0] = swap(_position[0], true);
         is.read(reinterpret_cast<char *>(&_position[1]), 8);

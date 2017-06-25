@@ -15,9 +15,12 @@ class LoDMetaStream : public Streamable<LoDMetaData>
     {
         uint32_t sought_pos = Readable::HEADER_LENGTH + LoDMetaData::ENTITY_LENGTH * index;
 
-        if(is.tellg() < sought_pos) {
+        if(is.tellg() < sought_pos)
+        {
             is.ignore(sought_pos - is.tellg());
-        } else {
+        }
+        else
+        {
             is.clear();
             is.seekg(sought_pos);
         }
@@ -31,9 +34,12 @@ class LoDMetaStream : public Streamable<LoDMetaData>
     {
         uint32_t sought_pos = Readable::HEADER_LENGTH + LoDMetaData::ENTITY_LENGTH * index_start;
 
-        if(is.tellg() < sought_pos) {
+        if(is.tellg() < sought_pos)
+        {
             is.ignore(sought_pos - is.tellg());
-        } else {
+        }
+        else
+        {
             is.clear();
             is.seekg(sought_pos);
         }
