@@ -4,7 +4,6 @@
 // #include <lamure/utils.h>
 // #include <lamure/types.h>
 #include "Scene.h"
-#include "utils.h"
 
 #include <iostream>
 
@@ -81,7 +80,7 @@ class Renderer
     void draw_points_dense(Scene scene);
 
   public:
-    Renderer();
+    // Renderer();
     void init(char **argv, scm::shared_ptr<scm::gl::render_device> device);
     void render(Scene scene);
 

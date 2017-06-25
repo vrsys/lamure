@@ -45,7 +45,10 @@
 #include <lamure/ren/cut_update_pool.h>
 #include <vector>
 
-#include "Camera.h"
+// #include "Camera.h"
+#include "lamure/pro/data/entities/Camera.h"
+#include "lamure/pro/data/entities/SparsePoint.h"
+#include "lamure/pro/data/SparseCache.h"
 #include "Camera_View.h"
 #include "Point.h"
 #include "Struct_Camera.h"
@@ -57,9 +60,9 @@
 class Scene
 {
   private:
-    std::vector<Camera> _vector_camera;
-    std::vector<Point> _vector_point;
-    std::vector<Image> _vector_image;
+    prov::SparseCache _cache_sparse;
+    // std::vector<Point> _vector_point;
+    // std::vector<Image> _vector_image;
 
     scm::gl::vertex_array_ptr _vertex_array_object_points;
     scm::gl::vertex_array_ptr _vertex_array_object_cameras;
@@ -77,8 +80,9 @@ class Scene
     float _model_radius_scale = 0.1f;
 
   public:
-    Scene();
-    Scene(std::vector<Camera> vector_camera, std::vector<Point> vector_point, std::vector<Image> vector_image);
+    Scene(const Scene&) = default;
+    Scene(prov::ifstream in_sparse, prov::ifstream in_sparse_meta);
+    // Scene(prov::SparseCache const& cache_sparse);
 
     void init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
     scm::gl::vertex_array_ptr get_vertex_array_object_points();
@@ -91,7 +95,7 @@ class Scene
     void set_model_radius_scale(float scale);
     void update_model_radius_scale(float scale);
     // std::vector<Image> &get_vector_image();
-    std::vector<Camera> &get_vector_camera();
+    std::vector<prov::Camera> &get_vector_camera();
     bool update(int time_delta);
     void update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset);
 

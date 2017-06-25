@@ -1,22 +1,33 @@
 #include "Scene.h"
 
-Scene::Scene() {}
-Scene::Scene(vector<Camera> vector_camera, vector<Point> vector_point, vector<Image> vector_image)
+// Scene::Scene(const Scene& scene): 
+// {
+//     cache_sparse = scene.cache_sparse;
+//     _vertex_array_object_points = scene._vertex_array_object_points;
+//     _vertex_array_object_cameras = scene._vertex_array_object_cameras;
+//     _vertex_array_object_lines = scene._vertex_array_object_lines;
+//     _quad = scene._quad;
+//     _camera_view = scene._camera_view;
+// }
+// Scene::Scene(prov::SparseCache const& cache_sparse) : _cache_sparse(cache_sparse)
+// {}
+Scene::Scene(prov::ifstream in_sparse, prov::ifstream in_sparse_meta) : _cache_sparse(in_sparse, in_sparse_meta)
 {
-    _vector_camera = vector_camera;
-    _vector_point = vector_point;
-    _vector_image = vector_image;
+    _cache_sparse.cache();
+    in_sparse.close();
+    in_sparse_meta.close();
 }
 bool Scene::update(int time_delta)
 {
-    for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
-    {
-        Camera &camera = (*it);
-        scm::math::quat<double> old_orientation = camera.get_orientation();
-        scm::math::quat<double> new_orientation = scm::math::quat<double>::from_axis(0.1 * time_delta, scm::math::vec3d(0.0, 1.0, 0.0));
+    float foroo = 0.0f;
+    // for(std::vector<prov::Camera>::iterator const it = _cache_sparse.get_cameras().begin(); it != _cache_sparse.get_cameras().end(); ++it)
+    // {
+    //     prov::Camera &camera = (*it);
+    //     scm::math::quat<double> old_orientation = camera.get_orientation();
+    //     scm::math::quat<double> new_orientation = scm::math::quat<double>::from_axis(0.1 * time_delta, scm::math::vec3d(0.0, 1.0, 0.0));
 
-        // camera.set_orientation(old_orientation * new_orientation);
-    }
+    //     camera.set_orientation(old_orientation * new_orientation);
+    // }
 }
 
 void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
@@ -41,7 +52,7 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_windo
         device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_line.size(), &vector_struct_line[0]);
     _vertex_array_object_lines = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object_lines));
 
-    _quad.reset(new scm::gl::quad_geometry(device, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
+    _quad.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
 
     int counter = 0;
     // for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
@@ -61,13 +72,14 @@ std::vector<Struct_Line> Scene::convert_lines_to_struct_line()
 {
     std::vector<Struct_Line> vector_struct_line;
 
-    for(std::vector<Point>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
+    for(std::vector<SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
     {
-        Point &point = (*it);
-        std::vector<Point::measurement> measurements = point.get_measurements();
+        SparsePoint &point = (*it);
+        // std::vector<SparsePoint::measurement> measurements = point.get_measurements();
+
     }
 
-    for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
     {
         Struct_Line line = {scm::math::vec3f((*it).get_center())};
         vector_struct_line.push_back(line);
@@ -104,7 +116,7 @@ std::vector<Struct_Camera> Scene::convert_cameras_to_struct_camera()
 {
     std::vector<Struct_Camera> vector_struct_camera;
 
-    for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
     {
         Struct_Camera camera = {(*it).get_center()};
 
@@ -120,7 +132,7 @@ scm::shared_ptr<scm::gl::quad_geometry> Scene::get_quad() { return _quad; }
 
 void Scene::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset)
 {
-    for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
     {
         (*it).update_scale_frustum(device, offset);
     }
@@ -141,7 +153,7 @@ void Scene::toggle_camera()
     }
     else
     {
-        Camera camera = _vector_camera[index_current_image_camera];
+        prov::Camera camera = _vector_camera[index_current_image_camera];
         std::cout << scm::math::vec3f(camera.get_center()) << " " << camera.get_orientation() << std::endl;
         _camera_view.set_position(scm::math::vec3f(camera.get_center()));
         _camera_view.set_rotation(camera.get_orientation());
@@ -157,7 +169,7 @@ void Scene::previous_camera()
         {
             index_current_image_camera = _vector_camera.size() - 1;
         }
-        Camera camera = _vector_camera[index_current_image_camera];
+        prov::Camera camera = _vector_camera[index_current_image_camera];
         _camera_view.set_position(scm::math::vec3f(camera.get_center()));
         _camera_view.set_rotation(camera.get_orientation());
     }
@@ -172,7 +184,7 @@ void Scene::next_camera()
         {
             index_current_image_camera = 0;
         }
-        Camera camera = _vector_camera[index_current_image_camera];
+        prov::Camera camera = _vector_camera[index_current_image_camera];
         _camera_view.set_position(scm::math::vec3f(camera.get_center()));
         _camera_view.set_rotation(camera.get_orientation());
     }
@@ -182,7 +194,7 @@ void Scene::set_model_radius_scale(float scale) { _model_radius_scale = scale; }
 
 Camera_View &Scene::get_camera_view() { return _camera_view; }
 
-std::vector<Camera> &Scene::get_vector_camera() { return _vector_camera; }
+std::vector<prov::Camera> &Scene::get_vector_camera() { return _vector_camera; }
 
 int Scene::count_points() { return _vector_point.size(); }
 int Scene::count_cameras() { return _vector_camera.size(); }

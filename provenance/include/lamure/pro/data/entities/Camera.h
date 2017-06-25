@@ -3,6 +3,45 @@
 
 #include "MetaData.h"
 #include "lamure/pro/common.h"
+#include <scm/core.h>
+#include <scm/core/io/tools.h>
+#include <scm/core/pointer_types.h>
+#include <scm/core/time/accum_timer.h>
+#include <scm/core/time/high_res_timer.h>
+#include <scm/log.h>
+
+#include <scm/gl_util/data/imaging/texture_loader.h>
+#include <scm/gl_util/primitives/box.h>
+#include <scm/gl_util/primitives/quad.h>
+#include <scm/gl_util/viewer/camera.h>
+
+#include <scm/core/math.h>
+
+#include <scm/gl_core/gl_core_fwd.h>
+#include <scm/gl_util/primitives/geometry.h>
+#include <scm/gl_util/primitives/primitives_fwd.h>
+
+#include <scm/gl_util/font/font_face.h>
+#include <scm/gl_util/font/text.h>
+#include <scm/gl_util/font/text_renderer.h>
+
+#include <scm/core/platform/platform.h>
+#include <scm/core/utilities/platform_warning_disable.h>
+#include <scm/gl_util/primitives/geometry.h>
+
+#include <lamure/ren/controller.h>
+#include <lamure/ren/cut_database.h>
+#include <lamure/ren/model_database.h>
+#include <lamure/ren/policy.h>
+
+#include <boost/assign/list_of.hpp>
+#include <memory>
+
+#include <fstream>
+#include <lamure/types.h>
+#include <lamure/utils.h>
+#include <map>
+#include <vector>
 
 namespace prov
 {
@@ -36,6 +75,9 @@ class Camera
 
     quatd get_orientation() { return _orientation; }
     vec3d get_translation() { return _translation; }
+    scm::math::mat4f &get_transformation() { return _transformation; }
+    scm::gl::vertex_array_ptr get_vertex_array_object_frustum() { return _vertex_array_object_frustum; }
+    // void Camera::bind_texture(scm::shared_ptr<scm::gl::render_context> context) { context->bind_texture(_still_image.get_texture(), _still_image.get_state(), 0); }
     const arr<vec3d, 8> &get_frustum_vertices() { return _frustum_vertices; }
     void set_frustum_vertices(const arr<vec3d, 8> &_frustum_vertices) { this->_frustum_vertices = _frustum_vertices; }
     friend ifstream &operator>>(ifstream &is, Camera &camera)
@@ -77,6 +119,7 @@ class Camera
             printf("\nXYZ: %f %f %f", x, y, z);
 
         camera._translation = vec3d(x, y, z);
+        camera.update_transformation();
 
         char byte_buffer[camera.MAX_LENGTH_FILE_PATH];
         is.read(byte_buffer, camera.MAX_LENGTH_FILE_PATH);
@@ -142,11 +185,25 @@ class Camera
         _frustum_vertices[7] = vec3d(width_world_half, -height_world_half, -_focal_length);
     }
 
+    void update_transformation()
+    {
+        scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(_translation));
+        scm::math::mat4f matrix_rotation = scm::math::mat4f(_orientation.to_matrix());
+        _transformation = matrix_translation * matrix_rotation;
+        // _still_image.update_transformation(_transformation, _scale);
+    }
+
     uint16_t _index;
     double _focal_length;
     string _im_file_name;
     quatd _orientation;
     vec3d _translation;
+
+
+    scm::math::mat4f _transformation = scm::math::mat4f::identity();
+    scm::gl::vertex_array_ptr _vertex_array_object_frustum;
+
+
     int _im_height;
     int _im_width;
     double _fp_resolution_x;

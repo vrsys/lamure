@@ -1,8 +1,7 @@
 #include "Controller.h"
 
-Controller::Controller(Scene scene, char **argv, int width_window, int height_window)
+Controller::Controller(Scene const scene, char **argv, int width_window, int height_window) : _scene(scene) 
 {
-    _scene = scene;
     // initialize context
     scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
     // initialize device

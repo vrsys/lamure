@@ -45,7 +45,7 @@
 #include <lamure/ren/cut_update_pool.h>
 #include <vector>
 
-#include "Camera.h"
+// #include "Camera.h"
 #include "Point.h"
 #include "Struct_Point.h"
 

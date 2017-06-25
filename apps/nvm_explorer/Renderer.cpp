@@ -3,23 +3,23 @@
 #include <scm/gl_util/data/imaging/texture_loader.h>
 #include <scm/gl_util/data/imaging/texture_loader_dds.h>
 
-Renderer::Renderer()
-{
-    // wie camera erstellen
-    // wie data in buffer laden
+// Renderer::Renderer()
+// {
+//     // wie camera erstellen
+//     // wie data in buffer laden
 
-    // 1.
-    // scm context initialisieren (see main.cpp in lamure_rendering (l:123))
+//     // 1.
+//     // scm context initialisieren (see main.cpp in lamure_rendering (l:123))
 
-    // 2. create new scm device (app: renderer.cpp l: 1301)
+//     // 2. create new scm device (app: renderer.cpp l: 1301)
 
-    // 3. retrieve rendering context from device (app: renderer.cpp l:1303)
+//     // 3. retrieve rendering context from device (app: renderer.cpp l:1303)
 
-    // 4. VBO (scm::gl::buffer_ptr) && VAO (scm::gl::vertex_array_ptr) (lib: gpu_access.h l:54&&55; gpu_access.cpp, ll:37)
+//     // 4. VBO (scm::gl::buffer_ptr) && VAO (scm::gl::vertex_array_ptr) (lib: gpu_access.h l:54&&55; gpu_access.cpp, ll:37)
 
-    // 5. set states & render:
-    // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
-}
+//     // 5. set states & render:
+//     // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
+// }
 
 void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
 {
@@ -156,15 +156,15 @@ void Renderer::draw_images(Scene scene)
     _program_images->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
     _program_images->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    for(std::vector<Camera>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
-    {
-        Camera camera = (*it);
-        _program_images->uniform("matrix_model", camera.get_still_image().get_transformation());
-        camera.bind_texture(_context);
-        _program_images->uniform_sampler("in_color_texture", 0);
-        _context->apply();
-        scene.get_quad()->draw(_context);
-    }
+    // for(std::vector<prov::Camera>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
+    // {
+    //     prov::Camera camera = (*it);
+    //     _program_images->uniform("matrix_model", camera.get_transformation());
+    //     camera.bind_texture(_context);
+    //     _program_images->uniform_sampler("in_color_texture", 0);
+    //     _context->apply();
+    //     scene.get_quad()->draw(_context);
+    // }
 }
 void Renderer::draw_lines(Scene scene)
 {
@@ -184,19 +184,19 @@ void Renderer::draw_lines(Scene scene)
 }
 void Renderer::draw_frustra(Scene scene)
 {
-    _context->bind_program(_program_frustra);
+    // _context->bind_program(_program_frustra);
 
-    _program_frustra->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
-    _program_frustra->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+    // _program_frustra->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
+    // _program_frustra->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    for(std::vector<Camera>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
-    {
-        Camera camera = (*it);
-        _program_frustra->uniform("matrix_model", camera.get_transformation());
-        _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
-        _context->apply();
-        _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
-    }
+    // for(std::vector<prov::Camera>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
+    // {
+    //     prov::Camera camera = (*it);
+    //     _program_frustra->uniform("matrix_model", camera.get_transformation());
+    //     _context->bind_vertex_array(camera.get_vertex_array_object_frustum());
+    //     _context->apply();
+    //     _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
+    // }
 }
 void Renderer::draw_points_dense(Scene scene)
 {
@@ -299,7 +299,7 @@ void Renderer::draw_points_dense(Scene scene)
 void Renderer::render(Scene scene)
 {
     _context->set_rasterizer_state(_rasterizer_state);
-    _context->set_viewport(scm::gl::viewport(vec2ui(0, 0), 1 * vec2ui(scene.get_camera_view().get_width_window(), scene.get_camera_view().get_height_window())));
+    _context->set_viewport(scm::gl::viewport(vec2ui(0, 0), vec2ui(scene.get_camera_view().get_width_window(), scene.get_camera_view().get_height_window())));
 
     _context->clear_default_depth_stencil_buffer();
     _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, 0.0f, 1.0f));

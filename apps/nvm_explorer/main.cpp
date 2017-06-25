@@ -6,17 +6,17 @@
 // #include <GLFW/glfw3.h>
 #include "Controller.h"
 #include "Scene.h"
-#include "utils.h"
+// #include "utils.h"
 #include <GL/freeglut.h> 
 #include <lamure/ren/Data_Provenance.h>
 #include <lamure/ren/Item_Provenance.h>
 
-// #include "lamure/pro/common.h"
-// #include "lamure/pro/data/DenseCache.h"
-// #include "lamure/pro/data/SparseCache.h"
-// #include <chrono>
-// #include <lamure/pro/data/DenseStream.h>
-// #include <lamure/pro/data/LoDMetaStream.h>
+#include "lamure/pro/common.h"
+#include "lamure/pro/data/DenseCache.h"
+#include "lamure/pro/data/SparseCache.h"
+#include <chrono>
+#include <lamure/pro/data/DenseStream.h>
+#include <lamure/pro/data/LoDMetaStream.h>
 
 
 #define VERBOSE
@@ -121,10 +121,12 @@ int main(int argc, char *argv[])
     // data_provenance.add_item(item_int);
 
     // std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
-    // string name_file_sparse = string(get_cmd_option(argv, argv + argc, "-s"));
-    // prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
-    // prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+    std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
+    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+    prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
     // prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
+    // cache_sparse.cache();
+    // in_sparse.close();
 
     // return 1;
     // return write_dummy_binary_file();
@@ -155,17 +157,17 @@ int main(int argc, char *argv[])
 
     initialize_glut(argc, argv, width_window, height_window);
 
-    ifstream in(name_file_nvm);
-    vector<Camera> vec_camera;
-    vector<Point> vec_point_sparse;
-    vector<Point> vec_point_dense;
-    vector<Image> vec_image;
+    // ifstream in(name_file_nvm);
+    // vector<Camera> vec_camera;
+    // vector<Point> vec_point_sparse;
+    // vector<Point> vec_point_dense;
+    // vector<Image> vec_image;
 
-    utils::read_nvm(in, vec_camera, vec_point_sparse, vec_image);
+    // utils::read_nvm(in, vec_camera, vec_point_sparse, vec_image);
 
-    ifstream in_ply(name_file_nvm + ".cmvs/00/models/option-0000.ply", ifstream::binary);
+    // ifstream in_ply(name_file_nvm + ".cmvs/00/models/option-0000.ply", ifstream::binary);
 
-    utils::read_ply(in_ply, vec_point_dense);
+    // utils::read_ply(in_ply, vec_point_dense);
 
     //  std::cout << "cameras: " << vec_camera.size() << std::endl;
     //  std::cout << "points: " << vec_point.size() << std::endl;
@@ -175,7 +177,9 @@ int main(int argc, char *argv[])
     // }
     //  std::cout << "vec_image: " << vec_image.size() << std::endl;
 
-    Scene scene(vec_camera, vec_point_sparse, vec_image);
+    Scene scene(prov::ifstream in_sparse, prov::ifstream in_sparse_meta);
+    // Scene scene();
+    // Scene scene(cache_sparse);
 
     controller = new Controller(scene, argv, width_window, height_window);
     std::cout << "start rendering" << std::endl;

@@ -25,7 +25,7 @@ class Controller
     void handle_movements(int time_delta);
 
   public:
-    Controller(Scene scene, char **argv, int width_window, int height_window);
+    Controller(Scene const scene, char **argv, int width_window, int height_window);
 
     bool update(int time_delta);
     void handle_mouse_movement(int x, int y);
