@@ -3,29 +3,23 @@
 
 #include "Camera.h"
 #include "Point.h"
+#include <boost/filesystem/path.hpp>
 #include <iostream>
 #include <scm/core/math.h>
-#include <boost/filesystem/path.hpp>
 
 namespace utils
 {
+bool read_nvm(boost::filesystem::path path_project, ifstream &in, vector<Camera> &camera_vec, vector<Point> &point_vec, vector<Image> &images);
 
-bool read_nvm(boost::filesystem::path path_project,
-              ifstream &in,
-              vector<Camera> &camera_vec,
-              vector<Point> &point_vec,
-              vector<Image> &images);
-
-template<typename T>
+template <typename T>
 vec<T, 2> pair_to_vec2(T *arr);
 
-template<typename T>
+template <typename T>
 vec<T, 3> arr3_to_vec3(T arr[3]);
 
-template<typename T>
+template <typename T>
 mat<T, 3, 3> arr9_to_mat3(T arr[9]);
 
 boost::filesystem::path extract_project_path(const string file_path);
 };
 #endif
-

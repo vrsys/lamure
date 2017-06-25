@@ -24,41 +24,41 @@ void Controller::handle_movements(int time_delta)
     float speed_camera = 0.02f * time_delta;
     scm::math::vec3f offset = scm::math::vec3f(0.0, 0.0, 0.0);
     if(_keys[int('w')])
-        {
-            offset += scm::math::vec3f(0.0, 0.0, 1.0) * speed_camera;
-        }
+    {
+        offset += scm::math::vec3f(0.0, 0.0, 1.0) * speed_camera;
+    }
     if(_keys[int('s')])
-        {
-            offset += scm::math::vec3f(0.0, 0.0, -1.0) * speed_camera;
-        }
+    {
+        offset += scm::math::vec3f(0.0, 0.0, -1.0) * speed_camera;
+    }
     // Why do I have to invert this?
     if(_keys[int('a')])
-        {
-            offset += scm::math::vec3f(1.0, 0.0, 0.0) * speed_camera;
-        }
+    {
+        offset += scm::math::vec3f(1.0, 0.0, 0.0) * speed_camera;
+    }
     // Why do I have to invert this?
     if(_keys[int('d')])
-        {
-            offset += scm::math::vec3f(-1.0, 0.0, 0.0) * speed_camera;
-        }
+    {
+        offset += scm::math::vec3f(-1.0, 0.0, 0.0) * speed_camera;
+    }
     if(_keys[int('q')])
-        {
-            offset += scm::math::vec3f(0.0, 1.0, 0.0) * speed_camera;
-        }
+    {
+        offset += scm::math::vec3f(0.0, 1.0, 0.0) * speed_camera;
+    }
     if(_keys[int('e')])
-        {
-            offset += scm::math::vec3f(0.0, -1.0, 0.0) * speed_camera;
-        }
+    {
+        offset += scm::math::vec3f(0.0, -1.0, 0.0) * speed_camera;
+    }
     _scene.get_camera_view().translate(offset);
 }
 void Controller::handle_mouse_movement(int x, int y)
 {
     if(_is_first_mouse_movement)
-        {
-            _x_last = x;
-            _y_last = y;
-            _is_first_mouse_movement = false;
-        }
+    {
+        _x_last = x;
+        _y_last = y;
+        _is_first_mouse_movement = false;
+    }
 
     float xoffset = x - _x_last;
     float yoffset = _y_last - y;
@@ -85,10 +85,7 @@ void Controller::handle_mouse_movement(int x, int y)
     _scene.get_camera_view().set_rotation(front);
     // render_manager.direction_camera = glm::normalize(front);
 }
-void Controller::handle_key_pressed(char key)
-{
-    _keys[int(key)] = true;
-}
+void Controller::handle_key_pressed(char key) { _keys[int(key)] = true; }
 void Controller::handle_key_released(char key)
 {
     // std::cout << key << " " << (char)int(key) << std::endl;
