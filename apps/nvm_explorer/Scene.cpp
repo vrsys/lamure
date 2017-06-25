@@ -1,6 +1,6 @@
 #include "Scene.h"
 
-// Scene::Scene(const Scene& scene): 
+// Scene::Scene(const Scene& scene):
 // {
 //     cache_sparse = scene.cache_sparse;
 //     _vertex_array_object_points = scene._vertex_array_object_points;
@@ -14,8 +14,7 @@
 // Scene::Scene(Scene const& scene) : _cache_sparse(scene._cache_sparse)
 // {
 // }
-Scene::Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera) : _vector_camera(vector_camera), _vector_point(vector_point)
-{}
+Scene::Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera) : _vector_camera(vector_camera), _vector_point(vector_point) {}
 
 // Scene::Scene(prov::SparseCache const &cache_sparse) : _cache_sparse(cache_sparse)
 // {

@@ -46,15 +46,16 @@
 #include <vector>
 
 // #include "Camera.h"
+#include <lamure/pro/data/SparseCache.h>
 #include <lamure/pro/data/entities/Camera.h>
 #include <lamure/pro/data/entities/SparsePoint.h>
-#include <lamure/pro/data/SparseCache.h>
+
 #include "Camera_View.h"
 #include "Point.h"
 #include "Struct_Camera.h"
 #include "Struct_Image.h"
-#include "Struct_Point.h"
 #include "Struct_Line.h"
+#include "Struct_Point.h"
 #include <scm/gl_util/primitives/quad.h>
 
 class Scene
