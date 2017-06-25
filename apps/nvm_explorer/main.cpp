@@ -1,17 +1,49 @@
-#include "Controller.h"
-#include "Scene.h"
-#include "utils.h"
-#include <GL/freeglut.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <vector>
+// #include <GLFW/glfw3.h>
+#include "Controller.h"
+#include "Scene.h"
+// #include "utils.h"
+#include <GL/freeglut.h>
+#include <lamure/ren/Data_Provenance.h>
+#include <lamure/ren/Item_Provenance.h>
+
+#include <chrono>
+#include <lamure/pro/common.h>
+#include <lamure/pro/data/DenseCache.h>
+#include <lamure/pro/data/DenseStream.h>
+#include <lamure/pro/data/LoDMetaStream.h>
+#include <lamure/pro/data/SparseCache.h>
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
 
-using namespace utils;
+// using namespace utils;
+
+// KEY-BINDINGS:
+// [w,a,s,d,q,e] - move camera through world
+// [4,5,6,8] (numpad) - rotate camera
+// [j,k] - in-/decrease camera frustra scales
+// i - toggle between user-camera and image-camera
+// u - switch to previous image-camera
+// o - switch to next image-camera
+// m - enable/disable image-rendering
+// n - toggle between sparse- and dense-rendering
+// [v,b] - in-/decrease servlets radii
+
+// t - toggle lense modes (none, world-lense, screen-lense)
+// alt + [w,a,s,d] - move screen-lense over screen
+// shift + [w,a,s,d,q,e] - move world-lense through world
+// shift + [x,c] - increase/decrease radius of world-le
+
+// mogrify 30%
+// heatmap
+// downsampling images
+// ui imgui
+// lines
 
 Controller *controller = nullptr;
 int time_since_start = 0;
@@ -23,6 +55,8 @@ void glut_display();
 void glut_mouse_movement(int x, int y);
 void glut_keyboard(unsigned char key, int x, int y);
 void glut_keyboard_release(unsigned char key, int x, int y);
+void glut_keyboard_special(int key, int x, int y);
+void glut_keyboard_special_release(int key, int x, int y);
 void initialize_glut(int argc, char **argv, int width, int height);
 
 char *get_cmd_option(char **begin, char **end, const std::string &option)
@@ -33,37 +67,108 @@ char *get_cmd_option(char **begin, char **end, const std::string &option)
     return 0;
 }
 
+bool write_dummy_binary_file()
+{
+    std::cout << "sizes: " << std::endl;
+    std::cout << "size of int: " << sizeof(int) << std::endl;
+    std::cout << "size of float: " << sizeof(float) << std::endl;
+    std::cout << "size of double: " << sizeof(double) << std::endl;
+    std::ofstream ofile("dummy_binary_file.bin", std::ios::binary);
+    for(int i = 0; i < 36022860 / 4.0f; ++i)
+    // for (int i = 0; i < 4434885; ++i)
+    {
+        float f = 0.0f;
+        ofile.write((char *)&f, sizeof(float));
+        // ofile.write((char*) &f, sizeof(float));
+        // f = 1.0f;
+        // ofile.write((char*) &f, sizeof(float));
+
+        // const float f = double(rand()) / double(RAND_MAX);
+        // ofile.write((char*) &f, sizeof(float));
+
+        // const float f = double(rand()) / double(RAND_MAX);
+        // ofile.write((char*) &f, sizeof(float));
+
+        // const double f = double(rand()) / double(RAND_MAX);
+        // ofile.write((char*) &f, sizeof(double));
+    }
+    return true;
+}
+
 bool cmd_option_exists(char **begin, char **end, const std::string &option) { return std::find(begin, end, option) != end; }
 
 int main(int argc, char *argv[])
 {
-    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-f"))
+    // lamure::ren::Data_Provenance data_provenance;
+
+    // lamure::ren::Item_Provenance item_float(
+    //     lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
+    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    // );
+    // data_provenance.add_item(item_float);
+
+    // lamure::ren::Item_Provenance item_vec3f(
+    //     lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
+    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    // );
+    // data_provenance.add_item(item_vec3f);
+
+    // lamure::ren::Item_Provenance item_int(
+    //     lamure::ren::Item_Provenance::type_item::TYPE_INT,
+    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    // );
+    // data_provenance.add_item(item_int);
+
+    // std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
+
+    // return 1;
+    // return write_dummy_binary_file();
+
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-s"))
     {
-        std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>.nvm" << std::endl
+        std::cout << "Usage: " << argv[0] << "<flags> -s <input_file>.nvm" << std::endl
                   << "INFO: nvm_explorer " << std::endl
-                  << "\t-f: selects .nvm input file" << std::endl
-                  << "\t    (-f flag is required) " << std::endl
+                  << "\t-s: selects .nvm input file" << std::endl
+                  << "\t    (-s flag is required) " << std::endl
                   << std::endl;
         return 0;
     }
 
-    std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-f"));
+    std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
+    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+    prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+    prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
+    cache_sparse.cache();
+    in_sparse.close();
 
-    std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
-    if(ext.compare("nvm") != 0)
-    {
-        std::cout << "please specify a .nvm file as input" << std::endl;
-        return 0;
-    }
+    // std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-s"));
+
+    // std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
+    // if(ext.compare("nvm") != 0)
+    // {
+    //     std::cout << "please specify a .nvm file as input" << std::endl;
+    //     return 0;
+    // }
+
+    // if(!glfwInit())
+    // {
+    //     // Initialization failed
+    // }
 
     initialize_glut(argc, argv, width_window, height_window);
 
-    ifstream in(name_file_nvm);
-    vector<Camera> vec_camera;
-    vector<Point> vec_point;
-    vector<Image> vec_image;
+    // ifstream in(name_file_nvm);
+    std::vector<prov::Camera> vec_camera = cache_sparse.get_cameras();
+    std::vector<prov::SparsePoint> vec_point = cache_sparse.get_points();
+    // vector<Point> vec_point_sparse;
+    // vector<Point> vec_point_dense;
+    // vector<Image> vec_image;
 
-    utils::read_nvm(utils::extract_project_path(name_file_nvm), in, vec_camera, vec_point, vec_image);
+    // utils::read_nvm(in, vec_camera, vec_point_sparse, vec_image);
+
+    // ifstream in_ply(name_file_nvm + ".cmvs/00/models/option-0000.ply", ifstream::binary);
+
+    // utils::read_ply(in_ply, vec_point_dense);
 
     //  std::cout << "cameras: " << vec_camera.size() << std::endl;
     //  std::cout << "points: " << vec_point.size() << std::endl;
@@ -73,9 +178,12 @@ int main(int argc, char *argv[])
     // }
     //  std::cout << "vec_image: " << vec_image.size() << std::endl;
 
-    Scene scene(vec_camera, vec_point, vec_image);
+    // Scene scene = Scene(in_sparse,in_sparse_meta);
+    Scene scene(vec_point, vec_camera);
+    // Scene scene(cache_sparse);
 
     controller = new Controller(scene, argv, width_window, height_window);
+    std::cout << "start rendering" << std::endl;
 
     glutMainLoop();
 
@@ -106,7 +214,7 @@ void glut_display()
 void initialize_glut(int argc, char **argv, int width, int height)
 {
     glutInit(&argc, argv);
-    glutInitContextVersion(4, 4);
+    glutInitContextVersion(3, 0);
     glutInitContextProfile(GLUT_CORE_PROFILE);
 
     glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
@@ -120,32 +228,30 @@ void initialize_glut(int argc, char **argv, int width, int height)
 
     glutSetWindow(wh1);
 
+    // glutFullScreenToggle();
     // glutReshCapeFunc(glut_resize);
     glutDisplayFunc(glut_display);
     glutKeyboardFunc(glut_keyboard);
     glutKeyboardUpFunc(glut_keyboard_release);
+    glutSpecialFunc(glut_keyboard_special);
+    glutSpecialUpFunc(glut_keyboard_special_release);
     // glutMouseFunc(mouse_callback);
     glutPassiveMotionFunc(glut_mouse_movement);
     glutIdleFunc(glut_idle);
     // glutFullScreen();
     // glutSetCursor(GLUT_CURSOR_NONE);
-    // glutFullScreenToggle();
 }
-// static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-// {
-//     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-//         glfwSetWindowShouldClose(window, GL_TRUE);
-
-//     if (action == GLFW_PRESS)
-//         keys[key] = true;
-//     else if (action == GLFW_RELEASE)
-//         keys[key] = false;
-// }
 
 void glut_mouse_movement(int x, int y)
 {
+    // std::cout << x << std::endl;
     // controller->handle_mouse_movement(x, y);
     // glutWarpPointer(1920/2, 1080/2);
+}
+void glut_keyboard_special(int key, int x, int y)
+{
+    // std::cout << key << std::endl;
+    controller->handle_key_special_pressed(key);
 }
 
 void glut_keyboard(unsigned char key, int x, int y)
@@ -159,11 +265,12 @@ void glut_keyboard(unsigned char key, int x, int y)
     case '.':
         glutFullScreenToggle();
     default:
+        // std::cout << key << std::endl;
         controller->handle_key_pressed(key);
         break;
     }
 }
-
+void glut_keyboard_special_release(int key, int x, int y) { controller->handle_key_special_released(key); }
 void glut_keyboard_release(unsigned char key, int x, int y) { controller->handle_key_released(key); }
 
 void glut_idle() { glutPostRedisplay(); }

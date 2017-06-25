@@ -7,8 +7,10 @@
 
 #include <lamure/pre/serialized_surfel.h>
 
-namespace lamure {
+namespace lamure
+{
 namespace pre
 {
 
-}} // namespace lamure
+}
+} // namespace lamure

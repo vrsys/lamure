@@ -2,12 +2,47 @@
 #define LAMURE_IMAGE_H
 
 #include "exif.h"
-#include <scm/core.h>
+#include <iostream>
+#include <lamure/ren/camera.h>
+#include <lamure/ren/cut.h>
 #include <scm/core/math.h>
-#include <scm/core/math/vec.h>
-#include <scm/core/math/vec2.h>
-#include <scm/gl_util/primitives/quad.h>
 #include <string>
+
+#include <lamure/ren/controller.h>
+#include <lamure/ren/cut_database.h>
+#include <lamure/ren/model_database.h>
+#include <lamure/ren/policy.h>
+
+#include <boost/assign/list_of.hpp>
+#include <memory>
+
+#include <fstream>
+
+#include <scm/core.h>
+#include <scm/core/io/tools.h>
+#include <scm/core/pointer_types.h>
+#include <scm/core/time/accum_timer.h>
+#include <scm/core/time/high_res_timer.h>
+#include <scm/log.h>
+
+#include <scm/gl_util/data/imaging/texture_loader.h>
+#include <scm/gl_util/primitives/box.h>
+#include <scm/gl_util/primitives/quad.h>
+#include <scm/gl_util/viewer/camera.h>
+
+#include <scm/core/math.h>
+
+#include <scm/gl_core/gl_core_fwd.h>
+#include <scm/gl_util/primitives/geometry.h>
+#include <scm/gl_util/primitives/primitives_fwd.h>
+
+#include <scm/gl_util/font/font_face.h>
+#include <scm/gl_util/font/text.h>
+#include <scm/gl_util/font/text_renderer.h>
+
+#include <scm/core/platform/platform.h>
+#include <scm/core/utilities/platform_warning_disable.h>
+#include <scm/gl_util/primitives/geometry.h>
 
 using namespace std;
 
@@ -20,10 +55,12 @@ class Image
     double _focal_length;
     double _fp_resolution_x;
     double _fp_resolution_y;
+    scm::gl::texture_2d_ptr _texture;
+    scm::gl::sampler_state_ptr _state;
+
+    scm::math::mat4f _transformation = scm::math::mat4f::identity();
 
   public:
-    scm::shared_ptr<scm::gl::quad_geometry> _quad;
-
     Image();
 
     Image(int _height, int _width, const string &_file_name, double _focal_length, double _fp_resolution_x, double _fp_resolution_y);
@@ -52,7 +89,19 @@ class Image
 
     void set_fp_resolution_y(double _fp_resolution_y);
 
+    scm::gl::sampler_state_ptr get_state();
+
+    float get_width_world();
+    float get_height_world();
+
+    const scm::math::mat4f &get_transformation() const;
+
+    void update_transformation(scm::math::mat4f transformation, float scale);
+
     static Image read_from_file(const string &_file_name);
+
+    void load_texture(scm::shared_ptr<scm::gl::render_device> device);
+    scm::gl::texture_2d_ptr get_texture();
 };
 
 #endif // LAMURE_IMAGE_H

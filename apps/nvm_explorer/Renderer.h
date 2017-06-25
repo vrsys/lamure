@@ -55,18 +55,46 @@ class Renderer
 {
   private:
     scm::shared_ptr<scm::gl::render_context> _context;
+    scm::shared_ptr<scm::gl::render_device> _device;
     scm::gl::program_ptr _program_points;
+    scm::gl::program_ptr _program_points_dense;
     scm::gl::program_ptr _program_cameras;
     scm::gl::program_ptr _program_images;
+    scm::gl::program_ptr _program_frustra;
+    scm::gl::program_ptr _program_lines;
 
-    scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
-    int _width_window;
-    int _height_window;
+    scm::gl::rasterizer_state_ptr _rasterizer_state;
+
+    lamure::ren::camera *_camera = new lamure::ren::camera();
+
+    float _radius_sphere = 3.0;
+    scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
+    float _radius_sphere_screen = 0.2;
+    scm::math::vec2f _position_sphere_screen = scm::math::vec2f(0.0f, 0.0f);
+    int _state_lense = 0;
+
+    void draw_points_sparse(Scene scene);
+    void draw_cameras(Scene scene);
+    void draw_lines(Scene scene);
+    void draw_images(Scene scene);
+    void draw_frustra(Scene scene);
+    void draw_points_dense(Scene scene);
 
   public:
-    Renderer();
-    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
+    // Renderer();
+    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device);
     void render(Scene scene);
+
+    void update_state_lense();
+    void translate_sphere(scm::math::vec3f offset);
+    void update_radius_sphere(float offset);
+    void translate_sphere_screen(scm::math::vec3f offset);
+    void update_radius_sphere_screen(float offset);
+
+    bool mode_draw_points_dense = false;
+    bool mode_draw_images = true;
+    int mode_prov_data = 0;
+    bool dispatch = true;
 };
 
 #endif // LAMURE_RENDERER_H

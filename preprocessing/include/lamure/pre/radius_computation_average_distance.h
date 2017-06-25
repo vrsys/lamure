@@ -13,27 +13,28 @@
 
 #include <vector>
 
-namespace lamure {
-namespace pre{
+namespace lamure
+{
+namespace pre
+{
 
 class bvh;
 
 class radius_computation_average_distance: public radius_computation_strategy
 {
 public:
-	explicit radius_computation_average_distance(const uint16_t number_of_neighbours, const float radius_multiplier)
-	 :radius_multiplier_{radius_multiplier}
-	{
-		number_of_neighbours_ = number_of_neighbours;
-	}
+    explicit radius_computation_average_distance(const uint16_t number_of_neighbours, const float radius_multiplier)
+        : radius_multiplier_{radius_multiplier}
+    {
+        number_of_neighbours_ = number_of_neighbours;
+    }
 
-
-	real  compute_radius(const bvh& tree, 
-	 					 const surfel_id_t surfel,
-                       	 std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const override;
+    real compute_radius(const bvh &tree,
+                        const surfel_id_t surfel,
+                        std::vector<std::pair<surfel_id_t, real>> const &nearest_neighbours) const override;
 
 private:
-	float radius_multiplier_;
+    float radius_multiplier_;
 
 };
 

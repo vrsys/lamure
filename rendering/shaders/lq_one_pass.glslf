@@ -7,23 +7,63 @@
 
 #version 420 core
 
+uniform int state_lense;
+uniform int width_window;
+uniform int height_window;
+uniform float radius_sphere_screen;
+uniform vec2 position_sphere_screen;
 
 in VertexData {
-  //output to fragment shader
-  vec3 pass_point_color;
-  vec3 pass_normal;
-  vec2 pass_uv_coords;
+    //output to fragment shader
+    vec3 pass_point_color;
+    vec3 pass_normal;
+    vec2 pass_uv_coords;
+    float pass_prov_float;
 } VertexIn;
 
 layout(location = 0) out vec4 out_color;
 
+bool is_in_sphere()
+{
+    float height_width = float(height_window) / float(width_window);
+    float width_height = float(width_window) / float(height_window);
+
+    float x = gl_FragCoord.x/float(width_window);
+    float y = gl_FragCoord.y/float(height_window);
+    float z = gl_FragCoord.z; // Already in range [0,1]
+
+    // Converting from range [0,1] to NDC [-1,1]
+    float ndcx = x * 2.0 - 1.0;
+    float ndcy = y * 2.0 - 1.0;
+    float ndcz = z * 2.0 - 1.0;
+    vec2 ndc = vec2(ndcx, ndcy);
+    ndc.x = ndc.x * width_height;
+
+    return length(ndc - position_sphere_screen) < radius_sphere_screen;
+}
+
 void main() {
-  vec2 uv_coords = VertexIn.pass_uv_coords;
+    vec2 uv_coords = VertexIn.pass_uv_coords;
 
-  if ( dot(uv_coords, uv_coords)> 1 )
-    discard;
+    if ( dot(uv_coords, uv_coords)> 1 )
+    {
+        discard;
+    }
 
-  out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
+    if(state_lense == 2 && is_in_sphere())
+    // if(state_lense == 2 && is_in_sphere() && VertexIn.pass_prov_float > 0.5f)
+    {
+        // float u = clamp( VertexIn.pass_prov_float, 0.0, 1.0 );
+        // if( u < 0.5 )
+        //     out_color = mix( GREEN, WHITE, remap( 0.0, 0.5, u ) );
+        // else
+        //     out_color = mix( WHITE, RED, remap( 0.5, 1.0, u ) );
+        // out_color = vec4(0.0, 1.0, 0.0, 1.0);
+        out_color = vec4(0.0, 1.0, 0.0, 1.0);
+    } else {
+        // out_color = vec4(VertexIn.pass_point_color, 1.0);
+        out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
+    }
 }
 
 

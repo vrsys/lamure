@@ -7,8 +7,10 @@
 
 #include <lamure/pre/surfel_mem_array.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 surfel surfel_mem_array::
 read_surfel(const size_t index) const
@@ -20,7 +22,7 @@ read_surfel(const size_t index) const
     return mem_data_->operator[](offset_ + index);
 }
 
-surfel const& surfel_mem_array::
+surfel const &surfel_mem_array::
 read_surfel_ref(const size_t index) const
 {
     assert(!is_empty_);
@@ -31,7 +33,7 @@ read_surfel_ref(const size_t index) const
 }
 
 void surfel_mem_array::
-write_surfel(const surfel& surfel, const size_t index) const
+write_surfel(const surfel &surfel, const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
@@ -48,7 +50,7 @@ reset()
 }
 
 void surfel_mem_array::
-reset(const shared_surfel_vector& mem_data,
+reset(const shared_surfel_vector &mem_data,
       const size_t offset,
       const size_t length)
 {

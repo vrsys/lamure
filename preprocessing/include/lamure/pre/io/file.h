@@ -25,41 +25,42 @@ namespace pre
 class PREPROCESSING_DLL file
 {
 public:
-                        file() {}
-                        file(const file&) = delete;
-                        file& operator=(const file&) = delete;
+    file()
+    {}
+    file(const file &) = delete;
+    file &operator=(const file &) = delete;
     virtual             ~file();
 
+    void open(const std::string &file_name,
+              const bool truncate = false);
+    void close(const bool remove = false);
+    const bool is_open() const;
+    const size_t get_size() const;
+    const std::string &file_name() const
+    { return file_name_; }
 
-    void                open(const std::string& file_name,
-                             const bool truncate = false);
-    void                close(const bool remove = false);
-    const bool          is_open() const;
-    const size_t        get_size() const;
-    const std::string&  file_name() const { return file_name_; }
+    void append(const surfel_vector *data,
+                const size_t offset_in_mem,
+                const size_t length);
+    void append(const surfel_vector *data);
 
-    void                append(const surfel_vector* data,
-                               const size_t offset_in_mem,
-                               const size_t length);
-    void                append(const surfel_vector* data);
+    void write(const surfel_vector *data,
+               const size_t offset_in_mem,
+               const size_t offset_in_file,
+               const size_t length);
+    void write(const surfel &surfel, const size_t pos_in_file);
 
-    void                write(const surfel_vector* data,
-                              const size_t offset_in_mem,
-                              const size_t offset_in_file,
-                              const size_t length);
-    void                write(const surfel& surfel, const size_t pos_in_file);
-
-    void                read(surfel_vector* data,
-                              const size_t offset_in_mem,
-                              const size_t offset_in_file,
-                              const size_t length) const;
-    const surfel        read(const size_t pos_in_file) const;
+    void read(surfel_vector *data,
+              const size_t offset_in_mem,
+              const size_t offset_in_file,
+              const size_t length) const;
+    const surfel read(const size_t pos_in_file) const;
 
 private:
 
-    mutable std::mutex  read_write_mutex_;
+    mutable std::mutex read_write_mutex_;
     mutable std::fstream stream_;
-    std::string         file_name_;
+    std::string file_name_;
 
     void write_data(char *data, const size_t offset_in_file, const size_t length);
     void read_data(char *data, const size_t offset_in_file, const size_t length) const;

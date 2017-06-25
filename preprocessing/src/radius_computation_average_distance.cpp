@@ -10,31 +10,34 @@
 #include <lamure/pre/bvh.h>
 #include <lamure/pre/radius_computation_average_distance.h>
 
-namespace lamure {
-namespace pre{
-	
+namespace lamure
+{
+namespace pre
+{
+
 
 real radius_computation_average_distance::
-compute_radius(const bvh& tree,
-			   const surfel_id_t target_surfel,
-			   std::vector<std::pair<surfel_id_t, real>> const& nearest_neighbours) const {
+compute_radius(const bvh &tree,
+               const surfel_id_t target_surfel,
+               std::vector<std::pair<surfel_id_t, real>> const &nearest_neighbours) const
+{
 
     real avg_distance = 0.0;
 
     unsigned processed_neighbour_counter = 0;
     // compute radius
-    for (auto const& neighbour : nearest_neighbours) {
-    	if( processed_neighbour_counter++ < number_of_neighbours_) {
-    		avg_distance += sqrt(neighbour.second);
-    	}
-    	else {
-    		break;
-    	}
+    for (auto const &neighbour : nearest_neighbours) {
+        if (processed_neighbour_counter++ < number_of_neighbours_) {
+            avg_distance += sqrt(neighbour.second);
+        }
+        else {
+            break;
+        }
     }
 
     avg_distance /= processed_neighbour_counter;
 
-	return avg_distance * radius_multiplier_;
+    return avg_distance * radius_multiplier_;
 };
 
 }// namespace pre

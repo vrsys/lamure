@@ -1,55 +1,130 @@
 #include "Controller.h"
 
-Controller::Controller(Scene scene, char **argv, int width_window, int height_window)
+Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window) : _scene(scene)
 {
-    _scene = scene;
     // initialize context
     scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
     // initialize device
     _device.reset(new scm::gl::render_device());
 
-    _renderer.init(argv, _device, width_window, height_window);
-    _scene.init(_device);
+    _renderer.init(argv, _device);
+    _scene.init(_device, width_window, height_window);
 }
 
 bool Controller::update(int time_delta)
 {
     handle_movements(time_delta);
+    _scene.update(time_delta);
     _renderer.render(_scene);
 
     return false;
 }
 void Controller::handle_movements(int time_delta)
 {
-    float speed_camera = 0.02f * time_delta;
-    scm::math::vec3f offset = scm::math::vec3f(0.0, 0.0, 0.0);
-    if(_keys[int('w')])
+    float xoffset = 0.0f;
+    float yoffset = 0.0f;
+    if(_keys[int('4')])
     {
-        offset += scm::math::vec3f(0.0, 0.0, 1.0) * speed_camera;
+        xoffset += 1;
     }
-    if(_keys[int('s')])
+    if(_keys[int('6')])
     {
-        offset += scm::math::vec3f(0.0, 0.0, -1.0) * speed_camera;
+        xoffset += -1;
     }
-    // Why do I have to invert this?
-    if(_keys[int('a')])
+    if(_keys[int('8')])
     {
-        offset += scm::math::vec3f(1.0, 0.0, 0.0) * speed_camera;
+        yoffset += -1;
     }
-    // Why do I have to invert this?
-    if(_keys[int('d')])
+    if(_keys[int('5')])
     {
-        offset += scm::math::vec3f(-1.0, 0.0, 0.0) * speed_camera;
+        yoffset += 1;
     }
-    if(_keys[int('q')])
+    scm::math::quat<double> old_rotation = _scene.get_camera_view().get_rotation();
+    scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
+    scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
+    scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
+    new_rotation = new_rotation * new_rotation_y;
+    _scene.get_camera_view().set_rotation(new_rotation);
+
+    float speed = 0.002f * time_delta;
+    scm::math::vec3f offset = scm::math::vec3f(0.0f, 0.0f, 0.0f);
+
+    if(_keys[int('w')] || _keys[int('W')])
     {
-        offset += scm::math::vec3f(0.0, 1.0, 0.0) * speed_camera;
+        offset += scm::math::vec3f(0.0f, 0.0f, -1.0f) * speed;
     }
-    if(_keys[int('e')])
+    if(_keys[int('s')] || _keys[int('S')])
     {
-        offset += scm::math::vec3f(0.0, -1.0, 0.0) * speed_camera;
+        offset += scm::math::vec3f(0.0f, 0.0f, 1.0f) * speed;
     }
-    _scene.get_camera_view().translate(offset);
+    if(_keys[int('a')] || _keys[int('A')])
+    {
+        offset += scm::math::vec3f(-1.0f, 0.0f, 0.0f) * speed;
+    }
+    if(_keys[int('d')] || _keys[int('D')])
+    {
+        offset += scm::math::vec3f(1.0f, 0.0f, 0.0f) * speed;
+    }
+    if(_keys[int('q')] || _keys[int('Q')])
+    {
+        offset += scm::math::vec3f(0.0f, 1.0f, 0.0f) * speed;
+    }
+    if(_keys[int('e')] || _keys[int('E')])
+    {
+        offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
+    }
+
+    if(_keys_special[112]) // shift is pressed
+    {
+        offset = scm::math::quat<float>(_scene.get_camera_view().get_rotation()) * offset;
+        _renderer.translate_sphere(offset);
+    }
+    else if(_keys_special[116]) // ctrl is pressed
+    {
+        _renderer.translate_sphere_screen(offset);
+    }
+    else
+    {
+        offset = scm::math::quat<float>(_scene.get_camera_view().get_rotation()) * offset;
+        _scene.get_camera_view().translate(offset);
+    }
+
+    if(_keys[int('k')])
+    {
+        _scene.update_scale_frustum(_device, 0.01f * time_delta);
+    }
+    if(_keys[int('j')])
+    {
+        _scene.update_scale_frustum(_device, -0.01f * time_delta);
+    }
+
+    if(_keys[int('v')])
+    {
+        _scene.update_model_radius_scale(-0.0004f * time_delta);
+    }
+    if(_keys[int('b')])
+    {
+        _scene.update_model_radius_scale(0.0004f * time_delta);
+    }
+
+    float radius = 0.0f;
+    if(_keys[int('x')] || _keys[int('X')])
+    {
+        radius += -0.001f * time_delta;
+    }
+    if(_keys[int('c')] || _keys[int('C')])
+    {
+        radius += 0.001f * time_delta;
+    }
+
+    if(_keys_special[112]) // shift is pressed
+    {
+        _renderer.update_radius_sphere(radius);
+    }
+    else if(_keys_special[116]) // ctrl is pressed
+    {
+        _renderer.update_radius_sphere_screen(radius);
+    }
 }
 void Controller::handle_mouse_movement(int x, int y)
 {
@@ -60,6 +135,10 @@ void Controller::handle_mouse_movement(int x, int y)
         _is_first_mouse_movement = false;
     }
 
+    _x_last = 1920 / 2;
+    _y_last = 1080 / 2;
+    std::cout << x << std::endl;
+
     float xoffset = x - _x_last;
     float yoffset = _y_last - y;
     _x_last = x;
@@ -69,25 +148,117 @@ void Controller::handle_mouse_movement(int x, int y)
     xoffset *= sensitivity * -1.0;
     yoffset *= sensitivity * -1.0;
 
-    _yaw += xoffset;
-    _pitch += yoffset;
+    // _yaw += xoffset;
+    // _pitch += yoffset;
 
-    if(_pitch > 89.0f)
-        _pitch = 89.0f;
-    if(_pitch < -89.0f)
-        _pitch = -89.0f;
+    // if (_pitch > 89.0f)
+    //  _pitch = 89.0f;
+    // if (_pitch < -89.0f)
+    //  _pitch = -89.0f;
 
-    scm::math::vec3f front;
-    front.x = scm::math::cos(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
-    front.y = scm::math::sin(scm::math::deg2rad(_pitch));
-    front.z = scm::math::sin(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
+    // scm::math::vec3f front;
+    // front.x = scm::math::cos(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
+    // front.y = scm::math::sin(scm::math::deg2rad(_pitch));
+    // front.z = scm::math::sin(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
+    // std::cout << front << std::endl;
+    // _scene.get_camera_view().set_rotation(scm::math::quat<double>::from_axis(_pitch, _yaw, 0.0));
+    scm::math::quat<double> old_rotation = _scene.get_camera_view().get_rotation();
+    scm::math::quat<double> new_rotation = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
+    // new_rotation = new_rotation * scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
 
-    _scene.get_camera_view().set_rotation(front);
+    new_rotation = old_rotation * new_rotation;
+
+    _scene.get_camera_view().set_rotation(new_rotation);
+    // _scene.get_camera_view().set_rotation(scm::math::quat<double>::from_euler(_pitch, _yaw, 0.0));
     // render_manager.direction_camera = glm::normalize(front);
 }
 void Controller::handle_key_pressed(char key) { _keys[int(key)] = true; }
+void Controller::handle_key_special_pressed(int key) { _keys_special[key] = true; }
+void Controller::handle_key_special_released(int key) { _keys_special[key] = false; }
 void Controller::handle_key_released(char key)
 {
     // std::cout << key << " " << (char)int(key) << std::endl;
     _keys[int(key)] = false;
+
+    if(key == 'i')
+    {
+        _scene.toggle_camera();
+    }
+    else if(key == 'u')
+    {
+        _scene.previous_camera();
+    }
+    else if(key == 'o')
+    {
+        _scene.next_camera();
+    }
+    else if(key == 'n')
+    {
+        _renderer.mode_draw_points_dense = !_renderer.mode_draw_points_dense;
+    }
+    else if(key == 'm')
+    {
+        _renderer.mode_draw_images = !_renderer.mode_draw_images;
+    }
+    else if(key == 't')
+    {
+        _renderer.update_state_lense();
+    }
+    else if(key == '1')
+    {
+        _renderer.mode_prov_data = 0;
+    }
+    else if(key == '2')
+    {
+        _renderer.mode_prov_data = 1;
+    }
+    else if(key == '3')
+    {
+        _renderer.mode_prov_data = 2;
+    }
+    else if(key == 'p')
+    {
+        _renderer.dispatch = !_renderer.dispatch;
+    }
+
+    if(key == 'w' || key == 'W')
+    {
+        _keys[int('w')] = false;
+        _keys[int('W')] = false;
+    }
+    if(key == 's' || key == 'S')
+    {
+        _keys[int('s')] = false;
+        _keys[int('S')] = false;
+    }
+    if(key == 'a' || key == 'A')
+    {
+        _keys[int('a')] = false;
+        _keys[int('A')] = false;
+    }
+    if(key == 'd' || key == 'D')
+    {
+        _keys[int('d')] = false;
+        _keys[int('D')] = false;
+    }
+    if(key == 'q' || key == 'Q')
+    {
+        _keys[int('q')] = false;
+        _keys[int('Q')] = false;
+    }
+    if(key == 'e' || key == 'E')
+    {
+        _keys[int('e')] = false;
+        _keys[int('E')] = false;
+    }
+    if(key == 'x' || key == 'X')
+    {
+        _keys[int('x')] = false;
+        _keys[int('X')] = false;
+    }
+    if(key == 'c' || key == 'C')
+    {
+        _keys[int('c')] = false;
+        _keys[int('C')] = false;
+    }
 }

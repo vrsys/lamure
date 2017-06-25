@@ -9,17 +9,19 @@
 
 #include <stdexcept>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 void format_bin::
-read(const std::string& filename, surfel_callback_funtion callback)
+read(const std::string &filename, surfel_callback_funtion callback)
 {
     throw std::runtime_error("Not implemented yet!");
 }
 
 void format_bin::
-write(const std::string& filename, buffer_callback_function callback)
+write(const std::string &filename, buffer_callback_function callback)
 {
 
     file file;

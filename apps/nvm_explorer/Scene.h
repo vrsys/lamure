@@ -45,43 +45,69 @@
 #include <lamure/ren/cut_update_pool.h>
 #include <vector>
 
-#include "Camera.h"
+// #include "Camera.h"
 #include "Camera_View.h"
 #include "Point.h"
 #include "Struct_Camera.h"
 #include "Struct_Image.h"
+#include "Struct_Line.h"
 #include "Struct_Point.h"
+#include <lamure/pro/data/SparseCache.h>
+#include <lamure/pro/data/entities/Camera.h>
+#include <lamure/pro/data/entities/SparsePoint.h>
+#include <scm/gl_util/primitives/quad.h>
 
 class Scene
 {
   private:
-    std::vector<Camera> _vector_camera;
-    std::vector<Point> _vector_point;
-    std::vector<Image> _vector_image;
+    std::vector<prov::Camera> _vector_camera;
+    std::vector<prov::SparsePoint> _vector_point;
+    // std::vector<Image> _vector_image;
 
     scm::gl::vertex_array_ptr _vertex_array_object_points;
     scm::gl::vertex_array_ptr _vertex_array_object_cameras;
-    scm::gl::vertex_array_ptr _vertex_array_object_images;
+    scm::gl::vertex_array_ptr _vertex_array_object_lines;
+    scm::shared_ptr<scm::gl::quad_geometry> _quad;
 
     Camera_View _camera_view;
 
     std::vector<Struct_Point> convert_points_to_struct_point();
     std::vector<Struct_Camera> convert_cameras_to_struct_camera();
-    std::vector<Struct_Image> convert_images_to_struct_image();
+    std::vector<Struct_Line> convert_lines_to_struct_line();
+
+    bool is_default_camera = true;
+    int index_current_image_camera = 0;
+    float _model_radius_scale = 0.1f;
 
   public:
-    Scene();
-    Scene(std::vector<Camera> vector_camera, std::vector<Point> vector_point, std::vector<Image> vector_image);
+    Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera);
+    // Scene(const Scene&);
+    // Scene(prov::SparseCache const &cache_sparse);
+    // Scene(prov::SparseCache const& cache_sparse);
 
-    void init(scm::shared_ptr<scm::gl::render_device> device);
+    void init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
     scm::gl::vertex_array_ptr get_vertex_array_object_points();
     scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
-    scm::gl::vertex_array_ptr get_vertex_array_object_images();
+    scm::gl::vertex_array_ptr get_vertex_array_object_lines();
+    scm::shared_ptr<scm::gl::quad_geometry> get_quad();
 
     Camera_View &get_camera_view();
+    float &get_model_radius_scale();
+    void set_model_radius_scale(float scale);
+    void update_model_radius_scale(float scale);
+    // std::vector<Image> &get_vector_image();
+    std::vector<prov::Camera> &get_vector_camera();
+    std::vector<prov::SparsePoint> &get_vector_point();
+    bool update(int time_delta);
+    void update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset);
+
     int count_points();
     int count_cameras();
-    int count_images();
+    // int count_images();
+
+    void toggle_camera();
+    void previous_camera();
+    void next_camera();
 
     // camera::projection_perspective(float fovy, float aspect, float near_z, float far_z)
 };

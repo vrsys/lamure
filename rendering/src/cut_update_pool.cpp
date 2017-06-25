@@ -24,6 +24,9 @@ cut_update_pool(const context_t context_id,
     current_gpu_storage_A_(nullptr),
     current_gpu_storage_B_(nullptr),
     current_gpu_storage_(nullptr),
+    current_gpu_storage_A_provenance_(nullptr),
+    current_gpu_storage_B_provenance_(nullptr),
+    current_gpu_storage_provenance_(nullptr),
     current_gpu_buffer_(cut_database_record::temporary_buffer::BUFFER_A),
     upload_budget_in_nodes_(upload_budget_in_nodes),
     render_budget_in_nodes_(render_budget_in_nodes),
@@ -66,8 +69,9 @@ initialize() {
     assert(policy->render_budget_in_mb() > 0);
     assert(policy->out_of_core_budget_in_mb() > 0);
 
-    out_of_core_budget_in_nodes_ =
-        (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();;
+    // out_of_core_budget_in_nodes_ =
+    //     (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();
+    // std::cout << "SETTING RAM" << std::endl;
 
     index_ = new cut_update_index();
     index_->update_policy(0);
@@ -100,6 +104,9 @@ shutdown() {
     current_gpu_storage_A_ = nullptr;
     current_gpu_storage_B_ = nullptr;
 
+    current_gpu_storage_A_provenance_ = nullptr;
+    current_gpu_storage_B_provenance_ = nullptr;
+
 }
 
 bool cut_update_pool::
@@ -115,7 +122,7 @@ is_running() {
 }
 
 void cut_update_pool::
-dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B) {
+dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B, char* current_gpu_storage_A_provenance, char* current_gpu_storage_B_provenance) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     assert(current_gpu_storage_A != nullptr);
@@ -131,6 +138,10 @@ dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B) {
     if (!master_dispatched_) {
         current_gpu_storage_A_ = current_gpu_storage_A;
         current_gpu_storage_B_ = current_gpu_storage_B;
+
+        // ASK CARL 
+        current_gpu_storage_A_provenance_ = current_gpu_storage_A_provenance;
+        current_gpu_storage_B_provenance_ = current_gpu_storage_B_provenance;
 
         master_dispatched_ = true;
 
@@ -298,10 +309,12 @@ cut_master() {
     if (current_gpu_buffer_ == cut_database_record::temporary_buffer::BUFFER_A) {
         current_gpu_buffer_ = cut_database_record::temporary_buffer::BUFFER_B;
         current_gpu_storage_ = current_gpu_storage_B_;
+        current_gpu_storage_provenance_ = current_gpu_storage_B_provenance_;
     }
     else {
         current_gpu_buffer_ = cut_database_record::temporary_buffer::BUFFER_A;
         current_gpu_storage_ = current_gpu_storage_A_;
+        current_gpu_storage_provenance_ = current_gpu_storage_A_provenance_;
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_REPEAT_MODE
@@ -1104,7 +1117,7 @@ compile_transfer_list() {
     const std::vector<std::unordered_set<node_t>>& transfer_list = gpu_cache_->transfer_list();
 
     slot_t slot_count = gpu_cache_->transfer_slots_written();
-
+    Data_Provenance data_provenance;
     for (model_t model_id = 0; model_id < index_->num_models(); ++model_id) {
         for (const auto& node_id : transfer_list[model_id]) {
             slot_t slot_id = gpu_cache_->slot_id(model_id, node_id);
@@ -1112,8 +1125,15 @@ compile_transfer_list() {
             assert(slot_id < (slot_t)render_budget_in_nodes_);
 
             char* node_data = ooc_cache->node_data(model_id, node_id);
+            char* node_data_provenance = ooc_cache->node_data_provenance(model_id, node_id);
 
-            memcpy(current_gpu_storage_ + slot_count*database->get_slot_size(), node_data, database->get_slot_size());
+            memcpy(current_gpu_storage_ + slot_count * database->get_slot_size(), node_data, database->get_slot_size());
+
+            memcpy(
+                current_gpu_storage_provenance_ + slot_count * database->get_primitives_per_node() * data_provenance.get_size_in_bytes(), 
+                node_data_provenance, 
+                database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
+            );
 
             transfer_list_.push_back(cut_database_record::slot_update_desc(slot_count, slot_id));
 

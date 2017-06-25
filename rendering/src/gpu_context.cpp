@@ -24,6 +24,7 @@ gpu_context(const context_t context_id)
   temp_buffer_b_(nullptr),
   primary_buffer_(nullptr),
   temporary_storages_(temporary_storages(nullptr, nullptr)),
+  temporary_storages_provenance_(temporary_storages(nullptr, nullptr)),
   upload_budget_in_nodes_(LAMURE_DEFAULT_UPLOAD_BUDGET),
   render_budget_in_nodes_(LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET) {
 
@@ -33,6 +34,7 @@ gpu_context(const context_t context_id)
 gpu_context::
 ~gpu_context() {
     temporary_storages_ = temporary_storages(nullptr, nullptr);
+    temporary_storages_provenance_ = temporary_storages(nullptr, nullptr);
 
     if (temp_buffer_a_) {
         delete temp_buffer_a_;
@@ -76,19 +78,44 @@ test_video_memory(scm::gl::render_device_ptr device) {
     model_database* database = model_database::get_instance();
     policy* policy = policy::get_instance();
 
+    float safety = 0.75;
+    size_t video_ram_free_in_mb = gpu_access::query_video_memory_in_mb(device) * safety;
+
     size_t render_budget_in_mb = policy->render_budget_in_mb();
 
-    size_t video_ram_in_mb = gpu_access::query_video_memory_in_mb(device);
-    render_budget_in_mb = render_budget_in_mb < LAMURE_MIN_VIDEO_MEMORY_BUDGET ? LAMURE_MIN_VIDEO_MEMORY_BUDGET : render_budget_in_mb;
-    render_budget_in_mb = render_budget_in_mb > video_ram_in_mb * 0.75 ? video_ram_in_mb * 0.75 : render_budget_in_mb;
-    render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / database->get_slot_size();
+    if(policy->out_of_core_budget_in_mb() == 0)
+    {
+        std::cout << "##### Total free video memory (" << video_ram_free_in_mb << " MB) will be used for the render budget #####" << std::endl;
+        render_budget_in_mb = video_ram_free_in_mb;
+    }
+    else if(video_ram_free_in_mb < render_budget_in_mb)
+    {
+        std::cout << "##### The specified render budget is too large! " << video_ram_free_in_mb << " MB will be used for the render budget #####" << std::endl;
+        render_budget_in_mb = video_ram_free_in_mb;
+    } 
+    else 
+    {
+        std::cout << "##### " << policy->render_budget_in_mb() << " MB will be used for the render budget #####" << std::endl;
+    }
+    Data_Provenance data_provenance;
+    long node_size_total = database->get_primitives_per_node() * data_provenance.get_size_in_bytes() + database->get_slot_size();
+    render_budget_in_nodes_ = (render_budget_in_mb * 1024 * 1024) / node_size_total;
+
+    // render_budget_in_mb = policy->render_budget_in_mb();
+
+
+    // // render_budget_in_mb = render_budget_in_mb < LAMURE_MIN_VIDEO_MEMORY_BUDGET ? LAMURE_MIN_VIDEO_MEMORY_BUDGET : render_budget_in_mb;
+    // render_budget_in_mb = render_budget_in_mb > video_ram_free_in_mb * 0.75 ? video_ram_free_in_mb * 0.75 : render_budget_in_mb;
+
+
+    // render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / (database->get_primitives_per_node() * sizeof(data_provenance) + database->get_slot_size());
+    // std::cout << "RENDER2: " << render_budget_in_nodes_ << std::endl;
 
     size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
     max_upload_budget_in_mb = max_upload_budget_in_mb < LAMURE_MIN_UPLOAD_BUDGET ? LAMURE_MIN_UPLOAD_BUDGET : max_upload_budget_in_mb;
-    max_upload_budget_in_mb = max_upload_budget_in_mb > video_ram_in_mb * 0.125 ? video_ram_in_mb * 0.125 : max_upload_budget_in_mb;
-    size_t max_upload_budget_in_nodes = (max_upload_budget_in_mb * 1024u * 1024u) / database->get_slot_size();
-
-    upload_budget_in_nodes_ = max_upload_budget_in_nodes;
+    max_upload_budget_in_mb = max_upload_budget_in_mb > video_ram_free_in_mb * 0.125 ? video_ram_free_in_mb * 0.125 : max_upload_budget_in_mb;
+    
+    upload_budget_in_nodes_ = (max_upload_budget_in_mb * 1024u * 1024u) / node_size_total;
     
 
 #if 1
@@ -185,6 +212,7 @@ map_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::
         case cut_database_record::temporary_buffer::BUFFER_A:
             if (!temp_buffer_a_->is_mapped()) {
                 temporary_storages_.storage_a_ = temp_buffer_a_->map(device);
+                temporary_storages_provenance_.storage_a_ = temp_buffer_a_->map_provenance(device);
             }
             return;
             break;
@@ -192,6 +220,7 @@ map_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm::
         case cut_database_record::temporary_buffer::BUFFER_B:
             if (!temp_buffer_b_->is_mapped()) {
                 temporary_storages_.storage_b_ = temp_buffer_b_->map(device);
+                temporary_storages_provenance_.storage_b_ = temp_buffer_b_->map_provenance(device);
             }
             return;
             break;
@@ -215,12 +244,14 @@ unmap_temporary_storage(const cut_database_record::temporary_buffer& buffer, scm
         case cut_database_record::temporary_buffer::BUFFER_A:
             if (temp_buffer_a_->is_mapped()) {
                 temp_buffer_a_->unmap(device);
+                temp_buffer_a_->unmap_provenance(device);
             }
             break;
 
         case cut_database_record::temporary_buffer::BUFFER_B:
             if (temp_buffer_b_->is_mapped()) {
                 temp_buffer_b_->unmap(device);
+                temp_buffer_b_->unmap_provenance(device);
             }
             break;
 
@@ -241,6 +272,8 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
     cut_database* cuts = cut_database::get_instance();
 
     size_t uploaded_nodes = 0;
+    
+    Data_Provenance data_provenance;
 
     switch (from_buffer) {
         case cut_database_record::temporary_buffer::BUFFER_A:
@@ -257,8 +290,23 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
                 {
                     size_t offset_in_temp_VBO = transfer_desc.src_ * database->get_slot_size();
                     size_t offset_in_render_VBO = transfer_desc.dst_ * database->get_slot_size();
-                    device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), 
-                        temp_buffer_a_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
+                    device->main_context()->copy_buffer_data(
+                        primary_buffer_->get_buffer(), 
+                        temp_buffer_a_->get_buffer(), 
+                        offset_in_render_VBO, 
+                        offset_in_temp_VBO, 
+                        database->get_slot_size()
+                    );
+
+                    size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                    size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                    device->main_context()->copy_buffer_data(
+                        primary_buffer_->get_buffer_provenance(), 
+                        temp_buffer_a_->get_buffer_provenance(), 
+                        offset_in_render_VBO_provenance, 
+                        offset_in_temp_VBO_provenance, 
+                        database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
+                    );
                 }
             }
             break;
@@ -277,8 +325,24 @@ update_primary_buffer(const cut_database_record::temporary_buffer& from_buffer, 
                 for (const auto& transfer_desc : transfer_descr_list) {
                     size_t offset_in_temp_VBO = transfer_desc.src_ * database->get_slot_size();
                     size_t offset_in_render_VBO = transfer_desc.dst_ * database->get_slot_size();
-                    device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), 
-                        temp_buffer_b_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
+                    device->main_context()->copy_buffer_data(
+                        primary_buffer_->get_buffer(), 
+                        temp_buffer_b_->get_buffer(), 
+                        offset_in_render_VBO, 
+                        offset_in_temp_VBO, 
+                        database->get_slot_size()
+                    );
+
+
+                    size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                    size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                    device->main_context()->copy_buffer_data(
+                        primary_buffer_->get_buffer_provenance(), 
+                        temp_buffer_b_->get_buffer_provenance(), 
+                        offset_in_render_VBO_provenance, 
+                        offset_in_temp_VBO_provenance, 
+                        database->get_primitives_per_node() * data_provenance.get_size_in_bytes()
+                    );
                 }
             }
             break;

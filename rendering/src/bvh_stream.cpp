@@ -282,6 +282,11 @@ read_bvh(const std::string& filename, bvh& bvh) {
    
     }
 
+    std::cout << "number of servlets: " << tree.num_nodes_ * tree.max_surfels_per_node_ << std::endl;
+    std::cout << "depth: " << bvh.get_depth() << std::endl;
+    std::cout << "first: " << bvh.get_first_node_id_of_depth(bvh.get_depth()) << std::endl;
+
+
 }
 
 void bvh_stream::

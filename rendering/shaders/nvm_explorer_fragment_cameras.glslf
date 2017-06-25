@@ -17,7 +17,7 @@ void main()
 {
 	// if(passed_is_highlighted > 0.5)
 	// {
-		 color = vec4(1.0, 0.0, 0.0, 1.0f);
+		 color = vec4(0.0, 0.0, 1.0, 1.0f);
 	// } else {
 		//color = vec4(passed_color, 1.0f);
 	// }

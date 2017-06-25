@@ -39,7 +39,13 @@ public:
 
     const uint32_t          num_threads() const { return num_threads_; };
 
-    void                    dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B);
+    void                    dispatch_cut_update(
+                                char* current_gpu_storage_A, 
+                                char* current_gpu_storage_B, 
+                                char* current_gpu_storage_A_provenance, 
+                                char* current_gpu_storage_B_provenance
+                            );
+    // void                    dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B);
     const bool              is_running();
 
 protected:
@@ -95,6 +101,10 @@ private:
     char*                   current_gpu_storage_B_;
     char*                   current_gpu_storage_;
 
+    char*                   current_gpu_storage_A_provenance_;
+    char*                   current_gpu_storage_B_provenance_;
+    char*                   current_gpu_storage_provenance_;
+
     cut_database_record::temporary_buffer current_gpu_buffer_;
 
     std::map<view_t, camera> user_cameras_;
@@ -106,7 +116,7 @@ private:
 
     size_t                  upload_budget_in_nodes_;
     size_t                  render_budget_in_nodes_;
-    size_t                  out_of_core_budget_in_nodes_;
+    // size_t                  out_of_core_budget_in_nodes_;
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
     size_t                  cut_update_counter_;

@@ -8,17 +8,103 @@ This repository is a fork of [LAMURE](https://github.com/vrsys/lamure) by [Virtu
 
 &nbsp;<details open><summary>Contributions here are going to be focused at following applications</summary>
 
-### NVM Explorer
+### Lamure Visual Provenance Viewer
 
-Functional requirements:
+Lamure Visual Provenance Viewer is a [LAMURE](https://github.com/vrsys/lamure) app,
+capable of displaying arbitrary sparse and dense point clouds representing
+3D reconstruction output from structure from motion (SfM) tools.
 
-1. Consume SfM workspace from [NVM](http://ccwu.me/vsfm/doc.html#nvm) input file via:
+### Sparse data file format
+
+Bytewise specification (following the guidelines of [Fadden](http://www.fadden.com/tech/file-formats.html)). Numerical values in double.
+
     ```
-    ./lamure_nvm_explorer -f <input_file.nvm>
+    +00     2B Magic number (0xAFFE)
+    +02     8B Length of data
+    +06     4B Number of sparse points
+    +0A     4B Length of sparse point meta data (ZZ)
+
+        [start sparse point]
+
+        +00     4B  Point index
+        +04     24B Position, XYZ
+        +1C     24B Color, RGB
+        +20     2B  Number of measurements
+
+            [start measurement]
+
+            +00     2B Camera index
+            +02     4B Occurence, X
+            +06     4B Occurence, Y
+
+            [end measurement]
+
+        [end sparse point]
+
+    +??     2B Number of cameras
+    +??     4B Length of camera meta data (ZZ)
+    +??     2B Max length of file path (YY)
+
+
+        [start camera]
+
+        +00     2B  Camera index
+        +02     8B  Focal length
+        +0A     32B Quaternion, WXYZ
+        +2A     24B Camera center, XYZ
+        +42     YY  File path
+
+        [end camera]
+
     ```
-2. Display camera objects while rendering image textures at their respective positions/quaternions.
-3. Display sparse point cloud while highlighting corresponding measurements in respective image textures during interaction.
-4. Allow for intuitive navigation through the rendered scene.
+
+### Dense data file format
+
+    ```
+    +00     2B Magic number (0xAFFE)
+    +02     8B Length of data
+    +06     4B Number of points
+    +0A     4B Length of dense point meta data (ZZ)
+
+    [start dense point] // length == 0x48
+
+    +00     24B Position, XYZ
+    +18     24B Color, RGB
+    +30     24B Normal, XYZ
+
+    [end dense point]
+
+    ```
+
+### Meta data file format
+
+    ```
+    +00    2B Magic number (0xAFFE)
+    +02    8B Length of data
+
+    [start meta data entry] // length == ZZ
+
+    +00    ZZ Meta data
+
+    [end meta data entry]
+
+    ```
+
+### LoD meta data file format
+
+    ```
+    +00    2B Magic number (0xAFFE)
+    +02    8B Length of data
+
+    [start LoD point] // length == 0x18
+
+    +00    8B Mean absolute deviation of normals
+    +08    8B Standard deviation of normals
+    +10    8B Coefficient of variation of normals
+
+    [end LoD point]
+
+    ```
 
 </details>
 

@@ -34,10 +34,13 @@ public:
 
     char* map(scm::gl::render_device_ptr const& device);
     void unmap(scm::gl::render_device_ptr const& device);
+    char* map_provenance(scm::gl::render_device_ptr const& device);
+    void unmap_provenance(scm::gl::render_device_ptr const& device);
     const bool is_mapped() const { return is_mapped_; };
     const bool has_layout() const { return has_layout_; };
 
     scm::gl::buffer_ptr get_buffer() { return buffer_; };
+    scm::gl::buffer_ptr get_buffer_provenance() { return buffer_provenance_; };
     scm::gl::vertex_array_ptr get_memory(bvh::primitive_type type);
 
     static const size_t query_video_memory_in_mb(scm::gl::render_device_ptr const& device);
@@ -46,14 +49,19 @@ public:
 private:
     slot_t num_slots_;
     size_t size_of_slot_;
+    size_t size_of_slot_provenance_;
     size_t size_of_surfel_;
 
     bool is_mapped_;
+    bool is_mapped_provenance_;
     bool has_layout_;
 
     scm::gl::vertex_array_ptr pcl_memory_;
     scm::gl::vertex_array_ptr tri_memory_;
+
     scm::gl::buffer_ptr buffer_;
+
+    scm::gl::buffer_ptr buffer_provenance_;
 };
 
 

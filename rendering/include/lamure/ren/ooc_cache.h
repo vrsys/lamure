@@ -18,6 +18,7 @@
 #include <lamure/ren/platform.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/policy.h>
+#include <sys/sysinfo.h>
 
 
 namespace lamure {
@@ -35,6 +36,7 @@ public:
 
     void                register_node(const model_t model_id, const node_t node_id, const int32_t priority);
     char*               node_data(const model_t model_id, const node_t node_id);
+    char*               node_data_provenance(const model_t model_id, const node_t node_id);
 
     const bool          is_node_resident_and_aquired(const model_t model_id, const node_t node_id);
 
@@ -56,6 +58,7 @@ private:
     static std::mutex   mutex_;
 
     char*               cache_data_;
+    char*               cache_data_provenance_;
     uint32_t            maintenance_counter_;
     ooc_pool*            pool_;
 };

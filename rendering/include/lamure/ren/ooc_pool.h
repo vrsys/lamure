@@ -19,8 +19,10 @@
 #include <lamure/ren/config.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/lod_stream.h>
+#include <lamure/ren/provenance_stream.h>
 #include <lamure/ren/cache_queue.h>
 #include <lamure/ren/cache_index.h>
+#include <lamure/ren/Data_Provenance.h>
 
 
 
@@ -31,7 +33,8 @@ class ooc_pool
 {
 public:
                         ooc_pool(const uint32_t num_loader_threads,
-                                const size_t size_of_slot_in_bytes);
+                                const size_t size_of_slot_in_bytes,
+                                const size_t size_of_slot_provenance_in_bytes);
     /*virtual*/         ~ooc_pool();
 
     const uint32_t      num_threads() const { return num_threads_; };
@@ -62,6 +65,7 @@ private:
     bool                locked_;
     semaphore           semaphore_;
     size_t              size_of_slot_;
+    size_t              size_of_slot_provenance_;
     std::mutex          mutex_;
 
     uint32_t            num_threads_;

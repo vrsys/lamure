@@ -7,6 +7,11 @@
 
 #version 420 core
 
+in vec2 passed_uv;
+
+layout(binding  = 0) uniform sampler2D in_color_texture;
+
+
 // in vec4 passed_position_view_space;
 // in vec3 passed_color;
 // in float passed_is_highlighted;
@@ -19,6 +24,9 @@ void main()
 	// {
 		// color = vec4(1.0, 1.0, 0.0, 1.0f);
 	// } else {
-		color = vec4(0.0, 1.0, 0.0, 1.0f);
+  	vec4 texColor = texture2D(in_color_texture, passed_uv);
+  	// vec4 texColor = texture2D(in_color_texture, passed_uv);
+	color = vec4(texColor);
+		// color = vec4(0.0, 1.0, 0.0, 1.0f);
 	// }
 } 

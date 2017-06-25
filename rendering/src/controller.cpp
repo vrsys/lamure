@@ -282,7 +282,10 @@ dispatch(const context_t context_id, scm::gl::render_device_ptr device) {
 
         cut_update_it->second->dispatch_cut_update(
           gpu_context_it->second->get_temporary_storages().storage_a_,
-          gpu_context_it->second->get_temporary_storages().storage_b_);
+          gpu_context_it->second->get_temporary_storages().storage_b_,
+          gpu_context_it->second->get_temporary_storages_provenance().storage_a_,
+          gpu_context_it->second->get_temporary_storages_provenance().storage_b_
+          );
 
         if (cuts->is_front_modified(context_id)) {
             cut_database_record::temporary_buffer current = cuts->get_buffer(context_id);

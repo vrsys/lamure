@@ -13,38 +13,42 @@
 #include <lamure/pre/platform.h>
 #include <lamure/pre/io/format_abstract.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
-class PREPROCESSING_DLL format_ply : public format_abstract
+class PREPROCESSING_DLL format_ply: public format_abstract
 {
 public:
-    explicit            format_ply()
-                            : format_abstract()
-                            { has_normals_ = false;
-                              has_radii_   = false;
-                              has_color_   = true; }
+    explicit format_ply()
+        : format_abstract()
+    {
+        has_normals_ = false;
+        has_radii_ = false;
+        has_color_ = true;
+    }
 
 
 protected:
-  virtual void        read(const std::string& filename, surfel_callback_funtion callback) override;
-  virtual void        write(const std::string& filename, buffer_callback_function callback) override;
+    virtual void read(const std::string &filename, surfel_callback_funtion callback) override;
+    virtual void write(const std::string &filename, buffer_callback_function callback) override;
 
 private:
-    surfel              current_surfel_;
+    surfel current_surfel_;
 
-    template <typename ScalarType> 
-    std::function <void (ScalarType)> scalar_callback(const std::string& element_name, 
-                                                      const std::string& property_name);
+    template<typename ScalarType>
+    std::function<void(ScalarType)> scalar_callback(const std::string &element_name,
+                                                    const std::string &property_name);
 };
 
-template <>
+template<>
 std::function<void(float)> format_ply::
-scalar_callback(const std::string& element_name, const std::string& property_name);
+scalar_callback(const std::string &element_name, const std::string &property_name);
 
-template <>
+template<>
 std::function<void(uint8_t)> format_ply::
-scalar_callback(const std::string& element_name, const std::string& property_name);
+scalar_callback(const std::string &element_name, const std::string &property_name);
 
 } // namespace pre
 } // namespace lamure
