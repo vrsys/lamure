@@ -1,4 +1,4 @@
-from pypro.entities import *
+from .entities import *
 from .formats import *
 
 

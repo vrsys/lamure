@@ -57,6 +57,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
     _program_frustra = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
+    // create shader program for lines
+    scm::io::read_text_file(root_path + "/nvm_explorer_vertex_lines.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_fragment_lines.glslf", visibility_fs_source);
+    _program_lines = device->create_program(
+        boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+
     // create shader program for dense points
     scm::io::read_text_file(root_path + "/lq_one_pass.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/lq_one_pass.glslg", visibility_gs_source);
@@ -159,6 +165,22 @@ void Renderer::draw_images(Scene scene)
         _context->apply();
         scene.get_quad()->draw(_context);
     }
+}
+void Renderer::draw_lines(Scene scene)
+{
+    _context->bind_program(_program_lines);
+
+    _program_lines->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
+    _program_lines->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+
+    _context->bind_vertex_array(scene.get_vertex_array_object_lines());
+    _context->apply();
+    _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, scene.get_vector_camera().size() * 2);
+
+    //     _program_frustra->uniform("matrix_model", camera.get_transformation());
+    //     _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
+    //     _context->apply();
+    //     _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
 }
 void Renderer::draw_frustra(Scene scene)
 {
@@ -286,6 +308,7 @@ void Renderer::render(Scene scene)
 
     draw_cameras(scene);
     draw_frustra(scene);
+    draw_lines(scene);
 
     if(mode_draw_images)
     {

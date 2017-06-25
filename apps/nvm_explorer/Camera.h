@@ -9,7 +9,6 @@
 #include <scm/core/math/vec3.h>
 
 using namespace scm::math;
-
 class Camera
 {
   private:

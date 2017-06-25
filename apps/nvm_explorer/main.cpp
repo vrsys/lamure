@@ -11,6 +11,13 @@
 #include <lamure/ren/Data_Provenance.h>
 #include <lamure/ren/Item_Provenance.h>
 
+// #include "lamure/pro/common.h"
+// #include "lamure/pro/data/DenseCache.h"
+// #include "lamure/pro/data/SparseCache.h"
+// #include <chrono>
+// #include <lamure/pro/data/DenseStream.h>
+// #include <lamure/pro/data/LoDMetaStream.h>
+
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -93,27 +100,32 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option) { re
 
 int main(int argc, char *argv[])
 {
-    lamure::ren::Data_Provenance data_provenance;
+    // lamure::ren::Data_Provenance data_provenance;
 
-    lamure::ren::Item_Provenance item_float(
-        lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
-        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
-    );
-    data_provenance.add_item(item_float);
+    // lamure::ren::Item_Provenance item_float(
+    //     lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
+    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    // );
+    // data_provenance.add_item(item_float);
 
-    lamure::ren::Item_Provenance item_vec3f(
-        lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
-        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
-    );
-    data_provenance.add_item(item_vec3f);
+    // lamure::ren::Item_Provenance item_vec3f(
+    //     lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
+    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    // );
+    // data_provenance.add_item(item_vec3f);
 
-    lamure::ren::Item_Provenance item_int(
-        lamure::ren::Item_Provenance::type_item::TYPE_INT,
-        lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
-    );
-    data_provenance.add_item(item_int);
+    // lamure::ren::Item_Provenance item_int(
+    //     lamure::ren::Item_Provenance::type_item::TYPE_INT,
+    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
+    // );
+    // data_provenance.add_item(item_int);
 
-    std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
+    // std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
+    // string name_file_sparse = string(get_cmd_option(argv, argv + argc, "-s"));
+    // prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+    // prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+    // prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
+
     // return 1;
     // return write_dummy_binary_file();
 

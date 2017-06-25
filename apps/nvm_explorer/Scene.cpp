@@ -24,20 +24,22 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_windo
     _camera_view.update_window_size(width_window, height_window);
     // create buffer for the points
     std::vector<Struct_Point> vector_struct_point = convert_points_to_struct_point();
-
     scm::gl::buffer_ptr vertex_buffer_object_points =
         device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * vector_struct_point.size(), &vector_struct_point[0]);
-
     _vertex_array_object_points = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 6)(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 6),
                                                               boost::assign::list_of(vertex_buffer_object_points));
 
     // create buffer for the cameras
     std::vector<Struct_Camera> vector_struct_camera = convert_cameras_to_struct_camera();
-
     scm::gl::buffer_ptr vertex_buffer_object_cameras =
         device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(double) * 3) * vector_struct_camera.size(), &vector_struct_camera[0]);
-
     _vertex_array_object_cameras = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3D, sizeof(double) * 3), boost::assign::list_of(vertex_buffer_object_cameras));
+
+    // create buffer for the lines connecting the sparse points with the projection center
+    std::vector<Struct_Line> vector_struct_line = convert_lines_to_struct_line();
+    scm::gl::buffer_ptr vertex_buffer_object_lines =
+        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_line.size(), &vector_struct_line[0]);
+    _vertex_array_object_lines = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object_lines));
 
     _quad.reset(new scm::gl::quad_geometry(device, vec2f(-1.0f, -1.0f), vec2f(1.0f, 1.0f)));
 
@@ -53,6 +55,34 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_windo
     //     // }
     // }
     device->main_context()->apply();
+}
+
+std::vector<Struct_Line> Scene::convert_lines_to_struct_line()
+{
+    std::vector<Struct_Line> vector_struct_line;
+
+    for(std::vector<Point>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
+    {
+        Point &point = (*it);
+        std::vector<Point::measurement> measurements = point.get_measurements();
+    }
+
+    for(std::vector<Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    {
+        Struct_Line line = {scm::math::vec3f((*it).get_center())};
+        vector_struct_line.push_back(line);
+        // Struct_Line line1 = {scm::math::vec3f((*it).get_center())+scm::math::vec3f(10.0, 10.0, 10.0)};
+        line = {scm::math::vec3f(0.0, 0.0, 0.0)};
+        vector_struct_line.push_back(line);
+        // vector_struct_line.push_back(line);
+        // vector_struct_line.push_back(line);
+        // vector_struct_line.push_back(line);
+        // vector_struct_line.push_back(line);
+        // std::cout << (*it).get_center() << std::endl;
+        break;
+    }
+        std::cout << vector_struct_line.size() << std::endl;
+    return vector_struct_line;
 }
 
 std::vector<Struct_Point> Scene::convert_points_to_struct_point()
@@ -85,6 +115,7 @@ std::vector<Struct_Camera> Scene::convert_cameras_to_struct_camera()
 
 scm::gl::vertex_array_ptr Scene::get_vertex_array_object_points() { return _vertex_array_object_points; }
 scm::gl::vertex_array_ptr Scene::get_vertex_array_object_cameras() { return _vertex_array_object_cameras; }
+scm::gl::vertex_array_ptr Scene::get_vertex_array_object_lines() { return _vertex_array_object_lines; }
 scm::shared_ptr<scm::gl::quad_geometry> Scene::get_quad() { return _quad; }
 
 void Scene::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset)

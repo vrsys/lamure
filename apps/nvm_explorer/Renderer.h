@@ -61,6 +61,7 @@ class Renderer
     scm::gl::program_ptr _program_cameras;
     scm::gl::program_ptr _program_images;
     scm::gl::program_ptr _program_frustra;
+    scm::gl::program_ptr _program_lines;
 
     scm::gl::rasterizer_state_ptr _rasterizer_state;
 
@@ -74,6 +75,7 @@ class Renderer
 
     void draw_points_sparse(Scene scene);
     void draw_cameras(Scene scene);
+    void draw_lines(Scene scene);
     void draw_images(Scene scene);
     void draw_frustra(Scene scene);
     void draw_points_dense(Scene scene);

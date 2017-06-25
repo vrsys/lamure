@@ -1,7 +1,7 @@
 import unittest
 from time import time
 
-from pypro.formats_bridge import *
+from ..pypro.formats_bridge import *
 
 
 class NVMFormatSparseTestSuite(unittest.TestCase):
