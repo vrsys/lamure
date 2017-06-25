@@ -4,7 +4,6 @@
 // #include <lamure/utils.h>
 // #include <lamure/types.h>
 #include "Scene.h"
-#include "utils.h"
 
 #include <iostream>
 
