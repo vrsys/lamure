@@ -6,7 +6,7 @@
 
 struct Struct_Camera
 {
-    scm::math::vec3d position;
+    scm::math::vec3f position;
 };
 
 #endif // STRUCT_CAMERA_H

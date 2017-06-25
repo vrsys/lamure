@@ -24,8 +24,8 @@ class DensePoint : public Point
         is.read(reinterpret_cast<char *>(&dense_point._normal[2]), 8);
         dense_point._normal[2] = swap(dense_point._normal[2], true);
 
-        if(DEBUG)
-            printf("\nNormal: %f %f %f", dense_point._normal[0], dense_point._normal[1], dense_point._normal[2]);
+        // if(DEBUG)
+        //     printf("\nNormal: %f %f %f", dense_point._normal[0], dense_point._normal[1], dense_point._normal[2]);
 
         return is;
     }

@@ -11,9 +11,9 @@
 #include <lamure/ren/Data_Provenance.h>
 #include <lamure/ren/Item_Provenance.h>
 
-#include "lamure/pro/common.h"
-#include "lamure/pro/data/DenseCache.h"
-#include "lamure/pro/data/SparseCache.h"
+#include <lamure/pro/common.h>
+#include <lamure/pro/data/DenseCache.h>
+#include <lamure/pro/data/SparseCache.h>
 #include <chrono>
 #include <lamure/pro/data/DenseStream.h>
 #include <lamure/pro/data/LoDMetaStream.h>
@@ -22,7 +22,7 @@
 #define VERBOSE
 #define DEFAULT_PRECISION 15
 
-using namespace utils;
+// using namespace utils;
 
 // KEY-BINDINGS:
 // [w,a,s,d,q,e] - move camera through world
@@ -121,34 +121,35 @@ int main(int argc, char *argv[])
     // data_provenance.add_item(item_int);
 
     // std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
-    std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
-    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
-    prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
-    // prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
-    // cache_sparse.cache();
-    // in_sparse.close();
 
     // return 1;
     // return write_dummy_binary_file();
 
-    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-f"))
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-s"))
     {
-        std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>.nvm" << std::endl
+        std::cout << "Usage: " << argv[0] << "<flags> -s <input_file>.nvm" << std::endl
                   << "INFO: nvm_explorer " << std::endl
-                  << "\t-f: selects .nvm input file" << std::endl
-                  << "\t    (-f flag is required) " << std::endl
+                  << "\t-s: selects .nvm input file" << std::endl
+                  << "\t    (-s flag is required) " << std::endl
                   << std::endl;
         return 0;
     }
 
-    std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-f"));
+    std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
+    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+    prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+    prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
+    cache_sparse.cache();
+    in_sparse.close();
 
-    std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
-    if(ext.compare("nvm") != 0)
-    {
-        std::cout << "please specify a .nvm file as input" << std::endl;
-        return 0;
-    }
+    // std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-s"));
+
+    // std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
+    // if(ext.compare("nvm") != 0)
+    // {
+    //     std::cout << "please specify a .nvm file as input" << std::endl;
+    //     return 0;
+    // }
 
     // if(!glfwInit())
     // {
@@ -158,7 +159,8 @@ int main(int argc, char *argv[])
     initialize_glut(argc, argv, width_window, height_window);
 
     // ifstream in(name_file_nvm);
-    // vector<Camera> vec_camera;
+    std::vector<prov::Camera> vec_camera = cache_sparse.get_cameras();
+    std::vector<prov::SparsePoint> vec_point = cache_sparse.get_points();
     // vector<Point> vec_point_sparse;
     // vector<Point> vec_point_dense;
     // vector<Image> vec_image;
@@ -177,8 +179,8 @@ int main(int argc, char *argv[])
     // }
     //  std::cout << "vec_image: " << vec_image.size() << std::endl;
 
-    Scene scene(prov::ifstream in_sparse, prov::ifstream in_sparse_meta);
-    // Scene scene();
+    //Scene scene = Scene(in_sparse,in_sparse_meta);
+    Scene scene(vec_point, vec_camera);
     // Scene scene(cache_sparse);
 
     controller = new Controller(scene, argv, width_window, height_window);

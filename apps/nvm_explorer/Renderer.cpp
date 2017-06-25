@@ -175,7 +175,7 @@ void Renderer::draw_lines(Scene scene)
 
     _context->bind_vertex_array(scene.get_vertex_array_object_lines());
     _context->apply();
-    _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, scene.get_vector_camera().size() * 2);
+    // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, scene.get_vector_camera().size() * 2);
 
     //     _program_frustra->uniform("matrix_model", camera.get_transformation());
     //     _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
@@ -290,7 +290,7 @@ void Renderer::draw_points_dense(Scene scene)
 
         if(node_culling_result != 1)
         {
-            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, surfels_per_node);
+            // _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, surfels_per_node);
         }
         // if(++counter == 10) break;
     }
@@ -299,10 +299,10 @@ void Renderer::draw_points_dense(Scene scene)
 void Renderer::render(Scene scene)
 {
     _context->set_rasterizer_state(_rasterizer_state);
-    _context->set_viewport(scm::gl::viewport(vec2ui(0, 0), vec2ui(scene.get_camera_view().get_width_window(), scene.get_camera_view().get_height_window())));
+    _context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(scene.get_camera_view().get_width_window(), scene.get_camera_view().get_height_window())));
 
     _context->clear_default_depth_stencil_buffer();
-    _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, 0.0f, 1.0f));
+    _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(0.0f, 0.0f, 0.0f, 1.0f));
 
     _context->set_default_frame_buffer();
 

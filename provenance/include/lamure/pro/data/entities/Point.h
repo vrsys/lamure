@@ -28,8 +28,8 @@ class Point
         is.read(reinterpret_cast<char *>(&_position[2]), 8);
         _position[2] = swap(_position[2], true);
 
-        if(DEBUG)
-            printf("\nPosition: %f %f %f", _position[0], _position[1], _position[2]);
+        // if(DEBUG)
+        //     printf("\nPosition: %f %f %f", _position[0], _position[1], _position[2]);
 
         is.read(reinterpret_cast<char *>(&_color[0]), 8);
         _color[0] = swap(_color[0], true);
@@ -38,8 +38,8 @@ class Point
         is.read(reinterpret_cast<char *>(&_color[2]), 8);
         _color[2] = swap(_color[2], true);
 
-        if(DEBUG)
-            printf("\nColor: %f %f %f", _color[0], _color[1], _color[2]);
+        // if(DEBUG)
+        //     printf("\nColor: %f %f %f", _color[0], _color[1], _color[2]);
 
         return is;
     }

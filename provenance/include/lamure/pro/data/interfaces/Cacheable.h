@@ -29,15 +29,15 @@ class Cacheable : public Readable
 
         points_length = swap(points_length, true);
 
-        if(DEBUG)
-            printf("\nPoints length: %i", points_length);
+        // if(DEBUG)
+        //     printf("\nPoints length: %i", points_length);
 
         uint32_t meta_data_length;
         (*is_prov).read(reinterpret_cast<char *>(&meta_data_length), 4);
         meta_data_length = swap(meta_data_length, true);
 
-        if(DEBUG)
-            printf("\nPoints meta data length: %i ", meta_data_length);
+        // if(DEBUG)
+        //     printf("\nPoints meta data length: %i ", meta_data_length);
 
         for(int i = 0; i < points_length; i++)
         {

@@ -25,16 +25,16 @@ class SparsePoint : public Point
 
             measurement._camera_index = swap(measurement._camera_index, true);
 
-            if(DEBUG)
-                printf("\nCamera index: %i", measurement._camera_index);
+            // if(DEBUG)
+            //     printf("\nCamera index: %i", measurement._camera_index);
 
             is.read(reinterpret_cast<char *>(&measurement._occurence.x), 8);
             measurement._occurence.x = swap(measurement._occurence.x, true);
             is.read(reinterpret_cast<char *>(&measurement._occurence.y), 8);
             measurement._occurence.y = swap(measurement._occurence.y, true);
 
-            if(DEBUG)
-                printf("\nOccurence: %f %f", measurement._occurence.x, measurement._occurence.y);
+            // if(DEBUG)
+            //     printf("\nOccurence: %f %f", measurement._occurence.x, measurement._occurence.y);
 
             return is;
         }
@@ -56,8 +56,8 @@ class SparsePoint : public Point
         is.read(reinterpret_cast<char *>(&sparse_point._index), 4);
         sparse_point._index = swap(sparse_point._index, true);
 
-        if(DEBUG)
-            printf("\nPoint index: %i", sparse_point._index);
+        // if(DEBUG)
+            // printf("\nPoint index: %i", sparse_point._index);
 
         sparse_point.read_essentials(is);
 
@@ -66,8 +66,8 @@ class SparsePoint : public Point
 
         measurements_length = swap(measurements_length, true);
 
-        if(DEBUG)
-            printf("\nMeasurements length: %i", measurements_length);
+        // if(DEBUG)
+        //     printf("\nMeasurements length: %i", measurements_length);
 
         for(uint16_t i = 0; i < measurements_length; i++)
         {

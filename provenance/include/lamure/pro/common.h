@@ -1,5 +1,5 @@
-#ifndef LAMURE_COMMON_H
-#define LAMURE_COMMON_H
+#ifndef LAMURE_PROV_COMMON_H
+#define LAMURE_PROV_COMMON_H
 
 #include "3dparty/exif.h"
 #include "3dparty/tinyply.h"
@@ -15,7 +15,7 @@
 
 namespace prov
 {
-bool DEBUG = false;
+// bool DEBUG = false;
 
 typedef std::ifstream ifstream;
 typedef std::string string;
@@ -70,4 +70,4 @@ static inline std::string &rtrim(std::string &s)
 static inline std::string &trim(std::string &s) { return ltrim(rtrim(s)); }
 }
 
-#endif // LAMURE_COMMON_H
+#endif // LAMURE_PROV_COMMON_H

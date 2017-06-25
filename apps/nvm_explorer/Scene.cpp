@@ -11,12 +11,15 @@
 // }
 // Scene::Scene(prov::SparseCache const& cache_sparse) : _cache_sparse(cache_sparse)
 // {}
-Scene::Scene(prov::ifstream in_sparse, prov::ifstream in_sparse_meta) : _cache_sparse(in_sparse, in_sparse_meta)
-{
-    _cache_sparse.cache();
-    in_sparse.close();
-    in_sparse_meta.close();
-}
+// Scene::Scene(Scene const& scene) : _cache_sparse(scene._cache_sparse)
+// {
+// }
+Scene::Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera) : _vector_camera(vector_camera), _vector_point(vector_point)
+{}
+
+// Scene::Scene(prov::SparseCache const &cache_sparse) : _cache_sparse(cache_sparse)
+// {
+// }
 bool Scene::update(int time_delta)
 {
     float foroo = 0.0f;
@@ -43,8 +46,8 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_windo
     // create buffer for the cameras
     std::vector<Struct_Camera> vector_struct_camera = convert_cameras_to_struct_camera();
     scm::gl::buffer_ptr vertex_buffer_object_cameras =
-        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(double) * 3) * vector_struct_camera.size(), &vector_struct_camera[0]);
-    _vertex_array_object_cameras = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3D, sizeof(double) * 3), boost::assign::list_of(vertex_buffer_object_cameras));
+        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_camera.size(), &vector_struct_camera[0]);
+    _vertex_array_object_cameras = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3D, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object_cameras));
 
     // create buffer for the lines connecting the sparse points with the projection center
     std::vector<Struct_Line> vector_struct_line = convert_lines_to_struct_line();
@@ -72,28 +75,27 @@ std::vector<Struct_Line> Scene::convert_lines_to_struct_line()
 {
     std::vector<Struct_Line> vector_struct_line;
 
-    for(std::vector<SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
-    {
-        SparsePoint &point = (*it);
-        // std::vector<SparsePoint::measurement> measurements = point.get_measurements();
+    // for(std::vector<prov::SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
+    // {
+    //     prov::SparsePoint &point = (*it);
+    //     // std::vector<prov::SparsePoint::measurement> measurements = point.get_measurements();
 
-    }
+    // }
 
-    for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
-    {
-        Struct_Line line = {scm::math::vec3f((*it).get_center())};
-        vector_struct_line.push_back(line);
-        // Struct_Line line1 = {scm::math::vec3f((*it).get_center())+scm::math::vec3f(10.0, 10.0, 10.0)};
-        line = {scm::math::vec3f(0.0, 0.0, 0.0)};
-        vector_struct_line.push_back(line);
-        // vector_struct_line.push_back(line);
-        // vector_struct_line.push_back(line);
-        // vector_struct_line.push_back(line);
-        // vector_struct_line.push_back(line);
-        // std::cout << (*it).get_center() << std::endl;
-        break;
-    }
-        std::cout << vector_struct_line.size() << std::endl;
+    // for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    // {
+    //     Struct_Line line = {scm::math::vec3f((*it).get_center())};
+    //     vector_struct_line.push_back(line);
+    //     // Struct_Line line1 = {scm::math::vec3f((*it).get_center())+scm::math::vec3f(10.0, 10.0, 10.0)};
+    //     line = {scm::math::vec3f(0.0, 0.0, 0.0)};
+    //     vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // std::cout << (*it).get_center() << std::endl;
+    //     break;
+    // }
     return vector_struct_line;
 }
 
@@ -101,10 +103,10 @@ std::vector<Struct_Point> Scene::convert_points_to_struct_point()
 {
     std::vector<Struct_Point> vector_struct_point;
 
-    for(std::vector<Point>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
+    for(std::vector<prov::SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
     {
         scm::math::vec3f color_normalized = scm::math::vec3f((*it).get_color()) / 255.0;
-        Struct_Point point = {(*it).get_center(), color_normalized};
+        Struct_Point point = {scm::math::vec3f((*it).get_position()), color_normalized};
 
         vector_struct_point.push_back(point);
     }
@@ -118,10 +120,11 @@ std::vector<Struct_Camera> Scene::convert_cameras_to_struct_camera()
 
     for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
     {
-        Struct_Camera camera = {(*it).get_center()};
+        Struct_Camera camera = {scm::math::vec3f((*it).get_translation())};
 
         vector_struct_camera.push_back(camera);
     }
+
     return vector_struct_camera;
 }
 
@@ -132,10 +135,10 @@ scm::shared_ptr<scm::gl::quad_geometry> Scene::get_quad() { return _quad; }
 
 void Scene::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset)
 {
-    for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
-    {
-        (*it).update_scale_frustum(device, offset);
-    }
+    // for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    // {
+    //     (*it).update_scale_frustum(device, offset);
+    // }
 }
 
 void Scene::update_model_radius_scale(float offset)
@@ -153,10 +156,10 @@ void Scene::toggle_camera()
     }
     else
     {
-        prov::Camera camera = _vector_camera[index_current_image_camera];
-        std::cout << scm::math::vec3f(camera.get_center()) << " " << camera.get_orientation() << std::endl;
-        _camera_view.set_position(scm::math::vec3f(camera.get_center()));
-        _camera_view.set_rotation(camera.get_orientation());
+        // prov::Camera camera = _vector_camera[index_current_image_camera];
+        // std::cout << scm::math::vec3f(camera.get_center()) << " " << camera.get_orientation() << std::endl;
+        // _camera_view.set_position(scm::math::vec3f(camera.get_center()));
+        // _camera_view.set_rotation(camera.get_orientation());
     }
 }
 
@@ -167,11 +170,11 @@ void Scene::previous_camera()
         index_current_image_camera -= 1;
         if(index_current_image_camera == -1)
         {
-            index_current_image_camera = _vector_camera.size() - 1;
+            // index_current_image_camera = _vector_camera.size() - 1;
         }
-        prov::Camera camera = _vector_camera[index_current_image_camera];
-        _camera_view.set_position(scm::math::vec3f(camera.get_center()));
-        _camera_view.set_rotation(camera.get_orientation());
+        // prov::Camera camera = _vector_camera[index_current_image_camera];
+        // _camera_view.set_position(scm::math::vec3f(camera.get_center()));
+        // _camera_view.set_rotation(camera.get_orientation());
     }
 }
 
@@ -180,13 +183,13 @@ void Scene::next_camera()
     if(!is_default_camera)
     {
         index_current_image_camera += 1;
-        if(index_current_image_camera == _vector_camera.size())
-        {
-            index_current_image_camera = 0;
-        }
-        prov::Camera camera = _vector_camera[index_current_image_camera];
-        _camera_view.set_position(scm::math::vec3f(camera.get_center()));
-        _camera_view.set_rotation(camera.get_orientation());
+        // if(index_current_image_camera == _vector_camera.size())
+        // {
+        //     index_current_image_camera = 0;
+        // }
+        // prov::Camera camera = _vector_camera[index_current_image_camera];
+        // _camera_view.set_position(scm::math::vec3f(camera.get_center()));
+        // _camera_view.set_rotation(camera.get_orientation());
     }
 }
 float &Scene::get_model_radius_scale() { return _model_radius_scale; }
@@ -195,7 +198,8 @@ void Scene::set_model_radius_scale(float scale) { _model_radius_scale = scale; }
 Camera_View &Scene::get_camera_view() { return _camera_view; }
 
 std::vector<prov::Camera> &Scene::get_vector_camera() { return _vector_camera; }
+std::vector<prov::SparsePoint> &Scene::get_vector_point() { return _vector_point; }
 
 int Scene::count_points() { return _vector_point.size(); }
 int Scene::count_cameras() { return _vector_camera.size(); }
-int Scene::count_images() { return _vector_image.size(); }
+// int Scene::count_images() { return _vector_image.size(); }
