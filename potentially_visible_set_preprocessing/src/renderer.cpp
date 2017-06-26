@@ -12,8 +12,10 @@
 
 #include <lamure/config.h>
 
-#include <boost/lexical_cast.hpp>
+
 #include <boost/filesystem.hpp>
+#include <boost/regex.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <FreeImagePlus.h>
 
@@ -286,6 +288,65 @@ render_depth(lamure::context_t context_id,
     #endif
     }
 #endif
+}
+
+
+std::string const Renderer::
+strip_whitespace(std::string const& in_string) {
+  return boost::regex_replace(in_string, boost::regex("^ +| +$|( ) +"), "$1");
+
+}
+
+//checks for prefix AND removes it (+ whitespace) if it is found; 
+//returns true, if prefix was found; else false
+bool const Renderer::
+parse_prefix(std::string& in_string, std::string const& prefix) {
+
+ uint32_t num_prefix_characters = prefix.size();
+
+ bool prefix_found 
+  = (!(in_string.size() < num_prefix_characters ) 
+     && strncmp(in_string.c_str(), prefix.c_str(), num_prefix_characters ) == 0); 
+
+  if( prefix_found ) {
+    in_string = in_string.substr(num_prefix_characters);
+    in_string = strip_whitespace(in_string);
+  }
+
+  return prefix_found;
+}
+
+bool Renderer::
+read_shader(std::string const& path_string, 
+                 std::string& shader_string) {
+
+
+  if ( !boost::filesystem::exists( path_string ) ) {
+    std::cout << "WARNING: File " << path_string << "does not exist." <<  std::endl;
+    return false;
+  }
+
+  std::ifstream shader_source(path_string, std::ios::in);
+  std::string line_buffer;
+
+  std::string include_prefix("INCLUDE");
+
+  std::size_t slash_position = path_string.find_last_of("/\\");
+  std::string const base_path =  path_string.substr(0,slash_position+1);
+
+  while( std::getline(shader_source, line_buffer) ) {
+    line_buffer = strip_whitespace(line_buffer);
+    //std::cout << line_buffer << "\n";
+
+    if( parse_prefix(line_buffer, include_prefix) ) {
+      std::string filename_string = line_buffer;
+      read_shader(base_path+filename_string, shader_string);
+    } else {
+      shader_string += line_buffer+"\n";
+    }
+  }
+
+  return true;
 }
 
 void Renderer::
@@ -564,15 +625,15 @@ initialize_schism_device_and_shaders(int resX, int resY)
     {
         using scm::io::read_text_file;
 
-        if (!read_text_file(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
-            || !read_text_file(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
-            || !read_text_file(root_path + "/node_visibility.glslv", node_visibility_vs_source)
-            || !read_text_file(root_path + "/node_visibility.glslg", node_visibility_gs_source)
-            || !read_text_file(root_path + "/node_visibility.glslf", node_visibility_fs_source)
-            || !read_text_file(root_path + "/node_render_texture.glslv", node_texture_vs_source)
-            || !read_text_file(root_path + "/node_render_texture.glslf", node_texture_fs_source)
-            || !read_text_file(root_path + "/trimesh.glslv", trimesh_vs_source)
-            || !read_text_file(root_path + "/trimesh.glslf", trimesh_fs_source)
+        if (!read_shader(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
+            || !read_shader(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
+            || !read_shader(root_path + "/node_visibility.glslv", node_visibility_vs_source)
+            || !read_shader(root_path + "/node_visibility.glslg", node_visibility_gs_source)
+            || !read_shader(root_path + "/node_visibility.glslf", node_visibility_fs_source)
+            || !read_shader(root_path + "/node_render_texture.glslv", node_texture_vs_source)
+            || !read_shader(root_path + "/node_render_texture.glslf", node_texture_fs_source)
+            || !read_shader(root_path + "/trimesh.glslv", trimesh_vs_source)
+            || !read_shader(root_path + "/trimesh.glslf", trimesh_fs_source)
            )
            {
                scm::err() << "error reading shader files" << scm::log::end;

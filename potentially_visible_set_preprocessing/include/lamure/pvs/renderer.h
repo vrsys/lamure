@@ -130,6 +130,12 @@ protected:
                                            const lamure::view_t view_id, 
                                            scm::gl::vertex_array_ptr const& render_VAO, 
                                            std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
+
+
+    bool                read_shader(std::string const& path_string, std::string& shader_string);
+    bool const          parse_prefix(std::string& in_string, std::string const& prefix);
+    std::string const   strip_whitespace(std::string const& in_string);
+    
 private:
 
         int                                         win_x_;
