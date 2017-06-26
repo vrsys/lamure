@@ -1542,6 +1542,8 @@ initialize_schism_device_and_shaders(int resX, int resY)
             || !read_shader(root_path + "/pass_reconstruction.glslf", filling_fs_source)
             || !read_shader(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
             || !read_shader(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
+            || !read_shader(root_path + "/pvs_grid_cell_vis.glslv", pvs_grid_cell_vs_source)
+            || !read_shader(root_path + "/pvs_grid_cell_vis.glslf", pvs_grid_cell_fs_source)
     	    || !read_shader(root_path + "/pass1_linked_list_accumulation.glslv", linked_list_accum_vs_source)
     	    || !read_shader(root_path + "/pass1_linked_list_accumulation.glslg", linked_list_accum_gs_source)
     	    || !read_shader(root_path + "/pass1_linked_list_accumulation.glslf", linked_list_accum_fs_source)
@@ -1555,6 +1557,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
             || !read_shader(root_path + "/lq_one_pass.glslf", lq_one_pass_fs_source)
             || !read_shader(root_path + "/trimesh.glslv", trimesh_vs_source)
             || !read_shader(root_path + "/trimesh.glslf", trimesh_fs_source)
+
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
             || !read_shader(root_path + "/lines_shader.glslv", line_vs_source)
             || !read_shader(root_path + "/lines_shader.glslf", line_fs_source)
@@ -1583,35 +1586,28 @@ initialize_schism_device_and_shaders(int resX, int resY)
                                                                         (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))
                                                                         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
                                                               );
-
     pass1_compressed_visibility_shader_program_ = device_->create_program(
                                                   boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, compressed_visibility_vs_source))
                                                                         (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))
                                                                         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
                                                               );
-
     pass2_accumulation_shader_program_ = device_->create_program(
                                                     boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, accumulation_vs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
                                                                 );
 
-
     pass2_compressed_accumulation_shader_program_ = device_->create_program(
                                                     boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, compressed_accumulation_vs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
                                                               );
-
     pass3_pass_through_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pass_trough_vs_source))
                                                                 (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pass_trough_fs_source)));
-
     pass_filling_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, filling_vs_source))
                                                     (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, filling_fs_source)));
-
     bounding_box_vis_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, bounding_box_vs_source))
                                                                (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, bounding_box_fs_source)));
-
     pvs_grid_cell_vis_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pvs_grid_cell_vs_source))
                                                                (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pvs_grid_cell_fs_source)));
 
@@ -1619,23 +1615,19 @@ initialize_schism_device_and_shaders(int resX, int resY)
     line_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, line_vs_source))
                                                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, line_fs_source)));
 #endif
-
     pass1_linked_list_accumulate_program_ = device_->create_program(
         boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, linked_list_accum_vs_source ))
                               (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, linked_list_accum_gs_source ))
 	                          (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, linked_list_accum_fs_source ))
     );
-
     pass2_linked_list_resolve_program_ = device_->create_program(
         boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, linked_list_resolve_vs_source ))
 	                          (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, linked_list_resolve_fs_source ))
     );
-
     pass3_repair_program_ = device_->create_program(
         boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, repair_program_vs_source ))
 	                          (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, repair_program_fs_source ))
     );
-
 
     LQ_one_pass_program_ = device_->create_program(
         boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER,   lq_one_pass_vs_source ))
@@ -1643,13 +1635,11 @@ initialize_schism_device_and_shaders(int resX, int resY)
                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, lq_one_pass_fs_source ))
     );
 
-
     compressed_LQ_one_pass_program_ = device_->create_program(
         boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER,   compressed_lq_one_pass_vs_source ))
                               (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, lq_one_pass_gs_source ))
                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, lq_one_pass_fs_source ))
     );
-
     trimesh_shader_program_ = device_->create_program(
        boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, trimesh_vs_source))
                              (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, trimesh_fs_source)) );

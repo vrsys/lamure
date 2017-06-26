@@ -126,7 +126,7 @@ management(std::vector<std::string> const& model_filenames,
     snapshot_framerate_counter_ = 0.0;
     snapshot_frame_counter_ = 0;
 
-    use_wasd_camera_control_sceme_ = true;
+    use_wasd_camera_control_scheme_ = false;
 }
 
 management::
@@ -145,6 +145,29 @@ management::
         delete renderer_;
         renderer_ = nullptr;
     }
+}
+
+
+void management::resolve_movement(double elapsed_time_ms) {
+
+  double travel_speed_multiplicator = (travel_speed_mode_ == 0 ? 0.5f
+                                     : travel_speed_mode_ == 1 ? 20.5f
+                                     : travel_speed_mode_ == 2 ? 100.5f
+                                     : 300.5f);
+
+  double movement_factor = travel_speed_multiplicator * elapsed_time_ms;
+  if(is_moving_forward_) {
+    active_camera_->translate(0.0f, 0.0f, movement_factor*10.0f);
+  }
+  if(is_moving_backward_) {
+    active_camera_->translate(0.0f, 0.0f, movement_factor*-10.0f);
+  }
+  if(is_moving_left_) {
+    active_camera_->translate(movement_factor*10.0f, 0.0f, 0.0f);
+  }
+  if(is_moving_right_) {
+    active_camera_->translate(movement_factor*-10.0f, 0.0f, 0.0f);
+  }
 }
 
 bool management::
@@ -352,14 +375,7 @@ MainLoop()
         status_string += "PVS: OFF\n";
     }
 
-    if(is_updating_pvs_position_)
-    {
-        status_string += "PVS viewer position update: ON\n";
-    }
-    else
-    {
-        status_string += "PVS viewer position update: OFF\n";
-    }
+
 
     renderer_->display_status(status_string);
 
@@ -430,6 +446,45 @@ MainLoop()
     end_time = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end_time - start_time;
     double frame_time = elapsed_seconds.count();
+
+
+    resolve_movement(frame_time);
+
+    /*
+    case GLUT_KEY_UP:
+        is_moving_forward_ = true;
+      if(fast_travel_) {
+        active_camera_->translate(0.0f, 0.0f, 10.0f);
+      } else {
+        active_camera_->translate(0.0f, 0.0f, 1.0f);
+      }
+      break;
+    case GLUT_KEY_DOWN:
+        is_moving_backward_ = true;
+      if(fast_travel_) {
+        active_camera_->translate(0.0f, 0.0f, -10.0f);
+      } else {
+        active_camera_->translate(0.0f, 0.0f, -1.0f);
+      }
+      break;
+    case GLUT_KEY_LEFT:
+        is_moving_left_ = true;
+      if(fast_travel_) {
+        active_camera_->translate(10.0f, 0.0f, 0.0f);
+      } else {
+        active_camera_->translate(1.0f, 0.0f, 0.0f);
+      }
+      break;
+    case GLUT_KEY_RIGHT:
+        is_moving_right_ = true;
+      if(fast_travel_) {
+        active_camera_->translate(-10.0f, 0.0f, 0.0f);
+      } else {
+        active_camera_->translate(-1.0f, 0.0f, .0f);
+      }
+      break;
+*/
+
     current_update_timeout_timer_ += frame_time;
 
     return signal_shutdown;
@@ -439,7 +494,7 @@ MainLoop()
 void management::
 update_trackball(int x, int y)
 {
-    if(use_wasd_camera_control_sceme_)
+    if(use_wasd_camera_control_scheme_)
     {
         if(mouse_state_.lb_down_)
         {
@@ -491,7 +546,7 @@ RegisterMousePresses(int button, int state, int x, int y)
             break;
     }
 
-    if(use_wasd_camera_control_sceme_)
+    if(use_wasd_camera_control_scheme_)
     {
         mouse_last_x_ = x;
         mouse_last_y_ = y;
@@ -521,10 +576,10 @@ dispatchKeyboardInput(unsigned char key)
 
     switch (key)
     {
-    case 'P':
+    case 'p':
       renderer_->toggle_provenance_rendering();
       break;
-    case 'M':
+    case 'm':
       renderer_->toggle_do_measurement();
       break;
 
@@ -559,7 +614,7 @@ dispatchKeyboardInput(unsigned char key)
     case 'j':
         renderer_->change_point_size(-0.1f);
         break;
-    case 'p':
+    case 'P':
     {
         // Toggle PVS activation.
         lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
@@ -570,6 +625,9 @@ dispatchKeyboardInput(unsigned char key)
     {
         // Toggle the position update to the pvs.
         is_updating_pvs_position_ = !is_updating_pvs_position_;
+
+        std::cout << "PVS viewer position update: " << ( (true == is_updating_pvs_position_) ? "ON" : "OFF") << "\n";
+
         break;
     }
     case 'l':
@@ -876,57 +934,60 @@ dispatchKeyboardInput(unsigned char key)
         std::cout << "error threshold: " << error_threshold_ << std::endl;
         break;
 
-    // Change camera movement mode.
-    case '4':
-        use_wasd_camera_control_sceme_ = !use_wasd_camera_control_sceme_;
-        break;
 
-    // Camera movement forward and backward.
-    case 'h':
-        if(fast_travel_)
-        {
-            active_camera_->translate(0.0f, 0.0f, 10.0f);
-        }
-        else
-        {
-            active_camera_->translate(0.0f, 0.0f, 1.0f);
-        }
-        break;
-
-    case 'n':
-        if(fast_travel_)
-        {
-            active_camera_->translate(0.0f, 0.0f, -10.0f);
-        }
-        else
-        {
-            active_camera_->translate(0.0f, 0.0f, -1.0f);
-        }
-        break;
-
-    // Camera movement left and right.
-    case 'b':
-        if(fast_travel_)
-        {
-            active_camera_->translate(10.0f, 0.0f, 0.0f);
-        }
-        else
-        {
-            active_camera_->translate(1.0f, 0.0f, 0.0f);
-        }
-        break;
-
-    case 'm':
-        if(fast_travel_)
-        {
-            active_camera_->translate(-10.0f, 0.0f, 0.0f);
-        }
-        else
-        {
-            active_camera_->translate(-1.0f, 0.0f, 0.0f);
-        }
-        break;
     }
+}
+
+void management::
+dispatchSpecialInput(int key) {
+  if(! allow_user_input_) {
+    return;
+  }
+
+  switch (key) {
+
+    // Change camera movement mode.
+    case GLUT_KEY_F1:
+        use_wasd_camera_control_scheme_ = !use_wasd_camera_control_scheme_;
+        break;
+    case GLUT_KEY_UP:
+        is_moving_forward_ = true;
+      break;
+    case GLUT_KEY_DOWN:
+        is_moving_backward_ = true;
+      break;
+    case GLUT_KEY_LEFT:
+        is_moving_left_ = true;
+      break;
+    case GLUT_KEY_RIGHT:
+        is_moving_right_ = true;
+      break;
+
+  }
+}
+
+void management::
+dispatchSpecialInputRelease(int key) {
+  if(! allow_user_input_) {
+    return;
+  }
+
+  switch (key) {
+
+    case GLUT_KEY_UP:
+        is_moving_forward_ = false;
+      break;
+    case GLUT_KEY_DOWN:
+        is_moving_backward_ = false;
+      break;
+    case GLUT_KEY_LEFT:
+        is_moving_left_ = false;
+      break;
+    case GLUT_KEY_RIGHT:
+        is_moving_right_ = false;
+      break;
+
+  }
 }
 
 void management::

@@ -43,6 +43,9 @@ void glut_mousemotion(int x, int y);
 void glut_idle();
 void glut_keyboard(unsigned char key, int x, int y);
 void glut_keyboard_release(unsigned char key, int x, int y);
+void glut_specialfunc(int key, int x, int y);
+void glut_specialfunc_release(int key, int x, int y);
+
 void glut_timer(int value);
 void glut_close();
 
@@ -97,6 +100,8 @@ void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
     glutDisplayFunc(glut_display);
     glutKeyboardFunc(glut_keyboard);
     glutKeyboardUpFunc(glut_keyboard_release);
+    glutSpecialFunc(glut_specialfunc);
+    glutSpecialUpFunc(glut_specialfunc_release);
     glutMouseFunc(glut_mousefunc);
     glutMotionFunc(glut_mousemotion);
     glutIdleFunc(glut_idle);
@@ -378,6 +383,31 @@ void glut_keyboard(unsigned char key, int x, int y)
             break;
 
     }
+}
+
+
+void glut_specialfunc(int key, int x, int y) {
+  switch(key) {
+    default:
+        if (management_ != nullptr)
+        {
+            management_->dispatchSpecialInput(key);
+        }
+        break;
+
+  }   
+}
+
+void glut_specialfunc_release(int key, int x, int y) {
+  switch(key) {
+    default:
+        if (management_ != nullptr)
+        {
+            management_->dispatchSpecialInputRelease(key);
+        }
+        break;
+
+  }   
 }
 
 void glut_keyboard_release(unsigned char key, int x, int y)

@@ -76,7 +76,11 @@ public:
     void                update_trackball(int x, int y);
     void                RegisterMousePresses(int button, int state, int x, int y);
     void                dispatchKeyboardInput(unsigned char key);
+    void                dispatchSpecialInput(int key);
+    void                dispatchSpecialInputRelease(int key);
     void                dispatchResize(int w, int h);
+
+    void                resolve_movement(double elapsed_time_ms);
 
     void                PrintInfo();
     void                SetSceneName();
@@ -166,9 +170,14 @@ private:
 
     bool                is_updating_pvs_position_;
 
-    bool                use_wasd_camera_control_sceme_;
+    bool                use_wasd_camera_control_scheme_;
     int                 mouse_last_x_;
     int                 mouse_last_y_;
+
+    bool                is_moving_forward_  = false;
+    bool                is_moving_backward_ = false;
+    bool                is_moving_left_  = false;
+    bool                is_moving_right_ = false;
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;
