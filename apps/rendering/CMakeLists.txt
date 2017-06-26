@@ -30,6 +30,7 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
     optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
     optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
+    ${Boost_LIBRARY_DIR}/libboost_regex.a
     )
 
 add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common lamure_potentially_visible_set_common)

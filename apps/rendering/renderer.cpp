@@ -9,9 +9,9 @@
 
 #include <ctime>
 #include <chrono>
-
 #include <lamure/config.h>
 
+#include <boost/regex.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 
@@ -196,53 +196,7 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
 
     }
 
-    
-/*
-    std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
-    auto const& update_set = cuts->get_updated_set(context_id);
-
-    if(update_set.size() > 0) {
-        std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
-        for (auto& model_id : current_set) {
-            lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
-            for(auto const& node_slot_index_pair : cut.complete_set() ) {
-                fast_update_index_map[node_slot_index_pair.slot_id_] = std::make_pair(model_id, node_slot_index_pair.node_id_);
-            }
-        }
-        
-
-        for( auto const& slot_to_update : update_set) {
-            int64_t ssbo_slot_to_write = slot_to_update.dst_;
-            auto const& model_node_info_to_fetch = fast_update_index_map[ssbo_slot_to_write];
-            const lamure::ren::bvh*  bvh = database->get_model(model_node_info_to_fetch.first)->get_bvh();
-            auto const& current_bounding_box = bvh->get_bounding_boxes()[model_node_info_to_fetch.second];
-            float avg_surfel_radius = bvh->get_avg_primitive_extent(model_node_info_to_fetch.second);
-            float max_radius_deviation = bvh->get_max_surfel_radius_deviation(model_node_info_to_fetch.second);
-
-            float min_radius = avg_surfel_radius - max_radius_deviation;
-            float max_radius = avg_surfel_radius + max_radius_deviation;
-
-            float bvh_data_to_write[8] = {current_bounding_box.min_vertex()[0], current_bounding_box.min_vertex()[1], current_bounding_box.min_vertex()[2], min_radius,
-                current_bounding_box.max_vertex()[0], current_bounding_box.max_vertex()[1], current_bounding_box.max_vertex()[2],  max_radius};
-
-                //mapped_ssbo[8*slot_to_update.dst_] =
-            memcpy( (void*)&(bvh_ssbo_cpu_data[int(context_id)][8*slot_to_update.dst_]), (void*)&(bvh_data_to_write[0]), size_of_node_compression_slot);
-
-
-               // float* mapped           device_->main_context()->buffer_sub_data(buffer, size_of_node_compression_slot * slot_to_update.dst_, size_of_node_compression_slot, &bvh_data_to_write[0]);
-
-        }
-
-
-        float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
-        memcpy( (void*)&mapped_ssbo[0], (void*)&(bvh_ssbo_cpu_data[context_id][0]), int64_t(bvh_ssbo_cpu_data[context_id].size()) * sizeof(float));
-        device_->main_context()->unmap_buffer(buffer);
-  
-    }
-*/
-
     pass1_compressed_visibility_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
-    //std::cout << "NUM PRIMS PER NODE: " << int(database->get_primitives_per_node()) << "\n";
     pass1_compressed_visibility_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
     pass2_compressed_accumulation_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
     pass2_compressed_accumulation_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
@@ -1424,6 +1378,66 @@ initialize_VBOs()
 #endif
 }
 
+std::string const Renderer::
+strip_whitespace(std::string const& in_string) {
+  return boost::regex_replace(in_string, boost::regex("^ +| +$|( ) +"), "$1");
+
+}
+
+//checks for prefix AND removes it (+ whitespace) if it is found; 
+//returns true, if prefix was found; else false
+bool const Renderer::
+parse_prefix(std::string& in_string, std::string const& prefix) {
+
+ uint32_t num_prefix_characters = prefix.size();
+
+ bool prefix_found 
+  = (!(in_string.size() < num_prefix_characters ) 
+     && strncmp(in_string.c_str(), prefix.c_str(), num_prefix_characters ) == 0); 
+
+  if( prefix_found ) {
+    in_string = in_string.substr(num_prefix_characters);
+    in_string = strip_whitespace(in_string);
+  }
+
+  return prefix_found;
+}
+
+bool Renderer::
+read_shader(std::string const& path_string, 
+                 std::string& shader_string) {
+
+
+  if ( !boost::filesystem::exists( path_string ) ) {
+    std::cout << "WARNING: File " << path_string << "does not exist." <<  std::endl;
+    return false;
+  }
+
+  std::ifstream shader_source(path_string, std::ios::in);
+  std::string line_buffer;
+
+  std::string include_prefix("INCLUDE");
+
+  std::size_t slash_position = path_string.find_last_of("/\\");
+  std::string const base_path =  path_string.substr(0,slash_position+1);
+
+  while( std::getline(shader_source, line_buffer) ) {
+    line_buffer = strip_whitespace(line_buffer);
+    //std::cout << line_buffer << "\n";
+
+    if( parse_prefix(line_buffer, include_prefix) ) {
+        std::cout << "READING: " << line_buffer << "\n";
+      std::string filename_string = line_buffer;
+      read_shader(base_path+filename_string, shader_string);
+    } else {
+      shader_string += line_buffer+"\n";
+    }
+  }
+
+  return true;
+}
+
+
 bool Renderer::
 initialize_schism_device_and_shaders(int resX, int resY)
 {
@@ -1476,37 +1490,36 @@ initialize_schism_device_and_shaders(int resX, int resY)
 
         using scm::io::read_text_file;
 
-        if (!read_text_file(root_path +  "/pass1_visibility_pass.glslv", visibility_vs_source)
-            || !read_text_file(root_path + "/pass1_compressed_visibility_pass.glslv", compressed_visibility_vs_source)
-            || !read_text_file(root_path + "/pass1_visibility_pass.glslg", visibility_gs_source)
-            || !read_text_file(root_path + "/pass1_visibility_pass.glslf", visibility_fs_source)
-            || !read_text_file(root_path + "/pass2_accumulation_pass.glslv", accumulation_vs_source)
-            || !read_text_file(root_path + "/pass2_compressed_accumulation_pass.glslv", compressed_accumulation_vs_source)
-            || !read_text_file(root_path + "/pass2_accumulation_pass.glslg", accumulation_gs_source)
-            || !read_text_file(root_path + "/pass2_accumulation_pass.glslf", accumulation_fs_source)
-            || !read_text_file(root_path + "/pass3_pass_through.glslv", pass_trough_vs_source)
-            || !read_text_file(root_path + "/pass3_pass_through.glslf", pass_trough_fs_source)
-            || !read_text_file(root_path + "/pass_reconstruction.glslv", filling_vs_source)
-            || !read_text_file(root_path + "/pass_reconstruction.glslf", filling_fs_source)
-            || !read_text_file(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
-            || !read_text_file(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
-            || !read_text_file(root_path + "/pvs_grid_cell_vis.glslv", pvs_grid_cell_vs_source)
-            || !read_text_file(root_path + "/pvs_grid_cell_vis.glslf", pvs_grid_cell_fs_source)
-    	    || !read_text_file(root_path + "/pass1_linked_list_accumulation.glslv", linked_list_accum_vs_source)
-    	    || !read_text_file(root_path + "/pass1_linked_list_accumulation.glslg", linked_list_accum_gs_source)
-    	    || !read_text_file(root_path + "/pass1_linked_list_accumulation.glslf", linked_list_accum_fs_source)
-    	    || !read_text_file(root_path + "/pass2_linked_list_resolve.glslv", linked_list_resolve_vs_source)
-    	    || !read_text_file(root_path + "/pass2_linked_list_resolve.glslf", linked_list_resolve_fs_source)         
-    	    || !read_text_file(root_path + "/pass3_repair.glslv", repair_program_vs_source)
-    	    || !read_text_file(root_path + "/pass3_repair.glslf", repair_program_fs_source)
-            || !read_text_file(root_path + "/lq_one_pass.glslv", lq_one_pass_vs_source)
-            || !read_text_file(root_path + "/lq_one_pass.glslg", lq_one_pass_gs_source)
-            || !read_text_file(root_path + "/lq_one_pass.glslf", lq_one_pass_fs_source)
-            || !read_text_file(root_path + "/trimesh.glslv", trimesh_vs_source)
-            || !read_text_file(root_path + "/trimesh.glslf", trimesh_fs_source)
+
+        if (!read_shader(root_path +  "/pass1_visibility_pass.glslv", visibility_vs_source)
+            || !read_shader(root_path + "/pass1_compressed_visibility_pass.glslv", compressed_visibility_vs_source)
+            || !read_shader(root_path + "/pass1_visibility_pass.glslg", visibility_gs_source)
+            || !read_shader(root_path + "/pass1_visibility_pass.glslf", visibility_fs_source)
+            || !read_shader(root_path + "/pass2_accumulation_pass.glslv", accumulation_vs_source)
+            || !read_shader(root_path + "/pass2_compressed_accumulation_pass.glslv", compressed_accumulation_vs_source)
+            || !read_shader(root_path + "/pass2_accumulation_pass.glslg", accumulation_gs_source)
+            || !read_shader(root_path + "/pass2_accumulation_pass.glslf", accumulation_fs_source)
+            || !read_shader(root_path + "/pass3_pass_through.glslv", pass_trough_vs_source)
+            || !read_shader(root_path + "/pass3_pass_through.glslf", pass_trough_fs_source)
+            || !read_shader(root_path + "/pass_reconstruction.glslv", filling_vs_source)
+            || !read_shader(root_path + "/pass_reconstruction.glslf", filling_fs_source)
+            || !read_shader(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
+            || !read_shader(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
+    	    || !read_shader(root_path + "/pass1_linked_list_accumulation.glslv", linked_list_accum_vs_source)
+    	    || !read_shader(root_path + "/pass1_linked_list_accumulation.glslg", linked_list_accum_gs_source)
+    	    || !read_shader(root_path + "/pass1_linked_list_accumulation.glslf", linked_list_accum_fs_source)
+    	    || !read_shader(root_path + "/pass2_linked_list_resolve.glslv", linked_list_resolve_vs_source)
+    	    || !read_shader(root_path + "/pass2_linked_list_resolve.glslf", linked_list_resolve_fs_source)         
+    	    || !read_shader(root_path + "/pass3_repair.glslv", repair_program_vs_source)
+    	    || !read_shader(root_path + "/pass3_repair.glslf", repair_program_fs_source)
+            || !read_shader(root_path + "/lq_one_pass.glslv", lq_one_pass_vs_source)
+            || !read_shader(root_path + "/lq_one_pass.glslg", lq_one_pass_gs_source)
+            || !read_shader(root_path + "/lq_one_pass.glslf", lq_one_pass_fs_source)
+            || !read_shader(root_path + "/trimesh.glslv", trimesh_vs_source)
+            || !read_shader(root_path + "/trimesh.glslf", trimesh_fs_source)
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
-            || !read_text_file(root_path + "/lines_shader.glslv", line_vs_source)
-            || !read_text_file(root_path + "/lines_shader.glslf", line_fs_source)
+            || !read_shader(root_path + "/lines_shader.glslv", line_vs_source)
+            || !read_shader(root_path + "/lines_shader.glslf", line_fs_source)
 #endif
            )
            {

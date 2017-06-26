@@ -139,6 +139,10 @@ protected:
                                            const lamure::view_t view_id, 
                                            scm::gl::vertex_array_ptr const& render_VAO, 
                                            std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
+
+    bool                read_shader(std::string const& path_string, std::string& shader_string);
+    bool const          parse_prefix(std::string& in_string, std::string const& prefix);
+    std::string const   strip_whitespace(std::string const& in_string);
 private:
 
         int                                         win_x_;
@@ -157,6 +161,7 @@ private:
 
         //shader programs
         scm::gl::program_ptr                        LQ_one_pass_program_;
+        scm::gl::program_ptr                        compressed_LQ_one_pass_program_;
 
         scm::gl::program_ptr                        pass1_visibility_shader_program_;
         scm::gl::program_ptr                        pass1_compressed_visibility_shader_program_;
@@ -169,6 +174,7 @@ private:
         scm::gl::program_ptr                        pvs_grid_cell_vis_shader_program_;
 
 	    scm::gl::program_ptr                        pass1_linked_list_accumulate_program_;
+        scm::gl::program_ptr                        pass1_compressed_linked_list_accumulate_program_;
 	    scm::gl::program_ptr                        pass2_linked_list_resolve_program_;
 	    scm::gl::program_ptr                        pass3_repair_program_;
 

@@ -100,5 +100,24 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure
         PATTERN "*.glslf"
         PATTERN "*.glslg"
         )
+
+# shader and material resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/common DESTINATION share/lamure/shaders
+        FILES_MATCHING 
+        PATTERN "*.glsl"
+        PATTERN "*.glsv"
+        PATTERN "*.glsf"
+        PATTERN "*.glsg"
+        )
+
+# shader and material resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/common/heatmapping DESTINATION share/lamure/shaders/common
+        FILES_MATCHING 
+        PATTERN "*.glsl"
+        PATTERN "*.glsv"
+        PATTERN "*.glsf"
+        PATTERN "*.glsg"
+        )
+
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/fonts/Ubuntu.ttf DESTINATION share/lamure/fonts)
 
