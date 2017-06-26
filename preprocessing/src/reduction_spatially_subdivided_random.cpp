@@ -5,6 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
+
 #include <lamure/pre/reduction_spatially_subdivided_random.h>
 
 #include <set>
@@ -169,3 +171,5 @@ create_lod(real& reduction_error,
 
 } // namespace pre
 } // namespace lamure
+
+#endif // CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES

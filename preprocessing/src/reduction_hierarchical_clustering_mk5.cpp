@@ -5,6 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
+
 #include <lamure/pre/reduction_hierarchical_clustering_mk5.h>
 
 
@@ -660,3 +662,5 @@ eigsrt_jacobi(int dim, double* eigenvalues, double** eigenvectors) const
 
 } // namespace pre
 } // namespace lamure
+
+#endif // CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES

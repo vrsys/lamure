@@ -5,6 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
+
 #ifndef PRE_REDUCTION_HIERARCHICAL_CLUSTERING_MK4_H_
 #define PRE_REDUCTION_HIERARCHICAL_CLUSTERING_MK4_H_
 
@@ -102,3 +104,4 @@ private:
 } // namespace lamure
 
 #endif // PRE_REDUCTION_HIERARCHICAL_CLUSTERING_MK4_H_
+#endif // CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES

@@ -23,6 +23,7 @@
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
 #include <lamure/pre/reduction_random.h>
 #include <lamure/pre/reduction_entropy.h>
 #include <lamure/pre/reduction_particle_simulation.h>
@@ -31,7 +32,7 @@
 #include <lamure/pre/reduction_spatially_subdivided_random.h>
 #include <lamure/pre/reduction_pair_contraction.h>
 #include <lamure/pre/reduction_hierarchical_clustering_mk5.h>
-
+#endif
 #include <cstdio>
 
 
@@ -64,6 +65,7 @@ reduction_strategy* builder::get_reduction_strategy(reduction_algorithm algo) co
             return new reduction_constant();
         case reduction_algorithm::every_second:
             return new reduction_every_second();
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
         case reduction_algorithm::random:
             return new reduction_random();
         case reduction_algorithm::entropy:
@@ -80,6 +82,7 @@ reduction_strategy* builder::get_reduction_strategy(reduction_algorithm algo) co
             return new reduction_pair_contraction(desc_.number_of_neighbours);
         case reduction_algorithm::hierarchical_clustering_extended:
             return new reduction_hierarchical_clustering_mk5();
+#endif
         default:
             LOGGER_ERROR("Non-implemented reduction algorithm");
             return nullptr;

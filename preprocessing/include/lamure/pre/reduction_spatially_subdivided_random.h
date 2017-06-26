@@ -5,6 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
+
 #ifndef PRE_REDUCTION_OUTLIER_H
 #define PRE_REDUCTION_OUTLIER_H
 
@@ -33,3 +35,4 @@ public:
 } // namespace lamure
 
 #endif //PRE_REDUCTION_OUTLIER_H
+#endif // CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES

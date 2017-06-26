@@ -31,6 +31,11 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(LAMURE_CONFIG_DIR ${CMAKE_BINARY_DIR})
 
 option (LAMURE_USE_CGAL_FOR_NNI "Set to enable CGAL library for natural neighbor interpolation. NNI will not work without CGAL." ON)
+option (LAMURE_ENABLE_ALTERNATIVE_COMPUTATION_STRATEGIES "Enables preprocessing strategies different than NDC (requries CGAL)." OFF)
+
+if (LAMURE_ENABLE_ALTERNATIVE_COMPUTATION_STRATEGIES)
+add_definitions(-DCMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES)
+endif()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/install" CACHE PATH "default install path" FORCE )
@@ -150,10 +155,8 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/potentially_visible_set_common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
-add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
 add_subdirectory(${CMAKE_SOURCE_DIR}/potentially_visible_set_preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
 add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_rendering lamure_common)
@@ -161,5 +164,3 @@ add_dependencies(lamure_rendering lamure_common)
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
-set_target_properties(lamure_quality_measurement PROPERTIES DEBUG_POSTFIX "d")
-
