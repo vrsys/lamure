@@ -23,6 +23,7 @@ void main() {
   if ( dot(uv_coords, uv_coords)> 1 )
     discard;
 
+
   out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
 }
 

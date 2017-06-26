@@ -99,6 +99,9 @@ public:
 
     void                        write_view_matrix(std::ofstream& matrix_stream);
     void                        set_trackball_center_of_rotation(const scm::math::vec3f& cor);
+
+    void                        translate(const float& x, const float& y, const float& z);
+    void                        rotate(const float& x, const float& y, const float& z);
 protected:
 
     enum camera_state

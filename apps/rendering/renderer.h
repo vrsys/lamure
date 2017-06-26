@@ -164,7 +164,9 @@ private:
         scm::gl::program_ptr                        pass2_compressed_accumulation_shader_program_;
         scm::gl::program_ptr                        pass3_pass_through_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
+
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
+        scm::gl::program_ptr                        pvs_grid_cell_vis_shader_program_;
 
 	    scm::gl::program_ptr                        pass1_linked_list_accumulate_program_;
 	    scm::gl::program_ptr                        pass2_linked_list_resolve_program_;
@@ -203,6 +205,8 @@ private:
 	    bool                                        do_measurement_;
 	    bool                                        use_black_background_;
         bool                                        render_bounding_boxes_;
+        bool                                        render_pvs_grid_cells_;
+        bool                                        render_occluded_geometry_;
 
         //variables related to text rendering
         scm::gl::text_renderer_ptr                              text_renderer_;
@@ -254,13 +258,20 @@ public:
     void toggle_do_measurement();
     void toggle_use_black_background();
     void toggle_bounding_box_rendering();
+    void toggle_pvs_grid_cell_rendering();
     void change_point_size(float amount);
     void toggle_cut_update_info();
     void toggle_camera_info(const lamure::view_t current_cam_id);
     void take_screenshot(std::string const& screenshot_path, std::string const& screenshot_name);
     void toggle_visible_set();
     void toggle_display_info();
+
+    void toggle_culling();
+    void enable_culling(const bool& enable);
+    double get_fps() const;
+
     void toggle_ssbo_update();
+
 };
 
 #endif // REN_OLD_RENDERER_H_

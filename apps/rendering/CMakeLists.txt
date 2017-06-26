@@ -1,10 +1,14 @@
 ############################################################
 # CMake Build Script for the rendering executable
 
+add_subdirectory(/opt/glm ${LIBRARY_OUTPUT_PATH}/rendering)
+include_directories(/opt/glm)
+
 link_directories(${SCHISM_LIBRARY_DIRS})
 
 include_directories(${REND_INCLUDE_DIR}
                     ${COMMON_INCLUDE_DIR}
+                    ${PVS_COMMON_INCLUDE_DIR}
                     ${GLUT_INCLUDE_DIR}
                     ${FREEIMAGE_INCLUDE_DIR}
 			        ${LAMURE_CONFIG_DIR})
@@ -20,6 +24,7 @@ InitApp(${CMAKE_PROJECT_NAME}_rendering)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${REND_LIBRARY}
+    ${PVS_COMMON_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_glut_LIBRARY}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
@@ -27,7 +32,7 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common lamure_potentially_visible_set_common)
 
 MsvcPostBuild(${PROJECT_NAME})
 

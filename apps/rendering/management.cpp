@@ -7,11 +7,18 @@
 
 #include "utils.h"
 #include "management.h"
+
 #include <set>
 #include <ctime>
 #include <algorithm>
 #include <fstream>
+#include <chrono>
+
 #include <lamure/ren/bvh.h>
+#include <lamure/pvs/pvs_database.h>
+
+#include <glm/glm.hpp>
+#include "MatrixInterpolation.hpp"
 
 management::
 management(std::vector<std::string> const& model_filenames,
@@ -51,12 +58,13 @@ management(std::vector<std::string> const& model_filenames,
         detail_angle_(0.f),
         error_threshold_(LAMURE_DEFAULT_THRESHOLD),
         near_plane_(0.001f),
-        far_plane_(100.f),
+        far_plane_(1000.f),
         importance_(1.f)
 
 {
 
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    is_updating_pvs_position_ = true;
 
 #ifdef LAMURE_RENDERING_ENABLE_LAZY_MODELS_TEST
     assert(model_filenames_.size() > 0);
@@ -108,8 +116,17 @@ management(std::vector<std::string> const& model_filenames,
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     renderer_ = new Renderer(model_transformations_, visible_set, invisible_set);
 #endif
-
+    
     PrintInfo();
+
+    current_update_timeout_timer_ = 0.0;
+    interpolation_time_point_ = 0.0f;
+    use_interpolation_on_measurement_session_ = false;
+    movement_on_interpolation_per_frame_ = 10.0f;
+    snapshot_framerate_counter_ = 0.0;
+    snapshot_frame_counter_ = 0;
+
+    use_wasd_camera_control_sceme_ = true;
 }
 
 management::
@@ -128,18 +145,28 @@ management::
         delete renderer_;
         renderer_ = nullptr;
     }
-
-
 }
 
 bool management::
 MainLoop()
 {
+    std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
+    start_time = std::chrono::system_clock::now();
+
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
     lamure::ren::controller* controller = lamure::ren::controller::get_instance();
     lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
     bool signal_shutdown = false;
+
+    // PVS position update.
+    if(is_updating_pvs_position_)
+    {
+        scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
+        scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
+        pvs->set_viewer_position(cam_pos);
+    }
 
 #if 0
     for (unsigned int model_id = 0; model_id < database->num_models(); ++model_id) {
@@ -177,49 +204,161 @@ MainLoop()
 
     std::string status_string("");
 
-    if(camera_recording_enabled_) {
-        status_string += "Session recording (#"+std::to_string(current_session_number_) +") : ON\n";
-    } else {
-      //status_string += "Session recording: OFF\n";
+    if(camera_recording_enabled_)
+    {
+        //status_string += "Session recording (#"+std::to_string(current_session_number_) +") : ON\n";
+    }
+    else
+    {
+        //status_string += "Session recording: OFF\n";
     }
 
-    if (! allow_user_input_) {
-
-
+    // Session file handling. Used to capture screenshots for test or error measurement purpose.
+    if(!allow_user_input_)
+    {
         status_string += std::to_string(measurement_session_descriptor_.recorded_view_vector_.size()+1) + " views left to write.\n";
+        const double max_timeout_timer_time = 60.0;
 
-        if ( !screenshot_session_started_ ) {
-            
-        }
+        if(use_interpolation_on_measurement_session_)
+        {
+            // Interpolation between session files saved transformations. Allows to follow a track through the scene.
+            if( measurement_session_descriptor_.recorded_view_vector_.size() > 1)
+            {
+                scm::math::mat4d& from_transform = measurement_session_descriptor_.recorded_view_vector_[measurement_session_descriptor_.recorded_view_vector_.size() - 1];
+                scm::math::mat4d& to_transform = measurement_session_descriptor_.recorded_view_vector_[measurement_session_descriptor_.recorded_view_vector_.size() - 2];
 
-        size_t ms_since_update = controller->ms_since_last_node_upload();
+                glm::mat4 glm_from_transform(from_transform[0], from_transform[1], from_transform[2], from_transform[3],
+                                            from_transform[4], from_transform[5], from_transform[6], from_transform[7],
+                                            from_transform[8], from_transform[9], from_transform[10], from_transform[11],
+                                            from_transform[12], from_transform[13], from_transform[14], from_transform[15]);
+                glm::mat4 glm_to_transform(to_transform[0], to_transform[1], to_transform[2], to_transform[3],
+                                            to_transform[4], to_transform[5], to_transform[6], to_transform[7],
+                                            to_transform[8], to_transform[9], to_transform[10], to_transform[11],
+                                            to_transform[12], to_transform[13], to_transform[14], to_transform[15]);
 
-        if ( ms_since_update > 3000) {
-            if ( screenshot_session_started_ )
+                glm::mat4 glm_interpolated_transform = interpolate(glm_from_transform, glm_to_transform, interpolation_time_point_);
+
+                // Cast back to schism matrix to set camera view matrix.
+                scm::math::mat4d interpolated_transform(glm_interpolated_transform[0][0], glm_interpolated_transform[0][1], glm_interpolated_transform[0][2], glm_interpolated_transform[0][3],
+                                                        glm_interpolated_transform[1][0], glm_interpolated_transform[1][1], glm_interpolated_transform[1][2], glm_interpolated_transform[1][3],
+                                                        glm_interpolated_transform[2][0], glm_interpolated_transform[2][1], glm_interpolated_transform[2][2], glm_interpolated_transform[2][3],
+                                                        glm_interpolated_transform[3][0], glm_interpolated_transform[3][1], glm_interpolated_transform[3][2], glm_interpolated_transform[3][3]);
+                active_camera_->set_view_matrix(interpolated_transform);
+
+                // Take screenshots.
+                size_t ms_since_update = controller->ms_since_last_node_upload();
+
+                // Used to determine average frame rate over 1 second before taking the screenshot.
+                if(ms_since_update > 2000 || current_update_timeout_timer_ > (max_timeout_timer_time - 1.0))
+                {
+                    snapshot_framerate_counter_ += renderer_->get_fps();
+                    ++snapshot_frame_counter_;
+                }
+                else
+                {
+                    snapshot_framerate_counter_ = 0.0f;
+                    snapshot_frame_counter_ = 0;
+                }
                 
-                if(measurement_session_descriptor_.get_num_taken_screenshots() ) {
+                if(ms_since_update > 3000 || current_update_timeout_timer_ > max_timeout_timer_time)
+                {
+                    double average_framerate = snapshot_framerate_counter_ / (double)snapshot_frame_counter_;
+
                     auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
                     renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
-                                                measurement_session_descriptor_.get_screenshot_name() );
+                                                measurement_session_descriptor_.get_screenshot_name() + "_fps_" + std::to_string(average_framerate));
+
+                    measurement_session_descriptor_.increment_screenshot_counter();
+                    controller->reset_ms_since_last_node_upload();
+
+                    current_update_timeout_timer_ = 0.0;
+
+                    scm::math::vec3d start_pos(from_transform[12], from_transform[13], from_transform[14]);
+                    scm::math::vec3d end_pos(to_transform[12], to_transform[13], to_transform[14]);
+                    double total_distance = scm::math::length(start_pos - end_pos);
+
+                    interpolation_time_point_ += movement_on_interpolation_per_frame_ / total_distance;
+                }
+                else
+                {
+                    status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
+                    status_string += std::to_string((int)(max_timeout_timer_time - current_update_timeout_timer_)) + " s until forced snapshot.\n";
                 }
 
-                measurement_session_descriptor_.increment_screenshot_counter();
-
-            if(! measurement_session_descriptor_.recorded_view_vector_.empty() ) {
-                if (! screenshot_session_started_ ) {
-                    screenshot_session_started_ = true;
+                // Interpolate between next two points if finished goal.
+                if(interpolation_time_point_ >= 1.0f)
+                {
+                    interpolation_time_point_ = 0.0f;
+                    measurement_session_descriptor_.recorded_view_vector_.pop_back();
                 }
-                active_camera_->set_view_matrix(measurement_session_descriptor_.recorded_view_vector_.back());
-                controller->reset_ms_since_last_node_upload();
-                measurement_session_descriptor_.recorded_view_vector_.pop_back();
-            } else {
+            }
+            else
+            {
                 // leave the main loop
                 signal_shutdown = true;
             }
-
-        } else {
-            status_string += std::to_string( ((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
         }
+        else
+        {
+            // Classic way. Take screenshots only at transformations saved in session file.
+            size_t ms_since_update = controller->ms_since_last_node_upload();
+
+            if ( ms_since_update > 3000 || current_update_timeout_timer_ > max_timeout_timer_time)
+            {
+                if ( screenshot_session_started_ )
+                    
+                    if(measurement_session_descriptor_.get_num_taken_screenshots() )
+                    {
+                        auto const& resolution = measurement_session_descriptor_.snapshot_resolution_;
+                        renderer_->take_screenshot("../quality_measurement/session_screenshots/" + measurement_session_descriptor_.session_filename_, 
+                                                    measurement_session_descriptor_.get_screenshot_name() );
+                    }
+
+                    measurement_session_descriptor_.increment_screenshot_counter();
+
+                if(!measurement_session_descriptor_.recorded_view_vector_.empty() )
+                {
+                    if (! screenshot_session_started_ )
+                    {
+                        screenshot_session_started_ = true;
+                    }
+
+                    active_camera_->set_view_matrix(measurement_session_descriptor_.recorded_view_vector_.back());
+                    controller->reset_ms_since_last_node_upload();
+                    measurement_session_descriptor_.recorded_view_vector_.pop_back();
+                }
+                else
+                {
+                    // leave the main loop
+                    signal_shutdown = true;
+                }
+
+                current_update_timeout_timer_ = 0.0;
+            }
+            else
+            {
+                status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
+                status_string += std::to_string((int)(max_timeout_timer_time - current_update_timeout_timer_)) + " s until forced snapshot.\n";
+            }
+        }
+    }
+
+    if(pvs->is_activated())
+    {
+        status_string += "PVS: ON\n";
+    }
+    else
+    {
+        status_string += "PVS: OFF\n";
+    }
+
+    if(is_updating_pvs_position_)
+    {
+        status_string += "PVS viewer position update: ON\n";
+    }
+    else
+    {
+        status_string += "PVS viewer position update: OFF\n";
     }
 
     renderer_->display_status(status_string);
@@ -288,6 +427,11 @@ MainLoop()
 
 #endif
 
+    end_time = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+    double frame_time = elapsed_seconds.count();
+    current_update_timeout_timer_ += frame_time;
+
     return signal_shutdown;
 }
 
@@ -295,7 +439,27 @@ MainLoop()
 void management::
 update_trackball(int x, int y)
 {
-    active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
+    if(use_wasd_camera_control_sceme_)
+    {
+        if(mouse_state_.lb_down_)
+        {
+            double delta_x = 100.0 * double(x - mouse_last_x_) / double(width_);
+            double delta_y = 100.0 * double(y - mouse_last_y_) / float(height_);
+            active_camera_->rotate((double)delta_y, (double)delta_x, 0.0);
+        }
+        else if(mouse_state_.rb_down_)
+        {
+            double delta_x = 100.0 * double(x - mouse_last_x_) / double(width_);
+            active_camera_->rotate(0.0, 0.0, (double)delta_x);
+        }
+
+        mouse_last_x_ = x;
+        mouse_last_y_ = y;
+    }
+    else
+    {
+        active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
+    }
 }
 
 
@@ -303,41 +467,53 @@ update_trackball(int x, int y)
 void management::
 RegisterMousePresses(int button, int state, int x, int y)
 {
-    if(! allow_user_input_) {
+    if(! allow_user_input_)
+    {
         return;
     }
 
-    switch (button) {
+    switch (button)
+    {
         case GLUT_LEFT_BUTTON:
             {
                 mouse_state_.lb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
         case GLUT_MIDDLE_BUTTON:
             {
                 mouse_state_.mb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
         case GLUT_RIGHT_BUTTON:
             {
                 mouse_state_.rb_down_ = (state == GLUT_DOWN) ? true : false;
-            }break;
+            }
+            break;
     }
 
+    if(use_wasd_camera_control_sceme_)
+    {
+        mouse_last_x_ = x;
+        mouse_last_y_ = y;
+    }
+    else
+    {
 
+        float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
+        float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
 
-    float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
-    float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
+        active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
 
-    active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
-
-    renderer_->mouse(button, state, x, y, *active_camera_);
+        renderer_->mouse(button, state, x, y, *active_camera_);
+    }
 }
 
 
 void management::
 dispatchKeyboardInput(unsigned char key)
 {
-
-    if(! allow_user_input_) {
+    if(! allow_user_input_)
+    {
         return;
     }
 
@@ -345,10 +521,10 @@ dispatchKeyboardInput(unsigned char key)
 
     switch (key)
     {
-    case 'p':
+    case 'P':
       renderer_->toggle_provenance_rendering();
       break;
-    case 'm':
+    case 'M':
       renderer_->toggle_do_measurement();
       break;
     case 's':
@@ -386,6 +562,30 @@ dispatchKeyboardInput(unsigned char key)
     case 'j':
         renderer_->change_point_size(-0.1f);
         break;
+    case 'p':
+    {
+        // Toggle PVS activation.
+        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+        pvs->activate(!pvs->is_activated());
+        break;
+    }
+    case 'o':
+    {
+        // Toggle the position update to the pvs.
+        is_updating_pvs_position_ = !is_updating_pvs_position_;
+        break;
+    }
+    case 'l':
+    {
+        // Toggle the rendering of the view cells of the loaded pvs.
+        renderer_->toggle_pvs_grid_cell_rendering();
+        break;
+    }
+    case '5':
+    {
+        renderer_->toggle_culling();
+        break;
+    }
     case 't':
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
         renderer_->toggle_visible_set();
@@ -678,6 +878,57 @@ dispatchKeyboardInput(unsigned char key)
         IncreaseErrorThreshold();
         std::cout << "error threshold: " << error_threshold_ << std::endl;
         break;
+
+    // Change camera movement mode.
+    case '4':
+        use_wasd_camera_control_sceme_ = !use_wasd_camera_control_sceme_;
+        break;
+
+    // Camera movement forward and backward.
+    case 'h':
+        if(fast_travel_)
+        {
+            active_camera_->translate(0.0f, 0.0f, 10.0f);
+        }
+        else
+        {
+            active_camera_->translate(0.0f, 0.0f, 1.0f);
+        }
+        break;
+
+    case 'n':
+        if(fast_travel_)
+        {
+            active_camera_->translate(0.0f, 0.0f, -10.0f);
+        }
+        else
+        {
+            active_camera_->translate(0.0f, 0.0f, -1.0f);
+        }
+        break;
+
+    // Camera movement left and right.
+    case 'b':
+        if(fast_travel_)
+        {
+            active_camera_->translate(10.0f, 0.0f, 0.0f);
+        }
+        else
+        {
+            active_camera_->translate(1.0f, 0.0f, 0.0f);
+        }
+        break;
+
+    case 'm':
+        if(fast_travel_)
+        {
+            active_camera_->translate(-10.0f, 0.0f, 0.0f);
+        }
+        else
+        {
+            active_camera_->translate(-1.0f, 0.0f, 0.0f);
+        }
+        break;
     }
 }
 
@@ -823,4 +1074,22 @@ create_quality_measurement_resources() {
     std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);
     active_camera_->write_view_matrix(camera_session_file);
     camera_session_file.close();
+}
+
+void management::
+interpolate_between_measurement_transforms(const bool& allow_interpolation)
+{
+    use_interpolation_on_measurement_session_ = allow_interpolation;
+}
+
+void management::
+set_interpolation_step_size(const float& interpolation_step_size)
+{
+    movement_on_interpolation_per_frame_ = interpolation_step_size;
+}
+
+void management::
+enable_culling(const bool& enable)
+{
+    renderer_->enable_culling(enable);
 }

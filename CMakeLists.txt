@@ -85,7 +85,7 @@ ELSEIF (UNIX)
   set(BOOST_LIBRARYDIR /opt/boost/boost_1_62_0/lib)
 ENDIF ()
 
-find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex system thread timer)
+find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex system thread timer iostreams)
 find_package( Threads )
 
 ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
@@ -147,9 +147,11 @@ endif (${LAMURE_USE_CGAL_FOR_NNI})
 # Targets
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/common)
+add_subdirectory(${CMAKE_SOURCE_DIR}/potentially_visible_set_common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
 add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
+add_subdirectory(${CMAKE_SOURCE_DIR}/potentially_visible_set_preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 

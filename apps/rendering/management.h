@@ -85,6 +85,13 @@ public:
     void                IncreaseErrorThreshold();
     void                DecreaseErrorThreshold();
 
+    void                start_update_viewer_position_thread();
+
+    void                interpolate_between_measurement_transforms(const bool& allow_interpolation);
+    void                set_interpolation_step_size(const float& interpolation_step_size);
+
+    void                enable_culling(const bool& enable);
+
 protected:
 
     void                Toggledispatching();
@@ -137,6 +144,7 @@ private:
     float               reset_diameter_;
 
     uint32_t            current_session_number_;
+    double              current_update_timeout_timer_;
 
     lamure::model_t     num_models_;
 
@@ -149,7 +157,18 @@ private:
     std::vector<std::string> model_filenames_;
 
     snapshot_session_descriptor& measurement_session_descriptor_;
-    //std::vector<scm::math::mat4d>& recorded_view_vector_; 
+    //std::vector<scm::math::mat4d>& recorded_view_vector_;
+    float interpolation_time_point_;
+    bool use_interpolation_on_measurement_session_;
+    float movement_on_interpolation_per_frame_;
+    double snapshot_framerate_counter_;
+    size_t snapshot_frame_counter_;
+
+    bool                is_updating_pvs_position_;
+
+    bool                use_wasd_camera_control_sceme_;
+    int                 mouse_last_x_;
+    int                 mouse_last_y_;
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
     boost::timer::cpu_timer system_performance_timer_;
