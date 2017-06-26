@@ -1,5 +1,4 @@
 #include "Renderer.h"
-
 #include <scm/gl_util/data/imaging/texture_loader.h>
 #include <scm/gl_util/data/imaging/texture_loader_dds.h>
 

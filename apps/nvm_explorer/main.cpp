@@ -248,7 +248,6 @@ void glut_mouse_movement(int x, int y)
     // controller->handle_mouse_movement(x, y);
     // glutWarpPointer(1920/2, 1080/2);
 }
-
 void glut_keyboard_special(int key, int x, int y)
 {
     // std::cout << key << std::endl;
@@ -271,7 +270,6 @@ void glut_keyboard(unsigned char key, int x, int y)
         break;
     }
 }
-
 void glut_keyboard_special_release(int key, int x, int y) { controller->handle_key_special_released(key); }
 void glut_keyboard_release(unsigned char key, int x, int y) { controller->handle_key_released(key); }
 
