@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the potentially_visible_set executable
+# CMake Build Script for the pvs_generator executable
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
@@ -16,7 +16,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
-InitApp(${CMAKE_PROJECT_NAME}_potentially_visible_set)
+InitApp(${CMAKE_PROJECT_NAME}_pvs_generator)
 
 ############################################################
 # Libraries

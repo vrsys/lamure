@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the potentially_visible_set grid converter executable
+# CMake Build Script for the pvs_bounding_extrapolator executable
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
@@ -16,7 +16,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
-InitApp(${CMAKE_PROJECT_NAME}_potentially_visible_set_grid_converter)
+InitApp(${CMAKE_PROJECT_NAME}_pvs_bounding_extrapolator)
 
 ############################################################
 # Libraries
@@ -24,15 +24,9 @@ InitApp(${CMAKE_PROJECT_NAME}_potentially_visible_set_grid_converter)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${PVS_COMMON_LIBRARY}
-    ${PVS_PREPROCESSING_LIBRARY}
-    ${REND_LIBRARY}
-    ${OpenGL_LIBRARIES} 
-    ${GLUT_LIBRARY}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
-    optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
-    optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set_preprocessing lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set_common lamure_common)
 
 MsvcPostBuild(${PROJECT_NAME})
