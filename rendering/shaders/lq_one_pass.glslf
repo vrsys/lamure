@@ -23,10 +23,6 @@ void main() {
   if ( dot(uv_coords, uv_coords)> 1 )
     discard;
 
-  /*if( VertexIn.pass_normal.z < 0 )
-    VertexIn.pass_normal = VertexIn.pass_normal * -1; 
-
-  VertexIn.pass_normal = (VertexIn.pass_normal + vec3(1.0, 1.0, 1.0)) / 2.0;*/
 
   out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
 }

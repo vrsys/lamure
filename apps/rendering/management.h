@@ -135,6 +135,7 @@ private:
     lamure::ren::camera::mouse_state mouse_state_;
 
     bool                fast_travel_;
+    unsigned            travel_speed_mode_;
 
     bool                dispatch_;
     bool                trigger_one_update_;

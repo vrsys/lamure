@@ -90,6 +90,10 @@ scalar_callback(const std::string& element_name, const std::string& property_nam
             return [this](float value) { current_surfel_.normal().y = value; };
         else if (property_name == "nz")
             return [this](float value) { current_surfel_.normal().z = value; };
+        else if (property_name == "scalar_C2C_absolute_distances")
+	          return [this](float value) { /*ignore*/; };
+	      else if (property_name == "psz")
+	          return [this](float value) { /*ignore*/; };
 	else
           throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }
@@ -102,14 +106,14 @@ std::function<void(uint8_t)> format_ply::
 scalar_callback(const std::string& element_name, const std::string& property_name)
 {
     if (element_name == "vertex") {
-        if (property_name == "red")
+        if (property_name == "red" || property_name == "diffuse_red")
             return [this](uint8_t value) { current_surfel_.color().x = value; };
-        else if (property_name == "green")
+        else if (property_name == "green" || property_name == "diffuse_green")
             return [this](uint8_t value) { current_surfel_.color().y = value; };
-        else if (property_name == "blue")
+        else if (property_name == "blue" || property_name == "diffuse_blue")
             return [this](uint8_t value) { current_surfel_.color().z = value; };
         else if (property_name == "alpha")
-	  return [this](uint8_t value) { /*current_surfel_.color().z = value*/; };
+	  return [this](uint8_t value) { /*ignore alpha*/; };
         else
           throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
     }

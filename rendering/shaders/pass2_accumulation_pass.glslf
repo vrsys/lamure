@@ -29,7 +29,7 @@ layout(location = 1) out vec3 accumulated_normals;
 void main() {
   vec2 uv_coords = VertexIn.pass_uv_coords;
 
-  if ( dot(uv_coords, uv_coords)> 1 )
+  if ( dot(uv_coords, uv_coords) > 1 )
     discard;
 
   vec3 normal = VertexIn.pass_normal;
@@ -42,6 +42,7 @@ void main() {
 
   accumulated_colors = vec4(VertexIn.pass_point_color * weight, weight);
   accumulated_normals = vec3(normal * weight);
+
 }
 
 

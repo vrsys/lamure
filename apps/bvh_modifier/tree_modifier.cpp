@@ -23,6 +23,7 @@
 
 namespace {
 
+
 // Obtain a matrix for transforming points of bvh_a to the space of bvh_b
 lamure::mat4r
 get_frame_transform(const collision_detector::object& bvh_a,
@@ -44,9 +45,10 @@ get_frame_transform(const collision_detector::object& bvh_a,
 
 collision_detector::
 collision_detector(const object& bvh_l,
-                  const object& bvh_r,
-                  int stop_level_a,
-                  int stop_level_b)
+		   const object& bvh_r,
+		   int stop_level_a,
+		   int stop_level_b,
+		   const scm::math::vec3f& extend_bbx_max, const scm::math::vec3f& extend_bbx_min)
         : bvh_l_(bvh_l),
           bvh_r_(bvh_r)
 {
@@ -58,11 +60,20 @@ collision_detector(const object& bvh_l,
         lamure::bounding_box new_box;
         auto& nb = nd[i].get_bounding_box();
 
-#if 1
-        // extend bboxes
+#if 0
+        // old version for rock12c
         nb.min().z = bvh_r_.first->nodes()[0].get_bounding_box().min().z;
         nb.max().z = bvh_r_.first->nodes()[0].get_bounding_box().max().z;
 #endif
+	// new generic version
+	nb.max().x += extend_bbx_max[0];
+	nb.min().x -= extend_bbx_min[0];
+	nb.max().y += extend_bbx_max[1];
+	nb.min().y -= extend_bbx_min[1];
+	nb.max().z += extend_bbx_max[2];
+	nb.min().z -= extend_bbx_min[2];
+
+
         new_box.expand(frame_trans * nb.min());
         new_box.expand(frame_trans * lamure::vec3r(nb.min().x, nb.min().y, nb.max().z));
         new_box.expand(frame_trans * lamure::vec3r(nb.min().x, nb.max().y, nb.min().z));
@@ -74,6 +85,7 @@ collision_detector(const object& bvh_l,
         new_box.expand(frame_trans * lamure::vec3r(nb.max().x, nb.min().y, nb.min().z));
  
         boxes_.push_back(new_box);
+
     }
 
     stop_level_a_ = (stop_level_a >= 0) ? stop_level_a : int(bvh_l_.first->depth()) + 1 + stop_level_a;
@@ -130,11 +142,12 @@ traverse(lamure::node_id_type a, lamure::node_id_type b, const callback_func& ca
 }
 
 void TreeModifier::
-complementOnFirstTree(int relax_levels)
+complementOnFirstTree(int relax_levels, const scm::math::vec3f& extend_bbx_max, const scm::math::vec3f& extend_bbx_min)
 {
     using namespace lamure;
 
-    collision_detector cdet(bvhs_[0], bvhs_[1], -1, -relax_levels - 1);
+    collision_detector cdet(bvhs_[0], bvhs_[1], -1, -relax_levels - 1,
+			    extend_bbx_max, extend_bbx_min);
 
     //attempt trivial reject
     
@@ -301,7 +314,7 @@ complementOnFirstTree(int relax_levels)
 }
 
 void TreeModifier::
-histogrammatchSecondTree()
+histogrammatchSecondTree(const scm::math::vec3f& extend_bbx_max, const scm::math::vec3f& extend_bbx_min)
 {
     using namespace lamure;
 
@@ -317,7 +330,7 @@ histogrammatchSecondTree()
 
     // collect collisions
     for (size_t i = 1; i < bvhs_.size(); ++i) {
-        collision_detector cdet(bvhs_[0], bvhs_[i], -1, -1);
+      collision_detector cdet(bvhs_[0], bvhs_[i], -1, -1, extend_bbx_max, extend_bbx_min);
         cdet.search_intersections([&](lamure::node_id_type a, lamure::node_id_type b) {
                                  collision_info.insert(a);
                                  ++ctr;

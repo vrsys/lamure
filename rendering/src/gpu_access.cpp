@@ -25,6 +25,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
                      bool create_layout)
 : num_slots_(num_slots),
   size_of_surfel_(8*sizeof(float)),
+  size_of_surfel_qz_(3*sizeof(float)),
   is_mapped_(false),
   has_layout_(create_layout) {
 
@@ -49,6 +50,13 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device,
             (0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_)
             (0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_),
             boost::assign::list_of(buffer_));
+
+        pcl_qz_memory_ = device->create_vertex_array(scm::gl::vertex_format
+            (0, 0, scm::gl::TYPE_UINT, size_of_surfel_qz_)  // quant. pos x 16b
+            (0, 1, scm::gl::TYPE_UINT, size_of_surfel_qz_)  // quant. pos y 16b
+            (0, 2, scm::gl::TYPE_UINT, size_of_surfel_qz_),  // quant. pos z 16b
+            boost::assign::list_of(buffer_));
+
         tri_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
             (0, 1, scm::gl::TYPE_VEC3F, size_of_surfel_)
@@ -69,6 +77,7 @@ gpu_access::
     buffer_.reset();
     if (has_layout_) {
         pcl_memory_.reset();
+        pcl_qz_memory_.reset();
         tri_memory_.reset();
     }
 }
@@ -78,7 +87,7 @@ map(scm::gl::render_device_ptr const& device) {
     if (!is_mapped_) {
         assert(device);
         is_mapped_ = true;
-        return (char*)device->main_context()->map_buffer(buffer_, scm::gl::ACCESS_READ_WRITE);
+        return (char*)device->main_context()->map_buffer(buffer_, scm::gl::ACCESS_WRITE_ONLY);
     }
     return nullptr;
 }
@@ -97,6 +106,8 @@ get_memory(bvh::primitive_type type) {
   switch (type) {
     case bvh::primitive_type::POINTCLOUD:
       return pcl_memory_;
+    case bvh::primitive_type::POINTCLOUD_QZ:
+      return pcl_qz_memory_;
     case bvh::primitive_type::TRIMESH:
       return tri_memory_;
     default: break;

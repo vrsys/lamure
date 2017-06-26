@@ -32,6 +32,9 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       far_plane_(1000.0f),
       point_size_factor_(1.0f),
       blending_threshold_(0.01f),
+      render_provenance_(0),
+      do_measurement_(false),
+      use_black_background_(true),
       render_bounding_boxes_(false),
       elapsed_ms_since_cut_update_(0),
       render_mode_(RenderMode::HQ_TWO_PASS),
@@ -47,7 +50,9 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       max_lines_(256),
 #endif
       model_transformations_(model_transformations),
-      radius_scale_(1.f)
+      radius_scale_(1.f),
+      stop_ssbo_update_(false),
+      measurement_()
 {
     render_pvs_grid_cells_ = false;
     render_occluded_geometry_ = true;
@@ -56,8 +61,6 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
     win_x_ = policy->window_width();
     win_y_ = policy->window_height();
 
-    win_x_ = 800;
-    win_y_ = 600;
     initialize_schism_device_and_shaders(win_x_, win_y_);
     initialize_VBOs();
     reset_viewport(win_x_, win_y_);
@@ -74,7 +77,9 @@ Renderer::
     depth_state_disable_.reset();
 
     pass1_visibility_shader_program_.reset();
+    pass1_compressed_visibility_shader_program_.reset();
     pass2_accumulation_shader_program_.reset();
+    pass2_compressed_accumulation_shader_program_.reset();
     pass3_pass_through_shader_program_.reset();
 
     trimesh_shader_program_.reset();
@@ -123,6 +128,128 @@ bind_storage_buffer(scm::gl::buffer_ptr buffer) {
 }
 
 void Renderer::
+bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lamure::context_t context_id, std::set<lamure::model_t> const& current_set, lamure::view_t const view_id) {
+    
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+    lamure::ren::policy*         policy   = lamure::ren::policy::get_instance();
+
+    size_t size_of_nodes_in_bytes = database->get_primitive_size(lamure::ren::bvh::primitive_type::POINTCLOUD_QZ) * database->get_primitives_per_node();
+    size_t render_budget_in_mb    = policy->render_budget_in_mb();
+
+    size_t num_slots              = (render_budget_in_mb * 1024u * 1024u) / size_of_nodes_in_bytes;
+    size_t size_of_node_compression_slot = sizeof(float) * 8;
+    if(nullptr == buffer) {
+        std::cout << "INITIALIZED SSBO! \n";
+        buffer = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER,
+                                         scm::gl::USAGE_DYNAMIC_DRAW,
+                                         num_slots * size_of_node_compression_slot,
+                                         0);
+
+        bvh_ssbo_cpu_data[int(context_id)].resize(num_slots*8);
+    }
+
+
+
+    if(!stop_ssbo_update_) {
+    //float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_READ_WRITE);
+    float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+    std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
+    for (auto& model_id : current_set) {
+        lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+        //only nodes that are in the cut could have been updated. Therefore, we write the complete cut into the map.
+
+
+        const lamure::ren::bvh*  bvh = database->get_model(model_id)->get_bvh();
+
+        for(auto const& node_slot_index_pair : cut.complete_set() ) {
+            //std::cout << node_slot_index_pair.node_id_ << "\n";
+            auto const& current_bounding_box = bvh->get_bounding_boxes()[node_slot_index_pair.node_id_];
+            float avg_surfel_radius = bvh->get_avg_primitive_extent(node_slot_index_pair.node_id_);
+            float max_radius_deviation = bvh->get_max_surfel_radius_deviation(node_slot_index_pair.node_id_);
+
+            float min_radius = avg_surfel_radius - max_radius_deviation;
+            float max_radius = avg_surfel_radius + max_radius_deviation;
+
+            float bvh_data_to_write[8];
+            bvh_data_to_write[0] = current_bounding_box.min_vertex()[0];
+            bvh_data_to_write[1] = current_bounding_box.min_vertex()[1];
+            bvh_data_to_write[2] = current_bounding_box.min_vertex()[2];
+            bvh_data_to_write[3] = min_radius;
+            bvh_data_to_write[4] = current_bounding_box.max_vertex()[0];
+            bvh_data_to_write[5] = current_bounding_box.max_vertex()[1];
+            bvh_data_to_write[6] = current_bounding_box.max_vertex()[2];
+            bvh_data_to_write[7] = max_radius;
+
+
+                for(int i = 0; i < 8; ++i) {
+                    int64_t write_idx = 8*node_slot_index_pair.slot_id_ + i;
+                    if( write_idx < 0 || write_idx >= num_slots * 8)
+                        std::cout << "CURRENT WRITE IDX: " << write_idx << "; MAX_WRITE IDX: " << num_slots * 8 - 1 << "\n";
+                    mapped_ssbo[8*node_slot_index_pair.slot_id_ + i] = bvh_data_to_write[i];
+                }
+            //fast_update_index_map[node_slot_index_pair.slot_id_] = std::make_pair(model_id, node_slot_index_pair.node_id_);
+        }
+    }
+
+    device_->main_context()->unmap_buffer(buffer);
+
+    }
+
+    
+/*
+    std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
+    auto const& update_set = cuts->get_updated_set(context_id);
+
+    if(update_set.size() > 0) {
+        std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
+        for (auto& model_id : current_set) {
+            lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+            for(auto const& node_slot_index_pair : cut.complete_set() ) {
+                fast_update_index_map[node_slot_index_pair.slot_id_] = std::make_pair(model_id, node_slot_index_pair.node_id_);
+            }
+        }
+        
+
+        for( auto const& slot_to_update : update_set) {
+            int64_t ssbo_slot_to_write = slot_to_update.dst_;
+            auto const& model_node_info_to_fetch = fast_update_index_map[ssbo_slot_to_write];
+            const lamure::ren::bvh*  bvh = database->get_model(model_node_info_to_fetch.first)->get_bvh();
+            auto const& current_bounding_box = bvh->get_bounding_boxes()[model_node_info_to_fetch.second];
+            float avg_surfel_radius = bvh->get_avg_primitive_extent(model_node_info_to_fetch.second);
+            float max_radius_deviation = bvh->get_max_surfel_radius_deviation(model_node_info_to_fetch.second);
+
+            float min_radius = avg_surfel_radius - max_radius_deviation;
+            float max_radius = avg_surfel_radius + max_radius_deviation;
+
+            float bvh_data_to_write[8] = {current_bounding_box.min_vertex()[0], current_bounding_box.min_vertex()[1], current_bounding_box.min_vertex()[2], min_radius,
+                current_bounding_box.max_vertex()[0], current_bounding_box.max_vertex()[1], current_bounding_box.max_vertex()[2],  max_radius};
+
+                //mapped_ssbo[8*slot_to_update.dst_] =
+            memcpy( (void*)&(bvh_ssbo_cpu_data[int(context_id)][8*slot_to_update.dst_]), (void*)&(bvh_data_to_write[0]), size_of_node_compression_slot);
+
+
+               // float* mapped           device_->main_context()->buffer_sub_data(buffer, size_of_node_compression_slot * slot_to_update.dst_, size_of_node_compression_slot, &bvh_data_to_write[0]);
+
+        }
+
+
+        float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+        memcpy( (void*)&mapped_ssbo[0], (void*)&(bvh_ssbo_cpu_data[context_id][0]), int64_t(bvh_ssbo_cpu_data[context_id].size()) * sizeof(float));
+        device_->main_context()->unmap_buffer(buffer);
+  
+    }
+*/
+
+    pass1_compressed_visibility_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
+    //std::cout << "NUM PRIMS PER NODE: " << int(database->get_primitives_per_node()) << "\n";
+    pass1_compressed_visibility_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
+    pass2_compressed_accumulation_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
+    pass2_compressed_accumulation_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
+    context_->bind_storage_buffer(buffer, 1, 0, int(num_slots * size_of_node_compression_slot) );
+}
+
+void Renderer::
 upload_uniforms(lamure::ren::camera const& camera) const
 {
     using namespace lamure::ren;
@@ -137,9 +264,17 @@ upload_uniforms(lamure::ren::camera const& camera) const
     pass1_visibility_shader_program_->uniform("far_plane", far_plane_);
     pass1_visibility_shader_program_->uniform("point_size_factor", point_size_factor_);
 
+    pass1_compressed_visibility_shader_program_->uniform("near_plane", near_plane_);
+    pass1_compressed_visibility_shader_program_->uniform("far_plane", far_plane_);
+    pass1_compressed_visibility_shader_program_->uniform("point_size_factor", point_size_factor_);
+
     pass2_accumulation_shader_program_->uniform("near_plane", near_plane_);
     pass2_accumulation_shader_program_->uniform("far_plane", far_plane_ );
     pass2_accumulation_shader_program_->uniform("point_size_factor", point_size_factor_);
+
+    pass2_compressed_accumulation_shader_program_->uniform("near_plane", near_plane_);
+    pass2_compressed_accumulation_shader_program_->uniform("far_plane", far_plane_);
+    pass2_compressed_accumulation_shader_program_->uniform("point_size_factor", point_size_factor_);
 
     pass3_pass_through_shader_program_->uniform_sampler("in_color_texture", 0);
     pass3_pass_through_shader_program_->uniform_sampler("in_normal_texture", 1);
@@ -179,6 +314,7 @@ upload_uniforms(lamure::ren::camera const& camera) const
     LQ_one_pass_program_->uniform("near_plane", near_plane_);
     LQ_one_pass_program_->uniform("far_plane", far_plane_);
     LQ_one_pass_program_->uniform("point_size_factor", point_size_factor_);
+    LQ_one_pass_program_->uniform("render_provenance", render_provenance_);
 
     context_->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, .0f, 1.0f)); // how the image looks like, if nothing is drawn
     context_->clear_default_depth_stencil_buffer();
@@ -215,6 +351,11 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
             pass1_visibility_shader_program_->uniform("model_view_matrix", model_view_matrix);
             pass1_visibility_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
             pass1_visibility_shader_program_->uniform("model_radius_scale", total_radius_scale);
+
+            pass1_compressed_visibility_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd) );
+            pass1_compressed_visibility_shader_program_->uniform("model_view_matrix", model_view_matrix);
+            pass1_compressed_visibility_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
+            pass1_compressed_visibility_shader_program_->uniform("model_radius_scale", total_radius_scale);
             break;
 
         case RenderPass::ACCUMULATION:
@@ -222,6 +363,11 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
             pass2_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
             pass2_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
             pass2_accumulation_shader_program_->uniform("model_radius_scale", total_radius_scale);
+
+            pass2_compressed_accumulation_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
+            pass2_compressed_accumulation_shader_program_->uniform("model_view_matrix", model_view_matrix);
+            pass2_compressed_accumulation_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
+            pass2_compressed_accumulation_shader_program_->uniform("model_radius_scale", total_radius_scale);
             break;            
 
         case RenderPass::LINKED_LIST_ACCUMULATION:
@@ -232,6 +378,12 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
 	    break;
 
         case RenderPass::ONE_PASS_LQ:
+	  {
+	    const scm::math::mat4f viewport_scale = scm::math::make_scale(win_x_ * 0.5f, win_y_ * 0.5f, 0.5f);;
+	    const scm::math::mat4f viewport_translate = scm::math::make_translation(1.0f,1.0f,1.0f);
+	    const scm::math::mat4d model_to_screen =  scm::math::mat4d(viewport_scale) * scm::math::mat4d(viewport_translate) * mvpd;
+	    LQ_one_pass_program_->uniform("model_to_screen_matrix", scm::math::mat4f(model_to_screen));
+	  }
             LQ_one_pass_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
             LQ_one_pass_program_->uniform("model_view_matrix", model_view_matrix);
             LQ_one_pass_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
@@ -287,8 +439,10 @@ render_one_pass_LQ(lamure::context_t context_id,
     ****************************************************************************************/
 
     {
-        context_->clear_default_depth_stencil_buffer();
-        context_->clear_default_color_buffer();
+      
+      context_->clear_default_depth_stencil_buffer();
+      context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_black_background_ ? vec4f(0.0f, 0.0f, 0.0f, 1.0f) : vec4f(1.0f, 1.0f, 1.0f, 1.0f));
+      //context_->clear_default_color_buffer();
 
 
         context_->set_default_frame_buffer();
@@ -307,7 +461,9 @@ render_one_pass_LQ(lamure::context_t context_id,
         for (auto& model_id : current_set)
         {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
-            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+
+            std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
+
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
             if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
@@ -335,8 +491,25 @@ render_one_pass_LQ(lamure::context_t context_id,
                 uint32_t node_culling_result = camera.cull_against_frustum(frustum_by_model ,bounding_box_vector[node_slot_aggregate.node_id_]);
                 frustum_culling_results[node_counter] = node_culling_result;
 
-                if( (node_culling_result != 1) )
-                {
+                if( (node_culling_result != 1) ) {
+
+		            LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
+
+                    if(3 == render_provenance_){
+		      const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
+		      LQ_one_pass_program_->uniform("accuracy", accuracy);
+#if 0
+		      const float min_accuracy = 0.1f;
+		      const float max_accuracy = 0.0001f;
+		      const float accuracy = std::max(max_accuracy, std::min(min_accuracy, bvh->get_avg_primitive_extent(bvh->get_num_nodes() - (bvh->get_num_nodes()/4))));
+		      auto interpolate = [](float a, float b, float v){
+			const float t = (v - a)/(b - a);
+			return (1.0 - t) * 0.0 + t * 1.0;
+		      };
+		      LQ_one_pass_program_->uniform("accuracy", interpolate(min_accuracy, max_accuracy, accuracy));
+#endif
+                    }
+
                     context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
@@ -360,6 +533,20 @@ render_one_pass_LQ(lamure::context_t context_id,
         rendered_splats_ = non_culled_node_idx * database->get_primitives_per_node();
     }
 
+    
+    scm::math::mat4f view_matrix = scm::math::mat4f(camera.get_high_precision_view_matrix());
+    measurement_.drawInfo(device_, context_, text_renderer_, renderable_text_, win_x_, win_y_,
+			  camera.get_projection_matrix(), view_matrix, do_measurement_, display_info_);
+    
+}
+
+void
+Renderer::mouse(int button, int state, int x, int y, lamure::ren::camera const& camera){
+  if(do_measurement_ && render_mode_ == RenderMode::LQ_ONE_PASS){
+    scm::math::mat4f view_matrix = scm::math::mat4f(camera.get_high_precision_view_matrix());
+    measurement_.mouse(device_, button, state, x, y, win_x_, win_y_,
+		       camera.get_projection_matrix(), view_matrix);
+  }
 }
 
 
@@ -392,7 +579,7 @@ render_one_pass_HQ(lamure::context_t context_id,
 
     context_->clear_depth_stencil_buffer(pass1_visibility_fbo_);
 
-
+     
     context_->set_frame_buffer(pass1_visibility_fbo_);
 
 
@@ -541,7 +728,7 @@ void Renderer::
 render_two_pass_HQ(lamure::context_t context_id, 
                    lamure::ren::camera const& camera, 
                    const lamure::view_t view_id, 
-                   scm::gl::vertex_array_ptr const& render_VAO, 
+                   scm::gl::vertex_array_ptr const& dummy_VAO, 
                    std::set<lamure::model_t> const& current_set, 
                    std::vector<uint32_t>& frustum_culling_results)
 {
@@ -556,6 +743,7 @@ render_two_pass_HQ(lamure::context_t context_id,
 
     size_t number_of_surfels_per_node = database->get_primitives_per_node();
 
+
     /***************************************************************************************
     *******************************BEGIN DEPTH PASS*****************************************
     ****************************************************************************************/
@@ -565,22 +753,66 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->set_frame_buffer(pass1_visibility_fbo_);
 
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-        context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
 
-        context_->bind_program(pass1_visibility_shader_program_);
-        context_->bind_vertex_array(render_VAO);
+        context_->set_viewport(viewport(vec2ui(0, 0), vec2ui(win_x_, win_y_)));
+
+        context_->bind_vertex_array(dummy_VAO);
+
         context_->apply();
 
+
         node_t node_counter = 0;
+        bool is_any_model_compressed = false;
+        for (auto& model_id : current_set) {
+            const bvh* bvh = database->get_model(model_id)->get_bvh();
+
+            if( bvh::primitive_type::POINTCLOUD_QZ == bvh->get_primitive() ) {
+                is_any_model_compressed = true;
+            }
+
+        }
+
+        if(is_any_model_compressed) {
+
+            bind_bvh_attributes_for_compression_ssbo_buffer(bvh_ssbos_per_context[context_id], context_id, current_set, view_id);
+        }
 
         for (auto& model_id : current_set)
         {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
-            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+
+            std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
+
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
-            {
+
+            bvh::primitive_type primitive_type_to_use = bvh->get_primitive();
+
+
+
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+
+              context_->bind_program(pass1_compressed_visibility_shader_program_);
+
+
+
+            } else  {
+              context_->bind_program(pass1_visibility_shader_program_);
+            }
+
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+              scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
+
+              context_->bind_vertex_array(render_VAO);
+              context_->apply();
+            }
+
+/*
+            if (bvh->get_primitive() == bvh::primitive_type::POINTCLOUD_QZ) {
+                std::cout << "TRYING TO RENDER COMPRESSED DATA SET\n";
+            }
+*/
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD && bvh->get_primitive() != bvh::primitive_type::POINTCLOUD_QZ) {
                 continue;
             }
 
@@ -605,9 +837,9 @@ render_two_pass_HQ(lamure::context_t context_id,
 
                 frustum_culling_results[node_counter] = node_culling_result;
 
-                if( (node_culling_result != 1) )
-                {
-                    context_->apply();
+
+                if( (node_culling_result != 1) ) {
+
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr depth_pass_timer_query = device_->create_timer_query();
                     context_->begin_query(depth_pass_timer_query);
@@ -642,24 +874,43 @@ render_two_pass_HQ(lamure::context_t context_id,
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
         context_->set_blend_state(color_blending_state_);
 
+
+              context_->apply();
+
+
         context_->set_depth_stencil_state(depth_state_test_without_writing_);
-
+/*
         context_->bind_program(pass2_accumulation_shader_program_);
-
-        context_->bind_vertex_array(render_VAO);
-        context_->apply();
+*/
 
         node_t node_counter = 0;
         node_t actually_rendered_nodes = 0;
 
-        for (auto& model_id : current_set)
-        {
+        for (auto& model_id : current_set) {
             cut& cut = cuts->get_cut(context_id, view_id, model_id);
-            std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+
+            std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
+
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
-            {
+
+            bvh::primitive_type primitive_type_to_use = bvh->get_primitive();
+
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+              context_->bind_program(pass2_compressed_accumulation_shader_program_);
+            } else {
+              context_->bind_program(pass2_accumulation_shader_program_);
+            }
+
+            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
+              scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
+              context_->bind_vertex_array(render_VAO);
+              context_->apply();
+            }
+
+
+
+            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD  && bvh->get_primitive() != bvh::primitive_type::POINTCLOUD_QZ) {
                 continue;
             }
 
@@ -678,7 +929,6 @@ render_two_pass_HQ(lamure::context_t context_id,
 
                 if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
                 {
-                    context_->apply();
 
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
                     scm::gl::timer_query_ptr accumulation_pass_timer_query = device_->create_timer_query();
@@ -805,7 +1055,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
     for (auto& model_id : current_set) {
         cut& cut = cuts->get_cut(context_id, view_id, model_id);
 
-        std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+        std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
         size_of_culling_result_vector += renderable.size();
     }
@@ -868,7 +1118,7 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 
             if (bvh->get_primitive() == bvh::primitive_type::TRIMESH) {
                cut& cut = cuts->get_cut(context_id, view_id, model_id);
-               std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
+               std::vector<cut::node_slot_aggregate>& renderable = cut.complete_set();
 
                upload_transformation_matrices(camera, model_id, RenderPass::TRIMESH);
                
@@ -903,7 +1153,8 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
             for (auto& model_id : current_set)
             {
                 cut& c = cuts->get_cut(context_id, view_id, model_id);
-                std::vector<cut::node_slot_aggregate> renderable = c.complete_set();
+
+                std::vector<cut::node_slot_aggregate>& renderable = c.complete_set();
 
                 upload_transformation_matrices(camera, model_id, RenderPass::BOUNDING_BOX);
 
@@ -1024,9 +1275,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
 #endif
 
 
-    //if(display_info_)
-      //display_status(current_camera_session);
-
     context_->reset();
 
 
@@ -1054,7 +1302,13 @@ void Renderer::send_model_transform(const lamure::model_t model_id, const scm::m
 
 void Renderer::display_status(std::string const& information_to_display)
 {
+
     lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+
+
+  if(!display_info_){
+    return;
+  }
 
     std::stringstream os;
    // os.setprecision(5);
@@ -1073,13 +1327,30 @@ void Renderer::display_status(std::string const& information_to_display)
             break;
 
         case(RenderMode::LQ_ONE_PASS):
-            os << "LQ One-Pass\n";
-            break;
+            os << "LQ One-Pass:\nPress p for additional visualizations\n";
+	      switch(render_provenance_){
+	          case 0:
+	            os << "Additional visualization: none\n";
+	            break;
+	          case 1:
+	            os << "Output-sensitivity visualization (blue is good, red is bad)\n";
+	            break;
+	          case 2:
+	            os << "View space normal mapped to color\n";
+	            break;
+	          case 3:
+	            os << "Distance to highest data density (red means far away)\n";
+	            break;
+	          default:
+	            break;
+	      }
+                break;
 
         default:
             os << "RenderMode not implemented\n";
       }
-      
+
+
     os << information_to_display;
     os << "\n";
     
@@ -1159,6 +1430,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string root_path = LAMURE_SHADERS_DIR;
 
     std::string visibility_vs_source;
+    std::string compressed_visibility_vs_source; //compressed_version
     std::string visibility_gs_source;
     std::string visibility_fs_source;
 
@@ -1166,6 +1438,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string pass_trough_fs_source;
 
     std::string accumulation_vs_source;
+    std::string compressed_accumulation_vs_source; //compressed_version
     std::string accumulation_gs_source;
     std::string accumulation_fs_source;
 
@@ -1204,9 +1477,11 @@ initialize_schism_device_and_shaders(int resX, int resY)
         using scm::io::read_text_file;
 
         if (!read_text_file(root_path +  "/pass1_visibility_pass.glslv", visibility_vs_source)
+            || !read_text_file(root_path + "/pass1_compressed_visibility_pass.glslv", compressed_visibility_vs_source)
             || !read_text_file(root_path + "/pass1_visibility_pass.glslg", visibility_gs_source)
             || !read_text_file(root_path + "/pass1_visibility_pass.glslf", visibility_fs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslv", accumulation_vs_source)
+            || !read_text_file(root_path + "/pass2_compressed_accumulation_pass.glslv", compressed_accumulation_vs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslg", accumulation_gs_source)
             || !read_text_file(root_path + "/pass2_accumulation_pass.glslf", accumulation_fs_source)
             || !read_text_file(root_path + "/pass3_pass_through.glslv", pass_trough_vs_source)
@@ -1258,12 +1533,25 @@ initialize_schism_device_and_shaders(int resX, int resY)
                                                                         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
                                                               );
 
+    pass1_compressed_visibility_shader_program_ = device_->create_program(
+                                                  boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, compressed_visibility_vs_source))
+                                                                        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))
+                                                                        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source))
+                                                              );
+
     pass2_accumulation_shader_program_ = device_->create_program(
                                                     boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, accumulation_vs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
                                                                           (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
                                                                 );
-    
+
+
+    pass2_compressed_accumulation_shader_program_ = device_->create_program(
+                                                    boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, compressed_accumulation_vs_source))
+                                                                          (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, accumulation_gs_source))
+                                                                          (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER,accumulation_fs_source))
+                                                              );
+
     pass3_pass_through_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, pass_trough_vs_source))
                                                                 (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, pass_trough_fs_source)));
 
@@ -1308,7 +1596,9 @@ initialize_schism_device_and_shaders(int resX, int resY)
        boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, trimesh_vs_source))
                              (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, trimesh_fs_source)) );
 
-    if (    !pass1_visibility_shader_program_ || !pass2_accumulation_shader_program_ || !pass3_pass_through_shader_program_ || !pass_filling_program_ 
+    if (    !pass1_visibility_shader_program_ || !pass1_compressed_visibility_shader_program_ 
+         || !pass2_accumulation_shader_program_ || !pass2_compressed_accumulation_shader_program_ 
+         || !pass3_pass_through_shader_program_ || !pass_filling_program_ 
          || !pass1_linked_list_accumulate_program_ || !pass2_linked_list_resolve_program_ || !pass3_repair_program_ || !trimesh_shader_program_
          || !LQ_one_pass_program_
          || !bounding_box_vis_shader_program_
@@ -1427,6 +1717,41 @@ calculate_radius_scale_per_model()
     }
 }
 
+
+void Renderer::
+toggle_provenance_rendering()
+{
+  ++render_provenance_;
+  if(render_provenance_ == 4){
+    render_provenance_ = 0;
+  }
+
+  std::cout<<"provenance rendering: ";
+  if(render_provenance_ == 0)
+    std::cout<<"OFF\n\n";
+  else if(render_provenance_ == 1)
+    std::cout<<"difference to average surfel radius\n\n";
+  else if(render_provenance_ == 2)
+    std::cout<<"normal\n\n";
+  else// if(render_provenance_ == 3)
+    std::cout<<"accuracy\n\n";
+
+};
+
+
+void Renderer::
+toggle_do_measurement(){
+  if(render_mode_ == RenderMode::LQ_ONE_PASS){
+    do_measurement_ = !do_measurement_;
+  }
+};
+
+void Renderer::
+toggle_use_black_background(){
+  use_black_background_ = !use_black_background_;
+};
+
+
 //dynamic rendering adjustment functions
 void Renderer::
 toggle_bounding_box_rendering()
@@ -1453,6 +1778,10 @@ toggle_pvs_grid_cell_rendering()
 }
 
 
+void Renderer::
+toggle_ssbo_update() {
+    stop_ssbo_update_ = ! stop_ssbo_update_;
+}
 
 void Renderer::
 change_point_size(float amount)

@@ -24,6 +24,7 @@ class basic_algorithms
 public:
     
     struct surfel_group_properties {
+        real         max_radius_deviation;
         real         rep_radius;
         vec3r        centroid;
         bounding_box bbox;

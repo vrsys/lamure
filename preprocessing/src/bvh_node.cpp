@@ -21,7 +21,8 @@ bvh_node(const node_id_type id,
   bounding_box_(bounding_box),
   reduction_error_(0.0),
   avg_surfel_radius_(0.0),
-  centroid_(vec3r(0.0))
+  centroid_(vec3r(0.0)),
+  max_surfel_radius_deviation_(0.0)
 {
     reset(array);
 }
@@ -36,7 +37,8 @@ bvh_node(const node_id_type id,
   bounding_box_(bounding_box),
   reduction_error_(0.0),
   avg_surfel_radius_(0.0),
-  centroid_(vec3r(0.0))
+  centroid_(vec3r(0.0)),
+  max_surfel_radius_deviation_(0.0)
 {
     reset(array);
 }

@@ -41,28 +41,9 @@ lamure::mat4r loadMatrix(const std::string& filename)
 
 int main(int argc, const char *argv[])
 {
-    /*scm::math::mat4f rock = scm::math::make_translation(604050.0f, 5098490.0f, 400.0f);
-    float valley_seradina_scale = 31.261682663898622f;
-    scm::math::mat4f valley_seradina_rot = scm::math::mat4f::identity();
-    valley_seradina_rot.m00 = -0.57732352f; valley_seradina_rot.m01 = 0.816437476f; valley_seradina_rot.m02 = 0.0112872f;
-    valley_seradina_rot.m04 = 0.040792f;    valley_seradina_rot.m05 = 0.042645956f; valley_seradina_rot.m06 = -0.998257147f;
-    valley_seradina_rot.m08 = -0.8154959f;  valley_seradina_rot.m09 = -0.5758569f;  valley_seradina_rot.m10 = -0.057924671f;
-    scm::math::mat4f valley_seradina = scm::math::make_translation(603956.727956973f, 5098223.502562742f, 819.626837676f) 
-                                     * valley_seradina_rot 
-                                     * scm::math::make_scale(valley_seradina_scale, valley_seradina_scale, valley_seradina_scale);
-    scm::math::mat4f all = scm::math::make_scale(0.1f, 0.1f, 0.1f) * scm::math::make_translation(-604050.0f, -5098490.0f, -400.f);
 
-    rock = scm::math::transpose(all * rock);
-    valley_seradina = scm::math::transpose(all * valley_seradina);
-
-    std::cout << "_ground_truth: " << std::endl;
-    for (int i = 0; i < 16; ++i)
-        std::cout << rock[i] << " ";
-    std::cout << std::endl << "_macro_seradina: " << std::endl;
-    for (int i = 0; i < 16; ++i)
-        std::cout << valley_seradina[i] << " ";
-    std::cout << std::endl;
-    return 0; */
+  scm::math::vec3f extend_bbx_max = scm::math::vec3f(0.0,0.0,0.0);
+  scm::math::vec3f extend_bbx_min = scm::math::vec3f(0.0,0.0,0.0);
 
     omp_set_nested(1);
 
@@ -102,7 +83,11 @@ int main(int argc, const char *argv[])
 
             ("radius,r",
              po::value<float>(),
-             "Radius multiplier");
+             "Radius multiplier")
+
+            ("extend,e",
+             po::value<std::vector<float>>()->multitoken(),
+             "Extend bounding boxes by values x y z -x -y -z, e.g. 0.01 0.0 0.0 0.0 0.0 0.0 to extend positive x axis by 1cm. Please note that all values have to be positive.");
 
 
         po::positional_options_description pod;
@@ -120,12 +105,36 @@ int main(int argc, const char *argv[])
     }
     catch(po::error& e) {
         std::cerr << "Error: " << e.what() << std::endl
-                  << "For details use -h or --help option." << std::endl;
+                  << "For details use " << argv[0] << " -h or --help option." << std::endl;
         return EXIT_FAILURE;
     }
 
     // get input filenames
     auto inp_files = vm["input-files"].as<std::vector<std::string>>();
+
+    if(vm.count("extend")){
+      auto bbx_extend_values = vm["extend"].as<std::vector<float>>();
+      if(6 != bbx_extend_values.size()){
+        std::cerr << argv[0] << std::endl << "Error: too few values for option -extend given." << std::endl
+                  << "For details use " << argv[0] << " -h or --help option." << std::endl;
+        return EXIT_FAILURE;
+      }
+      bool all_positive = true;
+      for(const auto& v : bbx_extend_values){
+	if(v < 0.0){
+	  all_positive = false;
+	}
+      }
+      if(!all_positive){
+        std::cerr << argv[0] << std::endl << "Error: all values for option -extend ahve to be positive." << std::endl
+                  << "For details use " << argv[0] << " -h or --help option." << std::endl;
+        return EXIT_FAILURE;	
+      }
+      // apply values for bbx_extend from cmdline
+      extend_bbx_max = scm::math::vec3f(bbx_extend_values[0],bbx_extend_values[1],bbx_extend_values[2]);
+      extend_bbx_min = scm::math::vec3f(bbx_extend_values[3],bbx_extend_values[4],bbx_extend_values[5]);
+    }
+
 
     std::vector<std::string> inp_transforms;
     if (vm.count("transforms")) 
@@ -169,7 +178,7 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
         TreeModifier tm(bvhs);
-        tm.complementOnFirstTree(vm["relax-levels"].as<int>());
+        tm.complementOnFirstTree(vm["relax-levels"].as<int>(), extend_bbx_max, extend_bbx_min);
     }
 
     // histogram matching
@@ -179,7 +188,7 @@ int main(int argc, const char *argv[])
             return EXIT_FAILURE;
         }
         TreeModifier tm(bvhs);
-        tm.histogrammatchSecondTree();
+        tm.histogrammatchSecondTree(extend_bbx_max, extend_bbx_min);
     }
     
     // radius multiplier

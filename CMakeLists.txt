@@ -81,8 +81,8 @@ IF (MSVC)
   set(BOOST_INCLUDEDIR ${GLOBAL_EXT_DIR}/boost/include)
   set(BOOST_LIBRARYDIR ${GLOBAL_EXT_DIR}/boost/lib)
 ELSEIF (UNIX)
-  set(BOOST_INCLUDEDIR /opt/boost/latest/include)
-  set(BOOST_LIBRARYDIR /opt/boost/latest/lib)
+  set(BOOST_INCLUDEDIR /opt/boost/boost_1_62_0/include)
+  set(BOOST_LIBRARYDIR /opt/boost/boost_1_62_0/lib)
 ENDIF ()
 
 find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex system thread timer iostreams)
@@ -157,4 +157,9 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
 add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_rendering lamure_common)
+
+set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_quality_measurement PROPERTIES DEBUG_POSTFIX "d")
 

@@ -49,6 +49,7 @@ management(std::vector<std::string> const& model_filenames,
         num_models_(0),
         num_cameras_(1),
         fast_travel_(false),
+	    travel_speed_mode_(0),
         dispatch_(true),
         trigger_one_update_(false),
         reset_matrix_(scm::math::mat4f::identity()),
@@ -205,11 +206,11 @@ MainLoop()
 
     if(camera_recording_enabled_)
     {
-        status_string += "Session recording (#"+std::to_string(current_session_number_) +") : ON\n";
+        //status_string += "Session recording (#"+std::to_string(current_session_number_) +") : ON\n";
     }
     else
     {
-        status_string += "Session recording: OFF\n";
+        //status_string += "Session recording: OFF\n";
     }
 
     // Session file handling. Used to capture screenshots for test or error measurement purpose.
@@ -403,7 +404,6 @@ MainLoop()
 
         //controller->dispatch(context_id, renderer_->device());
 
-
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
@@ -498,10 +498,13 @@ RegisterMousePresses(int button, int state, int x, int y)
     }
     else
     {
+
         float trackball_init_x = 2.f * float(x - (width_/2))/float(width_) ;
         float trackball_init_y = 2.f * float(height_ - y - (height_/2))/float(height_);
 
         active_camera_->update_trackball_mouse_pos(trackball_init_x, trackball_init_y);
+
+        renderer_->mouse(button, state, x, y, *active_camera_);
     }
 }
 
@@ -518,6 +521,16 @@ dispatchKeyboardInput(unsigned char key)
 
     switch (key)
     {
+    case 'P':
+      renderer_->toggle_provenance_rendering();
+      break;
+    case 'M':
+      renderer_->toggle_do_measurement();
+      break;
+    case 's':
+      renderer_->toggle_ssbo_update();
+      break;
+
     case '+':
         importance_ += 0.1f;
         importance_ = std::min(importance_, 1.0f);
@@ -680,27 +693,21 @@ dispatchKeyboardInput(unsigned char key)
 
 
     case 'f':
-        std::cout<<"fast travel: ";
-        if(fast_travel_)
-        {
-            for (auto& cam : cameras_)
-            {
-                cam->set_dolly_sens_(0.5f);
-            }
-            std::cout<<"OFF\n\n";
-        }
-        else
-        {
-            for (auto& cam : cameras_)
-            {
-                cam->set_dolly_sens_(20.5f);
-            }
-            std::cout<<"ON\n\n";
-        }
-
-        fast_travel_ = ! fast_travel_;
-
-        break;
+      {
+	++travel_speed_mode_;
+	if(travel_speed_mode_ > 3){
+	  travel_speed_mode_ = 0;
+	}
+	const float travel_speed = (travel_speed_mode_ == 0 ? 0.5f
+				    : travel_speed_mode_ == 1 ? 20.5f
+				    : travel_speed_mode_ == 2 ? 100.5f
+				    : 300.5f);
+	std::cout << "setting travel speed to " << travel_speed << std::endl;
+	for (auto& cam : cameras_){ 
+	  cam->set_dolly_sens_(travel_speed);
+	}
+      }
+      break;
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     
  
@@ -854,9 +861,14 @@ dispatchKeyboardInput(unsigned char key)
         active_camera_->set_trackball_matrix(scm::math::mat4d(reset_matrix_));
         break;
 
+    case '8':
+        renderer_->toggle_use_black_background();
+        break;
+
     case '9':
         renderer_->toggle_display_info();
         break;
+
 
     case 'k':
         DecreaseErrorThreshold();

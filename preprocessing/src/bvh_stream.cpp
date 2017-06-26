@@ -350,7 +350,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
        bvh_nodes[i].set_centroid(vec3r(centroid));
        bvh_nodes[i].set_avg_surfel_radius(node.avg_surfel_radius_);
        bvh_nodes[i].set_visibility((bvh_node::node_visibility)node.visibility_);
-
+       bvh_nodes[i].set_max_surfel_radius_deviation(node.max_surfel_radius_deviation_);
     }
 
     bvh.set_first_leaf(tree.num_nodes_ - std::pow(tree.fan_factor_, tree.depth_));
@@ -376,7 +376,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
    file_.seekp(0, std::ios::beg);
 
    bvh_file_seg seg;
-   seg.major_version_ = 0;
+   seg.major_version_ = 1;
    seg.minor_version_ = 1;
    seg.reserved_ = 0;
 
@@ -415,7 +415,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
        node.reduction_error_ = bvh_node.reduction_error();
        node.avg_surfel_radius_ = bvh_node.avg_surfel_radius();
        node.visibility_ = (bvh_node_visibility)bvh_node.visibility();
-       node.reserved_ = 0;
+       node.max_surfel_radius_deviation_ = bvh_node.max_surfel_radius_deviation();
        node.bounding_box_.min_.x_ = bvh_node.get_bounding_box().min().x;
        node.bounding_box_.min_.y_ = bvh_node.get_bounding_box().min().y;
        node.bounding_box_.min_.z_ = bvh_node.get_bounding_box().min().z;

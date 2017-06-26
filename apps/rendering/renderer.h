@@ -8,6 +8,8 @@
 #ifndef REN_OLD_RENDERER_H_
 #define REN_OLD_RENDERER_H_
 
+#include "measurement.h"
+
 #include <lamure/ren/camera.h>
 #include <lamure/ren/cut.h>
 
@@ -112,6 +114,7 @@ protected:
     void                update_frustum_dependent_parameters(lamure::ren::camera const& camera);
 
     void                bind_storage_buffer(scm::gl::buffer_ptr buffer);
+    void                bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lamure::context_t context_id, std::set<lamure::model_t> const& current_set, lamure::view_t const view_id);
 
     void                upload_uniforms(lamure::ren::camera const& camera) const;
     void                upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
@@ -156,7 +159,9 @@ private:
         scm::gl::program_ptr                        LQ_one_pass_program_;
 
         scm::gl::program_ptr                        pass1_visibility_shader_program_;
+        scm::gl::program_ptr                        pass1_compressed_visibility_shader_program_;
         scm::gl::program_ptr                        pass2_accumulation_shader_program_;
+        scm::gl::program_ptr                        pass2_compressed_accumulation_shader_program_;
         scm::gl::program_ptr                        pass3_pass_through_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
 
@@ -194,7 +199,11 @@ private:
         float                                       point_size_factor_;
 
 	    float                                       blending_threshold_;
+	
 
+	    int                                         render_provenance_;
+	    bool                                        do_measurement_;
+	    bool                                        use_black_background_;
         bool                                        render_bounding_boxes_;
         bool                                        render_pvs_grid_cells_;
         bool                                        render_occluded_geometry_;
@@ -215,9 +224,12 @@ private:
         std::vector<float>                                      radius_scale_per_model_;
         float                                                   radius_scale_;
 
+	    Measurement                                             measurement_;
+
         size_t                                                  elapsed_ms_since_cut_update_;
 
         RenderMode                                              render_mode_;
+        bool                                                    stop_ssbo_update_ = false;
 
         std::set<lamure::model_t> visible_set_;
         std::set<lamure::model_t> invisible_set_;
@@ -229,6 +241,9 @@ private:
         scm::gl::program_ptr trimesh_shader_program_;
         std::vector<scm::math::vec3f> line_begin_;
         std::vector<scm::math::vec3f> line_end_;
+
+        std::map<lamure::context_t, std::vector<float>> bvh_ssbo_cpu_data;
+        std::map<lamure::context_t, scm::gl::buffer_ptr> bvh_ssbos_per_context;
         unsigned int max_lines_;
 
 //methods for changing rendering settings dynamically
@@ -238,6 +253,10 @@ public:
     void clear_line_begin() { line_begin_.clear(); };
     void clear_line_end() { line_end_.clear(); };
 
+    void mouse(int button, int state, int x, int y, lamure::ren::camera const& camera);
+    void toggle_provenance_rendering();
+    void toggle_do_measurement();
+    void toggle_use_black_background();
     void toggle_bounding_box_rendering();
     void toggle_pvs_grid_cell_rendering();
     void change_point_size(float amount);
@@ -250,6 +269,9 @@ public:
     void toggle_culling();
     void enable_culling(const bool& enable);
     double get_fps() const;
+
+    void toggle_ssbo_update();
+
 };
 
 #endif // REN_OLD_RENDERER_H_

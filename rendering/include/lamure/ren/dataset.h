@@ -46,6 +46,12 @@ public:
       float n2_x_, n2_y_, n2_z_;
       float c2_x_, c2_y_;
     };
+    struct serialized_surfel_qz {
+      uint16_t x, y, z; // quantized pos between node extents
+      uint16_t n_enum;  // enumerated point on unit cube
+      uint16_t rgb_565; // default 565 color quantization
+      uint16_t size;    // quantized radius between avg rad and max deviation
+    };
 
 
                         dataset() {};

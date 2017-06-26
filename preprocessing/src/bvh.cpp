@@ -1235,6 +1235,7 @@ thread_compute_bounding_boxes_downsweep(const uint32_t slice_left,
         current_node.set_avg_surfel_radius(props.rep_radius);
         current_node.set_centroid(props.centroid);
         current_node.set_bounding_box(props.bbox);
+        current_node.set_max_surfel_radius_deviation(props.max_radius_deviation);
     }
 }
 
@@ -1263,6 +1264,7 @@ thread_compute_bounding_boxes_upsweep(const uint32_t start_marker,
 
         basic_algorithms::surfel_group_properties props = basic_algorithms::compute_properties(current_node->mem_array(), 
                                                                                                 rep_radius_algo_);
+        current_node->set_max_surfel_radius_deviation(props.max_radius_deviation);
 
         bounding_box node_bounding_box;
         node_bounding_box.expand(props.bbox);

@@ -47,12 +47,14 @@ private:
     slot_t num_slots_;
     size_t size_of_slot_;
     size_t size_of_surfel_;
-
+    size_t size_of_surfel_qz_;
+    
     bool is_mapped_;
     bool has_layout_;
 
-    scm::gl::vertex_array_ptr pcl_memory_;
-    scm::gl::vertex_array_ptr tri_memory_;
+    scm::gl::vertex_array_ptr pcl_memory_; // vertex layout for uncompressed point clouds
+    scm::gl::vertex_array_ptr pcl_qz_memory_; // vertex layout for quantized point clouds
+    scm::gl::vertex_array_ptr tri_memory_; // vertex layout for uncompressed tri mesh
     scm::gl::buffer_ptr buffer_;
 };
 
