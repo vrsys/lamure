@@ -217,6 +217,10 @@ void Controller::handle_key_released(char key)
     {
         _renderer.mode_prov_data = 2;
     }
+    else if(key == '0')
+    {
+        _renderer.mode_prov_data = 3;
+    }
     else if(key == 'p')
     {
         _renderer.dispatch = !_renderer.dispatch;

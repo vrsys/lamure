@@ -1402,18 +1402,26 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
 
             uint16_t percentage = 0;
 
-            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+            for(uint32_t w_node = first_node_of_level; w_node < last_node_of_level; ++w_node)
             {
-                std::cout << "Entering node: " << node_index << std::endl;
+                std::cout << "Entering w_node: " << w_node << std::endl;
 
-                cast->pack_node(node_index);
-
-                uint16_t new_percentage = int32_t(float(node_index - first_node_of_level) / (last_node_of_level)*100);
-                if(percentage < new_percentage)
+                if(w_level < depth_)
                 {
-                    percentage = new_percentage;
-                    std::cout << "\r" << percentage << "% processed" << std::flush;
+                    bvh_node *current_node = &nodes_.at(w_node);
+                    cast->pack_node(w_node, max_surfels_per_node_, (*current_node).disk_array().length());
                 }
+                else
+                {
+                    cast->pack_empties(max_surfels_per_node_);
+                }
+            }
+
+            uint16_t new_percentage = (uint16_t)int16_t(float(w_level) / (depth_)*100);
+            if(percentage < new_percentage)
+            {
+                percentage = new_percentage;
+                std::cout << "\r" << percentage << "% processed" << std::flush;
             }
         }
     }
