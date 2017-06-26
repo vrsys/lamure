@@ -35,7 +35,7 @@ void resolve_provenance_coloring(in vec3 position, in vec3 normal, in vec3 tange
         provenance_normal = provenance_normal * -1;
       }
 
-        color = vec3(in_normal * 0.5 + 0.5);
+        color = vec3(normal * 0.5 + 0.5);
         color = vec3(provenance_normal * 0.5 + 0.5);
 
       break;

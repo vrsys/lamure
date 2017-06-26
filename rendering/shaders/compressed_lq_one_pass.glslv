@@ -7,19 +7,13 @@
 
 #version 420 core
 
+INCLUDE common/attribute_dequantization_header.glsl
+
 uniform mat4 model_to_screen_matrix;
 uniform mat4 inv_mv_matrix;
 uniform float model_radius_scale;
 uniform float point_size_factor;
 
-
-layout(location = 0) in vec3 in_position;
-layout(location = 1) in float in_r;
-layout(location = 2) in float in_g;
-layout(location = 3) in float in_b;
-layout(location = 4) in float empty;
-layout(location = 5) in float in_radius;
-layout(location = 6) in vec3 in_normal;
 
 out VertexData {
   //output to geometry shader
@@ -30,11 +24,21 @@ out VertexData {
   vec3 pass_normal;
 } VertexOut;
 
+INCLUDE common/attribute_dequantization_functions.glsl
 INCLUDE common/compute_tangent_vectors.glsl
 INCLUDE common/provenance_visualization_functions.glsl
 
-void main()
-{
+void main() {
+  // the "in" prefix is kept to be consistent with the interface of the uncompressed shaders.
+  // conceptually, the decompressed attributes are the input for the next stages.
+  vec3  in_position = vec3(0.0);
+  vec3  in_normal   = vec3(0.0);
+  float in_radius  = 0.0;
+  vec3  in_rgb = vec3(0.0);
+
+  dequantize_surfel_attributes_full(in_qz_pos_xy_16_16, in_qz_pos_z_normal_enum_16_16, in_rgb_777_and_radius_11, //compressed v-attributes
+                                    in_position, in_normal, in_radius, in_rgb); //decompressed v-attributes
+
   // precalculate tangent vectors to establish the surfel shape
   vec3 tangent   = vec3(0.0);
   vec3 bitangent = vec3(0.0);
@@ -44,13 +48,13 @@ void main()
   vec3 normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
 
   // finalize color with provenance overlay
-  vec3 in_out_color = vec3(in_r, in_g, in_b);
+  vec3 in_out_color = vec3(in_rgb);
   resolve_provenance_coloring(in_position, normal, tangent, bitangent, in_radius, in_out_color);//, in_normal, tangent, bitangent, in_radius, in_out_color);
   
   // passed attributes: vertex shader -> geometry shader
+  VertexOut.pass_normal = normal;
   VertexOut.pass_ms_u = tangent;
   VertexOut.pass_ms_v = bitangent;
-  VertexOut.pass_normal = normal;
   gl_Position = vec4(in_position, 1.0);
   VertexOut.pass_point_color = in_out_color;
 }

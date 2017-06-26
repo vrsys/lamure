@@ -51,7 +51,6 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
 #endif
       model_transformations_(model_transformations),
       radius_scale_(1.f),
-      stop_ssbo_update_(false),
       measurement_()
 {
     render_pvs_grid_cells_ = false;
@@ -102,6 +101,7 @@ Renderer::
     pass3_repair_program_.reset();
 
     LQ_one_pass_program_.reset();
+    compressed_LQ_one_pass_program_.reset();
 
     screen_quad_.reset();
 
@@ -150,8 +150,6 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
     }
 
 
-
-    if(!stop_ssbo_update_) {
     //float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_READ_WRITE);
     float* mapped_ssbo = (float*)device_->main_context()->map_buffer(buffer, scm::gl::access_mode::ACCESS_WRITE_ONLY);
     std::map<lamure::slot_t, std::pair<lamure::model_t, lamure::node_t> > fast_update_index_map;
@@ -190,7 +188,7 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
                 }
             //fast_update_index_map[node_slot_index_pair.slot_id_] = std::make_pair(model_id, node_slot_index_pair.node_id_);
         }
-    }
+
 
     device_->main_context()->unmap_buffer(buffer);
 
@@ -200,6 +198,8 @@ bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lam
     pass1_compressed_visibility_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
     pass2_compressed_accumulation_shader_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
     pass2_compressed_accumulation_shader_program_->storage_buffer("bvh_auxiliary_struct", 1);
+    compressed_LQ_one_pass_program_->uniform("num_primitives_per_node", int(database->get_primitives_per_node()) );
+    compressed_LQ_one_pass_program_->storage_buffer("bvh_auxiliary_struct", 1);
     context_->bind_storage_buffer(buffer, 1, 0, int(num_slots * size_of_node_compression_slot) );
 }
 
@@ -270,6 +270,11 @@ upload_uniforms(lamure::ren::camera const& camera) const
     LQ_one_pass_program_->uniform("point_size_factor", point_size_factor_);
     LQ_one_pass_program_->uniform("render_provenance", render_provenance_);
 
+    compressed_LQ_one_pass_program_->uniform("near_plane", near_plane_);
+    compressed_LQ_one_pass_program_->uniform("far_plane", far_plane_);
+    compressed_LQ_one_pass_program_->uniform("point_size_factor", point_size_factor_);
+    compressed_LQ_one_pass_program_->uniform("render_provenance", render_provenance_);
+
     context_->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(0.0f, 0.0f, .0f, 1.0f)); // how the image looks like, if nothing is drawn
     context_->clear_default_depth_stencil_buffer();
 
@@ -337,11 +342,17 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
 	    const scm::math::mat4f viewport_translate = scm::math::make_translation(1.0f,1.0f,1.0f);
 	    const scm::math::mat4d model_to_screen =  scm::math::mat4d(viewport_scale) * scm::math::mat4d(viewport_translate) * mvpd;
 	    LQ_one_pass_program_->uniform("model_to_screen_matrix", scm::math::mat4f(model_to_screen));
+        compressed_LQ_one_pass_program_->uniform("model_to_screen_matrix", scm::math::mat4f(model_to_screen));
 	  }
             LQ_one_pass_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
             LQ_one_pass_program_->uniform("model_view_matrix", model_view_matrix);
             LQ_one_pass_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
             LQ_one_pass_program_->uniform("model_radius_scale", total_radius_scale);
+
+            compressed_LQ_one_pass_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
+            compressed_LQ_one_pass_program_->uniform("model_view_matrix", model_view_matrix);
+            compressed_LQ_one_pass_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
+            compressed_LQ_one_pass_program_->uniform("model_radius_scale", total_radius_scale);
         break;
 
         case RenderPass::BOUNDING_BOX:
@@ -388,6 +399,22 @@ render_one_pass_LQ(lamure::context_t context_id,
 
     size_t number_of_surfels_per_node = database->get_primitives_per_node();;
 
+
+
+    bool is_any_model_compressed = false;
+    for (auto& model_id : current_set) {
+        const bvh* bvh = database->get_model(model_id)->get_bvh();
+
+        if( bvh::primitive_type::POINTCLOUD_QZ == bvh->get_primitive() ) {
+            is_any_model_compressed = true;
+        }
+
+    }
+
+    if(is_any_model_compressed) {
+        bind_bvh_attributes_for_compression_ssbo_buffer(bvh_ssbos_per_context[context_id], context_id, current_set, view_id);
+    }
+
     /***************************************************************************************
     *******************************BEGIN LOW QUALIY PASS*****************************************
     ****************************************************************************************/
@@ -404,11 +431,8 @@ render_one_pass_LQ(lamure::context_t context_id,
         context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
         context_->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(win_x_, win_y_)));
 
-        context_->bind_program(LQ_one_pass_program_);
 
 
-        context_->bind_vertex_array(render_VAO);
-        context_->apply();
 
         node_t node_counter = 0;
         node_t non_culled_node_idx = 0;
@@ -420,10 +444,23 @@ render_one_pass_LQ(lamure::context_t context_id,
 
             const bvh* bvh = database->get_model(model_id)->get_bvh();
 
-            if (bvh->get_primitive() != bvh::primitive_type::POINTCLOUD)
-            {
+            auto primitive_type_to_use = bvh->get_primitive();
+            if ( (primitive_type_to_use != bvh::primitive_type::POINTCLOUD) && (primitive_type_to_use != bvh::primitive_type::POINTCLOUD_QZ) ) {
                 continue;
             }
+
+            scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
+            context_->bind_vertex_array(render_VAO);
+
+            if(  bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use ) {
+              context_->bind_program(compressed_LQ_one_pass_program_);
+            } else {
+              context_->bind_program(LQ_one_pass_program_); 
+            }
+
+
+            context_->apply();
+
 
             size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
             //store culling result and push it back for second pass#
@@ -446,23 +483,26 @@ render_one_pass_LQ(lamure::context_t context_id,
                 frustum_culling_results[node_counter] = node_culling_result;
 
                 if( (node_culling_result != 1) ) {
-
-		            LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
-
+                  if(0 != render_provenance_) {
+                    LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
+                    compressed_LQ_one_pass_program_->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
                     if(3 == render_provenance_){
-		      const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
-		      LQ_one_pass_program_->uniform("accuracy", accuracy);
+                      const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
+                      LQ_one_pass_program_->uniform("accuracy", accuracy);
+                      compressed_LQ_one_pass_program_->uniform("accuracy", accuracy);
 #if 0
-		      const float min_accuracy = 0.1f;
-		      const float max_accuracy = 0.0001f;
-		      const float accuracy = std::max(max_accuracy, std::min(min_accuracy, bvh->get_avg_primitive_extent(bvh->get_num_nodes() - (bvh->get_num_nodes()/4))));
-		      auto interpolate = [](float a, float b, float v){
-			const float t = (v - a)/(b - a);
-			return (1.0 - t) * 0.0 + t * 1.0;
-		      };
-		      LQ_one_pass_program_->uniform("accuracy", interpolate(min_accuracy, max_accuracy, accuracy));
+                      const float min_accuracy = 0.1f;
+                      const float max_accuracy = 0.0001f;
+                      const float accuracy = std::max(max_accuracy, std::min(min_accuracy, bvh->get_avg_primitive_extent(bvh->get_num_nodes() - (bvh->get_num_nodes()/4))));
+                      auto interpolate = [](float a, float b, float v){
+                      const float t = (v - a)/(b - a);
+                      return (1.0 - t) * 0.0 + t * 1.0;
+                      };
+                      LQ_one_pass_program_->uniform("accuracy", interpolate(min_accuracy, max_accuracy, accuracy));
 #endif
                     }
+                  }
+
 
                     context_->apply();
 #ifdef LAMURE_RENDERING_ENABLE_PERFORMANCE_MEASUREMENT
@@ -490,9 +530,10 @@ render_one_pass_LQ(lamure::context_t context_id,
     
     scm::math::mat4f view_matrix = scm::math::mat4f(camera.get_high_precision_view_matrix());
     measurement_.drawInfo(device_, context_, text_renderer_, renderable_text_, win_x_, win_y_,
-			  camera.get_projection_matrix(), view_matrix, do_measurement_, display_info_);
+              camera.get_projection_matrix(), view_matrix, do_measurement_, display_info_);
     
 }
+
 
 void
 Renderer::mouse(int button, int state, int x, int y, lamure::ren::camera const& camera){
@@ -710,10 +751,6 @@ render_two_pass_HQ(lamure::context_t context_id,
 
         context_->set_viewport(viewport(vec2ui(0, 0), vec2ui(win_x_, win_y_)));
 
-        context_->bind_vertex_array(dummy_VAO);
-
-        context_->apply();
-
 
         node_t node_counter = 0;
         bool is_any_model_compressed = false;
@@ -754,12 +791,11 @@ render_two_pass_HQ(lamure::context_t context_id,
               context_->bind_program(pass1_visibility_shader_program_);
             }
 
-            if(bvh::primitive_type::POINTCLOUD_QZ == primitive_type_to_use) {
-              scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
+            scm::gl::vertex_array_ptr const& render_VAO = lamure::ren::controller::get_instance()->get_context_memory(context_id, primitive_type_to_use, device_);
 
-              context_->bind_vertex_array(render_VAO);
-              context_->apply();
-            }
+            context_->bind_vertex_array(render_VAO);
+            context_->apply();
+            
 
 /*
             if (bvh->get_primitive() == bvh::primitive_type::POINTCLOUD_QZ) {
@@ -880,6 +916,7 @@ render_two_pass_HQ(lamure::context_t context_id,
                 {
                     continue;
                 }
+
 
                 if( frustum_culling_results[node_counter] != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
                 {
@@ -1426,7 +1463,6 @@ read_shader(std::string const& path_string,
     //std::cout << line_buffer << "\n";
 
     if( parse_prefix(line_buffer, include_prefix) ) {
-        std::cout << "READING: " << line_buffer << "\n";
       std::string filename_string = line_buffer;
       read_shader(base_path+filename_string, shader_string);
     } else {
@@ -1476,6 +1512,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string repair_program_fs_source;
 
     std::string lq_one_pass_vs_source;
+    std::string compressed_lq_one_pass_vs_source;
     std::string lq_one_pass_gs_source;
     std::string lq_one_pass_fs_source;
 
@@ -1513,6 +1550,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
     	    || !read_shader(root_path + "/pass3_repair.glslv", repair_program_vs_source)
     	    || !read_shader(root_path + "/pass3_repair.glslf", repair_program_fs_source)
             || !read_shader(root_path + "/lq_one_pass.glslv", lq_one_pass_vs_source)
+            || !read_shader(root_path + "/compressed_lq_one_pass.glslv", compressed_lq_one_pass_vs_source)
             || !read_shader(root_path + "/lq_one_pass.glslg", lq_one_pass_gs_source)
             || !read_shader(root_path + "/lq_one_pass.glslf", lq_one_pass_fs_source)
             || !read_shader(root_path + "/trimesh.glslv", trimesh_vs_source)
@@ -1605,6 +1643,13 @@ initialize_schism_device_and_shaders(int resX, int resY)
                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, lq_one_pass_fs_source ))
     );
 
+
+    compressed_LQ_one_pass_program_ = device_->create_program(
+        boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER,   compressed_lq_one_pass_vs_source ))
+                              (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, lq_one_pass_gs_source ))
+                              (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, lq_one_pass_fs_source ))
+    );
+
     trimesh_shader_program_ = device_->create_program(
        boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, trimesh_vs_source))
                              (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, trimesh_fs_source)) );
@@ -1613,7 +1658,7 @@ initialize_schism_device_and_shaders(int resX, int resY)
          || !pass2_accumulation_shader_program_ || !pass2_compressed_accumulation_shader_program_ 
          || !pass3_pass_through_shader_program_ || !pass_filling_program_ 
          || !pass1_linked_list_accumulate_program_ || !pass2_linked_list_resolve_program_ || !pass3_repair_program_ || !trimesh_shader_program_
-         || !LQ_one_pass_program_
+         || !LQ_one_pass_program_ || !compressed_LQ_one_pass_program_
          || !bounding_box_vis_shader_program_
          || !pvs_grid_cell_vis_shader_program_
 #ifdef LAMURE_ENABLE_LINE_VISUALIZATION
@@ -1790,11 +1835,6 @@ toggle_pvs_grid_cell_rendering()
         std::cout<<"OFF\n\n";  
 }
 
-
-void Renderer::
-toggle_ssbo_update() {
-    stop_ssbo_update_ = ! stop_ssbo_update_;
-}
 
 void Renderer::
 change_point_size(float amount)

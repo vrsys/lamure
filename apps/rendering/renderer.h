@@ -235,7 +235,6 @@ private:
         size_t                                                  elapsed_ms_since_cut_update_;
 
         RenderMode                                              render_mode_;
-        bool                                                    stop_ssbo_update_ = false;
 
         std::set<lamure::model_t> visible_set_;
         std::set<lamure::model_t> invisible_set_;
