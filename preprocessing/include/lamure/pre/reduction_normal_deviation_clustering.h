@@ -42,6 +42,16 @@ class PREPROCESSING_DLL reduction_normal_deviation_clustering : public provenanc
         bool operator()(const surfel_cluster_with_error &left, const surfel_cluster_with_error &right) { return left.cluster->size() < right.cluster->size(); }
     };
 
+    struct provenance_cluster
+    {
+        std::list<provenance_reduction_strategy::LoDMetaData> cluster;
+    };
+
+    struct pro_order_by_size
+    {
+        bool operator()(const provenance_cluster &left, const provenance_cluster &right) { return left.cluster.size() < right.cluster.size(); }
+    };
+
     static surfel create_representative(const std::vector<surfel> &input);
 
     std::pair<vec3ui, vec3b> compute_grid_dimensions(const std::vector<surfel_mem_array *> &input, const bounding_box &bounding_box, const uint32_t surfels_per_node) const;
@@ -50,7 +60,8 @@ class PREPROCESSING_DLL reduction_normal_deviation_clustering : public provenanc
 
     static bool compare_radius(const surfel &left, const surfel &right) { return left.radius() < right.radius(); }
 
-    LoDMetaData calculate_deviations(surfel repr, const std::vector<surfel> &input) const;
+    provenance_reduction_strategy::LoDMetaData calculate_deviations(surfel repr, const std::vector<surfel> &input) const;
+    std::list<provenance_reduction_strategy::LoDMetaData> generate_provenance_empties(std::list<surfel> *& surfels) const;
 };
 
 } // namespace pre

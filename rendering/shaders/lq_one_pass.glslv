@@ -55,6 +55,10 @@ VertexOut;
 
 vec3 get_color(float value)
 {
+    if(value == -100 || value == -0.5)
+    {
+        return vec3(0.2, 0, 0);
+    }
     int index = int(value * 255);
     index = clamp(index, 0, 254);
     return colormap[index];

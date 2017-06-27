@@ -170,22 +170,22 @@ class provenance_reduction_strategy : public reduction_strategy
                 //                std::vector<uint8_t> pad_buffer(diff, 0);
                 //                os.write(reinterpret_cast<char *>(&pad_buffer[0]), diff);
 
-                int64_t diff = max_size * 4 * 6 - length_of_data;
-                printf("\nDiff: %li ", diff);
-                printf("\nMax: %lu ", max_size * 4 * 6);
-                printf("\nLength: %lu ", length_of_data);
-                printf("\nRegistered: %lu ", registered_size * 4 * 6);
+//                int64_t diff = max_size * 4 * 6 - length_of_data;
+//                printf("\nDiff: %li ", diff);
+//                printf("\nMax: %lu ", max_size * 4 * 6);
+//                printf("\nLength: %lu ", length_of_data);
+//                printf("\nRegistered: %lu ", registered_size * 4 * 6);
 
-                if(diff > 0)
-                {
+//                if(diff > 0)
+//                {
                     os.write(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);
-                    std::vector<uint8_t> pad_buffer(diff, 0);
-                    os.write(reinterpret_cast<char *>(&pad_buffer[0]), diff);
-                }
-                else
-                {
-                    os.write(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);
-                }
+//                    std::vector<uint8_t> pad_buffer(diff, 0);
+//                    os.write(reinterpret_cast<char *>(&pad_buffer[0]), diff);
+//                }
+//                else
+//                {
+//                    os.write(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);
+//                }
             }
             else
             {

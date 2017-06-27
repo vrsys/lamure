@@ -399,6 +399,9 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
     std::priority_queue<surfel_cluster_with_error, std::vector<surfel_cluster_with_error>, order_by_size> cell_pq;
     uint32_t surfel_count = 0;
 
+    // TODO: inject a parallel structure with provenance data
+    std::priority_queue<provenance_cluster, std::vector<provenance_cluster>, pro_order_by_size> prov_pq;
+
     for(uint32_t i = 0; i < grid_dimensions[0]; ++i)
     {
         for(uint32_t j = 0; j < grid_dimensions[1]; ++j)
@@ -406,6 +409,7 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
             for(uint32_t k = 0; k < grid_dimensions[2]; ++k)
             {
                 cell_pq.push({grid[i][j][k], 0.1f});
+                prov_pq.push({generate_provenance_empties(grid[i][j][k])});
                 surfel_count += grid[i][j][k]->size();
                 grid[i][j][k] = 0;
             }
@@ -430,6 +434,12 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
         float merge_treshold = cell_pq.top().merge_treshold;
         cell_pq.pop();
 
+        // TODO: shadow the actions on the cell queue
+        prov_pq.pop();
+
+        //        printf("\ncell_pq.size(): %lu ", cell_pq.size());
+        //        printf("\nprov_pq.size(): %lu ", prov_pq.size());
+
         uint32_t input_cluster_size = (uint32_t)input_cluster->size();
         surfel_count -= input_cluster_size;
         bool early_termination = false;
@@ -452,17 +462,20 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
 
         std::list<surfel> *output_cluster = new std::list<surfel>;
 
+        // TODO: create a container to cell data
+        std::list<LoDMetaData> provenance_cluster = std::list<LoDMetaData>();
+
         // TODO: extract input surfels, keep a vector of states (merged/unmerged)
-//        std::vector<surfel> input_surfels(input_cluster->size());
-//        std::vector<bool> input_surfels_states(input_cluster->size());
+        //        std::vector<surfel> input_surfels(input_cluster->size());
+        //        std::vector<bool> input_surfels_states(input_cluster->size());
 
         while(input_cluster->size() != 0)
         {
             std::vector<surfel> surfels_to_merge;
             surfels_to_merge.push_back(input_cluster->front());
             // TODO: register input surfel
-//            input_surfels.push_back(input_cluster->front());
-//            input_surfels_states.push_back(true);
+            //            input_surfels.push_back(input_cluster->front());
+            //            input_surfels_states.push_back(true);
 
             input_cluster->pop_front();
 
@@ -523,8 +536,8 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
                     surfels_to_merge.push_back(*surfel_to_compare);
 
                     // TODO: remember the surfel
-//                    input_surfels.push_back(*surfel_to_compare);
-//                    input_surfels_states.push_back(true);
+                    //                    input_surfels.push_back(*surfel_to_compare);
+                    //                    input_surfels_states.push_back(true);
 
                     surfel_to_compare = input_cluster->erase(surfel_to_compare);
 
@@ -537,8 +550,8 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
                 else
                 {
                     // TODO: remember the surfel
-//                    input_surfels.push_back(*surfel_to_compare);
-//                    input_surfels_states.push_back(false);
+                    //                    input_surfels.push_back(*surfel_to_compare);
+                    //                    input_surfels_states.push_back(false);
 
                     std::advance(surfel_to_compare, 1);
                 }
@@ -549,14 +562,16 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
             data._debug_red = float(repr.color().x);
             data._debug_green = float(repr.color().y);
             data._debug_blue = float(repr.color().z);
-            deviations.push_back(data);
 
             output_cluster->push_back(repr);
 
-            printf("\nsurfel_count: %u ", surfel_count);
-            printf("\ndeviations: %lu ", deviations.size());
-            printf("\ninput_cluster->size(): %lu ", input_cluster->size());
-            printf("\noutput_cluster->size(): %lu ", output_cluster->size());
+            // TODO: shadow the actions on the cell container
+            provenance_cluster.push_back(data);
+
+            //            printf("\nsurfel_count: %u ", surfel_count);
+            //            printf("\ndeviations: %lu ", deviations.size());
+            //            printf("\ninput_cluster->size(): %lu ", input_cluster->size());
+            //            printf("\noutput_cluster->size(): %lu ", output_cluster->size());
 
             if(early_termination)
             {
@@ -588,24 +603,26 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
 
                 while(p_surfel != input_cluster->end())
                 {
-                    LoDMetaData empties;
-                    empties._mean_absolute_deviation = -1;
-                    empties._coefficient_of_variation = -1;
-                    empties._standard_deviation = -1;
-                    empties._debug_red = float((*p_surfel).color().x);
-                    empties._debug_green = float((*p_surfel).color().y);
-                    empties._debug_blue = float((*p_surfel).color().z);
-                    deviations.push_back(empties);
+                    LoDMetaData empty;
+                    empty._mean_absolute_deviation = -1;
+                    empty._coefficient_of_variation = -1;
+                    empty._standard_deviation = -1;
+                    empty._debug_red = float((*p_surfel).color().x);
+                    empty._debug_green = float((*p_surfel).color().y);
+                    empty._debug_blue = float((*p_surfel).color().z);
+
+                    // TODO: shadow the actions on the cell container
+                    provenance_cluster.push_back(empty);
                     std::advance(p_surfel, 1);
                 }
 
                 output_cluster->insert(output_cluster->end(), input_cluster->begin(), input_cluster->end());
 
-                printf("\nearly_termination: %i", early_termination);
-                printf("\nsurfel_count: %u ", surfel_count);
-                printf("\ndeviations: %lu ", deviations.size());
-                printf("\ninput_cluster->size(): %lu ", input_cluster->size());
-                printf("\noutput_cluster->size(): %lu ", output_cluster->size());
+                //                printf("\nearly_termination: %i", early_termination);
+                //                printf("\nsurfel_count: %u ", surfel_count);
+                //                printf("\ndeviations: %lu ", deviations.size());
+                //                printf("\ninput_cluster->size(): %lu ", input_cluster->size());
+                //                printf("\noutput_cluster->size(): %lu ", output_cluster->size());
 
                 break;
             }
@@ -635,6 +652,9 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
         delete input_cluster;
         input_cluster = output_cluster;
         cell_pq.push({input_cluster, merge_treshold});
+
+        // TODO: shadow the actions on the cell queue
+        prov_pq.push({provenance_cluster});
     }
 
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
@@ -644,15 +664,31 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
         std::list<surfel> *cluster = cell_pq.top().cluster;
         cell_pq.pop();
 
-        for(std::list<surfel>::iterator surfel = cluster->begin(); surfel != cluster->end(); ++surfel)
+        // TODO: shadow the actions on the cell queue
+        std::list<LoDMetaData> prov_cluster = prov_pq.top().cluster;
+        prov_pq.pop();
+
+        std::list<surfel>::iterator surfel = cluster->begin();
+        std::list<LoDMetaData>::iterator meta_data = prov_cluster.begin();
+
+        for(; surfel != cluster->end() && meta_data != prov_cluster.end(); ++surfel, ++meta_data)
         {
             mem_array.mem_data()->push_back(*surfel);
+            deviations.push_back(*meta_data);
+
+//            printf("\ncell_red: %f ", (double)(*surfel).color().r);
+//            printf("\ndev_red: %f ", (*meta_data)._debug_red);
         }
 
         delete cluster;
     }
 
+    std::reverse(deviations.begin(), deviations.end());
+
     mem_array.set_length(mem_array.mem_data()->size());
+
+    //    printf("\nLENGTH: %lu ", mem_array.length());
+    //    printf("\nDEVIATIONS: %lu ", deviations.size());
 
     reduction_error = 0; // TODO
 
@@ -694,6 +730,25 @@ reduction_normal_deviation_clustering::LoDMetaData reduction_normal_deviation_cl
     //    printf("\nCoV: %e ", data._coefficient_of_variation);
 
     return data;
+}
+
+std::list<provenance_reduction_strategy::LoDMetaData> reduction_normal_deviation_clustering::generate_provenance_empties(std::list<surfel> *&surfels) const
+{
+    std::list<provenance_reduction_strategy::LoDMetaData> empties = std::list<provenance_reduction_strategy::LoDMetaData>();
+
+    for(std::list<surfel>::iterator p_surfel = surfels->begin(); p_surfel != surfels->end(); ++p_surfel)
+    {
+        provenance_reduction_strategy::LoDMetaData empty;
+        empty._mean_absolute_deviation = -1;
+        empty._coefficient_of_variation = -1;
+        empty._standard_deviation = -1;
+        empty._debug_red = float((*p_surfel).color().x);
+        empty._debug_green = float((*p_surfel).color().y);
+        empty._debug_blue = float((*p_surfel).color().z);
+        empties.push_back(empty);
+    }
+
+    return empties;
 }
 
 } // namespace pre
