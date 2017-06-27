@@ -25,6 +25,50 @@ void Camera_Custom::update_transformation_image_plane()
     _transformation_image_plane = _transformation * matrix_translation * matrix_scale;
 }
 
+std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector<prov::SparsePoint> &vector_point)
+{
+    std::vector<Struct_Line> vector_struct_line;
+    for(prov::SparsePoint &point_sparse : vector_point)
+    {
+        for(prov::SparsePoint::Measurement measurement : point_sparse.get_measurements())
+        {
+            if(measurement.get_camera() == _index)
+            {
+                Struct_Line position_camera = {scm::math::vec3f(_translation)};
+                vector_struct_line.push_back(position_camera);
+
+                Struct_Line position_point = {scm::math::vec3f(point_sparse.get_position())};
+                vector_struct_line.push_back(position_point);
+            }
+        }
+    }
+
+    _count_points_sparse = vector_struct_line.size();
+
+    // for(prov::SparsePoint sparsePoint it = _vector_point.begin(); it != _vector_point.end(); ++it)
+    //     for(std::vector<prov::SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
+    //     {
+    //         prov::SparsePoint &point = (*it);
+    //         // std::vector<prov::SparsePoint::measurement> measurements = point.get_measurements();
+    //     }
+
+    // for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
+    // {
+    //     Struct_Line line = {scm::math::vec3f((*it).get_translation())};
+    //     vector_struct_line.push_back(line);
+    //     // Struct_Line line1 = {scm::math::vec3f((*it).get_translation())+scm::math::vec3f(10.0, 10.0, 10.0)};
+    //     line = {scm::math::vec3f(0.0, 0.0, 0.0)};
+    //     vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // vector_struct_line.push_back(line);
+    //     // std::cout << (*it).get_translation() << std::endl;
+    //     break;
+    // }
+    return vector_struct_line;
+}
+
 // scm::gl::sampler_state_ptr Camera_Custom::get_state() { return _state; }
 
 void Camera_Custom::load_texture(scm::shared_ptr<scm::gl::render_device> device)
@@ -37,6 +81,7 @@ void Camera_Custom::load_texture(scm::shared_ptr<scm::gl::render_device> device)
     _state = device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 }
 // scm::gl::texture_2d_ptr Camera_Custom::get_texture() { return _texture; }
+scm::gl::vertex_array_ptr Camera_Custom::get_vertex_array_object_lines() { return _vertex_array_object_lines; }
 
 void Camera_Custom::update_transformation()
 {
@@ -55,13 +100,20 @@ void Camera_Custom::update_scale_frustum(float offset)
     // _frustum.init(device, calc_frustum_points());
 }
 
+int &Camera_Custom::get_count_points_sparse() { return _count_points_sparse; }
 scm::math::mat4f &Camera_Custom::get_transformation() { return _transformation; }
 scm::math::mat4f &Camera_Custom::get_transformation_image_plane() { return _transformation_image_plane; }
 
 // const Image &Camera_Custom::get_still_image() const { return _still_image; }
 
-void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device)
+void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::vector<prov::SparsePoint> &vector_point)
 {
+    // create buffer for the lines connecting the sparse points with the projection center
+    std::vector<Struct_Line> vector_struct_line = convert_lines_to_struct_line(vector_point);
+    scm::gl::buffer_ptr vertex_buffer_object_lines =
+        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_line.size(), &vector_struct_line[0]);
+    _vertex_array_object_lines = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object_lines));
+
     load_texture(device);
     _frustum.init(device);
 }

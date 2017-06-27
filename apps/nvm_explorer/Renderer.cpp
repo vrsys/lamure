@@ -144,9 +144,8 @@ void Renderer::draw_images(Scene scene)
     _program_images->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
     _program_images->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
+    for(Camera_Custom &camera : scene.get_vector_camera())
     {
-        Camera_Custom camera = (*it);
         _program_images->uniform("matrix_model", camera.get_transformation_image_plane());
         camera.bind_texture(_context);
         _program_images->uniform_sampler("in_color_texture", 0);
@@ -161,10 +160,12 @@ void Renderer::draw_lines(Scene scene)
     _program_lines->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
     _program_lines->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    _context->bind_vertex_array(scene.get_vertex_array_object_lines());
-    _context->apply();
-    // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, scene.get_vector_camera().size() * 2);
-
+    for(Camera_Custom &camera : scene.get_vector_camera())
+    {
+        _context->bind_vertex_array(camera.get_vertex_array_object_lines());
+        _context->apply();
+        _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, camera.get_count_points_sparse() * 2);
+    }
     //     _program_frustra->uniform("matrix_model", camera.get_transformation());
     //     _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
     //     _context->apply();
@@ -181,11 +182,11 @@ void Renderer::draw_frustra(Scene scene)
     {
         Camera_Custom camera = (*it);
 
-        _program_frustra->uniform("matrix_model", camera.get_transformation());
-        _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
-        _context->apply();
+        // _program_frustra->uniform("matrix_model", camera.get_transformation());
+        // _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
+        // _context->apply();
 
-        _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
+        // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
     }
 }
 void Renderer::draw_points_dense(Scene scene)
