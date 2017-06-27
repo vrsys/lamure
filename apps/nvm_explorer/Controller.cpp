@@ -81,14 +81,14 @@ void Controller::handle_movements(int time_delta)
         offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
     }
 
-    if(_keys_special[116]) // ctrl is pressed
+    if(_keys_special[114]) // ctrl is pressed
     {
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
         _renderer.translate_sphere(offset);
     }
     else
     {
-        std::cout << offset << std::endl;
+        // std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
         _renderer.get_camera_view().translate(offset);
     }
@@ -121,7 +121,7 @@ void Controller::handle_movements(int time_delta)
         radius += 0.001f * time_delta;
     }
 
-    if(_keys_special[116]) // ctrl is pressed
+    if(_keys_special[114]) // ctrl is pressed
     {
         _renderer.update_radius_sphere(radius);
     }
@@ -172,6 +172,7 @@ void Controller::handle_mouse_movement(int x, int y)
     // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_euler(_pitch, _yaw, 0.0));
     // render_manager.direction_camera = glm::normalize(front);
 }
+
 void Controller::handle_key_pressed(char key) { _keys[int(key)] = true; }
 void Controller::handle_key_special_pressed(int key) { _keys_special[key] = true; }
 void Controller::handle_key_special_released(int key) { _keys_special[key] = false; }

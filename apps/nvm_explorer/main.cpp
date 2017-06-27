@@ -27,19 +27,19 @@
 // [w,a,s,d,q,e] - move camera through world
 // [4,5,6,8] (numpad) - rotate camera
 // [j,k] - in-/decrease camera frustra scales
-// i - toggle between user-camera and image-camera
+// r - toggle between user-camera and image-camera
+// i - toggle one camera/all cameras
 // u - switch to previous image-camera
 // o - switch to next image-camera
 // m - enable/disable image-rendering
 // n - toggle between sparse- and dense-rendering
-// [v,b] - in-/decrease servlets radii
+// l - enable/disable line-rendering
+// [v,b] - in-/decrease sparse points / servlets radii
 
-// t - toggle lense modes (none, world-lense, screen-lense)
-// alt + [w,a,s,d] - move screen-lense over screen
-// shift + [w,a,s,d,q,e] - move world-lense through world
-// shift + [x,c] - increase/decrease radius of world-le
+// t - toggle lense modes (none, world-lense)
+// ctrl + [w,a,s,d,q,e] - move world-lense through world
+// ctrl + [x,c] - increase/decrease radius of world-lense
 
-// mogrify 30%
 // heatmap
 // downsampling images
 // ui imgui
