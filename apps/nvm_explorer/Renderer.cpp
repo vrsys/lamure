@@ -119,6 +119,7 @@ void Renderer::draw_points_sparse(Scene scene)
 
     _program_points->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
     _program_points->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+    _program_points->uniform("point_size", scene.get_camera_view().get_matrix_perspective());
 
     _context->bind_vertex_array(scene.get_vertex_array_object_points());
     _context->apply();
@@ -259,7 +260,7 @@ void Renderer::draw_points_dense(Scene scene)
     _program_points_dense->uniform("model_matrix", scm::math::mat4f(model_matrix));
     _program_points_dense->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     _program_points_dense->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
-    _program_points_dense->uniform("model_radius_scale", scene.get_model_radius_scale());
+    _program_points_dense->uniform("model_radius_scale", _size_point_dense);
     _program_points_dense->uniform("projection_matrix", scm::math::mat4f(projection_matrix));
     _program_points_dense->uniform("width_window", scene.get_camera_view().get_width_window());
     _program_points_dense->uniform("height_window", scene.get_camera_view().get_height_window());
@@ -314,3 +315,20 @@ void Renderer::render(Scene scene)
         draw_points_sparse(scene);
     }
 }
+
+void Renderer::update_size_point(float offset)
+{
+    if(mode_draw_points_dense)
+    {
+        float new_scale = std::max(_size_point_dense + offset, 0.0f);
+        _size_point_dense = new_scale;
+    }
+    else
+    {
+        float new_scale = std::max(_size_point_sparse + offset, 0.0f);
+        _size_point_sparse = new_scale;
+    }
+}
+
+float &Renderer::get_size_point_sparse() { return _size_point_sparse; }
+float &Renderer::get_model_radius_scale() { return _size_point_dense; }

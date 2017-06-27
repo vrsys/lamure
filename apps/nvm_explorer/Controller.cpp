@@ -10,7 +10,7 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
     _renderer.init(argv, _device);
     _scene.init(_device, width_window, height_window);
 
-    for (int i = 0; i < 1024; ++i)
+    for(int i = 0; i < 1024; ++i)
     {
         _keys[i] = false;
         _keys_special[i] = false;
@@ -83,6 +83,7 @@ void Controller::handle_movements(int time_delta)
 
     if(_keys_special[116]) // ctrl is pressed
     {
+        std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_scene.get_camera_view().get_rotation()) * offset;
         _renderer.translate_sphere(offset);
     }
@@ -104,11 +105,11 @@ void Controller::handle_movements(int time_delta)
 
     if(_keys[int('v')])
     {
-        _scene.update_model_radius_scale(-0.0004f * time_delta);
+        _renderer.update_size_point(-0.0004f * time_delta);
     }
     if(_keys[int('b')])
     {
-        _scene.update_model_radius_scale(0.0004f * time_delta);
+        _renderer.update_size_point(0.0004f * time_delta);
     }
 
     float radius = 0.0f;

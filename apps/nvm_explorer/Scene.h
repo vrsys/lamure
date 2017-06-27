@@ -59,6 +59,32 @@
 
 class Scene
 {
+  public:
+    Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera);
+    // Scene(const Scene&);
+    // Scene(prov::SparseCache const &cache_sparse);
+    // Scene(prov::SparseCache const& cache_sparse);
+
+    void init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
+    scm::gl::vertex_array_ptr get_vertex_array_object_points();
+    scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
+    scm::shared_ptr<scm::gl::quad_geometry> get_quad();
+
+    Camera_View &get_camera_view();
+    // std::vector<Image> &get_vector_image();
+    std::vector<Camera_Custom> &get_vector_camera();
+    std::vector<prov::SparsePoint> &get_vector_point();
+    bool update(int time_delta);
+    void update_scale_frustum(float offset);
+
+    int count_points();
+    int count_cameras();
+    // int count_images();
+
+    void toggle_camera();
+    void previous_camera();
+    void next_camera();
+
   private:
     std::vector<Camera_Custom> _vector_camera;
     std::vector<prov::SparsePoint> _vector_point;
@@ -75,38 +101,6 @@ class Scene
 
     bool is_default_camera = true;
     int index_current_image_camera = 0;
-    float _model_radius_scale = 0.1f;
-
-  public:
-    Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera);
-    // Scene(const Scene&);
-    // Scene(prov::SparseCache const &cache_sparse);
-    // Scene(prov::SparseCache const& cache_sparse);
-
-    void init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
-    scm::gl::vertex_array_ptr get_vertex_array_object_points();
-    scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
-    scm::shared_ptr<scm::gl::quad_geometry> get_quad();
-
-    Camera_View &get_camera_view();
-    float &get_model_radius_scale();
-    void set_model_radius_scale(float scale);
-    void update_model_radius_scale(float scale);
-    // std::vector<Image> &get_vector_image();
-    std::vector<Camera_Custom> &get_vector_camera();
-    std::vector<prov::SparsePoint> &get_vector_point();
-    bool update(int time_delta);
-    void update_scale_frustum(float offset);
-
-    int count_points();
-    int count_cameras();
-    // int count_images();
-
-    void toggle_camera();
-    void previous_camera();
-    void next_camera();
-
-    // camera::projection_perspective(float fovy, float aspect, float near_z, float far_z)
 };
 
 #endif // LAMURE_SCENE_H

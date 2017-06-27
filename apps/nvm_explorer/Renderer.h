@@ -52,6 +52,26 @@
 
 class Renderer
 {
+  public:
+    // Renderer();
+    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device);
+    void render(Scene scene);
+
+    void update_state_lense();
+    void translate_sphere(scm::math::vec3f offset);
+    void update_radius_sphere(float offset);
+
+    void update_size_point(float scale);
+    float &get_model_radius_scale();
+    float &get_size_point_sparse();
+    // void translate_sphere_screen(scm::math::vec3f offset);
+    // void update_radius_sphere_screen(float offset);
+
+    bool mode_draw_points_dense = false;
+    bool mode_draw_images = true;
+    int mode_prov_data = 0;
+    bool dispatch = true;
+
   private:
     scm::shared_ptr<scm::gl::render_context> _context;
     scm::shared_ptr<scm::gl::render_device> _device;
@@ -63,6 +83,9 @@ class Renderer
     scm::gl::program_ptr _program_lines;
 
     scm::gl::rasterizer_state_ptr _rasterizer_state;
+
+    float _size_point_dense = 0.1f;
+    float _size_point_sparse = 0.1f;
 
     lamure::ren::camera *_camera = new lamure::ren::camera();
 
@@ -78,22 +101,6 @@ class Renderer
     void draw_images(Scene scene);
     void draw_frustra(Scene scene);
     void draw_points_dense(Scene scene);
-
-  public:
-    // Renderer();
-    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device);
-    void render(Scene scene);
-
-    void update_state_lense();
-    void translate_sphere(scm::math::vec3f offset);
-    void update_radius_sphere(float offset);
-    // void translate_sphere_screen(scm::math::vec3f offset);
-    // void update_radius_sphere_screen(float offset);
-
-    bool mode_draw_points_dense = false;
-    bool mode_draw_images = true;
-    int mode_prov_data = 0;
-    bool dispatch = true;
 };
 
 #endif // LAMURE_RENDERER_H
