@@ -49,6 +49,15 @@
 
 class Frustum
 {
+  public:
+    Frustum();
+    Frustum(float image_width_world, float image_height_world, double focal_length);
+
+    void init(scm::shared_ptr<scm::gl::render_device> device);
+    void update_scale_frustum(float offset);
+    float& get_scale();
+    scm::gl::vertex_array_ptr const& get_vertex_array_object();
+
   private:
     scm::math::vec3f _near_left_top = scm::math::vec3f(-0.5, 0.5, 0.0);
     scm::math::vec3f _near_right_top = scm::math::vec3f(0.5, 0.5, 0.0);
@@ -58,14 +67,18 @@ class Frustum
     scm::math::vec3f _far_right_top = scm::math::vec3f(1.0, 1.0, 0.0);
     scm::math::vec3f _far_left_bottom = scm::math::vec3f(-1.0, -1.0, 0.0);
     scm::math::vec3f _far_right_bottom = scm::math::vec3f(1.0, -1.0, 0.0);
+    
+    float _image_width_world;
+    float _image_height_world;
+    double _focal_length;
+
+    float _scale = 20.0f;
+
     scm::gl::vertex_array_ptr _vertex_array_object;
 
     std::vector<Struct_Line> convert_frustum_to_struct_line();
-
-  public:
-    Frustum();
-    void init(scm::shared_ptr<scm::gl::render_device> device, std::vector<scm::math::vec3f> vertices);
-    scm::gl::vertex_array_ptr get_vertex_array_object();
+    // void Frustum::update_frustum_points();
+    void calc_frustum_points();
 };
 
 #endif // LAMURE_FRUSTUM_H

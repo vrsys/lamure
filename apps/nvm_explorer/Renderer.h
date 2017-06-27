@@ -68,8 +68,8 @@ class Renderer
 
     float _radius_sphere = 3.0;
     scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
-    float _radius_sphere_screen = 0.2;
-    scm::math::vec2f _position_sphere_screen = scm::math::vec2f(0.0f, 0.0f);
+    // float _radius_sphere_screen = 0.2;
+    // scm::math::vec2f _position_sphere_screen = scm::math::vec2f(0.0f, 0.0f);
     int _state_lense = 0;
 
     void draw_points_sparse(Scene scene);
@@ -87,8 +87,8 @@ class Renderer
     void update_state_lense();
     void translate_sphere(scm::math::vec3f offset);
     void update_radius_sphere(float offset);
-    void translate_sphere_screen(scm::math::vec3f offset);
-    void update_radius_sphere_screen(float offset);
+    // void translate_sphere_screen(scm::math::vec3f offset);
+    // void update_radius_sphere_screen(float offset);
 
     bool mode_draw_points_dense = false;
     bool mode_draw_images = true;

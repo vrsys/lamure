@@ -1,5 +1,6 @@
 from .entities import *
 from .formats import *
+from euclid import *
 
 
 class FormatSparseNVMV3(FormatSparsePro):
@@ -28,6 +29,14 @@ class FormatSparseNVMV3(FormatSparsePro):
                         float(line_values[3].strip()),
                         float(line_values[4].strip()),
                         float(line_values[5].strip()))
+
+            # quaternion transformation
+            # scm::math::quat<double> new_orientation = scm::math::quat<double>::from_axis(180, scm::math::vec3d(1.0, 0.0, 0.0));
+            # quat = scm::math::normalize(quat);
+            # // camera_vec[i].set_orientation(scm::math::quat<double>::from_matrix(quat.to_matrix()));
+            # camera_vec[i].set_orientation(scm::math::quat<double>::from_matrix(SetQuaternionRotation(quat)) * new_orientation
+            # quat = 
+
             center = Position(float(line_values[6].strip()),
                               float(line_values[7].strip()),
                               float(line_values[8].strip()))

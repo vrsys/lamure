@@ -46,7 +46,6 @@
 #include <vector>
 
 // #include "Camera.h"
-#include "Point.h"
 #include "Struct_Point.h"
 
 class Camera_View

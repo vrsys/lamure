@@ -103,15 +103,16 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
 
 void Renderer::update_state_lense()
 {
-    _state_lense = ++_state_lense % 3;
+    _state_lense = ++_state_lense % 2;
+    // _state_lense = ++_state_lense % 3;
     // std::cout << _state_lense << std::endl;
 }
 
 void Renderer::translate_sphere(scm::math::vec3f offset) { _position_sphere += offset; }
 void Renderer::update_radius_sphere(float offset) { _radius_sphere += offset; }
 
-void Renderer::translate_sphere_screen(scm::math::vec3f offset) { _position_sphere_screen += scm::math::vec2f(offset[0], -offset[2]); }
-void Renderer::update_radius_sphere_screen(float offset) { _radius_sphere_screen += offset; }
+// void Renderer::translate_sphere_screen(scm::math::vec3f offset) { _position_sphere_screen += scm::math::vec2f(offset[0], -offset[2]); }
+// void Renderer::update_radius_sphere_screen(float offset) { _radius_sphere_screen += offset; }
 void Renderer::draw_points_sparse(Scene scene)
 {
     _context->bind_program(_program_points);
@@ -143,15 +144,15 @@ void Renderer::draw_images(Scene scene)
     _program_images->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
     _program_images->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    // for(std::vector<prov::Camera>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
-    // {
-    //     prov::Camera camera = (*it);
-    //     _program_images->uniform("matrix_model", camera.get_transformation());
-    //     camera.bind_texture(_context);
-    //     _program_images->uniform_sampler("in_color_texture", 0);
-    //     _context->apply();
-    //     scene.get_quad()->draw(_context);
-    // }
+    for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
+    {
+        Camera_Custom camera = (*it);
+        _program_images->uniform("matrix_model", camera.get_transformation_image_plane());
+        camera.bind_texture(_context);
+        _program_images->uniform_sampler("in_color_texture", 0);
+        _context->apply();
+        scene.get_quad()->draw(_context);
+    }
 }
 void Renderer::draw_lines(Scene scene)
 {
@@ -171,19 +172,21 @@ void Renderer::draw_lines(Scene scene)
 }
 void Renderer::draw_frustra(Scene scene)
 {
-    // _context->bind_program(_program_frustra);
+    _context->bind_program(_program_frustra);
 
-    // _program_frustra->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
-    // _program_frustra->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+    _program_frustra->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
+    _program_frustra->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
 
-    // for(std::vector<prov::Camera>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
-    // {
-    //     prov::Camera camera = (*it);
-    //     _program_frustra->uniform("matrix_model", camera.get_transformation());
-    //     _context->bind_vertex_array(camera.get_vertex_array_object_frustum());
-    //     _context->apply();
-    //     _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
-    // }
+    for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
+    {
+        Camera_Custom camera = (*it);
+
+        _program_frustra->uniform("matrix_model", camera.get_transformation());
+        _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
+        _context->apply();
+
+        _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
+    }
 }
 void Renderer::draw_points_dense(Scene scene)
 {
@@ -263,8 +266,8 @@ void Renderer::draw_points_dense(Scene scene)
     _program_points_dense->uniform("state_lense", _state_lense);
     _program_points_dense->uniform("radius_sphere", _radius_sphere);
     _program_points_dense->uniform("position_sphere", _position_sphere);
-    _program_points_dense->uniform("radius_sphere_screen", _radius_sphere_screen);
-    _program_points_dense->uniform("position_sphere_screen", _position_sphere_screen);
+    // _program_points_dense->uniform("radius_sphere_screen", _radius_sphere_screen);
+    // _program_points_dense->uniform("position_sphere_screen", _position_sphere_screen);
     _program_points_dense->uniform("mode_prov_data", mode_prov_data);
     // _radius_sphere = 1.0;
     // scm::math::vec3f _position_sphere
@@ -277,7 +280,7 @@ void Renderer::draw_points_dense(Scene scene)
 
         if(node_culling_result != 1)
         {
-            // _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, surfels_per_node);
+            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, surfels_per_node);
         }
         // if(++counter == 10) break;
     }

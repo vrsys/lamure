@@ -9,6 +9,12 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
 
     _renderer.init(argv, _device);
     _scene.init(_device, width_window, height_window);
+
+    for (int i = 0; i < 1024; ++i)
+    {
+        _keys[i] = false;
+        _keys_special[i] = false;
+    };
 }
 
 bool Controller::update(int time_delta)
@@ -51,6 +57,7 @@ void Controller::handle_movements(int time_delta)
 
     if(_keys[int('w')] || _keys[int('W')])
     {
+        // std::cout << "forward" << std::endl;
         offset += scm::math::vec3f(0.0f, 0.0f, -1.0f) * speed;
     }
     if(_keys[int('s')] || _keys[int('S')])
@@ -74,28 +81,25 @@ void Controller::handle_movements(int time_delta)
         offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
     }
 
-    if(_keys_special[112]) // shift is pressed
+    if(_keys_special[116]) // ctrl is pressed
     {
         offset = scm::math::quat<float>(_scene.get_camera_view().get_rotation()) * offset;
         _renderer.translate_sphere(offset);
     }
-    else if(_keys_special[116]) // ctrl is pressed
-    {
-        _renderer.translate_sphere_screen(offset);
-    }
     else
     {
+        std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_scene.get_camera_view().get_rotation()) * offset;
         _scene.get_camera_view().translate(offset);
     }
 
     if(_keys[int('k')])
     {
-        _scene.update_scale_frustum(_device, 0.01f * time_delta);
+        _scene.update_scale_frustum(0.03f * time_delta);
     }
     if(_keys[int('j')])
     {
-        _scene.update_scale_frustum(_device, -0.01f * time_delta);
+        _scene.update_scale_frustum(-0.03f * time_delta);
     }
 
     if(_keys[int('v')])
@@ -117,13 +121,9 @@ void Controller::handle_movements(int time_delta)
         radius += 0.001f * time_delta;
     }
 
-    if(_keys_special[112]) // shift is pressed
+    if(_keys_special[116]) // ctrl is pressed
     {
         _renderer.update_radius_sphere(radius);
-    }
-    else if(_keys_special[116]) // ctrl is pressed
-    {
-        _renderer.update_radius_sphere_screen(radius);
     }
 }
 void Controller::handle_mouse_movement(int x, int y)

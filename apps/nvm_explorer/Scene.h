@@ -51,9 +51,8 @@
 #include <lamure/pro/data/entities/SparsePoint.h>
 
 #include "Camera_View.h"
-#include "Point.h"
+#include "Camera_Custom.h"
 #include "Struct_Camera.h"
-#include "Struct_Image.h"
 #include "Struct_Line.h"
 #include "Struct_Point.h"
 #include <scm/gl_util/primitives/quad.h>
@@ -61,7 +60,7 @@
 class Scene
 {
   private:
-    std::vector<prov::Camera> _vector_camera;
+    std::vector<Camera_Custom> _vector_camera;
     std::vector<prov::SparsePoint> _vector_point;
     // std::vector<Image> _vector_image;
 
@@ -97,10 +96,10 @@ class Scene
     void set_model_radius_scale(float scale);
     void update_model_radius_scale(float scale);
     // std::vector<Image> &get_vector_image();
-    std::vector<prov::Camera> &get_vector_camera();
+    std::vector<Camera_Custom> &get_vector_camera();
     std::vector<prov::SparsePoint> &get_vector_point();
     bool update(int time_delta);
-    void update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset);
+    void update_scale_frustum(float offset);
 
     int count_points();
     int count_cameras();
