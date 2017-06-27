@@ -152,10 +152,10 @@ endif (${LAMURE_USE_CGAL_FOR_NNI})
 # Targets
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/common)
-add_subdirectory(${CMAKE_SOURCE_DIR}/potentially_visible_set_common)
+add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
-add_subdirectory(${CMAKE_SOURCE_DIR}/potentially_visible_set_preprocessing)
+add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 
 add_dependencies(lamure_preprocessing lamure_common)

@@ -39,7 +39,7 @@ link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES} ${SHADERS})
 
-add_dependencies(${PROJECT_NAME} lamure_common lamure_preprocessing lamure_potentially_visible_set_common)
+add_dependencies(${PROJECT_NAME} lamure_common lamure_preprocessing lamure_pvs_common)
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_RENDERING_LIBRARY")

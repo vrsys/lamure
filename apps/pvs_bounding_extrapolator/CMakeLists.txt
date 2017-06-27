@@ -27,6 +27,6 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_potentially_visible_set_common lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_pvs_common lamure_common)
 
 MsvcPostBuild(${PROJECT_NAME})

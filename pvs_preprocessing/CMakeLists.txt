@@ -2,7 +2,7 @@
 # CMake Build Script for the preprocessing library
 
 cmake_minimum_required(VERSION 2.8.7)
-project(${CMAKE_PROJECT_NAME}_potentially_visible_set_common)
+project(${CMAKE_PROJECT_NAME}_pvs_preprocessing)
 
 set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -19,10 +19,12 @@ set(PROJECT_INCLUDES ${MAIN_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}
+                    ${PVS_COMMON_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR}
                     ${CGAL_INCLUDE_DIR}
                     ${GMP_INCLUDE_DIR} 
-                    ${MPFR_INCLUDE_DIR} 
+                    ${MPFR_INCLUDE_DIR}
+                    ${REND_INCLUDE_DIR} 
                     )
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
@@ -32,30 +34,31 @@ link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES})
 
-add_dependencies(${PROJECT_NAME} lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_common lamure_pvs_common)
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PVS_LIBRARY -DBOOST_ALL_NO_LIB")
 ENDIF(MSVC)
 
 
-set(PVS_COMMON_INCLUDE_DIR ${PROJECT_INCLUDE_DIR} PARENT_SCOPE)
-set(PVS_COMMON_LIBRARY ${PROJECT_NAME} PARENT_SCOPE)
-set(PVS_COMMON_LIBRARY ${PROJECT_NAME})
+set(PVS_PREPROCESSING_INCLUDE_DIR ${PROJECT_INCLUDE_DIR} PARENT_SCOPE)
+set(PVS_PREPROCESSING_LIBRARY ${PROJECT_NAME} PARENT_SCOPE)
+set(PVS_PREPROCESSING_LIBRARY ${PROJECT_NAME})
 
 ############################################################
 # Libraries
 
 target_link_libraries(${PROJECT_NAME}
     ${COMMON_LIBRARY}
+    ${PVS_COMMON_LIBRARY}
     ${SCHISM_LIBRARIES}
     ${PROJECT_LIBS}
     ${GMP_LIBRARY}
     ${MPFR_LIBRARY}
     optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
-    optimized ${Boost_IOSTREAMS_LIBRARY_RELEASE} debug ${Boost_IOSTREAMS_LIBRARY_DEBUG}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
     optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
+    optimized ${Boost_REGEX_LIBRARY_RELEASE} debug ${Boost_REGEX_LIBRARY_DEBUG}
     )
 
 ###############################################################################

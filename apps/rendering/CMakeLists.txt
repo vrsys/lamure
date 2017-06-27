@@ -33,7 +33,7 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${Boost_REGEX_LIBRARY_RELEASE} debug ${Boost_REGEX_LIBRARY_DEBUG}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common lamure_potentially_visible_set_common)
+add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common lamure_pvs_common)
 
 MsvcPostBuild(${PROJECT_NAME})
 
