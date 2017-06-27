@@ -20,8 +20,10 @@
 //     // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
 // }
 
-void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device)
+void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
 {
+    _camera_view.update_window_size(width_window, height_window);
+
     _device = device;
     // get main/default context from device
     _context = device->main_context();
@@ -117,9 +119,9 @@ void Renderer::draw_points_sparse(Scene scene)
 {
     _context->bind_program(_program_points);
 
-    _program_points->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
-    _program_points->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
-    _program_points->uniform("point_size", scene.get_camera_view().get_matrix_perspective());
+    _program_points->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_points->uniform("matrix_perspective", _camera_view.get_matrix_perspective());
+    _program_points->uniform("size_point", _size_point_sparse);
 
     _context->bind_vertex_array(scene.get_vertex_array_object_points());
     _context->apply();
@@ -130,8 +132,15 @@ void Renderer::draw_cameras(Scene scene)
 {
     _context->bind_program(_program_cameras);
 
-    _program_cameras->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
-    _program_cameras->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+    int active_camera = -1;
+    if(is_camera_active)
+    {
+        active_camera = index_current_image_camera;
+    }
+
+    _program_cameras->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_cameras->uniform("matrix_perspective", _camera_view.get_matrix_perspective());
+    _program_cameras->uniform("active_camera", active_camera);
 
     _context->bind_vertex_array(scene.get_vertex_array_object_cameras());
     _context->apply();
@@ -142,52 +151,57 @@ void Renderer::draw_images(Scene scene)
 {
     _context->bind_program(_program_images);
 
-    _program_images->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
-    _program_images->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+    _program_images->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_images->uniform("matrix_perspective", _camera_view.get_matrix_perspective());
 
     for(Camera_Custom &camera : scene.get_vector_camera())
     {
-        _program_images->uniform("matrix_model", camera.get_transformation_image_plane());
-        camera.bind_texture(_context);
-        _program_images->uniform_sampler("in_color_texture", 0);
-        _context->apply();
-        scene.get_quad()->draw(_context);
+        if(!is_camera_active || index_current_image_camera == camera.get_index())
+        {
+            _program_images->uniform("matrix_model", camera.get_transformation_image_plane());
+            camera.bind_texture(_context);
+            _program_images->uniform_sampler("in_color_texture", 0);
+            _context->apply();
+            scene.get_quad()->draw(_context);
+        }
     }
 }
 void Renderer::draw_lines(Scene scene)
 {
     _context->bind_program(_program_lines);
 
-    _program_lines->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
-    _program_lines->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+    _program_lines->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_lines->uniform("matrix_perspective", _camera_view.get_matrix_perspective());
 
     for(Camera_Custom &camera : scene.get_vector_camera())
     {
-        _context->bind_vertex_array(camera.get_vertex_array_object_lines());
-        _context->apply();
-        _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, camera.get_count_points_sparse() * 2);
+        if(!is_camera_active || index_current_image_camera == camera.get_index())
+        {
+            _context->bind_vertex_array(camera.get_vertex_array_object_lines());
+            _context->apply();
+            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, camera.get_count_points_sparse() * 2);
+        }
     }
-    //     _program_frustra->uniform("matrix_model", camera.get_transformation());
-    //     _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
-    //     _context->apply();
-    //     _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
 }
 void Renderer::draw_frustra(Scene scene)
 {
     _context->bind_program(_program_frustra);
 
-    _program_frustra->uniform("matrix_view", scene.get_camera_view().get_matrix_view());
-    _program_frustra->uniform("matrix_perspective", scene.get_camera_view().get_matrix_perspective());
+    _program_frustra->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_frustra->uniform("matrix_perspective", _camera_view.get_matrix_perspective());
 
     for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
     {
         Camera_Custom camera = (*it);
 
-        // _program_frustra->uniform("matrix_model", camera.get_transformation());
-        // _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
-        // _context->apply();
+        if(!is_camera_active || index_current_image_camera == camera.get_index())
+        {
+            _program_frustra->uniform("matrix_model", camera.get_transformation());
+            _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
+            _context->apply();
 
-        // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
+            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
+        }
     }
 }
 void Renderer::draw_points_dense(Scene scene)
@@ -212,7 +226,7 @@ void Renderer::draw_points_dense(Scene scene)
     cuts->send_rendered(context_id, m_id);
 
     // set camera values
-    _camera->set_view_matrix(scm::math::mat4d(scene.get_camera_view().get_matrix_view()));
+    _camera->set_view_matrix(scm::math::mat4d(_camera_view.get_matrix_view()));
     _camera->set_projection_matrix(60.0f, 1920.0f / 1080.0f, 0.0001f, 1000.0f);
 
     lamure::view_t cam_id = controller->deduce_view_id(context_id, _camera->view_id());
@@ -262,8 +276,8 @@ void Renderer::draw_points_dense(Scene scene)
     _program_points_dense->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
     _program_points_dense->uniform("model_radius_scale", _size_point_dense);
     _program_points_dense->uniform("projection_matrix", scm::math::mat4f(projection_matrix));
-    _program_points_dense->uniform("width_window", scene.get_camera_view().get_width_window());
-    _program_points_dense->uniform("height_window", scene.get_camera_view().get_height_window());
+    _program_points_dense->uniform("width_window", _camera_view.get_width_window());
+    _program_points_dense->uniform("height_window", _camera_view.get_height_window());
 
     _program_points_dense->uniform("state_lense", _state_lense);
     _program_points_dense->uniform("radius_sphere", _radius_sphere);
@@ -291,7 +305,7 @@ void Renderer::draw_points_dense(Scene scene)
 void Renderer::render(Scene scene)
 {
     _context->set_rasterizer_state(_rasterizer_state);
-    _context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(scene.get_camera_view().get_width_window(), scene.get_camera_view().get_height_window())));
+    _context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(_camera_view.get_width_window(), _camera_view.get_height_window())));
 
     _context->clear_default_depth_stencil_buffer();
     _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(0.0f, 0.0f, 0.0f, 1.0f));
@@ -300,8 +314,10 @@ void Renderer::render(Scene scene)
 
     draw_cameras(scene);
     draw_frustra(scene);
-    draw_lines(scene);
-
+    if(mode_draw_lines)
+    {
+        draw_lines(scene);
+    }
     if(mode_draw_images)
     {
         draw_images(scene);
@@ -325,10 +341,46 @@ void Renderer::update_size_point(float offset)
     }
     else
     {
-        float new_scale = std::max(_size_point_sparse + offset, 0.0f);
-        _size_point_sparse = new_scale;
+        _size_point_sparse_float = std::max(_size_point_sparse_float + offset * 20.0f, 0.0f);
+        _size_point_sparse = int(_size_point_sparse_float);
     }
 }
 
-float &Renderer::get_size_point_sparse() { return _size_point_sparse; }
-float &Renderer::get_model_radius_scale() { return _size_point_dense; }
+void Renderer::toggle_camera(Scene scene)
+{
+    is_default_camera = !is_default_camera;
+    if(is_default_camera)
+    {
+        _camera_view.reset();
+    }
+    else
+    {
+        Camera_Custom camera = scene.get_vector_camera()[index_current_image_camera];
+        _camera_view.set_position(scm::math::vec3f(camera.get_translation()));
+        _camera_view.set_rotation(camera.get_orientation());
+    }
+}
+void Renderer::toggle_is_camera_active() { is_camera_active = !is_camera_active; }
+
+void Renderer::previous_camera(Scene scene)
+{
+    index_current_image_camera -= 1;
+    if(index_current_image_camera == -1)
+    {
+        index_current_image_camera = scene.get_vector_camera().size() - 1;
+    }
+}
+
+void Renderer::next_camera(Scene scene)
+{
+    index_current_image_camera += 1;
+    if(index_current_image_camera == scene.get_vector_camera().size())
+    {
+        index_current_image_camera = 0;
+    }
+}
+
+Camera_View &Renderer::get_camera_view() { return _camera_view; }
+
+// int &Renderer::get_size_point_sparse() { return _size_point_sparse; }
+// float &Renderer::get_size_point_dense() { return _size_point_dense; }

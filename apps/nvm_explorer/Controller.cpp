@@ -7,8 +7,8 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
     // initialize device
     _device.reset(new scm::gl::render_device());
 
-    _renderer.init(argv, _device);
-    _scene.init(_device, width_window, height_window);
+    _renderer.init(argv, _device, width_window, height_window);
+    _scene.init(_device);
 
     for(int i = 0; i < 1024; ++i)
     {
@@ -45,12 +45,12 @@ void Controller::handle_movements(int time_delta)
     {
         yoffset += 1;
     }
-    scm::math::quat<double> old_rotation = _scene.get_camera_view().get_rotation();
+    scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
     scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
     scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
     scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
     new_rotation = new_rotation * new_rotation_y;
-    _scene.get_camera_view().set_rotation(new_rotation);
+    _renderer.get_camera_view().set_rotation(new_rotation);
 
     float speed = 0.002f * time_delta;
     scm::math::vec3f offset = scm::math::vec3f(0.0f, 0.0f, 0.0f);
@@ -83,15 +83,14 @@ void Controller::handle_movements(int time_delta)
 
     if(_keys_special[116]) // ctrl is pressed
     {
-        std::cout << offset << std::endl;
-        offset = scm::math::quat<float>(_scene.get_camera_view().get_rotation()) * offset;
+        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
         _renderer.translate_sphere(offset);
     }
     else
     {
         std::cout << offset << std::endl;
-        offset = scm::math::quat<float>(_scene.get_camera_view().get_rotation()) * offset;
-        _scene.get_camera_view().translate(offset);
+        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+        _renderer.get_camera_view().translate(offset);
     }
 
     if(_keys[int('k')])
@@ -162,15 +161,15 @@ void Controller::handle_mouse_movement(int x, int y)
     // front.y = scm::math::sin(scm::math::deg2rad(_pitch));
     // front.z = scm::math::sin(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
     // std::cout << front << std::endl;
-    // _scene.get_camera_view().set_rotation(scm::math::quat<double>::from_axis(_pitch, _yaw, 0.0));
-    scm::math::quat<double> old_rotation = _scene.get_camera_view().get_rotation();
+    // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_axis(_pitch, _yaw, 0.0));
+    scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
     scm::math::quat<double> new_rotation = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
     // new_rotation = new_rotation * scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
 
     new_rotation = old_rotation * new_rotation;
 
-    _scene.get_camera_view().set_rotation(new_rotation);
-    // _scene.get_camera_view().set_rotation(scm::math::quat<double>::from_euler(_pitch, _yaw, 0.0));
+    _renderer.get_camera_view().set_rotation(new_rotation);
+    // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_euler(_pitch, _yaw, 0.0));
     // render_manager.direction_camera = glm::normalize(front);
 }
 void Controller::handle_key_pressed(char key) { _keys[int(key)] = true; }
@@ -183,15 +182,19 @@ void Controller::handle_key_released(char key)
 
     if(key == 'i')
     {
-        _scene.toggle_camera();
+        _renderer.toggle_is_camera_active();
     }
     else if(key == 'u')
     {
-        _scene.previous_camera();
+        _renderer.previous_camera(_scene);
     }
     else if(key == 'o')
     {
-        _scene.next_camera();
+        _renderer.next_camera(_scene);
+    }
+    else if(key == 'r')
+    {
+        _renderer.toggle_camera(_scene);
     }
     else if(key == 'n')
     {
@@ -200,6 +203,10 @@ void Controller::handle_key_released(char key)
     else if(key == 'm')
     {
         _renderer.mode_draw_images = !_renderer.mode_draw_images;
+    }
+    else if(key == 'l')
+    {
+        _renderer.mode_draw_lines = !_renderer.mode_draw_lines;
     }
     else if(key == 't')
     {

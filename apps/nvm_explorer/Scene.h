@@ -51,7 +51,6 @@
 #include <lamure/pro/data/entities/SparsePoint.h>
 
 #include "Camera_Custom.h"
-#include "Camera_View.h"
 #include "Struct_Camera.h"
 #include "Struct_Line.h"
 #include "Struct_Point.h"
@@ -61,16 +60,12 @@ class Scene
 {
   public:
     Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera);
-    // Scene(const Scene&);
-    // Scene(prov::SparseCache const &cache_sparse);
-    // Scene(prov::SparseCache const& cache_sparse);
 
-    void init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
+    void init(scm::shared_ptr<scm::gl::render_device> device);
     scm::gl::vertex_array_ptr get_vertex_array_object_points();
     scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
     scm::shared_ptr<scm::gl::quad_geometry> get_quad();
 
-    Camera_View &get_camera_view();
     // std::vector<Image> &get_vector_image();
     std::vector<Camera_Custom> &get_vector_camera();
     std::vector<prov::SparsePoint> &get_vector_point();
@@ -93,8 +88,6 @@ class Scene
     scm::gl::vertex_array_ptr _vertex_array_object_points;
     scm::gl::vertex_array_ptr _vertex_array_object_cameras;
     scm::shared_ptr<scm::gl::quad_geometry> _quad;
-
-    Camera_View _camera_view;
 
     std::vector<Struct_Point> convert_points_to_struct_point();
     std::vector<Struct_Camera> convert_cameras_to_struct_camera();

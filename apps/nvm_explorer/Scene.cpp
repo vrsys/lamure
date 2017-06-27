@@ -1,19 +1,5 @@
 #include "Scene.h"
 
-// Scene::Scene(const Scene& scene):
-// {
-//     cache_sparse = scene.cache_sparse;
-//     _vertex_array_object_points = scene._vertex_array_object_points;
-//     _vertex_array_object_cameras = scene._vertex_array_object_cameras;
-//     _vertex_array_object_lines = scene._vertex_array_object_lines;
-//     _quad = scene._quad;
-//     _camera_view = scene._camera_view;
-// }
-// Scene::Scene(prov::SparseCache const& cache_sparse) : _cache_sparse(cache_sparse)
-// {}
-// Scene::Scene(Scene const& scene) : _cache_sparse(scene._cache_sparse)
-// {
-// }
 Scene::Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera) : _vector_point(vector_point)
 {
     int counter = 0;
@@ -43,9 +29,8 @@ bool Scene::update(int time_delta)
     // }
 }
 
-void Scene::init(scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
+void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
 {
-    _camera_view.update_window_size(width_window, height_window);
     // create buffer for the points
     std::vector<Struct_Point> vector_struct_point = convert_points_to_struct_point();
     scm::gl::buffer_ptr vertex_buffer_object_points =
@@ -111,54 +96,6 @@ void Scene::update_scale_frustum(float offset)
         (*it).update_scale_frustum(offset);
     }
 }
-
-void Scene::toggle_camera()
-{
-    is_default_camera = !is_default_camera;
-    if(is_default_camera)
-    {
-        _camera_view.reset();
-    }
-    else
-    {
-        Camera_Custom camera = _vector_camera[index_current_image_camera];
-        std::cout << scm::math::vec3f(camera.get_translation()) << " " << camera.get_orientation() << std::endl;
-        _camera_view.set_position(scm::math::vec3f(camera.get_translation()));
-        _camera_view.set_rotation(camera.get_orientation());
-    }
-}
-
-void Scene::previous_camera()
-{
-    if(!is_default_camera)
-    {
-        index_current_image_camera -= 1;
-        if(index_current_image_camera == -1)
-        {
-            index_current_image_camera = _vector_camera.size() - 1;
-        }
-        Camera_Custom camera = _vector_camera[index_current_image_camera];
-        _camera_view.set_position(scm::math::vec3f(camera.get_translation()));
-        _camera_view.set_rotation(camera.get_orientation());
-    }
-}
-
-void Scene::next_camera()
-{
-    if(!is_default_camera)
-    {
-        index_current_image_camera += 1;
-        if(index_current_image_camera == _vector_camera.size())
-        {
-            index_current_image_camera = 0;
-        }
-        Camera_Custom camera = _vector_camera[index_current_image_camera];
-        _camera_view.set_position(scm::math::vec3f(camera.get_translation()));
-        _camera_view.set_rotation(camera.get_orientation());
-    }
-}
-
-Camera_View &Scene::get_camera_view() { return _camera_view; }
 
 std::vector<Camera_Custom> &Scene::get_vector_camera() { return _vector_camera; }
 std::vector<prov::SparsePoint> &Scene::get_vector_point() { return _vector_point; }

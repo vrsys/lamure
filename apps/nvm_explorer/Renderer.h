@@ -3,6 +3,7 @@
 
 // #include <lamure/utils.h>
 // #include <lamure/types.h>
+#include "Camera_View.h"
 #include "Scene.h"
 
 #include <iostream>
@@ -54,7 +55,7 @@ class Renderer
 {
   public:
     // Renderer();
-    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device);
+    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
     void render(Scene scene);
 
     void update_state_lense();
@@ -62,15 +63,24 @@ class Renderer
     void update_radius_sphere(float offset);
 
     void update_size_point(float scale);
-    float &get_model_radius_scale();
-    float &get_size_point_sparse();
-    // void translate_sphere_screen(scm::math::vec3f offset);
-    // void update_radius_sphere_screen(float offset);
+
+    Camera_View &get_camera_view();
+
+    void toggle_camera(Scene scene);
+    void toggle_is_camera_active();
+    void previous_camera(Scene scene);
+    void next_camera(Scene scene);
 
     bool mode_draw_points_dense = false;
     bool mode_draw_images = true;
+    bool mode_draw_lines = false;
     int mode_prov_data = 0;
     bool dispatch = true;
+
+    bool is_default_camera = true;
+
+    bool is_camera_active = false;
+    int index_current_image_camera = 0;
 
   private:
     scm::shared_ptr<scm::gl::render_context> _context;
@@ -85,14 +95,14 @@ class Renderer
     scm::gl::rasterizer_state_ptr _rasterizer_state;
 
     float _size_point_dense = 0.1f;
-    float _size_point_sparse = 0.1f;
+    float _size_point_sparse_float = 1.0f;
+    int _size_point_sparse = 1;
 
+    Camera_View _camera_view;
     lamure::ren::camera *_camera = new lamure::ren::camera();
 
     float _radius_sphere = 3.0;
     scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
-    // float _radius_sphere_screen = 0.2;
-    // scm::math::vec2f _position_sphere_screen = scm::math::vec2f(0.0f, 0.0f);
     int _state_lense = 0;
 
     void draw_points_sparse(Scene scene);
