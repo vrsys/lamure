@@ -1393,28 +1393,44 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
     reduction_strategy *p_reduction_strgy = (reduction_strategy *)&reduction_strgy;
     if(provenance_reduction_strategy *cast = dynamic_cast<provenance_reduction_strategy *>(p_reduction_strgy))
     {
-        for(uint32_t w_level = 0; w_level <= depth_; ++w_level)
+        uint16_t w_level = 0;
+
+        while(w_level <= depth_)
         {
             std::cout << "Entering w_level: " << w_level << std::endl;
 
-            uint32_t first_node_of_level = get_first_node_id_of_depth(w_level);
-            uint32_t last_node_of_level = get_first_node_id_of_depth(w_level) + get_length_of_depth(w_level);
+            const uint32_t first_node_of_level = get_first_node_id_of_depth(w_level);
+            const uint32_t last_node_of_level = get_first_node_id_of_depth(w_level) + get_length_of_depth(w_level) - 1;
 
             uint16_t percentage = 0;
 
-            for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
+            uint32_t w_node = first_node_of_level;
+
+            while(w_node <= last_node_of_level)
             {
-                std::cout << "Entering node: " << node_index << std::endl;
+                std::cout << "Entering w_node: " << w_node << std::endl;
 
-                cast->pack_node(node_index);
-
-                uint16_t new_percentage = int32_t(float(node_index - first_node_of_level) / (last_node_of_level)*100);
-                if(percentage < new_percentage)
+                if(w_level < depth_)
                 {
-                    percentage = new_percentage;
-                    std::cout << "\r" << percentage << "% processed" << std::flush;
+                    bvh_node *current_node = &nodes_.at(w_node);
+                    cast->pack_node(w_node, max_surfels_per_node_, (*current_node).disk_array().length());
                 }
+                else
+                {
+                    cast->pack_empties(max_surfels_per_node_);
+                }
+
+                w_node++;
             }
+
+            uint16_t new_percentage = (uint16_t)int16_t(float(w_level) / (depth_)*100);
+            if(percentage < new_percentage)
+            {
+                percentage = new_percentage;
+                std::cout << "\r" << percentage << "% processed" << std::flush;
+            }
+
+            w_level++;
         }
     }
 
