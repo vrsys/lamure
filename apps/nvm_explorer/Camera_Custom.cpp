@@ -109,12 +109,12 @@ scm::math::mat4f &Camera_Custom::get_transformation_image_plane() { return _tran
 void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::vector<prov::SparsePoint> &vector_point)
 {
     // create buffer for the lines connecting the sparse points with the projection center
-    // std::vector<Struct_Line> vector_struct_line = convert_lines_to_struct_line(vector_point);
-    // scm::gl::buffer_ptr vertex_buffer_object_lines =
-    //     device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_line.size(), &vector_struct_line[0]);
-    // _vertex_array_object_lines = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object_lines));
+    std::vector<Struct_Line> vector_struct_line = convert_lines_to_struct_line(vector_point);
+    scm::gl::buffer_ptr vertex_buffer_object_lines =
+        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_line.size(), &vector_struct_line[0]);
+    _vertex_array_object_lines = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object_lines));
 
-    // load_texture(device);
+    load_texture(device);
     _frustum.init(device);
 }
 
