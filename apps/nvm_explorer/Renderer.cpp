@@ -20,7 +20,7 @@
 //     // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
 // }
 
-void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window)
+void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh)
 {
     _camera_view.update_window_size(width_window, height_window);
 
@@ -99,7 +99,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
 
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
-    lamure::model_t model_id = database->add_model("/home/yiro4618/project_provenance/project/MVS.0.bvh", std::to_string(0));
+    lamure::model_t model_id = database->add_model(name_file_bvh, std::to_string(0));
     // bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
 }
 

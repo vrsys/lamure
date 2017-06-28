@@ -124,12 +124,14 @@ int main(int argc, char *argv[])
     // return 1;
     // return write_dummy_binary_file();
 
-    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-s"))
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-s") || !cmd_option_exists(argv, argv + argc, "-d"))
     {
         std::cout << "Usage: " << argv[0] << "<flags> -s <input_file>.nvm" << std::endl
                   << "INFO: nvm_explorer " << std::endl
-                  << "\t-s: selects .nvm input file" << std::endl
+                  << "\t-s: selects sparse.prov input file" << std::endl
                   << "\t    (-s flag is required) " << std::endl
+                  << "\t-d: selects .bvh input file" << std::endl
+                  << "\t    (-d flag is required) " << std::endl
                   << std::endl;
         return 0;
     }
@@ -182,7 +184,7 @@ int main(int argc, char *argv[])
     Scene scene(vec_point, vec_camera);
     // Scene scene(cache_sparse);
 
-    controller = new Controller(scene, argv, width_window, height_window);
+    controller = new Controller(scene, argv, width_window, height_window, std::string(get_cmd_option(argv, argv + argc, "-d")));
     std::cout << "start rendering" << std::endl;
 
     glutMainLoop();

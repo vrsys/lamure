@@ -1,13 +1,13 @@
 #include "Controller.h"
 
-Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window) : _scene(scene)
+Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_bvh) : _scene(scene)
 {
     // initialize context
     scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
     // initialize device
     _device.reset(new scm::gl::render_device());
 
-    _renderer.init(argv, _device, width_window, height_window);
+    _renderer.init(argv, _device, width_window, height_window, name_file_bvh);
     _scene.init(_device);
 
     for(int i = 0; i < 1024; ++i)
@@ -29,19 +29,19 @@ void Controller::handle_movements(int time_delta)
 {
     float xoffset = 0.0f;
     float yoffset = 0.0f;
-    if(_keys[int('4')])
+    if(_keys_special[100])
     {
         xoffset += 1;
     }
-    if(_keys[int('6')])
+    if(_keys_special[102])
     {
         xoffset += -1;
     }
-    if(_keys[int('8')])
+    if(_keys_special[101])
     {
         yoffset += -1;
     }
-    if(_keys[int('5')])
+    if(_keys_special[103])
     {
         yoffset += 1;
     }

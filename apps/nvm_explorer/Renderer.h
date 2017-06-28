@@ -55,7 +55,7 @@ class Renderer
 {
   public:
     // Renderer();
-    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window);
+    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh);
     void render(Scene scene);
 
     void update_state_lense();
