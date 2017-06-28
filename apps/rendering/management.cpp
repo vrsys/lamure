@@ -582,6 +582,10 @@ dispatchKeyboardInput(unsigned char key)
     case 'm':
       renderer_->toggle_do_measurement();
       break;
+      
+    case 'c':
+      renderer_->toggle_culling();
+      break;
 
     case '+':
         importance_ += 0.1f;

@@ -13,7 +13,7 @@
 #include <thread>
 #include <mutex>
 #include <set>
-#include <lamure/ren/semaphore.h>
+#include <lamure/semaphore.h>
 #include <lamure/utils.h>
 #include <lamure/types.h>
 #include <lamure/ren/config.h>

@@ -5,20 +5,17 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef REN_SEMAPHORE_H_
-#define REN_SEMAPHORE_H_
+#ifndef SEMAPHORE_H_
+#define SEMAPHORE_H_
 
 #include <vector>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 
-#include <lamure/ren/platform.h>
-
 namespace lamure {
-namespace ren {
 
-class RENDERING_DLL semaphore
+class semaphore
 {
 public:
                         semaphore();
@@ -51,8 +48,8 @@ private:
 };
 
 
-} } // namespace lamure
+} // namespace lamure
 
 
-#endif // REN_SEMAPHORE_H_
+#endif // SEMAPHORE_H_
 

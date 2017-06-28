@@ -215,7 +215,7 @@ load_visibility_from_file(const std::string& file_path)
 bool grid_irregular_compressed::
 load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_index)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
+	//std::lock_guard<std::mutex> lock(mutex_);
 
 	view_cell* current_cell = cells_by_indices_[cell_index];
 

@@ -54,7 +54,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       measurement_()
 {
     render_pvs_grid_cells_ = false;
-    render_occluded_geometry_ = true;
+    render_occluded_geometry_ = false;
 
     lamure::ren::policy* policy = lamure::ren::policy::get_instance();
     win_x_ = policy->window_width();

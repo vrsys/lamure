@@ -13,7 +13,7 @@
 
 #include <lamure/types.h>
 #include <lamure/ren/platform.h>
-#include <lamure/ren/semaphore.h>
+#include <lamure/semaphore.h>
 #include <lamure/ren/cache_queue.h>
 #include <lamure/utils.h>
 

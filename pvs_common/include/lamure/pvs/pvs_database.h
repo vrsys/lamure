@@ -6,9 +6,11 @@
 #include <thread>
 #include <vector>
 #include <mutex>
+#include <queue>
 
 #include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
+#include <lamure/semaphore.h>
 
 namespace lamure
 {
@@ -46,7 +48,10 @@ protected:
 	static pvs_database* instance_;
 
 private:
-	void load_visibility_data_async();
+	void loading_thread_loop();
+	void load_visibility_data_async(uint64_t cell_index);
+	std::queue<uint64_t> loading_queue_;
+	semaphore semaphore_;
 
 	// Grid storing the major visibility data of the scene.
 	grid* visibility_grid_;
@@ -64,6 +69,7 @@ private:
 	// If true, the complete visibility data will be loaded on initialization.
 	// If false, visibilibity of view cells will be loaded depending on the necessity to do so (e.g. if the user enters a view cell).
 	bool do_preload_;
+	bool shutdown_;
 	std::string pvs_file_path_;
 
 	scm::math::vec3d smallest_cell_size_;
@@ -73,6 +79,7 @@ private:
 
 	// Used to achieve thread safety.
 	mutable std::mutex mutex_;
+	mutable std::mutex loading_mutex_;
 };
 
 }
