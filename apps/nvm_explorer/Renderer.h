@@ -56,7 +56,7 @@ class Renderer
   public:
     // Renderer();
     void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh);
-    void render(Scene scene);
+    void render(Scene &scene);
 
     void update_state_lense();
     void translate_sphere(scm::math::vec3f offset);
@@ -105,12 +105,12 @@ class Renderer
     scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
     int _state_lense = 0;
 
-    void draw_points_sparse(Scene scene);
-    void draw_cameras(Scene scene);
-    void draw_lines(Scene scene);
-    void draw_images(Scene scene);
-    void draw_frustra(Scene scene);
-    void draw_points_dense(Scene scene);
+    void draw_points_sparse(Scene &scene);
+    void draw_cameras(Scene &scene);
+    void draw_lines(Scene &scene);
+    void draw_images(Scene &scene);
+    void draw_frustra(Scene &scene);
+    void draw_points_dense(Scene &scene);
 };
 
 #endif // LAMURE_RENDERER_H

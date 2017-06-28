@@ -100,6 +100,9 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
     lamure::model_t model_id = database->add_model(name_file_bvh, std::to_string(0));
+
+    // color_blending_state_ = device_->create_blend_state(true);
+    // color_blending_state_ = device_->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
     // bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
 }
 
@@ -115,7 +118,7 @@ void Renderer::update_radius_sphere(float offset) { _radius_sphere += offset; }
 
 // void Renderer::translate_sphere_screen(scm::math::vec3f offset) { _position_sphere_screen += scm::math::vec2f(offset[0], -offset[2]); }
 // void Renderer::update_radius_sphere_screen(float offset) { _radius_sphere_screen += offset; }
-void Renderer::draw_points_sparse(Scene scene)
+void Renderer::draw_points_sparse(Scene &scene)
 {
     _context->bind_program(_program_points);
 
@@ -128,7 +131,7 @@ void Renderer::draw_points_sparse(Scene scene)
 
     _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, scene.count_points());
 }
-void Renderer::draw_cameras(Scene scene)
+void Renderer::draw_cameras(Scene &scene)
 {
     _context->bind_program(_program_cameras);
 
@@ -145,9 +148,10 @@ void Renderer::draw_cameras(Scene scene)
     _context->bind_vertex_array(scene.get_vertex_array_object_cameras());
     _context->apply();
 
+    // _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, 2);
     _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, scene.count_cameras());
 }
-void Renderer::draw_images(Scene scene)
+void Renderer::draw_images(Scene &scene)
 {
     _context->bind_program(_program_images);
 
@@ -166,7 +170,7 @@ void Renderer::draw_images(Scene scene)
         }
     }
 }
-void Renderer::draw_lines(Scene scene)
+void Renderer::draw_lines(Scene &scene)
 {
     _context->bind_program(_program_lines);
 
@@ -183,7 +187,7 @@ void Renderer::draw_lines(Scene scene)
         }
     }
 }
-void Renderer::draw_frustra(Scene scene)
+void Renderer::draw_frustra(Scene &scene)
 {
     _context->bind_program(_program_frustra);
 
@@ -204,7 +208,7 @@ void Renderer::draw_frustra(Scene scene)
         }
     }
 }
-void Renderer::draw_points_dense(Scene scene)
+void Renderer::draw_points_dense(Scene &scene)
 {
     _context->bind_program(_program_points_dense);
 
@@ -302,8 +306,9 @@ void Renderer::draw_points_dense(Scene scene)
     }
 }
 
-void Renderer::render(Scene scene)
+void Renderer::render(Scene &scene)
 {
+    // std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     _context->set_rasterizer_state(_rasterizer_state);
     _context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(_camera_view.get_width_window(), _camera_view.get_height_window())));
 
@@ -330,6 +335,9 @@ void Renderer::render(Scene scene)
     {
         draw_points_sparse(scene);
     }
+    // std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    // std::cout << duration / 1000.0 << std::endl;
 }
 
 void Renderer::update_size_point(float offset)
