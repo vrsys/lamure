@@ -25,7 +25,7 @@ class PREPROCESSING_DLL surfel /*final*/
     using compare_function = std::function<bool(const surfel &left, const surfel &right)>;
 
     surfel(const vec3r &pos = vec3r(0.0), const vec3b &color = vec3b(0), const real radius = 0.0, const vec3f &normal = vec3f(0.f), const float ncc = 0)
-        : pos_(pos), color_(color), radius_(radius), normal_(normal), ncc_(ncc)
+        : pos_(pos), color_(color), radius_(radius), normal_(normal)//, ncc_(ncc)
     {
     }
 
@@ -41,8 +41,8 @@ class PREPROCESSING_DLL surfel /*final*/
     const vec3f normal() const { return normal_; }
     vec3f &normal() { return normal_; }
 
-    const float ncc() const { return ncc_; }
-    float &ncc() { return ncc_; }
+//    const float ncc() const { return ncc_; }
+//    float &ncc() { return ncc_; }
 
     const vec3r random_point_on_surfel() const;
 
@@ -66,7 +66,7 @@ class PREPROCESSING_DLL surfel /*final*/
     vec3b color_;
     real radius_;
     vec3f normal_;
-    float ncc_;
+//    float ncc_;
 };
 
 using surfel_vector = std::vector<surfel>;

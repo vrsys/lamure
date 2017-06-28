@@ -104,9 +104,9 @@ scalar_callback(const std::string &element_name, const std::string &property_nam
         else if (property_name == "nz")
             return [this](float value)
             { current_surfel_.normal().z = value; };
-        else if (property_name == "ncc")
-            return [this](float value)
-            { current_surfel_.ncc() = value; };
+//        else if (property_name == "ncc")
+//            return [this](float value)
+//            { current_surfel_.ncc() = value; };
         else if (property_name == "scalar_C2C_absolute_distances")
             return [this](float value)
             { /*ignore*/; };
