@@ -30,11 +30,22 @@ pvs_database()
 	viewer_cell_ = nullptr;
 	activated_ = true;
 	do_preload_ = false;
+	shutdown_ = false;
+	
+	//configure semaphore
+  semaphore_.set_min_signal_count(1);
+  semaphore_.set_max_signal_count(std::numeric_limits<size_t>::max());
+	
+	visibility_data_loading_thread_ = std::thread(&pvs_database::loading_thread_loop, this);
+	
 }
 
 pvs_database::
 ~pvs_database()
 {
+  shutdown_ = true;
+  semaphore_.shutdown();
+
 	if(visibility_data_loading_thread_.joinable())
 	{
 		visibility_data_loading_thread_.join();
@@ -282,6 +293,34 @@ create_grid_by_type(const std::string& grid_type, const size_t& num_cells_x, con
 }
 
 void pvs_database::
+loading_thread_loop() {
+
+  while (true) {
+  
+    semaphore_.wait();
+    
+    if (shutdown_) {
+      break;
+    }
+    
+    int64_t cell_index = -1;
+    if (loading_queue_.size() > 0) {
+      loading_mutex_.lock();
+      if (loading_queue_.size() > 0) {
+        cell_index = loading_queue_.front();
+        loading_queue_.pop();
+      }
+      loading_mutex_.unlock();
+    }
+    
+    if (cell_index >= 0) {
+      load_visibility_data_async(cell_index);
+    }
+  }
+
+}
+
+void pvs_database::
 set_viewer_position(const scm::math::vec3d& position)
 {
 	//std::lock_guard<std::mutex> lock(mutex_);
@@ -305,13 +344,13 @@ set_viewer_position(const scm::math::vec3d& position)
 					// If the view cell changed and the visibility data is not preloaded, it should be loaded now.
 					if(!do_preload_)
 					{
-						// Make sure old thread has finished before starting a new one.
-						if(visibility_data_loading_thread_.joinable())
-						{
-							visibility_data_loading_thread_.join();
-						}
-
-						visibility_data_loading_thread_ = std::thread(&pvs_database::load_visibility_data_async, this);
+					
+            loading_mutex_.lock();
+            loading_queue_.push(cell_index);
+            //std::cout << "add cell " << cell_index << std::endl;
+						loading_mutex_.unlock();
+						semaphore_.signal(1);
+						
 					}
 				}
 			}
@@ -333,9 +372,17 @@ set_viewer_position(const scm::math::vec3d& position)
 }
 
 void pvs_database::
-load_visibility_data_async()
+load_visibility_data_async(uint64_t cell_index)
 {
-	scm::math::vec3d center = viewer_cell_->get_position_center();
+  const view_cell* cell = visibility_grid_->get_cell_at_index(cell_index);
+  //
+  if (cell != viewer_cell_) {
+    return;
+  }
+  
+  //std::cout << "loading cell " << cell_index << std::endl;
+  
+	scm::math::vec3d center = cell->get_position_center();
 
 	std::set<size_t> cell_indices_to_load;
 
@@ -356,12 +403,12 @@ load_visibility_data_async()
 			}
 		}
 	}
+  
+  std::lock_guard<std::mutex> lock(mutex_);
 
 	// Load required visibility data which is not yet loaded.
 	for (std::set<size_t>::iterator iter = cell_indices_to_load.begin(); iter != cell_indices_to_load.end(); ++iter)
 	{
-		std::lock_guard<std::mutex> lock(mutex_);
-
 		if(previously_loaded_cell_indices_.find(*iter) == previously_loaded_cell_indices_.end())
 		{
 			visibility_grid_->load_cell_visibility_from_file(pvs_file_path_, *iter);
@@ -371,8 +418,6 @@ load_visibility_data_async()
 	// Release visibility data not within current neighbourhood.
 	for (std::set<size_t>::iterator iter = previously_loaded_cell_indices_.begin(); iter != previously_loaded_cell_indices_.end(); ++iter)
 	{
-		std::lock_guard<std::mutex> lock(mutex_);
-
 		if(cell_indices_to_load.find(*iter) == cell_indices_to_load.end())
 		{
 			visibility_grid_->clear_cell_visibility(*iter);
