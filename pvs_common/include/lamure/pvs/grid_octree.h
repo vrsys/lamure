@@ -8,6 +8,7 @@
 #ifndef LAMURE_PVS_GRID_OCTREE_H
 #define LAMURE_PVS_GRID_OCTREE_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
 #include "lamure/pvs/grid_octree_node.h"
 
@@ -18,7 +19,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_octree : public grid
+class PVS_COMMON_DLL grid_octree : public grid
 {
 public:
 	grid_octree();

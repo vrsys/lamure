@@ -21,6 +21,8 @@ InitApp(${CMAKE_PROJECT_NAME}_pvs_bounding_extrapolator)
 ############################################################
 # Libraries
 
+message("PVS_COMMON_LIBRARY ${PVS_COMMON_LIBRARY}")
+
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${PVS_COMMON_LIBRARY}

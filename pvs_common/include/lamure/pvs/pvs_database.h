@@ -7,6 +7,7 @@
 #include <vector>
 #include <mutex>
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
 
 namespace lamure
@@ -14,7 +15,7 @@ namespace lamure
 namespace pvs
 {
 
-class pvs_database
+class PVS_COMMON_DLL pvs_database
 {
 public:
 	virtual ~pvs_database();

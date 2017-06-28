@@ -19,6 +19,8 @@ set(PROJECT_INCLUDES ${MAIN_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}
+                    ${GLUT_INCLUDE_DIR}
+                    ${FREEIMAGE_INCLUDE_DIR}
                     ${PVS_COMMON_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR}
                     ${CGAL_INCLUDE_DIR}
@@ -34,10 +36,10 @@ link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES})
 
-add_dependencies(${PROJECT_NAME} lamure_common lamure_pvs_common)
+add_dependencies(${PROJECT_NAME} lamure_common lamure_pvs_common lamure_rendering)
 
 IF (MSVC)
-    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PVS_LIBRARY -DBOOST_ALL_NO_LIB")
+    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PVS_PREPROCESSING_LIBRARY -DBOOST_ALL_NO_LIB")
 ENDIF(MSVC)
 
 
@@ -51,14 +53,18 @@ set(PVS_PREPROCESSING_LIBRARY ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
     ${COMMON_LIBRARY}
     ${PVS_COMMON_LIBRARY}
-    ${SCHISM_LIBRARIES}
     ${PROJECT_LIBS}
+    ${GLUT_glut_LIBRARY}
     ${GMP_LIBRARY}
     ${MPFR_LIBRARY}
+    optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
+    optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
+    optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
     optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
     optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     optimized ${Boost_REGEX_LIBRARY_RELEASE} debug ${Boost_REGEX_LIBRARY_DEBUG}
+    lamure_rendering
     )
 
 ###############################################################################

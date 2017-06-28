@@ -1,6 +1,7 @@
 #ifndef VISIBILITY_TEST_H
 #define VISIBILITY_TEST_H
 
+#include <lamure/pvs/pvs_preprocessing.h>
 #include "lamure/bounding_box.h"
 #include "lamure/pvs/grid.h"
 

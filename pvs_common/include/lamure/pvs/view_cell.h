@@ -6,6 +6,8 @@
 #include <string>
 
 #include <scm/core/math.h>
+
+#include <lamure/pvs/pvs.h>
 #include <lamure/types.h>
 
 namespace lamure
@@ -13,7 +15,7 @@ namespace lamure
 namespace pvs
 {
 
-class view_cell
+class PVS_COMMON_DLL view_cell
 {
 public:
 	virtual ~view_cell() {}

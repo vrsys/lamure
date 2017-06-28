@@ -376,9 +376,10 @@ load_visibility_from_file(const std::string& file_path)
 		{
 			node_t num_nodes = ids_.at(model_index);
 			size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
-			char current_line_data[line_length];
 
-			file_in.read(current_line_data, line_length);
+      std::vector<char> current_line_data(line_length);
+
+			file_in.read(&current_line_data[0], line_length);
 
 			// Used to avoid continuing resize within visibility data.
 			current_cell->set_visibility(model_index, num_nodes - 1, false);
@@ -456,9 +457,9 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 	{
 		node_t num_nodes = ids_.at(model_index);
 		size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
-		char current_line_data[line_length];
+    std::vector<char> current_line_data(line_length);
 
-		file_in.read(current_line_data, line_length);
+		file_in.read(&current_line_data[0], line_length);
 
 		// Used to avoid continuing resize within visibility data.
 		current_cell->set_visibility(model_index, num_nodes - 1, false);
