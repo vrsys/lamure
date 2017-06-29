@@ -51,12 +51,17 @@ target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${GMP_LIBRARY}
     ${MPFR_LIBRARY}
-    optimized ${ZLIB_LIBRARY_RELEASE} debug ${ZLIB_LIBRARY_DEBUG}
     optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
     optimized ${Boost_IOSTREAMS_LIBRARY_RELEASE} debug ${Boost_IOSTREAMS_LIBRARY_DEBUG}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
     optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     )
+
+IF(MSVC)
+    target_link_libraries(${PROJECT_NAME} optimized ${ZLIB_LIBRARY_RELEASE} debug ${ZLIB_LIBRARY_DEBUG})
+ELSEIF(UNIX)
+    target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARY})
+ENDIF(MSVC)
 
 ###############################################################################
 # install 
