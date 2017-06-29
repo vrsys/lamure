@@ -8,6 +8,7 @@
 #include <mutex>
 #include <queue>
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
 #include <lamure/semaphore.h>
 
@@ -16,7 +17,7 @@ namespace lamure
 namespace pvs
 {
 
-class pvs_database
+class PVS_COMMON_DLL pvs_database
 {
 public:
 	virtual ~pvs_database();

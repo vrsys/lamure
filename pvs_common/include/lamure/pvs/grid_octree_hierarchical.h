@@ -8,6 +8,7 @@
 #ifndef LAMURE_PVS_GRID_OCTREE_HIERARCHICAL_H
 #define LAMURE_PVS_GRID_OCTREE_HIERARCHICAL_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid_octree.h"
 #include "lamure/pvs/grid_octree_node.h"
 #include "lamure/pvs/grid_octree_hierarchical_node.h"
@@ -22,7 +23,7 @@ namespace pvs
 // Grid that stores the visibility as uint32 IDs using the octree-hierarchy.
 // Common visibility will be stored within parent nodes instead of the children to save storage.
 // Decides to save either visible or occluded IDs for the whole file.
-class grid_octree_hierarchical : public grid_octree
+class PVS_COMMON_DLL grid_octree_hierarchical : public grid_octree
 {
 public:
 	grid_octree_hierarchical();

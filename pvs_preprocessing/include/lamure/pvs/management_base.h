@@ -8,6 +8,7 @@
 #ifndef LAMURE_PVS_MANAGEMENT_BASE_H_
 #define LAMURE_PVS_MANAGEMENT_BASE_H_
 
+#include <lamure/pvs/pvs_preprocessing.h>
 #include <lamure/types.h>
 
 #include "lamure/pvs/glut_management.h"
@@ -33,7 +34,7 @@ namespace lamure
 namespace pvs
 {
 
-class management_base : public glut_management
+class PVS_PREPROCESSING_DLL management_base : public glut_management
 {
 public:
                         management_base(std::vector<std::string> const& model_filenames,

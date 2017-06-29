@@ -1,6 +1,7 @@
 #ifndef LAMURE_PVS_BOUNDS_EXTRAPOLATOR_H
 #define LAMURE_PVS_BOUNDS_EXTRAPOLATOR_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
 #include "lamure/pvs/grid_bounding.h"
 
@@ -9,7 +10,7 @@ namespace lamure
 namespace pvs
 {
 
-class pvs_bounds_extrapolator
+class PVS_COMMON_DLL pvs_bounds_extrapolator
 {
 public:
 	virtual ~pvs_bounds_extrapolator() {}

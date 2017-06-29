@@ -1,6 +1,7 @@
 #ifndef LAMURE_PVS_BOUNDS_EXTRAPOLATOR_FROM_OUTER_CELLS_H
 #define LAMURE_PVS_BOUNDS_EXTRAPOLATOR_FROM_OUTER_CELLS_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/pvs_bounds_extrapolator.h"
 
 namespace lamure
@@ -8,7 +9,7 @@ namespace lamure
 namespace pvs
 {
 
-class pvs_bounds_extrapolator_from_outer_cells : pvs_bounds_extrapolator
+class PVS_COMMON_DLL pvs_bounds_extrapolator_from_outer_cells : pvs_bounds_extrapolator
 {
 public:
 	pvs_bounds_extrapolator_from_outer_cells();

@@ -5,6 +5,7 @@
 #include <string>
 #include <mutex>
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
 #include "lamure/pvs/grid_regular_compressed.h"
 #include "lamure/pvs/view_cell.h"
@@ -17,7 +18,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_bounding : public grid_regular_compressed
+class PVS_COMMON_DLL grid_bounding : public grid_regular_compressed
 {
 public:
 	grid_bounding();
