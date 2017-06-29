@@ -216,20 +216,18 @@ int main(int argc, char** argv)
     video_memory_budget = std::max(int(video_memory_budget), 1);
     max_upload_budget   = std::max(int(max_upload_budget), 64);
 
+    std::string hex_string_prefix = "0x";
     //if the hex string starts with the proper prefix '0x', strip it first
-    if( 0 == default_background_color_rgb_string.find_first_of("0x") ) {
-        default_background_color_rgb_string = default_background_color_rgb_string.substr(2);
+    if( hex_string_prefix == default_background_color_rgb_string.substr(0, hex_string_prefix.size() ) ) { 
+        default_background_color_rgb_string = default_background_color_rgb_string.substr(hex_string_prefix.size());
     }
 
 
     std::transform(default_background_color_rgb_string.begin(), default_background_color_rgb_string.end(), default_background_color_rgb_string.begin(), ::tolower);
 
-    std::cout << "INPUT: " << default_background_color_rgb_string << "\n";
-
     // check if size of prefix removed hex string is what we expect and the digits are valid.
     if( (default_background_color_rgb_string.size() != 6) || (default_background_color_rgb_string.find_first_not_of("0123456789abcdef") != std::string::npos) ){
         std::cout << "Warning: The RGB hex string does not contain 6 hex digits.\nSetting it to 0x000000.\n";
-        std::cout  << "Size of: " << default_background_color_rgb_string.size() << "\n";
         default_background_color_rgb_string = "000000";
     }
 
