@@ -141,22 +141,23 @@ if (${LAMURE_USE_CGAL_FOR_NNI})
   ################################
   include(find_mpfr)
 
-  ################################
-  # GLM
-  ################################
-  include(find_glm)
-
-  ################################
-  # ZLIB
-  ################################
-  if (MSVC)
-    set(ZLIB_ROOT ${GLOBAL_EXT_DIR}/zlib)
-  endif (MSVC)
-  include(findZLIB)
-
 else()
   # include NNI alternative here
 endif (${LAMURE_USE_CGAL_FOR_NNI})
+
+################################
+# GLM
+################################
+include(find_glm)
+
+################################
+# ZLIB
+################################
+
+IF (MSVC)
+  set(ZLIB_ROOT ${GLOBAL_EXT_DIR}/zlib)
+ENDIF (MSVC)
+include (findZLIB)
 
 ############################################################
 # Build 3rd-party
