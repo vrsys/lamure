@@ -12,6 +12,7 @@
 #include <map>
 #include <utility>
 
+#include <lamure/pvs/pvs.h>
 #include <lamure/types.h>
 
 namespace lamure
@@ -19,7 +20,7 @@ namespace lamure
 namespace pvs
 {
 
-class id_histogram
+class PVS_COMMON_DLL id_histogram
 {
 public:
 	id_histogram();

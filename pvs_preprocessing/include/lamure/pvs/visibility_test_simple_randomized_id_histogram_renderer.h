@@ -1,6 +1,7 @@
 #ifndef LAMURE_PVS_VISIBILITY_TEST_SIMPLE_RANDOMIZED_ID_HISTOGRAM_RENDERER_H
 #define LAMURE_PVS_VISIBILITY_TEST_SIMPLE_RANDOMIZED_ID_HISTOGRAM_RENDERER_H
 
+#include <lamure/pvs/pvs_preprocessing.h>
 #include "lamure/pvs/visibility_test.h"
 #include "lamure/pvs/management_simple_randomized.h"
 #include "lamure/pvs/grid.h"
@@ -10,7 +11,7 @@ namespace lamure
 namespace pvs
 {
 
-class visibility_test_simple_randomized_id_histogram_renderer : public visibility_test
+class PVS_PREPROCESSING_DLL visibility_test_simple_randomized_id_histogram_renderer : public visibility_test
 {
 public:
 	visibility_test_simple_randomized_id_histogram_renderer();

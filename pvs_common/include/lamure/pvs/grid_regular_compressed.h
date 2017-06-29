@@ -1,6 +1,7 @@
 #ifndef LAMURE_PVS_REGULAR_GRID_COMPRESSED_H
 #define LAMURE_PVS_REGULAR_GRID_COMPRESSED_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid_regular.h"
 
 namespace lamure
@@ -8,7 +9,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_regular_compressed : public grid_regular
+class PVS_COMMON_DLL grid_regular_compressed : public grid_regular
 {
 public:
 	grid_regular_compressed();

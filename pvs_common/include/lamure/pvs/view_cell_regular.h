@@ -7,6 +7,7 @@
 #include <scm/core/math.h>
 #include <lamure/types.h>
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/view_cell.h"
 
 #include <boost/dynamic_bitset.hpp>
@@ -16,7 +17,7 @@ namespace lamure
 namespace pvs
 {
 
-class view_cell_regular : public view_cell
+class PVS_COMMON_DLL view_cell_regular : public view_cell
 {
 public:
 	view_cell_regular();

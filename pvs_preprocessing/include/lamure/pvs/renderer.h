@@ -8,6 +8,7 @@
 #ifndef PVS_OLD_RENDERER_H_
 #define PVS_OLD_RENDERER_H_
 
+#include <lamure/pvs/pvs_preprocessing.h>
 #include <lamure/ren/camera.h>
 #include <lamure/ren/cut.h>
 

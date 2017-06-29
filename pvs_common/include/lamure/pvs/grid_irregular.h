@@ -5,6 +5,7 @@
 #include <string>
 #include <mutex>
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
 #include "lamure/pvs/view_cell.h"
 #include "lamure/pvs/view_cell_regular.h"
@@ -17,7 +18,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_irregular : public grid
+class PVS_COMMON_DLL grid_irregular : public grid
 {
 public:
 	grid_irregular();

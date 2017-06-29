@@ -8,6 +8,7 @@
 #ifndef LAMURE_PVS_GRID_OCTREE_HIERARCHICAL_V3_H
 #define LAMURE_PVS_GRID_OCTREE_HIERARCHICAL_V3_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid_octree_hierarchical.h"
 
 namespace lamure
@@ -19,7 +20,7 @@ namespace pvs
 // This version does not propagate visibility during preprocessing, but when loading visibility at runtime.
 // This saves large amounts of memory at the cost of runtime CPU performance.
 // To avoid further runtime decoding, this grid type must not be optimized using a grid_optimizer.
-class grid_octree_hierarchical_v3 : public grid_octree_hierarchical
+class PVS_COMMON_DLL grid_octree_hierarchical_v3 : public grid_octree_hierarchical
 {
 public:
 	grid_octree_hierarchical_v3();

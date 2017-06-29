@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid.h"
 
 namespace lamure
@@ -18,10 +19,10 @@ namespace pvs
 {
 
 // Output data on the current visibility of a grid into a given file.
-void analyze_grid_visibility(const grid* input_grid, const unsigned int& num_steps, const std::string& output_file_name);
+PVS_COMMON_DLL void analyze_grid_visibility(const grid* input_grid, const unsigned int& num_steps, const std::string& output_file_name);
 
 // Calculate the current occlusion percentage within a given grid.
-double calculate_grid_occlusion(const grid* input_grid);
+PVS_COMMON_DLL double calculate_grid_occlusion(const grid* input_grid);
 
 }
 }

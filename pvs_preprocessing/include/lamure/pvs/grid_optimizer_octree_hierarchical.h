@@ -8,6 +8,7 @@
 #ifndef LAMURE_PVS_GRID_OPTIMIZER_OCTREE_HIERARCHICAL_H
 #define LAMURE_PVS_GRID_OPTIMIZER_OCTREE_HIERARCHICAL_H
 
+#include <lamure/pvs/pvs_preprocessing.h>
 #include "lamure/pvs/grid.h"
 
 namespace lamure
@@ -15,7 +16,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_optimizer_octree_hierarchical
+class PVS_PREPROCESSING_DLL grid_optimizer_octree_hierarchical
 {
 public:
 	// Equality threshold is the allowed difference in percent used to consider two cells as equal.

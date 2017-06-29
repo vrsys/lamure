@@ -1,6 +1,7 @@
 #ifndef LAMURE_PVS_VIEW_CELL_IRREGULAR_MANAGING_H
 #define LAMURE_PVS_VIEW_CELL_IRREGULAR_MANAGING_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/view_cell_regular.h"
 
 namespace lamure
@@ -8,7 +9,7 @@ namespace lamure
 namespace pvs
 {
 
-class view_cell_regular_managing : public view_cell_regular
+class PVS_COMMON_DLL view_cell_regular_managing : public view_cell_regular
 {
 public:
 	view_cell_regular_managing();

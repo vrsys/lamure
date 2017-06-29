@@ -9,6 +9,7 @@
 #define GLUT_WRAPPER_H
 
 #include <GL/freeglut.h>
+#include <cstdint>
 
 #include "lamure/pvs/glut_management.h"
 

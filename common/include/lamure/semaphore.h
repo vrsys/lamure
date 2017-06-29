@@ -13,9 +13,11 @@
 #include <mutex>
 #include <condition_variable>
 
+#include <lamure/platform.h>
+
 namespace lamure {
 
-class semaphore
+class COMMON_DLL semaphore
 {
 public:
                         semaphore();

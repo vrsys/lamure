@@ -259,7 +259,7 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 		for(model_t model_index = 0; model_index < ids_.size(); ++model_index)
 		{
 			// First byte is used to save whether visibility or occlusion data are written.
-			file_in.seekg(file_in.tellg() + sizeof(bool));
+			file_in.seekg(size_t(file_in.tellg()) + sizeof(bool));
 
 			// Read number of values to pass.
 			node_t number_visibility_elements;

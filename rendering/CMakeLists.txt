@@ -29,6 +29,7 @@ SOURCE_GROUP("shaders" FILES ${SHADERS})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}
+                    ${GLM_INCLUDE_DIR}
                     ${PVS_COMMON_INCLUDE_DIR} 
                     ${LAMURE_CONFIG_DIR})
 
