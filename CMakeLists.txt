@@ -157,7 +157,7 @@ include(find_glm)
 IF (MSVC)
   set(ZLIB_ROOT ${GLOBAL_EXT_DIR}/zlib)
 ENDIF (MSVC)
-include (findZLIB)
+include (FindZLIB)
 
 ############################################################
 # Build 3rd-party
