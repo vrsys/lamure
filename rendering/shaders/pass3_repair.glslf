@@ -34,7 +34,7 @@ void main() {
 
 	{
 
-		if(depthValue != 0.0f)
+		if(depthValue != 0.0)
 		  out_color = texture2D(in_color_texture, gl_FragCoord.xy/(win_size.xy));
 		else
 		{
@@ -131,7 +131,7 @@ void main() {
 
  		  if( pattern0 || pattern1 || pattern2 || pattern3 || pattern4 || pattern5 || pattern6 || pattern7  ) 
 		  {
-		 	 out_color = vec4(0.f,0.0f,0.0f,1.0f);
+		 	 out_color = vec4(0.0, 0.0 ,0.0 ,1.0);
 		  }
 		  else
 		  {
@@ -185,112 +185,8 @@ void main() {
 			else
 				//out_color = vec4(1.0, 1.0, 1.0, 1.0);
 				out_color = vec4(accumulated_color / num_accumulated_colors, 1.0);
-
+		 	 out_color = vec4(0.0, 0.0 ,0.0 ,1.0);
 			
-			/*)
-			//re-fill the neighborhood_depth array with luminocity values of the neighborhood_depth area
-			vec3 tempCol = vec3(0.0,0.0,0.0);
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,+1) )/(win_size.xy) ).rgb; //upper left pixel
-			neighborhood_depth[0] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(0,+1) )/(win_size.xy) ).rgb; //upper pixel
-			neighborhood_depth[1] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,+1) )/(win_size.xy) ).rgb; //upper right pixel
-			neighborhood_depth[2] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,0) )/(win_size.xy) ).rgb; //left pixel
-			neighborhood_depth[3] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,0) )/(win_size.xy) ).rgb; //right pixel
-			neighborhood_depth[4] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,-1) )/(win_size.xy) ).rgb; //lower left pixel
-			neighborhood_depth[5] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(0,-1) )/(win_size.xy) ).rgb; //lower pixel
-			neighborhood_depth[6] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			tempCol = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,-1) )/(win_size.xy) ).rgb; //lower right pixel
-			neighborhood_depth[7] = 0.2126 * tempCol.r + 0.7152 * tempCol.g + 0.0722 * tempCol.b; 
-
-			//find the median element with index 4
-			for(int i = 0; i < 8; ++i)
-			{
-
-			int sum_smaller_elements = 0;
-			int sum_equal_elements = 0;
-
-				for(int k = 0; k < 8; ++k)
-				{
-					if(i != k)
-					{
-						if(neighborhood_depth[i] < neighborhood_depth[k])  //our current element was smaller, so we don't have to do anything
-						{//do nothing
-						}
-						else if(neighborhood_depth[i] > neighborhood_depth[k])
-						{
-							sum_smaller_elements += 1;
-						}
-						else
-						{
-							sum_equal_elements += 1;
-						}
-				
-					}
-				}
-
-				if((sum_smaller_elements +  sum_equal_elements >= 3) )
-				{
-
-						vec4 tempC;
-						if( i == 0)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,+1) )/(win_size.xy) );
-						}
-						else if(i == 1)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(0,+1) )/(win_size.xy) );
-						}
-						else if(i == 2)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,+1) )/(win_size.xy) );
-						}
-						else if(i == 3)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,0) )/(win_size.xy) );
-						}
-						else if(i == 4)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,0) )/(win_size.xy) );
-						}
-						else if(i == 5)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(-1,-1) )/(win_size.xy) );
-						}
-						else if(i == 6)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(0,-1) )/(win_size.xy) );
-						}
-						else if(i == 7)
-						{
-							tempC = texture2D(in_color_texture, (gl_FragCoord.xy + vec2(+1,-1) )/(win_size.xy) );
-						}
-				
-						
-						if( (tempC.rgb == vec3(0.0,0.0,0.0) ) && i != 7 )
-						{
-							continue;
-						}
-						else
-						{
-							out_color = tempC;
-						}
-					
-						break;
-				}
-			} */
-				
 				
 		  }
 
@@ -305,11 +201,5 @@ void main() {
 
 	}
 
-	//if(texture2D(depth_texture, (gl_FragCoord.xy + vec2(0,0) )/(win_size.xy) ).r == 0)
-	//	out_color = vec4(1.0, 0.0, 0.0, 0.0);
-	//else
-	//	out_color = vec4(0.65, 0.97,0.6, 1.0);
-
-	//out_color += vec4(texture2D(depth_texture, (gl_FragCoord.xy + vec2(0,0) )/(win_size.xy) ).r /2.0, 0.0, 0.0, 1.0);
 
  }
