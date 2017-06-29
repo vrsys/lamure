@@ -904,7 +904,7 @@ dispatchKeyboardInput(unsigned char key)
         break;
 
     case '8':
-        renderer_->toggle_use_black_background();
+        renderer_->toggle_use_user_defined_background_color();
         break;
 
     case '9':
@@ -1008,6 +1008,11 @@ dispatchResize(int w, int h)
             cam->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
         }
     }
+}
+
+void management::
+forward_background_color(float bg_r, float bg_g, float bg_b) {
+    renderer_->set_user_defined_background_color(bg_r, bg_g, bg_b);
 }
 
 void management::

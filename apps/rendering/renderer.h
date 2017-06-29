@@ -106,7 +106,7 @@ public:
 
     void                display_status(std::string const& information_to_display);
 
-    
+    void                set_user_defined_background_color(float bg_r, float bg_g, float bg_b);
 
 protected:
     bool                initialize_schism_device_and_shaders(int resX, int resY);
@@ -143,6 +143,7 @@ protected:
     bool                read_shader(std::string const& path_string, std::string& shader_string);
     bool const          parse_prefix(std::string& in_string, std::string const& prefix);
     std::string const   strip_whitespace(std::string const& in_string);
+
 private:
 
         int                                         win_x_;
@@ -209,7 +210,7 @@ private:
 
 	    int                                         render_provenance_;
 	    bool                                        do_measurement_;
-	    bool                                        use_black_background_;
+	    bool                                        use_user_defined_background_color_;
         bool                                        render_bounding_boxes_;
         bool                                        render_pvs_grid_cells_;
         bool                                        render_occluded_geometry_;
@@ -236,6 +237,8 @@ private:
 
         RenderMode                                              render_mode_;
 
+        scm::math::vec3f                                        user_defined_background_color_ = scm::math::vec3f(0.0f, 0.0f, 0.0f);
+
         std::set<lamure::model_t> visible_set_;
         std::set<lamure::model_t> invisible_set_;
         bool render_visible_set_;
@@ -261,7 +264,7 @@ public:
     void mouse(int button, int state, int x, int y, lamure::ren::camera const& camera);
     void toggle_provenance_rendering();
     void toggle_do_measurement();
-    void toggle_use_black_background();
+    void toggle_use_user_defined_background_color();
     void toggle_bounding_box_rendering();
     void toggle_pvs_grid_cell_rendering();
     void change_point_size(float amount);

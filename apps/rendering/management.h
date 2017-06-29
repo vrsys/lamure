@@ -96,6 +96,7 @@ public:
 
     void                enable_culling(const bool& enable);
 
+    void                forward_background_color(float bg_r, float bg_g, float bg_b);
 protected:
 
     void                Toggledispatching();

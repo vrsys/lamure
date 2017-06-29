@@ -34,7 +34,7 @@ Renderer(std::vector<scm::math::mat4f> const& model_transformations,
       blending_threshold_(0.01f),
       render_provenance_(0),
       do_measurement_(false),
-      use_black_background_(true),
+      use_user_defined_background_color_(true),
       render_bounding_boxes_(false),
       elapsed_ms_since_cut_update_(0),
       render_mode_(RenderMode::HQ_TWO_PASS),
@@ -237,7 +237,7 @@ upload_uniforms(lamure::ren::camera const& camera) const
     pass_filling_program_->uniform_sampler("depth_texture", 1);
     pass_filling_program_->uniform("win_size", scm::math::vec2f(win_x_, win_y_) );
 
-    pass_filling_program_->uniform("background_color", use_black_background_ ? scm::math::vec3f(0.0f) : scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B) );
+    pass_filling_program_->uniform("background_color", use_user_defined_background_color_ ? user_defined_background_color_ : scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B) );
 
 
     pass1_linked_list_accumulate_program_->uniform_image("linked_list_buffer", 0);
@@ -267,7 +267,7 @@ upload_uniforms(lamure::ren::camera const& camera) const
     pass3_repair_program_->uniform_sampler("depth_texture", 1);
     pass3_repair_program_->uniform("win_size", scm::math::vec2f(win_x_, win_y_) );
 
-    pass3_repair_program_->uniform("background_color", use_black_background_ ? scm::math::vec3f(0.0f) : scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B) );
+    pass3_repair_program_->uniform("background_color", use_user_defined_background_color_ ? user_defined_background_color_ : scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B) );
 
     LQ_one_pass_program_->uniform("near_plane", near_plane_);
     LQ_one_pass_program_->uniform("far_plane", far_plane_);
@@ -426,7 +426,7 @@ render_one_pass_LQ(lamure::context_t context_id,
     {
       
       context_->clear_default_depth_stencil_buffer();
-      context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_black_background_ ? vec4f(0.0f, 0.0f, 0.0f, 1.0f) : 
+      context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_user_defined_background_color_ ? vec4f( user_defined_background_color_, 1.0f) : 
         vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));
       //context_->clear_default_color_buffer();
 
@@ -984,8 +984,6 @@ render_two_pass_HQ(lamure::context_t context_id,
     ****************************************************************************************/
     {
         context_->set_default_frame_buffer();
-        //context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_black_background_ ? vec4f(0.0f, 0.0f, 0.0f, 1.0f) : 
-          //vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));
 
         context_->bind_program(pass_filling_program_);
 
@@ -1804,8 +1802,8 @@ toggle_do_measurement(){
 };
 
 void Renderer::
-toggle_use_black_background(){
-  use_black_background_ = !use_black_background_;
+toggle_use_user_defined_background_color(){
+  use_user_defined_background_color_ = !use_user_defined_background_color_;
 };
 
 
@@ -1913,6 +1911,11 @@ take_screenshot(std::string const& screenshot_path, std::string const& screensho
 
         std::cout<<"Saved Screenshot: "<<filename.c_str()<<"\n\n";
     }
+}
+
+void Renderer::
+set_user_defined_background_color(float bg_r, float bg_g, float bg_b) {
+  user_defined_background_color_ = scm::math::vec3f(bg_r, bg_g, bg_b);
 }
 
 void Renderer::
