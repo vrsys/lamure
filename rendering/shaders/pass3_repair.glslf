@@ -12,6 +12,8 @@ layout(binding  = 1) uniform sampler2D depth_texture;
 
 layout(location = 0) out vec4 out_color;
         
+uniform vec3 background_color = vec3(0.0, 0.0, 0.0);
+
 uniform vec2 win_size;
 
 //for texture access
@@ -131,7 +133,7 @@ void main() {
 
  		  if( pattern0 || pattern1 || pattern2 || pattern3 || pattern4 || pattern5 || pattern6 || pattern7  ) 
 		  {
-		 	 out_color = vec4(0.0, 0.0 ,0.0 ,1.0);
+		 	 out_color = vec4(background_color ,1.0);
 		  }
 		  else
 		  {

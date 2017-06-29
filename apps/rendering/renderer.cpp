@@ -237,6 +237,8 @@ upload_uniforms(lamure::ren::camera const& camera) const
     pass_filling_program_->uniform_sampler("depth_texture", 1);
     pass_filling_program_->uniform("win_size", scm::math::vec2f(win_x_, win_y_) );
 
+    pass_filling_program_->uniform("background_color", use_black_background_ ? scm::math::vec3f(0.0f) : scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B) );
+
 
     pass1_linked_list_accumulate_program_->uniform_image("linked_list_buffer", 0);
     pass1_linked_list_accumulate_program_->uniform_image("fragment_count_img", 1);
@@ -264,6 +266,8 @@ upload_uniforms(lamure::ren::camera const& camera) const
     pass3_repair_program_->uniform_sampler("in_color_texture", 0);
     pass3_repair_program_->uniform_sampler("depth_texture", 1);
     pass3_repair_program_->uniform("win_size", scm::math::vec2f(win_x_, win_y_) );
+
+    pass3_repair_program_->uniform("background_color", use_black_background_ ? scm::math::vec3f(0.0f) : scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B) );
 
     LQ_one_pass_program_->uniform("near_plane", near_plane_);
     LQ_one_pass_program_->uniform("far_plane", far_plane_);
