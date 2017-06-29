@@ -1,6 +1,7 @@
 #ifndef LAMURE_PVS_IRREGULAR_COMPRESSED_GRID_H
 #define LAMURE_PVS_IRREGULAR_COMPRESSED_GRID_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid_irregular.h"
 
 namespace lamure
@@ -8,7 +9,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_irregular_compressed : public grid_irregular
+class PVS_COMMON_DLL grid_irregular_compressed : public grid_irregular
 {
 public:
 	grid_irregular_compressed();

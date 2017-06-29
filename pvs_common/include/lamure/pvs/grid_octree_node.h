@@ -10,6 +10,7 @@
 
 #include <vector>
 
+#include <lamure/pvs/pvs.h>
 #include <lamure/types.h>
 #include "lamure/pvs/view_cell_regular.h"
 
@@ -18,7 +19,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_octree_node : public view_cell_regular
+class PVS_COMMON_DLL grid_octree_node : public view_cell_regular
 {
 public:
 	grid_octree_node();

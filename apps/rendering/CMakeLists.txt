@@ -1,17 +1,15 @@
 ############################################################
 # CMake Build Script for the rendering executable
 
-add_subdirectory(/opt/glm ${LIBRARY_OUTPUT_PATH}/rendering)
-include_directories(/opt/glm)
-
 link_directories(${SCHISM_LIBRARY_DIRS})
 
 include_directories(${REND_INCLUDE_DIR}
                     ${COMMON_INCLUDE_DIR}
                     ${PVS_COMMON_INCLUDE_DIR}
                     ${GLUT_INCLUDE_DIR}
+		                ${GLM_INCLUDE_DIR}
                     ${FREEIMAGE_INCLUDE_DIR}
-			        ${LAMURE_CONFIG_DIR})
+	            ${LAMURE_CONFIG_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
                            ${Boost_INCLUDE_DIR})

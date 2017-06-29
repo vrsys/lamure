@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/view_cell.h"
 #include "lamure/types.h"
 
@@ -11,10 +12,10 @@ namespace lamure
 namespace pvs
 {
 
-class grid
+class PVS_COMMON_DLL grid
 {
 public:
-	virtual ~grid() {}
+  virtual ~grid() = default;
 
 	virtual std::string get_grid_type() const = 0;
 

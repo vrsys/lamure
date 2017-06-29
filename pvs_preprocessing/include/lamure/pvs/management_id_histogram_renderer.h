@@ -8,6 +8,7 @@
 #ifndef LAMURE_PVS_MANAGEMENT_ID_HISTOGRAM_RENDERER_H_
 #define LAMURE_PVS_MANAGEMENT_ID_HISTOGRAM_RENDERER_H_
 
+#include <lamure/pvs/pvs_preprocessing.h>
 #include "lamure/pvs/management_base.h"
 
 namespace lamure
@@ -15,7 +16,7 @@ namespace lamure
 namespace pvs
 {
 
-class management_id_histogram_renderer : public management_base
+class PVS_PREPROCESSING_DLL management_id_histogram_renderer : public management_base
 {
 public:
                         management_id_histogram_renderer(std::vector<std::string> const& model_filenames,

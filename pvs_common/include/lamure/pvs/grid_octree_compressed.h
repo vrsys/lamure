@@ -8,6 +8,7 @@
 #ifndef LAMURE_PVS_GRID_OCTREE_COMPRESSED_H
 #define LAMURE_PVS_GRID_OCTREE_COMPRESSED_H
 
+#include <lamure/pvs/pvs.h>
 #include "lamure/pvs/grid_octree.h"
 
 namespace lamure
@@ -15,7 +16,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_octree_compressed : public grid_octree
+class PVS_COMMON_DLL grid_octree_compressed : public grid_octree
 {
 public:
 	grid_octree_compressed();

@@ -38,7 +38,6 @@ IF (MSVC)
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PVS_LIBRARY -DBOOST_ALL_NO_LIB")
 ENDIF(MSVC)
 
-
 set(PVS_COMMON_INCLUDE_DIR ${PROJECT_INCLUDE_DIR} PARENT_SCOPE)
 set(PVS_COMMON_LIBRARY ${PROJECT_NAME} PARENT_SCOPE)
 set(PVS_COMMON_LIBRARY ${PROJECT_NAME})
@@ -57,6 +56,12 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
     optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     )
+
+IF(MSVC)
+    target_link_libraries(${PROJECT_NAME} optimized ${ZLIB_LIBRARY_RELEASE} debug ${ZLIB_LIBRARY_DEBUG})
+ELSEIF(UNIX)
+    target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARY})
+ENDIF(MSVC)
 
 ###############################################################################
 # install 

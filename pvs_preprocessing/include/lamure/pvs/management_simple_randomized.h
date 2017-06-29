@@ -9,7 +9,9 @@
 #define LAMURE_PVS_MANAGEMENT_SIMPLE_RANDOMIZED_H_
 
 #include <chrono>
+#include <random>
 
+#include <lamure/pvs/pvs_preprocessing.h>
 #include "lamure/pvs/management_base.h"
 
 namespace lamure
@@ -17,7 +19,7 @@ namespace lamure
 namespace pvs
 {
 
-class management_simple_randomized : public management_base
+class PVS_PREPROCESSING_DLL management_simple_randomized : public management_base
 {
 public:
                         management_simple_randomized(std::vector<std::string> const& model_filenames,

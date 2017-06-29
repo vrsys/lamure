@@ -12,6 +12,7 @@
 #include <set>
 #include <map>
 
+#include <lamure/pvs/pvs.h>
 #include <scm/core/math.h>
 #include <lamure/types.h>
 #include "lamure/pvs/grid_octree_node.h"
@@ -21,7 +22,7 @@ namespace lamure
 namespace pvs
 {
 
-class grid_octree_hierarchical_node : public grid_octree_node
+class PVS_COMMON_DLL grid_octree_hierarchical_node : public grid_octree_node
 {
 public:
 	grid_octree_hierarchical_node();

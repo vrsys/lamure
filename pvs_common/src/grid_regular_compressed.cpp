@@ -164,11 +164,10 @@ load_visibility_from_file(const std::string& file_path)
 	for(size_t current_block_index = 0; current_block_index < this->get_cell_count(); ++current_block_index)
 	{
 		size_t block_size = visibility_block_sizes_[current_block_index];
+    std::vector<char> current_block_data(block_size);
+		file_in.read(&current_block_data[0], block_size);
 
-		char current_block_data[block_size];
-		file_in.read(current_block_data, block_size);
-
-		std::string current_block(current_block_data, block_size);
+		std::string current_block(&current_block_data[0], block_size);
 		compressed_data_blocks.push_back(current_block);
 	}
 
@@ -190,9 +189,8 @@ load_visibility_from_file(const std::string& file_path)
 		{
 			node_t num_nodes = ids_.at(model_index);
 			size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
-			char current_line_data[line_length];
-
-			stream_uncompressed.read(current_line_data, line_length);
+      std::vector<char> current_line_data(line_length);
+			stream_uncompressed.read(&current_line_data[0], line_length);
 
 			// Used to avoid continuing resize within visibility data.
 			current_cell->set_visibility(model_index, num_nodes - 1, false);
@@ -249,7 +247,7 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 
 	// Read compressed data block.
 	size_t block_size = visibility_block_sizes_[cell_index];
-	char current_block_data[block_size];
+  std::vector<char> current_block_data(block_size);
 
 	// Find proper position in file. First data is compresses block sizes (one 64 bit integer per view cell).
 	size_t file_position = visibility_block_sizes_.size() * sizeof(uint64_t);
@@ -259,8 +257,8 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 	}
 
 	file_in.seekg(file_position);
-	file_in.read(current_block_data, block_size);
-	std::string compressed_data_block(current_block_data, block_size);
+	file_in.read(&current_block_data[0], block_size);
+	std::string compressed_data_block(&current_block_data[0], block_size);
 
 	// Decompress.
 	std::stringstream stream_uncompressed, stream_compressed;
@@ -276,9 +274,9 @@ load_cell_visibility_from_file(const std::string& file_path, const size_t& cell_
 	{
 		node_t num_nodes = ids_.at(model_index);
 		size_t line_length = num_nodes / CHAR_BIT + (num_nodes % CHAR_BIT == 0 ? 0 : 1);
-		char current_line_data[line_length];
-
-		stream_uncompressed.read(current_line_data, line_length);
+    std::vector<char> current_line_data(line_length);
+    
+		stream_uncompressed.read(&current_line_data[0], line_length);
 
 		// Used to avoid continuing resize within visibility data.
 		current_cell->set_visibility(model_index, num_nodes - 1, false);

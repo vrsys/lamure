@@ -145,6 +145,20 @@ else()
   # include NNI alternative here
 endif (${LAMURE_USE_CGAL_FOR_NNI})
 
+################################
+# GLM
+################################
+include(find_glm)
+
+################################
+# ZLIB
+################################
+
+IF (MSVC)
+  set(ZLIB_ROOT ${GLOBAL_EXT_DIR}/zlib)
+ENDIF (MSVC)
+include (FindZLIB)
+
 ############################################################
 # Build 3rd-party
 
