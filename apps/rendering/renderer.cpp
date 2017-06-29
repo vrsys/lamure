@@ -422,7 +422,8 @@ render_one_pass_LQ(lamure::context_t context_id,
     {
       
       context_->clear_default_depth_stencil_buffer();
-      context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_black_background_ ? vec4f(0.0f, 0.0f, 0.0f, 1.0f) : vec4f(1.0f, 1.0f, 1.0f, 1.0f));
+      context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_black_background_ ? vec4f(0.0f, 0.0f, 0.0f, 1.0f) : 
+        vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));
       //context_->clear_default_color_buffer();
 
 
@@ -950,7 +951,8 @@ render_two_pass_HQ(lamure::context_t context_id,
         //context_->set_default_frame_buffer();
         context_->clear_color_buffer(pass3_normalization_fbo_, 0, vec4( 0.0, 0.0, 0.0, 0.0) );
         context_->clear_color_buffer(pass3_normalization_fbo_, 1, vec3( 0.0, 0.0, 0.0) );
-
+        
+        
         context_->set_frame_buffer(pass3_normalization_fbo_);
 
         context_->set_depth_stencil_state(depth_state_disable_);
@@ -978,6 +980,9 @@ render_two_pass_HQ(lamure::context_t context_id,
     ****************************************************************************************/
     {
         context_->set_default_frame_buffer();
+        //context_->clear_default_color_buffer(FRAMEBUFFER_BACK, use_black_background_ ? vec4f(0.0f, 0.0f, 0.0f, 1.0f) : 
+          //vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));
+
         context_->bind_program(pass_filling_program_);
 
         context_->bind_texture(pass3_normalization_color_texture_, filter_nearest_,   0);

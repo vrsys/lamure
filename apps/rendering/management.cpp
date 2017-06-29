@@ -450,41 +450,6 @@ MainLoop()
 
     resolve_movement(frame_time);
 
-    /*
-    case GLUT_KEY_UP:
-        is_moving_forward_ = true;
-      if(fast_travel_) {
-        active_camera_->translate(0.0f, 0.0f, 10.0f);
-      } else {
-        active_camera_->translate(0.0f, 0.0f, 1.0f);
-      }
-      break;
-    case GLUT_KEY_DOWN:
-        is_moving_backward_ = true;
-      if(fast_travel_) {
-        active_camera_->translate(0.0f, 0.0f, -10.0f);
-      } else {
-        active_camera_->translate(0.0f, 0.0f, -1.0f);
-      }
-      break;
-    case GLUT_KEY_LEFT:
-        is_moving_left_ = true;
-      if(fast_travel_) {
-        active_camera_->translate(10.0f, 0.0f, 0.0f);
-      } else {
-        active_camera_->translate(1.0f, 0.0f, 0.0f);
-      }
-      break;
-    case GLUT_KEY_RIGHT:
-        is_moving_right_ = true;
-      if(fast_travel_) {
-        active_camera_->translate(-10.0f, 0.0f, 0.0f);
-      } else {
-        active_camera_->translate(-1.0f, 0.0f, .0f);
-      }
-      break;
-*/
-
     current_update_timeout_timer_ += frame_time;
 
     return signal_shutdown;
@@ -753,18 +718,36 @@ dispatchKeyboardInput(unsigned char key)
 
     case 'f':
       {
-	++travel_speed_mode_;
-	if(travel_speed_mode_ > 3){
-	  travel_speed_mode_ = 0;
-	}
-	const float travel_speed = (travel_speed_mode_ == 0 ? 0.5f
-				    : travel_speed_mode_ == 1 ? 20.5f
-				    : travel_speed_mode_ == 2 ? 100.5f
-				    : 300.5f);
-	std::cout << "setting travel speed to " << travel_speed << std::endl;
-	for (auto& cam : cameras_){ 
-	  cam->set_dolly_sens_(travel_speed);
-	}
+	      ++travel_speed_mode_;
+	      if(travel_speed_mode_ > 4){
+	        travel_speed_mode_ = 0;
+	      }
+	      const float travel_speed = (travel_speed_mode_ == 0 ? 0.5f
+				          : travel_speed_mode_ == 1 ? 5.5f
+				          : travel_speed_mode_ == 2 ? 20.5f
+				          : travel_speed_mode_ == 3 ? 100.5f
+				          : 300.5f);
+	      std::cout << "setting travel speed to " << travel_speed << std::endl;
+	      for (auto& cam : cameras_){ 
+	        cam->set_dolly_sens_(travel_speed);
+	      }
+      }
+      break;
+      
+      case 'F':
+      {
+	      if(travel_speed_mode_ > 0){
+	        --travel_speed_mode_;
+	      }
+	      const float travel_speed = (travel_speed_mode_ == 0 ? 0.5f
+				          : travel_speed_mode_ == 1 ? 5.5f
+				          : travel_speed_mode_ == 2 ? 20.5f
+				          : travel_speed_mode_ == 3 ? 100.5f
+				          : 300.5f);
+	      std::cout << "setting travel speed to " << travel_speed << std::endl;
+	      for (auto& cam : cameras_){ 
+	        cam->set_dolly_sens_(travel_speed);
+	      }
       }
       break;
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
