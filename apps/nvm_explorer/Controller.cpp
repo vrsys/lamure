@@ -52,7 +52,7 @@ void Controller::handle_movements(int time_delta)
     new_rotation = new_rotation * new_rotation_y;
     _renderer.get_camera_view().set_rotation(new_rotation);
 
-    float speed = 0.002f * time_delta;
+    float speed = 0.04f * time_delta;
     scm::math::vec3f offset = scm::math::vec3f(0.0f, 0.0f, 0.0f);
 
     if(_keys[int('w')] || _keys[int('W')])
@@ -88,6 +88,10 @@ void Controller::handle_movements(int time_delta)
     }
     else
     {
+        if(_keys_special[112])
+        {
+            offset *= 0.125;
+        }
         // std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
         _renderer.get_camera_view().translate(offset);

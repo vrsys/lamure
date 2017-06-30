@@ -52,8 +52,8 @@ class Camera_View
 {
   private:
     scm::math::vec3f _position_initial = scm::math::vec3f(0.0f, 0.0f, 10.0f);
-    scm::math::quat<double> _rotation_initial = scm::math::quat<double>::identity();
-    // scm::math::quat<double>  _rotation_initial = scm::math::quat<double>::from_axis(180.0, scm::math::vec3d(0.0, 1.0, 0.0));
+    // scm::math::quat<double> _rotation_initial = scm::math::quat<double>::identity();
+    scm::math::quat<double> _rotation_initial = scm::math::quat<double>::from_axis(180.0, scm::math::vec3d(0.0, 0.0, 1.0));
     scm::math::vec3f _position = _position_initial;
     scm::math::quat<double> _rotation = _rotation_initial;
     scm::math::mat4f _matrix_view;
