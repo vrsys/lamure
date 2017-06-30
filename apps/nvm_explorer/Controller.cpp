@@ -81,8 +81,9 @@ void Controller::handle_movements(int time_delta)
         offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
     }
 
-    if(_keys_special[114]) // ctrl is pressed
+    if(_keys_special[116]) // ctrl is pressed
     {
+        offset *= 0.25;
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
         _renderer.translate_sphere(offset);
     }
@@ -118,6 +119,7 @@ void Controller::handle_movements(int time_delta)
     float radius = 0.0f;
     if(_keys[int('x')] || _keys[int('X')])
     {
+        std::cout << radius << std::endl;
         radius += -0.001f * time_delta;
     }
     if(_keys[int('c')] || _keys[int('C')])
@@ -125,7 +127,7 @@ void Controller::handle_movements(int time_delta)
         radius += 0.001f * time_delta;
     }
 
-    if(_keys_special[114]) // ctrl is pressed
+    if(_keys_special[116]) // ctrl is pressed
     {
         _renderer.update_radius_sphere(radius);
     }
