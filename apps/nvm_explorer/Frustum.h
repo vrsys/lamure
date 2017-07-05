@@ -55,8 +55,8 @@ class Frustum
 
     void init(scm::shared_ptr<scm::gl::render_device> device);
     void update_scale_frustum(float offset);
-    float& get_scale();
-    scm::gl::vertex_array_ptr const& get_vertex_array_object();
+    float &get_scale();
+    scm::gl::vertex_array_ptr const &get_vertex_array_object();
 
   private:
     scm::math::vec3f _near_left_top = scm::math::vec3f(-0.5, 0.5, 0.0);
@@ -67,12 +67,12 @@ class Frustum
     scm::math::vec3f _far_right_top = scm::math::vec3f(1.0, 1.0, 0.0);
     scm::math::vec3f _far_left_bottom = scm::math::vec3f(-1.0, -1.0, 0.0);
     scm::math::vec3f _far_right_bottom = scm::math::vec3f(1.0, -1.0, 0.0);
-    
+
     float _image_width_world;
     float _image_height_world;
     double _focal_length;
 
-    float _scale = 20.0f;
+    float _scale = 200.0f;
 
     scm::gl::vertex_array_ptr _vertex_array_object;
 

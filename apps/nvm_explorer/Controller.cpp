@@ -10,11 +10,11 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
     _renderer.init(argv, _device, width_window, height_window, name_file_bvh);
     _scene.init(_device);
 
-//    for(int i = 0; i < 1024; ++i)
-//    {
-//        _keys[i] = false;
-//        _keys_special[i] = false;
-//    };
+    //    for(int i = 0; i < 1024; ++i)
+    //    {
+    //        _keys[i] = false;
+    //        _keys_special[i] = false;
+    //    };
 }
 
 bool Controller::update(int time_delta)
@@ -80,22 +80,22 @@ void Controller::handle_movements(int time_delta)
         offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
     }
 
-//    if(_keys_special[116]) // ctrl is pressed
-//    {
-//        offset *= 0.25;
-//        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
-//        _renderer.translate_sphere(offset);
-//    }
-//    else
-//    {
-        if(_keys_special[112]) // Shift
+    if(_keys['h']) // ctrl is pressed
+    {
+        offset *= 0.25;
+        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+        _renderer.translate_sphere(offset);
+    }
+    else
+    {
+        if(_keys['g']) // Shift
         {
             offset *= 0.125;
         }
         // std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
         _renderer.get_camera_view().translate(offset);
-//    }
+    }
 
     if(_keys['k'])
     {
@@ -126,10 +126,7 @@ void Controller::handle_movements(int time_delta)
         radius += 0.001f * time_delta;
     }
 
-    if(_keys_special[116]) // ctrl is pressed
-    {
-        _renderer.update_radius_sphere(radius);
-    }
+    _renderer.update_radius_sphere(radius);
 }
 void Controller::handle_mouse_movement(int x, int y)
 {
