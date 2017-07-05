@@ -372,16 +372,17 @@ void Renderer::toggle_is_camera_active() { is_camera_active = !is_camera_active;
 
 void Renderer::previous_camera(Scene scene)
 {
-    index_current_image_camera -= 1;
-    if(index_current_image_camera == -1)
+    if(index_current_image_camera == 0)
     {
         index_current_image_camera = scene.get_vector_camera().size() - 1;
+    }else{
+        index_current_image_camera--;
     }
 }
 
 void Renderer::next_camera(Scene scene)
 {
-    index_current_image_camera += 1;
+    index_current_image_camera++;
     if(index_current_image_camera == scene.get_vector_camera().size())
     {
         index_current_image_camera = 0;

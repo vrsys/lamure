@@ -390,7 +390,7 @@ void main()
         }
         case 3:
         {
-            VertexOut.pass_point_color = vec3(prov_float3 / 255, prov_float4 / 255, prov_float5 / 255);
+            VertexOut.pass_point_color = vec3(prov_float3 / 255.0, prov_float4 / 255.0, prov_float5 / 255.0);
             break;
         }
         }

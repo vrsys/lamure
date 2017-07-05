@@ -181,6 +181,12 @@ class Camera
         _fp_resolution_x = result.LensInfo.FocalPlaneResolutionUnit == 2 ? result.LensInfo.FocalPlaneXResolution / 0.0254 : result.LensInfo.FocalPlaneXResolution / 0.01;
         _fp_resolution_y = result.LensInfo.FocalPlaneResolutionUnit == 2 ? result.LensInfo.FocalPlaneYResolution / 0.0254 : result.LensInfo.FocalPlaneYResolution / 0.01;
 
+        if(_fp_resolution_x == 0 && _fp_resolution_y == 0)
+        {
+            _fp_resolution_x = 5715.545755 / 0.0254;
+            _fp_resolution_y = 5808.403361 / 0.0254;
+        }
+
         // if(DEBUG)
         // printf("Focal length: %f, FP Resolution X: %f, Y: %f\n", _focal_length, _fp_resolution_x, _fp_resolution_y);
     }

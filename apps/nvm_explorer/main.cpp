@@ -260,14 +260,15 @@ void glut_keyboard(unsigned char key, int x, int y)
 {
     switch(key)
     {
-    case 27:
+    case 27: // escape
         glutExit();
         exit(0);
         break;
     case '.':
         glutFullScreenToggle();
+        break;
     default:
-        // std::cout << key << std::endl;
+//         std::cout << key << std::endl;
         controller->handle_key_pressed(key);
         break;
     }

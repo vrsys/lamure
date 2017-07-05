@@ -1,14 +1,12 @@
 from .entities import *
 from .formats import *
-from euclid import *
-
 
 class FormatSparseNVMV3(FormatSparsePro):
 
     def __init__(self, path_to_nvm_file):
         self.file_path_nvm = path_to_nvm_file
         self.length_meta_data_camera = 0
-        self.length_max_file_path = 0x16
+        self.length_max_file_path = 0x26
         self.length_meta_data_spoints = 0
         self.init()
 

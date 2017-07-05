@@ -11,8 +11,8 @@ class Controller
     Scene _scene;
     Renderer _renderer;
     scm::shared_ptr<scm::gl::render_device> _device;
-    bool _keys[1024];
-    bool _keys_special[1024];
+    std::map<char, bool> _keys;
+    std::map<char, bool> _keys_special;
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
     bool _is_first_mouse_movement = false;

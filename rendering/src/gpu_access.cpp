@@ -36,9 +36,9 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     data_provenance.add_item(item_float);
     data_provenance.add_item(item_float);
 
-    // data_provenance.add_item(item_float);
-    // data_provenance.add_item(item_float);
-    // data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float);
 
     num_slots_ = num_slots;
     std::cout << "slots: " << num_slots << std::endl;

@@ -10,11 +10,11 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
     _renderer.init(argv, _device, width_window, height_window, name_file_bvh);
     _scene.init(_device);
 
-    for(int i = 0; i < 1024; ++i)
-    {
-        _keys[i] = false;
-        _keys_special[i] = false;
-    };
+//    for(int i = 0; i < 1024; ++i)
+//    {
+//        _keys[i] = false;
+//        _keys_special[i] = false;
+//    };
 }
 
 bool Controller::update(int time_delta)
@@ -55,74 +55,73 @@ void Controller::handle_movements(int time_delta)
     float speed = 0.04f * time_delta;
     scm::math::vec3f offset = scm::math::vec3f(0.0f, 0.0f, 0.0f);
 
-    if(_keys[int('w')] || _keys[int('W')])
+    if(_keys['w'] || _keys['W'])
     {
-        // std::cout << "forward" << std::endl;
         offset += scm::math::vec3f(0.0f, 0.0f, -1.0f) * speed;
     }
-    if(_keys[int('s')] || _keys[int('S')])
+    if(_keys['s'] || _keys['S'])
     {
         offset += scm::math::vec3f(0.0f, 0.0f, 1.0f) * speed;
     }
-    if(_keys[int('a')] || _keys[int('A')])
+    if(_keys['a'] || _keys['A'])
     {
         offset += scm::math::vec3f(-1.0f, 0.0f, 0.0f) * speed;
     }
-    if(_keys[int('d')] || _keys[int('D')])
+    if(_keys['d'] || _keys['D'])
     {
         offset += scm::math::vec3f(1.0f, 0.0f, 0.0f) * speed;
     }
-    if(_keys[int('q')] || _keys[int('Q')])
+    if(_keys['q'] || _keys['Q'])
     {
         offset += scm::math::vec3f(0.0f, 1.0f, 0.0f) * speed;
     }
-    if(_keys[int('e')] || _keys[int('E')])
+    if(_keys['e'] || _keys['E'])
     {
         offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
     }
 
-    if(_keys_special[116]) // ctrl is pressed
-    {
-        offset *= 0.25;
-        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
-        _renderer.translate_sphere(offset);
-    }
-    else
-    {
-        if(_keys_special[112])
+//    if(_keys_special[116]) // ctrl is pressed
+//    {
+//        offset *= 0.25;
+//        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+//        _renderer.translate_sphere(offset);
+//    }
+//    else
+//    {
+        if(_keys_special[112]) // Shift
         {
             offset *= 0.125;
         }
         // std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
         _renderer.get_camera_view().translate(offset);
-    }
+//    }
 
-    if(_keys[int('k')])
+    if(_keys['k'])
     {
         _scene.update_scale_frustum(0.03f * time_delta);
     }
-    if(_keys[int('j')])
+    if(_keys['j'])
     {
         _scene.update_scale_frustum(-0.03f * time_delta);
     }
 
-    if(_keys[int('v')])
+    if(_keys['v'])
     {
         _renderer.update_size_point(-0.0004f * time_delta);
     }
-    if(_keys[int('b')])
+    if(_keys['b'])
     {
         _renderer.update_size_point(0.0004f * time_delta);
     }
 
     float radius = 0.0f;
-    if(_keys[int('x')] || _keys[int('X')])
+    if(_keys['x'] || _keys['X'])
     {
         std::cout << radius << std::endl;
         radius += -0.001f * time_delta;
     }
-    if(_keys[int('c')] || _keys[int('C')])
+    if(_keys['c'] || _keys['C'])
     {
         radius += 0.001f * time_delta;
     }
@@ -179,13 +178,13 @@ void Controller::handle_mouse_movement(int x, int y)
     // render_manager.direction_camera = glm::normalize(front);
 }
 
-void Controller::handle_key_pressed(char key) { _keys[int(key)] = true; }
+void Controller::handle_key_pressed(char key) { _keys[key] = true; }
 void Controller::handle_key_special_pressed(int key) { _keys_special[key] = true; }
 void Controller::handle_key_special_released(int key) { _keys_special[key] = false; }
 void Controller::handle_key_released(char key)
 {
     // std::cout << key << " " << (char)int(key) << std::endl;
-    _keys[int(key)] = false;
+    _keys[key] = false;
 
     if(key == 'i')
     {
@@ -242,42 +241,42 @@ void Controller::handle_key_released(char key)
 
     if(key == 'w' || key == 'W')
     {
-        _keys[int('w')] = false;
-        _keys[int('W')] = false;
+        _keys['w'] = false;
+        _keys['W'] = false;
     }
     if(key == 's' || key == 'S')
     {
-        _keys[int('s')] = false;
-        _keys[int('S')] = false;
+        _keys['s'] = false;
+        _keys['S'] = false;
     }
     if(key == 'a' || key == 'A')
     {
-        _keys[int('a')] = false;
-        _keys[int('A')] = false;
+        _keys['a'] = false;
+        _keys['A'] = false;
     }
     if(key == 'd' || key == 'D')
     {
-        _keys[int('d')] = false;
-        _keys[int('D')] = false;
+        _keys['d'] = false;
+        _keys['D'] = false;
     }
     if(key == 'q' || key == 'Q')
     {
-        _keys[int('q')] = false;
-        _keys[int('Q')] = false;
+        _keys['q'] = false;
+        _keys['Q'] = false;
     }
     if(key == 'e' || key == 'E')
     {
-        _keys[int('e')] = false;
-        _keys[int('E')] = false;
+        _keys['e'] = false;
+        _keys['E'] = false;
     }
     if(key == 'x' || key == 'X')
     {
-        _keys[int('x')] = false;
-        _keys[int('X')] = false;
+        _keys['x'] = false;
+        _keys['X'] = false;
     }
     if(key == 'c' || key == 'C')
     {
-        _keys[int('c')] = false;
-        _keys[int('C')] = false;
+        _keys['c'] = false;
+        _keys['C'] = false;
     }
 }

@@ -3,7 +3,7 @@
 Camera_Custom::Camera_Custom(prov::Camera camera) : prov::Camera(camera)
 {
     update_transformation();
-
+    std::cout << _fp_resolution_x << std::endl;
     float width_world = (1.0f / _fp_resolution_x) * _im_width;
     float height_world = (1.0f / _fp_resolution_y) * _im_height;
     _frustum = Frustum(width_world, height_world, _focal_length);
@@ -74,7 +74,7 @@ std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector
 void Camera_Custom::load_texture(scm::shared_ptr<scm::gl::render_device> device)
 {
     scm::gl::texture_loader tl;
-    std::cout << "creating texture" << std::endl;
+    //std::cout << "creating texture" << std::endl;
     // _texture.reset();
     _texture = tl.load_texture_2d(*device, _im_file_name, true, false);
 

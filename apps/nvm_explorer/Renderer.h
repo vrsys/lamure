@@ -80,7 +80,7 @@ class Renderer
     bool is_default_camera = true;
 
     bool is_camera_active = false;
-    int index_current_image_camera = 0;
+    unsigned long index_current_image_camera = 0;
 
   private:
     scm::shared_ptr<scm::gl::render_context> _context;
