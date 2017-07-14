@@ -91,7 +91,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
                     std::cout << item.get_type() << std::endl;
                     break;
                 }
-                counter++;
+                ++counter;
             }
         }
 

@@ -22,6 +22,8 @@
 
 void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh)
 {
+    //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
+
     _camera_view.update_window_size(width_window, height_window);
 
     _device = device;
@@ -64,6 +66,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     _program_lines = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
+    // // create shader program for legend
+    // scm::io::read_text_file(root_path + "/provenance_legend.glslv", visibility_vs_source);
+    // scm::io::read_text_file(root_path + "/provenance_legend.glslf", visibility_fs_source);
+    // _program_legend = device->create_program(
+    //     boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+
     // create shader program for dense points
     scm::io::read_text_file(root_path + "/lq_one_pass.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/lq_one_pass.glslg", visibility_gs_source);
@@ -85,12 +93,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     lamure::ren::policy *policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(64);
 
-    policy->set_render_budget_in_mb(3000);
+    policy->set_render_budget_in_mb(5000);
     // policy->set_render_budget_in_mb(1024 * 6);
     // policy->set_render_budget_in_mb(1024 * 40);
     // policy->set_render_budget_in_mb(256);
 
-    policy->set_out_of_core_budget_in_mb(3000);
+    policy->set_out_of_core_budget_in_mb(5000);
     // policy->set_out_of_core_budget_in_mb(1024 * 3);
     // policy->set_out_of_core_budget_in_mb(1024 * 20);
     // policy->set_out_of_core_budget_in_mb(256);
@@ -211,12 +219,13 @@ void Renderer::draw_frustra(Scene &scene)
 void Renderer::draw_points_dense(Scene &scene)
 {
     _context->bind_program(_program_points_dense);
+    _context->apply();
 
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
     lamure::ren::controller *controller = lamure::ren::controller::get_instance();
     lamure::ren::cut_database *cuts = lamure::ren::cut_database::get_instance();
 
-    controller->reset_system();
+    // controller->reset_system();
     lamure::context_t context_id = controller->deduce_context_id(0);
 
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(0));
@@ -247,7 +256,8 @@ void Renderer::draw_points_dense(Scene &scene)
 
     lamure::view_t view_id = controller->deduce_view_id(context_id, _camera->view_id());
 
-    _context->bind_vertex_array(controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, _device));
+    scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, _device);
+    _context->bind_vertex_array(memory);
 
     _context->apply();
 
@@ -270,7 +280,11 @@ void Renderer::draw_points_dense(Scene &scene)
     scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
     scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
 
-    // std::cout << model_view_projection_matrix << std::endl;
+    // if(_state_lense == 1)
+    // {
+    //     draw_legend();
+    // }
+
     _program_points_dense->uniform("near_plane", 0.01f);
     _program_points_dense->uniform("far_plane", 1000.0f);
     _program_points_dense->uniform("point_size_factor", 5.0f);
@@ -294,17 +308,37 @@ void Renderer::draw_points_dense(Scene &scene)
 
     _context->apply();
     int counter = 0;
+
+    std::cout << "Before drawing dense points!!!\n";
     for(auto const &node_slot_aggregate : renderable)
     {
         uint32_t node_culling_result = _camera->cull_against_frustum(frustum_by_model, bounding_box_vector[node_slot_aggregate.node_id_]);
 
         if(node_culling_result != 1)
         {
-            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, surfels_per_node);
+            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int64_t)(node_slot_aggregate.slot_id_) * (int64_t)surfels_per_node, 100);
+            std::cout << "Drawing dense points!!!: " << surfels_per_node << "\n";
         }
         // if(++counter == 10) break;
     }
 }
+
+// void Renderer::draw_legend()
+// {
+//     // _context->bind_program(_program_legend);
+
+//     // float scale_x = 0.2f;
+//     // float scale_y = 0.06f;
+//     // float margin = 0.05;
+
+//     // scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(-1.0f + scale_x + margin, -1.0f + scale_y + margin, 0.0f));
+//     // scm::math::mat4f matrix_scale = scm::math::make_scale(scm::math::vec3f(scale_x, scale_y, 1.0f));
+
+//     // scm::math::mat4f matrix_model = matrix_translation * matrix_scale;
+//     // _program_legend->uniform("matrix_model", matrix_model);
+//     // _context->apply();
+//     // _quad_legend->draw(_context);
+// }
 
 void Renderer::render(Scene &scene)
 {
@@ -317,16 +351,18 @@ void Renderer::render(Scene &scene)
 
     _context->set_default_frame_buffer();
 
-    draw_cameras(scene);
-    draw_frustra(scene);
-    if(mode_draw_lines)
-    {
-        draw_lines(scene);
-    }
-    if(mode_draw_images)
-    {
-        draw_images(scene);
-    }
+    /*
+        draw_cameras(scene);
+        draw_frustra(scene);
+        if(mode_draw_lines)
+        {
+            draw_lines(scene);
+        }
+        if(mode_draw_images)
+        {
+            draw_images(scene);
+        }
+    */
     if(mode_draw_points_dense)
     {
         draw_points_dense(scene);
@@ -375,7 +411,9 @@ void Renderer::previous_camera(Scene scene)
     if(index_current_image_camera == 0)
     {
         index_current_image_camera = scene.get_vector_camera().size() - 1;
-    }else{
+    }
+    else
+    {
         index_current_image_camera--;
     }
 }

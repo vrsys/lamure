@@ -1152,6 +1152,15 @@ compile_transfer_list() {
 void cut_update_pool::
 split_node(const cut_update_index::action& action) {
 
+
+    //hack: split until depth-1
+    const auto bvh = model_database::get_instance()->get_model(action.model_id_)->get_bvh();
+    if (bvh->get_depth_of_node(action.node_id_) >= bvh->get_depth()-1) {
+      index_->reject_action(action);
+      return;
+    } 
+
+
     std::vector<node_t> child_ids;
     index_->get_all_children(action.model_id_, action.node_id_, child_ids);
 
