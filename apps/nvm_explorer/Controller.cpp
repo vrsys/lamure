@@ -207,6 +207,10 @@ void Controller::handle_key_released(char key)
     {
         _renderer.mode_draw_images = !_renderer.mode_draw_images;
     }
+    else if(key == ',')
+    {
+        _renderer.mode_draw_cameras = !_renderer.mode_draw_cameras;
+    }
     else if(key == 'l')
     {
         _renderer.mode_draw_lines = !_renderer.mode_draw_lines;

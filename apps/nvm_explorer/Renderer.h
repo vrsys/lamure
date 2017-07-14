@@ -74,6 +74,7 @@ class Renderer
     bool mode_draw_points_dense = false;
     bool mode_draw_images = true;
     bool mode_draw_lines = false;
+    bool mode_draw_cameras = true;
     int mode_prov_data = 0;
     bool dispatch = true;
 

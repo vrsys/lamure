@@ -183,7 +183,9 @@ void Renderer::draw_lines(Scene &scene)
         {
             _context->bind_vertex_array(camera.get_vertex_array_object_lines());
             _context->apply();
-            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, camera.get_count_points_sparse() * 2);
+
+            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, (int)((float)(camera.get_count_points_sparse() * 2)) / 10.0f);
+            // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, camera.get_count_points_sparse() * 2);
         }
     }
 }
@@ -317,8 +319,11 @@ void Renderer::render(Scene &scene)
 
     _context->set_default_frame_buffer();
 
-    draw_cameras(scene);
-    draw_frustra(scene);
+    if(mode_draw_cameras)
+    {
+        draw_cameras(scene);
+        draw_frustra(scene);
+    }
     if(mode_draw_lines)
     {
         draw_lines(scene);
@@ -375,7 +380,9 @@ void Renderer::previous_camera(Scene scene)
     if(index_current_image_camera == 0)
     {
         index_current_image_camera = scene.get_vector_camera().size() - 1;
-    }else{
+    }
+    else
+    {
         index_current_image_camera--;
     }
 }
