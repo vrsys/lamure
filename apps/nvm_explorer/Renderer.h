@@ -92,6 +92,9 @@ class Renderer
     scm::gl::program_ptr _program_images;
     scm::gl::program_ptr _program_frustra;
     scm::gl::program_ptr _program_lines;
+    scm::gl::program_ptr _program_legend;
+
+    // scm::shared_ptr<scm::gl::quad_geometry> _quad_legend;
 
     scm::gl::rasterizer_state_ptr _rasterizer_state;
 
@@ -112,6 +115,7 @@ class Renderer
     void draw_images(Scene &scene);
     void draw_frustra(Scene &scene);
     void draw_points_dense(Scene &scene);
+    // void draw_legend();
 };
 
 #endif // LAMURE_RENDERER_H
