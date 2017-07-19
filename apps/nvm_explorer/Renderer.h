@@ -102,7 +102,7 @@ class Renderer
     Camera_View _camera_view;
     lamure::ren::camera *_camera = new lamure::ren::camera();
 
-    float _radius_sphere = 3.0;
+    float _radius_sphere = 300.0;
     scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
     int _state_lense = 0;
 
