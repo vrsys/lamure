@@ -124,24 +124,35 @@ int main(int argc, char *argv[])
     // return 1;
     // return write_dummy_binary_file();
 
-    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-s") || !cmd_option_exists(argv, argv + argc, "-d"))
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-d"))
     {
         std::cout << "Usage: " << argv[0] << "<flags> -s <input_file>.nvm" << std::endl
                   << "INFO: nvm_explorer " << std::endl
-                  << "\t-s: selects sparse.prov input file" << std::endl
-                  << "\t    (-s flag is required) " << std::endl
                   << "\t-d: selects .bvh input file" << std::endl
                   << "\t    (-d flag is required) " << std::endl
+                  << "\t[-s: selects sparse.prov input file]" << std::endl
+                  << "\t    (-s flag is optional) " << std::endl
                   << std::endl;
         return 0;
     }
 
-    std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
-    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
-    prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
-    prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
-    cache_sparse.cache();
-    in_sparse.close();
+    initialize_glut(argc, argv, width_window, height_window);
+
+    Scene scene;
+    prov::SparseCache *cache_sparse;
+    if(cmd_option_exists(argv, argv + argc, "-s"))
+    {
+        std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
+        prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+        prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+        cache_sparse = new prov::SparseCache(in_sparse, in_sparse_meta);
+        cache_sparse->cache();
+        in_sparse.close();
+
+        std::vector<prov::Camera> vec_camera = cache_sparse->get_cameras();
+        std::vector<prov::SparsePoint> vec_point = cache_sparse->get_points();
+        scene = Scene(vec_point, vec_camera);
+    }
 
     // std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-s"));
 
@@ -157,11 +168,7 @@ int main(int argc, char *argv[])
     //     // Initialization failed
     // }
 
-    initialize_glut(argc, argv, width_window, height_window);
-
     // ifstream in(name_file_nvm);
-    std::vector<prov::Camera> vec_camera = cache_sparse.get_cameras();
-    std::vector<prov::SparsePoint> vec_point = cache_sparse.get_points();
     // vector<Point> vec_point_sparse;
     // vector<Point> vec_point_dense;
     // vector<Image> vec_image;
@@ -181,7 +188,7 @@ int main(int argc, char *argv[])
     //  std::cout << "vec_image: " << vec_image.size() << std::endl;
 
     // Scene scene = Scene(in_sparse,in_sparse_meta);
-    Scene scene(vec_point, vec_camera);
+
     // Scene scene(cache_sparse);
 
     controller = new Controller(scene, argv, width_window, height_window, std::string(get_cmd_option(argv, argv + argc, "-d")));
@@ -268,7 +275,7 @@ void glut_keyboard(unsigned char key, int x, int y)
         glutFullScreenToggle();
         break;
     default:
-//         std::cout << key << std::endl;
+        //         std::cout << key << std::endl;
         controller->handle_key_pressed(key);
         break;
     }

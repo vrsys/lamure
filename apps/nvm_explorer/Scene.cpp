@@ -1,17 +1,20 @@
 #include "Scene.h"
 
-Scene::Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera) : _vector_point(vector_point)
+Scene::Scene() {}
+
+Scene::Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Camera> &vector_camera) : _vector_point(vector_point)
 {
     int counter = 0;
     for(prov::Camera const &camera : vector_camera)
     {
-        // if(counter++ == 0)
+        Camera_Custom camera_new = Camera_Custom(camera);
+        _vector_camera.push_back(camera_new);
+
+        if(counter++ == 10)
         {
-            Camera_Custom camera_new = Camera_Custom(camera);
-            _vector_camera.push_back(camera_new);
+            break;
         }
     }
-    // _vector_camera(vector_camera)
 }
 
 // Scene::Scene(prov::SparseCache const &cache_sparse) : _cache_sparse(cache_sparse)

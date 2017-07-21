@@ -22,8 +22,8 @@ class SparseCache : public Cacheable<SparsePoint>
         cache_cameras();
     }
 
-    const vec<prov::Camera> &get_cameras() const { return _cameras; }
-    const vec<prov::MetaData> &get_cameras_metadata() const { return _cameras_metadata; }
+    const vec<prov::Camera> get_cameras() const { return _cameras; }
+    const vec<prov::MetaData> get_cameras_metadata() const { return _cameras_metadata; }
 
   protected:
     void cache_cameras()

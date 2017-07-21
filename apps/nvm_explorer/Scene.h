@@ -59,7 +59,8 @@
 class Scene
 {
   public:
-    Scene(std::vector<prov::SparsePoint> vector_point, std::vector<prov::Camera> vector_camera);
+    Scene();
+    Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Camera> &vector_camera);
 
     void init(scm::shared_ptr<scm::gl::render_device> device);
     scm::gl::vertex_array_ptr get_vertex_array_object_points();
