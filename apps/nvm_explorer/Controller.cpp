@@ -7,16 +7,14 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
     // initialize device
     _device.reset(new scm::gl::render_device());
 
-    _renderer.init(argv, _device, width_window, height_window, name_file_bvh, data_provenance);
+    _scene.init(_device);
 
-    if(_scene.get_vector_point().size() != 0)
-    {
-        _scene.init(_device);
-    }
-    else
+    if(_scene.get_vector_point().size() == 0)
     {
         _renderer.dense_points_only = true;
     }
+
+    _renderer.init(argv, _device, width_window, height_window, name_file_bvh, data_provenance);
 }
 
 bool Controller::update(int time_delta)

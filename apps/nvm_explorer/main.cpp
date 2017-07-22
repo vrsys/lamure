@@ -67,82 +67,20 @@ char *get_cmd_option(char **begin, char **end, const std::string &option)
     return 0;
 }
 
-bool write_dummy_binary_file()
-{
-    std::cout << "sizes: " << std::endl;
-    std::cout << "size of int: " << sizeof(int) << std::endl;
-    std::cout << "size of float: " << sizeof(float) << std::endl;
-    std::cout << "size of double: " << sizeof(double) << std::endl;
-    std::ofstream ofile("dummy_binary_file.bin", std::ios::binary);
-    for(int i = 0; i < 36022860 / 4.0f; ++i)
-    // for (int i = 0; i < 4434885; ++i)
-    {
-        float f = 0.0f;
-        ofile.write((char *)&f, sizeof(float));
-        // ofile.write((char*) &f, sizeof(float));
-        // f = 1.0f;
-        // ofile.write((char*) &f, sizeof(float));
-
-        // const float f = double(rand()) / double(RAND_MAX);
-        // ofile.write((char*) &f, sizeof(float));
-
-        // const float f = double(rand()) / double(RAND_MAX);
-        // ofile.write((char*) &f, sizeof(float));
-
-        // const double f = double(rand()) / double(RAND_MAX);
-        // ofile.write((char*) &f, sizeof(double));
-    }
-    return true;
-}
-
 bool cmd_option_exists(char **begin, char **end, const std::string &option) { return std::find(begin, end, option) != end; }
 
 int main(int argc, char *argv[])
 {
-    lamure::ren::Data_Provenance data_provenance;
-
-    lamure::ren::Item_Provenance item_float(
-        // lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
-        lamure::ren::Item_Provenance::type_item::TYPE_FLOAT, lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR);
-
-    data_provenance.add_item(item_float);
-    data_provenance.add_item(item_float);
-    data_provenance.add_item(item_float);
-
-    data_provenance.add_item(item_float);
-    data_provenance.add_item(item_float);
-    data_provenance.add_item(item_float);
-    // lamure::ren::Item_Provenance item_float(
-    //     lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
-    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
-    // );
-    // data_provenance.add_item(item_float);
-
-    // lamure::ren::Item_Provenance item_vec3f(
-    //     lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
-    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
-    // );
-    // data_provenance.add_item(item_vec3f);
-
-    // lamure::ren::Item_Provenance item_int(
-    //     lamure::ren::Item_Provenance::type_item::TYPE_INT,
-    //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
-    // );
-    // data_provenance.add_item(item_int);
-
-    // std::cout << "size: " << data_provenance.get_size_in_bytes() << std::endl;
-
-    // return 1;
-    // return write_dummy_binary_file();
-
     if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-d"))
     {
-        std::cout << "Usage: " << argv[0] << "<flags> -s <input_file>.nvm" << std::endl
+        std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
                   << "INFO: nvm_explorer " << std::endl
                   << "\t-d: selects .bvh input file" << std::endl
                   << "\t    (-d flag is required) " << std::endl
                   << "\t[-s: selects sparse.prov input file]" << std::endl
                   << "\t    (-s flag is optional) " << std::endl
+                  << "\t[-j: selects json input file]" << std::endl
+                  << "\t    (-j flag is optional) " << std::endl
                   << std::endl;
         return 0;
     }
@@ -165,42 +103,18 @@ int main(int argc, char *argv[])
         scene = Scene(vec_point, vec_camera);
     }
 
-    // std::string name_file_nvm = std::string(get_cmd_option(argv, argv + argc, "-s"));
+    lamure::ren::Data_Provenance data_provenance;
+    if(cmd_option_exists(argv, argv + argc, "-j"))
+    {
+        data_provenance = lamure::ren::Data_Provenance::parse_json(std::string(get_cmd_option(argv, argv + argc, "-j")));
+    }
 
-    // std::string ext = name_file_nvm.substr(name_file_nvm.size() - 3);
-    // if(ext.compare("nvm") != 0)
-    // {
-    //     std::cout << "please specify a .nvm file as input" << std::endl;
-    //     return 0;
-    // }
-
-    // if(!glfwInit())
-    // {
-    //     // Initialization failed
-    // }
-
-    // ifstream in(name_file_nvm);
-    // vector<Point> vec_point_sparse;
-    // vector<Point> vec_point_dense;
-    // vector<Image> vec_image;
-
-    // utils::read_nvm(in, vec_camera, vec_point_sparse, vec_image);
-
-    // ifstream in_ply(name_file_nvm + ".cmvs/00/models/option-0000.ply", ifstream::binary);
-
-    // utils::read_ply(in_ply, vec_point_dense);
-
-    //  std::cout << "cameras: " << vec_camera.size() << std::endl;
-    //  std::cout << "points: " << vec_point.size() << std::endl;
-    // for(std::vector<Point>::iterator it = vec_point.begin(); it != vec_point.end(); ++it) {
-    //     if((*it).get_measurements().size() != 0)
-    //         std::cout << (*it).get_measurements().size() << std::endl;
-    // }
-    //  std::cout << "vec_image: " << vec_image.size() << std::endl;
-
-    // Scene scene = Scene(in_sparse,in_sparse_meta);
-
-    // Scene scene(cache_sparse);
+    for(lamure::ren::Item_Provenance const &item : data_provenance.get_items())
+    {
+        std::cout << item.get_type() << std::endl;
+        std::cout << item.get_visualization() << std::endl;
+    }
+    std::cout << data_provenance.get_size_in_bytes() << std::endl;
 
     controller = new Controller(scene, argv, width_window, height_window, std::string(get_cmd_option(argv, argv + argc, "-d")), data_provenance);
     std::cout << "start rendering" << std::endl;
