@@ -32,12 +32,10 @@ class Data_Provenance
         _size_in_bytes += item_provenance.get_size_in_bytes();
     };
 
-    std::vector<Item_Provenance> get_items() { return _items_provenance; };
-    // int get_size_in_bytes() { return 4; };
-    // int get_size_in_bytes() { return 12; };
+    std::vector<Item_Provenance> get_items() const { return _items_provenance; };
     int get_size_in_bytes() const { return 24; };
-    // int get_size_in_bytes() { return 8; };
-    // int get_size_in_bytes() { return _size_in_bytes; };
+    // int get_size_in_bytes() const { return _size_in_bytes; };
+
   private:
     std::vector<Item_Provenance> _items_provenance;
     int _size_in_bytes = 0;

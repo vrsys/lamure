@@ -119,7 +119,70 @@ void controller::reset_system()
         context_t num_contexts_registered = controller->num_contexts_registered();
         for(context_t ctx_id = 0; ctx_id < num_contexts_registered; ++ctx_id)
         {
-            while(controller->is_cut_update_in_progress(ctx_id))
+            // while(controller->is_cut_update_in_progress(ctx_id))
+            // {};
+        }
+
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if(policy->reset_system())
+        {
+            database->apply();
+            cuts->reset();
+
+            for(auto &cut_update_pool_it : cut_update_pools_)
+            {
+                cut_update_pool *pool = cut_update_pool_it.second;
+                if(pool != nullptr)
+                {
+                    while(pool->is_running())
+                    {
+                    };
+                    delete pool;
+                    pool = nullptr;
+                }
+            }
+
+            cut_update_pools_.clear();
+
+            for(auto &gpu_context_it : gpu_contexts_)
+            {
+                gpu_context *context = gpu_context_it.second;
+                if(context != nullptr)
+                {
+                    delete context;
+                    context = nullptr;
+                }
+            }
+
+            gpu_contexts_.clear();
+
+            // disregard:
+            // num_contexts_registered_ = 0;
+            // num_views_registered_.clear();
+            // context_map_.clear();
+
+            // keep the model map!
+
+            policy->set_reset_system(false);
+        }
+    }
+}
+
+void controller::reset_system(Data_Provenance const &data_provenance)
+{
+    policy *policy = policy::get_instance();
+
+    if(policy->reset_system())
+    {
+        model_database *database = model_database::get_instance();
+        cut_database *cuts = cut_database::get_instance();
+        controller *controller = controller::get_instance();
+
+        context_t num_contexts_registered = controller->num_contexts_registered();
+        for(context_t ctx_id = 0; ctx_id < num_contexts_registered; ++ctx_id)
+        {
+            while(controller->is_cut_update_in_progress(ctx_id, data_provenance))
             {
             };
         }
@@ -246,6 +309,35 @@ model_t controller::deduce_model_id(const gua_model_desc_t &model_desc)
     }
 }
 
+const bool controller::is_cut_update_in_progress(const context_t context_id, Data_Provenance const &data_provenance)
+{
+    auto gpu_context_it = gpu_contexts_.find(context_id);
+
+    if(gpu_context_it == gpu_contexts_.end())
+    {
+        throw std::runtime_error("lamure: controller::Gpu Context not found for context: " + context_id);
+    }
+
+    auto cut_update_it = cut_update_pools_.find(context_id);
+
+    if(cut_update_it != cut_update_pools_.end())
+    {
+        return cut_update_it->second->is_running();
+    }
+    else
+    {
+        gpu_context *ctx = gpu_context_it->second;
+        if(!ctx->is_created())
+        {
+            throw std::runtime_error("lamure: controller::Gpu Context not created for context: " + context_id);
+        }
+        cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes(), data_provenance);
+        return is_cut_update_in_progress(context_id, data_provenance);
+    }
+
+    return true;
+}
+
 const bool controller::is_cut_update_in_progress(const context_t context_id)
 {
     auto gpu_context_it = gpu_contexts_.find(context_id);
@@ -268,6 +360,7 @@ const bool controller::is_cut_update_in_progress(const context_t context_id)
         {
             throw std::runtime_error("lamure: controller::Gpu Context not created for context: " + context_id);
         }
+
         cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
         return is_cut_update_in_progress(context_id);
     }
@@ -322,7 +415,7 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
             ctx->create(device, data_provenance);
         }
 
-        cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
+        cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes(), data_provenance);
         dispatch(context_id, device, data_provenance);
     }
 

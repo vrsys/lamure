@@ -58,6 +58,7 @@ class gpu_context
 
   private:
     void test_video_memory(scm::gl::render_device_ptr device);
+    void test_video_memory(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
 
     context_t context_id_;
 

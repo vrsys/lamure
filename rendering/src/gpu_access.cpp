@@ -86,13 +86,10 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
         vertex_format.push_back(scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
         vertex_format.push_back(scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_));
         vertex_format.push_back(scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_));
-        // vertex_format.push_back(scm::gl::vertex_format::element(1, 7, scm::gl::TYPE_DOUBLE, 8));
 
         int counter = 7;
-        for(Item_Provenance item : data_provenance.get_items())
-        // for(std::vector<Item_Provenance>::iterator it = data_provenance.get_items().begin(); it != data_provenance.get_items().end(); ++it)
+        for(Item_Provenance const &item : data_provenance.get_items())
         {
-            // Item_Provenance &item = (*it);
             if(item.get_visualization() == Item_Provenance::visualization_item::VISUALIZATION_COLOR)
             {
                 std::cout << item.get_type() << std::endl;
@@ -100,20 +97,15 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
                 {
                 case Item_Provenance::type_item::TYPE_INT:
                     vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_INT, data_provenance.get_size_in_bytes()));
-                    std::cout << item.get_type() << std::endl;
                     break;
-                // case Item_Provenance::type_item::TYPE_FLOAT: vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_DOUBLE, data_provenance.get_size_in_bytes())); break;
                 case Item_Provenance::type_item::TYPE_FLOAT:
                     vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_FLOAT, data_provenance.get_size_in_bytes()));
-                    std::cout << item.get_type() << std::endl;
                     break;
                 case Item_Provenance::type_item::TYPE_VEC3I:
                     vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3I, data_provenance.get_size_in_bytes()));
-                    std::cout << item.get_type() << std::endl;
                     break;
                 case Item_Provenance::type_item::TYPE_VEC3F:
                     vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3F, data_provenance.get_size_in_bytes()));
-                    std::cout << item.get_type() << std::endl;
                     break;
                 }
                 ++counter;

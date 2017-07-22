@@ -29,42 +29,50 @@ namespace ren
 {
 class Item_Provenance
 {
-    public:
-		enum type_item
-		{
-		    TYPE_INT,
-		    TYPE_FLOAT,
-		    TYPE_VEC3I,
-		    TYPE_VEC3F
-		};
+  public:
+    enum type_item
+    {
+        TYPE_INT,
+        TYPE_FLOAT,
+        TYPE_VEC3I,
+        TYPE_VEC3F
+    };
 
-		enum visualization_item
-		{
-		    VISUALIZATION_COLOR,
-		    VISUALIZATION_ARROW,
-		};
-    
-    	Item_Provenance(type_item type, visualization_item visualization):_type(type), _visualization(visualization) {};
+    enum visualization_item
+    {
+        VISUALIZATION_COLOR,
+        VISUALIZATION_ARROW,
+    };
 
-        int get_size_in_bytes() { 
-        	switch(_type) 
-			{
-			    case TYPE_INT: return sizeof(int); break;
-			    case TYPE_FLOAT: return sizeof(float); break;
-			    case TYPE_VEC3I: return sizeof(scm::math::vec3i); break;
-			    case TYPE_VEC3F: return sizeof(scm::math::vec3f); break;
-			}
-		};
+    Item_Provenance(type_item type, visualization_item visualization) : _type(type), _visualization(visualization){};
 
-    	type_item get_type() { return _type; };
-    	visualization_item get_visualization() { return _visualization; };
+    int get_size_in_bytes() const
+    {
+        switch(_type)
+        {
+        case TYPE_INT:
+            return sizeof(int);
+            break;
+        case TYPE_FLOAT:
+            return sizeof(float);
+            break;
+        case TYPE_VEC3I:
+            return sizeof(scm::math::vec3i);
+            break;
+        case TYPE_VEC3F:
+            return sizeof(scm::math::vec3f);
+            break;
+        }
+    };
 
-    private:
-    	visualization_item _visualization;
-    	type_item _type;
+    type_item get_type() const { return _type; };
+    visualization_item get_visualization() const { return _visualization; };
+
+  private:
+    visualization_item _visualization;
+    type_item _type;
 };
 }
 } // namespace lamure
 
 #endif // REN_ITEM_PROVENANCE_H_
-

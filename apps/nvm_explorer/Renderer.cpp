@@ -225,7 +225,7 @@ void Renderer::draw_points_dense(Scene &scene)
     lamure::ren::controller *controller = lamure::ren::controller::get_instance();
     lamure::ren::cut_database *cuts = lamure::ren::cut_database::get_instance();
 
-    // controller->reset_system();
+    // controller->reset_system(_data_provenance);
     lamure::context_t context_id = controller->deduce_context_id(0);
 
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(0));
@@ -256,7 +256,7 @@ void Renderer::draw_points_dense(Scene &scene)
 
     lamure::view_t view_id = controller->deduce_view_id(context_id, _camera->view_id());
 
-    scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, _device);
+    scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, _device, _data_provenance);
     _context->bind_vertex_array(memory);
 
     _context->apply();

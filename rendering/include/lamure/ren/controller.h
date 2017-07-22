@@ -36,6 +36,7 @@ class RENDERING_DLL controller
 
     void signal_system_reset();
     void reset_system();
+    void reset_system(Data_Provenance const &data_provenance);
     const bool is_system_reset_signaled(const context_t context_id);
 
     context_t deduce_context_id(const gua_context_desc_t context_desc);
@@ -48,6 +49,7 @@ class RENDERING_DLL controller
     void dispatch(const context_t context_id, scm::gl::render_device_ptr device);
     void dispatch(const context_t context_id, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
     const bool is_cut_update_in_progress(const context_t context_id);
+    const bool is_cut_update_in_progress(const context_t context_id, Data_Provenance const &data_provenanc);
 
     scm::gl::buffer_ptr get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device);
     scm::gl::buffer_ptr get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
