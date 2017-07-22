@@ -35,6 +35,7 @@ bool Scene::update(int time_delta)
 void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
 {
     // create buffer for the points
+
     std::vector<Struct_Point> vector_struct_point = convert_points_to_struct_point();
     scm::gl::buffer_ptr vertex_buffer_object_points =
         device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * vector_struct_point.size(), &vector_struct_point[0]);

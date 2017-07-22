@@ -27,24 +27,31 @@ void Camera_Custom::update_transformation_image_plane()
 
 std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector<prov::SparsePoint> &vector_point)
 {
-    std::vector<Struct_Line> vector_struct_line;
+    std::vector<Struct_Line> vector_points;
     for(prov::SparsePoint &point_sparse : vector_point)
     {
         for(prov::SparsePoint::Measurement measurement : point_sparse.get_measurements())
         {
             if(measurement.get_camera() == _index)
             {
-                Struct_Line position_camera = {scm::math::vec3f(_translation)};
-                vector_struct_line.push_back(position_camera);
-
                 Struct_Line position_point = {scm::math::vec3f(point_sparse.get_position())};
-                vector_struct_line.push_back(position_point);
+                vector_points.push_back(position_point);
             }
         }
     }
 
-    // std::random_shuffle(vector_struct_line.begin(), vector_struct_line.end());
-    _count_points_sparse = vector_struct_line.size();
+    _count_lines = vector_points.size();
+
+    std::random_shuffle(vector_points.begin(), vector_points.end());
+
+    Struct_Line position_camera = {scm::math::vec3f(_translation)};
+
+    std::vector<Struct_Line> vector_struct_line;
+    for(Struct_Line &point : vector_points)
+    {
+        vector_struct_line.push_back(position_camera);
+        vector_struct_line.push_back(point);
+    }
 
     // for(prov::SparsePoint sparsePoint it = _vector_point.begin(); it != _vector_point.end(); ++it)
     //     for(std::vector<prov::SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
@@ -101,7 +108,7 @@ void Camera_Custom::update_scale_frustum(float offset)
     // _frustum.init(device, calc_frustum_points());
 }
 
-int &Camera_Custom::get_count_points_sparse() { return _count_points_sparse; }
+int &Camera_Custom::get_count_lines() { return _count_lines; }
 scm::math::mat4f &Camera_Custom::get_transformation() { return _transformation; }
 scm::math::mat4f &Camera_Custom::get_transformation_image_plane() { return _transformation_image_plane; }
 

@@ -99,8 +99,19 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option) { re
 
 int main(int argc, char *argv[])
 {
-    // lamure::ren::Data_Provenance data_provenance;
+    lamure::ren::Data_Provenance data_provenance;
 
+    lamure::ren::Item_Provenance item_float(
+        // lamure::ren::Item_Provenance::type_item::TYPE_VEC3F,
+        lamure::ren::Item_Provenance::type_item::TYPE_FLOAT, lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR);
+
+    data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float);
+
+    data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float);
+    data_provenance.add_item(item_float);
     // lamure::ren::Item_Provenance item_float(
     //     lamure::ren::Item_Provenance::type_item::TYPE_FLOAT,
     //     lamure::ren::Item_Provenance::visualization_item::VISUALIZATION_COLOR
@@ -191,7 +202,7 @@ int main(int argc, char *argv[])
 
     // Scene scene(cache_sparse);
 
-    controller = new Controller(scene, argv, width_window, height_window, std::string(get_cmd_option(argv, argv + argc, "-d")));
+    controller = new Controller(scene, argv, width_window, height_window, std::string(get_cmd_option(argv, argv + argc, "-d")), data_provenance);
     std::cout << "start rendering" << std::endl;
 
     glutMainLoop();

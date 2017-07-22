@@ -1,20 +1,22 @@
 #include "Controller.h"
 
-Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_bvh) : _scene(scene)
+Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance) : _scene(scene)
 {
     // initialize context
     scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
     // initialize device
     _device.reset(new scm::gl::render_device());
 
-    _renderer.init(argv, _device, width_window, height_window, name_file_bvh);
-    _scene.init(_device);
+    _renderer.init(argv, _device, width_window, height_window, name_file_bvh, data_provenance);
 
-    //    for(int i = 0; i < 1024; ++i)
-    //    {
-    //        _keys[i] = false;
-    //        _keys_special[i] = false;
-    //    };
+    if(_scene.get_vector_point().size() != 0)
+    {
+        _scene.init(_device);
+    }
+    else
+    {
+        _renderer.dense_points_only = true;
+    }
 }
 
 bool Controller::update(int time_delta)

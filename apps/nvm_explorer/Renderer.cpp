@@ -20,10 +20,10 @@
 //     // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
 // }
 
-void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh)
+void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance)
 {
     //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
-
+    _data_provenance = data_provenance;
     _camera_view.update_window_size(width_window, height_window);
 
     _device = device;
@@ -191,9 +191,7 @@ void Renderer::draw_lines(Scene &scene)
         {
             _context->bind_vertex_array(camera.get_vertex_array_object_lines());
             _context->apply();
-
-            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, (int)((float)(camera.get_count_points_sparse() * 2)) / 10.0f);
-            // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, camera.get_count_points_sparse() * 2);
+            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, (int)((float)(camera.get_count_lines() * 2)) / 20.0f);
         }
     }
 }
@@ -254,7 +252,7 @@ void Renderer::draw_points_dense(Scene &scene)
     cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
 
     if(dispatch)
-        controller->dispatch(context_id, _device);
+        controller->dispatch(context_id, _device, _data_provenance);
 
     lamure::view_t view_id = controller->deduce_view_id(context_id, _camera->view_id());
 
@@ -353,26 +351,33 @@ void Renderer::render(Scene &scene)
 
     _context->set_default_frame_buffer();
 
-    if(mode_draw_cameras)
+    if(!dense_points_only)
     {
-        draw_cameras(scene);
-        draw_frustra(scene);
-    }
-    if(mode_draw_lines)
-    {
-        draw_lines(scene);
-    }
-    if(mode_draw_images)
-    {
-        draw_images(scene);
-    }
-    if(mode_draw_points_dense)
-    {
-        draw_points_dense(scene);
+        if(mode_draw_cameras)
+        {
+            draw_cameras(scene);
+            draw_frustra(scene);
+        }
+        if(mode_draw_lines)
+        {
+            draw_lines(scene);
+        }
+        if(mode_draw_images)
+        {
+            draw_images(scene);
+        }
+        if(mode_draw_points_dense)
+        {
+            draw_points_dense(scene);
+        }
+        else
+        {
+            draw_points_sparse(scene);
+        }
     }
     else
     {
-        draw_points_sparse(scene);
+        draw_points_dense(scene);
     }
     // std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();

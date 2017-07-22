@@ -55,7 +55,7 @@ class Renderer
 {
   public:
     // Renderer();
-    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh);
+    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance);
     void render(Scene &scene);
 
     void update_state_lense();
@@ -71,6 +71,7 @@ class Renderer
     void previous_camera(Scene scene);
     void next_camera(Scene scene);
 
+    bool dense_points_only = false;
     bool mode_draw_points_dense = false;
     bool mode_draw_images = true;
     bool mode_draw_lines = false;
@@ -93,6 +94,8 @@ class Renderer
     scm::gl::program_ptr _program_frustra;
     scm::gl::program_ptr _program_lines;
     scm::gl::program_ptr _program_legend;
+
+    lamure::ren::Data_Provenance _data_provenance;
 
     // scm::shared_ptr<scm::gl::quad_geometry> _quad_legend;
 

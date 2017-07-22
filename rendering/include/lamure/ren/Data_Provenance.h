@@ -35,7 +35,7 @@ class Data_Provenance
     std::vector<Item_Provenance> get_items() { return _items_provenance; };
     // int get_size_in_bytes() { return 4; };
     // int get_size_in_bytes() { return 12; };
-    int get_size_in_bytes() { return 24; };
+    int get_size_in_bytes() const { return 24; };
     // int get_size_in_bytes() { return 8; };
     // int get_size_in_bytes() { return _size_in_bytes; };
   private:

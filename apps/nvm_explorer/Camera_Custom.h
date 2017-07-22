@@ -24,7 +24,7 @@ class Camera_Custom : public prov::Camera
 
     void load_texture(scm::shared_ptr<scm::gl::render_device> device);
 
-    int &get_count_points_sparse();
+    int &get_count_lines();
     scm::math::mat4f &get_transformation();
     scm::math::mat4f &get_transformation_image_plane();
     // const arr<vec3d, 8> &get_frustum_vertices() { return _frustum_vertices; }
@@ -43,7 +43,7 @@ class Camera_Custom : public prov::Camera
 
     scm::gl::texture_2d_ptr _texture;
     scm::gl::sampler_state_ptr _state;
-    int _count_points_sparse = 0;
+    int _count_lines = 0;
 };
 
 #endif // LAMURE_CAMERA_CUSTOM_H
