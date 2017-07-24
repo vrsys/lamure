@@ -121,7 +121,11 @@ void ooc_pool::run()
         lod_streams.push_back(access);
 #else
         lod_files.push_back(lod_file_name);
-        provenance_files.push_back(provenance_file_name);
+
+        if(_data_provenance.get_size_in_bytes() != 0)
+        {
+            provenance_files.push_back(provenance_file_name);
+        }
 #endif
     }
 
@@ -149,30 +153,32 @@ void ooc_pool::run()
             lod_streams[job.model_id_]->read(local_cache, offset_in_bytes, stride_in_bytes);
 #else
             lod_stream access;
-            provenance_stream access_provenance;
             access.open(lod_files[job.model_id_]);
-            access_provenance.open(provenance_files[job.model_id_]);
-
             access.read(local_cache, offset_in_bytes, stride_in_bytes);
 
-            size_t stride_in_bytes_provenance = database->get_primitives_per_node() * _data_provenance.get_size_in_bytes();
-            // size_t stride_in_bytes_provenance = database->get_primitives_per_node() * sizeof(_data_provenance);
-            size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
-            access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
+            if(_data_provenance.get_size_in_bytes() != 0)
+            {
+                provenance_stream access_provenance;
+                access_provenance.open(provenance_files[job.model_id_]);
+                size_t stride_in_bytes_provenance = database->get_primitives_per_node() * _data_provenance.get_size_in_bytes();
+                bytes_loaded_ += stride_in_bytes_provenance;
+                size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
+                access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
+                memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
+                access_provenance.close();
+            }
+
 #endif
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 bytes_loaded_ += stride_in_bytes;
                 // ASK CARL should create new member?
-                bytes_loaded_ += stride_in_bytes_provenance;
                 memcpy(job.slot_mem_, local_cache, stride_in_bytes);
-                memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
                 history_.push_back(job);
             }
 
 #ifndef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
             access.close();
-            access_provenance.close();
 #endif
         }
     }

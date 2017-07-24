@@ -70,6 +70,7 @@ class Renderer
     void toggle_is_camera_active();
     void previous_camera(Scene scene);
     void next_camera(Scene scene);
+    void handle_mouse_movement(int x, int y);
 
     bool dense_points_only = false;
     bool mode_draw_points_dense = false;

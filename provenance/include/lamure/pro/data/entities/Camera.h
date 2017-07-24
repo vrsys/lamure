@@ -181,10 +181,13 @@ class Camera
         _fp_resolution_x = result.LensInfo.FocalPlaneResolutionUnit == 2 ? result.LensInfo.FocalPlaneXResolution / 0.0254 : result.LensInfo.FocalPlaneXResolution / 0.01;
         _fp_resolution_y = result.LensInfo.FocalPlaneResolutionUnit == 2 ? result.LensInfo.FocalPlaneYResolution / 0.0254 : result.LensInfo.FocalPlaneYResolution / 0.01;
 
+        // std::cout << result.FocalLength << std::endl;
+        // std::cout << result.LensInfo.FocalPlaneXResolution << std::endl;
         if(_fp_resolution_x == 0 && _fp_resolution_y == 0)
         {
-            _fp_resolution_x = 5715.545755 / 0.0254;
-            _fp_resolution_y = 5808.403361 / 0.0254;
+            // _fp_resolution_x = 5715.545755 / 0.0254;
+            _fp_resolution_x = (2976 / 0.384615385) / 0.0254;
+            _fp_resolution_y = (2976 / 0.384615385) / 0.0254;
         }
 
         // if(DEBUG)

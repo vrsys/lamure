@@ -178,8 +178,8 @@ void initialize_glut(int argc, char **argv, int width, int height)
 
 void glut_mouse_movement(int x, int y)
 {
-    // std::cout << x << std::endl;
-    // controller->handle_mouse_movement(x, y);
+    // std::cout << x << " " << y << std::endl;
+    controller->handle_mouse_movement(x, y);
     // glutWarpPointer(1920/2, 1080/2);
 }
 void glut_keyboard_special(int key, int x, int y)

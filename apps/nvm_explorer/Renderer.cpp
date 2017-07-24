@@ -114,9 +114,27 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     // bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
 }
 
+void Renderer::handle_mouse_movement(int x, int y)
+{
+    scm::math::mat4f matrix_inverse = scm::math::inverse(_camera_view.get_matrix_perspective() * _camera_view.get_matrix_view());
+
+    float x_normalized = 2.0f * x / _camera_view.get_width_window() - 1;
+    float y_normalized = -2.0f * y / _camera_view.get_height_window() + 1;
+
+    // scm::math::vec3f point_screen = scm::math::vec3f(x_normalized, y_normalized, 0);
+    scm::math::vec4f point_screen = scm::math::vec4f(x_normalized, y_normalized, 0.0f, 1.0f);
+    scm::math::vec4f point_world = matrix_inverse * point_screen;
+
+    scm::math::vec3f point_final = scm::math::vec3f(point_world[0] / point_world[3], point_world[1] / point_world[3], point_world[2] / point_world[3]);
+    std::cout << point_final << std::endl;
+}
+
 void Renderer::update_state_lense()
 {
-    _state_lense = ++_state_lense % 2;
+    if(_data_provenance.get_size_in_bytes())
+    {
+        _state_lense = ++_state_lense % 2;
+    }
     // _state_lense = ++_state_lense % 3;
     // std::cout << _state_lense << std::endl;
 }
