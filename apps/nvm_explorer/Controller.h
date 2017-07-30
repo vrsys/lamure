@@ -29,6 +29,7 @@ class Controller
 
     bool update(int time_delta);
     void handle_mouse_movement(int x, int y);
+    void handle_mouse_click(int button, int state, int x, int y);
     void handle_key_pressed(char key);
     void handle_key_special_pressed(int key);
     void handle_key_special_released(int key);

@@ -52,6 +52,7 @@ int height_window = 1080;
 
 void glut_idle();
 void glut_display();
+void mouse_callback(int button, int state, int x, int y);
 void glut_mouse_movement(int x, int y);
 void glut_keyboard(unsigned char key, int x, int y);
 void glut_keyboard_release(unsigned char key, int x, int y);
@@ -169,19 +170,16 @@ void initialize_glut(int argc, char **argv, int width, int height)
     glutKeyboardUpFunc(glut_keyboard_release);
     glutSpecialFunc(glut_keyboard_special);
     glutSpecialUpFunc(glut_keyboard_special_release);
-    // glutMouseFunc(mouse_callback);
+    glutMouseFunc(mouse_callback);
     glutPassiveMotionFunc(glut_mouse_movement);
     glutIdleFunc(glut_idle);
     // glutFullScreen();
     // glutSetCursor(GLUT_CURSOR_NONE);
 }
 
-void glut_mouse_movement(int x, int y)
-{
-    // std::cout << x << " " << y << std::endl;
-    controller->handle_mouse_movement(x, y);
-    // glutWarpPointer(1920/2, 1080/2);
-}
+void glut_mouse_movement(int x, int y) { controller->handle_mouse_movement(x, y); }
+void mouse_callback(int button, int state, int x, int y) { controller->handle_mouse_click(button, state, x, y); }
+
 void glut_keyboard_special(int key, int x, int y)
 {
     // std::cout << key << std::endl;

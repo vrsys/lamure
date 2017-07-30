@@ -7,13 +7,13 @@ Scene::Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Cam
     int counter = 0;
     for(prov::Camera const &camera : vector_camera)
     {
-        Camera_Custom camera_new = Camera_Custom(camera);
-        _vector_camera.push_back(camera_new);
-
-        if(counter++ == 10)
+        if(counter++ == 1)
         {
             break;
         }
+
+        Camera_Custom camera_new = Camera_Custom(camera);
+        _vector_camera.push_back(camera_new);
     }
 }
 
@@ -37,16 +37,14 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
     // create buffer for the points
 
     std::vector<Struct_Point> vector_struct_point = convert_points_to_struct_point();
-    scm::gl::buffer_ptr vertex_buffer_object_points =
-        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * vector_struct_point.size(), &vector_struct_point[0]);
+    _vertex_buffer_object_points = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * vector_struct_point.size(), &vector_struct_point[0]);
     _vertex_array_object_points = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 6)(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 6),
-                                                              boost::assign::list_of(vertex_buffer_object_points));
+                                                              boost::assign::list_of(_vertex_buffer_object_points));
 
     // create buffer for the cameras
     std::vector<Struct_Camera> vector_struct_camera = convert_cameras_to_struct_camera();
-    scm::gl::buffer_ptr vertex_buffer_object_cameras =
-        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_camera.size(), &vector_struct_camera[0]);
-    _vertex_array_object_cameras = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object_cameras));
+    _vertex_buffer_object_cameras = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_camera.size(), &vector_struct_camera[0]);
+    _vertex_array_object_cameras = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_cameras));
 
     _quad.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
 

@@ -21,7 +21,11 @@ bool Controller::update(int time_delta)
 {
     handle_movements(time_delta);
     _scene.update(time_delta);
-    _renderer.render(_scene);
+
+    if(_renderer.render(_scene) == true)
+    {
+        return true;
+    }
 
     return false;
 }
@@ -174,6 +178,20 @@ void Controller::handle_mouse_movement(int x, int y)
     // _renderer.get_camera_view().set_rotation(new_rotation);
     // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_euler(_pitch, _yaw, 0.0));
     // render_manager.direction_camera = glm::normalize(front);
+}
+
+void Controller::handle_mouse_click(int button, int state, int x, int y)
+{
+    // std::cout << button << " " << state << " " << x << " " << y << " " << std::endl;
+    // left click
+    if(button == 0)
+    {
+        // clicked
+        if(state == 0)
+        {
+            _renderer.start_brushing(x, y);
+        }
+    }
 }
 
 void Controller::handle_key_pressed(char key) { _keys[key] = true; }

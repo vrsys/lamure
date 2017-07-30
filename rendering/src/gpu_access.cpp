@@ -121,6 +121,15 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
 
     device->main_context()->apply();
 
+    int first_error = device->opengl_api().glGetError();
+    if(first_error != 0)
+    {
+        std::cout << "------------------------------ DISPATCH ERROR CODE gpu_access::gpu_accesss: " << first_error << std::endl;
+    }
+    else
+    {
+        std::cout << "------------------------------ no error inside gpu_access::gpu_accesss" << std::endl;
+    }
 #ifdef LAMURE_ENABLE_INFO
     std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << std::endl;
 #endif
@@ -164,6 +173,25 @@ char *gpu_access::map_provenance(scm::gl::render_device_ptr const &device)
     {
         assert(device);
         is_mapped_provenance_ = true;
+        // int first_error = device->opengl_api().glGetError();
+        // if(first_error != 0)
+        // {
+        //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_access::map_provenance1: " << first_error << std::endl;
+        // }
+        // else
+        // {
+        //     std::cout << "------------------------------ no error inside gpu_access::map_provenance1" << std::endl;
+        // }
+        // (char *)device->main_context()->map_buffer(buffer_provenance_, scm::gl::ACCESS_READ_WRITE);
+        // first_error = device->opengl_api().glGetError();
+        // if(first_error != 0)
+        // {
+        //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_access::map_provenance2: " << first_error << std::endl;
+        // }
+        // else
+        // {
+        //     std::cout << "------------------------------ no error inside gpu_access::map_provenance2" << std::endl;
+        // }
         return (char *)device->main_context()->map_buffer(buffer_provenance_, scm::gl::ACCESS_READ_WRITE);
     }
     return nullptr;

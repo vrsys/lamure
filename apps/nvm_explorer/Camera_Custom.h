@@ -40,6 +40,7 @@ class Camera_Custom : public prov::Camera
     // arr<vec3d, 8> _frustum_vertices;
     Frustum _frustum;
     scm::gl::vertex_array_ptr _vertex_array_object_lines;
+    scm::gl::buffer_ptr _vertex_buffer_object_lines;
 
     scm::gl::texture_2d_ptr _texture;
     scm::gl::sampler_state_ptr _state;

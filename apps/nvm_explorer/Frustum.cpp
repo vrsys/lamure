@@ -19,10 +19,8 @@ void Frustum::init(scm::shared_ptr<scm::gl::render_device> device)
     // std::cout << vector_struct_lines[6].position << std::endl;
     // std::cout << vector_struct_lines[7].position << std::endl;
 
-    scm::gl::buffer_ptr vertex_buffer_object =
-        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_lines.size(), &vector_struct_lines[0]);
-
-    _vertex_array_object = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(vertex_buffer_object));
+    _vertex_buffer_object = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_lines.size(), &vector_struct_lines[0]);
+    _vertex_array_object = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object));
 
     // device->main_context()->apply();
 }
@@ -106,4 +104,4 @@ std::vector<Struct_Line> Frustum::convert_frustum_to_struct_line()
     return vector_struct_line;
 }
 scm::gl::vertex_array_ptr const &Frustum::get_vertex_array_object() { return _vertex_array_object; }
-float& Frustum::get_scale() { return _scale; }
+float &Frustum::get_scale() { return _scale; }

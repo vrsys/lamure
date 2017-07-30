@@ -75,6 +75,7 @@ class Frustum
     float _scale = 200.0f;
 
     scm::gl::vertex_array_ptr _vertex_array_object;
+    scm::gl::buffer_ptr _vertex_buffer_object;
 
     std::vector<Struct_Line> convert_frustum_to_struct_line();
     // void Frustum::update_frustum_points();

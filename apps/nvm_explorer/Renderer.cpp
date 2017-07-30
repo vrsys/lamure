@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include <scm/gl_core/render_device/opengl/gl_core.h>
 #include <scm/gl_util/data/imaging/texture_loader.h>
 #include <scm/gl_util/data/imaging/texture_loader_dds.h>
 
@@ -78,6 +79,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     scm::io::read_text_file(root_path + "/lq_one_pass.glslf", visibility_fs_source);
     _program_points_dense = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+
     // scm::io::read_text_file(root_path + "/nvm_explorer_vertex_points_dense_simple.glslv", visibility_vs_source);
     // scm::io::read_text_file(root_path + "/nvm_explorer_geometry_points_dense.glslg", visibility_gs_source);
     // scm::io::read_text_file(root_path + "/nvm_explorer_fragment_points_dense_simple.glslf", visibility_fs_source);
@@ -114,19 +116,51 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     // bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
 }
 
-void Renderer::handle_mouse_movement(int x, int y)
+scm::math::vec3f Renderer::convert_to_world_space(int x, int y, int z)
 {
     scm::math::mat4f matrix_inverse = scm::math::inverse(_camera_view.get_matrix_perspective() * _camera_view.get_matrix_view());
 
     float x_normalized = 2.0f * x / _camera_view.get_width_window() - 1;
     float y_normalized = -2.0f * y / _camera_view.get_height_window() + 1;
 
-    // scm::math::vec3f point_screen = scm::math::vec3f(x_normalized, y_normalized, 0);
-    scm::math::vec4f point_screen = scm::math::vec4f(x_normalized, y_normalized, 0.0f, 1.0f);
+    scm::math::vec4f point_screen = scm::math::vec4f(x_normalized, y_normalized, z, 1.0f);
     scm::math::vec4f point_world = matrix_inverse * point_screen;
 
-    scm::math::vec3f point_final = scm::math::vec3f(point_world[0] / point_world[3], point_world[1] / point_world[3], point_world[2] / point_world[3]);
-    std::cout << point_final << std::endl;
+    return scm::math::vec3f(point_world[0] / point_world[3], point_world[1] / point_world[3], point_world[2] / point_world[3]);
+}
+
+void Renderer::start_brushing(int x, int y)
+{
+    //     if(int first_error = _device->opengl_api().glGetError() != GL_NO_ERROR)
+    //     {
+    //         std::cout << "ERROR CODE: " << first_error << std::endl;
+    //     }
+    //     else
+    //     {
+    //         std::cout << "no error brushing 1" << std::endl;
+    //     }
+    scm::math::vec3f point_final_front = convert_to_world_space(x, y, -1.0);
+    scm::math::vec3f point_final_middle = convert_to_world_space(x, y, 0.0);
+    scm::math::vec3f point_final_back = convert_to_world_space(x, y, 1.0);
+
+    std::vector<Struct_Line> vector_struct_line;
+    Struct_Line position_point = {point_final_front};
+    vector_struct_line.push_back(position_point);
+
+    Struct_Line position_point1 = {point_final_back};
+    vector_struct_line.push_back(position_point1);
+
+    std::cout << vector_struct_line[0].position << std::endl;
+    std::cout << vector_struct_line[1].position << std::endl;
+
+    _vertex_buffer_object_lines = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * 2, &vector_struct_line[0]);
+    _vertex_array_object_lines = _device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
+}
+
+void Renderer::handle_mouse_movement(int x, int y)
+{
+    // scm::math::vec3f point_final = convert_to_world_space(x, y, 0.0);
+    // std::cout << point_final << std::endl;
 }
 
 void Renderer::update_state_lense()
@@ -196,6 +230,18 @@ void Renderer::draw_images(Scene &scene)
         }
     }
 }
+void Renderer::draw_lines_test()
+{
+    _context->bind_program(_program_lines);
+
+    _program_lines->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_lines->uniform("matrix_perspective", _camera_view.get_matrix_perspective());
+
+    _context->bind_vertex_array(_vertex_array_object_lines);
+    _context->apply();
+
+    _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 2);
+}
 void Renderer::draw_lines(Scene &scene)
 {
     _context->bind_program(_program_lines);
@@ -234,7 +280,7 @@ void Renderer::draw_frustra(Scene &scene)
         }
     }
 }
-void Renderer::draw_points_dense(Scene &scene)
+bool Renderer::draw_points_dense(Scene &scene)
 {
     _context->bind_program(_program_points_dense);
     _context->apply();
@@ -269,9 +315,32 @@ void Renderer::draw_points_dense(Scene &scene)
 
     cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
 
+    std::cout << "################################ FIRST CHECK" << std::endl;
+    GLenum first_error = _device->opengl_api().glGetError();
+    if(first_error != GL_NO_ERROR)
+    {
+        std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
+        return false;
+    }
+    else
+    {
+        std::cout << "------------------------------ no error before dispatch" << std::endl;
+    }
+
     if(dispatch)
         controller->dispatch(context_id, _device, _data_provenance);
 
+    std::cout << "################################ SECOND CHECK" << std::endl;
+    first_error = _device->opengl_api().glGetError();
+    if(first_error != GL_NO_ERROR)
+    {
+        std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
+        return false;
+    }
+    else
+    {
+        std::cout << "------------------------------ no error after dispatch" << std::endl;
+    }
     lamure::view_t view_id = controller->deduce_view_id(context_id, _camera->view_id());
 
     scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, _device, _data_provenance);
@@ -339,6 +408,8 @@ void Renderer::draw_points_dense(Scene &scene)
         }
         // if(++counter == 10) break;
     }
+
+    return true;
 }
 
 // void Renderer::draw_legend()
@@ -358,9 +429,9 @@ void Renderer::draw_points_dense(Scene &scene)
 //     // _quad_legend->draw(_context);
 // }
 
-void Renderer::render(Scene &scene)
+bool Renderer::render(Scene &scene)
 {
-    // std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     _context->set_rasterizer_state(_rasterizer_state);
     _context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(_camera_view.get_width_window(), _camera_view.get_height_window())));
 
@@ -386,7 +457,10 @@ void Renderer::render(Scene &scene)
         }
         if(mode_draw_points_dense)
         {
-            draw_points_dense(scene);
+            if(!draw_points_dense(scene))
+            {
+                return true;
+            }
         }
         else
         {
@@ -395,8 +469,14 @@ void Renderer::render(Scene &scene)
     }
     else
     {
-        draw_points_dense(scene);
+        if(!draw_points_dense(scene))
+        {
+            return true;
+        }
     }
+
+    draw_lines_test();
+    return false;
     // std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     // std::cout << duration / 1000.0 << std::endl;

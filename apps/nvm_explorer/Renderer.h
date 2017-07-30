@@ -50,13 +50,14 @@
 
 #include <lamure/ren/cut.h>
 #include <lamure/ren/cut_update_pool.h>
+#include <lamure/ren/ray.h>
 
 class Renderer
 {
   public:
     // Renderer();
     void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance);
-    void render(Scene &scene);
+    bool render(Scene &scene);
 
     void update_state_lense();
     void translate_sphere(scm::math::vec3f offset);
@@ -71,6 +72,8 @@ class Renderer
     void previous_camera(Scene scene);
     void next_camera(Scene scene);
     void handle_mouse_movement(int x, int y);
+
+    void start_brushing(int x, int y);
 
     bool dense_points_only = false;
     bool mode_draw_points_dense = false;
@@ -99,6 +102,8 @@ class Renderer
     lamure::ren::Data_Provenance _data_provenance;
 
     // scm::shared_ptr<scm::gl::quad_geometry> _quad_legend;
+    scm::gl::buffer_ptr _vertex_buffer_object_lines;
+    scm::gl::vertex_array_ptr _vertex_array_object_lines;
 
     scm::gl::rasterizer_state_ptr _rasterizer_state;
 
@@ -115,10 +120,13 @@ class Renderer
 
     void draw_points_sparse(Scene &scene);
     void draw_cameras(Scene &scene);
+    void draw_lines_test();
     void draw_lines(Scene &scene);
     void draw_images(Scene &scene);
     void draw_frustra(Scene &scene);
-    void draw_points_dense(Scene &scene);
+    bool draw_points_dense(Scene &scene);
+
+    scm::math::vec3f convert_to_world_space(int x, int y, int z);
     // void draw_legend();
 };
 

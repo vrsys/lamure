@@ -6,6 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/ren/controller.h>
+#include <scm/gl_core/render_device/opengl/gl_core.h>
 
 #include <chrono>
 
@@ -412,7 +413,17 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
             //    "lamure: controller::Gpu Context not created for context: " + context_id);
 
             // fix for gua:
+            std::cout << "tttttttttttttttttttttttttttttt" << std::endl;
             ctx->create(device, data_provenance);
+            int first_error = device->opengl_api().glGetError();
+            if(first_error != 0)
+            {
+                std::cout << "------------------------------ DISPATCH ERROR CODE controller::dispatch: " << first_error << std::endl;
+            }
+            else
+            {
+                std::cout << "------------------------------ no error inside controller::dispatch" << std::endl;
+            }
         }
 
         cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes(), data_provenance);

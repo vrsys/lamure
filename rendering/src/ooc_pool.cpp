@@ -173,7 +173,9 @@ void ooc_pool::run()
                 std::lock_guard<std::mutex> lock(mutex_);
                 bytes_loaded_ += stride_in_bytes;
                 // ASK CARL should create new member?
+                std::cout << "before" << std::endl;
                 memcpy(job.slot_mem_, local_cache, stride_in_bytes);
+                std::cout << "after" << std::endl;
                 history_.push_back(job);
             }
 

@@ -87,7 +87,10 @@ class Scene
     // std::vector<Image> _vector_image;
 
     scm::gl::vertex_array_ptr _vertex_array_object_points;
+    scm::gl::buffer_ptr _vertex_buffer_object_points;
     scm::gl::vertex_array_ptr _vertex_array_object_cameras;
+    scm::gl::buffer_ptr _vertex_buffer_object_cameras;
+
     scm::shared_ptr<scm::gl::quad_geometry> _quad;
 
     std::vector<Struct_Point> convert_points_to_struct_point();
