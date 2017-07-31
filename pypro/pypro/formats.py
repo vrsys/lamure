@@ -61,6 +61,7 @@ class FormatDensePro(Format):
 
         for point in self.dpoints:
             out_bytes.extend(point.out())
+            # TODO: ensure length of meta data
             out_bytes_meta.extend(point.meta_data.out())
 
         out_file = open('dense.prov', 'wb')
