@@ -5,6 +5,7 @@
 // #include <lamure/types.h>
 #include "Camera_View.h"
 #include "Scene.h"
+#include "Struct_Surfel_Brush.h"
 
 #include <iostream>
 
@@ -81,6 +82,7 @@ class Renderer
     bool mode_draw_lines = false;
     bool mode_draw_cameras = true;
     int mode_prov_data = 0;
+    bool _mode_depth_test_surfels_brush = true;
     bool dispatch = true;
 
     bool is_default_camera = true;
@@ -98,6 +100,7 @@ class Renderer
     scm::gl::program_ptr _program_frustra;
     scm::gl::program_ptr _program_lines;
     scm::gl::program_ptr _program_legend;
+    scm::gl::program_ptr _program_surfels_brush;
 
     lamure::ren::Data_Provenance _data_provenance;
 
@@ -125,6 +128,19 @@ class Renderer
     void draw_images(Scene &scene);
     void draw_frustra(Scene &scene);
     bool draw_points_dense(Scene &scene);
+    void draw_surfels_brush();
+
+    scm::gl::depth_stencil_state_ptr depth_state_disable_;
+    scm::gl::depth_stencil_state_ptr depth_state_enable_;
+
+    void add_surfel_brush(Struct_Surfel_Brush const &surfel_brush);
+
+    lamure::model_t _model_id;
+    // BRUSHING ///////////////////////////////////////////////
+    std::vector<Struct_Surfel_Brush> _surfels_brush;
+
+    scm::gl::buffer_ptr _vertex_buffer_object_surfels_brush;
+    scm::gl::vertex_array_ptr _vertex_array_object_surfels_brush;
 
     scm::math::vec3f convert_to_world_space(int x, int y, int z);
     // void draw_legend();

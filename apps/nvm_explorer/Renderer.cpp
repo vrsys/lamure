@@ -67,6 +67,13 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     _program_lines = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
+    // create shader program for surfels brush
+    scm::io::read_text_file(root_path + "/nvm_explorer_vertex_surfels_brush.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_geometry_surfels_brush.glslg", visibility_gs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_fragment_surfels_brush.glslf", visibility_fs_source);
+    _program_surfels_brush = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
+        device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+
     // // create shader program for legend
     // scm::io::read_text_file(root_path + "/provenance_legend.glslv", visibility_vs_source);
     // scm::io::read_text_file(root_path + "/provenance_legend.glslf", visibility_fs_source);
@@ -109,7 +116,10 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
 
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
-    lamure::model_t model_id = database->add_model(name_file_bvh, std::to_string(0));
+    _model_id = database->add_model(name_file_bvh, std::to_string(0));
+
+    depth_state_disable_ = _device->create_depth_stencil_state(false);
+    depth_state_enable_ = _device->create_depth_stencil_state(true);
 
     // color_blending_state_ = device_->create_blend_state(true);
     // color_blending_state_ = device_->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
@@ -131,7 +141,7 @@ scm::math::vec3f Renderer::convert_to_world_space(int x, int y, int z)
 
 void Renderer::start_brushing(int x, int y)
 {
-    //     if(int first_error = _device->opengl_api().glGetError() != GL_NO_ERROR)
+    // if(int first_error = _device->opengl_api().glGetError() != GL_NO_ERROR)
     //     {
     //         std::cout << "ERROR CODE: " << first_error << std::endl;
     //     }
@@ -139,9 +149,37 @@ void Renderer::start_brushing(int x, int y)
     //     {
     //         std::cout << "no error brushing 1" << std::endl;
     //     }
+    lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+
     scm::math::vec3f point_final_front = convert_to_world_space(x, y, -1.0);
     scm::math::vec3f point_final_middle = convert_to_world_space(x, y, 0.0);
     scm::math::vec3f point_final_back = convert_to_world_space(x, y, 1.0);
+
+    float max_distance = 100000.0f;
+
+    scm::math::vec3f direction_ray = point_final_back - point_final_front;
+    // std::cout << scm::math::normalize(direction_ray) << std::endl;
+
+    lamure::ren::ray ray_brush(point_final_front, direction_ray, max_distance);
+    scm::math::mat4f model_transform = database->get_model(_model_id)->transform();
+
+    // std::cout << "Found:" << std::endl;
+    // lamure::ren::ray::intersection_bvh result_intersection_bvh;
+    // ray_brush.intersect_model_bvh(_model_id, model_transform, 1.0f, result_intersection_bvh);
+    // std::cout << result_intersection_bvh.position_ << std::endl;
+    // std::cout << result_intersection_bvh.bvh_filename_ << std::endl;
+
+    unsigned int max_depth = 255;
+    unsigned int surfel_skip = 1;
+    lamure::ren::ray::intersection result_intersection;
+    ray_brush.intersect_model(_model_id, model_transform, 1.0f, max_depth, surfel_skip, false, result_intersection);
+    // std::cout << "position: " << result_intersection.position_ << std::endl;
+    // std::cout << "normal: " << result_intersection.normal_ << std::endl;
+    // std::cout << "distance: " << result_intersection.distance_ << std::endl;
+    // std::cout << "error: " << result_intersection.error_ << std::endl;
+
+    Struct_Surfel_Brush surfel_brush = {result_intersection.position_ + result_intersection.normal_ * 0.1f, result_intersection.normal_};
+    add_surfel_brush(surfel_brush);
 
     std::vector<Struct_Line> vector_struct_line;
     Struct_Line position_point = {point_final_front};
@@ -150,11 +188,23 @@ void Renderer::start_brushing(int x, int y)
     Struct_Line position_point1 = {point_final_back};
     vector_struct_line.push_back(position_point1);
 
-    std::cout << vector_struct_line[0].position << std::endl;
-    std::cout << vector_struct_line[1].position << std::endl;
+    // std::cout << vector_struct_line[0].position << std::endl;
+    // std::cout << vector_struct_line[1].position << std::endl;
 
     _vertex_buffer_object_lines = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * 2, &vector_struct_line[0]);
     _vertex_array_object_lines = _device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
+}
+
+void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush)
+{
+    _surfels_brush.push_back(surfel_brush);
+
+    _vertex_buffer_object_surfels_brush = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * _surfels_brush.size(), &_surfels_brush[0]);
+
+    std::vector<scm::gl::vertex_format::element> vertex_format;
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    _vertex_array_object_surfels_brush = _device->create_vertex_array(vertex_format, boost::assign::list_of(_vertex_buffer_object_surfels_brush));
 }
 
 void Renderer::handle_mouse_movement(int x, int y)
@@ -304,7 +354,7 @@ bool Renderer::draw_points_dense(Scene &scene)
 
     // set camera values
     _camera->set_view_matrix(scm::math::mat4d(_camera_view.get_matrix_view()));
-    _camera->set_projection_matrix(60.0f, 1920.0f / 1080.0f, 0.0001f, 1000.0f);
+    _camera->set_projection_matrix(_camera_view._fov, float(_camera_view.get_width_window()) / float(_camera_view.get_height_window()), _camera_view._plane_near, _camera_view._plane_far);
 
     lamure::view_t cam_id = controller->deduce_view_id(context_id, _camera->view_id());
     cuts->send_camera(context_id, cam_id, *_camera);
@@ -315,32 +365,32 @@ bool Renderer::draw_points_dense(Scene &scene)
 
     cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
 
-    std::cout << "################################ FIRST CHECK" << std::endl;
-    GLenum first_error = _device->opengl_api().glGetError();
-    if(first_error != GL_NO_ERROR)
-    {
-        std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
-        return false;
-    }
-    else
-    {
-        std::cout << "------------------------------ no error before dispatch" << std::endl;
-    }
+    // std::cout << "################################ FIRST CHECK" << std::endl;
+    // GLenum first_error = _device->opengl_api().glGetError();
+    // if(first_error != GL_NO_ERROR)
+    // {
+    //     std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
+    //     return false;
+    // }
+    // else
+    // {
+    //     std::cout << "------------------------------ no error before dispatch" << std::endl;
+    // }
 
     if(dispatch)
         controller->dispatch(context_id, _device, _data_provenance);
 
-    std::cout << "################################ SECOND CHECK" << std::endl;
-    first_error = _device->opengl_api().glGetError();
-    if(first_error != GL_NO_ERROR)
-    {
-        std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
-        return false;
-    }
-    else
-    {
-        std::cout << "------------------------------ no error after dispatch" << std::endl;
-    }
+    // std::cout << "################################ SECOND CHECK" << std::endl;
+    // first_error = _device->opengl_api().glGetError();
+    // if(first_error != GL_NO_ERROR)
+    // {
+    //     std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
+    //     return false;
+    // }
+    // else
+    // {
+    //     std::cout << "------------------------------ no error after dispatch" << std::endl;
+    // }
     lamure::view_t view_id = controller->deduce_view_id(context_id, _camera->view_id());
 
     scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, _device, _data_provenance);
@@ -428,6 +478,29 @@ bool Renderer::draw_points_dense(Scene &scene)
 //     // _context->apply();
 //     // _quad_legend->draw(_context);
 // }
+void Renderer::draw_surfels_brush()
+{
+    lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+
+    const lamure::ren::bvh *bvh = database->get_model(_model_id)->get_bvh();
+    scm::math::mat4f model_matrix = scm::math::mat4f(scm::math::make_translation(scm::math::vec3d()));
+    // scm::math::mat4d model_matrix = scm::math::mat4d(scm::math::make_translation(bvh->get_translation()));
+    scm::math::mat4f projection_matrix = scm::math::mat4f(_camera_view.get_matrix_perspective());
+    scm::math::mat4f view_matrix = _camera_view.get_matrix_view();
+    scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
+    scm::math::mat4f model_view_projection_matrix = projection_matrix * model_view_matrix;
+
+    _context->bind_program(_program_surfels_brush);
+
+    _program_surfels_brush->uniform("point_size_factor", 0.1f);
+    _program_surfels_brush->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+    _program_surfels_brush->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+
+    _context->bind_vertex_array(_vertex_array_object_surfels_brush);
+    _context->apply();
+
+    _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, _surfels_brush.size());
+}
 
 bool Renderer::render(Scene &scene)
 {
@@ -439,6 +512,8 @@ bool Renderer::render(Scene &scene)
     _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(0.0f, 0.0f, 0.0f, 1.0f));
 
     _context->set_default_frame_buffer();
+
+    _context->set_depth_stencil_state(depth_state_enable_);
 
     if(!dense_points_only)
     {
@@ -475,7 +550,13 @@ bool Renderer::render(Scene &scene)
         }
     }
 
-    draw_lines_test();
+    if(!_mode_depth_test_surfels_brush)
+    {
+        _context->set_depth_stencil_state(depth_state_disable_);
+    }
+    draw_surfels_brush();
+
+    // draw_lines_test();
     return false;
     // std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
@@ -508,6 +589,7 @@ void Renderer::toggle_camera(Scene scene)
         Camera_Custom camera = scene.get_vector_camera()[index_current_image_camera];
         _camera_view.set_position(scm::math::vec3f(camera.get_translation()));
         _camera_view.set_rotation(camera.get_orientation());
+        _mode_depth_test_surfels_brush = false;
     }
 }
 void Renderer::toggle_is_camera_active() { is_camera_active = !is_camera_active; }

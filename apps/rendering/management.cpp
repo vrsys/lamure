@@ -493,7 +493,7 @@ void management::dispatchKeyboardInput(unsigned char key)
 
         lamure::ren::ray::intersection intersectn;
         std::vector<lamure::ren::ray::intersection> dbg_intersections;
-        lamure::ren::ray intersection_ray(cam_pos, cam_fwd, max_distance);
+        lamure::ren::ray ray_brush(cam_pos, cam_fwd, max_distance);
 
         // sample params for single pick (wysiwg)
         unsigned int max_depth = 255;

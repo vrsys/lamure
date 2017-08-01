@@ -84,6 +84,11 @@ void Controller::handle_movements(int time_delta)
         offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
     }
 
+    if(scm::math::length(offset) > 0.0f)
+    {
+        _renderer._mode_depth_test_surfels_brush = true;
+    }
+
     if(_keys['h']) // ctrl is pressed
     {
         offset *= 0.25;
@@ -135,6 +140,11 @@ void Controller::handle_movements(int time_delta)
 void Controller::handle_mouse_movement(int x, int y)
 {
     _renderer.handle_mouse_movement(x, y);
+    // std::cout << _mode_brushing << std::endl;
+    if(_mode_brushing)
+    {
+        _renderer.start_brushing(x, y);
+    }
     // if(_is_first_mouse_movement)
     // {
     //     _x_last = x;
@@ -189,7 +199,11 @@ void Controller::handle_mouse_click(int button, int state, int x, int y)
         // clicked
         if(state == 0)
         {
-            _renderer.start_brushing(x, y);
+            _mode_brushing = true;
+        }
+        else if(state == 1)
+        {
+            _mode_brushing = false;
         }
     }
 }

@@ -171,7 +171,8 @@ void initialize_glut(int argc, char **argv, int width, int height)
     glutSpecialFunc(glut_keyboard_special);
     glutSpecialUpFunc(glut_keyboard_special_release);
     glutMouseFunc(mouse_callback);
-    glutPassiveMotionFunc(glut_mouse_movement);
+    glutMotionFunc(glut_mouse_movement);
+    // glutPassiveMotionFunc(glut_mouse_movement);
     glutIdleFunc(glut_idle);
     // glutFullScreen();
     // glutSetCursor(GLUT_CURSOR_NONE);

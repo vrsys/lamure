@@ -21,6 +21,7 @@ class Controller
     float _yaw = 90.0f;
     float _pitch = 0.0f;
     bool tmp = true;
+    bool _mode_brushing = false;
 
     void handle_movements(int time_delta);
 
