@@ -2,7 +2,6 @@
 #define LAMURE_DENSESTREAM_H
 
 #include "lamure/pro/data/entities/DensePoint.h"
-#include "lamure/pro/data/entities/LoDMetaData.h"
 #include "lamure/pro/data/interfaces/Streamable.h"
 
 namespace prov
