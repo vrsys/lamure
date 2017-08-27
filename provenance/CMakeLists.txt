@@ -20,16 +20,24 @@ file(GLOB DATA_SRC ${PROJECT_SOURCE_DIR}/data/*.cpp)
 file(GLOB DATA_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/*.h)
 
 # entities
-file(GLOB ENTITIES_SRC ${PROJECT_SOURCE_DIR}/data/entities/*.cpp)
-file(GLOB ENTITIES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/entities/*.h)
+file(GLOB DATA_ENTITIES_SRC ${PROJECT_SOURCE_DIR}/data/entities/*.cpp)
+file(GLOB DATA_ENTITIES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/entities/*.h)
 
 # interfaces
-file(GLOB INTERFACES_SRC ${PROJECT_SOURCE_DIR}/data/interfaces/*.cpp)
-file(GLOB INTERFACES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/interfaces/*.h)
+file(GLOB DATA_INTERFACES_SRC ${PROJECT_SOURCE_DIR}/data/interfaces/*.cpp)
+file(GLOB DATA_INTERFACES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/interfaces/*.h)
 
-# clustering
-file(GLOB CLUSTERING_SRC ${PROJECT_SOURCE_DIR}/clustering/*.cpp)
-file(GLOB CLUSTERING_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/clustering/*.h)
+# partitioning
+file(GLOB PARTITIONING_SRC ${PROJECT_SOURCE_DIR}/partitioning/*.cpp)
+file(GLOB PARTITIONING_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/partitioning/*.h)
+
+# entities
+file(GLOB PARTITIONING_ENTITIES_SRC ${PROJECT_SOURCE_DIR}/partitioning/entities/*.cpp)
+file(GLOB PARTITIONING_ENTITIES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/partitioning/entities/*.h)
+
+# interfaces
+file(GLOB PARTITIONING_INTERFACES_SRC ${PROJECT_SOURCE_DIR}/partitioning/interfaces/*.cpp)
+file(GLOB PARTITIONING_INTERFACES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/partitioning/interfaces/*.h)
 
 SOURCE_GROUP("provenance" FILES ${MAIN_SRC})
 SOURCE_GROUP("provenance" FILES ${MAIN_INC})
@@ -40,11 +48,11 @@ SOURCE_GROUP("3dparty" FILES ${3DPARTY_INC})
 SOURCE_GROUP("data" FILES ${DATA_SRC})
 SOURCE_GROUP("data" FILES ${DATA_INC})
 
-set(PROJECT_SOURCES ${MAIN_SRC} ${3DPARTY_SRC} ${DATA_SRC} ${ENTITIES_SRC} ${INTERFACES_SRC} ${CLUSTERING_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${3DPARTY_INC} ${DATA_INC} ${ENTITIES_INC} ${INTERFACES_INC} ${CLUSTERING_INC})
+set(PROJECT_SOURCES ${MAIN_SRC} ${3DPARTY_SRC} ${DATA_SRC} ${ENTITIES_SRC} ${INTERFACES_SRC} ${PARTITIONING_SRC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${3DPARTY_INC} ${DATA_INC} ${ENTITIES_INC} ${INTERFACES_INC} ${PARTITIONING_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR} 
-                    ${COMMON_INCLUDE_DIR}
+                   # ${COMMON_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR}
                     ${CGAL_INCLUDE_DIR}
                     ${GMP_INCLUDE_DIR} 
@@ -57,7 +65,7 @@ link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES})
 
-add_dependencies(${PROJECT_NAME} lamure_common)
+#add_dependencies(${PROJECT_NAME} lamure_common)
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PROVENANCE_LIBRARY -DBOOST_ALL_NO_LIB")

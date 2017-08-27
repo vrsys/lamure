@@ -3,7 +3,7 @@
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
-include_directories(${REND_INCLUDE_DIR}
+include_directories(#${REND_INCLUDE_DIR}
         ${PROV_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
@@ -20,7 +20,7 @@ InitApp(${CMAKE_PROJECT_NAME}_provenance)
 # Libraries
 target_link_libraries(${PROJECT_NAME}
         ${PROJECT_LIBS}
-        ${REND_LIBRARY}
+ #       ${REND_LIBRARY}
         ${PROV_LIBRARY}
         ${OpenGL_LIBRARIES}
         # ${GLFW_LIBRARIES}

@@ -9,6 +9,8 @@
 #include <memory>
 #include <stdio.h>
 #include <string>
+#include <vector>
+#include <algorithm>
 
 #include <scm/core.h>
 #include <scm/core/math.h>
@@ -18,6 +20,7 @@ namespace prov
 // bool DEBUG = false;
 
 typedef std::ifstream ifstream;
+typedef std::ofstream ofstream;
 typedef std::string string;
 
 template <typename T, std::size_t SIZE>
@@ -28,6 +31,9 @@ using vec = std::vector<T>;
 
 template <typename T>
 using u_ptr = std::unique_ptr<T>;
+
+template <typename T>
+using s_ptr = std::shared_ptr<T>;
 
 typedef scm::math::vec2d vec2d;
 typedef scm::math::vec3d vec3d;
