@@ -200,6 +200,7 @@ void Controller::handle_mouse_click(int button, int state, int x, int y)
         if(state == 0)
         {
             _mode_brushing = true;
+            _renderer.start_brushing(x, y);
         }
         else if(state == 1)
         {

@@ -175,8 +175,14 @@ void Renderer::start_brushing(int x, int y)
     ray_brush.intersect_model(_model_id, model_transform, 1.0f, max_depth, surfel_skip, false, result_intersection);
     // std::cout << "position: " << result_intersection.position_ << std::endl;
     // std::cout << "normal: " << result_intersection.normal_ << std::endl;
-    // std::cout << "distance: " << result_intersection.distance_ << std::endl;
+    std::cout << "distance: " << result_intersection.distance_ << std::endl;
     // std::cout << "error: " << result_intersection.error_ << std::endl;
+    std::cout << "error_raw: " << result_intersection.error_raw_ << std::endl;
+
+    if(result_intersection.error_raw_ > 0.05)
+    {
+        return;
+    }
 
     Struct_Surfel_Brush surfel_brush = {result_intersection.position_ + result_intersection.normal_ * 0.1f, result_intersection.normal_};
     add_surfel_brush(surfel_brush);
