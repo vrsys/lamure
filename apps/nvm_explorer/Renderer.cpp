@@ -102,12 +102,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     lamure::ren::policy *policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(64);
 
-    policy->set_render_budget_in_mb(5000);
+    policy->set_render_budget_in_mb(2000);
     // policy->set_render_budget_in_mb(1024 * 6);
     // policy->set_render_budget_in_mb(1024 * 40);
     // policy->set_render_budget_in_mb(256);
 
-    policy->set_out_of_core_budget_in_mb(5000);
+    policy->set_out_of_core_budget_in_mb(2000);
     // policy->set_out_of_core_budget_in_mb(1024 * 3);
     // policy->set_out_of_core_budget_in_mb(1024 * 20);
     // policy->set_out_of_core_budget_in_mb(256);
@@ -556,7 +556,7 @@ bool Renderer::render(Scene &scene)
         }
     }
 
-    if(!_mode_depth_test_surfels_brush)
+    if(_mode_depth_test_surfels_brush)
     {
         _context->set_depth_stencil_state(depth_state_disable_);
     }

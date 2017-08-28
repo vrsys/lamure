@@ -7,7 +7,14 @@
 
 #version 420 core
 
-in VertexData { vec2 pass_uv_coords; }
+uniform mat4 model_view_matrix;
+
+in VertexData
+{
+    vec3 pass_position;
+    vec3 pass_normal;
+    vec2 pass_uv_coords;
+}
 VertexIn;
 
 layout(location = 0) out vec4 out_color;
@@ -21,5 +28,28 @@ void main()
         discard;
     }
 
-    out_color = vec4(1.0, 1.0, 0.0, 1.0);
+    vec3 position_space_view = (model_view_matrix * vec4(VertexIn.pass_position, 1.0)).xyz;
+    vec3 position_space_view_normalized = normalize(position_space_view);
+
+    // vec4 normal = transpose(inverse(model_view_matrix)) * vec4(VertexIn.pass_normal, 1.0);
+
+    vec4 normal_space_view = model_view_matrix * vec4(VertexIn.pass_normal, 0.0);
+    // vec4 normal_space_view = model_view_matrix * vec4(normalize(normal.xyz), 1.0);
+    vec3 normal_space_view_normalized = normalize(normal_space_view.xyz);
+
+    float dot_product = dot(-position_space_view_normalized, normal_space_view_normalized);
+
+    dot_product = (dot_product + 1.0) * 0.5;
+
+    // if(dot_product < 0.5)
+    // {
+    //     out_color = vec4(1.0, 0.0, 0.0, 1.0);
+    // }
+    // else
+    // {
+    //     out_color = vec4(0.0, 1.0, 0.0, 1.0);
+    // }
+
+    // out_color = vec4(1.0, 1.0, 0.0, 1.0);
+    out_color = vec4(dot_product, dot_product, 0.0, 1.0);
 }

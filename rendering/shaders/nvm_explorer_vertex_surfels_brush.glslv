@@ -15,6 +15,8 @@ layout(location = 1) in vec3 in_normal;
 
 out VertexData
 {
+    vec3 position;
+    vec3 normal;
     vec3 pass_ms_u;
     vec3 pass_ms_v;
 }
@@ -22,6 +24,9 @@ VertexOut;
 
 void main()
 {
+    VertexOut.position = in_position;
+    VertexOut.normal = in_normal;
+
     float in_radius = 1.0;
 
     vec3 ms_n = normalize(in_normal.xyz);

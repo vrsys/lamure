@@ -7,7 +7,7 @@ Scene::Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Cam
     int counter = 0;
     for(prov::Camera const &camera : vector_camera)
     {
-        if(counter++ == 2)
+        if(counter++ == 0)
         {
             break;
         }
