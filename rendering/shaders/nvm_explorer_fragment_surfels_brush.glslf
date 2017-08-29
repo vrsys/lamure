@@ -41,15 +41,5 @@ void main()
 
     dot_product = (dot_product + 1.0) * 0.5;
 
-    // if(dot_product < 0.5)
-    // {
-    //     out_color = vec4(1.0, 0.0, 0.0, 1.0);
-    // }
-    // else
-    // {
-    //     out_color = vec4(0.0, 1.0, 0.0, 1.0);
-    // }
-
-    // out_color = vec4(1.0, 1.0, 0.0, 1.0);
     out_color = vec4(dot_product, dot_product, 0.0, 1.0);
 }
