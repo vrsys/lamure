@@ -15,6 +15,7 @@ class Partition
     {
         //        static_assert(std::is_base_of<PointMetaDataPair, TPointMetaDataPair>::value, "The used PointMetaDataPair type is not a derivative of PointMetaDataPair");
         this->_pairs = vec<TPointMetaDataPair>();
+        this->_aggregate_metadata = TMetaData();
     }
 
     void set_pairs(vec<TPointMetaDataPair> pairs) { this->_pairs = pairs; }

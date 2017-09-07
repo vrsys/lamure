@@ -40,6 +40,11 @@ typedef scm::math::vec3d vec3d;
 typedef scm::math::mat4d mat4d;
 typedef scm::math::quatd quatd;
 
+typedef scm::math::vec2f vec2f;
+typedef scm::math::vec3f vec3f;
+typedef scm::math::mat4f mat4f;
+typedef scm::math::quatf quatf;
+
 template <typename T>
 T swap(const T &arg, bool big_in_mem)
 {

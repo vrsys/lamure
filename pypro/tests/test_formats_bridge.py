@@ -27,7 +27,7 @@ class PMVSFormatDenseTestSuite(unittest.TestCase):
     def setUp(self):
         print("ProFormatsTestSuite : setUp")
         init_time = time()
-        self.format_dense_pmvs = FormatDensePMVS('/home/anton/Desktop/mvs_output/out_1.nvm.cmvs/00/models/option-0000.patch', '/home/anton/Desktop/mvs_output/out_1.nvm.cmvs/00/models/option-0000.ply')
+        self.format_dense_pmvs = FormatDensePMVS('/home/tihi6213/Desktop/mvs_output/out_1.nvm.cmvs/00/models/option-0000.patch', '/home/tihi6213/Desktop/mvs_output/out_1.nvm.cmvs/00/models/option-0000.ply')
         elapsed_time = time() - init_time
         print("ProFormatsTestSuite : read took " + str(elapsed_time) + " sec")
 

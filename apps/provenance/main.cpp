@@ -120,9 +120,16 @@ int main(int argc, char *argv[])
     printf("\nSparse octree creation took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 
     start = std::chrono::high_resolution_clock::now();
-    sparse_octree.debug_information_loss(cache_dense, 100);
+    sparse_octree.debug_information_loss(cache_dense, cache_dense.get_points().size());
     end = std::chrono::high_resolution_clock::now();
-    printf("\nSparse octree debug took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
+    printf("\nSparse octree information loss debug took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
+    printf("\nTime elapsed per lookup: %f ms\n", std::chrono::duration<double, std::milli>(end - start) / cache_dense.get_points().size());
+
+    start = std::chrono::high_resolution_clock::now();
+    sparse_octree.debug_randomized_lookup(1000000);
+    end = std::chrono::high_resolution_clock::now();
+    printf("\nSparse octree randomized lookup debug took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
+    printf("\nTime elapsed per lookup: %f ms\n", std::chrono::duration<double, std::milli>(end - start) / 1000000);
 
     return 0;
 }
