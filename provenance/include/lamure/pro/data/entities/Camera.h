@@ -186,8 +186,11 @@ class Camera
         if(_fp_resolution_x == 0 && _fp_resolution_y == 0)
         {
             // _fp_resolution_x = 5715.545755 / 0.0254;
-            _fp_resolution_x = (2976 / 0.384615385) / 0.0254;
-            _fp_resolution_y = (2976 / 0.384615385) / 0.0254;
+            // _fp_resolution_x = (2976 / 0.384615385) / 0.0254;
+            // _fp_resolution_y = (2976 / 0.384615385) / 0.0254;
+            // how many pixels are inside 1m = 1m / (1.12nm / 1'000'000)
+            _fp_resolution_x = 1.0f / (1.12 / 1000000);
+            _fp_resolution_y = 1.0f / (1.12 / 1000000);
         }
 
         // if(DEBUG)

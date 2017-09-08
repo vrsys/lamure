@@ -19,6 +19,7 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
 
 bool Controller::update(int time_delta)
 {
+    time_since_last_brush += time_delta;
     handle_movements(time_delta);
     _scene.update(time_delta);
 
@@ -99,7 +100,7 @@ void Controller::handle_movements(int time_delta)
     {
         if(_keys['g']) // Shift
         {
-            offset *= 0.125;
+            offset *= 0.125 * 0.3;
         }
         // std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
@@ -124,6 +125,15 @@ void Controller::handle_movements(int time_delta)
         _renderer.update_size_point(0.0004f * time_delta);
     }
 
+    if(_keys['8'])
+    {
+        _renderer.update_size_pixels_brush(-0.00004f * time_delta);
+    }
+    if(_keys['9'])
+    {
+        _renderer.update_size_pixels_brush(0.00004f * time_delta);
+    }
+
     float radius = 0.0f;
     if(_keys['x'] || _keys['X'])
     {
@@ -143,7 +153,11 @@ void Controller::handle_mouse_movement(int x, int y)
     // std::cout << _mode_brushing << std::endl;
     if(_mode_brushing)
     {
-        _renderer.start_brushing(x, y);
+        if(time_since_last_brush >= time_min_between_brush)
+        {
+            _renderer.start_brushing(x, y, _scene);
+            time_since_last_brush = 0;
+        }
     }
     // if(_is_first_mouse_movement)
     // {
@@ -200,7 +214,11 @@ void Controller::handle_mouse_click(int button, int state, int x, int y)
         if(state == 0)
         {
             _mode_brushing = true;
-            _renderer.start_brushing(x, y);
+            if(time_since_last_brush >= time_min_between_brush)
+            {
+                _renderer.start_brushing(x, y, _scene);
+                time_since_last_brush = 0;
+            }
         }
         else if(state == 1)
         {

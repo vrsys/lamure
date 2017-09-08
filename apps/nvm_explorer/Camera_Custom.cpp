@@ -6,6 +6,7 @@ Camera_Custom::Camera_Custom(prov::Camera camera) : prov::Camera(camera)
     // std::cout << _fp_resolution_x << std::endl;
     float width_world = (1.0f / _fp_resolution_x) * _im_width;
     float height_world = (1.0f / _fp_resolution_y) * _im_height;
+
     _frustum = Frustum(width_world, height_world, _focal_length);
 }
 
@@ -24,6 +25,58 @@ void Camera_Custom::update_transformation_image_plane()
     // _transformation_image_plane = _transformation * matrix_translation;
     _transformation_image_plane = _transformation * matrix_translation * matrix_scale;
 }
+void Camera_Custom::update_pixels_brush()
+{
+    // _vector_pixels_brush.push_back(position_pixel);
+
+    // _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
+    // _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
+}
+void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm::shared_ptr<scm::gl::render_device> device)
+{
+    // direction of ray
+    scm::math::vec3f direction_normalized = scm::math::normalize(position_surfel_brush - _translation);
+
+    // viewing direction of camera
+    scm::math::vec3f direction_viewing_normalized = -scm::math::normalize(scm::math::vec3f(_transformation[8], _transformation[9], _transformation[10]));
+
+    float dot = scm::math::dot(direction_normalized, direction_viewing_normalized);
+    float angle_between_directions = scm::math::rad2deg(scm::math::acos(dot));
+
+    float angle_c = 90.0f - angle_between_directions;
+
+    float length = (_focal_length / scm::math::sin(scm::math::deg2rad(angle_c))) * scm::math::sin(scm::math::deg2rad(90.0f));
+
+    scm::math::vec3f position_pixel = scm::math::vec3f(_translation) + length * _frustum.get_scale() * direction_normalized;
+
+    _vector_pixels_brush.push_back(scm::math::inverse(_transformation_image_plane) * position_pixel);
+
+    _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
+    _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
+}
+
+// void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm::shared_ptr<scm::gl::render_device> device)
+// {
+//     // direction of ray
+//     scm::math::vec3f direction_normalized = scm::math::normalize(position_surfel_brush - _translation);
+
+//     // viewing direction of camera
+//     scm::math::vec3f direction_viewing_normalized = -scm::math::normalize(scm::math::vec3f(_transformation[8], _transformation[9], _transformation[10]));
+
+//     float dot = scm::math::dot(direction_normalized, direction_viewing_normalized);
+//     float angle_between_directions = scm::math::rad2deg(scm::math::acos(dot));
+
+//     float angle_c = 90.0f - angle_between_directions;
+
+//     float length = (_focal_length / scm::math::sin(scm::math::deg2rad(angle_c))) * scm::math::sin(scm::math::deg2rad(90.0f));
+
+//     scm::math::vec3f position_pixel = scm::math::vec3f(_translation) + length * _frustum.get_scale() * direction_normalized;
+
+//     _vector_pixels_brush.push_back(position_pixel);
+
+//     _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
+//     _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
+// }
 
 std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector<prov::SparsePoint> &vector_point)
 {
@@ -90,6 +143,7 @@ void Camera_Custom::load_texture(scm::shared_ptr<scm::gl::render_device> device)
 }
 // scm::gl::texture_2d_ptr Camera_Custom::get_texture() { return _texture; }
 scm::gl::vertex_array_ptr Camera_Custom::get_vertex_array_object_lines() { return _vertex_array_object_lines; }
+scm::gl::vertex_array_ptr Camera_Custom::get_vertex_array_object_pixels() { return _vertex_array_object_pixels; }
 
 void Camera_Custom::update_transformation()
 {
@@ -105,7 +159,7 @@ void Camera_Custom::update_scale_frustum(float offset)
 {
     _frustum.update_scale_frustum(offset);
     update_transformation();
-    // _frustum.init(device, calc_frustum_points());
+    update_pixels_brush();
 }
 
 int &Camera_Custom::get_count_lines() { return _count_lines; }
@@ -124,6 +178,8 @@ void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::ve
     load_texture(device);
     _frustum.init(device);
 }
+
+std::vector<scm::math::vec3f> &Camera_Custom::get_vector_pixels_brush() { return _vector_pixels_brush; }
 
 // void Camera_Custom::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset)
 // {

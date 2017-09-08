@@ -65,6 +65,7 @@ class Renderer
     void update_radius_sphere(float offset);
 
     void update_size_point(float scale);
+    void update_size_pixels_brush(float scale);
 
     Camera_View &get_camera_view();
 
@@ -74,7 +75,8 @@ class Renderer
     void next_camera(Scene scene);
     void handle_mouse_movement(int x, int y);
 
-    void start_brushing(int x, int y);
+    void start_brushing(int x, int y, Scene &scene);
+    std::vector<uint16_t> search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
 
     bool dense_points_only = false;
     bool mode_draw_points_dense = false;
@@ -101,6 +103,7 @@ class Renderer
     scm::gl::program_ptr _program_lines;
     scm::gl::program_ptr _program_legend;
     scm::gl::program_ptr _program_surfels_brush;
+    scm::gl::program_ptr _program_pixels_brush;
 
     lamure::ren::Data_Provenance _data_provenance;
 
@@ -113,6 +116,11 @@ class Renderer
     float _size_point_dense = 0.1f;
     float _size_point_sparse_float = 1.0f;
     int _size_point_sparse = 1;
+
+    int _buffer_surfels_brush_size = 0;
+
+    float _size_pixels_brush_minimum = 4.0f * 1.12f / 1000000.0f;
+    float _size_pixels_brush_current = 4.0f * 1.12f / 1000.0f;
 
     Camera_View _camera_view;
     lamure::ren::camera *_camera = new lamure::ren::camera();
@@ -129,11 +137,12 @@ class Renderer
     void draw_frustra(Scene &scene);
     bool draw_points_dense(Scene &scene);
     void draw_surfels_brush();
+    void draw_pixels_brush(Scene &scene);
 
     scm::gl::depth_stencil_state_ptr depth_state_disable_;
     scm::gl::depth_stencil_state_ptr depth_state_enable_;
 
-    void add_surfel_brush(Struct_Surfel_Brush const &surfel_brush);
+    void add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &scene);
 
     lamure::model_t _model_id;
     // BRUSHING ///////////////////////////////////////////////

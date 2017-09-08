@@ -16,6 +16,8 @@ class Controller
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
     bool _is_first_mouse_movement = false;
+    int time_since_last_brush = 0;
+    int time_min_between_brush = 50;
     float _x_last = 0;
     float _y_last = 0;
     float _yaw = 90.0f;

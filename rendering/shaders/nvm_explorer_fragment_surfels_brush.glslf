@@ -39,6 +39,11 @@ void main()
 
     float dot_product = dot(-position_space_view_normalized, normal_space_view_normalized);
 
+    // if(dot_product < 0.0f)
+    // {
+    //     discard;
+    // }
+
     dot_product = (dot_product + 1.0) * 0.5;
 
     out_color = vec4(dot_product, dot_product, 0.0, 1.0);

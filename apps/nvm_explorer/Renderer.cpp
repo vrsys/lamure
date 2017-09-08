@@ -74,6 +74,13 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     _program_surfels_brush = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
+    // create shader program for pixels brush
+    scm::io::read_text_file(root_path + "/nvm_explorer_vertex_pixels_brush.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_geometry_pixels_brush.glslg", visibility_gs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_fragment_pixels_brush.glslf", visibility_fs_source);
+    _program_pixels_brush = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
+        device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
+
     // // create shader program for legend
     // scm::io::read_text_file(root_path + "/provenance_legend.glslv", visibility_vs_source);
     // scm::io::read_text_file(root_path + "/provenance_legend.glslf", visibility_fs_source);
@@ -121,6 +128,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     depth_state_disable_ = _device->create_depth_stencil_state(false);
     depth_state_enable_ = _device->create_depth_stencil_state(true);
 
+    _vertex_buffer_object_surfels_brush = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * _surfels_brush.size(), &_surfels_brush[0]);
+    std::vector<scm::gl::vertex_format::element> vertex_format;
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    _vertex_array_object_surfels_brush = _device->create_vertex_array(vertex_format, boost::assign::list_of(_vertex_buffer_object_surfels_brush));
+
     // color_blending_state_ = device_->create_blend_state(true);
     // color_blending_state_ = device_->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
     // bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
@@ -139,16 +152,8 @@ scm::math::vec3f Renderer::convert_to_world_space(int x, int y, int z)
     return scm::math::vec3f(point_world[0] / point_world[3], point_world[1] / point_world[3], point_world[2] / point_world[3]);
 }
 
-void Renderer::start_brushing(int x, int y)
+void Renderer::start_brushing(int x, int y, Scene &scene)
 {
-    // if(int first_error = _device->opengl_api().glGetError() != GL_NO_ERROR)
-    //     {
-    //         std::cout << "ERROR CODE: " << first_error << std::endl;
-    //     }
-    //     else
-    //     {
-    //         std::cout << "no error brushing 1" << std::endl;
-    //     }
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
 
     scm::math::vec3f point_final_front = convert_to_world_space(x, y, -1.0);
@@ -158,16 +163,9 @@ void Renderer::start_brushing(int x, int y)
     float max_distance = 100000.0f;
 
     scm::math::vec3f direction_ray = point_final_back - point_final_front;
-    // std::cout << scm::math::normalize(direction_ray) << std::endl;
 
     lamure::ren::ray ray_brush(point_final_front, direction_ray, max_distance);
     scm::math::mat4f model_transform = database->get_model(_model_id)->transform();
-
-    // std::cout << "Found:" << std::endl;
-    // lamure::ren::ray::intersection_bvh result_intersection_bvh;
-    // ray_brush.intersect_model_bvh(_model_id, model_transform, 1.0f, result_intersection_bvh);
-    // std::cout << result_intersection_bvh.position_ << std::endl;
-    // std::cout << result_intersection_bvh.bvh_filename_ << std::endl;
 
     unsigned int max_depth = 255;
     unsigned int surfel_skip = 1;
@@ -175,9 +173,9 @@ void Renderer::start_brushing(int x, int y)
     ray_brush.intersect_model(_model_id, model_transform, 1.0f, max_depth, surfel_skip, false, result_intersection);
     // std::cout << "position: " << result_intersection.position_ << std::endl;
     // std::cout << "normal: " << result_intersection.normal_ << std::endl;
-    std::cout << "distance: " << result_intersection.distance_ << std::endl;
+    // std::cout << "distance: " << result_intersection.distance_ << std::endl;
     // std::cout << "error: " << result_intersection.error_ << std::endl;
-    std::cout << "error_raw: " << result_intersection.error_raw_ << std::endl;
+    // std::cout << "error_raw: " << result_intersection.error_raw_ << std::endl;
 
     if(result_intersection.error_raw_ > 0.05)
     {
@@ -185,32 +183,84 @@ void Renderer::start_brushing(int x, int y)
     }
 
     Struct_Surfel_Brush surfel_brush = {result_intersection.position_ + result_intersection.normal_ * 0.1f, result_intersection.normal_};
-    add_surfel_brush(surfel_brush);
+    add_surfel_brush(surfel_brush, scene);
 
-    std::vector<Struct_Line> vector_struct_line;
-    Struct_Line position_point = {point_final_front};
-    vector_struct_line.push_back(position_point);
+    // std::vector<Struct_Line> vector_struct_line;
+    // Struct_Line position_point = {point_final_front};
+    // vector_struct_line.push_back(position_point);
 
-    Struct_Line position_point1 = {point_final_back};
-    vector_struct_line.push_back(position_point1);
+    // Struct_Line position_point1 = {point_final_back};
+    // vector_struct_line.push_back(position_point1);
 
-    // std::cout << vector_struct_line[0].position << std::endl;
-    // std::cout << vector_struct_line[1].position << std::endl;
-
-    _vertex_buffer_object_lines = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * 2, &vector_struct_line[0]);
-    _vertex_array_object_lines = _device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
+    // _vertex_buffer_object_lines = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * 2, &vector_struct_line[0]);
+    // _vertex_array_object_lines = _device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
 }
 
-void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush)
+void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &scene)
 {
+    // _initial_buffer_size
+
+    // if the next surfel would not fit into the buffer
+    // if(_surfels_brush.size() == 0)
+
+    if(_surfels_brush.size() == _buffer_surfels_brush_size)
+    {
+        _buffer_surfels_brush_size *= 2;
+
+        if(_buffer_surfels_brush_size == 0)
+        {
+            _buffer_surfels_brush_size = 100;
+        }
+        // create the new buffer
+        scm::gl::buffer_ptr tmp_buffer = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, _buffer_surfels_brush_size * (sizeof(float) * 6), 0);
+        // copy the data from the old buffer to the new buffer
+        _device->main_context()->copy_buffer_data(tmp_buffer, _vertex_buffer_object_surfels_brush, 0, 0, _surfels_brush.size() * (sizeof(float) * 6));
+
+        _vertex_buffer_object_surfels_brush = tmp_buffer;
+
+        std::vector<scm::gl::vertex_format::element> vertex_format;
+        vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+        vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+        _vertex_array_object_surfels_brush = _device->create_vertex_array(vertex_format, boost::assign::list_of(_vertex_buffer_object_surfels_brush));
+
+        std::cout << "increased buffer (new size: " << _buffer_surfels_brush_size << ")" << std::endl;
+    }
+
+    // if(_surfels_brush.size() % threshold_buffer == 0)
+    // {
+    //     int count_chunks = _surfels_brush.size() / threshold_buffer;
+    //     int size_buffer = (count_chunks + 1) * (sizeof(float) * 6) * threshold_buffer;
+
+    // }
+
     _surfels_brush.push_back(surfel_brush);
 
-    _vertex_buffer_object_surfels_brush = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * _surfels_brush.size(), &_surfels_brush[0]);
+    Struct_Surfel_Brush *buffer_mapped = (Struct_Surfel_Brush *)_device->main_context()->map_buffer(_vertex_buffer_object_surfels_brush, scm::gl::ACCESS_READ_WRITE);
 
-    std::vector<scm::gl::vertex_format::element> vertex_format;
-    vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
-    vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
-    _vertex_array_object_surfels_brush = _device->create_vertex_array(vertex_format, boost::assign::list_of(_vertex_buffer_object_surfels_brush));
+    buffer_mapped[_surfels_brush.size() - 1] = surfel_brush;
+
+    _device->main_context()->unmap_buffer(_vertex_buffer_object_surfels_brush);
+
+    // add pixel
+    std::vector<uint16_t> vector_ids_cameras = search_tree(surfel_brush.position, scene);
+
+    for(uint16_t id_camera : vector_ids_cameras)
+    {
+        Camera_Custom &camera = scene.get_vector_camera()[id_camera];
+        camera.add_pixel_brush(surfel_brush.position, _device);
+    }
+}
+
+std::vector<uint16_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
+{
+    std::vector<uint16_t> result;
+
+    for(int i = 0; i < scene.get_vector_camera().size(); ++i)
+    {
+        result.push_back(i);
+    }
+
+    return result;
 }
 
 void Renderer::handle_mouse_movement(int x, int y)
@@ -508,6 +558,59 @@ void Renderer::draw_surfels_brush()
     _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, _surfels_brush.size());
 }
 
+void Renderer::draw_pixels_brush(Scene &scene)
+{
+    // lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+
+    // const lamure::ren::bvh *bvh = database->get_model(_model_id)->get_bvh();
+    // scm::math::mat4f model_matrix = scm::math::mat4f(scm::math::make_translation(scm::math::vec3d()));
+    // // scm::math::mat4d model_matrix = scm::math::mat4d(scm::math::make_translation(bvh->get_translation()));
+    // scm::math::mat4f projection_matrix = scm::math::mat4f(_camera_view.get_matrix_perspective());
+    // scm::math::mat4f view_matrix = _camera_view.get_matrix_view();
+    // scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
+    // scm::math::mat4f model_view_projection_matrix = projection_matrix * model_view_matrix;
+
+    _context->bind_program(_program_pixels_brush);
+
+    _program_pixels_brush->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_pixels_brush->uniform("matrix_perspective", _camera_view.get_matrix_perspective());
+
+    // for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
+    for(Camera_Custom &camera : scene.get_vector_camera())
+    {
+        if(!is_camera_active || index_current_image_camera == camera.get_index())
+        {
+            // if(!_mode_depth_test_surfels_brush && index_current_image_camera == camera.get_index())
+            // {
+            //     _context->set_depth_stencil_state(depth_state_disable_);
+            // }
+
+            _program_pixels_brush->uniform("matrix_model", camera.get_transformation_image_plane());
+            // _program_pixels_brush->uniform("scale", 0.5f);
+            // _program_pixels_brush->uniform("scale", 1.12f / 1000.0f);
+            _program_pixels_brush->uniform("scale", _size_pixels_brush_current);
+
+            _context->bind_vertex_array(camera.get_vertex_array_object_pixels());
+            _context->apply();
+
+            // std::cout << camera.get_vector_pixels_brush().size() << std::endl;
+
+            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, camera.get_vector_pixels_brush().size());
+
+            _context->set_depth_stencil_state(depth_state_enable_);
+        }
+    }
+
+    //     _program_surfels_brush->uniform("point_size_factor", 0.1f);
+    //     _program_surfels_brush->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+    //     _program_surfels_brush->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+
+    //     _context->bind_vertex_array(_vertex_array_object_surfels_brush);
+    //     _context->apply();
+
+    //     _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, _surfels_brush.size());
+}
+
 bool Renderer::render(Scene &scene)
 {
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
@@ -535,6 +638,7 @@ bool Renderer::render(Scene &scene)
         if(mode_draw_images)
         {
             draw_images(scene);
+            draw_pixels_brush(scene);
         }
         if(mode_draw_points_dense)
         {
@@ -556,10 +660,10 @@ bool Renderer::render(Scene &scene)
         }
     }
 
-    if(_mode_depth_test_surfels_brush)
-    {
-        _context->set_depth_stencil_state(depth_state_disable_);
-    }
+    // if(_mode_depth_test_surfels_brush)
+    // {
+    //     _context->set_depth_stencil_state(depth_state_disable_);
+    // }
     draw_surfels_brush();
 
     // draw_lines_test();
@@ -581,6 +685,12 @@ void Renderer::update_size_point(float offset)
         _size_point_sparse_float = std::max(_size_point_sparse_float + offset * 20.0f, 0.0f);
         _size_point_sparse = int(_size_point_sparse_float);
     }
+}
+
+void Renderer::update_size_pixels_brush(float scale)
+{
+    _size_pixels_brush_current += scale;
+    _size_pixels_brush_current = std::max(_size_pixels_brush_current, _size_pixels_brush_minimum);
 }
 
 void Renderer::toggle_camera(Scene scene)
