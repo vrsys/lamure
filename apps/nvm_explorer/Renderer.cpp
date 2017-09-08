@@ -644,10 +644,10 @@ bool Renderer::render(Scene &scene)
         }
         if(mode_draw_points_dense)
         {
-            if(!draw_points_dense(scene))
-            {
-                return true;
-            }
+            // if(!draw_points_dense(scene))
+            // {
+            //     return true;
+            // }
         }
         else
         {
