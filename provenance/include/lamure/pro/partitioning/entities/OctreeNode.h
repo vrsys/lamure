@@ -4,7 +4,6 @@
 #include "lamure/pro/data/entities/DenseMetaData.h"
 #include "lamure/pro/data/entities/DensePoint.h"
 #include "lamure/pro/partitioning/entities/Partition.h"
-#include "lamure/pro/partitioning/entities/PointMetaDataPair.h"
 #include "lamure/pro/partitioning/interfaces/Partitionable.h"
 
 #include <boost/asio/io_service.hpp>
@@ -13,21 +12,21 @@
 
 namespace prov
 {
-class OctreeNode : public Partition<PointMetaDataPair<DensePoint, DenseMetaData>, DenseMetaData>, public Partitionable<OctreeNode>
+class OctreeNode : public Partition<pair<DensePoint, DenseMetaData>, DenseMetaData>, public Partitionable<OctreeNode>
 {
   public:
     static const bool CUBIC_NODES = false;
     static const uint8_t MAX_DEPTH = 10;
     static const uint8_t MIN_POINTS_PER_NODE = 1;
 
-    OctreeNode() : Partition<PointMetaDataPair<DensePoint, DenseMetaData>, DenseMetaData>(), Partitionable<OctreeNode>()
+    OctreeNode() : Partition<pair<DensePoint, DenseMetaData>, DenseMetaData>(), Partitionable<OctreeNode>()
     {
         this->_min = vec3f(FLT_MAX, FLT_MAX, FLT_MAX);
         this->_max = vec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX);
         this->_depth = 0;
         //        printf("\nOctreeNode created at depth: 0\n");
     }
-    OctreeNode(uint8_t depth) : Partition<PointMetaDataPair<DensePoint, DenseMetaData>, DenseMetaData>(), Partitionable<OctreeNode>()
+    OctreeNode(uint8_t depth) : Partition<pair<DensePoint, DenseMetaData>, DenseMetaData>(), Partitionable<OctreeNode>()
     {
         this->_min = vec3f(FLT_MAX, FLT_MAX, FLT_MAX);
         this->_max = vec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX);
@@ -41,37 +40,27 @@ class OctreeNode : public Partition<PointMetaDataPair<DensePoint, DenseMetaData>
 
         if(this->_depth < MAX_DEPTH && this->_pairs.size() / 8 > MIN_POINTS_PER_NODE)
         {
-            std::sort(this->_pairs.begin(), this->_pairs.end(), [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                return pair1.get_point().get_position().x < pair2.get_point().get_position().x;
-            });
+            pdqsort(this->_pairs.begin(), this->_pairs.end(),
+                    [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) { return pair1.first.get_position().x < pair2.first.get_position().x; });
 
             uint64_t mid_x_pos = this->_pairs.size() / 2;
 
-            std::sort(this->_pairs.begin(), this->_pairs.begin() + mid_x_pos, [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                return pair1.get_point().get_position().y < pair2.get_point().get_position().y;
-            });
-            std::sort(this->_pairs.begin() + mid_x_pos, this->_pairs.end(), [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                return pair1.get_point().get_position().y < pair2.get_point().get_position().y;
-            });
+            pdqsort(this->_pairs.begin(), this->_pairs.begin() + mid_x_pos,
+                    [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) { return pair1.first.get_position().y < pair2.first.get_position().y; });
+            pdqsort(this->_pairs.begin() + mid_x_pos, this->_pairs.end(),
+                    [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) { return pair1.first.get_position().y < pair2.first.get_position().y; });
 
             uint64_t mid_y_pos_1 = this->_pairs.size() / 4;
             uint64_t mid_y_pos_2 = mid_x_pos + this->_pairs.size() / 4;
 
-            std::sort(this->_pairs.begin(), this->_pairs.begin() + mid_y_pos_1,
-                      [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                          return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
-                      });
-            std::sort(this->_pairs.begin() + mid_y_pos_1, this->_pairs.begin() + mid_x_pos,
-                      [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                          return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
-                      });
-            std::sort(this->_pairs.begin() + mid_x_pos, this->_pairs.begin() + mid_y_pos_2,
-                      [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                          return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
-                      });
-            std::sort(this->_pairs.begin() + mid_y_pos_2, this->_pairs.end(), [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
-            });
+            pdqsort(this->_pairs.begin(), this->_pairs.begin() + mid_y_pos_1,
+                    [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) { return pair1.first.get_position().z < pair2.first.get_position().z; });
+            pdqsort(this->_pairs.begin() + mid_y_pos_1, this->_pairs.begin() + mid_x_pos,
+                    [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) { return pair1.first.get_position().z < pair2.first.get_position().z; });
+            pdqsort(this->_pairs.begin() + mid_x_pos, this->_pairs.begin() + mid_y_pos_2,
+                    [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) { return pair1.first.get_position().z < pair2.first.get_position().z; });
+            pdqsort(this->_pairs.begin() + mid_y_pos_2, this->_pairs.end(),
+                    [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) { return pair1.first.get_position().z < pair2.first.get_position().z; });
 
             //            uint64_t mid_z_pos_1 = this->_pairs.size() / 8;
             //            uint64_t mid_z_pos_2 = mid_y_pos_1 + this->_pairs.size() / 8;
@@ -82,7 +71,7 @@ class OctreeNode : public Partition<PointMetaDataPair<DensePoint, DenseMetaData>
             for(uint8_t i = 0; i < 8; i++)
             {
                 OctreeNode octree_node(this->_depth + 1);
-                vec<PointMetaDataPair<DensePoint, DenseMetaData>> pairs(&this->_pairs[i * offset], &this->_pairs[(i + 1) * offset]);
+                vec<pair<DensePoint, DenseMetaData>> pairs(&this->_pairs[i * offset], &this->_pairs[(i + 1) * offset]);
                 octree_node.set_pairs(pairs);
                 this->_partitions.push_back(octree_node);
             }
@@ -99,17 +88,14 @@ class OctreeNode : public Partition<PointMetaDataPair<DensePoint, DenseMetaData>
 
         for(uint64_t i = 0; i < this->_pairs.size(); i++)
         {
-            // Keep minimum NCC value
-            // printf("\nNCC value: %lf\n", this->_pairs.at(i).get_metadata().get_photometric_consistency());
-            // photometric_consistency = std::min(photometric_consistency, this->_pairs.at(i).get_metadata().get_photometric_consistency());
-            photometric_consistency = photometric_consistency + (this->_pairs.at(i).get_metadata().get_photometric_consistency() - photometric_consistency) / (i + 1);
-            for(uint32_t k = 0; k < this->_pairs.at(i).get_metadata().get_images_seen().size(); k++)
+            photometric_consistency = photometric_consistency + (this->_pairs.at(i).second.get_photometric_consistency() - photometric_consistency) / (i + 1);
+            for(uint32_t k = 0; k < this->_pairs.at(i).second.get_images_seen().size(); k++)
             {
-                seen.insert(this->_pairs.at(i).get_metadata().get_images_seen().at(k));
+                seen.insert(this->_pairs.at(i).second.get_images_seen().at(k));
             }
-            for(uint32_t k = 0; k < this->_pairs.at(i).get_metadata().get_images_not_seen().size(); k++)
+            for(uint32_t k = 0; k < this->_pairs.at(i).second.get_images_not_seen().size(); k++)
             {
-                not_seen.insert(this->_pairs.at(i).get_metadata().get_images_not_seen().at(k));
+                not_seen.insert(this->_pairs.at(i).second.get_images_not_seen().at(k));
             }
         }
 
@@ -168,7 +154,13 @@ class OctreeNode : public Partition<PointMetaDataPair<DensePoint, DenseMetaData>
             }
         }
 
-        return &(this->_partitions.at(curr_best));
+        OctreeNode &node = this->_partitions.at(curr_best);
+        if(!node.fits_in_boundaries(position))
+        {
+            position = node.clamp(position, node._min, node._max);
+        }
+
+        return node.lookup_node_at_position(position);
     }
 
     uint8_t get_depth() { return this->_depth; }
@@ -208,34 +200,34 @@ class OctreeNode : public Partition<PointMetaDataPair<DensePoint, DenseMetaData>
     {
         for(uint64_t i = 0; i < this->_pairs.size(); i++)
         {
-            if(this->_min.x > this->_pairs.at(i).get_point().get_position().x)
+            if(this->_min.x > this->_pairs.at(i).first.get_position().x)
             {
-                this->_min.x = this->_pairs.at(i).get_point().get_position().x;
+                this->_min.x = this->_pairs.at(i).first.get_position().x;
             }
 
-            if(this->_min.y > this->_pairs.at(i).get_point().get_position().y)
+            if(this->_min.y > this->_pairs.at(i).first.get_position().y)
             {
-                this->_min.y = this->_pairs.at(i).get_point().get_position().y;
+                this->_min.y = this->_pairs.at(i).first.get_position().y;
             }
 
-            if(this->_min.z > this->_pairs.at(i).get_point().get_position().z)
+            if(this->_min.z > this->_pairs.at(i).first.get_position().z)
             {
-                this->_min.z = this->_pairs.at(i).get_point().get_position().z;
+                this->_min.z = this->_pairs.at(i).first.get_position().z;
             }
 
-            if(this->_max.x < this->_pairs.at(i).get_point().get_position().x)
+            if(this->_max.x < this->_pairs.at(i).first.get_position().x)
             {
-                this->_max.x = this->_pairs.at(i).get_point().get_position().x;
+                this->_max.x = this->_pairs.at(i).first.get_position().x;
             }
 
-            if(this->_max.y < this->_pairs.at(i).get_point().get_position().y)
+            if(this->_max.y < this->_pairs.at(i).first.get_position().y)
             {
-                this->_max.y = this->_pairs.at(i).get_point().get_position().y;
+                this->_max.y = this->_pairs.at(i).first.get_position().y;
             }
 
-            if(this->_max.z < this->_pairs.at(i).get_point().get_position().z)
+            if(this->_max.z < this->_pairs.at(i).first.get_position().z)
             {
-                this->_max.z = this->_pairs.at(i).get_point().get_position().z;
+                this->_max.z = this->_pairs.at(i).first.get_position().z;
             }
         }
 

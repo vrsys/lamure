@@ -2,15 +2,17 @@
 #define LAMURE_PROV_COMMON_H
 
 #include "3dparty/exif.h"
+#include "3dparty/pdqsort.h"
 #include "3dparty/tinyply.h"
+#include <algorithm>
 #include <assert.h>
 #include <boost/crc.hpp>
+#include <boost/sort/spreadsort/spreadsort.hpp>
 #include <fstream>
 #include <memory>
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 #include <scm/core.h>
 #include <scm/core/math.h>
@@ -44,6 +46,9 @@ typedef scm::math::vec2f vec2f;
 typedef scm::math::vec3f vec3f;
 typedef scm::math::mat4f mat4f;
 typedef scm::math::quatf quatf;
+
+template <typename T1, typename T2>
+using pair = std::pair<T1, T2>;
 
 template <typename T>
 T swap(const T &arg, bool big_in_mem)

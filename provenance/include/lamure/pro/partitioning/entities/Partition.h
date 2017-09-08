@@ -3,25 +3,23 @@
 
 #include "lamure/pro/data/entities/MetaData.h"
 #include "lamure/pro/data/entities/Point.h"
-#include "lamure/pro/partitioning/entities/PointMetaDataPair.h"
 
 namespace prov
 {
-template <class TPointMetaDataPair, class TMetaData>
+template <class TPair, class TMetaData>
 class Partition
 {
   public:
     Partition()
     {
-        //        static_assert(std::is_base_of<PointMetaDataPair, TPointMetaDataPair>::value, "The used PointMetaDataPair type is not a derivative of PointMetaDataPair");
-        this->_pairs = vec<TPointMetaDataPair>();
+        this->_pairs = vec<TPair>();
         this->_aggregate_metadata = TMetaData();
     }
 
-    void set_pairs(vec<TPointMetaDataPair> pairs) { this->_pairs = pairs; }
+    void set_pairs(vec<TPair> pairs) { this->_pairs = pairs; }
     TMetaData get_aggregate_metadata() { return this->_aggregate_metadata; };
   protected:
-    vec<TPointMetaDataPair> _pairs;
+    vec<TPair> _pairs;
     TMetaData _aggregate_metadata;
 };
 };

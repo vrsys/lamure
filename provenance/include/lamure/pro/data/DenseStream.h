@@ -46,7 +46,7 @@ class DenseStream : public Streamable<DensePoint>
 
         vec<DensePoint> range;
 
-        for(int i = 0; i < index_end - index_start; i++)
+        for(uint32_t i = 0; i < index_end - index_start; i++)
         {
             DensePoint densePoint;
             is >> densePoint;

@@ -18,42 +18,42 @@ class SparseOctree : public OctreeNode
 
         identify_boundaries();
 
-        std::sort(this->_pairs.begin(), this->_pairs.end(), [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.get_point().get_position().x < pair2.get_point().get_position().x;
+        pdqsort(this->_pairs.begin(), this->_pairs.end(), [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
+            return pair1.first.get_position().x < pair2.first.get_position().x;
         });
 
         uint64_t mid_x_pos = this->_pairs.size() / 2;
 
-        std::sort(this->_pairs.begin(), this->_pairs.begin() + mid_x_pos, [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.get_point().get_position().y < pair2.get_point().get_position().y;
+        pdqsort(this->_pairs.begin(), this->_pairs.begin() + mid_x_pos, [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
+            return pair1.first.get_position().y < pair2.first.get_position().y;
         });
-        std::sort(this->_pairs.begin() + mid_x_pos, this->_pairs.end(), [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.get_point().get_position().y < pair2.get_point().get_position().y;
+        pdqsort(this->_pairs.begin() + mid_x_pos, this->_pairs.end(), [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
+            return pair1.first.get_position().y < pair2.first.get_position().y;
         });
 
         uint64_t mid_y_pos_1 = this->_pairs.size() / 4;
         uint64_t mid_y_pos_2 = mid_x_pos + this->_pairs.size() / 4;
 
-        std::sort(this->_pairs.begin(), this->_pairs.begin() + mid_y_pos_1, [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
+        pdqsort(this->_pairs.begin(), this->_pairs.begin() + mid_y_pos_1, [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
+            return pair1.first.get_position().z < pair2.first.get_position().z;
         });
-        std::sort(this->_pairs.begin() + mid_y_pos_1, this->_pairs.begin() + mid_x_pos,
-                  [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                      return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
+        pdqsort(this->_pairs.begin() + mid_y_pos_1, this->_pairs.begin() + mid_x_pos,
+                  [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
+                      return pair1.first.get_position().z < pair2.first.get_position().z;
                   });
-        std::sort(this->_pairs.begin() + mid_x_pos, this->_pairs.begin() + mid_y_pos_2,
-                  [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-                      return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
+        pdqsort(this->_pairs.begin() + mid_x_pos, this->_pairs.begin() + mid_y_pos_2,
+                  [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
+                      return pair1.first.get_position().z < pair2.first.get_position().z;
                   });
-        std::sort(this->_pairs.begin() + mid_y_pos_2, this->_pairs.end(), [](const PointMetaDataPair<DensePoint, DenseMetaData> &pair1, const PointMetaDataPair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.get_point().get_position().z < pair2.get_point().get_position().z;
+        pdqsort(this->_pairs.begin() + mid_y_pos_2, this->_pairs.end(), [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
+            return pair1.first.get_position().z < pair2.first.get_position().z;
         });
 
         uint64_t offset = this->_pairs.size() / 8;
         for(uint8_t i = 0; i < 8; i++)
         {
             OctreeNode octree_node(this->_depth + uint8_t(1));
-            vec<PointMetaDataPair<DensePoint, DenseMetaData>> pairs(&this->_pairs[i * offset], &this->_pairs[(i + 1) * offset]);
+            vec<pair<DensePoint, DenseMetaData>> pairs(&this->_pairs[i * offset], &this->_pairs[(i + 1) * offset]);
             octree_node.set_pairs(pairs);
             this->_partitions.push_back(octree_node);
         }
@@ -69,17 +69,14 @@ class SparseOctree : public OctreeNode
 
         for(uint64_t i = 0; i < this->_pairs.size(); i++)
         {
-            // Keep minimum NCC value
-            // printf("\nNCC value: %lf\n", this->_pairs.at(i).get_metadata().get_photometric_consistency());
-            //            photometric_consistency = std::min(photometric_consistency, this->_pairs.at(i).get_metadata().get_photometric_consistency());
-            photometric_consistency = photometric_consistency + (this->_pairs.at(i).get_metadata().get_photometric_consistency() - photometric_consistency) / (i + 1);
-            for(uint32_t k = 0; k < this->_pairs.at(i).get_metadata().get_images_seen().size(); k++)
+            photometric_consistency = photometric_consistency + (this->_pairs.at(i).second.get_photometric_consistency() - photometric_consistency) / (i + 1);
+            for(uint32_t k = 0; k < this->_pairs.at(i).second.get_images_seen().size(); k++)
             {
-                seen.insert((unsigned int)this->_pairs.at(i).get_metadata().get_images_seen().at(k));
+                seen.insert((unsigned int)this->_pairs.at(i).second.get_images_seen().at(k));
             }
-            for(uint32_t k = 0; k < this->_pairs.at(i).get_metadata().get_images_not_seen().size(); k++)
+            for(uint32_t k = 0; k < this->_pairs.at(i).second.get_images_not_seen().size(); k++)
             {
-                not_seen.insert((unsigned int)this->_pairs.at(i).get_metadata().get_images_not_seen().at(k));
+                not_seen.insert((unsigned int)this->_pairs.at(i).second.get_images_not_seen().at(k));
             }
         }
 
@@ -114,7 +111,7 @@ class SparseOctree : public OctreeNode
         //        ioService.stop();
         //        threadpool.join_all();
 
-        cleanup();
+        // cleanup();
 
         printf("\nEnd partitioning\n");
     }
@@ -146,10 +143,10 @@ class SparseOctree : public OctreeNode
                 printf("\nnullptr hit during lookup: %f, %f, %f\n", pos.x, pos.y, pos.z);
                 throw new std::runtime_error("\nnullptr hit during lookup\n");
             }
-            //            else
-            //            {
-            //                printf("\ndepth returned: %u\n", (*node_ptr).get_depth());
-            //            }
+//                        else
+//                        {
+//                            printf("\ndepth returned: %u\n", (*node_ptr).get_depth());
+//                        }
             information_loss += compare_metadata((*node_ptr).get_aggregate_metadata(), dense_cache.get_points_metadata().at(ind)) / (double)num_probes;
             //            printf("\nIntermediate information loss: %lf\n", information_loss);
         }
@@ -222,7 +219,7 @@ class SparseOctree : public OctreeNode
         printf("\nStart gluing pairs\n");
         for(uint64_t i = 0; i < dense_cache.get_points().size(); i++)
         {
-            PointMetaDataPair<DensePoint, DenseMetaData> pair(dense_cache.get_points().at(i), dense_cache.get_points_metadata().at(i));
+            pair<DensePoint, DenseMetaData> pair(dense_cache.get_points().at(i), dense_cache.get_points_metadata().at(i));
             this->_pairs.push_back(pair);
         }
         printf("\nEnd gluing pairs\n");
