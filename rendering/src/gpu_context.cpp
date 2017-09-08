@@ -88,12 +88,12 @@ void gpu_context::create(scm::gl::render_device_ptr device, Data_Provenance data
     fix_b_.fix_buffer_ = new char[8 * sizeof(float) * database->get_primitives_per_node() * upload_budget_in_nodes_];
     fix_b_.fix_buffer_provenance_ = new char[data_provenance.get_size_in_bytes() * database->get_primitives_per_node() * upload_budget_in_nodes_];
 
-    temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, false);
-    temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, false);
+    // temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, false);
+    // temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, false);
     primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, true);
 
-    map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_A, device, data_provenance);
-    map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device, data_provenance);
+    // map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_A, device, data_provenance);
+    // map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device, data_provenance);
 
     // int first_error = device->opengl_api().glGetError();
     // if(first_error != 0)
