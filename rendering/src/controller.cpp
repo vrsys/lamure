@@ -385,23 +385,26 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
         lamure::ren::cut_database *cuts = lamure::ren::cut_database::get_instance();
         cuts->swap(context_id);
 
-        cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_temporary_storages().storage_a_, gpu_context_it->second->get_temporary_storages().storage_b_,
-                                                   gpu_context_it->second->get_temporary_storages_provenance().storage_a_, gpu_context_it->second->get_temporary_storages_provenance().storage_b_);
+        // cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_temporary_storages().storage_a_, gpu_context_it->second->get_temporary_storages().storage_b_,
+        // gpu_context_it->second->get_temporary_storages_provenance().storage_a_, gpu_context_it->second->get_temporary_storages_provenance().storage_b_);
+
+        cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_fix_a().fix_buffer_, gpu_context_it->second->get_fix_b().fix_buffer_,
+                                                   gpu_context_it->second->get_fix_a().fix_buffer_provenance_, gpu_context_it->second->get_fix_b().fix_buffer_provenance_);
 
         if(cuts->is_front_modified(context_id))
         {
             cut_database_record::temporary_buffer current = cuts->get_buffer(context_id);
 
             gpu_context *ctx = gpu_context_it->second;
-            ctx->unmap_temporary_storage(current, device, data_provenance);
+            // ctx->unmap_temporary_storage(current, device, data_provenance);
 
-            if(ctx->update_primary_buffer(current, device, data_provenance))
+            if(ctx->update_primary_buffer_fix(current, device, data_provenance))
             {
                 ms_since_last_node_upload_ = 0;
             }
 
             cuts->signal_upload_complete(context_id);
-            ctx->map_temporary_storage(current, device, data_provenance);
+            // ctx->map_temporary_storage(current, device, data_provenance);
         }
     }
     else
