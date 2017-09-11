@@ -8,7 +8,7 @@ class NVMFormatSparseTestSuite(unittest.TestCase):
     def setUp(self):
         print("ProFormatsTestSuite : setUp")
         init_time = time()
-        self.format_sparse_nvm = FormatSparseNVMV3('/home/anton/Desktop/mvs_output/out_1.nvm')
+        self.format_sparse_nvm = FormatSparseNVMV3('/home/tihi6213/Desktop/prague_well/dense_brunnen.nvm')
         elapsed_time = time() - init_time
         print("ProFormatsTestSuite : read took " + str(elapsed_time) + " sec")
         

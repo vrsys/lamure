@@ -79,7 +79,7 @@ class Renderer
     void handle_mouse_movement(int x, int y);
 
     void start_brushing(int x, int y, Scene &scene);
-    std::vector<uint16_t> search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
+    std::vector<uint32_t> search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
 
     bool dense_points_only = false;
     bool mode_draw_points_dense = false;

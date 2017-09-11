@@ -27,9 +27,15 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
     prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
 
+    printf("\nUploading dense points data: start\n");
+
     prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    cache_dense.cache();
+
     _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
     _sparse_octree->partition();
+
+    printf("\nUploading dense points data: finish\n");
 
     //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
     _data_provenance = data_provenance;
@@ -245,34 +251,33 @@ void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &
 
     _surfels_brush.push_back(surfel_brush);
 
+    //    std::cout << "1" << std::endl;
     Struct_Surfel_Brush *buffer_mapped = (Struct_Surfel_Brush *)_device->main_context()->map_buffer(_vertex_buffer_object_surfels_brush, scm::gl::ACCESS_READ_WRITE);
+    //    std::cout << "2" << std::endl;
 
     buffer_mapped[_surfels_brush.size() - 1] = surfel_brush;
+    //    std::cout << "3" << std::endl;
 
     _device->main_context()->unmap_buffer(_vertex_buffer_object_surfels_brush);
+    //    std::cout << "4" << std::endl;
 
     // add pixel
-    std::vector<uint16_t> vector_ids_cameras = search_tree(surfel_brush.position, scene);
+    std::vector<uint32_t> vector_ids_cameras = std::vector<uint32_t>(search_tree(surfel_brush.position, scene));
+    //    std::cout << "6" << std::endl;
 
-    for(uint16_t id_camera : vector_ids_cameras)
+    for(uint32_t id_camera : vector_ids_cameras)
     {
+        //        std::cout << "7" << std::endl;
         Camera_Custom &camera = scene.get_vector_camera()[id_camera];
         camera.add_pixel_brush(surfel_brush.position, _device);
     }
 }
 
-std::vector<uint16_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
+std::vector<uint32_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
 {
-    // lookup_node_at_position()
-
-    std::vector<uint16_t> result;
-
-    for(int i = 0; i < scene.get_vector_camera().size(); ++i)
-    {
-        result.push_back(i);
-    }
-
-    return result;
+    prov::OctreeNode *node_ptr = _sparse_octree->lookup_node_at_position(scm::math::vec3d(surfel_brush));
+    // std::cout << "5" << std::endl;
+    return node_ptr->get_aggregate_metadata().get_images_seen();
 }
 
 void Renderer::handle_mouse_movement(int x, int y)
