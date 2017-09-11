@@ -15,7 +15,6 @@
 #include <lamure/pro/common.h>
 #include <lamure/pro/data/DenseCache.h>
 #include <lamure/pro/data/DenseStream.h>
-#include <lamure/pro/data/LoDMetaStream.h>
 #include <lamure/pro/data/SparseCache.h>
 
 #define VERBOSE

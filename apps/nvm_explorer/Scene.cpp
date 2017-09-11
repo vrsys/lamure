@@ -9,7 +9,7 @@ Scene::Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Cam
     {
         if(counter++ == 10)
         {
-            // break;
+            break;
         }
 
         Camera_Custom camera_new = Camera_Custom(camera);
