@@ -292,6 +292,19 @@ void Controller::handle_key_released(char key)
     {
         _renderer.dispatch = !_renderer.dispatch;
     }
+    else if(key == '6')
+    {
+        _renderer._depth_octree = std::max(0, _renderer._depth_octree - 1);
+        _renderer.update_vector_nodes();
+        std::cout << "Current Depth: " << _renderer._depth_octree << std::endl;
+    }
+
+    else if(key == '7')
+    {
+        _renderer._depth_octree += 1;
+        _renderer.update_vector_nodes();
+        std::cout << "Current Depth: " << _renderer._depth_octree << std::endl;
+    }
 
     if(key == 'w' || key == 'W')
     {

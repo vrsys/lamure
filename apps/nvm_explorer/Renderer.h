@@ -54,6 +54,7 @@
 #include <lamure/ren/ray.h>
 
 #include <lamure/pro/partitioning/SparseOctree.h>
+#include <lamure/pro/partitioning/entities/Partition.h>
 
 class Renderer
 {
@@ -95,6 +96,10 @@ class Renderer
     bool is_camera_active = false;
     unsigned long index_current_image_camera = 0;
 
+    int _depth_octree = 0;
+    std::vector<prov::OctreeNode> _vector_nodes;
+    void update_vector_nodes();
+
   private:
     scm::shared_ptr<scm::gl::render_context> _context;
     scm::shared_ptr<scm::gl::render_device> _device;
@@ -115,6 +120,9 @@ class Renderer
     // scm::shared_ptr<scm::gl::quad_geometry> _quad_legend;
     scm::gl::buffer_ptr _vertex_buffer_object_lines;
     scm::gl::vertex_array_ptr _vertex_array_object_lines;
+
+    scm::gl::buffer_ptr _vertex_buffer_object_box;
+    scm::gl::vertex_array_ptr _vertex_array_object_box;
 
     scm::gl::rasterizer_state_ptr _rasterizer_state;
 
@@ -142,6 +150,7 @@ class Renderer
     void draw_frustra(Scene &scene);
     bool draw_points_dense(Scene &scene);
     void draw_surfels_brush();
+    void draw_sparse_octree();
     void draw_pixels_brush(Scene &scene);
 
     scm::gl::depth_stencil_state_ptr depth_state_disable_;

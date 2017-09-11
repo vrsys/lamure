@@ -165,6 +165,8 @@ class OctreeNode : public Partition<pair<DensePoint, DenseMetaData>, DenseMetaDa
 
     uint8_t get_depth() { return this->_depth; }
     vec3d get_center() { return vec3d((_max.x + _min.x) / 2, (_max.y + _min.y) / 2, (_max.z + _min.z) / 2); }
+    vec3f get_min() { return _min; }
+    vec3f get_max() { return _max; }
 
   protected:
     vec3d clamp(vec3d position, vec3f min, vec3f max)

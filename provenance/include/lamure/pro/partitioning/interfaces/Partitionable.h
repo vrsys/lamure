@@ -18,6 +18,7 @@ class Partitionable
 
     // Stub
     void partition(){};
+    vec<TPartition> const &get_partitions() { return _partitions; }
 
   protected:
     vec<TPartition> _partitions;

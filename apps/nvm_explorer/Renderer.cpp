@@ -151,6 +151,51 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     // color_blending_state_ = device_->create_blend_state(true);
     // color_blending_state_ = device_->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
     // bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
+
+    std::vector<Struct_Camera> vector_vertices;
+    // std::vector<scm::math::vec3f> vector_vertices;
+
+    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, -0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, 0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, 0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, -0.5)});
+    // -----------------------------------------------------------------
+    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, -0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, 0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, 0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, -0.5)});
+    // -----------------------------------------------------------------
+    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, -0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, -0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, 0.5)});
+
+    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, 0.5)});
+
+    _vertex_buffer_object_box = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, vector_vertices.size() * sizeof(float) * 3, &vector_vertices[0]);
+
+    std::vector<scm::gl::vertex_format::element> vertex_format_box;
+    vertex_format_box.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3));
+    _vertex_array_object_box = _device->create_vertex_array(vertex_format_box, boost::assign::list_of(_vertex_buffer_object_box));
 }
 
 scm::math::vec3f Renderer::convert_to_world_space(int x, int y, int z)
@@ -551,6 +596,79 @@ bool Renderer::draw_points_dense(Scene &scene)
 //     // _context->apply();
 //     // _quad_legend->draw(_context);
 // }
+
+void Renderer::update_vector_nodes()
+{
+    std::queue<prov::OctreeNode> queue_nodes;
+    queue_nodes.push(*_sparse_octree);
+    _vector_nodes.clear();
+
+    while(!queue_nodes.empty())
+    {
+        prov::OctreeNode node = queue_nodes.front();
+
+        if(node.get_depth() == _depth_octree)
+        {
+            _vector_nodes.push_back(node);
+        }
+        else
+        {
+            std::vector<prov::OctreeNode> vector_partitions = node.get_partitions();
+            for(prov::OctreeNode &partition : vector_partitions)
+            {
+                queue_nodes.push(partition);
+            }
+        }
+
+        queue_nodes.pop();
+    }
+}
+void Renderer::draw_sparse_octree()
+{
+    // convert_
+    // if(_depth_octree == 0)
+    // {
+    //     vector_nodes.push_back(*_sparse_octree);
+    // }
+    // else
+    // {
+
+    // }
+
+    // std::cout << _sparse_octree->get_center() << std::endl;
+    // std::cout << vector_bounds << std::endl;
+    // std::cout << vector_bounds << std::endl;
+
+    _context->bind_program(_program_frustra);
+
+    _program_frustra->uniform("matrix_view", _camera_view.get_matrix_view());
+    _program_frustra->uniform("matrix_perspective", scm::math::mat4f(_camera_view.get_matrix_perspective()));
+
+    for(prov::OctreeNode &node : _vector_nodes)
+    {
+        scm::math::vec3f vector_bounds = node.get_max() - node.get_min();
+        scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(node.get_center()));
+        matrix_translation = matrix_translation * scm::math::make_scale(vector_bounds);
+        _program_frustra->uniform("matrix_model", matrix_translation);
+        // for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
+        // {
+        //     Camera_Custom camera = (*it);
+
+        //     if(!is_camera_active || index_current_image_camera == camera.get_index())
+        //     {
+        //         _program_frustra->uniform("matrix_model", camera.get_transformation());
+        _context->bind_vertex_array(_vertex_array_object_box);
+        _context->apply();
+
+        // _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, 10);
+        _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
+        // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LOOP, 0, 10);
+        // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_STRIP, 0, 10);
+        //     }
+        // }
+    }
+}
+
 void Renderer::draw_surfels_brush()
 {
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
@@ -682,6 +800,8 @@ bool Renderer::render(Scene &scene)
     //     _context->set_depth_stencil_state(depth_state_disable_);
     // }
     draw_surfels_brush();
+
+    draw_sparse_octree();
 
     // draw_lines_test();
     return false;

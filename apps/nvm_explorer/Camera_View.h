@@ -64,7 +64,7 @@ class Camera_View
     void update_matrices();
 
   public:
-    float _plane_far = 100.0f;
+    float _plane_far = 1000.0f;
     float _plane_near = 0.01f;
     float _fov = 60.0f;
     Camera_View();
