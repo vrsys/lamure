@@ -644,10 +644,10 @@ bool Renderer::render(Scene &scene)
         }
         if(mode_draw_points_dense)
         {
-            // if(!draw_points_dense(scene))
-            // {
-            //     return true;
-            // }
+            if(!draw_points_dense(scene))
+            {
+                return true;
+            }
         }
         else
         {
@@ -661,8 +661,6 @@ bool Renderer::render(Scene &scene)
             return true;
         }
     }
-    scm::gl::buffer_ptr tmp_buffer = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, _buffer_surfels_brush_size * (sizeof(float) * 6), 0);
-    std::cout << tmp_buffer->descriptor()._size << std::endl;
 
     // if(_mode_depth_test_surfels_brush)
     // {
