@@ -1,8 +1,8 @@
 from .entities import *
 from .formats import *
 
-class FormatSparseNVMV3(FormatSparsePro):
 
+class FormatSparseNVMV3(FormatSparsePro):
     def __init__(self, path_to_nvm_file):
         self.file_path_nvm = path_to_nvm_file
         self.length_meta_data_camera = 0
@@ -83,7 +83,6 @@ class FormatSparseNVMV3(FormatSparsePro):
 
 
 class FormatDensePMVS(FormatDensePro):
-
     def __init__(self, path_to_patch, path_to_ply):
         self.file_path_patch = path_to_patch
         self.file_path_ply = path_to_ply
@@ -125,12 +124,40 @@ class FormatDensePMVS(FormatDensePro):
                             float(line_values[1].strip()),
                             float(line_values[2].strip()))
 
-            line = in_file_patch.readline()
+            line = in_file_patch.readline()  # Photometric consistency
             line_values = line.split()
-            confidence = float(line_values[0].strip())
+            ncc = float(line_values[0].strip())
+
+            num_seen = int(in_file_patch.readline().strip())  # Number of images that actually saw the point
+            buf_seen = bytearray()
+
+            line = in_file_patch.readline()  # Images that actually saw the point
+            line_values = line.split()
+
+            for ind in line_values:
+                buf_seen.extend(int(ind.strip()).to_bytes(4, byteorder='big'))
+
+            num_not_seen = int(in_file_patch.readline().strip())  # Number of images that should have seen the point
+            buf_not_seen = bytearray()
+
+            line = in_file_patch.readline()  # Images that should have seen the point
+            line_values = line.split()
+
+            for ind in line_values:
+                buf_not_seen.extend(int(ind.strip()).to_bytes(4, byteorder='big'))
+
+            in_file_patch.readline()  # Empty line
+
             charbuff = bytearray()
-            charbuff.extend(struct.pack(">d", confidence))
+            charbuff.extend(struct.pack(">d", ncc))
+            charbuff.extend(num_seen.to_bytes(4, byteorder='big'))
+            charbuff.extend(buf_seen)
+            charbuff.extend(num_not_seen.to_bytes(4, byteorder='big'))
+            charbuff.extend(buf_not_seen)
             meta_data = MetaData(charbuff=charbuff)
+
+            if len(charbuff) > self.length_meta_data_dpoints:
+                self.length_meta_data_dpoints = len(charbuff)
 
             line = in_file_ply.readline()
             line_values = line.split()
@@ -144,9 +171,6 @@ class FormatDensePMVS(FormatDensePro):
                 color=color,
                 meta_data=meta_data,
                 normal=normal))
-
-            for i in range(0, 5):  # Relationships
-                in_file_patch.readline()
 
         in_file_patch.close()
         in_file_ply.close()

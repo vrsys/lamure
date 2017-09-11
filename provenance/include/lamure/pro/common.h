@@ -2,13 +2,17 @@
 #define LAMURE_PROV_COMMON_H
 
 #include "3dparty/exif.h"
+#include "3dparty/pdqsort.h"
 #include "3dparty/tinyply.h"
+#include <algorithm>
 #include <assert.h>
 #include <boost/crc.hpp>
+#include <boost/sort/spreadsort/spreadsort.hpp>
 #include <fstream>
 #include <memory>
 #include <stdio.h>
 #include <string>
+#include <vector>
 
 #include <scm/core.h>
 #include <scm/core/math.h>
@@ -18,6 +22,7 @@ namespace prov
 // bool DEBUG = false;
 
 typedef std::ifstream ifstream;
+typedef std::ofstream ofstream;
 typedef std::string string;
 
 template <typename T, std::size_t SIZE>
@@ -29,10 +34,21 @@ using vec = std::vector<T>;
 template <typename T>
 using u_ptr = std::unique_ptr<T>;
 
+template <typename T>
+using s_ptr = std::shared_ptr<T>;
+
 typedef scm::math::vec2d vec2d;
 typedef scm::math::vec3d vec3d;
 typedef scm::math::mat4d mat4d;
 typedef scm::math::quatd quatd;
+
+typedef scm::math::vec2f vec2f;
+typedef scm::math::vec3f vec3f;
+typedef scm::math::mat4f mat4f;
+typedef scm::math::quatf quatf;
+
+template <typename T1, typename T2>
+using pair = std::pair<T1, T2>;
 
 template <typename T>
 T swap(const T &arg, bool big_in_mem)

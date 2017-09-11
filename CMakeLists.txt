@@ -159,9 +159,9 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
-add_dependencies(lamure_preprocessing lamure_common)
-add_dependencies(lamure_provenance lamure_common)
-add_dependencies(lamure_rendering lamure_common)
+# add_dependencies(lamure_preprocessing lamure_common)
+# add_dependencies(lamure_provenance lamure_common)
+# add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")

@@ -2,7 +2,6 @@
 #define LAMURE_DENSESTREAM_H
 
 #include "lamure/pro/data/entities/DensePoint.h"
-#include "lamure/pro/data/entities/LoDMetaData.h"
 #include "lamure/pro/data/interfaces/Streamable.h"
 
 namespace prov
@@ -47,7 +46,7 @@ class DenseStream : public Streamable<DensePoint>
 
         vec<DensePoint> range;
 
-        for(int i = 0; i < index_end - index_start; i++)
+        for(uint32_t i = 0; i < index_end - index_start; i++)
         {
             DensePoint densePoint;
             is >> densePoint;

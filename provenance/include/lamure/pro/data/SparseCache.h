@@ -7,7 +7,7 @@
 
 namespace prov
 {
-class SparseCache : public Cacheable<SparsePoint>
+class SparseCache : public Cacheable<SparsePoint, MetaData>
 {
   public:
     SparseCache(ifstream &is_prov, ifstream &is_meta) : Cacheable(is_prov, is_meta)
