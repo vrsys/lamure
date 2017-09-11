@@ -53,11 +53,14 @@
 #include <lamure/ren/cut_update_pool.h>
 #include <lamure/ren/ray.h>
 
+#include <lamure/pro/partitioning/SparseOctree.h>
+
 class Renderer
 {
   public:
     // Renderer();
-    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance);
+    void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
+              lamure::ren::Data_Provenance data_provenance);
     bool render(Scene &scene);
 
     void update_state_lense();
@@ -104,6 +107,8 @@ class Renderer
     scm::gl::program_ptr _program_legend;
     scm::gl::program_ptr _program_surfels_brush;
     scm::gl::program_ptr _program_pixels_brush;
+
+    scm::shared_ptr<prov::SparseOctree> _sparse_octree = nullptr;
 
     lamure::ren::Data_Provenance _data_provenance;
 

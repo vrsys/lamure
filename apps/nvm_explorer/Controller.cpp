@@ -1,6 +1,7 @@
 #include "Controller.h"
 
-Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance) : _scene(scene)
+Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense, lamure::ren::Data_Provenance data_provenance)
+    : _scene(scene)
 {
     // initialize context
     scm::shared_ptr<scm::core> scm_core(new scm::core(1, argv));
@@ -14,7 +15,7 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
         _renderer.dense_points_only = true;
     }
 
-    _renderer.init(argv, _device, width_window, height_window, name_file_bvh, data_provenance);
+    _renderer.init(argv, _device, width_window, height_window, name_file_lod, name_file_dense, data_provenance);
 }
 
 bool Controller::update(int time_delta)

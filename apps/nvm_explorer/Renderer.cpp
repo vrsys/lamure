@@ -21,8 +21,16 @@
 //     // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
 // }
 
-void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance)
+void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
+                    lamure::ren::Data_Provenance data_provenance)
 {
+    prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
+    prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
+
+    prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
+    _sparse_octree->partition();
+
     //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
     _data_provenance = data_provenance;
     _camera_view.update_window_size(width_window, height_window);
@@ -123,7 +131,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
 
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
-    _model_id = database->add_model(name_file_bvh, std::to_string(0));
+    _model_id = database->add_model(name_file_lod, std::to_string(0));
 
     depth_state_disable_ = _device->create_depth_stencil_state(false);
     depth_state_enable_ = _device->create_depth_stencil_state(true);
@@ -255,6 +263,8 @@ void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &
 
 std::vector<uint16_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
 {
+    // lookup_node_at_position()
+
     std::vector<uint16_t> result;
 
     for(int i = 0; i < scene.get_vector_camera().size(); ++i)

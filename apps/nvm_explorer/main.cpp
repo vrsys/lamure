@@ -75,8 +75,10 @@ int main(int argc, char *argv[])
     {
         std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
                   << "INFO: nvm_explorer " << std::endl
-                  << "\t-d: selects .bvh input file" << std::endl
+                  << "\t-d: selects .prov input file" << std::endl
                   << "\t    (-d flag is required) " << std::endl
+                  << "\t-l: selects .bvh input file" << std::endl
+                  << "\t    (-l flag is required) " << std::endl
                   << "\t[-s: selects sparse.prov input file]" << std::endl
                   << "\t    (-s flag is optional) " << std::endl
                   << "\t[-j: selects json input file]" << std::endl
@@ -103,6 +105,9 @@ int main(int argc, char *argv[])
         scene = Scene(vec_point, vec_camera);
     }
 
+    std::string name_file_lod = std::string(get_cmd_option(argv, argv + argc, "-l"));
+    std::string name_file_dense = std::string(get_cmd_option(argv, argv + argc, "-d"));
+
     lamure::ren::Data_Provenance data_provenance;
     if(cmd_option_exists(argv, argv + argc, "-j"))
     {
@@ -116,7 +121,7 @@ int main(int argc, char *argv[])
     }
     std::cout << data_provenance.get_size_in_bytes() << std::endl;
 
-    controller = new Controller(scene, argv, width_window, height_window, std::string(get_cmd_option(argv, argv + argc, "-d")), data_provenance);
+    controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_dense, data_provenance);
     std::cout << "start rendering" << std::endl;
 
     glutMainLoop();

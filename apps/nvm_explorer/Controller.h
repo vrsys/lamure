@@ -28,7 +28,8 @@ class Controller
     void handle_movements(int time_delta);
 
   public:
-    Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_bvh, lamure::ren::Data_Provenance data_provenance = lamure::ren::Data_Provenance());
+    Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
+               lamure::ren::Data_Provenance data_provenance = lamure::ren::Data_Provenance());
 
     bool update(int time_delta);
     void handle_mouse_movement(int x, int y);
