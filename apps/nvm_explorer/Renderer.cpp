@@ -171,6 +171,7 @@ void Renderer::start_brushing(int x, int y, Scene &scene)
     unsigned int surfel_skip = 1;
     lamure::ren::ray::intersection result_intersection;
     ray_brush.intersect_model(_model_id, model_transform, 1.0f, max_depth, surfel_skip, false, result_intersection);
+
     // std::cout << "position: " << result_intersection.position_ << std::endl;
     // std::cout << "normal: " << result_intersection.normal_ << std::endl;
     // std::cout << "distance: " << result_intersection.distance_ << std::endl;
@@ -217,6 +218,7 @@ void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &
         _device->main_context()->copy_buffer_data(tmp_buffer, _vertex_buffer_object_surfels_brush, 0, 0, _surfels_brush.size() * (sizeof(float) * 6));
 
         _vertex_buffer_object_surfels_brush = tmp_buffer;
+        tmp_buffer.reset();
 
         std::vector<scm::gl::vertex_format::element> vertex_format;
         vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));

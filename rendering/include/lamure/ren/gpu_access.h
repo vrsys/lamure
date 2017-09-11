@@ -42,6 +42,7 @@ class gpu_access
 
     scm::gl::buffer_ptr get_buffer() { return buffer_; };
     scm::gl::buffer_ptr get_buffer_provenance() { return buffer_provenance_; };
+
     scm::gl::vertex_array_ptr get_memory(bvh::primitive_type type);
 
     static const size_t query_video_memory_in_mb(scm::gl::render_device_ptr const &device);
@@ -60,7 +61,6 @@ class gpu_access
     scm::gl::vertex_array_ptr tri_memory_;
 
     scm::gl::buffer_ptr buffer_;
-
     scm::gl::buffer_ptr buffer_provenance_;
 };
 }

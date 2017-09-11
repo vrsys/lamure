@@ -148,6 +148,7 @@ gpu_access::~gpu_access()
 
 char *gpu_access::map(scm::gl::render_device_ptr const &device)
 {
+    std::cout << "called!!!!!!!!!!!!!!!" << std::endl;
     if(!is_mapped_)
     {
         assert(device);
@@ -169,6 +170,7 @@ void gpu_access::unmap(scm::gl::render_device_ptr const &device)
 
 char *gpu_access::map_provenance(scm::gl::render_device_ptr const &device)
 {
+    std::cout << "called provenance!!!!!!!!!!!!!!!" << std::endl;
     if(!is_mapped_provenance_)
     {
         assert(device);

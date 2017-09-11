@@ -31,7 +31,11 @@ class gpu_context
         char *storage_a_;
         char *storage_b_;
     };
-
+    struct fix_struct
+    {
+        char *fix_buffer_;
+        char *fix_buffer_provenance_;
+    };
     const context_t context_id() const { return context_id_; };
     const bool is_created() const { return is_created_; };
 
@@ -52,6 +56,10 @@ class gpu_context
     void unmap_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
     bool update_primary_buffer(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device_);
     bool update_primary_buffer(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+    bool update_primary_buffer_fix(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+
+    fix_struct get_fix_a() { return fix_a_; };
+    fix_struct get_fix_b() { return fix_b_; };
 
     void create(scm::gl::render_device_ptr device);
     void create(scm::gl::render_device_ptr device, Data_Provenance data_provenance);
@@ -66,6 +74,10 @@ class gpu_context
 
     gpu_access *temp_buffer_a_;
     gpu_access *temp_buffer_b_;
+
+    fix_struct fix_a_;
+    fix_struct fix_b_;
+
     gpu_access *primary_buffer_;
 
     temporary_storages temporary_storages_;
