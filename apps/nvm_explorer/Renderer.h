@@ -56,6 +56,8 @@
 #include <lamure/pro/partitioning/SparseOctree.h>
 #include <lamure/pro/partitioning/entities/Partition.h>
 
+#include <functional>
+
 class Renderer
 {
   public:
@@ -97,7 +99,7 @@ class Renderer
     unsigned long index_current_image_camera = 0;
 
     int _depth_octree = 0;
-    std::vector<prov::OctreeNode> _vector_nodes;
+    std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
     void update_vector_nodes();
 
   private:
@@ -113,7 +115,8 @@ class Renderer
     scm::gl::program_ptr _program_surfels_brush;
     scm::gl::program_ptr _program_pixels_brush;
 
-    scm::shared_ptr<prov::SparseOctree> _sparse_octree = nullptr;
+    std::shared_ptr<prov::OctreeNode> _sparse_octree = nullptr;
+    // scm::shared_ptr<prov::OctreeNode> _sparse_octree = nullptr;
 
     lamure::ren::Data_Provenance _data_provenance;
 

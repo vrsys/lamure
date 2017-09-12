@@ -32,7 +32,8 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     prov::DenseCache cache_dense(in_dense, in_dense_meta);
     cache_dense.cache();
 
-    _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
+    _sparse_octree = std::make_shared<prov::OctreeNode>(prov::SparseOctree(cache_dense));
+    // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
     _sparse_octree->partition();
 
     printf("\nUploading dense points data: finish\n");
@@ -599,30 +600,77 @@ bool Renderer::draw_points_dense(Scene &scene)
 
 void Renderer::update_vector_nodes()
 {
-    std::queue<prov::OctreeNode> queue_nodes;
-    queue_nodes.push(*_sparse_octree);
+    std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
+    // std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
+    // std::cout << 1 << std::endl;
+    queue_nodes.push(_sparse_octree);
+    // std::cout << 2 << std::endl;
     _vector_nodes.clear();
-
+    // std::cout << 3 << std::endl;
     while(!queue_nodes.empty())
     {
-        prov::OctreeNode node = queue_nodes.front();
+        // std::cout << 4 << std::endl;
+        std::shared_ptr<prov::OctreeNode> node = queue_nodes.front();
+        // std::cout << 5 << std::endl;
 
-        if(node.get_depth() == _depth_octree)
+        if(node->get_depth() == _depth_octree)
         {
+            // std::cout << 6 << std::endl;
             _vector_nodes.push_back(node);
+            // std::cout << 7 << std::endl;
         }
         else
         {
-            std::vector<prov::OctreeNode> vector_partitions = node.get_partitions();
+            // std::cout << 8 << std::endl;
+            std::vector<prov::OctreeNode> vector_partitions = node->get_partitions();
+            // std::cout << 9 << std::endl;
             for(prov::OctreeNode &partition : vector_partitions)
             {
-                queue_nodes.push(partition);
+                // std::cout << 10 << std::endl;
+                queue_nodes.push(std::make_shared<prov::OctreeNode>(partition));
             }
         }
 
         queue_nodes.pop();
     }
 }
+
+// void Renderer::update_vector_nodes()
+// {
+//     std::queue<prov::OctreeNode> queue_nodes;
+//     std::cout << 1 << std::endl;
+//     queue_nodes.push(*_sparse_octree);
+//     std::cout << 2 << std::endl;
+//     _vector_nodes.clear();
+//     std::cout << 3 << std::endl;
+//     while(!queue_nodes.empty())
+//     {
+//         std::cout << 4 << std::endl;
+//         prov::OctreeNode node = queue_nodes.front();
+//         std::cout << 5 << std::endl;
+
+//         if(node.get_depth() == _depth_octree)
+//         {
+//             std::cout << 6 << std::endl;
+//             _vector_nodes.push_back(node);
+//             std::cout << 7 << std::endl;
+//         }
+//         else
+//         {
+//             std::cout << 8 << std::endl;
+//             std::vector<prov::OctreeNode> vector_partitions = node.get_partitions();
+//             std::cout << 9 << std::endl;
+//             for(prov::OctreeNode &partition : vector_partitions)
+//             {
+//                 std::cout << 10 << std::endl;
+//                 queue_nodes.push(partition);
+//             }
+//         }
+
+//         queue_nodes.pop();
+//     }
+// }
+
 void Renderer::draw_sparse_octree()
 {
     // convert_
@@ -644,10 +692,10 @@ void Renderer::draw_sparse_octree()
     _program_frustra->uniform("matrix_view", _camera_view.get_matrix_view());
     _program_frustra->uniform("matrix_perspective", scm::math::mat4f(_camera_view.get_matrix_perspective()));
 
-    for(prov::OctreeNode &node : _vector_nodes)
+    for(std::shared_ptr<prov::OctreeNode> node : _vector_nodes)
     {
-        scm::math::vec3f vector_bounds = node.get_max() - node.get_min();
-        scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(node.get_center()));
+        scm::math::vec3f vector_bounds = node->get_max() - node->get_min();
+        scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(node->get_center()));
         matrix_translation = matrix_translation * scm::math::make_scale(vector_bounds);
         _program_frustra->uniform("matrix_model", matrix_translation);
         // for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
