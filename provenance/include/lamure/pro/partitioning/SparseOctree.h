@@ -166,6 +166,7 @@ class SparseOctree : public OctreeNode
         printf("\nStart partitioning\n");
 
         OctreeNode::partition();
+        OctreeNode::aggregate_metadata();
 
         printf("\nEnd partitioning\n");
     }
