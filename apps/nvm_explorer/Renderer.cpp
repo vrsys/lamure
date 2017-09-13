@@ -29,12 +29,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
 
     printf("\nUploading dense points data: start\n");
 
-    prov::DenseCache cache_dense(in_dense, in_dense_meta);
-    cache_dense.cache();
+    // prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    // cache_dense.cache();
 
-    _sparse_octree = std::make_shared<prov::OctreeNode>(prov::SparseOctree(cache_dense));
-    // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
-    _sparse_octree->partition();
+    // _sparse_octree = std::make_shared<prov::OctreeNode>(prov::SparseOctree(cache_dense));
+    // // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
+    // _sparse_octree->partition();
 
     printf("\nUploading dense points data: finish\n");
 

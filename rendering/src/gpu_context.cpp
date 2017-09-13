@@ -715,9 +715,20 @@ bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary
                 // device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), temp_buffer_a_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
 
                 // map_buffer_range(const buffer_ptr& in_buffer, scm::size_t in_offset, scm::size_t in_size, const access_mode in_access) const;
-                char *mapped = (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer(), offset_in_render_VBO, database->get_slot_size(), scm::gl::ACCESS_WRITE_ONLY);
-                std::memcpy(mapped, fix_a_.fix_buffer_ + offset_in_temp_VBO, database->get_slot_size());
-                device->main_context()->unmap_buffer(primary_buffer_->get_buffer());
+                // char *mapped = (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer(), offset_in_render_VBO, database->get_slot_size(), scm::gl::ACCESS_WRITE_ONLY);
+                // std::memcpy(mapped, fix_a_.fix_buffer_ + offset_in_temp_VBO, database->get_slot_size());
+                // device->main_context()->unmap_buffer(primary_buffer_->get_buffer());
+
+                // glBufferSubData(    GLenum target,
+                //     GLintptr offset,
+                //     GLsizeiptr size,
+                //     const GLvoid * data);
+                // device->opengl_api().glNamedBufferSubData(primary_buffer_->get_buffer()->native_handle(), offset_in_render_VBO, database->get_slot_size(), fix_a_.fix_buffer_ + offset_in_temp_VBO);
+
+                device->opengl_api().glBindBuffer(GL_ARRAY_BUFFER, primary_buffer_->get_buffer()->object_id());
+                device->opengl_api().glBufferSubData(GL_ARRAY_BUFFER, offset_in_render_VBO, database->get_slot_size(), fix_a_.fix_buffer_ + offset_in_temp_VBO);
+
+                // device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), fix_a_.fix_buffer_, offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
                 // int first_error = device->opengl_api().glGetError();
                 // if(first_error != 0)
                 // {
@@ -732,9 +743,17 @@ bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary
 
                 size_t provenance_slot_size = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
 
-                mapped = (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer_provenance(), offset_in_render_VBO_provenance, provenance_slot_size, scm::gl::ACCESS_WRITE_ONLY);
-                std::memcpy(mapped, fix_a_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance, provenance_slot_size);
-                device->main_context()->unmap_buffer(primary_buffer_->get_buffer_provenance());
+                // char *mapped =
+                //     (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer_provenance(), offset_in_render_VBO_provenance, provenance_slot_size, scm::gl::ACCESS_WRITE_ONLY);
+                // std::memcpy(mapped, fix_a_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance, provenance_slot_size);
+                // device->main_context()->unmap_buffer(primary_buffer_->get_buffer_provenance());
+
+                // device->opengl_api().glNamedBufferSubData(primary_buffer_->get_buffer_provenance()->native_handle(), offset_in_render_VBO_provenance, provenance_slot_size,
+                //                                           fix_a_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance);
+
+                device->opengl_api().glBindBuffer(GL_ARRAY_BUFFER, primary_buffer_->get_buffer_provenance()->object_id());
+                device->opengl_api().glBufferSubData(GL_ARRAY_BUFFER, offset_in_render_VBO_provenance, provenance_slot_size, fix_a_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance);
+
                 // device->main_context()->copy_buffer_data(primary_buffer_->get_buffer_provenance(), temp_buffer_a_->get_buffer_provenance(), offset_in_render_VBO_provenance,
                 // offset_in_temp_VBO_provenance, database->get_primitives_per_node() * data_provenance.get_size_in_bytes());
 
@@ -778,9 +797,14 @@ bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary
                 size_t offset_in_render_VBO = transfer_desc.dst_ * database->get_slot_size();
                 // device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), temp_buffer_b_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
 
-                char *mapped = (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer(), offset_in_render_VBO, database->get_slot_size(), scm::gl::ACCESS_WRITE_ONLY);
-                std::memcpy(mapped, fix_b_.fix_buffer_ + offset_in_temp_VBO, database->get_slot_size());
-                device->main_context()->unmap_buffer(primary_buffer_->get_buffer());
+                // char *mapped = (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer(), offset_in_render_VBO, database->get_slot_size(), scm::gl::ACCESS_WRITE_ONLY);
+                // std::memcpy(mapped, fix_b_.fix_buffer_ + offset_in_temp_VBO, database->get_slot_size());
+                // device->main_context()->unmap_buffer(primary_buffer_->get_buffer());
+
+                // device->opengl_api().glNamedBufferSubData(primary_buffer_->get_buffer()->object_id(), offset_in_render_VBO, database->get_slot_size(), fix_b_.fix_buffer_ + offset_in_temp_VBO);
+
+                device->opengl_api().glBindBuffer(GL_ARRAY_BUFFER, primary_buffer_->get_buffer()->object_id());
+                device->opengl_api().glBufferSubData(GL_ARRAY_BUFFER, offset_in_render_VBO, database->get_slot_size(), fix_b_.fix_buffer_ + offset_in_temp_VBO);
 
                 size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
                 size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
@@ -789,9 +813,17 @@ bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary
 
                 size_t provenance_slot_size = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
 
-                mapped = (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer_provenance(), offset_in_render_VBO_provenance, provenance_slot_size, scm::gl::ACCESS_WRITE_ONLY);
-                std::memcpy(mapped, fix_b_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance, provenance_slot_size);
-                device->main_context()->unmap_buffer(primary_buffer_->get_buffer_provenance());
+                // mapped = (char *)device->main_context()->map_buffer_range(primary_buffer_->get_buffer_provenance(), offset_in_render_VBO_provenance, provenance_slot_size,
+                // scm::gl::ACCESS_WRITE_ONLY);
+                // std::memcpy(mapped, fix_b_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance, provenance_slot_size);
+                // device->main_context()->unmap_buffer(primary_buffer_->get_buffer_provenance());
+
+                // device->opengl_api().glNamedBufferSubData(primary_buffer_->get_buffer_provenance()->object_id(), offset_in_render_VBO_provenance, provenance_slot_size,
+                //                                           fix_b_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance);
+
+                device->opengl_api().glBindBuffer(GL_ARRAY_BUFFER, primary_buffer_->get_buffer_provenance()->object_id());
+                device->opengl_api().glBufferSubData(GL_ARRAY_BUFFER, offset_in_render_VBO_provenance, provenance_slot_size, fix_b_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance);
+
                 // first_error = device->opengl_api().glGetError();
                 // if(first_error != 0)
                 // {
