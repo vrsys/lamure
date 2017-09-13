@@ -99,7 +99,8 @@ class Renderer
     unsigned long index_current_image_camera = 0;
 
     int _depth_octree = 0;
-    std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
+    std::vector<prov::OctreeNode *> _vector_nodes;
+    // std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
     void update_vector_nodes();
 
   private:
@@ -115,7 +116,7 @@ class Renderer
     scm::gl::program_ptr _program_surfels_brush;
     scm::gl::program_ptr _program_pixels_brush;
 
-    std::shared_ptr<prov::OctreeNode> _sparse_octree = nullptr;
+    prov::SparseOctree *_sparse_octree = nullptr;
     // scm::shared_ptr<prov::OctreeNode> _sparse_octree = nullptr;
 
     lamure::ren::Data_Provenance _data_provenance;

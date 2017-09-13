@@ -24,7 +24,8 @@ class Partitionable
     }
 
     virtual void partition() = 0;
-    vec<TPartition> const &get_partitions() { return _partitions; }
+    // vec<TPartition> const &get_partitions() { return _partitions; }
+    vec<TPartition> &get_partitions() { return _partitions; }
 
   protected:
     vec<TPartition> _partitions;
