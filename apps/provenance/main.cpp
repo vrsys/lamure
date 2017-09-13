@@ -114,8 +114,8 @@ int main(int argc, char *argv[])
     //    in_lod_meta.close();
 
     auto start = std::chrono::high_resolution_clock::now();
-    prov::SparseOctree sparse_octree(cache_dense);
-    sparse_octree.partition();
+    prov::SparseOctree::Builder builder;
+    prov::SparseOctree sparse_octree = builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build();
     auto end = std::chrono::high_resolution_clock::now();
     printf("\nSparse octree creation took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 

@@ -14,6 +14,7 @@ class DenseMetaData : public MetaData
         images_seen = vec<uint32_t>();
         images_not_seen = vec<uint32_t>();
     }
+    ~DenseMetaData(){}
 
     virtual void read_metadata(ifstream &is, uint32_t meta_data_length) override
     {
@@ -21,10 +22,10 @@ class DenseMetaData : public MetaData
 
         uint32_t data_pointer = 0;
 
-        double buffer = 0;
-        memcpy(&buffer, &_metadata[data_pointer], 8);
+        float buffer = 0;
+        memcpy(&buffer, &_metadata[data_pointer], 4);
         photometric_consistency = (float)swap(buffer, true);
-        data_pointer += 8;
+        data_pointer += 4;
 
         // printf("\nNCC: %f", photometric_consistency);
 

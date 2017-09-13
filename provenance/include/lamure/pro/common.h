@@ -8,6 +8,10 @@
 #include <assert.h>
 #include <boost/crc.hpp>
 #include <boost/sort/spreadsort/spreadsort.hpp>
+#include <boost/sort/spreadsort/float_sort.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 #include <fstream>
 #include <memory>
 #include <stdio.h>
@@ -46,6 +50,11 @@ typedef scm::math::vec2f vec2f;
 typedef scm::math::vec3f vec3f;
 typedef scm::math::mat4f mat4f;
 typedef scm::math::quatf quatf;
+
+typedef boost::archive::text_oarchive text_oarchive;
+typedef boost::archive::text_iarchive text_iarchive;
+
+using namespace boost::sort::spreadsort;
 
 template <typename T1, typename T2>
 using pair = std::pair<T1, T2>;

@@ -12,14 +12,18 @@ class Partition
   public:
     Partition()
     {
-        this->_pairs = vec<TPair>();
+        this->_pair_ptrs = vec<s_ptr<TPair>>();
         this->_aggregate_metadata = TMetaData();
     }
+    ~Partition(){}
 
-    void set_pairs(vec<TPair> pairs) { this->_pairs = pairs; }
+    void set_pair_ptrs(vec<s_ptr<TPair>> &pair_ptrs) { this->_pair_ptrs = pair_ptrs; }
     TMetaData get_aggregate_metadata() { return this->_aggregate_metadata; };
+
   protected:
-    vec<TPair> _pairs;
+    virtual void aggregate_metadata() = 0;
+
+    vec<s_ptr<TPair>> _pair_ptrs;
     TMetaData _aggregate_metadata;
 };
 };

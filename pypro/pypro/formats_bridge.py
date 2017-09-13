@@ -39,8 +39,8 @@ class FormatSparseNVMV3(FormatSparsePro):
                               float(line_values[7].strip()),
                               float(line_values[8].strip()))
             charbuff = bytearray()
-            charbuff.extend(struct.pack(">d", float(line_values[9].strip())))
-            charbuff.extend(struct.pack(">d", float(line_values[10].strip())))
+            charbuff.extend(struct.pack(">f", float(line_values[9].strip())))
+            charbuff.extend(struct.pack(">f", float(line_values[10].strip())))
             meta_data = MetaData(charbuff=charbuff)
             self.cameras.append(
                 Camera(index=i,
@@ -149,7 +149,7 @@ class FormatDensePMVS(FormatDensePro):
             in_file_patch.readline()  # Empty line
 
             charbuff = bytearray()
-            charbuff.extend(struct.pack(">d", ncc))
+            charbuff.extend(struct.pack(">f", ncc))
             charbuff.extend(num_seen.to_bytes(4, byteorder='big'))
             charbuff.extend(buf_seen)
             charbuff.extend(num_not_seen.to_bytes(4, byteorder='big'))

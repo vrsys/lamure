@@ -28,9 +28,9 @@ class SparsePoint : public Point
             // if(DEBUG)
             //     printf("\nCamera index: %i", measurement._camera_index);
 
-            is.read(reinterpret_cast<char *>(&measurement._occurence.x), 8);
+            is.read(reinterpret_cast<char *>(&measurement._occurence.x), 4);
             measurement._occurence.x = swap(measurement._occurence.x, true);
-            is.read(reinterpret_cast<char *>(&measurement._occurence.y), 8);
+            is.read(reinterpret_cast<char *>(&measurement._occurence.y), 4);
             measurement._occurence.y = swap(measurement._occurence.y, true);
 
             // if(DEBUG)
@@ -45,7 +45,7 @@ class SparsePoint : public Point
     };
 
     SparsePoint() { _measurements = vec<Measurement>(); }
-    SparsePoint(uint32_t _index, const vec3d &_center, const vec3d &_color, const vec<uint8_t> &_metadata, const vec<Measurement> &_measurements)
+    SparsePoint(uint32_t _index, const vec3f &_center, const vec3f &_color, const vec<uint8_t> &_metadata, const vec<Measurement> &_measurements)
         : Point(_center, _color, _metadata), _measurements(_measurements)
     {
     }
