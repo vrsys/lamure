@@ -29,12 +29,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
 
     printf("\nUploading dense points data: start\n");
 
-    // prov::DenseCache cache_dense(in_dense, in_dense_meta);
-    // cache_dense.cache();
+    prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    cache_dense.cache();
 
-    // _sparse_octree = std::make_shared<prov::OctreeNode>(prov::SparseOctree(cache_dense));
-    // // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
-    // _sparse_octree->partition();
+    _sparse_octree = std::make_shared<prov::OctreeNode>(prov::SparseOctree(cache_dense));
+    // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
+    _sparse_octree->partition();
 
     printf("\nUploading dense points data: finish\n");
 
@@ -627,7 +627,9 @@ void Renderer::update_vector_nodes()
             for(prov::OctreeNode &partition : vector_partitions)
             {
                 // std::cout << 10 << std::endl;
-                queue_nodes.push(std::make_shared<prov::OctreeNode>(partition));
+                prov::OctreeNode *node_ptr = &partition;
+                queue_nodes.push(std::shared_ptr<prov::OctreeNode>(node_ptr));
+                // queue_nodes.push(std::make_shared<prov::OctreeNode>(partition));
             }
         }
 
