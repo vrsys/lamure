@@ -244,7 +244,7 @@ void Renderer::start_brushing(int x, int y, Scene &scene)
     }
 
     Struct_Surfel_Brush surfel_brush = {result_intersection.position_ + result_intersection.normal_ * 0.1f, result_intersection.normal_};
-    add_surfel_brush(surfel_brush, scene);
+    add_surfel_brush(result_intersection.position_, surfel_brush, scene);
 
     // std::vector<Struct_Line> vector_struct_line;
     // Struct_Line position_point = {point_final_front};
@@ -257,7 +257,7 @@ void Renderer::start_brushing(int x, int y, Scene &scene)
     // _vertex_array_object_lines = _device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
 }
 
-void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &scene)
+void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush const &surfel_brush, Scene &scene)
 {
     // _initial_buffer_size
 
@@ -308,7 +308,7 @@ void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &
     //    std::cout << "4" << std::endl;
 
     // add pixel
-    std::vector<uint32_t> vector_ids_cameras = std::vector<uint32_t>(search_tree(surfel_brush.position, scene));
+    std::vector<uint32_t> vector_ids_cameras = std::vector<uint32_t>(search_tree(position, scene));
     //    std::cout << "6" << std::endl;
 
     for(uint32_t id_camera : vector_ids_cameras)

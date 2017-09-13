@@ -159,7 +159,7 @@ class Renderer
     scm::gl::depth_stencil_state_ptr depth_state_disable_;
     scm::gl::depth_stencil_state_ptr depth_state_enable_;
 
-    void add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &scene);
+    void add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush const &surfel_brush, Scene &scene);
 
     lamure::model_t _model_id;
     // BRUSHING ///////////////////////////////////////////////
