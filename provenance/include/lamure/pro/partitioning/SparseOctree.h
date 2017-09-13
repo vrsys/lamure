@@ -10,128 +10,89 @@ namespace prov
 class SparseOctree : public OctreeNode
 {
   public:
-    SparseOctree() : OctreeNode() {}
-    SparseOctree(DenseCache &dense_cache) : OctreeNode() { glue_pairs(dense_cache); }
-    void partition()
+    class Builder
     {
-        printf("\nStart partitioning\n");
-
-        identify_boundaries();
-
-        pdqsort(this->_pairs.begin(), this->_pairs.end(), [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.first.get_position().x < pair2.first.get_position().x;
-        });
-
-        uint64_t mid_x_pos = this->_pairs.size() / 2;
-
-        pdqsort(this->_pairs.begin(), this->_pairs.begin() + mid_x_pos, [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.first.get_position().y < pair2.first.get_position().y;
-        });
-        pdqsort(this->_pairs.begin() + mid_x_pos, this->_pairs.end(), [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.first.get_position().y < pair2.first.get_position().y;
-        });
-
-        uint64_t mid_y_pos_1 = this->_pairs.size() / 4;
-        uint64_t mid_y_pos_2 = mid_x_pos + this->_pairs.size() / 4;
-
-        pdqsort(this->_pairs.begin(), this->_pairs.begin() + mid_y_pos_1, [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.first.get_position().z < pair2.first.get_position().z;
-        });
-        pdqsort(this->_pairs.begin() + mid_y_pos_1, this->_pairs.begin() + mid_x_pos,
-                  [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
-                      return pair1.first.get_position().z < pair2.first.get_position().z;
-                  });
-        pdqsort(this->_pairs.begin() + mid_x_pos, this->_pairs.begin() + mid_y_pos_2,
-                  [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
-                      return pair1.first.get_position().z < pair2.first.get_position().z;
-                  });
-        pdqsort(this->_pairs.begin() + mid_y_pos_2, this->_pairs.end(), [](const pair<DensePoint, DenseMetaData> &pair1, const pair<DensePoint, DenseMetaData> &pair2) {
-            return pair1.first.get_position().z < pair2.first.get_position().z;
-        });
-
-        uint64_t offset = this->_pairs.size() / 8;
-        for(uint8_t i = 0; i < 8; i++)
+      public:
+        Builder() {}
+        Builder *from(DenseCache &dense_cache)
         {
-            OctreeNode octree_node(this->_depth + uint8_t(1));
-            vec<pair<DensePoint, DenseMetaData>> pairs(&this->_pairs[i * offset], &this->_pairs[(i + 1) * offset]);
-            octree_node.set_pairs(pairs);
-            this->_partitions.push_back(octree_node);
+            this->_dense_cache = &dense_cache;
+            return this;
         }
-
-        for(uint8_t i = 0; i < 8; i++)
+        Builder *from(string &input_path)
         {
-            this->_partitions.at(i).partition();
+            this->_input_path = &input_path;
+            return this;
         }
-
-        float photometric_consistency = 0;
-        std::set<uint32_t> seen = std::set<uint32_t>();
-        std::set<uint32_t> not_seen = std::set<uint32_t>();
-
-        for(uint64_t i = 0; i < this->_pairs.size(); i++)
+        Builder *with_sort(Sort sort)
         {
-            photometric_consistency = photometric_consistency + (this->_pairs.at(i).second.get_photometric_consistency() - photometric_consistency) / (i + 1);
-            for(uint32_t k = 0; k < this->_pairs.at(i).second.get_images_seen().size(); k++)
+            this->_sort = sort;
+            return this;
+        }
+        Builder *with_max_depth(uint8_t max_depth)
+        {
+            this->_max_depth = max_depth;
+            return this;
+        }
+        Builder *with_min_per_node(uint8_t min_per_node)
+        {
+            this->_min_per_node = min_per_node;
+            return this;
+        }
+        ~Builder() {}
+        SparseOctree build()
+        {
+            SparseOctree octree(0, _sort, _max_depth, _min_per_node);
+
+            if(_dense_cache != nullptr)
             {
-                seen.insert((unsigned int)this->_pairs.at(i).second.get_images_seen().at(k));
+                _glue_pairs();
+                octree._pair_ptrs.reserve(_unsorted_pairs.size());
+                for(size_t i = 0; i < _unsorted_pairs.size(); i++)
+                {
+                    octree._pair_ptrs.push_back(s_ptr<dense_pair>(&_unsorted_pairs.at(i)));
+                }
+                octree.partition();
             }
-            for(uint32_t k = 0; k < this->_pairs.at(i).second.get_images_not_seen().size(); k++)
+            else if(_input_path != nullptr)
             {
-                not_seen.insert((unsigned int)this->_pairs.at(i).second.get_images_not_seen().at(k));
+                // TODO
             }
+
+            return octree;
         }
 
-        //            printf("\nSeen set length: %u\n", seen.size());
+      private:
+        DenseCache *_dense_cache = nullptr;
+        string *_input_path = nullptr;
 
-        vec<uint32_t> images_seen = vec<uint32_t>(seen.begin(), seen.end());
-        vec<uint32_t> images_not_seen = vec<uint32_t>(not_seen.begin(), not_seen.end());
+        Sort _sort = STD_SORT;
+        uint8_t _max_depth = 10;
+        uint8_t _min_per_node = 1;
 
-        _aggregate_metadata.set_photometric_consistency(photometric_consistency);
-        _aggregate_metadata.set_images_seen(images_seen);
-        _aggregate_metadata.set_images_not_seen(images_not_seen);
+        vec<pair<prov::DensePoint, prov::DenseMetaData>> _unsorted_pairs;
 
-        cleanup();
+        void _glue_pairs()
+        {
+            printf("\nStart gluing pairs\n");
+            for(uint64_t i = 0; i < _dense_cache->get_points().size(); i++)
+            {
+                dense_pair pair(_dense_cache->get_points().at(i), _dense_cache->get_points_metadata().at(i));
+                this->_unsorted_pairs.push_back(pair);
+            }
+            printf("\nEnd gluing pairs\n");
+        }
+    };
 
-        // TODO: figure out how to avoid parasite copying of nodes; maybe try promises & futures
-        //        boost::asio::io_service ioService;
-        //        boost::thread_group threadpool;
-        //
-        //        boost::asio::io_service::work work(ioService);
-        //
-        //        for(uint8_t i = 0; i < 8; i++)
-        //        {
-        //            threadpool.create_thread(boost::bind(&boost::asio::io_service::run, &ioService));
-        //        }
-        //
-        //        for(uint8_t i = 0; i < 8; i++)
-        //        {
-        //            OctreeNode &node = this->_partitions.at(i);
-        //            ioService.post(boost::bind(&OctreeNode::partition, node));
-        //        }
-        //
-        //        ioService.stop();
-        //        threadpool.join_all();
-
-        // cleanup();
-
-        printf("\nEnd partitioning\n");
-    }
-
-    //    void output_tree(string output_path)
-    //    {
-    //        // TODO
-    //    }
-
-    //    static SparseOctree load_tree()
-    //    {
-    //        // TODO
-    //        SparseOctree sparse_octree = SparseOctree();
-    //        return sparse_octree;
-    //    }
+  public:
+    SparseOctree() : OctreeNode() {}
+    SparseOctree(uint8_t _depth) : OctreeNode(_depth) {}
+    SparseOctree(uint8_t _depth, Sort _sort, uint8_t _max_depth, uint8_t _min_per_node) : OctreeNode(_depth, _sort, _max_depth, _min_per_node) {}
 
     void debug_information_loss(DenseCache &dense_cache, uint64_t num_probes)
     {
         printf("\nEnter debug information loss\n");
-        double information_loss = 0;
+        float information_loss = 0;
         num_probes = std::min(num_probes, dense_cache.get_points().size());
         for(uint64_t i = 0; i < num_probes; i++)
         {
@@ -139,18 +100,47 @@ class SparseOctree : public OctreeNode
             OctreeNode *node_ptr = lookup_node_at_position(dense_cache.get_points().at(ind).get_position());
             if(node_ptr == nullptr)
             {
-                vec3d pos = dense_cache.get_points().at(ind).get_position();
+                vec3f pos = dense_cache.get_points().at(ind).get_position();
                 printf("\nnullptr hit during lookup: %f, %f, %f\n", pos.x, pos.y, pos.z);
                 throw new std::runtime_error("\nnullptr hit during lookup\n");
             }
-//                        else
-//                        {
-//                            printf("\ndepth returned: %u\n", (*node_ptr).get_depth());
-//                        }
-            information_loss += compare_metadata((*node_ptr).get_aggregate_metadata(), dense_cache.get_points_metadata().at(ind)) / (double)num_probes;
+            //                        else
+            //                        {
+            //                            printf("\ndepth returned: %u\n", (*node_ptr).get_depth());
+            //                        }
+            information_loss += compare_metadata((*node_ptr).get_aggregate_metadata(), dense_cache.get_points_metadata().at(ind)) / (float)num_probes;
             //            printf("\nIntermediate information loss: %lf\n", information_loss);
         }
         printf("\nFinal information loss: %lf%%\n", information_loss * 100);
+    }
+
+    OctreeNode *lookup_node_at_position(vec3f position)
+    {
+        //        printf("\nEnter lookup node at position\n");
+
+        if(!fits_in_boundaries(position))
+        {
+            //            printf("\nPosition does not fit into boundaries\n");
+            return this;
+        }
+
+        if(this->_partitions.empty())
+        {
+            //            printf("\nMaximum depth reached at this position\n");
+            return this;
+        }
+
+        for(uint8_t i = 0; i < this->_partitions.size(); i++)
+        {
+            //            printf("\nEnter partition lookup\n");
+            OctreeNode *node = this->_partitions.at(i).lookup_node_at_position(position);
+            if(node != nullptr)
+            {
+                return node;
+            }
+        }
+
+        return this;
     }
 
     void debug_randomized_lookup(uint64_t num_probes)
@@ -160,7 +150,7 @@ class SparseOctree : public OctreeNode
             float rand_x = rand() / (float)RAND_MAX * (this->_max.x - this->_min.x) + this->_min.x;
             float rand_y = rand() / (float)RAND_MAX * (this->_max.y - this->_min.y) + this->_min.y;
             float rand_z = rand() / (float)RAND_MAX * (this->_max.z - this->_min.z) + this->_min.z;
-            vec3d rand_pos(rand_x, rand_y, rand_z);
+            vec3f rand_pos(rand_x, rand_y, rand_z);
             OctreeNode *node_ptr = lookup_node_at_position(rand_pos);
             if(node_ptr == nullptr)
             {
@@ -170,59 +160,41 @@ class SparseOctree : public OctreeNode
         }
     }
 
-    OctreeNode *lookup_node_at_position(vec3d position)
+  protected:
+    void partition()
     {
-        if(!fits_in_boundaries(position))
-        {
-            return this;
-        }
+        printf("\nStart partitioning\n");
 
-        if(this->_partitions.empty())
-        {
-            return this;
-        }
+        OctreeNode::partition();
 
-        for(uint8_t i = 0; i < this->_partitions.size(); i++)
-        {
-            OctreeNode *node = this->_partitions.at(i).lookup_node_at_position(position);
-            if(node != nullptr)
-            {
-                return node;
-            }
-        }
-
-        uint8_t curr_best = 0;
-        float curr_best_distance = 0;
-        for(uint8_t i = 0; i < this->_partitions.size(); i++)
-        {
-            vec3d center = this->_partitions.at(i).get_center();
-            if(curr_best_distance < (const float) scm::math::distance(center, position)){
-                curr_best_distance = (const float) scm::math::distance(center, position);
-                curr_best = i;
-            }
-        }
-
-        return &(this->_partitions.at(curr_best));
+        printf("\nEnd partitioning\n");
     }
 
   private:
-    double compare_metadata(const DenseMetaData &data, const DenseMetaData &ref_data)
+    // TODO: see to completion
+    /*static void output_tree(SparseOctree octree, string output_path)
     {
-        double information_loss = 0;
+        ofstream ofstream_tree(output_path);
+        text_oarchive oa_tree(ofstream_tree);
+        oa_tree << octree;
+    }
+
+    static SparseOctree load_tree(string _input_path)
+    {
+        SparseOctree octree;
+        ifstream ifstream_tree(_input_path);
+        text_iarchive ia_tree(ifstream_tree);
+        ia_tree >> octree;
+        return octree;
+    }*/
+
+    float compare_metadata(const DenseMetaData &data, const DenseMetaData &ref_data)
+    {
+        float information_loss = 0;
         information_loss += std::abs(data.get_photometric_consistency() - ref_data.get_photometric_consistency());
         //        information_loss += std::abs(int(data.get_images_seen().size()) - int(ref_data.get_images_seen().size())) / (double)(1 + int(ref_data.get_images_seen().size()));
         //        information_loss += std::abs(int(data.get_images_not_seen().size()) - int(ref_data.get_images_not_seen().size())) / (double)(1 + int(ref_data.get_images_not_seen().size()));
         return information_loss; // / 3;
-    }
-    void glue_pairs(DenseCache &dense_cache)
-    {
-        printf("\nStart gluing pairs\n");
-        for(uint64_t i = 0; i < dense_cache.get_points().size(); i++)
-        {
-            pair<DensePoint, DenseMetaData> pair(dense_cache.get_points().at(i), dense_cache.get_points_metadata().at(i));
-            this->_pairs.push_back(pair);
-        }
-        printf("\nEnd gluing pairs\n");
     }
 };
 };

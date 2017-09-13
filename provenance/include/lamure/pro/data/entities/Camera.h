@@ -18,7 +18,7 @@ class Camera
     uint16_t MAX_LENGTH_FILE_PATH;
 
     Camera() {}
-    Camera(uint16_t _index, const string &_im_file_name, const quatd &_orientation, const vec3d &_translation, const vec<uint8_t> &_metadata)
+    Camera(uint16_t _index, const string &_im_file_name, const quatd &_orientation, const vec3f &_translation, const vec<uint8_t> &_metadata)
         : _index(_index), _im_file_name(_im_file_name), _orientation(_orientation), _translation(_translation)
     {
         prepare();
@@ -38,7 +38,7 @@ class Camera
 
     int get_index() { return _index; }
     quatd get_orientation() { return _orientation; }
-    vec3d get_translation() { return _translation; }
+    vec3f get_translation() { return _translation; }
     friend ifstream &operator>>(ifstream &is, Camera &camera)
     {
         is.read(reinterpret_cast<char *>(&camera._index), 2);
@@ -47,17 +47,17 @@ class Camera
         // if(DEBUG)
         // printf("\nIndex: %i", camera._index);
 
-        is.read(reinterpret_cast<char *>(&camera._focal_length), 8);
+        is.read(reinterpret_cast<char *>(&camera._focal_length), 4);
         camera._focal_length = swap(camera._focal_length, true);
 
         // if(DEBUG)
         // printf("\nFocal length: %f", camera._focal_length);
 
-        double w, x, y, z;
-        is.read(reinterpret_cast<char *>(&w), 8);
-        is.read(reinterpret_cast<char *>(&x), 8);
-        is.read(reinterpret_cast<char *>(&y), 8);
-        is.read(reinterpret_cast<char *>(&z), 8);
+        float w, x, y, z;
+        is.read(reinterpret_cast<char *>(&w), 4);
+        is.read(reinterpret_cast<char *>(&x), 4);
+        is.read(reinterpret_cast<char *>(&y), 4);
+        is.read(reinterpret_cast<char *>(&z), 4);
         w = swap(w, true);
         x = swap(x, true);
         y = swap(y, true);
@@ -66,15 +66,15 @@ class Camera
         // if(DEBUG)
         // printf("\nWXYZ: %f %f %f %f", w, x, y, z);
 
-        quatd quat_tmp = quatd(w, x, y, z);
-        scm::math::quat<double> new_orientation = scm::math::quat<double>::from_axis(180, scm::math::vec3d(1.0, 0.0, 0.0));
+        quatf quat_tmp = quatf(w, x, y, z);
+        scm::math::quat<float> new_orientation = scm::math::quat<float>::from_axis(180, scm::math::vec3f(1.0, 0.0, 0.0));
         quat_tmp = scm::math::normalize(quat_tmp);
-        camera._orientation = scm::math::quat<double>::from_matrix(camera.SetQuaternionRotation(quat_tmp)) * new_orientation;
+        camera._orientation = scm::math::quat<float>::from_matrix(camera.set_quaternion_rotation(quat_tmp)) * new_orientation;
         // camera._orientation = quatd(w, x, y, z);
 
-        is.read(reinterpret_cast<char *>(&x), 8);
-        is.read(reinterpret_cast<char *>(&y), 8);
-        is.read(reinterpret_cast<char *>(&z), 8);
+        is.read(reinterpret_cast<char *>(&x), 4);
+        is.read(reinterpret_cast<char *>(&y), 4);
+        is.read(reinterpret_cast<char *>(&z), 4);
         x = swap(x, true);
         y = swap(y, true);
         z = swap(z, true);
@@ -82,7 +82,7 @@ class Camera
         // if(DEBUG)
         // printf("\nXYZ: %f %f %f", x, y, z);
 
-        camera._translation = vec3d(x, y, z);
+        camera._translation = vec3f(x, y, z);
 
         char byte_buffer[camera.MAX_LENGTH_FILE_PATH];
         is.read(byte_buffer, camera.MAX_LENGTH_FILE_PATH);
@@ -98,13 +98,13 @@ class Camera
     }
 
   private:
-    scm::math::mat3d SetQuaternionRotation(const scm::math::quat<double> q)
+    scm::math::mat3f set_quaternion_rotation(const scm::math::quat<float> q)
     {
-        scm::math::mat3d m = scm::math::mat3d::identity();
-        double qw = q.w;
-        double qx = q.i;
-        double qy = q.j;
-        double qz = q.k;
+        scm::math::mat3f m = scm::math::mat3f::identity();
+        float qw = q.w;
+        float qx = q.i;
+        float qy = q.j;
+        float qz = q.k;
         m[0] = (qw * qw + qx * qx - qz * qz - qy * qy);
         m[1] = (2 * qx * qy - 2 * qz * qw);
         m[2] = (2 * qy * qw + 2 * qz * qx);
@@ -166,15 +166,15 @@ class Camera
 
   protected:
     uint16_t _index;
-    double _focal_length;
+    float _focal_length;
     string _im_file_name;
     quatd _orientation;
-    vec3d _translation;
+    vec3f _translation;
 
     int _im_height;
     int _im_width;
-    double _fp_resolution_x;
-    double _fp_resolution_y;
+    float _fp_resolution_x;
+    float _fp_resolution_y;
 };
 }
 

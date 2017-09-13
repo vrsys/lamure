@@ -10,18 +10,27 @@ template <class TPartition>
 class Partitionable
 {
   public:
+    enum Sort
+    {
+        STD_SORT = 0,
+        BOOST_SPREADSORT = 1,
+        PDQ_SORT = 2
+    };
+
     Partitionable()
     {
-        //        static_assert(std::is_base_of<Partition, TPartition>::value, "The used partition type is not a derivative of Partition");
         this->_partitions = vec<TPartition>();
+        this->_sort = STD_SORT;
     }
 
-    // Stub
-    void partition(){};
+    virtual void partition() = 0;
     vec<TPartition> const &get_partitions() { return _partitions; }
 
   protected:
     vec<TPartition> _partitions;
+    Sort _sort;
+    uint8_t _max_depth = 10;
+    uint8_t _min_per_node = 1;
 };
 };
 

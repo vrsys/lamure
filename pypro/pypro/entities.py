@@ -29,9 +29,9 @@ class Position(Entity):
 
     def out(self):
         out_bytes = bytearray()
-        out_bytes.extend(struct.pack(">d", self.x))
-        out_bytes.extend(struct.pack(">d", self.y))
-        out_bytes.extend(struct.pack(">d", self.z))
+        out_bytes.extend(struct.pack(">f", self.x))
+        out_bytes.extend(struct.pack(">f", self.y))
+        out_bytes.extend(struct.pack(">f", self.z))
         return out_bytes
 
 
@@ -43,9 +43,9 @@ class Color(Entity):
 
     def out(self):
         out_bytes = bytearray()
-        out_bytes.extend(struct.pack(">d", self.r))
-        out_bytes.extend(struct.pack(">d", self.g))
-        out_bytes.extend(struct.pack(">d", self.b))
+        out_bytes.extend(struct.pack(">f", self.r))
+        out_bytes.extend(struct.pack(">f", self.g))
+        out_bytes.extend(struct.pack(">f", self.b))
         return out_bytes
 
 
@@ -58,10 +58,10 @@ class Quat(Entity):
 
     def out(self):
         out_bytes = bytearray()
-        out_bytes.extend(struct.pack(">d", self.w))
-        out_bytes.extend(struct.pack(">d", self.x))
-        out_bytes.extend(struct.pack(">d", self.y))
-        out_bytes.extend(struct.pack(">d", self.z))
+        out_bytes.extend(struct.pack(">f", self.w))
+        out_bytes.extend(struct.pack(">f", self.x))
+        out_bytes.extend(struct.pack(">f", self.y))
+        out_bytes.extend(struct.pack(">f", self.z))
         return out_bytes
 
 
@@ -84,9 +84,9 @@ class Normal(Entity):
 
     def out(self):
         out_bytes = bytearray()
-        out_bytes.extend(struct.pack(">d", self.x))
-        out_bytes.extend(struct.pack(">d", self.y))
-        out_bytes.extend(struct.pack(">d", self.z))
+        out_bytes.extend(struct.pack(">f", self.x))
+        out_bytes.extend(struct.pack(">f", self.y))
+        out_bytes.extend(struct.pack(">f", self.z))
         return out_bytes
 
 
@@ -115,7 +115,7 @@ class Camera(Entity):
     def out(self):
         out_bytes = bytearray()
         out_bytes.extend(self.index.to_bytes(2, byteorder='big'))
-        out_bytes.extend(struct.pack(">d", self.focal_length))
+        out_bytes.extend(struct.pack(">f", self.focal_length))
         out_bytes.extend(self.quat.out())
         out_bytes.extend(self.center.out())
         # out_bytes.extend(len(bytearray(self.file_path, encoding='UTF-8')).to_bytes(2, byteorder='big'))
@@ -149,6 +149,6 @@ class Measurement(Entity):
     def out(self):
         out_bytes = bytearray()
         out_bytes.extend(self.camera_index.to_bytes(2, byteorder='big'))
-        out_bytes.extend(struct.pack(">d", self.occurence_x))
-        out_bytes.extend(struct.pack(">d", self.occurence_y))
+        out_bytes.extend(struct.pack(">f", self.occurence_x))
+        out_bytes.extend(struct.pack(">f", self.occurence_y))
         return out_bytes

@@ -9,19 +9,19 @@ namespace prov
 class DensePoint : public Point
 {
   public:
-    DensePoint() { _normal = vec3d(); }
-    DensePoint(const vec3d &_center, const vec3d &_color, const vec<uint8_t> &_metadata, const vec3d &_normal) : Point(_center, _color, _metadata), _normal(_normal) {}
+    DensePoint() { _normal = vec3f(); }
+    DensePoint(const vec3f &_center, const vec3f &_color, const vec<uint8_t> &_metadata, const vec3f &_normal) : Point(_center, _color, _metadata), _normal(_normal) {}
     ~DensePoint() {}
-    const vec3d &get_normal() const { return _normal; }
+    const vec3f &get_normal() const { return _normal; }
     friend ifstream &operator>>(ifstream &is, DensePoint &dense_point)
     {
         dense_point.read_essentials(is);
 
-        is.read(reinterpret_cast<char *>(&dense_point._normal[0]), 8);
+        is.read(reinterpret_cast<char *>(&dense_point._normal[0]), 4);
         dense_point._normal[0] = swap(dense_point._normal[0], true);
-        is.read(reinterpret_cast<char *>(&dense_point._normal[1]), 8);
+        is.read(reinterpret_cast<char *>(&dense_point._normal[1]), 4);
         dense_point._normal[1] = swap(dense_point._normal[1], true);
-        is.read(reinterpret_cast<char *>(&dense_point._normal[2]), 8);
+        is.read(reinterpret_cast<char *>(&dense_point._normal[2]), 4);
         dense_point._normal[2] = swap(dense_point._normal[2], true);
 
         // if(DEBUG)
@@ -32,7 +32,7 @@ class DensePoint : public Point
     static const uint32_t ENTITY_LENGTH = 72;
 
   protected:
-    vec3d _normal;
+    vec3f _normal;
 };
 }
 

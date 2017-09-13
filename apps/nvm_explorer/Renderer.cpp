@@ -32,9 +32,9 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     prov::DenseCache cache_dense(in_dense, in_dense_meta);
     cache_dense.cache();
 
-    _sparse_octree = std::make_shared<prov::OctreeNode>(prov::SparseOctree(cache_dense));
+    prov::SparseOctree::Builder builder;
+    _sparse_octree = std::make_shared<prov::OctreeNode>(builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build());
     // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
-    _sparse_octree->partition();
 
     printf("\nUploading dense points data: finish\n");
 
@@ -321,7 +321,7 @@ void Renderer::add_surfel_brush(Struct_Surfel_Brush const &surfel_brush, Scene &
 
 std::vector<uint32_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
 {
-    prov::OctreeNode *node_ptr = _sparse_octree->lookup_node_at_position(scm::math::vec3d(surfel_brush));
+    prov::OctreeNode *node_ptr = _sparse_octree->lookup_node_at_position(scm::math::vec3f(surfel_brush));
     // std::cout << "5" << std::endl;
     return node_ptr->get_aggregate_metadata().get_images_seen();
 }
