@@ -11,10 +11,10 @@ class DenseMetaData : public MetaData
   public:
     DenseMetaData()
     {
-        images_seen = vec<uint32_t>();
-        images_not_seen = vec<uint32_t>();
+        _images_seen = vec<uint32_t>();
+        _images_not_seen = vec<uint32_t>();
     }
-    ~DenseMetaData(){}
+    ~DenseMetaData() {}
 
     virtual void read_metadata(ifstream &is, uint32_t meta_data_length) override
     {
@@ -24,10 +24,10 @@ class DenseMetaData : public MetaData
 
         float buffer = 0;
         memcpy(&buffer, &_metadata[data_pointer], 4);
-        photometric_consistency = (float)swap(buffer, true);
+        _photometric_consistency = (float)swap(buffer, true);
         data_pointer += 4;
 
-        // printf("\nNCC: %f", photometric_consistency);
+        // printf("\nNCC: %f", _photometric_consistency);
 
         uint32_t num_seen = 0;
         memcpy(&num_seen, &_metadata[data_pointer], 4);
@@ -45,7 +45,7 @@ class DenseMetaData : public MetaData
 
             //            printf("\nImage seen: %i", image_seen);
 
-            images_seen.push_back(image_seen);
+            _images_seen.push_back(image_seen);
         }
 
         uint32_t num_not_seen = 0;
@@ -64,20 +64,30 @@ class DenseMetaData : public MetaData
 
             //            printf("\nImage not seen: %i", image_not_seen);
 
-            images_not_seen.push_back(image_not_seen);
+            _images_not_seen.push_back(image_not_seen);
         }
     }
 
-    float get_photometric_consistency() const { return photometric_consistency; }
-    vec<uint32_t> get_images_seen() const { return images_seen; }
-    vec<uint32_t> get_images_not_seen() const { return images_not_seen; }
-    void set_photometric_consistency(float photometric_consistency) { this->photometric_consistency = photometric_consistency; }
-    void set_images_seen(vec<uint32_t> images_seen) { this->images_seen = images_seen; }
-    void set_images_not_seen(vec<uint32_t> images_not_seen) { this->images_not_seen = images_not_seen; }
+    float get_photometric_consistency() const { return _photometric_consistency; }
+    vec<uint32_t> get_images_seen() const { return _images_seen; }
+    vec<uint32_t> get_images_not_seen() const { return _images_not_seen; }
+    void set_photometric_consistency(float _photometric_consistency) { this->_photometric_consistency = _photometric_consistency; }
+    void set_images_seen(vec<uint32_t> _images_seen) { this->_images_seen = _images_seen; }
+    void set_images_not_seen(vec<uint32_t> _images_not_seen) { this->_images_not_seen = _images_not_seen; }
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive &ar, const unsigned int version)
+    {
+        ar &_photometric_consistency;
+        ar &_images_seen;
+        ar &_images_not_seen;
+    }
+
   private:
-    float photometric_consistency;
-    vec<uint32_t> images_seen;
-    vec<uint32_t> images_not_seen;
+    float _photometric_consistency;
+    vec<uint32_t> _images_seen;
+    vec<uint32_t> _images_not_seen;
 };
 };
 

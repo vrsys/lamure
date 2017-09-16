@@ -51,10 +51,10 @@ void Controller::handle_movements(int time_delta)
     {
         yoffset += 1;
     }
-    scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
-    scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
-    scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
-    scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
+    scm::math::quat<float> old_rotation = _renderer.get_camera_view().get_rotation();
+    scm::math::quat<float> new_rotation_x = scm::math::quat<float>::from_axis(xoffset, scm::math::vec3f(0.0, 1.0, 0.0));
+    scm::math::quat<float> new_rotation_y = scm::math::quat<float>::from_axis(yoffset, scm::math::vec3f(1.0, 0.0, 0.0));
+    scm::math::quat<float> new_rotation = old_rotation * new_rotation_x;
     new_rotation = new_rotation * new_rotation_y;
     _renderer.get_camera_view().set_rotation(new_rotation);
 

@@ -24,20 +24,8 @@
 void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
                     lamure::ren::Data_Provenance data_provenance)
 {
-    prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
-    prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
-
-    printf("\nUploading dense points data: start\n");
-
-    prov::DenseCache cache_dense(in_dense, in_dense_meta);
-    cache_dense.cache();
-
-    prov::SparseOctree::Builder builder;
-    prov::SparseOctree sparse_octree = (builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build());
-    _sparse_octree = &sparse_octree;
+    _sparse_octree = prov::SparseOctree::load_tree("tree.prov");
     // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
-
-    printf("\nUploading dense points data: finish\n");
 
     //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
     _data_provenance = data_provenance;
@@ -322,7 +310,7 @@ void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush c
 
 std::vector<uint32_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
 {
-    prov::OctreeNode *node_ptr = _sparse_octree->lookup_node_at_position(scm::math::vec3f(surfel_brush));
+    prov::OctreeNode *node_ptr = _sparse_octree.lookup_node_at_position(scm::math::vec3f(surfel_brush));
     // std::cout << "5" << std::endl;
     return node_ptr->get_aggregate_metadata().get_images_seen();
     // return node_ptr->get_aggregate_metadata().get_images_not_seen();
@@ -605,36 +593,36 @@ void Renderer::update_vector_nodes()
     std::queue<prov::OctreeNode *> queue_nodes;
     // std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
     // std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
-    std::cout << 1 << std::endl;
-    queue_nodes.push(_sparse_octree);
-    std::cout << 2 << std::endl;
+    // std::cout << 1 << std::endl;
+    queue_nodes.push(&_sparse_octree);
+    // std::cout << 2 << std::endl;
     _vector_nodes.clear();
-    _vector_nodes.reserve(std::pow(8, _depth_octree));
-    std::cout << 3 << std::endl;
+    _vector_nodes.reserve((unsigned long) std::pow(8, _depth_octree));
+    // std::cout << 3 << std::endl;
     while(!queue_nodes.empty())
     {
-        std::cout << 4 << std::endl;
+        // std::cout << 4 << std::endl;
         prov::OctreeNode *node = queue_nodes.front();
-        std::cout << 5 << std::endl;
+        // std::cout << 5 << std::endl;
 
         if(node->get_depth() == _depth_octree)
         {
-            std::cout << 6 << std::endl;
+            // std::cout << 6 << std::endl;
             _vector_nodes.push_back(node);
-            std::cout << 7 << std::endl;
+            // std::cout << 7 << std::endl;
         }
         else
         {
-            std::cout << 8 << std::endl;
+            // std::cout << 8 << std::endl;
             // std::vector<prov::OctreeNode> vector_partitions = node->get_partitions();
-            std::cout << 9 << std::endl;
+            // std::cout << 9 << std::endl;
             for(prov::OctreeNode &partition : node->get_partitions())
             {
-                std::cout << 10 << std::endl;
+                // std::cout << 10 << std::endl;
                 prov::OctreeNode *node_ptr = &partition;
                 queue_nodes.push(node_ptr);
                 // queue_nodes.push(std::make_shared<prov::OctreeNode>(partition));
-                std::cout << 11 << std::endl;
+                // std::cout << 11 << std::endl;
             }
         }
 

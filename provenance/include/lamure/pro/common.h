@@ -6,12 +6,13 @@
 #include "3dparty/tinyply.h"
 #include <algorithm>
 #include <assert.h>
-#include <boost/crc.hpp>
-#include <boost/sort/spreadsort/spreadsort.hpp>
-#include <boost/sort/spreadsort/float_sort.hpp>
-#include <boost/serialization/serialization.hpp>
-#include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/crc.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/sort/spreadsort/float_sort.hpp>
+#include <boost/sort/spreadsort/spreadsort.hpp>
 #include <fstream>
 #include <memory>
 #include <stdio.h>
@@ -40,11 +41,6 @@ using u_ptr = std::unique_ptr<T>;
 
 template <typename T>
 using s_ptr = std::shared_ptr<T>;
-
-typedef scm::math::vec2d vec2d;
-typedef scm::math::vec3d vec3d;
-typedef scm::math::mat4d mat4d;
-typedef scm::math::quatd quatd;
 
 typedef scm::math::vec2f vec2f;
 typedef scm::math::vec3f vec3f;

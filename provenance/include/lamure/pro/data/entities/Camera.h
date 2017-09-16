@@ -18,7 +18,7 @@ class Camera
     uint16_t MAX_LENGTH_FILE_PATH;
 
     Camera() {}
-    Camera(uint16_t _index, const string &_im_file_name, const quatd &_orientation, const vec3f &_translation, const vec<uint8_t> &_metadata)
+    Camera(uint16_t _index, const string &_im_file_name, const quatf &_orientation, const vec3f &_translation, const vec<uint8_t> &_metadata)
         : _index(_index), _im_file_name(_im_file_name), _orientation(_orientation), _translation(_translation)
     {
         prepare();
@@ -37,7 +37,7 @@ class Camera
     }
 
     int get_index() { return _index; }
-    quatd get_orientation() { return _orientation; }
+    quatf get_orientation() { return _orientation; }
     vec3f get_translation() { return _translation; }
     friend ifstream &operator>>(ifstream &is, Camera &camera)
     {
@@ -168,7 +168,7 @@ class Camera
     uint16_t _index;
     float _focal_length;
     string _im_file_name;
-    quatd _orientation;
+    quatf _orientation;
     vec3f _translation;
 
     int _im_height;

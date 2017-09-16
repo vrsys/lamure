@@ -31,7 +31,7 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
         this->_depth = _depth;
         //        printf("\nOctreeNode created at depth: %u\n", this->_depth);
     }
-    OctreeNode(uint8_t _depth, Sort _sort, uint8_t _max_depth, uint8_t _min_per_node) : Partition<dense_pair, DenseMetaData>(), Partitionable<OctreeNode>()
+    OctreeNode(uint8_t _depth, Sort _sort, uint8_t _max_depth, uint8_t _min_per_node, bool _cubic_nodes) : Partition<dense_pair, DenseMetaData>(), Partitionable<OctreeNode>()
     {
         this->_min = vec3f(FLT_MAX, FLT_MAX, FLT_MAX);
         this->_max = vec3f(-FLT_MAX, -FLT_MAX, -FLT_MAX);
@@ -39,6 +39,7 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
         this->_sort = _sort;
         this->_max_depth = _max_depth;
         this->_min_per_node = _min_per_node;
+        this->_cubic_nodes = _cubic_nodes;
         //        printf("\nOctreeNode created at depth: %u\n", this->_depth);
     }
     ~OctreeNode() {}
@@ -77,18 +78,23 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
     vec3f get_max() { return _max; }
     vec3f get_min() { return _min; }
 
-  protected:
     friend class boost::serialization::access;
     template <class Archive>
     void serialize(Archive &ar, const unsigned int version)
     {
         ar &_depth;
-        ar &_max;
-        ar &_min;
+        ar &_max.x;
+        ar &_max.y;
+        ar &_max.z;
+        ar &_min.x;
+        ar &_min.y;
+        ar &_min.z;
+        ar &_cubic_nodes;
         ar &_aggregate_metadata;
         ar &_partitions;
     }
 
+  protected:
     template <class RandomAccessIter, class Right_shift, class Compare>
     void sort(RandomAccessIter first, RandomAccessIter last, Right_shift rshift, Compare comp)
     {
@@ -110,7 +116,8 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
 
     void partition()
     {
-        this->identify_boundaries();
+        if(!_cubic_nodes)
+            this->identify_boundaries();
 
         auto lambda_x = [](const s_ptr<dense_pair> &pair1, const s_ptr<dense_pair> &pair2) -> bool { return pair1->first.get_position().x < pair2->first.get_position().x; };
         auto lambda_y = [](const s_ptr<dense_pair> &pair1, const s_ptr<dense_pair> &pair2) -> bool { return pair1->first.get_position().y < pair2->first.get_position().y; };
@@ -123,8 +130,8 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
 
         if(this->_depth < _max_depth)
         {
-            std::cout << "Sorting node depth " << (size_t)_depth << " " << std::endl;
-            std::cout << "with " << this->_pair_ptrs.size() << " pairs" << std::endl;
+            // std::cout << "Sorting node depth " << (size_t)_depth << " " << std::endl;
+            // std::cout << "with " << this->_pair_ptrs.size() << " pairs" << std::endl;
 
             sort(this->_pair_ptrs.begin(), this->_pair_ptrs.end(), rightshift_x(), lambda_x);
 
@@ -163,8 +170,51 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
                 vec<s_ptr<dense_pair>> pair_ptrs(iter_vec.at(i), iter_vec.at(i + 1));
                 if(pair_ptrs.size() >= _min_per_node)
                 {
-                    OctreeNode octree_node(this->_depth + 1, _sort, _max_depth, _min_per_node);
+                    OctreeNode octree_node(this->_depth + 1, _sort, _max_depth, _min_per_node, this->_cubic_nodes);
                     octree_node.set_pair_ptrs(pair_ptrs);
+
+                    if(this->_cubic_nodes)
+                    {
+                        vec3f min, max;
+                        vec3f _center = get_center();
+                        switch(i)
+                        {
+                        case 0:
+                            min = vec3f(_min.x, _min.y, _min.z);
+                            max = vec3f(_center.x, _center.y, _center.z);
+                            break;
+                        case 1:
+                            min = vec3f(_min.x, _min.y, _center.z);
+                            max = vec3f(_center.x, _center.y, _max.z);
+                            break;
+                        case 2:
+                            min = vec3f(_min.x, _center.y, _min.z);
+                            max = vec3f(_center.x, _max.y, _center.z);
+                            break;
+                        case 3:
+                            min = vec3f(_min.x, _center.y, _center.z);
+                            max = vec3f(_center.x, _max.y, _max.z);
+                            break;
+                        case 4:
+                            min = vec3f(_center.x, _min.y, _min.z);
+                            max = vec3f(_max.x, _center.y, _center.z);
+                            break;
+                        case 5:
+                            min = vec3f(_center.x, _min.y, _center.z);
+                            max = vec3f(_max.x, _center.y, _max.z);
+                            break;
+                        case 6:
+                            min = vec3f(_center.x, _center.y, _min.z);
+                            max = vec3f(_max.x, _max.y, _center.z);
+                            break;
+                        case 7:
+                            min = vec3f(_center.x, _center.y, _center.z);
+                            max = vec3f(_max.x, _max.y, _max.z);
+                            break;
+                        }
+                        octree_node.set_boundaries(min, max);
+                    }
+
                     this->_partitions.push_back(octree_node);
                 }
             }
@@ -276,9 +326,16 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
         // printf("\nMax: %f, %f, %f\n", this->_max.x, this->_max.y, this->_max.z);
     }
 
+    void set_boundaries(vec3f min, vec3f max)
+    {
+        this->_min = min;
+        this->_max = max;
+    }
+
     vec3f _min;
     vec3f _max;
     uint8_t _depth;
+    bool _cubic_nodes = false;
 
     bool fits_in_boundaries(vec3f position)
     {
