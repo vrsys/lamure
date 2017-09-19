@@ -18,11 +18,15 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
     _renderer.init(argv, _device, width_window, height_window, name_file_lod, name_file_dense, data_provenance);
 }
 
-bool Controller::update(int time_delta)
+bool Controller::update()
 {
-    time_since_last_brush += time_delta;
-    handle_movements(time_delta);
-    _scene.update(time_delta);
+    double new_time_since_start = glfwGetTime();
+    _time_delta = (new_time_since_start - _time_since_start) * 1000;
+    _time_since_start = new_time_since_start;
+
+    time_since_last_brush += _time_delta;
+    handle_movements(_time_delta);
+    _scene.update(_time_delta);
 
     if(_renderer.render(_scene) == true)
     {
@@ -35,6 +39,7 @@ void Controller::handle_movements(int time_delta)
 {
     float xoffset = 0.0f;
     float yoffset = 0.0f;
+
     if(_keys_special[100])
     {
         xoffset += 1;
@@ -61,27 +66,28 @@ void Controller::handle_movements(int time_delta)
     float speed = 0.04f * time_delta;
     scm::math::vec3f offset = scm::math::vec3f(0.0f, 0.0f, 0.0f);
 
-    if(_keys['w'] || _keys['W'])
+    if(_keys[GLFW_KEY_W])
     {
+        // std::cout << "pressed w" << std::endl;
         offset += scm::math::vec3f(0.0f, 0.0f, -1.0f) * speed;
     }
-    if(_keys['s'] || _keys['S'])
+    if(_keys[GLFW_KEY_S])
     {
         offset += scm::math::vec3f(0.0f, 0.0f, 1.0f) * speed;
     }
-    if(_keys['a'] || _keys['A'])
+    if(_keys[GLFW_KEY_A])
     {
         offset += scm::math::vec3f(-1.0f, 0.0f, 0.0f) * speed;
     }
-    if(_keys['d'] || _keys['D'])
+    if(_keys[GLFW_KEY_D])
     {
         offset += scm::math::vec3f(1.0f, 0.0f, 0.0f) * speed;
     }
-    if(_keys['q'] || _keys['Q'])
+    if(_keys[GLFW_KEY_Q])
     {
         offset += scm::math::vec3f(0.0f, 1.0f, 0.0f) * speed;
     }
-    if(_keys['e'] || _keys['E'])
+    if(_keys[GLFW_KEY_E])
     {
         offset += scm::math::vec3f(0.0f, -1.0f, 0.0f) * speed;
     }
@@ -91,20 +97,21 @@ void Controller::handle_movements(int time_delta)
         _renderer._mode_depth_test_surfels_brush = true;
     }
 
-    if(_keys['h']) // ctrl is pressed
+    // if(_keys['h']) // ctrl is pressed
+    // {
+    //     offset *= 0.25;
+    //     offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+    //     _renderer.translate_sphere(offset);
+    // }
+    // else
     {
-        offset *= 0.25;
-        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
-        _renderer.translate_sphere(offset);
-    }
-    else
-    {
-        if(_keys['g']) // Shift
+        if(_keys[GLFW_KEY_G]) // Shift
         {
             offset *= 0.125 * 0.3;
         }
         // std::cout << offset << std::endl;
         offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+
         _renderer.get_camera_view().translate(offset);
     }
 
@@ -150,7 +157,67 @@ void Controller::handle_movements(int time_delta)
 }
 void Controller::handle_mouse_movement(int x, int y)
 {
-    _renderer.handle_mouse_movement(x, y);
+    if(_mode_navigating)
+    {
+        float xoffset = x - _x_last;
+        float yoffset = _y_last - y;
+
+        _x_last = x;
+        _y_last = y;
+
+        // std::cout << xoffset << " " << yoffset << std::endl;
+
+        _yaw -= xoffset * 0.3f * _time_delta;
+        _pitch -= yoffset * -0.4f * _time_delta;
+
+        // if(_yaw > 360.0)
+        // {
+        //     _yaw -= 360.0;
+        // }
+        // else if(_yaw < 0.0)
+        // {
+        //     _yaw += 360.0;
+        // }
+
+        // _pitch = std::max(_pitch, -89.0f);
+        // _pitch = std::min(_pitch, 89.0f);
+
+        // std::cout << _time_delta << std::endl;aaaaaaaaa
+        // std::cout << _yaw << " " << _pitch << std::endl;
+        scm::math::quat<double> quat_x = scm::math::quat<double>::from_axis(scm::math::deg2rad(_pitch), scm::math::vec3d(1.0, 0.0, 0.0));
+        scm::math::quat<double> quat_y = scm::math::quat<double>::from_axis(scm::math::deg2rad(_yaw), scm::math::vec3d(0.0, 1.0, 0.0));
+        // std::cout << _yaw << " " << scm::math::deg2rad(_yaw) << std::endl;
+        // std::cout << quat_y << std::endl;
+
+        quat_x = scm::math::normalize(quat_y) * scm::math::normalize(quat_x);
+
+        // scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
+        // scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
+        // // scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
+        // scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
+        _renderer.get_camera_view().set_rotation(scm::math::normalize(quat_x));
+    }
+    // this.m_pitch -= this.glob_mouse_input.offset[1] * this.m_sensitivity_mouse_pitch * this.glob_time_info.time_ratio;
+    // this.m_yaw -= this.glob_mouse_input.offset[0] * this.m_sensitivity_mouse_yaw * this.glob_time_info.time_ratio;
+
+    // if(this.m_yaw > 360.0)
+    // {
+    //     this.m_yaw -= 360.0;
+    // }
+    // else if(this.m_yaw < 0.0)
+    // {
+    //     this.m_yaw += 360.0;
+    // }
+    // this.m_pitch = Math.max(this.m_pitch, -89.0);
+    // this.m_pitch = Math.min(this.m_pitch, 89.0);
+
+    // let quat_x = quat.setAxisAngle(quat.create(), vec3.fromValues(1.0, 0.0, 0.0), glMatrix.toRadian(this.m_pitch));
+    // let quat_y = quat.setAxisAngle(quat.create(), vec3.fromValues(0.0, 1.0, 0.0), glMatrix.toRadian(this.m_yaw));
+
+    // quat.multiply(quat_x, quat_y, quat_x);
+    // quat.normalize(this.m_rotation, quat_x)
+
+    // _renderer.handle_mouse_movement(x, y);
     // std::cout << _mode_brushing << std::endl;
     if(_mode_brushing)
     {
@@ -160,43 +227,60 @@ void Controller::handle_mouse_movement(int x, int y)
             time_since_last_brush = 0;
         }
     }
-    // if(_is_first_mouse_movement)
-    // {
-    //     _x_last = x;
-    //     _y_last = y;
-    //     _is_first_mouse_movement = false;
-    // }
+}
+void Controller::handle_mouse_movement_passive(int x, int y)
+{
+    if(x == 960 && y == 540)
+    {
+        return;
+    }
 
-    // _x_last = 1920 / 2;
-    // _y_last = 1080 / 2;
+    if(_is_first_mouse_movement)
+    {
+        _x_last = x;
+        _y_last = y;
+        _is_first_mouse_movement = false;
+    }
+
+    _x_last = 1920 / 2;
+    _y_last = 1080 / 2;
     // std::cout << x << std::endl;
 
-    // float xoffset = x - _x_last;
-    // float yoffset = _y_last - y;
-    // _x_last = x;
-    // _y_last = y;
+    float xoffset = x - _x_last;
+    float yoffset = _y_last - y;
+    _x_last = x;
+    _y_last = y;
 
-    // float sensitivity = 0.05;
-    // xoffset *= sensitivity * -1.0;
-    // yoffset *= sensitivity * -1.0;
+    // std::cout << xoffset << ", " << yoffset << std::endl;
 
-    // // _yaw += xoffset;
-    // // _pitch += yoffset;
+    float sensitivity = 0.05;
+    xoffset *= sensitivity * -1.0;
+    yoffset *= sensitivity * -1.0;
 
-    // // if (_pitch > 89.0f)
-    // //  _pitch = 89.0f;
-    // // if (_pitch < -89.0f)
-    // //  _pitch = -89.0f;
+    // _yaw += xoffset;
+    // _pitch += yoffset;
 
-    // // scm::math::vec3f front;
-    // // front.x = scm::math::cos(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
-    // // front.y = scm::math::sin(scm::math::deg2rad(_pitch));
-    // // front.z = scm::math::sin(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
-    // // std::cout << front << std::endl;
-    // // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_axis(_pitch, _yaw, 0.0));
+    // if (_pitch > 89.0f)
+    //  _pitch = 89.0f;
+    // if (_pitch < -89.0f)
+    //  _pitch = -89.0f;
+
+    scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
+    scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
+    // scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
+    scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
+    // new_rotation = new_rotation * new_rotation_y;
+    _renderer.get_camera_view().set_rotation(new_rotation);
+
+    // scm::math::vec3f front;
+    // front.x = scm::math::cos(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
+    // front.y = scm::math::sin(scm::math::deg2rad(_pitch));
+    // front.z = scm::math::sin(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
+    // std::cout << front << std::endl;
+    // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_axis(_pitch, _yaw, 0.0));
     // scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
     // scm::math::quat<double> new_rotation = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
-    // // new_rotation = new_rotation * scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
+    // new_rotation = new_rotation * scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
 
     // new_rotation = old_rotation * new_rotation;
 
@@ -205,33 +289,50 @@ void Controller::handle_mouse_movement(int x, int y)
     // render_manager.direction_camera = glm::normalize(front);
 }
 
-void Controller::handle_mouse_click(int button, int state, int x, int y)
+void Controller::handle_mouse_click(int button, int action, int mods, int xpos, int ypos)
 {
     // std::cout << button << " " << state << " " << x << " " << y << " " << std::endl;
-    // left click
-    if(button == 0)
+    if(button == GLFW_MOUSE_BUTTON_LEFT)
     {
-        // clicked
-        if(state == 0)
+        if(action == GLFW_PRESS && !ImGui::GetIO().WantCaptureMouse)
+        {
+            _mode_navigating = true;
+
+            _x_last = xpos;
+            _y_last = ypos;
+        }
+        else if(action == GLFW_RELEASE)
+        {
+            _mode_navigating = false;
+        }
+    }
+
+    if(button == GLFW_MOUSE_BUTTON_RIGHT)
+    {
+        if(action == GLFW_PRESS)
         {
             _mode_brushing = true;
             if(time_since_last_brush >= time_min_between_brush)
             {
-                _renderer.start_brushing(x, y, _scene);
+                _renderer.start_brushing(xpos, ypos, _scene);
                 time_since_last_brush = 0;
             }
         }
-        else if(state == 1)
+        else if(action == GLFW_RELEASE)
         {
             _mode_brushing = false;
         }
     }
 }
 
-void Controller::handle_key_pressed(char key) { _keys[key] = true; }
+void Controller::handle_key_pressed(int key)
+{
+    // std::cout << key << std::endl;
+    _keys[key] = true;
+}
 void Controller::handle_key_special_pressed(int key) { _keys_special[key] = true; }
 void Controller::handle_key_special_released(int key) { _keys_special[key] = false; }
-void Controller::handle_key_released(char key)
+void Controller::handle_key_released(int key)
 {
     // std::cout << key << " " << (char)int(key) << std::endl;
     _keys[key] = false;
@@ -251,22 +352,6 @@ void Controller::handle_key_released(char key)
     else if(key == 'r')
     {
         _renderer.toggle_camera(_scene);
-    }
-    else if(key == 'n')
-    {
-        _renderer.mode_draw_points_dense = !_renderer.mode_draw_points_dense;
-    }
-    else if(key == 'm')
-    {
-        _renderer.mode_draw_images = !_renderer.mode_draw_images;
-    }
-    else if(key == ',')
-    {
-        _renderer.mode_draw_cameras = !_renderer.mode_draw_cameras;
-    }
-    else if(key == 'l')
-    {
-        _renderer.mode_draw_lines = !_renderer.mode_draw_lines;
     }
     else if(key == 't')
     {
@@ -306,44 +391,36 @@ void Controller::handle_key_released(char key)
         std::cout << "Current Depth: " << _renderer._depth_octree << std::endl;
     }
 
-    if(key == 'w' || key == 'W')
-    {
-        _keys['w'] = false;
-        _keys['W'] = false;
-    }
-    if(key == 's' || key == 'S')
-    {
-        _keys['s'] = false;
-        _keys['S'] = false;
-    }
-    if(key == 'a' || key == 'A')
-    {
-        _keys['a'] = false;
-        _keys['A'] = false;
-    }
-    if(key == 'd' || key == 'D')
-    {
-        _keys['d'] = false;
-        _keys['D'] = false;
-    }
-    if(key == 'q' || key == 'Q')
-    {
-        _keys['q'] = false;
-        _keys['Q'] = false;
-    }
-    if(key == 'e' || key == 'E')
-    {
-        _keys['e'] = false;
-        _keys['E'] = false;
-    }
-    if(key == 'x' || key == 'X')
-    {
-        _keys['x'] = false;
-        _keys['X'] = false;
-    }
-    if(key == 'c' || key == 'C')
-    {
-        _keys['c'] = false;
-        _keys['C'] = false;
-    }
+    // if(key == GLFW_KEY_W)
+    // {
+    //     _keys[GLFW_KEY_W] = false;
+    // }
+    // if(key == GLFW_KEY_S)
+    // {
+    //     _keys[GLFW_KEY_S] = false;
+    // }
+    // if(key == GLFW_KEY_A)
+    // {
+    //     _keys[GLFW_KEY_A] = false;
+    // }
+    // if(key == 'd' || key == 'D')
+    // {
+    //     _keys['d'] = false;
+    // }
+    // if(key == 'q' || key == 'Q')
+    // {
+    //     _keys['q'] = false;
+    // }
+    // if(key == 'e' || key == 'E')
+    // {
+    //     _keys['e'] = false;
+    // }
+    // if(key == 'x' || key == 'X')
+    // {
+    //     _keys['x'] = false;
+    // }
+    // if(key == 'c' || key == 'C')
+    // {
+    //     _keys['c'] = false;
+    // }
 }

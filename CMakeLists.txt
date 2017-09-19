@@ -108,7 +108,10 @@ find_package(GLUT REQUIRED)
 ################################
 # glfw
 ################################
-# find_package(GLFW3 REQUIRED)
+find_package(GLFW3 REQUIRED)
+include(findGLFW3)
+include(FindOpenGL)
+include(FindGLEW)
 
 ################################
 # OpenGL

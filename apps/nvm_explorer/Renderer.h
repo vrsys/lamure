@@ -56,6 +56,9 @@
 #include <lamure/pro/partitioning/SparseOctree.h>
 #include <lamure/pro/partitioning/entities/Partition.h>
 
+#include "imgui.h"
+#include "imgui_impl_glfw_gl3.h"
+
 #include <functional>
 
 class Renderer
@@ -156,6 +159,11 @@ class Renderer
     void draw_surfels_brush();
     void draw_sparse_octree();
     void draw_pixels_brush(Scene &scene);
+    void render_menu();
+
+    bool show_test_window = true;
+    bool show_another_window = false;
+    bool no_titlebar = false;
 
     scm::gl::depth_stencil_state_ptr depth_state_disable_;
     scm::gl::depth_stencil_state_ptr depth_state_enable_;

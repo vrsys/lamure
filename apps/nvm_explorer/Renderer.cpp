@@ -29,12 +29,12 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
 
     printf("\nUploading dense points data: start\n");
 
-    prov::DenseCache cache_dense(in_dense, in_dense_meta);
-    cache_dense.cache();
+    // prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    // cache_dense.cache();
 
-    prov::SparseOctree::Builder builder;
-    prov::SparseOctree sparse_octree = (builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build());
-    _sparse_octree = &sparse_octree;
+    // prov::SparseOctree::Builder builder;
+    // prov::SparseOctree sparse_octree = (builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build());
+    // _sparse_octree = &sparse_octree;
     // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
 
     printf("\nUploading dense points data: finish\n");
@@ -858,11 +858,39 @@ bool Renderer::render(Scene &scene)
 
     draw_sparse_octree();
 
+    render_menu();
+
     // draw_lines_test();
     return false;
     // std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     // auto duration = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     // std::cout << duration / 1000.0 << std::endl;
+}
+
+void Renderer::render_menu()
+{
+    ImGui_ImplGlfwGL3_NewFrame();
+
+    ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiSetCond_Once);
+
+    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiSetCond_Once);
+
+    ImGui::Begin("Settings");
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+    ImGui::Checkbox("Show dense points", &mode_draw_points_dense);
+    ImGui::Checkbox("Show images", &mode_draw_images);
+    ImGui::Checkbox("Show cameras", &mode_draw_cameras);
+    ImGui::Checkbox("Show lines", &mode_draw_lines);
+
+    ImGui::End();
+
+    if(show_test_window)
+    {
+        ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
+        ImGui::ShowTestWindow(&show_test_window);
+    }
+    ImGui::Render();
 }
 
 void Renderer::update_size_point(float offset)
