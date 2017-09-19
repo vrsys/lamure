@@ -56,10 +56,10 @@ void Controller::handle_movements(int time_delta)
     {
         yoffset += 1;
     }
-    scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
-    scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
-    scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
-    scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
+    scm::math::quat<float> old_rotation = _renderer.get_camera_view().get_rotation();
+    scm::math::quat<float> new_rotation_x = scm::math::quat<float>::from_axis(xoffset, scm::math::vec3f(0.0, 1.0, 0.0));
+    scm::math::quat<float> new_rotation_y = scm::math::quat<float>::from_axis(yoffset, scm::math::vec3f(1.0, 0.0, 0.0));
+    scm::math::quat<float> new_rotation = old_rotation * new_rotation_x;
     new_rotation = new_rotation * new_rotation_y;
     _renderer.get_camera_view().set_rotation(new_rotation);
 
@@ -184,8 +184,8 @@ void Controller::handle_mouse_movement(int x, int y)
 
         // std::cout << _time_delta << std::endl;aaaaaaaaa
         // std::cout << _yaw << " " << _pitch << std::endl;
-        scm::math::quat<double> quat_x = scm::math::quat<double>::from_axis(scm::math::deg2rad(_pitch), scm::math::vec3d(1.0, 0.0, 0.0));
-        scm::math::quat<double> quat_y = scm::math::quat<double>::from_axis(scm::math::deg2rad(_yaw), scm::math::vec3d(0.0, 1.0, 0.0));
+        scm::math::quat<float> quat_x = scm::math::quat<float>::from_axis(scm::math::deg2rad(_pitch), scm::math::vec3f(1.0, 0.0, 0.0));
+        scm::math::quat<float> quat_y = scm::math::quat<float>::from_axis(scm::math::deg2rad(_yaw), scm::math::vec3f(0.0, 1.0, 0.0));
         // std::cout << _yaw << " " << scm::math::deg2rad(_yaw) << std::endl;
         // std::cout << quat_y << std::endl;
 
@@ -265,10 +265,10 @@ void Controller::handle_mouse_movement_passive(int x, int y)
     // if (_pitch < -89.0f)
     //  _pitch = -89.0f;
 
-    scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
-    scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
-    // scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
-    scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
+    scm::math::quat<float> old_rotation = _renderer.get_camera_view().get_rotation();
+    scm::math::quat<float> new_rotation_x = scm::math::quat<float>::from_axis(xoffset, scm::math::vec3f(0.0, 1.0, 0.0));
+    // scm::math::quat<float> new_rotation_y = scm::math::quat<float>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
+    scm::math::quat<float> new_rotation = old_rotation * new_rotation_x;
     // new_rotation = new_rotation * new_rotation_y;
     _renderer.get_camera_view().set_rotation(new_rotation);
 
@@ -292,7 +292,7 @@ void Controller::handle_mouse_movement_passive(int x, int y)
 void Controller::handle_mouse_click(int button, int action, int mods, int xpos, int ypos)
 {
     // std::cout << button << " " << state << " " << x << " " << y << " " << std::endl;
-    if(button == GLFW_MOUSE_BUTTON_LEFT)
+    if(button == GLFW_MOUSE_BUTTON_RIGHT)
     {
         if(action == GLFW_PRESS && !ImGui::GetIO().WantCaptureMouse)
         {
@@ -307,7 +307,7 @@ void Controller::handle_mouse_click(int button, int action, int mods, int xpos, 
         }
     }
 
-    if(button == GLFW_MOUSE_BUTTON_RIGHT)
+    if(button == GLFW_MOUSE_BUTTON_LEFT && !ImGui::GetIO().WantCaptureMouse)
     {
         if(action == GLFW_PRESS)
         {

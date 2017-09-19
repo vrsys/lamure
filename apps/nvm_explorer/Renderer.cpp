@@ -24,20 +24,22 @@
 void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
                     lamure::ren::Data_Provenance data_provenance)
 {
-    prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
-    prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
+    // <<<<<<< HEAD
+    //     prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
+    //     prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
 
-    printf("\nUploading dense points data: start\n");
+    //     printf("\nUploading dense points data: start\n");
 
-    // prov::DenseCache cache_dense(in_dense, in_dense_meta);
-    // cache_dense.cache();
+    //     // prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    //     // cache_dense.cache();
 
-    // prov::SparseOctree::Builder builder;
-    // prov::SparseOctree sparse_octree = (builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build());
-    // _sparse_octree = &sparse_octree;
+    //     // prov::SparseOctree::Builder builder;
+    //     // prov::SparseOctree sparse_octree = (builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build());
+    //     // _sparse_octree = &sparse_octree;
+    // =======
+    _sparse_octree = prov::SparseOctree::load_tree("tree.prov");
+    // >>>>>>> 18079d42e0652b76c02ff4b771c776fced1d7b86
     // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
-
-    printf("\nUploading dense points data: finish\n");
 
     //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
     _data_provenance = data_provenance;
@@ -322,7 +324,7 @@ void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush c
 
 std::vector<uint32_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
 {
-    prov::OctreeNode *node_ptr = _sparse_octree->lookup_node_at_position(scm::math::vec3f(surfel_brush));
+    prov::OctreeNode *node_ptr = _sparse_octree.lookup_node_at_position(scm::math::vec3f(surfel_brush));
     // std::cout << "5" << std::endl;
     return node_ptr->get_aggregate_metadata().get_images_seen();
     // return node_ptr->get_aggregate_metadata().get_images_not_seen();
@@ -474,7 +476,14 @@ bool Renderer::draw_points_dense(Scene &scene)
     cuts->send_rendered(context_id, m_id);
 
     // set camera values
+    // std::cout << scm::math::mat4d::identity() << std::endl;
+    // std::cout << scm::math::mat4d(_camera_view.get_matrix_view()) << std::endl;
+    // _camera->set_view_matrix(scm::math::mat4d::identity());
     _camera->set_view_matrix(scm::math::mat4d(_camera_view.get_matrix_view()));
+    // std::cout << "this" << std::endl;
+    // std::cout << _camera->get_high_precision_view_matrix() << std::endl;
+    // std::cout << _camera->get_view_matrix() << std::endl;
+
     _camera->set_projection_matrix(_camera_view._fov, float(_camera_view.get_width_window()) / float(_camera_view.get_height_window()), _camera_view._plane_near, _camera_view._plane_far);
 
     lamure::view_t cam_id = controller->deduce_view_id(context_id, _camera->view_id());
@@ -550,6 +559,7 @@ bool Renderer::draw_points_dense(Scene &scene)
     _program_points_dense->uniform("model_matrix", scm::math::mat4f(model_matrix));
     _program_points_dense->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     _program_points_dense->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+    // std::cout << scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))) << std::endl;
     _program_points_dense->uniform("model_radius_scale", _size_point_dense);
     _program_points_dense->uniform("projection_matrix", scm::math::mat4f(projection_matrix));
     _program_points_dense->uniform("width_window", _camera_view.get_width_window());
@@ -605,36 +615,36 @@ void Renderer::update_vector_nodes()
     std::queue<prov::OctreeNode *> queue_nodes;
     // std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
     // std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
-    std::cout << 1 << std::endl;
-    queue_nodes.push(_sparse_octree);
-    std::cout << 2 << std::endl;
+    // std::cout << 1 << std::endl;
+    queue_nodes.push(&_sparse_octree);
+    // std::cout << 2 << std::endl;
     _vector_nodes.clear();
-    _vector_nodes.reserve(std::pow(8, _depth_octree));
-    std::cout << 3 << std::endl;
+    _vector_nodes.reserve((unsigned long)std::pow(8, _depth_octree));
+    // std::cout << 3 << std::endl;
     while(!queue_nodes.empty())
     {
-        std::cout << 4 << std::endl;
+        // std::cout << 4 << std::endl;
         prov::OctreeNode *node = queue_nodes.front();
-        std::cout << 5 << std::endl;
+        // std::cout << 5 << std::endl;
 
         if(node->get_depth() == _depth_octree)
         {
-            std::cout << 6 << std::endl;
+            // std::cout << 6 << std::endl;
             _vector_nodes.push_back(node);
-            std::cout << 7 << std::endl;
+            // std::cout << 7 << std::endl;
         }
         else
         {
-            std::cout << 8 << std::endl;
+            // std::cout << 8 << std::endl;
             // std::vector<prov::OctreeNode> vector_partitions = node->get_partitions();
-            std::cout << 9 << std::endl;
+            // std::cout << 9 << std::endl;
             for(prov::OctreeNode &partition : node->get_partitions())
             {
-                std::cout << 10 << std::endl;
+                // std::cout << 10 << std::endl;
                 prov::OctreeNode *node_ptr = &partition;
                 queue_nodes.push(node_ptr);
                 // queue_nodes.push(std::make_shared<prov::OctreeNode>(partition));
-                std::cout << 11 << std::endl;
+                // std::cout << 11 << std::endl;
             }
         }
 

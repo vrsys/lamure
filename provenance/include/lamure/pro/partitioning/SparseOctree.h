@@ -13,20 +13,15 @@ class SparseOctree : public OctreeNode
     class Builder
     {
       public:
-        Builder() {}
-        Builder *from(DenseCache &dense_cache)
-        {
-            this->_dense_cache = &dense_cache;
-            return this;
-        }
-        Builder *from(string &input_path)
-        {
-            this->_input_path = &input_path;
-            return this;
-        }
+        Builder(DenseCache &dense_cache) { this->_dense_cache = &dense_cache; }
         Builder *with_sort(Sort sort)
         {
             this->_sort = sort;
+            return this;
+        }
+        Builder *with_cubic_nodes(bool cubic_nodes)
+        {
+            this->_cubic_nodes = cubic_nodes;
             return this;
         }
         Builder *with_max_depth(uint8_t max_depth)
@@ -42,7 +37,7 @@ class SparseOctree : public OctreeNode
         ~Builder() {}
         SparseOctree build()
         {
-            SparseOctree octree(0, _sort, _max_depth, _min_per_node);
+            SparseOctree octree(0, _sort, _max_depth, _min_per_node, _cubic_nodes);
 
             if(_dense_cache != nullptr)
             {
@@ -53,10 +48,6 @@ class SparseOctree : public OctreeNode
                     octree._pair_ptrs.push_back(s_ptr<dense_pair>(&_unsorted_pairs.at(i)));
                 }
                 octree.partition();
-            }
-            else if(_input_path != nullptr)
-            {
-                // TODO
             }
 
             return octree;
@@ -69,6 +60,7 @@ class SparseOctree : public OctreeNode
         Sort _sort = STD_SORT;
         uint8_t _max_depth = 10;
         uint8_t _min_per_node = 1;
+        bool _cubic_nodes = false;
 
         vec<pair<prov::DensePoint, prov::DenseMetaData>> _unsorted_pairs;
 
@@ -87,7 +79,7 @@ class SparseOctree : public OctreeNode
   public:
     SparseOctree() : OctreeNode() {}
     SparseOctree(uint8_t _depth) : OctreeNode(_depth) {}
-    SparseOctree(uint8_t _depth, Sort _sort, uint8_t _max_depth, uint8_t _min_per_node) : OctreeNode(_depth, _sort, _max_depth, _min_per_node) {}
+    SparseOctree(uint8_t _depth, Sort _sort, uint8_t _max_depth, uint8_t _min_per_node, bool _cubic_nodes) : OctreeNode(_depth, _sort, _max_depth, _min_per_node, _cubic_nodes) {}
 
     void debug_information_loss(DenseCache &dense_cache, uint64_t num_probes)
     {
@@ -160,20 +152,7 @@ class SparseOctree : public OctreeNode
         }
     }
 
-  protected:
-    void partition()
-    {
-        printf("\nStart partitioning\n");
-
-        OctreeNode::partition();
-        OctreeNode::aggregate_metadata();
-
-        printf("\nEnd partitioning\n");
-    }
-
-  private:
-    // TODO: see to completion
-    /*static void output_tree(SparseOctree octree, string output_path)
+    static void save_tree(SparseOctree &octree, string output_path)
     {
         ofstream ofstream_tree(output_path);
         text_oarchive oa_tree(ofstream_tree);
@@ -187,8 +166,27 @@ class SparseOctree : public OctreeNode
         text_iarchive ia_tree(ifstream_tree);
         ia_tree >> octree;
         return octree;
-    }*/
+    }
 
+  protected:
+    void partition()
+    {
+        printf("\nStart partitioning\n");
+
+        if(_cubic_nodes)
+        {
+            OctreeNode::identify_boundaries();
+            vec3f dim = _max - _min;
+            float longest_axis = std::max(dim.x, std::max(dim.y, dim.z));
+            _max = _min + vec3f(longest_axis);
+        }
+        OctreeNode::partition();
+        OctreeNode::aggregate_metadata();
+
+        printf("\nEnd partitioning\n");
+    }
+
+  private:
     float compare_metadata(const DenseMetaData &data, const DenseMetaData &ref_data)
     {
         float information_loss = 0;

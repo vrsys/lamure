@@ -44,7 +44,7 @@ class RENDERING_DLL camera
         mouse_state() : lb_down_(false), mb_down_(false), rb_down_(false) {}
     };
 
-    camera(){};
+    camera() : cam_state_(CAM_STATE_GUA){};
     camera(const view_t view_id, float near_plane, scm::math::mat4f const &view, scm::math::mat4f const &proj);
 
     camera(const view_t view_id, scm::math::mat4f const &init_tb_mat, float distance, bool fast_travel = false, bool touch_screen_mode = false);

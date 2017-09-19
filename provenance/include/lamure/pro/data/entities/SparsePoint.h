@@ -14,11 +14,11 @@ class SparsePoint : public Point
     class Measurement
     {
       public:
-        Measurement() { _occurence = vec2d(); }
-        Measurement(uint16_t _camera_index, const vec2d &_occurence) : _camera_index(_camera_index), _occurence(_occurence) {}
+        Measurement() { _occurence = vec2f(); }
+        Measurement(uint16_t _camera_index, const vec2f &_occurence) : _camera_index(_camera_index), _occurence(_occurence) {}
         ~Measurement() {}
         const uint16_t &get_camera() const { return _camera_index; }
-        const vec2d &get_occurence() const { return _occurence; };
+        const vec2f &get_occurence() const { return _occurence; };
         friend ifstream &operator>>(ifstream &is, Measurement &measurement)
         {
             is.read(reinterpret_cast<char *>(&measurement._camera_index), 2);
@@ -41,7 +41,7 @@ class SparsePoint : public Point
 
       private:
         uint16_t _camera_index;
-        vec2d _occurence;
+        vec2f _occurence;
     };
 
     SparsePoint() { _measurements = vec<Measurement>(); }

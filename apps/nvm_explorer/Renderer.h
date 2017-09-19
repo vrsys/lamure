@@ -119,7 +119,7 @@ class Renderer
     scm::gl::program_ptr _program_surfels_brush;
     scm::gl::program_ptr _program_pixels_brush;
 
-    prov::SparseOctree *_sparse_octree = nullptr;
+    prov::SparseOctree _sparse_octree;
     // scm::shared_ptr<prov::OctreeNode> _sparse_octree = nullptr;
 
     lamure::ren::Data_Provenance _data_provenance;

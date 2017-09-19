@@ -98,8 +98,8 @@ void Camera_View::set_position(scm::math::vec3f position)
 }
 scm::math::vec3f &Camera_View::get_position() { return _position; }
 
-scm::math::quat<double> &Camera_View::get_rotation() { return _rotation; }
-void Camera_View::set_rotation(scm::math::quat<double> rotation)
+scm::math::quat<float> &Camera_View::get_rotation() { return _rotation; }
+void Camera_View::set_rotation(scm::math::quat<float> rotation)
 {
     _rotation = scm::math::normalize(rotation);
     update_matrices();
