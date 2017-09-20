@@ -86,6 +86,14 @@ scm::math::mat4f &Camera_View::get_matrix_view()
 {
     // std::cout << _rotation << std::endl;
     // std::cout << _position << std::endl;
+    if(_mode_is_ego)
+    {
+        update_matrices();
+    }
+    else
+    {
+        _matrix_view = scm::math::make_look_at_matrix(_position, scm::math::vec3f(0.0, 0.0, 0.0), scm::math::vec3f(0.0, 1.0, 0.0));
+    }
     return _matrix_view;
 }
 int &Camera_View::get_width_window() { return _width_window; }

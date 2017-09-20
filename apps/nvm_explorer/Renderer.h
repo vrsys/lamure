@@ -99,12 +99,18 @@ class Renderer
     bool is_default_camera = true;
 
     bool is_camera_active = false;
-    unsigned long index_current_image_camera = 0;
+    int index_current_image_camera = 0;
 
     int _depth_octree = 0;
     std::vector<prov::OctreeNode *> _vector_nodes;
     // std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
     void update_vector_nodes();
+
+    float _speed_yaw = 30.0f;
+    float _speed_pitch = 40.0f;
+    bool _mode_is_ego = true;
+    float _center_non_ego_mode[3] = {0.0, 0.0, 0.0};
+    // scm::math::vec3f _center_non_ego_mode = scm::math::vec3f(0.0, 0.0, 0.0);
 
   private:
     scm::shared_ptr<scm::gl::render_context> _context;
@@ -159,9 +165,9 @@ class Renderer
     void draw_surfels_brush();
     void draw_sparse_octree();
     void draw_pixels_brush(Scene &scene);
-    void render_menu();
+    void render_menu(Scene &scene);
 
-    bool show_test_window = true;
+    bool show_test_window = false;
     bool show_another_window = false;
     bool no_titlebar = false;
 

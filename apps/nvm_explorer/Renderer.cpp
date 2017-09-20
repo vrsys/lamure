@@ -479,6 +479,7 @@ bool Renderer::draw_points_dense(Scene &scene)
     // std::cout << scm::math::mat4d::identity() << std::endl;
     // std::cout << scm::math::mat4d(_camera_view.get_matrix_view()) << std::endl;
     // _camera->set_view_matrix(scm::math::mat4d::identity());
+
     _camera->set_view_matrix(scm::math::mat4d(_camera_view.get_matrix_view()));
     // std::cout << "this" << std::endl;
     // std::cout << _camera->get_high_precision_view_matrix() << std::endl;
@@ -813,6 +814,8 @@ void Renderer::draw_pixels_brush(Scene &scene)
 
 bool Renderer::render(Scene &scene)
 {
+    _camera_view._mode_is_ego = _mode_is_ego;
+
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     _context->set_rasterizer_state(_rasterizer_state);
     _context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(_camera_view.get_width_window(), _camera_view.get_height_window())));
@@ -868,7 +871,7 @@ bool Renderer::render(Scene &scene)
 
     draw_sparse_octree();
 
-    render_menu();
+    render_menu(scene);
 
     // draw_lines_test();
     return false;
@@ -877,7 +880,7 @@ bool Renderer::render(Scene &scene)
     // std::cout << duration / 1000.0 << std::endl;
 }
 
-void Renderer::render_menu()
+void Renderer::render_menu(Scene &scene)
 {
     ImGui_ImplGlfwGL3_NewFrame();
 
@@ -892,6 +895,46 @@ void Renderer::render_menu()
     ImGui::Checkbox("Show images", &mode_draw_images);
     ImGui::Checkbox("Show cameras", &mode_draw_cameras);
     ImGui::Checkbox("Show lines", &mode_draw_lines);
+
+    ImGui::Checkbox("Ego mode", &_mode_is_ego);
+    if(!_mode_is_ego)
+    {
+        ImGui::InputFloat3("Rotation center", _center_non_ego_mode);
+    }
+
+    ImGui::SliderFloat("yaw speed", &_speed_yaw, 0.0f, 100.0f, "%.0f");
+    ImGui::SliderFloat("pitch speed", &_speed_pitch, 0.0f, 100.0f, "%.0f");
+
+    // const char *listbox_items = &scene.get_vector_camera()[0];
+    // const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
+
+    std::vector<std::string> vector_strings;
+    const char *listbox_items[scene.get_vector_camera().size()];
+    int index = 0;
+    for(Camera_Custom &camera : scene.get_vector_camera())
+    {
+        std::string name_camera = "camera " + std::to_string(camera.get_index());
+        // std::cout << name_camera << std::endl;
+        vector_strings.push_back(name_camera);
+        // listbox_items[index++] = name_camera.c_str();
+    }
+
+    for(std::string const &test : vector_strings)
+    {
+        listbox_items[index++] = test.c_str();
+    }
+
+    ImGui::Checkbox("Show only one camera", &is_camera_active);
+
+    if(is_camera_active)
+    {
+        ImGui::ListBox("cameras", &index_current_image_camera, listbox_items, scene.get_vector_camera().size(), 10);
+        bool tmp;
+        if(ImGui::Checkbox("Jump to active camera", &tmp))
+        {
+            toggle_camera(scene);
+        }
+    }
 
     ImGui::End();
 

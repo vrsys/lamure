@@ -38,7 +38,6 @@ class Controller
 
     bool update();
     void handle_mouse_movement(int x, int y);
-    void handle_mouse_movement_passive(int x, int y);
     void handle_mouse_click(int button, int action, int mods, int xpos, int ypos);
     void handle_key_pressed(int key);
     void handle_key_released(int key);

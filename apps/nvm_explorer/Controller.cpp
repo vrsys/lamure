@@ -37,32 +37,6 @@ bool Controller::update()
 }
 void Controller::handle_movements(int time_delta)
 {
-    float xoffset = 0.0f;
-    float yoffset = 0.0f;
-
-    if(_keys_special[100])
-    {
-        xoffset += 1;
-    }
-    if(_keys_special[102])
-    {
-        xoffset += -1;
-    }
-    if(_keys_special[101])
-    {
-        yoffset += -1;
-    }
-    if(_keys_special[103])
-    {
-        yoffset += 1;
-    }
-    scm::math::quat<float> old_rotation = _renderer.get_camera_view().get_rotation();
-    scm::math::quat<float> new_rotation_x = scm::math::quat<float>::from_axis(xoffset, scm::math::vec3f(0.0, 1.0, 0.0));
-    scm::math::quat<float> new_rotation_y = scm::math::quat<float>::from_axis(yoffset, scm::math::vec3f(1.0, 0.0, 0.0));
-    scm::math::quat<float> new_rotation = old_rotation * new_rotation_x;
-    new_rotation = new_rotation * new_rotation_y;
-    _renderer.get_camera_view().set_rotation(new_rotation);
-
     float speed = 0.04f * time_delta;
     scm::math::vec3f offset = scm::math::vec3f(0.0f, 0.0f, 0.0f);
 
@@ -110,7 +84,16 @@ void Controller::handle_movements(int time_delta)
             offset *= 0.125 * 0.3;
         }
         // std::cout << offset << std::endl;
-        offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+
+        if(_renderer._mode_is_ego)
+        {
+            offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+        }
+        else
+        {
+            offset = scm::math::vec3f(0.0f, 0.0f, offset[2]);
+            offset = scm::math::quat<float>(_renderer.get_camera_view().get_rotation()) * offset;
+        }
 
         _renderer.get_camera_view().translate(offset);
     }
@@ -165,59 +148,54 @@ void Controller::handle_mouse_movement(int x, int y)
         _x_last = x;
         _y_last = y;
 
-        // std::cout << xoffset << " " << yoffset << std::endl;
+        if(_renderer._mode_is_ego)
+        {
+            _yaw -= xoffset * _renderer._speed_yaw / 100.0f * _time_delta;
+            _pitch -= yoffset * -_renderer._speed_pitch / 100.0f * _time_delta;
 
-        _yaw -= xoffset * 0.3f * _time_delta;
-        _pitch -= yoffset * -0.4f * _time_delta;
+            // if(_yaw > 360.0)
+            // {
+            //     _yaw -= 360.0;
+            // }
+            // else if(_yaw < 0.0)
+            // {
+            //     _yaw += 360.0;
+            // }
 
-        // if(_yaw > 360.0)
-        // {
-        //     _yaw -= 360.0;
-        // }
-        // else if(_yaw < 0.0)
-        // {
-        //     _yaw += 360.0;
-        // }
+            // _pitch = std::max(_pitch, -89.0f);
+            // _pitch = std::min(_pitch, 89.0f);
 
-        // _pitch = std::max(_pitch, -89.0f);
-        // _pitch = std::min(_pitch, 89.0f);
+            scm::math::quat<float> quat_x = scm::math::quat<float>::from_axis(scm::math::deg2rad(_pitch), scm::math::vec3f(1.0, 0.0, 0.0));
+            scm::math::quat<float> quat_y = scm::math::quat<float>::from_axis(scm::math::deg2rad(_yaw), scm::math::vec3f(0.0, 1.0, 0.0));
+            quat_x = scm::math::normalize(quat_y) * scm::math::normalize(quat_x);
+            _renderer.get_camera_view().set_rotation(scm::math::normalize(quat_x));
+        }
+        else
+        {
+            scm::math::vec3f position = _renderer.get_camera_view().get_position();
 
-        // std::cout << _time_delta << std::endl;aaaaaaaaa
-        // std::cout << _yaw << " " << _pitch << std::endl;
-        scm::math::quat<float> quat_x = scm::math::quat<float>::from_axis(scm::math::deg2rad(_pitch), scm::math::vec3f(1.0, 0.0, 0.0));
-        scm::math::quat<float> quat_y = scm::math::quat<float>::from_axis(scm::math::deg2rad(_yaw), scm::math::vec3f(0.0, 1.0, 0.0));
-        // std::cout << _yaw << " " << scm::math::deg2rad(_yaw) << std::endl;
-        // std::cout << quat_y << std::endl;
+            float angle = scm::math::deg2rad(xoffset * _renderer._speed_yaw / 1000.0f * _time_delta);
+            float rotatedX = scm::math::cos(angle) * (position[0] - _renderer._center_non_ego_mode[0]) - scm::math::sin(angle) * (position[2] - _renderer._center_non_ego_mode[2]) +
+                             _renderer._center_non_ego_mode[0];
+            float rotatedZ = scm::math::sin(angle) * (position[0] - _renderer._center_non_ego_mode[0]) + scm::math::cos(angle) * (position[2] - _renderer._center_non_ego_mode[2]) +
+                             _renderer._center_non_ego_mode[2];
 
-        quat_x = scm::math::normalize(quat_y) * scm::math::normalize(quat_x);
+            scm::math::vec3f new_position = scm::math::vec3f(rotatedX, position[1], rotatedZ);
+            _renderer.get_camera_view().set_position(new_position);
 
-        // scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
-        // scm::math::quat<double> new_rotation_x = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
-        // // scm::math::quat<double> new_rotation_y = scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
-        // scm::math::quat<double> new_rotation = old_rotation * new_rotation_x;
-        _renderer.get_camera_view().set_rotation(scm::math::normalize(quat_x));
+            // scm::math::vec3f position = _renderer.get_camera_view().get_position();
+
+            // float angle = scm::math::deg2rad(yoffset * _renderer._speed_yaw / 1000.0f * _time_delta);
+            // float rotatedY = scm::math::sin(angle) * (position[1] - _renderer._center_non_ego_mode[1]) + scm::math::cos(angle) * (position[2] - _renderer._center_non_ego_mode[2]) +
+            //                  _renderer._center_non_ego_mode[1];
+            // float rotatedZ = scm::math::cos(angle) * (position[1] - _renderer._center_non_ego_mode[1]) - scm::math::sin(angle) * (position[2] - _renderer._center_non_ego_mode[2]) +
+            //                  _renderer._center_non_ego_mode[2];
+
+            // scm::math::vec3f new_position = scm::math::vec3f(position[0], rotatedY, rotatedZ);
+            // _renderer.get_camera_view().set_position(new_position);
+        }
     }
-    // this.m_pitch -= this.glob_mouse_input.offset[1] * this.m_sensitivity_mouse_pitch * this.glob_time_info.time_ratio;
-    // this.m_yaw -= this.glob_mouse_input.offset[0] * this.m_sensitivity_mouse_yaw * this.glob_time_info.time_ratio;
 
-    // if(this.m_yaw > 360.0)
-    // {
-    //     this.m_yaw -= 360.0;
-    // }
-    // else if(this.m_yaw < 0.0)
-    // {
-    //     this.m_yaw += 360.0;
-    // }
-    // this.m_pitch = Math.max(this.m_pitch, -89.0);
-    // this.m_pitch = Math.min(this.m_pitch, 89.0);
-
-    // let quat_x = quat.setAxisAngle(quat.create(), vec3.fromValues(1.0, 0.0, 0.0), glMatrix.toRadian(this.m_pitch));
-    // let quat_y = quat.setAxisAngle(quat.create(), vec3.fromValues(0.0, 1.0, 0.0), glMatrix.toRadian(this.m_yaw));
-
-    // quat.multiply(quat_x, quat_y, quat_x);
-    // quat.normalize(this.m_rotation, quat_x)
-
-    // _renderer.handle_mouse_movement(x, y);
     // std::cout << _mode_brushing << std::endl;
     if(_mode_brushing)
     {
@@ -227,66 +205,6 @@ void Controller::handle_mouse_movement(int x, int y)
             time_since_last_brush = 0;
         }
     }
-}
-void Controller::handle_mouse_movement_passive(int x, int y)
-{
-    if(x == 960 && y == 540)
-    {
-        return;
-    }
-
-    if(_is_first_mouse_movement)
-    {
-        _x_last = x;
-        _y_last = y;
-        _is_first_mouse_movement = false;
-    }
-
-    _x_last = 1920 / 2;
-    _y_last = 1080 / 2;
-    // std::cout << x << std::endl;
-
-    float xoffset = x - _x_last;
-    float yoffset = _y_last - y;
-    _x_last = x;
-    _y_last = y;
-
-    // std::cout << xoffset << ", " << yoffset << std::endl;
-
-    float sensitivity = 0.05;
-    xoffset *= sensitivity * -1.0;
-    yoffset *= sensitivity * -1.0;
-
-    // _yaw += xoffset;
-    // _pitch += yoffset;
-
-    // if (_pitch > 89.0f)
-    //  _pitch = 89.0f;
-    // if (_pitch < -89.0f)
-    //  _pitch = -89.0f;
-
-    scm::math::quat<float> old_rotation = _renderer.get_camera_view().get_rotation();
-    scm::math::quat<float> new_rotation_x = scm::math::quat<float>::from_axis(xoffset, scm::math::vec3f(0.0, 1.0, 0.0));
-    // scm::math::quat<float> new_rotation_y = scm::math::quat<float>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
-    scm::math::quat<float> new_rotation = old_rotation * new_rotation_x;
-    // new_rotation = new_rotation * new_rotation_y;
-    _renderer.get_camera_view().set_rotation(new_rotation);
-
-    // scm::math::vec3f front;
-    // front.x = scm::math::cos(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
-    // front.y = scm::math::sin(scm::math::deg2rad(_pitch));
-    // front.z = scm::math::sin(scm::math::deg2rad(_yaw)) * scm::math::cos(scm::math::deg2rad(_pitch));
-    // std::cout << front << std::endl;
-    // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_axis(_pitch, _yaw, 0.0));
-    // scm::math::quat<double> old_rotation = _renderer.get_camera_view().get_rotation();
-    // scm::math::quat<double> new_rotation = scm::math::quat<double>::from_axis(xoffset, scm::math::vec3d(0.0, 1.0, 0.0));
-    // new_rotation = new_rotation * scm::math::quat<double>::from_axis(yoffset, scm::math::vec3d(1.0, 0.0, 0.0));
-
-    // new_rotation = old_rotation * new_rotation;
-
-    // _renderer.get_camera_view().set_rotation(new_rotation);
-    // _renderer.get_camera_view().set_rotation(scm::math::quat<double>::from_euler(_pitch, _yaw, 0.0));
-    // render_manager.direction_camera = glm::normalize(front);
 }
 
 void Controller::handle_mouse_click(int button, int action, int mods, int xpos, int ypos)

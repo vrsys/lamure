@@ -80,6 +80,7 @@ class Camera_View
     int &get_width_window();
     int &get_height_window();
     void set_rotation(scm::math::quat<float> rotation);
+    bool _mode_is_ego = true;
 
     void reset();
 };
