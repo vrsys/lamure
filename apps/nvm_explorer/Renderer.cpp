@@ -913,7 +913,8 @@ void Renderer::render_menu(Scene &scene)
     int index = 0;
     for(Camera_Custom &camera : scene.get_vector_camera())
     {
-        std::string name_camera = "camera " + std::to_string(camera.get_index());
+        std::string name_camera = camera.get_file_name();
+        // std::string name_camera = "camera " + std::to_string(camera.get_index());
         // std::cout << name_camera << std::endl;
         vector_strings.push_back(name_camera);
         // listbox_items[index++] = name_camera.c_str();

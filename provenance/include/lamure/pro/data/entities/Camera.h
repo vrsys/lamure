@@ -37,8 +37,9 @@ class Camera
     }
 
     int get_index() { return _index; }
-    quatf get_orientation() { return _orientation; }
-    vec3f get_translation() { return _translation; }
+    quatf &get_orientation() { return _orientation; }
+    string &get_file_name() { return _im_file_name; }
+    vec3f &get_translation() { return _translation; }
     friend ifstream &operator>>(ifstream &is, Camera &camera)
     {
         is.read(reinterpret_cast<char *>(&camera._index), 2);
