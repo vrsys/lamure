@@ -19,7 +19,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 		${Boost_INCLUDE_DIR})
 
 
-InitApp(${CMAKE_PROJECT_NAME}_nvm_explorer)
+InitApp(${CMAKE_PROJECT_NAME}_provis)
 
 ############################################################
 # Libraries
