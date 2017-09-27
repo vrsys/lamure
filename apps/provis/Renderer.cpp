@@ -159,41 +159,41 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     std::vector<Struct_Camera> vector_vertices;
     // std::vector<scm::math::vec3f> vector_vertices;
 
-    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, -0.5)});
-    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, -0.5f, -0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, -0.5f, -0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, -0.5)});
-    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, -0.5f, -0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, -0.5f, 0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, 0.5)});
-    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, -0.5f, 0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, -0.5f, 0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, 0.5)});
-    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, -0.5f, 0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, -0.5f, -0.5f)});
     // -----------------------------------------------------------------
-    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, -0.5)});
-    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, 0.5f, -0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, 0.5f, -0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, -0.5)});
-    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, 0.5f, -0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, 0.5f, 0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, 0.5)});
-    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, 0.5f, 0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, 0.5f, 0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, 0.5)});
-    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, 0.5f, 0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, 0.5f, -0.5f)});
     // -----------------------------------------------------------------
-    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, -0.5)});
-    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, -0.5f, -0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, 0.5f, -0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, -0.5)});
-    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, -0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, -0.5f, -0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, 0.5f, -0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(0.5, -0.5, 0.5)});
-    vector_vertices.push_back({scm::math::vec3f(0.5, 0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, -0.5f, 0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(0.5f, 0.5f, 0.5f)});
 
-    vector_vertices.push_back({scm::math::vec3f(-0.5, -0.5, 0.5)});
-    vector_vertices.push_back({scm::math::vec3f(-0.5, 0.5, 0.5)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, -0.5f, 0.5f)});
+    vector_vertices.push_back({scm::math::vec3f(-0.5f, 0.5f, 0.5f)});
 
     _vertex_buffer_object_box = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, vector_vertices.size() * sizeof(float) * 3, &vector_vertices[0]);
 
@@ -202,7 +202,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     _vertex_array_object_box = _device->create_vertex_array(vertex_format_box, boost::assign::list_of(_vertex_buffer_object_box));
 }
 
-scm::math::vec3f Renderer::convert_to_world_space(int x, int y, int z)
+scm::math::vec3f Renderer::convert_to_world_space(float x, float y, float z)
 {
     scm::math::mat4f matrix_inverse = scm::math::inverse(_camera_view.get_matrix_perspective() * _camera_view.get_matrix_view());
 
@@ -215,7 +215,7 @@ scm::math::vec3f Renderer::convert_to_world_space(int x, int y, int z)
     return scm::math::vec3f(point_world[0] / point_world[3], point_world[1] / point_world[3], point_world[2] / point_world[3]);
 }
 
-void Renderer::start_brushing(int x, int y, Scene &scene)
+void Renderer::start_brushing(float x, float y, Scene &scene)
 {
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
 
@@ -330,7 +330,7 @@ std::vector<uint32_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush
     // return node_ptr->get_aggregate_metadata().get_images_not_seen();
 }
 
-void Renderer::handle_mouse_movement(int x, int y)
+void Renderer::handle_mouse_movement(float x, float y)
 {
     // scm::math::vec3f point_final = convert_to_world_space(x, y, 0.0);
     // std::cout << point_final << std::endl;
@@ -428,7 +428,7 @@ void Renderer::draw_lines(Scene &scene)
         {
             _context->bind_vertex_array(camera.get_vertex_array_object_lines());
             _context->apply();
-            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, (int)((float)(camera.get_count_lines() * 2)) / 20.0f);
+            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, (int)(camera.get_count_lines() / 10.0f));
         }
     }
 }
@@ -491,7 +491,7 @@ bool Renderer::draw_points_dense(Scene &scene)
     cuts->send_camera(context_id, cam_id, *_camera);
 
     std::vector<scm::math::vec3d> corner_values = _camera->get_frustum_corners();
-    double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
+    float top_minus_bottom = (float)scm::math::length((corner_values[2]) - (corner_values[0]));
     float height_divided_by_top_minus_bottom = lamure::ren::policy::get_instance()->window_height() / top_minus_bottom;
 
     cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
@@ -585,7 +585,7 @@ bool Renderer::draw_points_dense(Scene &scene)
 
         if(node_culling_result != 1)
         {
-            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int64_t)(node_slot_aggregate.slot_id_) * (int64_t)surfels_per_node, surfels_per_node);
+            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, (int)surfels_per_node);
             // std::cout << "Drawing dense points!!!: " << surfels_per_node << "\n";
         }
         // if(++counter == 10) break;
@@ -756,7 +756,7 @@ void Renderer::draw_surfels_brush()
     _context->bind_vertex_array(_vertex_array_object_surfels_brush);
     _context->apply();
 
-    _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, _surfels_brush.size());
+    _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, (int)_surfels_brush.size());
 }
 
 void Renderer::draw_pixels_brush(Scene &scene)
@@ -796,7 +796,7 @@ void Renderer::draw_pixels_brush(Scene &scene)
 
             // std::cout << camera.get_vector_pixels_brush().size() << std::endl;
 
-            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, camera.get_vector_pixels_brush().size());
+            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, (int)camera.get_vector_pixels_brush().size());
 
             _context->set_depth_stencil_state(depth_state_enable_);
         }
@@ -818,7 +818,7 @@ bool Renderer::render(Scene &scene)
 
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     _context->set_rasterizer_state(_rasterizer_state);
-    _context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(_camera_view.get_width_window(), _camera_view.get_height_window())));
+    _context->set_viewport(scm::gl::viewport(scm::math::vec2f(0, 0), scm::math::vec2f(_camera_view.get_width_window(), _camera_view.get_height_window())));
 
     _context->clear_default_depth_stencil_buffer();
     _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(0.0f, 0.0f, 0.0f, 1.0f));
@@ -896,15 +896,6 @@ void Renderer::render_menu(Scene &scene)
     ImGui::Checkbox("Show cameras", &mode_draw_cameras);
     ImGui::Checkbox("Show lines", &mode_draw_lines);
 
-    ImGui::Checkbox("Ego mode", &_mode_is_ego);
-    if(!_mode_is_ego)
-    {
-        ImGui::InputFloat3("Rotation center", _center_non_ego_mode);
-    }
-
-    ImGui::SliderFloat("yaw speed", &_speed_yaw, 0.0f, 100.0f, "%.0f");
-    ImGui::SliderFloat("pitch speed", &_speed_pitch, 0.0f, 100.0f, "%.0f");
-
     // const char *listbox_items = &scene.get_vector_camera()[0];
     // const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
 
@@ -913,7 +904,7 @@ void Renderer::render_menu(Scene &scene)
     int index = 0;
     for(Camera_Custom &camera : scene.get_vector_camera())
     {
-        std::string name_camera = camera.get_file_name();
+        std::string name_camera = (std::string)camera.get_file_name();
         // std::string name_camera = "camera " + std::to_string(camera.get_index());
         // std::cout << name_camera << std::endl;
         vector_strings.push_back(name_camera);
@@ -929,12 +920,23 @@ void Renderer::render_menu(Scene &scene)
 
     if(is_camera_active)
     {
-        ImGui::ListBox("cameras", &index_current_image_camera, listbox_items, scene.get_vector_camera().size(), 10);
-        bool tmp;
-        if(ImGui::Checkbox("Jump to active camera", &tmp))
+        ImGui::ListBox("Cameras", &index_current_image_camera, listbox_items, (int)scene.get_vector_camera().size(), 10);
+        if(ImGui::Button("Jump to active camera"))
         {
             toggle_camera(scene);
         }
+    }
+
+    if(ImGui::CollapsingHeader("Navigation"))
+    {
+        ImGui::Checkbox("Ego mode", &_mode_is_ego);
+        if(!_mode_is_ego)
+        {
+            ImGui::SliderFloat3("Rotation center", _center_non_ego_mode, 0.0f, 1.0f, "%.2f");
+        }
+        ImGui::SliderFloat("Movement speed", &_speed, 0.0f, 0.4f, "%.2f");
+        ImGui::SliderFloat("Yaw speed", &_speed_yaw, 0.0f, 100.0f, "%.0f");
+        ImGui::SliderFloat("Pitch speed", &_speed_pitch, 0.0f, 100.0f, "%.0f");
     }
 
     ImGui::End();

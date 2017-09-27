@@ -20,7 +20,7 @@ Scene::Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Cam
 // Scene::Scene(prov::SparseCache const &cache_sparse) : _cache_sparse(cache_sparse)
 // {
 // }
-bool Scene::update(int time_delta)
+bool Scene::update(float time_delta)
 {
     // for(std::vector<prov::Camera>::iterator const it = _cache_sparse.get_cameras().begin(); it != _cache_sparse.get_cameras().end(); ++it)
     // {

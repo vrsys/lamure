@@ -82,9 +82,9 @@ class Renderer
     void toggle_is_camera_active();
     void previous_camera(Scene scene);
     void next_camera(Scene scene);
-    void handle_mouse_movement(int x, int y);
+    void handle_mouse_movement(float x, float y);
 
-    void start_brushing(int x, int y, Scene &scene);
+    void start_brushing(float x, float y, Scene &scene);
     std::vector<uint32_t> search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
 
     bool dense_points_only = false;
@@ -106,6 +106,8 @@ class Renderer
     // std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
     void update_vector_nodes();
 
+    // Maybe not the best way to access stuff
+    float _speed = 0.04f;
     float _speed_yaw = 30.0f;
     float _speed_pitch = 40.0f;
     bool _mode_is_ego = true;
@@ -183,7 +185,7 @@ class Renderer
     scm::gl::buffer_ptr _vertex_buffer_object_surfels_brush;
     scm::gl::vertex_array_ptr _vertex_array_object_surfels_brush;
 
-    scm::math::vec3f convert_to_world_space(int x, int y, int z);
+    scm::math::vec3f convert_to_world_space(float x, float y, float z);
     // void draw_legend();
 };
 

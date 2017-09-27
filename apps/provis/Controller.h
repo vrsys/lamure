@@ -30,7 +30,7 @@ class Controller
     bool _mode_navigating = false;
     bool _mode_brushing = false;
 
-    void handle_movements(int time_delta);
+    void handle_movements(float time_delta);
 
   public:
     Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,

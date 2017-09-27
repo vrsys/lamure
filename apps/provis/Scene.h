@@ -70,7 +70,7 @@ class Scene
     // std::vector<Image> &get_vector_image();
     std::vector<Camera_Custom> &get_vector_camera();
     std::vector<prov::SparsePoint> &get_vector_point();
-    bool update(int time_delta);
+    bool update(float time_delta);
     void update_scale_frustum(float offset);
 
     int count_points();

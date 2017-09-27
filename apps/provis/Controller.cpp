@@ -25,19 +25,15 @@ bool Controller::update()
     _time_since_start = new_time_since_start;
 
     time_since_last_brush += _time_delta;
-    handle_movements(_time_delta);
-    _scene.update(_time_delta);
+    handle_movements((float)_time_delta);
+    _scene.update((float)_time_delta);
 
-    if(_renderer.render(_scene) == true)
-    {
-        return true;
-    }
-
-    return false;
+    return _renderer.render(_scene);
 }
-void Controller::handle_movements(int time_delta)
+
+void Controller::handle_movements(float time_delta)
 {
-    float speed = 0.04f * time_delta;
+    float speed = _renderer._speed * time_delta;
     scm::math::vec3f offset = scm::math::vec3f(0.0f, 0.0f, 0.0f);
 
     if(_keys[GLFW_KEY_W])
@@ -98,45 +94,45 @@ void Controller::handle_movements(int time_delta)
         _renderer.get_camera_view().translate(offset);
     }
 
-    if(_keys['k'])
+    if(_keys[GLFW_KEY_K])
     {
         _scene.update_scale_frustum(0.03f * time_delta);
     }
-    if(_keys['j'])
+    if(_keys[GLFW_KEY_J])
     {
         _scene.update_scale_frustum(-0.03f * time_delta);
     }
 
-    if(_keys['v'])
+    if(_keys[GLFW_KEY_V])
     {
         _renderer.update_size_point(-0.0004f * time_delta);
     }
-    if(_keys['b'])
+    if(_keys[GLFW_KEY_B])
     {
         _renderer.update_size_point(0.0004f * time_delta);
     }
 
-    if(_keys['8'])
+    if(_keys[GLFW_KEY_8])
     {
         _renderer.update_size_pixels_brush(-0.00004f * time_delta);
     }
-    if(_keys['9'])
+    if(_keys[GLFW_KEY_9])
     {
         _renderer.update_size_pixels_brush(0.00004f * time_delta);
     }
 
-    float radius = 0.0f;
-    if(_keys['x'] || _keys['X'])
+    float radius_offset = 0.0f;
+    if(_keys[GLFW_KEY_X])
     {
-        std::cout << radius << std::endl;
-        radius += -0.001f * time_delta;
+        std::cout << radius_offset << std::endl;
+        radius_offset += -0.001f * time_delta;
     }
-    if(_keys['c'] || _keys['C'])
+    else if(_keys[GLFW_KEY_C])
     {
-        radius += 0.001f * time_delta;
+        radius_offset += 0.001f * time_delta;
     }
 
-    _renderer.update_radius_sphere(radius);
+    _renderer.update_radius_sphere(radius_offset);
 }
 void Controller::handle_mouse_movement(int x, int y)
 {
@@ -174,7 +170,7 @@ void Controller::handle_mouse_movement(int x, int y)
         {
             scm::math::vec3f position = _renderer.get_camera_view().get_position();
 
-            float angle = scm::math::deg2rad(xoffset * _renderer._speed_yaw / 1000.0f * _time_delta);
+            float angle = (float) scm::math::deg2rad(xoffset * _renderer._speed_yaw / 1000.0f * _time_delta);
             float rotatedX = scm::math::cos(angle) * (position[0] - _renderer._center_non_ego_mode[0]) - scm::math::sin(angle) * (position[2] - _renderer._center_non_ego_mode[2]) +
                              _renderer._center_non_ego_mode[0];
             float rotatedZ = scm::math::sin(angle) * (position[0] - _renderer._center_non_ego_mode[0]) + scm::math::cos(angle) * (position[2] - _renderer._center_non_ego_mode[2]) +
@@ -255,54 +251,54 @@ void Controller::handle_key_released(int key)
     // std::cout << key << " " << (char)int(key) << std::endl;
     _keys[key] = false;
 
-    if(key == 'i')
+    if(key == GLFW_KEY_I)
     {
         _renderer.toggle_is_camera_active();
     }
-    else if(key == 'u')
+    else if(key == GLFW_KEY_U)
     {
         _renderer.previous_camera(_scene);
     }
-    else if(key == 'o')
+    else if(key == GLFW_KEY_O)
     {
         _renderer.next_camera(_scene);
     }
-    else if(key == 'r')
+    else if(key == GLFW_KEY_R)
     {
         _renderer.toggle_camera(_scene);
     }
-    else if(key == 't')
+    else if(key == GLFW_KEY_T)
     {
         _renderer.update_state_lense();
     }
-    else if(key == '1')
+    else if(key == GLFW_KEY_1)
     {
         _renderer.mode_prov_data = 0;
     }
-    else if(key == '2')
+    else if(key == GLFW_KEY_2)
     {
         _renderer.mode_prov_data = 1;
     }
-    else if(key == '3')
+    else if(key == GLFW_KEY_3)
     {
         _renderer.mode_prov_data = 2;
     }
-    else if(key == '0')
+    else if(key == GLFW_KEY_0)
     {
         _renderer.mode_prov_data = 3;
     }
-    else if(key == 'p')
+    else if(key == GLFW_KEY_P)
     {
         _renderer.dispatch = !_renderer.dispatch;
     }
-    else if(key == '6')
+    else if(key == GLFW_KEY_6)
     {
         _renderer._depth_octree = std::max(0, _renderer._depth_octree - 1);
         _renderer.update_vector_nodes();
         std::cout << "Current Depth: " << _renderer._depth_octree << std::endl;
     }
 
-    else if(key == '7')
+    else if(key == GLFW_KEY_7)
     {
         _renderer._depth_octree += 1;
         _renderer.update_vector_nodes();
