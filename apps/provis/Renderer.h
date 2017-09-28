@@ -108,6 +108,7 @@ class Renderer
 
     // Maybe not the best way to access stuff
     float _speed = 0.04f;
+    float _line_density = 0.10f;
     float _speed_yaw = 30.0f;
     float _speed_pitch = 40.0f;
     bool _mode_is_ego = true;
@@ -155,7 +156,7 @@ class Renderer
 
     float _radius_sphere = 300.0;
     scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
-    int _state_lense = 0;
+    bool _state_lense = false;
 
     void draw_points_sparse(Scene &scene);
     void draw_cameras(Scene &scene);

@@ -1408,7 +1408,7 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
 
             while(w_node <= last_node_of_level)
             {
-                std::cout << "Entering w_node: " << w_node << std::endl;
+                // std::cout << "Entering w_node: " << w_node << std::endl;
 
                 if(w_level < depth_)
                 {

@@ -338,9 +338,9 @@ void Renderer::handle_mouse_movement(float x, float y)
 
 void Renderer::update_state_lense()
 {
-    if(_data_provenance.get_size_in_bytes())
+    if(_data_provenance.get_size_in_bytes() > 0)
     {
-        _state_lense = ++_state_lense % 2;
+        _state_lense = !_state_lense;
     }
     // _state_lense = ++_state_lense % 3;
     // std::cout << _state_lense << std::endl;
@@ -428,7 +428,7 @@ void Renderer::draw_lines(Scene &scene)
         {
             _context->bind_vertex_array(camera.get_vertex_array_object_lines());
             _context->apply();
-            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, (int)(camera.get_count_lines() / 10.0f));
+            _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, (int)(camera.get_count_lines() * this->_line_density / 100.0f));
         }
     }
 }
@@ -572,6 +572,8 @@ bool Renderer::draw_points_dense(Scene &scene)
     // _program_points_dense->uniform("radius_sphere_screen", _radius_sphere_screen);
     // _program_points_dense->uniform("position_sphere_screen", _position_sphere_screen);
     _program_points_dense->uniform("mode_prov_data", mode_prov_data);
+
+    //std::cout << mode_prov_data << " " << _state_lense << std::endl;
     // _radius_sphere = 1.0;
     // scm::math::vec3f _position_sphere
 
@@ -891,10 +893,14 @@ void Renderer::render_menu(Scene &scene)
     ImGui::Begin("Settings");
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
+    ImGui::Checkbox("Render LoD", &dispatch);
     ImGui::Checkbox("Show dense points", &mode_draw_points_dense);
     ImGui::Checkbox("Show images", &mode_draw_images);
     ImGui::Checkbox("Show cameras", &mode_draw_cameras);
     ImGui::Checkbox("Show lines", &mode_draw_lines);
+    if(mode_draw_lines){
+        ImGui::SliderFloat("Line density", &_line_density, 0.0f, 100.0f, "%.4f %%\045", 2.71828381f);
+    }
 
     // const char *listbox_items = &scene.get_vector_camera()[0];
     // const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
@@ -925,6 +931,20 @@ void Renderer::render_menu(Scene &scene)
         {
             toggle_camera(scene);
         }
+    }
+
+    if(ImGui::CollapsingHeader("Provenance overlay"))
+    {
+        ImGui::Checkbox("Render provenance data", &_state_lense);
+
+        ImGui::BeginGroup();
+        ImGui::RadioButton("Mean absolute deviation", &mode_prov_data, 0);
+        ImGui::RadioButton("Standard deviation", &mode_prov_data, 1);
+        ImGui::RadioButton("Coefficient of variation", &mode_prov_data, 2);
+        ImGui::RadioButton("Scene matching [DEBUG]", &mode_prov_data, 3);
+        ImGui::EndGroup();
+
+        //ColorButton("", &_state_lense);
     }
 
     if(ImGui::CollapsingHeader("Navigation"))

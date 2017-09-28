@@ -12,7 +12,6 @@ class FormatSparsePro(Format):
     length_meta_data_spoints = 0
 
     def out(self):
-        # TODO: test, ensure compliance
         out_bytes_prov = bytearray()
         out_bytes_meta = bytearray()
 
@@ -52,7 +51,6 @@ class FormatDensePro(Format):
     length_meta_data_dpoints = 0
 
     def out(self):
-        # TODO: test, ensure compliance
         out_bytes = bytearray()
         out_bytes_meta = bytearray()
 
@@ -61,7 +59,6 @@ class FormatDensePro(Format):
 
         for point in self.dpoints:
             out_bytes.extend(point.out())
-            # TODO: ensure length of meta data
             metabuff = bytearray()
             metabuff.extend(point.meta_data.out())
             diff =  self.length_meta_data_dpoints - len(metabuff)

@@ -14,7 +14,6 @@ class bvh;
 class provenance_reduction_strategy : public reduction_strategy
 {
   public:
-    // TODO: inject a class / struct
     class LoDMetaData
     {
       public:
@@ -66,12 +65,9 @@ class provenance_reduction_strategy : public reduction_strategy
         std::ofstream ofstream(sstr.str(), std::ios::out | std::ios::binary | std::ios::app);
         if(ofstream.is_open())
         {
-            uint16_t magic_bytes = 0xAFFE;
-            ofstream.write(reinterpret_cast<char *>(&magic_bytes), sizeof(magic_bytes));
-
             uint64_t length_of_data = deviations.size() * 24;
 
-            ofstream.write(reinterpret_cast<char *>(&length_of_data), sizeof(length_of_data));
+            ofstream.write(reinterpret_cast<char *>(&length_of_data), 8);
 
             for(std::vector<LoDMetaData>::reverse_iterator rit = deviations.rbegin(); rit != deviations.rend(); ++rit)
             {
@@ -97,8 +93,6 @@ class provenance_reduction_strategy : public reduction_strategy
         std::ifstream is(sstr.str(), std::ios::in | std::ios::binary);
         if(is.is_open())
         {
-            is.ignore(0x02);
-
             uint64_t length_of_data;
             is.read(reinterpret_cast<char *>(&length_of_data), 8);
 
@@ -120,7 +114,7 @@ class provenance_reduction_strategy : public reduction_strategy
             }
 
             is.clear();
-            is.seekg(0x0A);
+            is.seekg(0x08);
 
             std::vector<uint8_t> byte_buffer(length_of_data, 0);
             is.read(reinterpret_cast<char *>(&byte_buffer[0]), length_of_data);

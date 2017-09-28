@@ -122,7 +122,7 @@ void ooc_pool::run()
 #else
         lod_files.push_back(lod_file_name);
 
-        if(_data_provenance.get_size_in_bytes() != 0)
+        if(_data_provenance.get_size_in_bytes() > 0)
         {
             provenance_files.push_back(provenance_file_name);
         }
@@ -155,8 +155,17 @@ void ooc_pool::run()
             lod_stream access;
             access.open(lod_files[job.model_id_]);
             access.read(local_cache, offset_in_bytes, stride_in_bytes);
+#endif
+            std::lock_guard<std::mutex> lock(mutex_);
+            bytes_loaded_ += stride_in_bytes;
+            // ASK CARL should create new member?
+            // std::cout << "before" << std::endl;
+            memcpy(job.slot_mem_, local_cache, stride_in_bytes);
+            // std::cout << "after" << std::endl;
+            history_.push_back(job);
 
-            if(_data_provenance.get_size_in_bytes() != 0)
+
+            if(_data_provenance.get_size_in_bytes() > 0)
             {
                 provenance_stream access_provenance;
                 access_provenance.open(provenance_files[job.model_id_]);
@@ -165,18 +174,9 @@ void ooc_pool::run()
                 size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
                 access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
                 memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
-                access_provenance.close();
-            }
-
-#endif
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                bytes_loaded_ += stride_in_bytes;
-                // ASK CARL should create new member?
-                // std::cout << "before" << std::endl;
-                memcpy(job.slot_mem_, local_cache, stride_in_bytes);
-                // std::cout << "after" << std::endl;
-                history_.push_back(job);
+                #ifndef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
+                                access_provenance.close();
+                #endif
             }
 
 #ifndef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
