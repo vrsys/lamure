@@ -32,7 +32,7 @@ void Camera_Custom::update_pixels_brush()
     // _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
     // _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
 }
-void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm::shared_ptr<scm::gl::render_device> device)
+void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm::shared_ptr<scm::gl::render_device> device, bool seen)
 {
     // direction of ray
     scm::math::vec3f direction_normalized = scm::math::normalize(position_surfel_brush - _translation);
@@ -49,10 +49,20 @@ void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm:
 
     scm::math::vec3f position_pixel = scm::math::vec3f(_translation) + length * _frustum.get_scale() * direction_normalized;
 
-    _vector_pixels_brush.push_back(scm::math::inverse(_transformation_image_plane) * position_pixel);
-
-    _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
-    _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
+    if(seen == true)
+    {
+        _vector_pixels_brush.push_back(scm::math::inverse(_transformation_image_plane) * position_pixel);
+        _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
+        _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
+    }
+    else
+    {
+        _vector_pixels_not_seen_brush.push_back(scm::math::inverse(_transformation_image_plane) * position_pixel);
+        _vertex_buffer_object_pixels_not_seen =
+            device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_not_seen_brush.size(), &_vector_pixels_not_seen_brush[0]);
+        _vertex_array_object_pixels_not_seen =
+            device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels_not_seen));
+    }
 }
 
 // void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm::shared_ptr<scm::gl::render_device> device)
@@ -144,6 +154,7 @@ void Camera_Custom::load_texture(scm::shared_ptr<scm::gl::render_device> device)
 // scm::gl::texture_2d_ptr Camera_Custom::get_texture() { return _texture; }
 scm::gl::vertex_array_ptr Camera_Custom::get_vertex_array_object_lines() { return _vertex_array_object_lines; }
 scm::gl::vertex_array_ptr Camera_Custom::get_vertex_array_object_pixels() { return _vertex_array_object_pixels; }
+scm::gl::vertex_array_ptr Camera_Custom::get_vertex_array_object_pixels_not_seen() { return _vertex_array_object_pixels_not_seen; }
 
 void Camera_Custom::update_transformation()
 {
@@ -180,66 +191,8 @@ void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::ve
 }
 
 std::vector<scm::math::vec3f> &Camera_Custom::get_vector_pixels_brush() { return _vector_pixels_brush; }
+std::vector<scm::math::vec3f> &Camera_Custom::get_vector_pixels_not_seen_brush() { return _vector_pixels_not_seen_brush; }
 
-// void Camera_Custom::update_scale_frustum(scm::shared_ptr<scm::gl::render_device> device, float offset)
-// {
-//     float new_scale = std::max(_scale + offset, 0.0f);
-//     _scale = new_scale;
-//     update_transformation();
-//     _frustum.init(device, calc_frustum_points());
-// }
 void Camera_Custom::bind_texture(scm::shared_ptr<scm::gl::render_context> context) { context->bind_texture(_texture, _state, 0); }
 
-// void Camera_Custom::set_still_image(const Image &_still_image)
-// {
-//     Camera_Custom::_still_image = _still_image;
-//     update_transformation();
-// }
-
-// void Camera_Custom::update_transformation()
-// {
-//     scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(_center));
-//     scm::math::mat4f matrix_rotation = scm::math::mat4f(_orientation.to_matrix());
-
-//     // _transformation = matrix_translation;
-//     // _transformation =  matrix_rotation;
-//     // _transformation =  scm::math::inverse(matrix_rotation) * matrix_translation;
-//     // _transformation = matrix_translation * matrix_rotation;
-//     _transformation = matrix_translation * matrix_rotation;
-//     _still_image.update_transformation(_transformation, _scale);
-// }
-
-// double Camera_Custom::get_focal_length() const { return _focal_length; }
-
-// void Camera_Custom::set_focal_length(double _focal_length) { Camera_Custom::_focal_length = _focal_length; }
-
-// const quat<double> &Camera_Custom::get_orientation() const { return _orientation; }
-
-// void Camera_Custom::set_orientation(const quat<double> &orientation)
-// {
-//     Camera_Custom::_orientation = scm::math::normalize(orientation);
-//     update_transformation();
-// }
-
-// const vec3d &Camera_Custom::get_center() const { return _center; }
-
-// void Camera_Custom::set_center(const vec3d &_center)
-// {
-//     Camera_Custom::_center = _center;
-//     update_transformation();
-// }
-
-// double Camera_Custom::get_radial_distortion() const { return _radial_distortion; }
-
-// void Camera_Custom::set_radial_distortion(double _radial_distortion) { Camera_Custom::_radial_distortion = _radial_distortion; }
-
-// scm::math::mat4f &Camera_Custom::get_transformation() { return _transformation; }
-
 Frustum &Camera_Custom::get_frustum() { return _frustum; }
-
-// Camera_Custom::Camera(const Image &_still_image, double _focal_length, const quat<double> &_orientation, const vec3d &_center, double _radial_distortion)
-//     : _still_image(_still_image), _focal_length(_focal_length), _orientation(_orientation), _center(_center), _radial_distortion(_radial_distortion)
-// {
-// }
-
-// Camera_Custom::Camera() : _still_image() {}

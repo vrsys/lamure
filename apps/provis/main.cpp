@@ -116,6 +116,7 @@ GLFWwindow *init_glfw_and_glew()
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
 
+    // glfwWindowHint(GLFW_AUTO_ICONFIY, GLFW_FALSE);
     width_window = mode->width;
     height_window = mode->height;
 
@@ -188,6 +189,7 @@ int main(int argc, char *argv[])
     glfwSetKeyCallback(window, processInput);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    // glfwFocusWindow(window);
 
     while(!glfwWindowShouldClose(window))
     {

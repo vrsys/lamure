@@ -311,23 +311,29 @@ void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush c
     //    std::cout << "4" << std::endl;
 
     // add pixel
-    std::vector<uint32_t> vector_ids_cameras = std::vector<uint32_t>(search_tree(position, scene));
-    //    std::cout << "6" << std::endl;
+    prov::DenseMetaData metadata = search_tree(position, scene);
+    // std::vector<uint32_t> vector_ids_cameras = std::vector<uint32_t>(search_tree(position, scene));
+    // //    std::cout << "6" << std::endl;
 
-    for(uint32_t id_camera : vector_ids_cameras)
+    for(uint32_t id_camera : metadata.get_images_seen())
     {
-        //        std::cout << "7" << std::endl;
+        _set_seen_cameras.insert(id_camera);
         Camera_Custom &camera = scene.get_vector_camera()[id_camera];
-        camera.add_pixel_brush(surfel_brush.position, _device);
+        camera.add_pixel_brush(surfel_brush.position, _device, true);
+    }
+
+    for(uint32_t id_camera : metadata.get_images_not_seen())
+    {
+        _set_seen_cameras.insert(id_camera);
+        Camera_Custom &camera = scene.get_vector_camera()[id_camera];
+        camera.add_pixel_brush(surfel_brush.position, _device, false);
     }
 }
 
-std::vector<uint32_t> Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
+prov::DenseMetaData &Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
 {
     prov::OctreeNode *node_ptr = _sparse_octree.lookup_node_at_position(scm::math::vec3f(surfel_brush));
-    // std::cout << "5" << std::endl;
-    return node_ptr->get_aggregate_metadata().get_images_seen();
-    // return node_ptr->get_aggregate_metadata().get_images_not_seen();
+    return node_ptr->get_aggregate_metadata();
 }
 
 void Renderer::handle_mouse_movement(float x, float y)
@@ -342,8 +348,6 @@ void Renderer::update_state_lense()
     {
         _state_lense = !_state_lense;
     }
-    // _state_lense = ++_state_lense % 3;
-    // std::cout << _state_lense << std::endl;
 }
 
 void Renderer::translate_sphere(scm::math::vec3f offset) { _position_sphere += offset; }
@@ -445,7 +449,18 @@ void Renderer::draw_frustra(Scene &scene)
 
         if(!is_camera_active || index_current_image_camera == camera.get_index())
         {
+            std::set<uint32_t>::iterator it = _set_seen_cameras.find(camera.get_index());
+            if(it != _set_seen_cameras.end())
+            {
+                _program_frustra->uniform("has_pixels", true);
+            }
+            else
+            {
+                _program_frustra->uniform("has_pixels", false);
+            }
+
             _program_frustra->uniform("matrix_model", camera.get_transformation());
+
             _context->bind_vertex_array(camera.get_frustum().get_vertex_array_object());
             _context->apply();
 
@@ -496,39 +511,14 @@ bool Renderer::draw_points_dense(Scene &scene)
 
     cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
 
-    // std::cout << "################################ FIRST CHECK" << std::endl;
-    // GLenum first_error = _device->opengl_api().glGetError();
-    // if(first_error != GL_NO_ERROR)
-    // {
-    //     std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
-    //     return false;
-    // }
-    // else
-    // {
-    //     std::cout << "------------------------------ no error before dispatch" << std::endl;
-    // }
-
     if(dispatch)
         controller->dispatch(context_id, _device, _data_provenance);
-
-    // std::cout << "################################ SECOND CHECK" << std::endl;
-    // first_error = _device->opengl_api().glGetError();
-    // if(first_error != GL_NO_ERROR)
-    // {
-    //     std::cout << "------------------------------ DISPATCH ERROR CODE: " << first_error << std::endl;
-    //     return false;
-    // }
-    // else
-    // {
-    //     std::cout << "------------------------------ no error after dispatch" << std::endl;
-    // }
     lamure::view_t view_id = controller->deduce_view_id(context_id, _camera->view_id());
 
     scm::gl::vertex_array_ptr memory = controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, _device, _data_provenance);
     _context->bind_vertex_array(memory);
 
     _context->apply();
-    std::cout << _data_provenance.get_size_in_bytes() << std::endl;
     lamure::ren::cut &cut = cuts->get_cut(context_id, view_id, 0);
     std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
 
@@ -536,22 +526,13 @@ bool Renderer::draw_points_dense(Scene &scene)
 
     _context->apply();
 
-    // std::cout << surfels_per_node << std::endl;
-    // std::cout << renderable.size() << std::endl;
-
     std::vector<scm::gl::boxf> const &bounding_box_vector = bvh->get_bounding_boxes();
     scm::gl::frustum frustum_by_model = _camera->get_frustum_by_model(scm::math::mat4f(model_matrix));
 
-    // scm::math::mat4d model_matrix = scm::math::mat4d::identity();
     scm::math::mat4d projection_matrix = scm::math::mat4d(_camera->get_projection_matrix());
     scm::math::mat4d view_matrix = _camera->get_high_precision_view_matrix();
     scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
     scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
-
-    // if(_state_lense == 1)
-    // {
-    //     draw_legend();
-    // }
 
     _program_points_dense->uniform("near_plane", 0.01f);
     _program_points_dense->uniform("far_plane", 1000.0f);
@@ -567,6 +548,7 @@ bool Renderer::draw_points_dense(Scene &scene)
     _program_points_dense->uniform("height_window", _camera_view.get_height_window());
 
     _program_points_dense->uniform("state_lense", _state_lense);
+    _program_points_dense->uniform("render_normals", _render_normals);
     _program_points_dense->uniform("radius_sphere", _radius_sphere);
     _program_points_dense->uniform("position_sphere", _position_sphere);
     // _program_points_dense->uniform("radius_sphere_screen", _radius_sphere_screen);
@@ -586,7 +568,6 @@ bool Renderer::draw_points_dense(Scene &scene)
     _context->apply();
     int counter = 0;
 
-    // std::cout << "Before drawing dense points!!!\n";
     for(auto const &node_slot_aggregate : renderable)
     {
         uint32_t node_culling_result = _camera->cull_against_frustum(frustum_by_model, bounding_box_vector[node_slot_aggregate.node_id_]);
@@ -594,9 +575,7 @@ bool Renderer::draw_points_dense(Scene &scene)
         if(node_culling_result != 1)
         {
             _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, (int)(node_slot_aggregate.slot_id_) * (int)surfels_per_node, (int)surfels_per_node);
-            // std::cout << "Drawing dense points!!!: " << surfels_per_node << "\n";
         }
-        // if(++counter == 10) break;
     }
 
     return true;
@@ -661,58 +640,8 @@ void Renderer::update_vector_nodes()
     }
 }
 
-// void Renderer::update_vector_nodes()
-// {
-//     std::queue<prov::OctreeNode> queue_nodes;
-//     std::cout << 1 << std::endl;
-//     queue_nodes.push(*_sparse_octree);
-//     std::cout << 2 << std::endl;
-//     _vector_nodes.clear();
-//     std::cout << 3 << std::endl;
-//     while(!queue_nodes.empty())
-//     {
-//         std::cout << 4 << std::endl;
-//         prov::OctreeNode node = queue_nodes.front();
-//         std::cout << 5 << std::endl;
-
-//         if(node.get_depth() == _depth_octree)
-//         {
-//             std::cout << 6 << std::endl;
-//             _vector_nodes.push_back(node);
-//             std::cout << 7 << std::endl;
-//         }
-//         else
-//         {
-//             std::cout << 8 << std::endl;
-//             std::vector<prov::OctreeNode> vector_partitions = node.get_partitions();
-//             std::cout << 9 << std::endl;
-//             for(prov::OctreeNode &partition : vector_partitions)
-//             {
-//                 std::cout << 10 << std::endl;
-//                 queue_nodes.push(partition);
-//             }
-//         }
-
-//         queue_nodes.pop();
-//     }
-// }
-
 void Renderer::draw_sparse_octree()
 {
-    // convert_
-    // if(_depth_octree == 0)
-    // {
-    //     vector_nodes.push_back(*_sparse_octree);
-    // }
-    // else
-    // {
-
-    // }
-
-    // std::cout << _sparse_octree->get_center() << std::endl;
-    // std::cout << vector_bounds << std::endl;
-    // std::cout << vector_bounds << std::endl;
-
     _context->bind_program(_program_frustra);
 
     _program_frustra->uniform("matrix_view", _camera_view.get_matrix_view());
@@ -800,11 +729,14 @@ void Renderer::draw_pixels_brush(Scene &scene)
             _program_pixels_brush->uniform("scale", _size_pixels_brush_current);
 
             _context->bind_vertex_array(camera.get_vertex_array_object_pixels());
+            _program_pixels_brush->uniform("seen", true);
             _context->apply();
-
-            // std::cout << camera.get_vector_pixels_brush().size() << std::endl;
-
             _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, (int)camera.get_vector_pixels_brush().size());
+
+            _context->bind_vertex_array(camera.get_vertex_array_object_pixels_not_seen());
+            _program_pixels_brush->uniform("seen", false);
+            _context->apply();
+            _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, (int)camera.get_vector_pixels_not_seen_brush().size());
 
             _context->set_depth_stencil_state(depth_state_enable_);
         }
@@ -901,6 +833,10 @@ void Renderer::render_menu(Scene &scene)
 
     ImGui::Checkbox("Render LoD", &dispatch);
     ImGui::Checkbox("Show dense points", &mode_draw_points_dense);
+    if(mode_draw_points_dense)
+    {
+        ImGui::Checkbox("Show normals", &_render_normals);
+    }
     ImGui::Checkbox("Show images", &mode_draw_images);
     ImGui::Checkbox("Show cameras", &mode_draw_cameras);
     ImGui::Checkbox("Show lines", &mode_draw_lines);
@@ -908,6 +844,7 @@ void Renderer::render_menu(Scene &scene)
     {
         ImGui::SliderFloat("Line density", &_line_density, 0.0f, 100.0f, "%.4f %%\045", 2.71828381f);
     }
+    ImGui::SliderFloat("Pixel size", &_size_pixels_brush_current, _size_pixels_brush_minimum, 1.0f, "%.4f %%\045", 2.71828381f);
 
     // const char *listbox_items = &scene.get_vector_camera()[0];
     // const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
@@ -951,12 +888,13 @@ void Renderer::render_menu(Scene &scene)
         ImGui::RadioButton("Scene matching [DEBUG]", &mode_prov_data, 3);
         ImGui::EndGroup();
 
-        if (ImGui::TreeNode("Heatmap")) {
+        if(ImGui::TreeNode("Heatmap"))
+        {
             ImGui::SliderFloat("Heatmap min", &_heatmap_min, 0.0f, 1.0f, "%.3f");
-            ImGui::ColorPicker3("Color", (float *) &_heatmap_min_color);
+            ImGui::ColorPicker3("Color", (float *)&_heatmap_min_color);
             ImGui::Separator();
             ImGui::SliderFloat("Heatmap max", &_heatmap_max, 0.0f, 1.0f, "%.3f");
-            ImGui::ColorPicker3("Color", (float *) &_heatmap_max_color);
+            ImGui::ColorPicker3("Color", (float *)&_heatmap_max_color);
             ImGui::TreePop();
         }
     }

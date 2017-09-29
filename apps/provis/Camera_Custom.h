@@ -31,10 +31,12 @@ class Camera_Custom : public prov::Camera
     // void set_frustum_vertices(const arr<vec3d, 8> &_frustum_vertices) { this->_frustum_vertices = _frustum_vertices; }
     scm::gl::vertex_array_ptr get_vertex_array_object_lines();
     scm::gl::vertex_array_ptr get_vertex_array_object_pixels();
+    scm::gl::vertex_array_ptr get_vertex_array_object_pixels_not_seen();
     std::vector<scm::math::vec3f> &get_vector_pixels_brush();
+    std::vector<scm::math::vec3f> &get_vector_pixels_not_seen_brush();
     Frustum &get_frustum();
 
-    void add_pixel_brush(scm::math::vec3f position, scm::shared_ptr<scm::gl::render_device> device);
+    void add_pixel_brush(scm::math::vec3f position, scm::shared_ptr<scm::gl::render_device> device, bool seen);
 
   private:
     std::vector<Struct_Line> convert_lines_to_struct_line(std::vector<prov::SparsePoint> &vector_point);
@@ -47,11 +49,15 @@ class Camera_Custom : public prov::Camera
     Frustum _frustum;
 
     std::vector<scm::math::vec3f> _vector_pixels_brush;
+    std::vector<scm::math::vec3f> _vector_pixels_not_seen_brush;
     scm::gl::vertex_array_ptr _vertex_array_object_lines;
     scm::gl::buffer_ptr _vertex_buffer_object_lines;
 
     scm::gl::vertex_array_ptr _vertex_array_object_pixels;
     scm::gl::buffer_ptr _vertex_buffer_object_pixels;
+
+    scm::gl::vertex_array_ptr _vertex_array_object_pixels_not_seen;
+    scm::gl::buffer_ptr _vertex_buffer_object_pixels_not_seen;
 
     scm::gl::texture_2d_ptr _texture;
     scm::gl::sampler_state_ptr _state;

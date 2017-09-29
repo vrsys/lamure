@@ -85,7 +85,7 @@ class Renderer
     void handle_mouse_movement(float x, float y);
 
     void start_brushing(float x, float y, Scene &scene);
-    std::vector<uint32_t> search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
+    prov::DenseMetaData &search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
 
     bool dense_points_only = false;
     bool mode_draw_points_dense = false;
@@ -161,6 +161,9 @@ class Renderer
     float _radius_sphere = 300.0;
     scm::math::vec3f _position_sphere = scm::math::vec3f(0.0f, 0.0f, 0.0f);
     bool _state_lense = false;
+    bool _render_normals = false;
+
+    std::set<uint32_t> _set_seen_cameras;
 
     void draw_points_sparse(Scene &scene);
     void draw_cameras(Scene &scene);

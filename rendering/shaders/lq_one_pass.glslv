@@ -16,7 +16,8 @@ uniform float average_radius;
 uniform float accuracy;
 uniform float radius_sphere;
 uniform vec3 position_sphere;
-uniform int state_lense;
+uniform bool render_normals;
+uniform bool state_lense;
 uniform int mode_prov_data;
 uniform float heatmap_min;
 uniform float heatmap_max;
@@ -362,8 +363,7 @@ void main()
     VertexOut.pass_prov_float = float(prov_float);
 
 #if 1
-    if(state_lense == 1 && is_in_sphere())
-    // if(state_lense == 1 && is_in_sphere() && float(prov_float) < 0.5f)
+    if(state_lense && is_in_sphere())
     {
         float value;
         switch(mode_prov_data)
@@ -419,8 +419,15 @@ void main()
     }
     else
     {
-        // VertexOut.pass_point_color = prov_float;
-        VertexOut.pass_point_color = vec3(in_r, in_g, in_b);
+        if(render_normals)
+        {
+            vec3 normals_normalized = in_normal + vec3(1.0) / 2;
+            VertexOut.pass_point_color = vec3(normals_normalized);
+        }
+        else
+        {
+            VertexOut.pass_point_color = vec3(in_r, in_g, in_b);
+        }
     }
 #else
     if(prov_float > 0.0)
