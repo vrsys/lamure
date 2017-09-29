@@ -9,14 +9,13 @@ class GenerateTestPlane(unittest.TestCase):
 
         for i in range(1, 500):
             for j in range(1, 100):
+                out_xyz_all += str("%.6f" % float(i / 10.0)) + " "
+                out_xyz_all += str("%.6f" % float(j / 10.0)) + " "
+                out_xyz_all += str("%.6f" % float(0.0)) + " "
 
-                out_xyz_all += str("%.6f" % float(i / 50.0 + 2 * (random() - 0.5) * (i / 500.0))) + " "
-                out_xyz_all += str("%.6f" % float(j / 50.0 + 2 * (random() - 0.5) * (i / 500.0))) + " "
-                out_xyz_all += str("%.6f" % float(2 * (random() - 0.5) * (i / 500.0))) + " "
-
-                nx = 2.0 * (random() - 0.5) * (i / 500.0)
-                ny = 2.0 * (random() - 0.5) * (i / 500.0)
-                nz = 2.0 * (random() - 0.5) * (i / 500.0)
+                nx = 2.0 * (random() - 0.5) * (i / 5000.0)
+                ny = 2.0 * (random() - 0.5) * (i / 5000.0)
+                nz = 1.0 + 2.0 * (random() - 0.5) * (i / 5000.0)
 
                 norm = nx * nx + ny * ny + nz * nz
 
