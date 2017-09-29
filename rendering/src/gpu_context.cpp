@@ -69,7 +69,7 @@ void gpu_context::create(scm::gl::render_device_ptr device)
     map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device);
 }
 
-void gpu_context::create(scm::gl::render_device_ptr device, Data_Provenance data_provenance)
+void gpu_context::create(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
 {
     assert(device);
     if(is_created_)

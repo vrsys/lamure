@@ -28,14 +28,14 @@ ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_byte
         threads_.push_back(std::thread(&ooc_pool::run, this));
     }
 }
-ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes, Data_Provenance const &data_provenance)
-    : locked_(false), size_of_slot_(size_of_slot_in_bytes), num_threads_(num_threads), shutdown_(false), bytes_loaded_(0)
+ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes, const size_t size_of_slot_provenance, Data_Provenance const &data_provenance)
+    : locked_(false), size_of_slot_(size_of_slot_in_bytes), size_of_slot_provenance_(size_of_slot_provenance), num_threads_(num_threads), shutdown_(false), bytes_loaded_(0)
 {
     assert(num_threads_ > 0);
 
     _data_provenance = data_provenance;
     model_database *database = model_database::get_instance();
-    size_of_slot_provenance_ = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+    //size_of_slot_provenance_ = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
     // configure semaphore
     semaphore_.set_min_signal_count(1);
     semaphore_.set_max_signal_count(std::numeric_limits<size_t>::max());

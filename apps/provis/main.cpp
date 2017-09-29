@@ -137,18 +137,17 @@ GLFWwindow *init_glfw_and_glew()
 Controller *load_scene_depending_on_arguments(int argc, char *argv[])
 {
     Scene scene;
-    prov::SparseCache *cache_sparse;
     if(cmd_option_exists(argv, argv + argc, "-s"))
     {
         std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
         prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
         prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
-        cache_sparse = new prov::SparseCache(in_sparse, in_sparse_meta);
-        cache_sparse->cache();
+        prov::SparseCache cache_sparse = prov::SparseCache(in_sparse, in_sparse_meta);
+        cache_sparse.cache();
         in_sparse.close();
 
-        std::vector<prov::Camera> vec_camera = cache_sparse->get_cameras();
-        std::vector<prov::SparsePoint> vec_point = cache_sparse->get_points();
+        std::vector<prov::Camera> vec_camera = cache_sparse.get_cameras();
+        std::vector<prov::SparsePoint> vec_point = cache_sparse.get_points();
         scene = Scene(vec_point, vec_camera);
     }
 
@@ -323,9 +322,9 @@ void set_styles()
 
     ImGuiIO io = ImGui::GetIO();
 
-    //io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 12);
-    //io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 14);
-    //io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 10);
+    // io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 12);
+    // io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 14);
+    // io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 10);
     io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 18);
 }
 

@@ -18,6 +18,10 @@ uniform float radius_sphere;
 uniform vec3 position_sphere;
 uniform int state_lense;
 uniform int mode_prov_data;
+uniform float heatmap_min;
+uniform float heatmap_max;
+uniform vec3 heatmap_min_color;
+uniform vec3 heatmap_max_color;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -63,6 +67,8 @@ vec3 get_color(float value)
     index = clamp(index, 0, 254);
     return colormap[index];
 }
+
+vec3 quick_interp(vec3 color1, vec3 color2, float value) { return color1 + (color2 - color1) * clamp(value, 0, 1); }
 
 bool is_in_sphere()
 {
@@ -364,28 +370,25 @@ void main()
         {
         case 0:
         {
-            value = prov_float;
+            value = (prov_float - heatmap_min) / (heatmap_max - heatmap_min);
 
-            value *= 100;
-
-            VertexOut.pass_point_color = get_color(value);
+            // VertexOut.pass_point_color = get_color(value);
+            VertexOut.pass_point_color = quick_interp(heatmap_min_color, heatmap_max_color, value); // lerp(heatmap_min_color, heatmap_max_color, value);
             break;
         }
         case 1:
         {
-            value = prov_float1;
-            value *= 100;
+            value = (prov_float1 - heatmap_min) / (heatmap_max - heatmap_min);
 
             VertexOut.pass_point_color = get_color(value);
             break;
         }
         case 2:
         {
-            value = prov_float2;
+            value = (prov_float2 * 0.5 - heatmap_min) / (heatmap_max - heatmap_min);
 
-            value *= 0.5;
-
-            VertexOut.pass_point_color = get_color(value);
+            // VertexOut.pass_point_color = get_color(value);
+            VertexOut.pass_point_color = quick_interp(heatmap_min_color, heatmap_max_color, value); // lerp(heatmap_min_color, heatmap_max_color, value);
             break;
         }
         case 3:

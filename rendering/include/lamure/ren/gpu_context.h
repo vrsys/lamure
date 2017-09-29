@@ -62,7 +62,7 @@ class gpu_context
     fix_struct get_fix_b() { return fix_b_; };
 
     void create(scm::gl::render_device_ptr device);
-    void create(scm::gl::render_device_ptr device, Data_Provenance data_provenance);
+    void create(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
 
   private:
     void test_video_memory(scm::gl::render_device_ptr device);

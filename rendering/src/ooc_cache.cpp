@@ -19,9 +19,11 @@ ooc_cache::ooc_cache(const slot_t num_slots, Data_Provenance const &data_provena
 {
     model_database *database = model_database::get_instance();
 
+    size_t slot_size_provenance = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+
     cache_data_ = new char[num_slots * database->get_slot_size()];
-    cache_data_provenance_ = new char[num_slots * database->get_primitives_per_node() * data_provenance.get_size_in_bytes()];
-    pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, database->get_slot_size(), data_provenance);
+    cache_data_provenance_ = new char[num_slots * slot_size_provenance];
+    pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, database->get_slot_size(), slot_size_provenance, data_provenance);
 
 #ifdef LAMURE_ENABLE_INFO
     std::cout << "lamure: ooc-cache init" << std::endl;

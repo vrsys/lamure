@@ -66,7 +66,7 @@ class Renderer
   public:
     // Renderer();
     void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
-              lamure::ren::Data_Provenance data_provenance);
+              lamure::ren::Data_Provenance &data_provenance);
     bool render(Scene &scene);
 
     void update_state_lense();
@@ -109,6 +109,10 @@ class Renderer
     // Maybe not the best way to access stuff
     float _speed = 0.04f;
     float _line_density = 0.10f;
+    float _heatmap_min = 0.00f;
+    float _heatmap_min_color[3] = {0.267004, 0.004874, 0.329415};
+    float _heatmap_max = 1.00f;
+    float _heatmap_max_color[3] = {0.983868, 0.904867, 0.136897};
     float _speed_yaw = 30.0f;
     float _speed_pitch = 40.0f;
     bool _mode_is_ego = true;
@@ -169,10 +173,6 @@ class Renderer
     void draw_sparse_octree();
     void draw_pixels_brush(Scene &scene);
     void render_menu(Scene &scene);
-
-    bool show_test_window = false;
-    bool show_another_window = false;
-    bool no_titlebar = false;
 
     scm::gl::depth_stencil_state_ptr depth_state_disable_;
     scm::gl::depth_stencil_state_ptr depth_state_enable_;

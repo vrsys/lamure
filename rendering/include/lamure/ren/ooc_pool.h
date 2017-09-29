@@ -32,7 +32,7 @@ class ooc_pool
 {
   public:
     ooc_pool(const uint32_t num_loader_threads, const size_t size_of_slot_in_bytes);
-    ooc_pool(const uint32_t num_loader_threads, const size_t size_of_slot_in_bytes, Data_Provenance const &data_provenance);
+    ooc_pool(const uint32_t num_loader_threads, const size_t size_of_slot_in_bytes, const size_t size_of_slot_provenance_, Data_Provenance const &data_provenance);
     /*virtual*/ ~ooc_pool();
 
     const uint32_t num_threads() const { return num_threads_; };

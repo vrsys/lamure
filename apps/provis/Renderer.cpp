@@ -22,7 +22,7 @@
 // }
 
 void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
-                    lamure::ren::Data_Provenance data_provenance)
+                    lamure::ren::Data_Provenance &data_provenance)
 {
     // <<<<<<< HEAD
     //     prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
@@ -528,7 +528,7 @@ bool Renderer::draw_points_dense(Scene &scene)
     _context->bind_vertex_array(memory);
 
     _context->apply();
-
+    std::cout << _data_provenance.get_size_in_bytes() << std::endl;
     lamure::ren::cut &cut = cuts->get_cut(context_id, view_id, 0);
     std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
 
@@ -573,7 +573,13 @@ bool Renderer::draw_points_dense(Scene &scene)
     // _program_points_dense->uniform("position_sphere_screen", _position_sphere_screen);
     _program_points_dense->uniform("mode_prov_data", mode_prov_data);
 
-    //std::cout << mode_prov_data << " " << _state_lense << std::endl;
+    _program_points_dense->uniform("heatmap_min", _heatmap_min);
+    _program_points_dense->uniform("heatmap_max", _heatmap_max);
+
+    _program_points_dense->uniform("heatmap_min_color", scm::math::vec3f(_heatmap_min_color[0], _heatmap_min_color[1], _heatmap_min_color[2]));
+    _program_points_dense->uniform("heatmap_max_color", scm::math::vec3f(_heatmap_max_color[0], _heatmap_max_color[1], _heatmap_max_color[2]));
+
+    // std::cout << mode_prov_data << " " << _state_lense << std::endl;
     // _radius_sphere = 1.0;
     // scm::math::vec3f _position_sphere
 
@@ -898,7 +904,8 @@ void Renderer::render_menu(Scene &scene)
     ImGui::Checkbox("Show images", &mode_draw_images);
     ImGui::Checkbox("Show cameras", &mode_draw_cameras);
     ImGui::Checkbox("Show lines", &mode_draw_lines);
-    if(mode_draw_lines){
+    if(mode_draw_lines)
+    {
         ImGui::SliderFloat("Line density", &_line_density, 0.0f, 100.0f, "%.4f %%\045", 2.71828381f);
     }
 
@@ -940,11 +947,18 @@ void Renderer::render_menu(Scene &scene)
         ImGui::BeginGroup();
         ImGui::RadioButton("Mean absolute deviation", &mode_prov_data, 0);
         ImGui::RadioButton("Standard deviation", &mode_prov_data, 1);
-        ImGui::RadioButton("Coefficient of variation", &mode_prov_data, 2);
+        ImGui::RadioButton("Coefficient of variation [x 0.5]", &mode_prov_data, 2);
         ImGui::RadioButton("Scene matching [DEBUG]", &mode_prov_data, 3);
         ImGui::EndGroup();
 
-        //ColorButton("", &_state_lense);
+        if (ImGui::TreeNode("Heatmap")) {
+            ImGui::SliderFloat("Heatmap min", &_heatmap_min, 0.0f, 1.0f, "%.3f");
+            ImGui::ColorPicker3("Color", (float *) &_heatmap_min_color);
+            ImGui::Separator();
+            ImGui::SliderFloat("Heatmap max", &_heatmap_max, 0.0f, 1.0f, "%.3f");
+            ImGui::ColorPicker3("Color", (float *) &_heatmap_max_color);
+            ImGui::TreePop();
+        }
     }
 
     if(ImGui::CollapsingHeader("Navigation"))
@@ -961,11 +975,6 @@ void Renderer::render_menu(Scene &scene)
 
     ImGui::End();
 
-    if(show_test_window)
-    {
-        ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
-        ImGui::ShowTestWindow(&show_test_window);
-    }
     ImGui::Render();
 }
 

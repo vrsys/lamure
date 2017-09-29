@@ -103,14 +103,14 @@ class Data_Provenance
     int get_size_in_bytes() const { return _size_in_bytes; };
 
   private:
-    void add_item(Item_Provenance item_provenance)
+    void add_item(Item_Provenance &item_provenance)
     {
         _items_provenance.push_back(item_provenance);
-        _size_in_bytes += item_provenance.get_size_in_bytes();
+        // _size_in_bytes += item_provenance.get_size_in_bytes();
     };
 
     std::vector<Item_Provenance> _items_provenance;
-    int _size_in_bytes = 0;
+    int _size_in_bytes = 24;
 };
 }
 } // namespace lamure

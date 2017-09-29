@@ -57,7 +57,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << std::endl;
 #endif
 }
-gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, Data_Provenance data_provenance, bool create_layout)
+gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, Data_Provenance const &data_provenance, bool create_layout)
     : num_slots_(num_slots),
       // size_of_surfel_(9*sizeof(float)),
       size_of_surfel_(8 * sizeof(float)), is_mapped_(false), is_mapped_provenance_(false), has_layout_(create_layout)

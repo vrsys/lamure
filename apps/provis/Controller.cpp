@@ -1,6 +1,6 @@
 #include "Controller.h"
 
-Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense, lamure::ren::Data_Provenance data_provenance)
+Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense, lamure::ren::Data_Provenance &data_provenance)
     : _scene(scene)
 {
     // initialize context
