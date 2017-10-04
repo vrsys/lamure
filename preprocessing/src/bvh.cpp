@@ -391,7 +391,7 @@ void bvh::compute_normal_and_radius(const bvh_node *source_node, const normal_co
 
             // write surfel
             surf.radius() = radius;
-            // surf.normal() = normal;
+            surf.normal() = normal;
             source_node->mem_array().write_surfel(surf, k);
         }
     }
