@@ -41,7 +41,6 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     // >>>>>>> 18079d42e0652b76c02ff4b771c776fced1d7b86
     // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
 
-    //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
     _data_provenance = data_provenance;
     _camera_view.update_window_size(width_window, height_window);
 
@@ -98,12 +97,6 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_pixels_brush.glslf", visibility_fs_source);
     _program_pixels_brush = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
-
-    // // create shader program for legend
-    // scm::io::read_text_file(root_path + "/provenance_legend.glslv", visibility_vs_source);
-    // scm::io::read_text_file(root_path + "/provenance_legend.glslf", visibility_fs_source);
-    // _program_legend = device->create_program(
-    //     boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for dense points
     scm::io::read_text_file(root_path + "/lq_one_pass.glslv", visibility_vs_source);
@@ -580,23 +573,6 @@ bool Renderer::draw_points_dense(Scene &scene)
 
     return true;
 }
-
-// void Renderer::draw_legend()
-// {
-//     // _context->bind_program(_program_legend);
-
-//     // float scale_x = 0.2f;
-//     // float scale_y = 0.06f;
-//     // float margin = 0.05;
-
-//     // scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(-1.0f + scale_x + margin, -1.0f + scale_y + margin, 0.0f));
-//     // scm::math::mat4f matrix_scale = scm::math::make_scale(scm::math::vec3f(scale_x, scale_y, 1.0f));
-
-//     // scm::math::mat4f matrix_model = matrix_translation * matrix_scale;
-//     // _program_legend->uniform("matrix_model", matrix_model);
-//     // _context->apply();
-//     // _quad_legend->draw(_context);
-// }
 
 void Renderer::update_vector_nodes()
 {
