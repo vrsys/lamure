@@ -665,6 +665,7 @@ void Renderer::draw_surfels_brush()
     _program_surfels_brush->uniform("point_size_factor", 0.1f);
     _program_surfels_brush->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
     _program_surfels_brush->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+    _program_surfels_brush->uniform("color_brush_surfels", scm::math::vec3f(_color_brush_surfels[0], _color_brush_surfels[1], _color_brush_surfels[2]));
 
     _context->bind_vertex_array(_vertex_array_object_surfels_brush);
     _context->apply();
@@ -871,6 +872,12 @@ void Renderer::render_menu(Scene &scene)
             ImGui::Separator();
             ImGui::SliderFloat("Heatmap max", &_heatmap_max, 0.0f, 1.0f, "%.3f");
             ImGui::ColorPicker3("Color", (float *)&_heatmap_max_color);
+            ImGui::TreePop();
+        }
+
+        if(ImGui::TreeNode("Surfel Color"))
+        {
+            ImGui::ColorPicker3("Color", (float *)&_color_brush_surfels);
             ImGui::TreePop();
         }
     }

@@ -106,6 +106,8 @@ class Renderer
     // std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
     void update_vector_nodes();
 
+    float _color_brush_surfels[3] = {1.0, 1.0, 0.0};
+
     // Maybe not the best way to access stuff
     float _speed = 0.04f;
     float _line_density = 0.10f;
