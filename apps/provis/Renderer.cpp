@@ -838,7 +838,7 @@ void Renderer::render_menu(Scene &scene)
     {
         ImGui::SliderFloat("Line density", &_line_density, 0.0f, 100.0f, "%.4f %%\045", 2.71828381f);
     }
-    ImGui::SliderFloat("Pixel size", &_size_pixels_brush_current, _size_pixels_brush_minimum, 1.0f, "%.4f %%\045", 2.71828381f);
+    ImGui::SliderFloat("Pixel size", &_size_pixels_brush_current, _size_pixels_brush_minimum, 1.0f, "%.4f", 2.71828381f);
 
     // const char *listbox_items = &scene.get_vector_camera()[0];
     // const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
