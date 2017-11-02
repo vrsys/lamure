@@ -253,6 +253,23 @@ void Renderer::start_brushing(float x, float y, Scene &scene)
     // _vertex_array_object_lines = _device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
 }
 
+void Renderer::reset_surfels_brush(Scene &scene)
+{
+    _surfels_brush.clear();
+    _buffer_surfels_brush_size = 0;
+
+    _vertex_buffer_object_surfels_brush = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * _surfels_brush.size(), &_surfels_brush[0]);
+    std::vector<scm::gl::vertex_format::element> vertex_format;
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    _vertex_array_object_surfels_brush = _device->create_vertex_array(vertex_format, boost::assign::list_of(_vertex_buffer_object_surfels_brush));
+
+    for(Camera_Custom &camera : scene.get_vector_camera())
+    {
+        camera.reset_pixels_brush(_device);
+    }
+}
+
 void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush const &surfel_brush, Scene &scene)
 {
     // _initial_buffer_size
@@ -875,8 +892,12 @@ void Renderer::render_menu(Scene &scene)
             ImGui::TreePop();
         }
 
-        if(ImGui::TreeNode("Surfel Color"))
+        if(ImGui::TreeNode("Brush Surfels"))
         {
+            if(ImGui::Button("Clear"))
+            {
+                reset_surfels_brush(scene);
+            }
             ImGui::ColorPicker3("Color", (float *)&_color_brush_surfels);
             ImGui::TreePop();
         }
@@ -919,7 +940,7 @@ void Renderer::update_size_pixels_brush(float scale)
     _size_pixels_brush_current = std::max(_size_pixels_brush_current, _size_pixels_brush_minimum);
 }
 
-void Renderer::toggle_camera(Scene scene)
+void Renderer::toggle_camera(Scene &scene)
 {
     is_default_camera = !is_default_camera;
     if(is_default_camera)

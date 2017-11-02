@@ -32,6 +32,21 @@ void Camera_Custom::update_pixels_brush()
     // _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
     // _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
 }
+
+void Camera_Custom::reset_pixels_brush(scm::shared_ptr<scm::gl::render_device> device)
+{
+    _vector_pixels_brush.clear();
+    _vector_pixels_not_seen_brush.clear();
+
+    _vertex_buffer_object_pixels = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_brush.size(), &_vector_pixels_brush[0]);
+    _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
+
+    _vertex_buffer_object_pixels_not_seen =
+        device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * _vector_pixels_not_seen_brush.size(), &_vector_pixels_not_seen_brush[0]);
+    _vertex_array_object_pixels_not_seen =
+        device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels_not_seen));
+}
+
 void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm::shared_ptr<scm::gl::render_device> device, bool seen)
 {
     // direction of ray

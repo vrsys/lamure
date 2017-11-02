@@ -78,7 +78,7 @@ class Renderer
 
     Camera_View &get_camera_view();
 
-    void toggle_camera(Scene scene);
+    void toggle_camera(Scene &scene);
     void toggle_is_camera_active();
     void previous_camera(Scene scene);
     void next_camera(Scene scene);
@@ -183,6 +183,7 @@ class Renderer
     scm::gl::depth_stencil_state_ptr depth_state_enable_;
 
     void add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush const &surfel_brush, Scene &scene);
+    void reset_surfels_brush(Scene &scene);
 
     lamure::model_t _model_id;
     // BRUSHING ///////////////////////////////////////////////

@@ -35,6 +35,7 @@ class Camera_Custom : public prov::Camera
     std::vector<scm::math::vec3f> &get_vector_pixels_brush();
     std::vector<scm::math::vec3f> &get_vector_pixels_not_seen_brush();
     Frustum &get_frustum();
+    void reset_pixels_brush(scm::shared_ptr<scm::gl::render_device> device);
 
     void add_pixel_brush(scm::math::vec3f position, scm::shared_ptr<scm::gl::render_device> device, bool seen);
 
