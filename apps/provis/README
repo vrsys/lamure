@@ -1,0 +1,50 @@
+Link to VisualSfM page
+http://ccwu.me/vsfm/
+
+Output of VisualSfM (should contain the following): 
+	model.nvm
+	model.nvm.cmvs/
+
+python3 ../pypro/main.py  <path to VisualSfM-output>/model.nvm <path to VisualSfM-output>/model.nvm.cmvs/00/models/option-0000.patch <path to VisualSfM-output>/00/models/option-0000.ply   
+	output (located in the directory of call):
+		sparse.prov
+		sparse.prov.meta
+		dense.prov
+		dense.prov.meta
+
+./bin/lamure_preprocessing --files <path to VisualSfM-output>/00/models/option-0000.ply 
+	output:
+		model.0.bvh (in the same path as ply)
+		model.0.lod (in the same path as ply)
+		lod.meta (in the path of call)
+			copy to <path to VisualSfM-output>/00/models and rename it to option-0000.prov
+
+create the json file 'provenance_data_structure.json' with the following content:
+	[{
+		"type": "float",
+		"visualization": "color"
+	}, {
+		"type": "float",
+		"visualization": "color"
+	}, {
+		"type": "float",
+		"visualization": "color"
+	}, {
+		"type": "float",
+		"visualization": "color"
+	}, {
+		"type": "float",
+		"visualization": "color"
+	}, {
+		"type": "float",
+		"visualization": "color"
+	}]
+
+copy original images in to call folder
+
+./bin/lamure_provenance -d <path to VisualSfM-output>/dense.prov -l <path to VisualSfM-output>/test.nvm.cmvs/00/models/option-0000.bvh -s <path to VisualSfM-output>/sparse.prov
+	output (located in the directory of call):
+		tree.prov (required to be in the directory of call of the provis application)
+
+
+./bin/lamure_provis -l <path to VisualSfM-output>/model.0.bvh -d <path to VisualSfM-output>/dense.prov  -s <path to VisualSfM-output>/sparse.prov -j <path to VisualSfM-output>/provenance_data_structure.json 
