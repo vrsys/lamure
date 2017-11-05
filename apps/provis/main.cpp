@@ -175,6 +175,22 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
 void set_styles();
 int main(int argc, char *argv[])
 {
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-d"))
+    {
+        std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
+                  << "INFO: nvm_explorer " << std::endl
+                  << "\t-d: selects .prov input file" << std::endl
+                  << "\t    (-d flag is required) " << std::endl
+                  << "\t-l: selects .bvh input file" << std::endl
+                  << "\t    (-l flag is required) " << std::endl
+                  << "\t[-s: selects sparse.prov input file]" << std::endl
+                  << "\t    (-s flag is optional) " << std::endl
+                  << "\t[-j: selects json input file]" << std::endl
+                  << "\t    (-j flag is optional) " << std::endl
+                  << std::endl;
+        return 0;
+    }
+
     GLFWwindow *window = init_glfw_and_glew();
 
     load_scene_depending_on_arguments(argc, argv);
@@ -244,21 +260,6 @@ int main(int argc, char *argv[])
         glfwPollEvents();
     }
 
-    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-d"))
-    {
-        std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
-                  << "INFO: nvm_explorer " << std::endl
-                  << "\t-d: selects .prov input file" << std::endl
-                  << "\t    (-d flag is required) " << std::endl
-                  << "\t-l: selects .bvh input file" << std::endl
-                  << "\t    (-l flag is required) " << std::endl
-                  << "\t[-s: selects sparse.prov input file]" << std::endl
-                  << "\t    (-s flag is optional) " << std::endl
-                  << "\t[-j: selects json input file]" << std::endl
-                  << "\t    (-j flag is optional) " << std::endl
-                  << std::endl;
-        return 0;
-    }
     glfwTerminate();
     return 0;
 }

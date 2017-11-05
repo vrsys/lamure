@@ -31,7 +31,7 @@ class FormatSparsePro(Format):
             camera.file_path += ' ' * (self.length_max_file_path - len(bytearray(camera.file_path, encoding='UTF-8')))
             out_bytes_prov.extend(bytearray(camera.file_path, encoding='UTF-8'))
             out_bytes_meta.extend(camera.meta_data.out())
-
+        
         out_file = open('sparse.prov', 'wb')
         out_file.write(self.magic_bytes)
         out_file.write(len(out_bytes_prov).to_bytes(8, byteorder='big'))
