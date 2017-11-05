@@ -255,6 +255,8 @@ void Renderer::start_brushing(float x, float y, Scene &scene)
 
 void Renderer::reset_surfels_brush(Scene &scene)
 {
+    _set_seen_cameras.clear();
+
     _surfels_brush.clear();
     _buffer_surfels_brush_size = 0;
 
@@ -905,11 +907,11 @@ void Renderer::render_menu(Scene &scene)
 
     if(ImGui::CollapsingHeader("Navigation"))
     {
-        ImGui::Checkbox("Ego mode", &_mode_is_ego);
-        if(!_mode_is_ego)
-        {
-            ImGui::SliderFloat3("Rotation center", _center_non_ego_mode, 0.0f, 1.0f, "%.2f");
-        }
+        // ImGui::Checkbox("Ego mode", &_mode_is_ego);
+        // if(!_mode_is_ego)
+        // {
+        //     ImGui::SliderFloat3("Rotation center", _center_non_ego_mode, 0.0f, 1.0f, "%.2f");
+        // }
         ImGui::SliderFloat("Movement speed", &_speed, 0.0f, 0.4f, "%.2f");
         ImGui::SliderFloat("Yaw speed", &_speed_yaw, 0.0f, 100.0f, "%.0f");
         ImGui::SliderFloat("Pitch speed", &_speed_pitch, 0.0f, 100.0f, "%.0f");
