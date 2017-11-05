@@ -2,8 +2,7 @@ Starting with the set of images one can acquire the sparse and dense reconstruct
 
 This readme will focus on the tested workflow with VisualSfM package.
 
-Output of VisualSfM (should contain the following):
-
+	Output of VisualSfM (should contain the following):
 		model.nvm
 		model.nvm.cmvs/
 
@@ -13,7 +12,7 @@ If you want to extract data out of other datasets you have to implement your own
 
 ```python3 ../pypro/main.py  <path to VisualSfM-output>/model.nvm <path to VisualSfM-output>/model.nvm.cmvs/00/models/option-0000.patch <path to VisualSfM-output>/00/models/option-0000.ply```
 
-	output (located in the directory of call):
+	Output (located in the directory of call):
 		sparse.prov
 		sparse.prov.meta
 		dense.prov
@@ -23,7 +22,7 @@ To collect provenance data (currently 6 floats: mean deviation, standard deviati
 
 ```./bin/lamure_preprocessing --files <path to VisualSfM-output>/00/models/option-0000.ply```
 
-	output:
+	Output:
 		model.0.bvh (in the same path as ply)
 		model.0.lod (in the same path as ply)
 		lod.meta (in the path of call)
@@ -58,7 +57,7 @@ For the spatial allocation of data available per point one has to run the proven
 
 ```./bin/lamure_provenance -d <path to VisualSfM-output>/dense.prov -l <path to VisualSfM-output>/test.nvm.cmvs/00/models/option-0000.bvh -s <path to VisualSfM-output>/sparse.prov```
 	
-	output (located in the directory of call):
+	Output (located in the directory of call):
 		tree.prov (required to be in the directory of call of the provis application)
 
 Copy original images in to call folder of provis (the path has to remain consistent with the paths in the nvm file).
