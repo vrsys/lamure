@@ -384,7 +384,15 @@ void display() {
     _context->reset();
 
     mat4f pass_mvp = mat4f::identity();
-    ortho_matrix(pass_mvp, 0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+    ortho_matrix(
+        pass_mvp,  // matrix
+        0.0f,      // left
+        1.0f,      // right
+        0.0f,      // bottom
+        1.0f,      // top
+        -1.0f,     // near z
+        1.0f       // far z
+        );
 
     _pass_through_shader->uniform_sampler("in_texture", 0);
     _pass_through_shader->uniform("mvp", pass_mvp);
