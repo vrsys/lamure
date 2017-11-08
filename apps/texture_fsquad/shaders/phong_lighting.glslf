@@ -34,7 +34,7 @@ void main()
 
     vec4 c;
 
-#if 0
+#if 1
     if (texture_coord.x > 0.5) {
         c = texture(color_texture_aniso, texture_coord);
     }
