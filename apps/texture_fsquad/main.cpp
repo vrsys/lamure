@@ -1,4 +1,7 @@
 #include <iostream>
+#include <stdexcept>
+
+#include <boost/assign/list_of.hpp>
 
 // scism shit
 #include <scm/core.h>
@@ -19,25 +22,279 @@
 // Window library
 #include <GL/freeglut.h>
 
+// window sizes
 static int winx = 1600;
 static int winy = 1024;
+
+static const std::string vs_path      = "../../apps/texture_fsquad/shaders/phong_lighting.glslv";
+static const std::string fs_path      = "../../apps/texture_fsquad/shaders/phong_lighting.glslf";
+static const std::string obj_path     = "../../apps/texture_fsquad/geometry/box.obj";
+static const std::string texture_path = "../../apps/texture_fsquad/textures/0001MM_diff.jpg";
+
+// GL context variables
+scm::shared_ptr<scm::gl::render_device>     _device;
+scm::shared_ptr<scm::gl::render_context>    _context;
+
+scm::gl::program_ptr                        _shader_program;
+
+scm::gl::buffer_ptr                         _index_buffer;
+scm::gl::vertex_array_ptr                   _vertex_array;
+
+scm::math::mat4f                            _projection_matrix;
+
+scm::shared_ptr<scm::gl::box_geometry>      _box;
+
+//////////////////////////
+scm::gl::trackball_manipulator _trackball_manip;
+
+scm::shared_ptr<scm::gl::wavefront_obj_geometry>  _obj;
+scm::gl::depth_stencil_state_ptr     _dstate_less;
+scm::gl::depth_stencil_state_ptr     _dstate_disable;
+
+scm::gl::blend_state_ptr            _no_blend;
+scm::gl::blend_state_ptr            _blend_omsa;
+scm::gl::blend_state_ptr            _color_mask_green;
+
+scm::gl::texture_2d_ptr             _color_texture;
+
+scm::gl::sampler_state_ptr          _filter_lin_mip;
+scm::gl::sampler_state_ptr          _filter_aniso;
+scm::gl::sampler_state_ptr          _filter_nearest;
+scm::gl::sampler_state_ptr          _filter_linear;
+
+scm::gl::texture_2d_ptr             _color_buffer;
+scm::gl::texture_2d_ptr             _color_buffer_resolved;
+scm::gl::texture_2d_ptr             _depth_buffer;
+scm::gl::frame_buffer_ptr           _framebuffer;
+scm::gl::frame_buffer_ptr           _framebuffer_resolved;
+scm::shared_ptr<scm::gl::quad_geometry>  _quad;
+scm::gl::program_ptr                _pass_through_shader;
+scm::gl::depth_stencil_state_ptr    _depth_no_z;
+scm::gl::rasterizer_state_ptr       _ms_back_cull;
+
+void initialize() {
+    using namespace scm;
+    using namespace scm::gl;
+    using namespace scm::math;
+    using boost::assign::list_of;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Load Shader files
+
+    std::string vs_source; // Vertex Shader
+    std::string fs_source; // Fragment Shader
+
+    // load shader files
+    if(!scm::io::read_text_file(vs_path, vs_source) || !scm::io::read_text_file(fs_path, fs_source)) {
+        throw std::invalid_argument("error while reading shader files");
+    }
+
+    _device.reset(new scm::gl::render_device());
+
+    _context        = _device -> main_context();
+    _shader_program = _device -> create_program(list_of
+        (_device -> create_shader(STAGE_VERTEX_SHADER, vs_source))
+        (_device -> create_shader(STAGE_FRAGMENT_SHADER, fs_source))
+        );
+
+    // Check if shader program was successfully created
+    if(!_shader_program) {
+        throw std::runtime_error("Error creating shader program");
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Set lightning
+
+    // lightning constants
+    const scm::math::vec3f diffuse(0.7f, 0.7f, 0.7f);
+    const scm::math::vec3f specular(0.2f, 0.7f, 0.9f);
+    const scm::math::vec3f ambient(0.1f, 0.1f, 0.1f);
+    const scm::math::vec3f position(1, 1, 1);
+
+    // set light parameters
+    _shader_program->uniform("light_ambient", ambient);
+    _shader_program->uniform("light_diffuse", diffuse);
+    _shader_program->uniform("light_specular", specular);
+    _shader_program->uniform("light_position", position);
+
+    _shader_program->uniform("material_ambient", ambient);
+    _shader_program->uniform("material_diffuse", diffuse);
+    _shader_program->uniform("material_specular", specular);
+    _shader_program->uniform("material_shininess", 128.0f);
+    _shader_program->uniform("material_opacity", 1.0f);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Some stuff I don't know jet clearly
+
+    // new exciting stuff
+    std::vector<scm::math::vec3f> positions_normals;
+    std::vector<unsigned short>   indices;
+
+    // fill normals with (useful) data?!
+    positions_normals.push_back(scm::math::vec3f(0.0f, 0.0f, 0.0f));
+    positions_normals.push_back(scm::math::vec3f(0.0f, 0.0f, 1.0f));
+
+    positions_normals.push_back(scm::math::vec3f(1.0f, 0.0f, 0.0f));
+    positions_normals.push_back(scm::math::vec3f(0.0f, 0.0f, 1.0f));
+
+    positions_normals.push_back(scm::math::vec3f(1.0f, 1.0f, 0.0f));
+    positions_normals.push_back(scm::math::vec3f(0.0f, 0.0f, 1.0f));
+
+    positions_normals.push_back(scm::math::vec3f(0.0f, 1.0f, 0.0f));
+    positions_normals.push_back(scm::math::vec3f(0.0f, 0.0f, 1.0f));
+
+    // point to the normals in the vertex buffer
+    indices.push_back(0);
+    indices.push_back(1);
+    indices.push_back(2);
+    indices.push_back(0);
+    indices.push_back(2);
+    indices.push_back(3);
+
+    buffer_ptr positions_normals_buf;
+    positions_normals_buf = _device->create_buffer(
+        BIND_VERTEX_BUFFER,
+        USAGE_STATIC_DRAW,
+        positions_normals.size() * sizeof(scm::math::vec3f),
+        &positions_normals.front()
+        );
+
+    _index_buffer = _device->create_buffer(
+        BIND_INDEX_BUFFER,
+        USAGE_STATIC_DRAW,
+        indices.size() * sizeof(unsigned short),
+        &indices.front()
+        );
+
+    _vertex_array = _device->create_vertex_array(
+        vertex_format(0, 0, TYPE_VEC3F, 2 * sizeof(scm::math::vec3f))
+                     (0, 1, TYPE_VEC3F, 2 * sizeof(scm::math::vec3f)),
+        list_of(positions_normals_buf));
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Some more stuff I don't know what it is doing
+
+    _dstate_less    = _device->create_depth_stencil_state(true, true, COMPARISON_LESS);
+    depth_stencil_state_desc dstate = _dstate_less->descriptor();
+    dstate._depth_test = false;
+
+    _dstate_disable = _device->create_depth_stencil_state(dstate);
+    //_dstate_disable = _device->create_depth_stencil_state(false);
+    _no_blend           = _device->create_blend_state(false, FUNC_ONE, FUNC_ZERO, FUNC_ONE, FUNC_ZERO);
+    _blend_omsa         = _device->create_blend_state(true, FUNC_SRC_ALPHA, FUNC_ONE_MINUS_SRC_ALPHA, FUNC_ONE, FUNC_ZERO);
+    _color_mask_green   = _device->create_blend_state(true, FUNC_SRC_ALPHA, FUNC_ONE_MINUS_SRC_ALPHA, FUNC_ONE, FUNC_ZERO,
+                                                             EQ_FUNC_ADD, EQ_FUNC_ADD, COLOR_GREEN | COLOR_BLUE);
+
+    _box.reset(new box_geometry(_device, vec3f(-0.5f), vec3f(0.5f)));
+    _obj.reset(new wavefront_obj_geometry(_device, obj_path));
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Load Texture
+
+    texture_loader tex_loader;
+    _color_texture = tex_loader.load_texture_2d(
+        *_device,     // set device
+        texture_path, // image path
+        true,         // create mips
+        false         // color mips
+        );
+
+    _filter_lin_mip = _device->create_sampler_state(FILTER_MIN_MAG_MIP_LINEAR, WRAP_CLAMP_TO_EDGE);
+    _filter_aniso   = _device->create_sampler_state(FILTER_ANISOTROPIC, WRAP_CLAMP_TO_EDGE, 16);
+    _filter_nearest = _device->create_sampler_state(FILTER_MIN_MAG_NEAREST, WRAP_CLAMP_TO_EDGE);
+    _filter_linear  = _device->create_sampler_state(FILTER_MIN_MAG_LINEAR, WRAP_CLAMP_TO_EDGE);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // initialize framebuffer
+
+    _color_buffer          = _device->create_texture_2d(
+                                vec2ui(winx, winy) * 1, // size
+                                FORMAT_RGBA_8,          // format
+                                1, 1, 8);               // mip levels, array layers, samples
+
+    _depth_buffer          = _device->create_texture_2d(
+                                vec2ui(winx, winy) * 1, // size
+                                FORMAT_D24,             // format
+                                1, 1, 8);               // mip levels, array layers, samples
+
+    _framebuffer           = _device->create_frame_buffer();
+
+    _framebuffer->attach_color_buffer(0, _color_buffer);
+    _framebuffer->attach_depth_stencil_buffer(_depth_buffer);
+
+    _color_buffer_resolved = _device->create_texture_2d(
+                                vec2ui(winx, winy) * 1,
+                                FORMAT_RGBA_8);
+
+    _framebuffer_resolved  = _device->create_frame_buffer();
+    _framebuffer_resolved->attach_color_buffer(0, _color_buffer_resolved);
+
+    _quad.reset(new quad_geometry(
+                        _device,
+                        vec2f(0.0f, 0.0f), // min vertex
+                        vec2f(1.0f, 1.0f)  // max vertex
+                        ));
+
+    _depth_no_z   = _device->create_depth_stencil_state(false, false);
+    _ms_back_cull = _device->create_rasterizer_state(FILL_SOLID, CULL_BACK, ORIENT_CCW, true);
+
+    std::string v_pass = "\
+        #version 330\n\
+        \
+        uniform mat4 mvp;\
+        out vec2 tex_coord;\
+        layout(location = 0) in vec3 in_position;\
+        layout(location = 2) in vec2 in_texture_coord;\
+        void main()\
+        {\
+            gl_Position = mvp * vec4(in_position, 1.0);\
+            tex_coord = in_texture_coord;\
+        }\
+        ";
+    std::string f_pass = "\
+        #version 330\n\
+        \
+        in vec2 tex_coord;\
+        uniform sampler2D in_texture;\
+        layout(location = 0) out vec4 out_color;\
+        void main()\
+        {\
+            out_color = texelFetch(in_texture, ivec2(gl_FragCoord.xy), 0).rgba;\
+        }\
+        ";
+
+    _pass_through_shader = _device->create_program(list_of
+        (_device->create_shader(STAGE_VERTEX_SHADER, v_pass))
+        (_device->create_shader(STAGE_FRAGMENT_SHADER, f_pass))
+        );
+
+    _trackball_manip.dolly(2.5f);
+}
 
 int main(int argc, char** argv) {
 
     // init GLUT and create Window
     glutInit(&argc, argv);
-    glutInitContextVersion (4,2);
+    glutInitContextVersion (4,4);
     glutInitContextProfile(GLUT_CORE_PROFILE);
 
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 
     // set properties from window
     glutCreateWindow("First test with GLUT and SCHISM");
-    glutInitWindowPosition(0, 0);
+    //glutInitWindowPosition(0, 0);
     glutInitWindowSize(winx, winy);
 
+    // init GL context
+    try {
+        initialize();
+    } catch (std::exception& e) {
+        std::cout << e.what() << std::endl;
+        return -1;
+    }
+
     // register callbacks
-    glutDisplayFunc(display);
+    //glutDisplayFunc(display);
 
     // enter GLUT event processing cycle
     glutMainLoop();
