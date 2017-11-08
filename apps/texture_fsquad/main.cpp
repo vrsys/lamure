@@ -49,6 +49,15 @@ scm::shared_ptr<scm::gl::wavefront_obj_geometry>  _obj;
 //////////////////////////
 scm::gl::trackball_manipulator _trackball_manip;
 
+float _initx = 0;
+float _inity = 0;
+
+bool _lb_down = false;
+bool _mb_down = false;
+bool _rb_down = false;
+
+float _dolly_sens = 10.0f;
+
 scm::gl::depth_stencil_state_ptr     _dstate_less;
 scm::gl::depth_stencil_state_ptr     _dstate_disable;
 
@@ -413,7 +422,45 @@ void reshape(int w, int h) {
         );
 }
 
+void mousefunc(int button, int state, int x, int y) {
+    switch (button) {
+        case GLUT_LEFT_BUTTON: {
+                _lb_down = (state == GLUT_DOWN) ? true : false;
+            }break;
+        case GLUT_MIDDLE_BUTTON: {
+                _mb_down = (state == GLUT_DOWN) ? true : false;
+            }break;
+        case GLUT_RIGHT_BUTTON: {
+                _rb_down = (state == GLUT_DOWN) ? true : false;
+            }break;
+    }
+
+    _initx = 2.f * float(x - (winx/2))/float(winx);
+    _inity = 2.f * float(winy - y - (winy/2))/float(winy);
+}
+
+void mousemotion(int x, int y) {
+    float nx = 2.f * float(x - (winx/2))/float(winx);
+    float ny = 2.f * float(winy - y - (winy/2))/float(winy);
+
+    //std::cout << "nx " << nx << " ny " << ny << std::endl;
+
+    if (_lb_down) {
+        _trackball_manip.rotation(_initx, _inity, nx, ny);
+    }
+    if (_rb_down) {
+        _trackball_manip.dolly(_dolly_sens * (ny - _inity));
+    }
+    if (_mb_down) {
+        _trackball_manip.translation(nx - _initx, ny - _inity);
+    }
+
+    _inity = ny;
+    _initx = nx;
+}
+
 int main(int argc, char** argv) {
+    scm::shared_ptr<scm::core>      scm_core(new scm::core(argc, argv));
 
     // init GLUT and create Window
     glutInit(&argc, argv);
@@ -438,6 +485,9 @@ int main(int argc, char** argv) {
     // register callbacks
     glutReshapeFunc(reshape);
     glutDisplayFunc(display);
+    glutMouseFunc(mousefunc);
+    glutMotionFunc(mousemotion);
+    glutIdleFunc(glutPostRedisplay); // glutPosRedisplay already given
 
     // enter GLUT event processing cycle
     glutMainLoop();
