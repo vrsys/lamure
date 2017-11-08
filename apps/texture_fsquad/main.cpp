@@ -30,6 +30,7 @@ static const std::string vs_path      = "../../apps/texture_fsquad/shaders/phong
 static const std::string fs_path      = "../../apps/texture_fsquad/shaders/phong_lighting.glslf";
 static const std::string obj_path     = "../../apps/texture_fsquad/geometry/box.obj";
 static const std::string texture_path = "../../apps/texture_fsquad/textures/0001MM_diff.jpg";
+// static const std::string texture_path = "../../apps/texture_fsquad/textures/cat-full.png";
 
 // GL context variables
 scm::shared_ptr<scm::gl::render_device>     _device;
@@ -43,11 +44,11 @@ scm::gl::vertex_array_ptr                   _vertex_array;
 scm::math::mat4f                            _projection_matrix;
 
 scm::shared_ptr<scm::gl::box_geometry>      _box;
+scm::shared_ptr<scm::gl::wavefront_obj_geometry>  _obj;
 
 //////////////////////////
 scm::gl::trackball_manipulator _trackball_manip;
 
-scm::shared_ptr<scm::gl::wavefront_obj_geometry>  _obj;
 scm::gl::depth_stencil_state_ptr     _dstate_less;
 scm::gl::depth_stencil_state_ptr     _dstate_disable;
 
@@ -172,18 +173,63 @@ void initialize() {
         list_of(positions_normals_buf));
 
     ////////////////////////////////////////////////////////////////////////////
-    // Some more stuff I don't know what it is doing
+    // Define depth stencil state
+    // Depth stencil state controls how the depth buffer and the stencil buffer
+    // are used.
+    //
+    // Depth buffer:
+    //   stores for each pixel the z data (floating-point depth)
+    //
+    // Stencil buffer:
+    //   Mask which pixels get saved and which are discarded
 
-    _dstate_less    = _device->create_depth_stencil_state(true, true, COMPARISON_LESS);
+    _dstate_less = _device->create_depth_stencil_state(
+        true,            // depth test
+        true,            // depth mask
+        COMPARISON_LESS  // depth func
+        );
+
     depth_stencil_state_desc dstate = _dstate_less->descriptor();
     dstate._depth_test = false;
 
     _dstate_disable = _device->create_depth_stencil_state(dstate);
-    //_dstate_disable = _device->create_depth_stencil_state(false);
-    _no_blend           = _device->create_blend_state(false, FUNC_ONE, FUNC_ZERO, FUNC_ONE, FUNC_ZERO);
-    _blend_omsa         = _device->create_blend_state(true, FUNC_SRC_ALPHA, FUNC_ONE_MINUS_SRC_ALPHA, FUNC_ONE, FUNC_ZERO);
-    _color_mask_green   = _device->create_blend_state(true, FUNC_SRC_ALPHA, FUNC_ONE_MINUS_SRC_ALPHA, FUNC_ONE, FUNC_ZERO,
-                                                             EQ_FUNC_ADD, EQ_FUNC_ADD, COLOR_GREEN | COLOR_BLUE);
+    _dstate_disable = _device->create_depth_stencil_state(false);
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Define some blend states (only one at a time can be used)
+    // Blend states controls how color and alpha values are blended when
+    // combining rendered data with existing render target data
+
+    _no_blend = _device->create_blend_state(
+        false,     // enabled
+        FUNC_ONE,  // src rgb func
+        FUNC_ZERO, // dst rgb func
+        FUNC_ONE,  // src alpha func
+        FUNC_ZERO  // dst alpha func
+        );
+
+    _blend_omsa = _device->create_blend_state(
+        true,                       // enabled
+        FUNC_SRC_ALPHA,             // src rgb func
+        FUNC_ONE_MINUS_SRC_ALPHA,   // dst rgb func
+        FUNC_ONE,                   // src alpha func
+        FUNC_ZERO);                 // dst alpha func
+
+    _color_mask_green   = _device->create_blend_state(
+        true,                      // enabled
+        FUNC_SRC_ALPHA,            // src rgb func
+        FUNC_ONE_MINUS_SRC_ALPHA,  // dst rgb func
+        FUNC_ONE,                  // src alpha func
+        FUNC_ZERO,                 // dst alpha func
+        EQ_FUNC_ADD,               // rgb equation
+        EQ_FUNC_ADD,               // alpha equation
+        COLOR_GREEN | COLOR_BLUE   // write mask
+        );
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Create scene objects
+
+    // ONLY _obj will be drawn; here, two ways to create objects
 
     _box.reset(new box_geometry(_device, vec3f(-0.5f), vec3f(0.5f)));
     _obj.reset(new wavefront_obj_geometry(_device, obj_path));
@@ -207,33 +253,32 @@ void initialize() {
     ////////////////////////////////////////////////////////////////////////////
     // initialize framebuffer
 
-    _color_buffer          = _device->create_texture_2d(
-                                vec2ui(winx, winy) * 1, // size
-                                FORMAT_RGBA_8,          // format
-                                1, 1, 8);               // mip levels, array layers, samples
+    _color_buffer = _device->create_texture_2d(
+        vec2ui(winx, winy) * 1, // size
+        FORMAT_RGBA_8,          // format
+        1, 1, 8);               // mip levels, array layers, samples
 
-    _depth_buffer          = _device->create_texture_2d(
-                                vec2ui(winx, winy) * 1, // size
-                                FORMAT_D24,             // format
-                                1, 1, 8);               // mip levels, array layers, samples
+    _depth_buffer = _device->create_texture_2d(
+        vec2ui(winx, winy) * 1, // size
+        FORMAT_D24,             // format
+        1, 1, 8);               // mip levels, array layers, samples
 
-    _framebuffer           = _device->create_frame_buffer();
-
+    _framebuffer  = _device->create_frame_buffer();
     _framebuffer->attach_color_buffer(0, _color_buffer);
     _framebuffer->attach_depth_stencil_buffer(_depth_buffer);
 
     _color_buffer_resolved = _device->create_texture_2d(
-                                vec2ui(winx, winy) * 1,
-                                FORMAT_RGBA_8);
+        vec2ui(winx, winy) * 1,
+        FORMAT_RGBA_8);
 
     _framebuffer_resolved  = _device->create_frame_buffer();
     _framebuffer_resolved->attach_color_buffer(0, _color_buffer_resolved);
 
     _quad.reset(new quad_geometry(
-                        _device,
-                        vec2f(0.0f, 0.0f), // min vertex
-                        vec2f(1.0f, 1.0f)  // max vertex
-                        ));
+        _device,
+        vec2f(0.0f, 0.0f), // min vertex
+        vec2f(1.0f, 1.0f)  // max vertex
+        ));
 
     _depth_no_z   = _device->create_depth_stencil_state(false, false);
     _ms_back_cull = _device->create_rasterizer_state(FILL_SOLID, CULL_BACK, ORIENT_CCW, true);
@@ -251,6 +296,7 @@ void initialize() {
             tex_coord = in_texture_coord;\
         }\
         ";
+
     std::string f_pass = "\
         #version 330\n\
         \
@@ -271,6 +317,102 @@ void initialize() {
     _trackball_manip.dolly(2.5f);
 }
 
+void display() {
+    using namespace scm::gl;
+    using namespace scm::math;
+
+    // clear the color and depth buffer
+    // glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+    mat4f    view_matrix         = _trackball_manip.transform_matrix();
+    mat4f    model_matrix        = mat4f::identity();
+    //scale(model_matrix, 0.01f, 0.01f, 0.01f);
+    mat4f    model_view_matrix   = view_matrix * model_matrix;
+    mat4f    mv_inv_transpose    = transpose(inverse(model_view_matrix));
+
+    _shader_program->uniform("projection_matrix", _projection_matrix);
+    _shader_program->uniform("model_view_matrix", model_view_matrix);
+    _shader_program->uniform("model_view_matrix_inverse_transpose", mv_inv_transpose);
+    _shader_program->uniform("color_texture_aniso", 0);
+    _shader_program->uniform("color_texture_nearest", 1);
+
+    _context->clear_default_color_buffer(
+                FRAMEBUFFER_BACK,
+                vec4f(.2f, .2f, .2f, 1.0f));
+    _context->clear_default_depth_stencil_buffer();
+
+    _context->reset();
+
+    ////////////////////////////////////////////////////////////////////////////
+    // multi sample pass
+
+    context_state_objects_guard csg(_context);
+    context_texture_units_guard tug(_context);
+    context_framebuffer_guard   fbg(_context);
+
+    _context->clear_color_buffer(_framebuffer, 0, vec4f( .2f, .2f, .2f, 1.0f));
+    _context->clear_depth_stencil_buffer(_framebuffer);
+
+    _context->set_frame_buffer(_framebuffer);
+    _context->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(winx, winy)));
+
+    _context->set_depth_stencil_state(_dstate_less);
+    _context->set_blend_state(_no_blend);
+    _context->set_rasterizer_state(_ms_back_cull);
+
+    _context->bind_program(_shader_program);
+
+    _context->bind_texture(_color_texture, _filter_aniso,   0);
+    _context->bind_texture(_color_texture, _filter_nearest, 1);
+
+    _obj->draw(_context);
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    _context->resolve_multi_sample_buffer(_framebuffer, _framebuffer_resolved);
+    _context->generate_mipmaps(_color_buffer_resolved);
+
+    _context->reset();
+
+    mat4f pass_mvp = mat4f::identity();
+    ortho_matrix(pass_mvp, 0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+
+    _pass_through_shader->uniform_sampler("in_texture", 0);
+    _pass_through_shader->uniform("mvp", pass_mvp);
+
+    _context->set_default_frame_buffer();
+    _context->set_depth_stencil_state(_depth_no_z);
+    _context->set_blend_state(_no_blend);
+    _context->bind_program(_pass_through_shader);
+    _context->bind_texture(_color_buffer_resolved, _filter_nearest, 0);
+
+    _quad->draw(_context);
+
+    // swap the back and front buffer, so that the drawn stuff can be seen
+    glutSwapBuffers();
+}
+
+void reshape(int w, int h) {
+    // safe the new dimensions
+    winx = w;
+    winy = h;
+
+    // set the new viewport into which now will be rendered
+    _context->set_viewport(
+        scm::gl::viewport(
+            scm::math::vec2ui(0, 0), // position
+            scm::math::vec2ui(w, h)) // dimensions
+        );
+
+    scm::math::perspective_matrix(
+        _projection_matrix,  // matrix
+        60.f,                // fovy
+        float(w)/float(h),   // aspect
+        0.1f,                // near z
+        100.0f               // far z
+        );
+}
+
 int main(int argc, char** argv) {
 
     // init GLUT and create Window
@@ -278,12 +420,12 @@ int main(int argc, char** argv) {
     glutInitContextVersion (4,4);
     glutInitContextProfile(GLUT_CORE_PROFILE);
 
-    glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA | GLUT_ALPHA | GLUT_MULTISAMPLE);
 
     // set properties from window
-    glutCreateWindow("First test with GLUT and SCHISM");
-    //glutInitWindowPosition(0, 0);
+    // glutInitWindowPosition(0, 0);
     glutInitWindowSize(winx, winy);
+    glutCreateWindow("First test with GLUT and SCHISM");
 
     // init GL context
     try {
@@ -294,7 +436,8 @@ int main(int argc, char** argv) {
     }
 
     // register callbacks
-    //glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutDisplayFunc(display);
 
     // enter GLUT event processing cycle
     glutMainLoop();
