@@ -66,7 +66,7 @@ public:
         return (uint32_t) (log((node_id + 1) * (4 - 1)) / log(4));
     }
 
-    static const uint32_t calculate_depth(size_t dim, short tile_size)
+    static const uint32_t calculate_depth(size_t dim, size_t tile_size)
     {
         size_t dim_tiled = dim / tile_size;
         return (uint32_t) (log(dim_tiled * dim_tiled) / log(4));

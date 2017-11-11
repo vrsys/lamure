@@ -5,7 +5,7 @@ link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=16 )
 add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
-find_package(ImageMagick COMPONENTS Magick++)
+find_package(ImageMagick COMPONENTS Magick++ MagickWand MagickCore montage)
 
 include_directories(${REND_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
