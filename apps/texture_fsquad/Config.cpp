@@ -9,6 +9,7 @@ public:
     static constexpr const char *TILE_SIZE = "TILE_SIZE";
     static constexpr const char *FILE_PPM = "FILE_PPM";
     static constexpr const char *FILE_MIPMAP = "FILE_MIPMAP";
+    static constexpr const char *RUN_IN_PARALLEL = "RUN_IN_PARALLEL";
 
     // Debug fields
     static constexpr const char *KEEP_INTERMEDIATE_DATA = "KEEP_INTERMEDIATE_DATA";

@@ -6,6 +6,7 @@
 #include <memory>
 #include <ImageMagick-6/Magick++.h>
 #include <boost/filesystem/path.hpp>
+#include <mutex>
 #include "SimpleIni.h"
 #include "QuadTree.cpp"
 #include "Config.cpp"
@@ -37,8 +38,7 @@ public:
       {
           image.read(name_raster);
           Magick::Geometry geometry = image.size();
-          size_t side =
-              (size_t) std::pow(2, std::floor(std::log(std::min(geometry.width(), geometry.height())) / std::log(2)));
+          size_t side = (size_t) std::pow(2, std::floor(std::log(std::min(geometry.width(), geometry.height())) / std::log(2)));
           geometry.aspect(false);
           geometry.width(side);
           geometry.height(side);
@@ -54,61 +54,50 @@ public:
   }
 
   bool prepare_mipmap() {
-      std::ifstream input;
-      input.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::DEFAULT),
-                 std::ifstream::in | std::ifstream::binary);
-
-      size_t dim_x = 0, dim_y = 0;
-      read_ppm_header(input, dim_x, dim_y);
-
-      streamoff offset_header = input.tellg();
-
       auto tile_size = (size_t) atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::DEFAULT));
       if ((tile_size & (tile_size - 1)) != 0)
       {
           throw std::runtime_error("Tile size is not a power of 2");
       }
 
-      auto *buf_tile = new char[tile_size * tile_size * 3];
-      std::string buf_header =
-          "P6\x0A" + std::to_string(tile_size) + "\x20" + std::to_string(tile_size) + "\x0A" + "255" + "\x0A";
+      uint32_t count_threads = 0;
+      count_threads = atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::RUN_IN_PARALLEL, Config::DEFAULT)) != 1 ? 1 : thread::hardware_concurrency();
+
+      size_t dim_x = 0, dim_y = 0;
+
+      std::ifstream input;
+      input.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::DEFAULT), std::ifstream::in | std::ifstream::binary);
+      read_ppm_header(input, dim_x, dim_y);
+      input.close();
 
       uint32_t tree_depth = QuadTree::calculate_depth(dim_x, tile_size);
-      size_t first_node = QuadTree::get_first_node_id_of_depth(tree_depth);
-      size_t
-          last_node = QuadTree::get_first_node_id_of_depth(tree_depth) + QuadTree::get_length_of_depth(tree_depth) - 1;
+      size_t first_node_leaf = QuadTree::get_first_node_id_of_depth(tree_depth);
+      size_t last_node_leaf = QuadTree::get_first_node_id_of_depth(tree_depth) + QuadTree::get_length_of_depth(tree_depth) - 1;
 
-      for (size_t _id = first_node; _id <= last_node; _id++)
+      size_t nodes_per_thread = (last_node_leaf - first_node_leaf + 1) / count_threads;
+
+      std::vector<std::thread> thread_pool;
+      std::mutex texture_lock;
+
+      for (uint32_t i = 0; i < count_threads; i++)
       {
-          uint_fast64_t skip_cols, skip_rows;
-          morton2D_64_decode((uint_fast64_t) (_id - first_node), skip_cols, skip_rows);
-
-          input.seekg(offset_header);
-          input.ignore(skip_rows * QuadTree::get_tiles_per_row(tree_depth) * tile_size * tile_size * 3);
-
-          for (uint32_t _row = 0; _row < tile_size; _row++)
-          {
-              input.ignore(skip_cols * tile_size * 3);
-              input.read(&buf_tile[_row * tile_size * 3], tile_size * 3);
-              input.ignore((QuadTree::get_tiles_per_row(tree_depth) - skip_cols - 1) * tile_size * 3);
-          }
-
-          std::ofstream output;
-          output.open("id_" + std::to_string(_id) + ".ppm",
-                      std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-          output.write(&buf_header.c_str()[0], buf_header.size());
-          output.write(&buf_tile[0], tile_size * tile_size * 3);
-          output.close();
+          size_t node_start = first_node_leaf + i * nodes_per_thread;
+          // TODO: when i==count_threads - 1 some overflow appears to occur
+          size_t node_end = (i != count_threads - 1) ? first_node_leaf + (i + 1) * nodes_per_thread : last_node_leaf;
+          thread_pool.emplace_back([&]
+                                   { write_tile_range_at_depth(texture_lock, tile_size, tree_depth, node_start, node_end); });
       }
-
-      input.close();
+      for (auto &_thread : thread_pool)
+      {
+          _thread.join();
+      }
 
       for (uint32_t _depth = tree_depth - 1; _depth > 0; _depth--)
       {
-          first_node = QuadTree::get_first_node_id_of_depth(_depth);
-          last_node = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
+          first_node_leaf = QuadTree::get_first_node_id_of_depth(_depth);
+          last_node_leaf = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
 
-          for (size_t _id = first_node; _id <= last_node; _id++)
+          for (size_t _id = first_node_leaf; _id <= last_node_leaf; _id++)
           {
               std::list<Magick::Image> children_imgs;
 
@@ -138,12 +127,14 @@ public:
       std::ofstream output;
       output.open(file_mipmap, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
 
+      auto *buf_tile = new char[tile_size * tile_size * 3];
+
       for (uint32_t _depth = 0; _depth <= tree_depth; _depth++)
       {
-          first_node = QuadTree::get_first_node_id_of_depth(_depth);
-          last_node = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
+          first_node_leaf = QuadTree::get_first_node_id_of_depth(_depth);
+          last_node_leaf = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
 
-          for (size_t _id = first_node; _id <= last_node; _id++)
+          for (size_t _id = first_node_leaf; _id <= last_node_leaf; _id++)
           {
               std::ifstream input_tile;
               input_tile.open("id_" + std::to_string(_id) + ".ppm", std::ifstream::in | std::ifstream::binary);
@@ -199,6 +190,53 @@ private:
       {
           throw std::runtime_error("PPM dimensions are not equal or not a power of 2");
       }
+  }
+
+  void write_tile_range_at_depth(std::mutex &_texture_lock, size_t _tile_size, uint32_t _depth, size_t _node_start, size_t _node_end) {
+      std::ifstream _ifs;
+      _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::DEFAULT), std::ifstream::in | std::ifstream::binary);
+
+      size_t dim_x = 0, dim_y = 0;
+
+      _texture_lock.lock();
+      read_ppm_header(_ifs, dim_x, dim_y);
+      _texture_lock.unlock();
+
+      streamoff _offset_header = _ifs.tellg();
+
+      auto *buf_tile = new char[_tile_size * _tile_size * 3];
+      std::string buf_header = "P6\x0A" + std::to_string(_tile_size) + "\x20" + std::to_string(_tile_size) + "\x0A" + "255" + "\x0A";
+
+      size_t _node_first = QuadTree::get_first_node_id_of_depth(_depth);
+      size_t _tiles_per_row = QuadTree::get_tiles_per_row(_depth);
+
+      for (size_t _id = _node_start; _id <= _node_end; _id++)
+      {
+          uint_fast64_t skip_cols, skip_rows;
+          morton2D_64_decode((uint_fast64_t) (_id - _node_first), skip_cols, skip_rows);
+
+          _texture_lock.lock();
+
+          _ifs.seekg(_offset_header);
+          _ifs.ignore(skip_rows * _tiles_per_row * _tile_size * _tile_size * 3);
+
+          for (uint32_t _row = 0; _row < _tile_size; _row++)
+          {
+              _ifs.ignore(skip_cols * _tile_size * 3);
+              _ifs.read(&buf_tile[_row * _tile_size * 3], _tile_size * 3);
+              _ifs.ignore((_tiles_per_row - skip_cols - 1) * _tile_size * 3);
+          }
+
+          _texture_lock.unlock();
+
+          std::ofstream output;
+          output.open("id_" + std::to_string(_id) + ".ppm", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+          output.write(&buf_header.c_str()[0], buf_header.size());
+          output.write(&buf_tile[0], _tile_size * _tile_size * 3);
+          output.close();
+      }
+
+      _ifs.close();
   }
 
   void write_stitched_tile(size_t _id, size_t _tile_size, list<Magick::Image> &_child_imgs) {
