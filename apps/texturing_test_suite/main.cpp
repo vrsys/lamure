@@ -1,6 +1,6 @@
 #include <iostream>
 #include <algorithm>
-#include <lamure/vt/TextureAtlas.h>
+#include <lamure/vt/ooc/TextureAtlas.h>
 
 using namespace std;
 
@@ -23,6 +23,8 @@ void printHex(uint8_t *data, size_t len, size_t chars_per_line = 0){
 
   cout.flags(f);
 }
+
+using namespace vt;
 
 int main() {
   /*ofstream file("/home/towe2387/Desktop/image.data");

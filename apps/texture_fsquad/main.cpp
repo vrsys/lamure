@@ -7,7 +7,9 @@
 #include <memory>
 #include <scm/core.h>
 #include <scm/core/math.h>
-#include "Preprocessor.cpp"
+#include <lamure/vt/pre/Preprocessor.h>
+
+using namespace vt;
 
 char *get_cmd_option(char **begin, char **end, const std::string &option) {
     char **it = std::find(begin, end, option);

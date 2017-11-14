@@ -7,10 +7,12 @@
 
 #include <mutex>
 #include <atomic>
-#include "definitions.h"
+#include "lamure/vt/common.h"
 #include "PagedBuffer.h"
 
 using namespace std;
+
+namespace vt {
 
 class RequestQueue;
 
@@ -63,6 +65,8 @@ public:
     id_type getId();
     void setId(id_type id);
 };
+
+}
 
 
 #endif //TILE_PROVIDER_REQUEST_H

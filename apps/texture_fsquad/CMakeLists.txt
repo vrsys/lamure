@@ -13,6 +13,7 @@ include_directories(${REND_INCLUDE_DIR}
         ${GLUT_INCLUDE_DIR}
         ${GLM_INCLUDE_DIR}
         ${FREEIMAGE_INCLUDE_DIR}
+        ${VT_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${ImageMagick_INCLUDE_DIRS})
 
@@ -28,6 +29,7 @@ target_link_libraries(${PROJECT_NAME}
         ${PROJECT_LIBS}
         ${REND_LIBRARY}
         ${PVS_COMMON_LIBRARY}
+        ${VT_LIBRARY}
         ${OpenGL_LIBRARIES}
         ${GLUT_glut_LIBRARY}
         optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}

@@ -7,21 +7,44 @@ project(${CMAKE_PROJECT_NAME}_virtual_texturing)
 set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=16 )
+add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
+find_package(ImageMagick COMPONENTS Magick++ MagickWand MagickCore montage)
+
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/*.h)
 
+file(GLOB EXT_SRC ${PROJECT_SOURCE_DIR}/ext/*.cpp)
+file(GLOB EXT_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ext/*.h)
+
+file(GLOB PRE_SRC ${PROJECT_SOURCE_DIR}/pre/*.cpp)
+file(GLOB PRE_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/pre/*.h)
+
+file(GLOB OOC_SRC ${PROJECT_SOURCE_DIR}/ooc/*.cpp)
+file(GLOB OOC_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ooc/*.h)
+
 SOURCE_GROUP("virtual_texturing" FILES ${MAIN_SRC})
 SOURCE_GROUP("virtual_texturing" FILES ${MAIN_INC})
 
-set(PROJECT_SOURCES ${MAIN_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC})
+SOURCE_GROUP("ext" FILES ${EXT_SRC})
+SOURCE_GROUP("ext" FILES ${EXT_INC})
+
+SOURCE_GROUP("pre" FILES ${PRE_SRC})
+SOURCE_GROUP("pre" FILES ${PRE_INC})
+
+SOURCE_GROUP("ooc" FILES ${OOC_SRC})
+SOURCE_GROUP("ooc" FILES ${OOC_INC})
+
+set(PROJECT_SOURCES ${MAIN_SRC} ${EXT_SRC} ${PRE_SRC} ${OOC_SRC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${EXT_INC} ${PRE_INC} ${OOC_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${CGAL_INCLUDE_DIR}
         ${GMP_INCLUDE_DIR}
+        ${ImageMagick_INCLUDE_DIRS}
         ${MPFR_INCLUDE_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
@@ -50,6 +73,7 @@ set(VT_LIBRARY ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
         ${COMMON_LIBRARY}
         ${PROJECT_LIBS}
+        ${ImageMagick_LIBRARIES}
         optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG})
 
 if (${LAMURE_USE_CGAL_FOR_NNI})

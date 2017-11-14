@@ -39,7 +39,7 @@
 ------------------------------------------------------------------------ */
 
 
-#include "ConvertUTF.h"
+#include "lamure/vt/external/ConvertUTF.h"
 #ifdef CVTUTF_DEBUG
 #include <stdio.h>
 #endif
