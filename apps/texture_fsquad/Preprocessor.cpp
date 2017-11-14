@@ -77,38 +77,46 @@ public:
       size_t nodes_per_thread = (last_node_leaf - first_node_leaf + 1) / count_threads;
 
       std::vector<std::thread> thread_pool;
-      std::mutex texture_lock;
+      auto *texture_lock = new std::mutex;
 
       for (uint32_t i = 0; i < count_threads; i++)
       {
           size_t node_start = first_node_leaf + i * nodes_per_thread;
-          // TODO: when i==count_threads - 1 some overflow appears to occur
           size_t node_end = (i != count_threads - 1) ? first_node_leaf + (i + 1) * nodes_per_thread : last_node_leaf;
-          thread_pool.emplace_back([&]
-                                   { write_tile_range_at_depth(texture_lock, tile_size, tree_depth, node_start, node_end); });
+          thread_pool.emplace_back([=]()
+                                   { write_tile_range_at_depth((*texture_lock), tile_size, tree_depth, node_start, node_end); });
       }
       for (auto &_thread : thread_pool)
       {
           _thread.join();
       }
 
+      thread_pool.clear();
+
       for (uint32_t _depth = tree_depth - 1; _depth > 0; _depth--)
       {
           first_node_leaf = QuadTree::get_first_node_id_of_depth(_depth);
           last_node_leaf = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
 
-          for (size_t _id = first_node_leaf; _id <= last_node_leaf; _id++)
+          nodes_per_thread = (last_node_leaf - first_node_leaf + 1) / count_threads;
+
+          if (nodes_per_thread > 0)
           {
-              std::list<Magick::Image> children_imgs;
-
-              for (size_t i = 0; i < 4; i++)
+              for (uint32_t i = 0; i < count_threads; i++)
               {
-                  Magick::Image _child;
-                  _child.read("id_" + std::to_string(QuadTree::get_child_id(_id, i)) + ".ppm");
-                  children_imgs.push_back(_child);
+                  size_t node_start = first_node_leaf + i * nodes_per_thread;
+                  size_t node_end = (i != count_threads - 1) ? first_node_leaf + (i + 1) * nodes_per_thread : last_node_leaf;
+                  thread_pool.emplace_back([=]()
+                                           { stitch_tile_range(tile_size, node_start, node_end); });
               }
-
-              write_stitched_tile(_id, tile_size, children_imgs);
+          }
+          else
+          {
+              stitch_tile_range(tile_size, first_node_leaf, last_node_leaf);
+          }
+          for (auto &_thread : thread_pool)
+          {
+              _thread.join();
           }
       }
 
@@ -192,7 +200,7 @@ private:
       }
   }
 
-  void write_tile_range_at_depth(std::mutex &_texture_lock, size_t _tile_size, uint32_t _depth, size_t _node_start, size_t _node_end) {
+  void write_tile_range_at_depth(std::mutex &_texture_lock, const size_t _tile_size, const uint32_t _depth, const size_t _node_start, const size_t _node_end) {
       std::ifstream _ifs;
       _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::DEFAULT), std::ifstream::in | std::ifstream::binary);
 
@@ -237,6 +245,22 @@ private:
       }
 
       _ifs.close();
+  }
+
+  void stitch_tile_range(const size_t _tile_size, const size_t _node_start, const size_t _node_end) {
+      for (size_t _id = _node_start; _id <= _node_end; _id++)
+      {
+          std::list<Magick::Image> children_imgs;
+
+          for (size_t i = 0; i < 4; i++)
+          {
+              Magick::Image _child;
+              _child.read("id_" + std::to_string(QuadTree::get_child_id(_id, i)) + ".ppm");
+              children_imgs.push_back(_child);
+          }
+
+          write_stitched_tile(_id, _tile_size, children_imgs);
+      }
   }
 
   void write_stitched_tile(size_t _id, size_t _tile_size, list<Magick::Image> &_child_imgs) {
