@@ -2,9 +2,9 @@
 // Created by sebastian on 13.11.17.
 //
 
-#include "TextureAtlas.h"
-#include "definitions.h"
-#include "Decompressor.h"
+#include "../include/lamure/vt/TextureAtlas.h"
+#include "../include/lamure/vt/definitions.h"
+#include "../include/lamure/vt/Decompressor.h"
 
 TextureAtlas::TextureAtlas(string fileName, size_t pageByteSize, COMPRESSION compression){
     _fileName = fileName;

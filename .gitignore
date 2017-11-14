@@ -3,3 +3,5 @@ install
 *.sublime-workspace
 *~
 *.nfs000*
+.idea
+cmake-build-debug

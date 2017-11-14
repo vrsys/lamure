@@ -2,8 +2,8 @@
 // Created by sebastian on 13.11.17.
 //
 
-#include "Request.h"
-#include "RequestQueue.h"
+#include "../include/lamure/vt/Request.h"
+#include "../include/lamure/vt/RequestQueue.h"
 
 Request::Request() {
     _parent = nullptr;

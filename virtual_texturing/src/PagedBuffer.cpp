@@ -3,8 +3,8 @@
 //
 
 #include <iostream>
-#include "PagedBuffer.h"
-#include "QueuedProcessor.h"
+#include "../include/lamure/vt/PagedBuffer.h"
+#include "../include/lamure/vt/QueuedProcessor.h"
 
 PagedBuffer::PagedBuffer(size_t pageSize, size_t pageNum){
     _processor = nullptr;

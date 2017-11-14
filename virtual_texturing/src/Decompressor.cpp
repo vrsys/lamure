@@ -4,7 +4,7 @@
 
 #include <cstring>
 #include <iostream>
-#include "Decompressor.h"
+#include "../include/lamure/vt/Decompressor.h"
 
 void Decompressor::request(Request *request){
     request->setState(Request::STATE::QUEUED_FOR_DECOMPRESS);

@@ -2,7 +2,7 @@
 // Created by sebastian on 13.11.17.
 //
 
-#include "QueuedProcessor.h"
+#include "../include/lamure/vt/QueuedProcessor.h"
 
 QueuedProcessor::QueuedProcessor() {
     _running = false;

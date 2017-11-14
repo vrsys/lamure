@@ -3,7 +3,7 @@
 //
 
 #include <iostream>
-#include "RequestQueue.h"
+#include "../include/lamure/vt/RequestQueue.h"
 
 void RequestQueue::insert(Request *request){
     lock_guard<mutex> lock(_requestsLock);

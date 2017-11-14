@@ -2,8 +2,8 @@
 // Created by sebastian on 13.11.17.
 //
 
-#include "PageCache.h"
-#include "QueuedProcessor.h"
+#include "../include/lamure/vt/PageCache.h"
+#include "../include/lamure/vt/QueuedProcessor.h"
 
 PageCache::PageCache(size_t pageSize, size_t pageNum) : PagedBuffer(pageSize, pageNum){
     _lastUsed = new clock_t[pageNum];
