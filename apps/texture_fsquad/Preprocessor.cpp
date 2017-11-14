@@ -109,14 +109,15 @@ public:
                   thread_pool.emplace_back([=]()
                                            { stitch_tile_range(tile_size, node_start, node_end); });
               }
+              for (auto &_thread : thread_pool)
+              {
+                  _thread.join();
+              }
+              thread_pool.clear();
           }
           else
           {
               stitch_tile_range(tile_size, first_node_leaf, last_node_leaf);
-          }
-          for (auto &_thread : thread_pool)
-          {
-              _thread.join();
           }
       }
 
