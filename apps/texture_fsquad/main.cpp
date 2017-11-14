@@ -23,7 +23,7 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc == 1 || !cmd_option_exists(argv, argv + argc, "-p"))
+    if (argc == 1 || !cmd_option_exists(argv, argv + argc, "-c"))
     {
         std::cout << "Usage: " << argv[0] << " <flags> -p <image> -c <config>" << std::endl << std::endl;
         return -1;
@@ -39,8 +39,7 @@ int main(int argc, char *argv[]) {
 
         preprocessor.prepare_mipmap();
     }
-
-    if (get_cmd_option(argv, argv + argc, "-c") != nullptr)
+    else if (get_cmd_option(argv, argv + argc, "-c") != nullptr)
     {
         std::string file_config = std::string(get_cmd_option(argv, argv + argc, "-c"));
 
