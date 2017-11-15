@@ -6,6 +6,7 @@
 #define VT_COMMON_H
 
 #include <cstdint>
+#include <string.h>
 
 namespace vt {
 
@@ -31,20 +32,20 @@ public:
   static constexpr const char *TEXTURE_FORMAT_RGB6 = "RGB6";
   static constexpr const char *TEXTURE_FORMAT_R2 = "R2";
 
-  static enum FORMAT_TEXTURE {
+  enum FORMAT_TEXTURE {
     RGBA8, RGB6, R2
   };
 
   static const FORMAT_TEXTURE which_texture_format(const char *_texture_format) {
-      if (std::strcmp(_texture_format, TEXTURE_FORMAT_RGBA8))
+      if (strcmp(_texture_format, TEXTURE_FORMAT_RGBA8) != 0)
       {
           return RGBA8;
       }
-      else if (std::strcmp(_texture_format, TEXTURE_FORMAT_RGB6))
+      else if (strcmp(_texture_format, TEXTURE_FORMAT_RGB6) != 0)
       {
           return RGB6;
       }
-      else if (std::strcmp(_texture_format, TEXTURE_FORMAT_R2))
+      else if (strcmp(_texture_format, TEXTURE_FORMAT_R2) != 0)
       {
           return R2;
       }

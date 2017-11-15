@@ -92,8 +92,6 @@ bool Preprocessor::prepare_mipmap() {
     bool verbose = atoi(config->GetValue(Config::DEBUG, Config::VERBOSE, Config::UNDEF)) == 1;
 
     uint32_t tree_depth = QuadTree::calculate_depth(dim_x, tile_size);
-    size_t first_node_leaf = QuadTree::get_first_node_id_of_depth(tree_depth);
-    size_t last_node_leaf = QuadTree::get_first_node_id_of_depth(tree_depth) + QuadTree::get_length_of_depth(tree_depth) - 1;
 
     if (verbose)
     {
@@ -107,18 +105,15 @@ bool Preprocessor::prepare_mipmap() {
         std::cout << "Creating " << QuadTree::get_length_of_depth(tree_depth) << " leaf level tiles in " << count_threads << " threads" << std::endl;
     }
 
-    size_t nodes_per_thread = (last_node_leaf - first_node_leaf + 1) / count_threads;
-
     std::vector<std::thread> thread_pool;
 
-    // TODO: implement in-core tile row optimization
     for (uint32_t _thread_id = 0; _thread_id < count_threads; _thread_id++)
     {
-        size_t node_start = first_node_leaf + _thread_id * nodes_per_thread;
-        size_t node_end = (_thread_id != count_threads - 1) ? first_node_leaf + (_thread_id + 1) * nodes_per_thread : last_node_leaf;
-        thread_pool.emplace_back(
-            [=]()
-            { write_tile_range_at_depth(_thread_id, tree_depth, node_start, node_end); });
+//        thread_pool.emplace_back([=]()
+//                                 { extract_leaf_tile_range(_thread_id); });
+
+        thread_pool.emplace_back([=]()
+                                 { extract_leaf_tile_rows(_thread_id); });
     }
     for (auto &_thread : thread_pool)
     {
@@ -141,17 +136,17 @@ bool Preprocessor::prepare_mipmap() {
             std::cout << "Stitching " << QuadTree::get_length_of_depth(_depth) << " tiles of depth " << _depth << std::endl;
         }
 
-        first_node_leaf = QuadTree::get_first_node_id_of_depth(_depth);
-        last_node_leaf = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
+        size_t first_node_depth = QuadTree::get_first_node_id_of_depth(_depth);
+        size_t last_node_depth = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
 
-        nodes_per_thread = (last_node_leaf - first_node_leaf + 1) / count_threads;
+        size_t nodes_per_thread = (last_node_depth - first_node_depth + 1) / count_threads;
 
         if (nodes_per_thread > 0)
         {
             for (uint32_t _thread_id = 0; _thread_id < count_threads; _thread_id++)
             {
-                size_t node_start = first_node_leaf + _thread_id * nodes_per_thread;
-                size_t node_end = (_thread_id != count_threads - 1) ? first_node_leaf + (_thread_id + 1) * nodes_per_thread : last_node_leaf;
+                size_t node_start = first_node_depth + _thread_id * nodes_per_thread;
+                size_t node_end = (_thread_id != count_threads - 1) ? first_node_depth + (_thread_id + 1) * nodes_per_thread : last_node_depth;
                 thread_pool.emplace_back([=]()
                                          { stitch_tile_range(_thread_id, node_start, node_end); });
             }
@@ -163,7 +158,7 @@ bool Preprocessor::prepare_mipmap() {
         }
         else
         {
-            stitch_tile_range(0, first_node_leaf, last_node_leaf);
+            stitch_tile_range(0, first_node_depth, last_node_depth);
         }
     }
 
@@ -184,10 +179,10 @@ bool Preprocessor::prepare_mipmap() {
 
     for (uint32_t _depth = 0; _depth <= tree_depth; _depth++)
     {
-        first_node_leaf = QuadTree::get_first_node_id_of_depth(_depth);
-        last_node_leaf = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
+        size_t first_node_depth = QuadTree::get_first_node_id_of_depth(_depth);
+        size_t last_node_depth = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
 
-        for (size_t _id = first_node_leaf; _id <= last_node_leaf; _id++)
+        for (size_t _id = first_node_depth; _id <= last_node_depth; _id++)
         {
             std::ifstream input_tile;
             input_tile.open("id_" + std::to_string(_id) + ".ppm", std::ifstream::in | std::ifstream::binary);
@@ -249,8 +244,7 @@ void Preprocessor::read_ppm_header(std::ifstream &_ifs, size_t &_dim_x, size_t &
     }
 }
 
-// TODO: implement in-core tile row optimization
-void Preprocessor::write_tile_range_at_depth(uint32_t _thread_id, uint32_t _depth, size_t _node_start, size_t _node_end) {
+void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
     std::ifstream _ifs;
     _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::UNDEF),
               std::ifstream::in | std::ifstream::binary);
@@ -267,12 +261,19 @@ void Preprocessor::write_tile_range_at_depth(uint32_t _thread_id, uint32_t _dept
         throw std::runtime_error("Tile size is not a power of 2");
     }
 
-    auto *buf_tile = new char[_tile_size * _tile_size * 3];
-    std::string buf_header =
-        "P6\x0A" + std::to_string(_tile_size) + "\x20" + std::to_string(_tile_size) + "\x0A" + "255" + "\x0A";
+    uint32_t _tree_depth = QuadTree::calculate_depth(dim_x, _tile_size);
 
-    size_t _node_first = QuadTree::get_first_node_id_of_depth(_depth);
-    size_t _tiles_per_row = QuadTree::get_tiles_per_row(_depth);
+    auto *buf_tile = new char[_tile_size * _tile_size * 3];
+    std::string buf_header = "P6\x0A" + std::to_string(_tile_size) + "\x20" + std::to_string(_tile_size) + "\x0A" + "255" + "\x0A";
+
+    size_t _node_first_leaf = QuadTree::get_first_node_id_of_depth(_tree_depth);
+    size_t _node_last_leaf = QuadTree::get_first_node_id_of_depth(_tree_depth) + QuadTree::get_length_of_depth(_tree_depth) - 1;
+    size_t _tiles_per_row = QuadTree::get_tiles_per_row(_tree_depth);
+
+    size_t _nodes_per_thread = (_node_last_leaf - _node_first_leaf + 1) / thread::hardware_concurrency();
+
+    size_t _node_start = _node_first_leaf + _thread_id * _nodes_per_thread;
+    size_t _node_end = (_thread_id != thread::hardware_concurrency() - 1) ? _node_first_leaf + (_thread_id + 1) * _nodes_per_thread : _node_last_leaf;
 
     size_t _range = _node_end - _node_start;
 
@@ -289,7 +290,7 @@ void Preprocessor::write_tile_range_at_depth(uint32_t _thread_id, uint32_t _dept
         }
 
         uint_fast64_t skip_cols, skip_rows;
-        morton2D_64_decode((uint_fast64_t) (_id - _node_first), skip_cols, skip_rows);
+        morton2D_64_decode((uint_fast64_t) (_id - _node_first_leaf), skip_cols, skip_rows);
 
         _ifs.seekg(_offset_header);
         _ifs.ignore(skip_rows * _tiles_per_row * _tile_size * _tile_size * 3);
@@ -329,6 +330,101 @@ void Preprocessor::write_tile_range_at_depth(uint32_t _thread_id, uint32_t _dept
     }
 
     _ifs.close();
+
+    if (verbose)
+    {
+        std::cout << "Thread #" << _thread_id << " done" << std::endl;
+        std::cout << "Average tile creation time: " << average << " msec" << std::endl;
+    }
+}
+
+// TODO: implement in-core tile row optimization
+void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
+    std::ifstream _ifs;
+    _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::UNDEF), std::ifstream::in | std::ifstream::binary);
+
+    size_t dim_x = 0, dim_y = 0;
+
+    read_ppm_header(_ifs, dim_x, dim_y);
+
+    const auto tile_size = static_cast<const size_t>(atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF)));
+    if ((tile_size & (tile_size - 1)) != 0)
+    {
+        throw std::runtime_error("Tile size is not a power of 2");
+    }
+
+    const uint32_t tree_depth = QuadTree::calculate_depth(dim_x, tile_size);
+    const size_t tiles_per_row = QuadTree::get_tiles_per_row(tree_depth);
+
+    size_t rows_per_thread = tiles_per_row / thread::hardware_concurrency();
+
+    auto **buf_tiles = new char *[tiles_per_row];
+    for (int _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
+    {
+        buf_tiles[_tile_row] = new char[tile_size * tile_size * 3];
+    }
+
+    std::string buf_header = "P6\x0A" + std::to_string(tile_size) + "\x20" + std::to_string(tile_size) + "\x0A" + "255" + "\x0A";
+
+    size_t _tile_row = _thread_id * rows_per_thread;
+
+    bool verbose = atoi(config->GetValue(Config::DEBUG, Config::VERBOSE, Config::UNDEF)) == 1;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    double average = 0.0;
+
+    if (_tile_row < tiles_per_row)
+    {
+        if (verbose)
+        {
+            start = std::chrono::high_resolution_clock::now();
+        }
+
+        _ifs.ignore(_tile_row * tiles_per_row * tile_size * tile_size * 3);
+
+        while (_tile_row < (_thread_id + 1) * rows_per_thread && _tile_row < tiles_per_row)
+        {
+            for (uint32_t _row = 0; _row < tile_size; _row++)
+            {
+                for (uint32_t _tile_col = 0; _tile_col < tiles_per_row; _tile_col++)
+                {
+                    _ifs.read(&buf_tiles[_tile_col][_row * tile_size * 3], tile_size * 3);
+                }
+            }
+
+            for (uint32_t _tile_col = 0; _tile_col < tiles_per_row; _tile_col++)
+            {
+                uint_fast64_t _id = morton2D_64_encode(_tile_col, _tile_row) + QuadTree::get_first_node_id_of_depth(tree_depth);
+
+                std::ofstream output;
+                output.open("id_" + std::to_string(_id) + ".ppm", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                output.write(&buf_header.c_str()[0], buf_header.size());
+                output.write(&buf_tiles[_tile_col][0], tile_size * tile_size * 3);
+                output.close();
+            }
+
+            if (verbose)
+            {
+                if ((_tile_row - _thread_id * rows_per_thread) % (rows_per_thread / 10 + 1) == 0)
+                {
+                    std::cout << "Thread #" << _thread_id << " progress: " << (_tile_row - _thread_id * rows_per_thread) * 100 / rows_per_thread << " %" << std::endl;
+                }
+            }
+
+            _tile_row += 1;
+        }
+
+        if (verbose)
+        {
+            average = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count() / rows_per_thread / tiles_per_row;
+        }
+    }
+
+    _ifs.close();
+
+    for (int _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
+        delete[] buf_tiles[_tile_row];
+    delete[] buf_tiles;
 
     if (verbose)
     {

@@ -35,11 +35,13 @@ private:
 
   void read_ppm_header(std::ifstream &_ifs, size_t &_dim_x, size_t &_dim_y);
 
-  void write_tile_range_at_depth(uint32_t _thread_id, uint32_t _depth, size_t _node_start, size_t _node_end);
+  void extract_leaf_tile_range(uint32_t _thread_id);
 
   void stitch_tile_range(uint32_t _thread_id, size_t _node_start, size_t _node_end);
 
   void write_stitched_tile(size_t _id, size_t _tile_size, std::array<Magick::Image, 4> &_child_imgs);
+
+  void extract_leaf_tile_rows(uint32_t _thread_id);
 };
 
 }
