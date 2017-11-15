@@ -21,7 +21,7 @@ public:
 
   // Texture management fields
   static constexpr const char *TILE_SIZE = "TILE_SIZE";
-  static constexpr const char *FILE_PPM = "FILE_PPM";
+  static constexpr const char *FILE_TEXTURE = "FILE_TEXTURE";
   static constexpr const char *FILE_MIPMAP = "FILE_MIPMAP";
 
   static constexpr const char *OPT_RUN_IN_PARALLEL = "OPT_RUN_IN_PARALLEL";
@@ -37,15 +37,15 @@ public:
   };
 
   static const FORMAT_TEXTURE which_texture_format(const char *_texture_format) {
-      if (strcmp(_texture_format, TEXTURE_FORMAT_RGBA8) != 0)
+      if (strcmp(_texture_format, TEXTURE_FORMAT_RGBA8) == 0)
       {
           return RGBA8;
       }
-      else if (strcmp(_texture_format, TEXTURE_FORMAT_RGB6) != 0)
+      else if (strcmp(_texture_format, TEXTURE_FORMAT_RGB6) == 0)
       {
           return RGB6;
       }
-      else if (strcmp(_texture_format, TEXTURE_FORMAT_R2) != 0)
+      else if (strcmp(_texture_format, TEXTURE_FORMAT_R2) == 0)
       {
           return R2;
       }

@@ -10,7 +10,7 @@ Preprocessor::Preprocessor(const char *path_config) {
         throw std::runtime_error("Configuration file parsing error");
     }
 
-    boost::filesystem::path path_texture(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::UNDEF));
+    boost::filesystem::path path_texture(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF));
     boost::filesystem::path dir_texture = path_texture.parent_path();
     Magick::InitializeMagick(dir_texture.c_str());
 
@@ -18,7 +18,7 @@ Preprocessor::Preprocessor(const char *path_config) {
     {
         std::cout << std::endl;
         std::cout << "Preprocessor initialized" << std::endl;
-        std::cout << "Operating on config file: " << path_texture.filename() << std::endl;
+        std::cout << "Operating on config file: " << path_config << std::endl;
         std::cout << "Working directory: " << dir_texture.c_str() << std::endl;
         std::cout << std::endl;
     }
@@ -44,18 +44,29 @@ bool Preprocessor::prepare_single_raster(const char *name_raster) {
         geometry.height(side);
         image.crop(geometry);
 
-        // TODO: convert image to relevant depth & colorspace
+        // TODO: complete color space support
         switch (format_texture)
         {
         case Config::FORMAT_TEXTURE::RGBA8:
+
+            image.type(Magick::TrueColorType);
+            image.depth(8);
+            break;
         case Config::FORMAT_TEXTURE::RGB6:
+
+            image.quantizeColorSpace(Magick::RGBColorspace);
+            image.quantizeColors(256);
+            image.quantize();
+            break;
         case Config::FORMAT_TEXTURE::R2:
 
-            image.depth(8);
+            image.quantizeColorSpace(Magick::GRAYColorspace);
+            image.quantizeColors(256);
+            image.quantize();
             break;
         }
 
-        image.write(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::UNDEF));
+        image.write(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF));
     }
     catch (Magick::Exception &error_)
     {
@@ -85,7 +96,7 @@ bool Preprocessor::prepare_mipmap() {
     size_t dim_x = 0, dim_y = 0;
 
     std::ifstream input;
-    input.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::UNDEF), std::ifstream::in | std::ifstream::binary);
+    input.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF), std::ifstream::in | std::ifstream::binary);
     read_ppm_header(input, dim_x, dim_y);
     input.close();
 
@@ -109,6 +120,7 @@ bool Preprocessor::prepare_mipmap() {
 
     for (uint32_t _thread_id = 0; _thread_id < count_threads; _thread_id++)
     {
+        if(atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF)) == 1)
 //        thread_pool.emplace_back([=]()
 //                                 { extract_leaf_tile_range(_thread_id); });
 
@@ -246,7 +258,7 @@ void Preprocessor::read_ppm_header(std::ifstream &_ifs, size_t &_dim_x, size_t &
 
 void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
     std::ifstream _ifs;
-    _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::UNDEF),
+    _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF),
               std::ifstream::in | std::ifstream::binary);
 
     size_t dim_x = 0, dim_y = 0;
@@ -338,10 +350,9 @@ void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
     }
 }
 
-// TODO: implement in-core tile row optimization
 void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
     std::ifstream _ifs;
-    _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_PPM, Config::UNDEF), std::ifstream::in | std::ifstream::binary);
+    _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF), std::ifstream::in | std::ifstream::binary);
 
     size_t dim_x = 0, dim_y = 0;
 
