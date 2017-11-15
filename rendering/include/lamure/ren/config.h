@@ -68,6 +68,7 @@ namespace ren {
 #define LAMURE_DEFAULT_UPLOAD_BUDGET 64
 #define LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET 1024
 #define LAMURE_DEFAULT_MAIN_MEMORY_BUDGET 4096
+#define LAMURE_DEFAULT_SIZE_OF_PROVENANCE 0
 
 //------------------------------
 //for ooc_cache:

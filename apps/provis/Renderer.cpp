@@ -117,20 +117,6 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     }
     _rasterizer_state = device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
 
-    lamure::ren::policy *policy = lamure::ren::policy::get_instance();
-    policy->set_max_upload_budget_in_mb(64);
-
-    policy->set_render_budget_in_mb(2000);
-    // policy->set_render_budget_in_mb(1024 * 6);
-    // policy->set_render_budget_in_mb(1024 * 40);
-    // policy->set_render_budget_in_mb(256);
-
-    policy->set_out_of_core_budget_in_mb(2000);
-    // policy->set_out_of_core_budget_in_mb(1024 * 3);
-    // policy->set_out_of_core_budget_in_mb(1024 * 20);
-    // policy->set_out_of_core_budget_in_mb(256);
-
-    std::cout << "SETTING POLICY" << std::endl;
 
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();

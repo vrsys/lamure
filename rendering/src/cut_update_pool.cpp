@@ -82,8 +82,12 @@ void cut_update_pool::initialize()
     index_->update_policy(0);
     gpu_cache_ = new gpu_cache(render_budget_in_nodes_);
 
+    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+
     semaphore_.set_max_signal_count(1);
     semaphore_.set_min_signal_count(1);
+
+    
 
 #ifdef LAMURE_ENABLE_INFO
     std::cout << "lamure: num models: " << index_->num_models() << std::endl;
@@ -1162,7 +1166,7 @@ void cut_update_pool::compile_transfer_list()
 
             memcpy(current_gpu_storage_ + slot_count * database->get_slot_size(), node_data, database->get_slot_size());
 
-            if(_data_provenance.get_size_in_bytes() != 0)
+            if(_data_provenance.get_size_in_bytes() > 0)
             {
                 memcpy(current_gpu_storage_provenance_ + slot_count * database->get_primitives_per_node() * _data_provenance.get_size_in_bytes(), node_data_provenance,
                        database->get_primitives_per_node() * _data_provenance.get_size_in_bytes());

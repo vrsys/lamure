@@ -372,7 +372,7 @@ void gpu_context::map_temporary_storage(const cut_database_record::temporary_buf
         if(!temp_buffer_a_->is_mapped())
         {
             temporary_storages_.storage_a_ = temp_buffer_a_->map(device);
-            temporary_storages_provenance_.storage_a_ = temp_buffer_a_->map_provenance(device);
+            //temporary_storages_provenance_.storage_a_ = temp_buffer_a_->map_provenance(device);
         }
         return;
         break;
@@ -381,7 +381,7 @@ void gpu_context::map_temporary_storage(const cut_database_record::temporary_buf
         if(!temp_buffer_b_->is_mapped())
         {
             temporary_storages_.storage_b_ = temp_buffer_b_->map(device);
-            temporary_storages_provenance_.storage_b_ = temp_buffer_b_->map_provenance(device);
+            //temporary_storages_provenance_.storage_b_ = temp_buffer_b_->map_provenance(device);
         }
         return;
         break;
@@ -463,7 +463,7 @@ void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_b
         if(temp_buffer_a_->is_mapped())
         {
             temp_buffer_a_->unmap(device);
-            temp_buffer_a_->unmap_provenance(device);
+            //temp_buffer_a_->unmap_provenance(device);
         }
         break;
 
@@ -471,7 +471,7 @@ void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_b
         if(temp_buffer_b_->is_mapped())
         {
             temp_buffer_b_->unmap(device);
-            temp_buffer_b_->unmap_provenance(device);
+            //temp_buffer_b_->unmap_provenance(device);
         }
         break;
 
@@ -492,16 +492,16 @@ void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_b
     case cut_database_record::temporary_buffer::BUFFER_A:
         if(temp_buffer_a_->is_mapped())
         {
-            temp_buffer_a_->unmap(device);
-            // temp_buffer_a_->unmap_provenance(device);
+            //temp_buffer_a_->unmap(device);
+             temp_buffer_a_->unmap_provenance(device);
         }
         break;
 
     case cut_database_record::temporary_buffer::BUFFER_B:
         if(temp_buffer_b_->is_mapped())
         {
-            temp_buffer_b_->unmap(device);
-            // temp_buffer_b_->unmap_provenance(device);
+            //temp_buffer_b_->unmap(device);
+             temp_buffer_b_->unmap_provenance(device);
         }
         break;
 

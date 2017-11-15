@@ -29,6 +29,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     size_of_slot_ = num_surfels_per_node * size_of_surfel_;
     std::cout << "size of surfel: " << size_of_surfel_ << std::endl;
     std::cout << "size of slot: " << size_of_slot_ << std::endl;
+    std::cout << "num_surfels_per_node " << num_surfels_per_node << " size_of_surfel_ " << size_of_surfel_ << std::endl;
 
     buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_, 0);
 
@@ -54,7 +55,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     device->main_context()->apply();
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << std::endl;
+    std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << " (WITHOUT_PROVENANCE)" << std::endl;
 #endif
 }
 gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, Data_Provenance const &data_provenance, bool create_layout)
@@ -131,7 +132,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
         std::cout << "------------------------------ no error inside gpu_access::gpu_accesss" << std::endl;
     }
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << std::endl;
+    std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << " (WITH PROVENANCE)" << std::endl;
 #endif
 }
 
@@ -148,7 +149,7 @@ gpu_access::~gpu_access()
 
 char *gpu_access::map(scm::gl::render_device_ptr const &device)
 {
-    std::cout << "called!!!!!!!!!!!!!!!" << std::endl;
+    //std::cout << "called!!!!!!!!!!!!!!!" << std::endl;
     if(!is_mapped_)
     {
         assert(device);

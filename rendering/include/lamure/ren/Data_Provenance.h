@@ -11,6 +11,7 @@
 #include "json.h"
 #include <fstream>
 #include <lamure/ren/Item_Provenance.h>
+#include <lamure/ren/policy.h>
 #include <lamure/types.h>
 #include <lamure/utils.h>
 #include <map>
@@ -26,7 +27,10 @@ namespace ren
 class Data_Provenance
 {
   public:
-    Data_Provenance(){};
+    Data_Provenance() {
+      _size_in_bytes = policy::get_instance()->size_of_provenance();
+      //std::cout << "data provenance " << _size_in_bytes << std::endl;
+    };
 
     static Data_Provenance parse_json(std::string path)
     {
