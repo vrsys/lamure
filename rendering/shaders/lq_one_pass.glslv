@@ -1,7 +1,7 @@
 // Copyright (c) 2014 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -12,6 +12,15 @@ uniform mat4 inv_mv_matrix;
 uniform float model_radius_scale;
 uniform float point_size_factor;
 
+uniform float radius_sphere;
+uniform vec3 position_sphere;
+uniform bool render_normals;
+uniform bool state_lense;
+uniform int mode_prov_data;
+uniform float heatmap_min;
+uniform float heatmap_max;
+uniform vec3 heatmap_min_color;
+uniform vec3 heatmap_max_color;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -20,6 +29,7 @@ layout(location = 3) in float in_b;
 layout(location = 4) in float empty;
 layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
+
 
 out VertexData {
   //output to geometry shader
@@ -53,4 +63,5 @@ void main()
   VertexOut.pass_normal = normal;
   gl_Position = vec4(in_position, 1.0);
   VertexOut.pass_point_color = in_out_color;
+
 }

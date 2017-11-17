@@ -1,47 +1,37 @@
 // Copyright (c) 2014 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include "utils.h"
 #include "management.h"
 
+#include "utils.h"
 #include <set>
 #include <ctime>
+
 #include <algorithm>
+#include <ctime>
 #include <fstream>
 #include <chrono>
 
 #include <lamure/ren/bvh.h>
+#include <set>
 #include <lamure/pvs/pvs_database.h>
 
 #include <glm/glm.hpp>
 #include "MatrixInterpolation.hpp"
 
-management::
-management(std::vector<std::string> const& model_filenames,
-    std::vector<scm::math::mat4f> const& model_transformations,
-    std::set<lamure::model_t> const& visible_set,
-    std::set<lamure::model_t> const& invisible_set,
-    snapshot_session_descriptor& snap_descriptor)
-    :   num_taken_screenshots_(0),
-        allow_user_input_(snap_descriptor.recorded_view_vector_.size() == 0),
-        screenshot_session_started_(false),
-        camera_recording_enabled_(false),
-        //current_session_filename_(session_filename),
-        current_session_file_path_(""),
-        num_recorded_camera_positions_(0),
-        renderer_(nullptr),
-        model_filenames_(model_filenames),
-        model_transformations_(model_transformations),
-        //recorded_view_vector_(recorded_view_vector),
-        measurement_session_descriptor_(snap_descriptor),
+management::management(std::vector<std::string> const &model_filenames, std::vector<scm::math::mat4f> const &model_transformations, std::set<lamure::model_t> const &visible_set,
+                       std::set<lamure::model_t> const &invisible_set, snapshot_session_descriptor &snap_descriptor)
+    : num_taken_screenshots_(0), allow_user_input_(snap_descriptor.recorded_view_vector_.size() == 0), screenshot_session_started_(false), camera_recording_enabled_(false),
+      // current_session_filename_(session_filename),
+      current_session_file_path_(""), num_recorded_camera_positions_(0), renderer_(nullptr), model_filenames_(model_filenames), model_transformations_(model_transformations),
+      // recorded_view_vector_(recorded_view_vector),
+      measurement_session_descriptor_(snap_descriptor),
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-        active_camera_left_(nullptr),
-        active_camera_right_(nullptr),
-        control_left_(true),
+      active_camera_left_(nullptr), active_camera_right_(nullptr), control_left_(true),
 #endif
         test_send_rendered_(true),
         active_camera_(nullptr),
@@ -71,7 +61,7 @@ management(std::vector<std::string> const& model_filenames,
     lamure::model_t model_id = database->add_model(model_filenames_[0], std::to_string(num_models_));
     ++num_models_;
 #else
-    for (const auto& filename : model_filenames_)
+    for(const auto &filename : model_filenames_)
     {
         lamure::model_t model_id = database->add_model(filename, std::to_string(num_models_));
         ++num_models_;
@@ -79,25 +69,24 @@ management(std::vector<std::string> const& model_filenames,
 #endif
 
     {
-
         float scene_diameter = far_plane_;
-        for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-            const auto& bb = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
-            scene_diameter = std::max(scm::math::length(bb.max_vertex()-bb.min_vertex()), scene_diameter);
+        for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+        {
+            const auto &bb = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
+            scene_diameter = std::max(scm::math::length(bb.max_vertex() - bb.min_vertex()), scene_diameter);
             model_transformations_[model_id] = model_transformations_[model_id] * scm::math::make_translation(database->get_model(model_id)->get_bvh()->get_translation());
         }
         far_plane_ = 2.0f * scene_diameter;
 
         auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
         scm::math::vec3 center = model_transformations_[0] * root_bb.center();
-        reset_matrix_ = scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f,-0.01f), center, scm::math::vec3f(0.f, 1.f,0.f));
-        reset_diameter_ = scm::math::length(root_bb.max_vertex()-root_bb.min_vertex());
-
+        reset_matrix_ = scm::math::make_look_at_matrix(center + scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f));
+        reset_diameter_ = scm::math::length(root_bb.max_vertex() - root_bb.min_vertex());
 
         std::cout << "model center : " << center << std::endl;
         std::cout << "model size : " << reset_diameter_ << std::endl;
 
-        for (lamure::view_t cam_id = 0; cam_id < num_cameras_; ++cam_id)
+        for(lamure::view_t cam_id = 0; cam_id < num_cameras_; ++cam_id)
         {
             cameras_.push_back(new lamure::ren::camera(cam_id, reset_matrix_, reset_diameter_, false, false));
         }
@@ -129,18 +118,17 @@ management(std::vector<std::string> const& model_filenames,
     use_wasd_camera_control_scheme_ = false;
 }
 
-management::
-~management()
+management::~management()
 {
-    for (auto& cam : cameras_)
+    for(auto &cam : cameras_)
     {
-        if (cam != nullptr)
+        if(cam != nullptr)
         {
             delete cam;
             cam = nullptr;
         }
     }
-    if (renderer_ != nullptr)
+    if(renderer_ != nullptr)
     {
         delete renderer_;
         renderer_ = nullptr;
@@ -170,9 +158,9 @@ void management::resolve_movement(double elapsed_time_ms) {
   }
 }
 
-bool management::
-MainLoop()
+bool management::MainLoop()
 {
+
     std::chrono::time_point<std::chrono::system_clock> start_time, end_time;
     start_time = std::chrono::system_clock::now();
 
@@ -202,9 +190,8 @@ MainLoop()
     controller->reset_system();
 
     lamure::context_t context_id = controller->deduce_context_id(0);
-    
-    controller->dispatch(context_id, renderer_->device());
 
+    controller->dispatch(context_id, renderer_->device());
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
     lamure::view_t view_id_left = controller->deduce_view_id(context_id, active_camera_left_->view_id());
@@ -213,17 +200,18 @@ MainLoop()
 
     lamure::view_t view_id = controller->deduce_view_id(context_id, active_camera_->view_id());
 
-#endif    
-    
-
-#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), num_recorded_camera_positions_);
-    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), num_recorded_camera_positions_);
-#else
-    renderer_->set_radius_scale(importance_);
-    renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()), num_recorded_camera_positions_);
 #endif
 
+#ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
+    renderer_->render(context_id, *active_camera_left_, view_id_left, 0, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()),
+                      num_recorded_camera_positions_);
+    renderer_->render(context_id, *active_camera_right_, view_id_right, 1, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()),
+                      num_recorded_camera_positions_);
+#else
+    renderer_->set_radius_scale(importance_);
+    renderer_->render(context_id, *active_camera_, view_id, controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, renderer_->device()),
+                      num_recorded_camera_positions_);
+#endif
 
     std::string status_string("");
 
@@ -314,6 +302,7 @@ MainLoop()
                     interpolation_time_point_ = 0.0f;
                     measurement_session_descriptor_.recorded_view_vector_.pop_back();
                 }
+
             }
             else
             {
@@ -323,6 +312,7 @@ MainLoop()
         }
         else
         {
+
             // Classic way. Take screenshots only at transformations saved in session file.
             size_t ms_since_update = controller->ms_since_last_node_upload();
 
@@ -363,6 +353,7 @@ MainLoop()
                 status_string += std::to_string(((3000 - ms_since_update) / 100) * 100 ) + " ms until next buffer snapshot.\n";
                 status_string += std::to_string((int)(max_timeout_timer_time - current_update_timeout_timer_)) + " s until forced snapshot.\n";
             }
+
         }
     }
 
@@ -379,34 +370,37 @@ MainLoop()
 
     renderer_->display_status(status_string);
 
-    if (dispatch_ || trigger_one_update_)
+    if(dispatch_ || trigger_one_update_)
     {
-        if (trigger_one_update_)
+        if(trigger_one_update_)
         {
             trigger_one_update_ = false;
         }
 
-        for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id)
+        for(lamure::model_t model_id = 0; model_id < num_models_; ++model_id)
         {
             lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
 
             cuts->send_transform(context_id, m_id, model_transformations_[m_id]);
             cuts->send_threshold(context_id, m_id, error_threshold_ / importance_);
-            
-            //if (visible_set_.find(model_id) != visible_set_.end())
-            if (!test_send_rendered_) {
-               if (model_id > num_models_/2) {
-                  cuts->send_rendered(context_id, m_id);
-               }
+
+            // if (visible_set_.find(model_id) != visible_set_.end())
+            if(!test_send_rendered_)
+            {
+                if(model_id > num_models_ / 2)
+                {
+                    cuts->send_rendered(context_id, m_id);
+                }
             }
-            else {
-               cuts->send_rendered(context_id, m_id);
+            else
+            {
+                cuts->send_rendered(context_id, m_id);
             }
 
             database->get_model(m_id)->set_transform(model_transformations_[m_id]);
         }
 
-        for (auto& cam : cameras_)
+        for(auto &cam : cameras_)
         {
             lamure::view_t cam_id = controller->deduce_view_id(context_id, cam->view_id());
             cuts->send_camera(context_id, cam_id, *cam);
@@ -418,8 +412,7 @@ MainLoop()
             cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
         }
 
-        //controller->dispatch(context_id, renderer_->device());
-
+        // controller->dispatch(context_id, renderer_->device());
     }
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
@@ -427,18 +420,17 @@ MainLoop()
     boost::timer::cpu_times const elapsed_times(system_performance_timer_.elapsed());
     boost::timer::nanosecond_type const elapsed(elapsed_times.system + elapsed_times.user);
 
-    if (elapsed >= boost::timer::nanosecond_type(1.0f * 1000 * 1000 * 1000)) //1 second
+    if(elapsed >= boost::timer::nanosecond_type(1.0f * 1000 * 1000 * 1000)) // 1 second
     {
-       boost::timer::cpu_times const result_elapsed_times(system_result_timer_.elapsed());
-       boost::timer::nanosecond_type const result_elapsed(result_elapsed_times.system + result_elapsed_times.user);
+        boost::timer::cpu_times const result_elapsed_times(system_result_timer_.elapsed());
+        boost::timer::nanosecond_type const result_elapsed(result_elapsed_times.system + result_elapsed_times.user);
 
-
-       std::cout << "no cut update after " << result_elapsed/(1000 * 1000 * 1000) << " seconds" << std::endl;
-       system_performance_timer_.start();
+        std::cout << "no cut update after " << result_elapsed / (1000 * 1000 * 1000) << " seconds" << std::endl;
+        system_performance_timer_.start();
     }
     else
     {
-       system_performance_timer_.resume();
+        system_performance_timer_.resume();
     }
 
 #endif
@@ -455,9 +447,9 @@ MainLoop()
     return signal_shutdown;
 }
 
+void management::update_trackball(int x, int y) { active_camera_->update_trackball(x, y, width_, height_, mouse_state_); }
 
-void management::
-update_trackball(int x, int y)
+void management::RegisterMousePresses(int button, int state, int x, int y)
 {
     if(use_wasd_camera_control_scheme_)
     {
@@ -480,13 +472,8 @@ update_trackball(int x, int y)
     {
         active_camera_->update_trackball(x,y, width_, height_, mouse_state_);
     }
-}
 
 
-
-void management::
-RegisterMousePresses(int button, int state, int x, int y)
-{
     if(! allow_user_input_)
     {
         return;
@@ -528,9 +515,7 @@ RegisterMousePresses(int button, int state, int x, int y)
     }
 }
 
-
-void management::
-dispatchKeyboardInput(unsigned char key)
+void management::dispatchKeyboardInput(unsigned char key)
 {
     if(! allow_user_input_)
     {
@@ -539,11 +524,11 @@ dispatchKeyboardInput(unsigned char key)
 
     bool override_center_of_rotation = false;
 
-    switch (key)
+    switch(key)
     {
     case 'p':
-      renderer_->toggle_provenance_rendering();
-      break;
+        renderer_->toggle_provenance_rendering();
+        break;
     case 'm':
       renderer_->toggle_do_measurement();
       break;
@@ -620,7 +605,7 @@ dispatchKeyboardInput(unsigned char key)
     case '1':
 
         control_left_ = !control_left_;
-        if (control_left_)
+        if(control_left_)
             active_camera_ = active_camera_left_;
         else
             active_camera_ = active_camera_right_;
@@ -628,7 +613,7 @@ dispatchKeyboardInput(unsigned char key)
 
     case '2':
         control_left_ = !control_left_;
-        if (control_left_)
+        if(control_left_)
             active_camera_ = active_camera_left_;
         else
             active_camera_ = active_camera_right_;
@@ -649,31 +634,31 @@ dispatchKeyboardInput(unsigned char key)
     case ' ':
 #ifdef LAMURE_RENDERING_ENABLE_MULTI_VIEW_TEST
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
+    {
+        if(control_left_)
         {
-            if (control_left_)
-            {
-                lamure::view_t current_camera_id = active_camera_left_->view_id();
-                active_camera_left_ = cameras_[(++current_camera_id) % num_cameras_];
-                active_camera_ = active_camera_left_;
-            }
-            else
-            {
-                lamure::view_t current_camera_id = active_camera_right_->view_id();
-                active_camera_right_ = cameras_[(++current_camera_id) % num_cameras_];
-                active_camera_ = active_camera_right_;
-            }
+            lamure::view_t current_camera_id = active_camera_left_->view_id();
+            active_camera_left_ = cameras_[(++current_camera_id) % num_cameras_];
+            active_camera_ = active_camera_left_;
+        }
+        else
+        {
+            lamure::view_t current_camera_id = active_camera_right_->view_id();
+            active_camera_right_ = cameras_[(++current_camera_id) % num_cameras_];
+            active_camera_ = active_camera_right_;
+        }
 
-            renderer_->toggle_camera_info(active_camera_left_->view_id(), active_camera_right_->view_id());
-        }
+        renderer_->toggle_camera_info(active_camera_left_->view_id(), active_camera_right_->view_id());
+    }
 #else
-        {
-            lamure::view_t current_camera_id = active_camera_->view_id();
-            active_camera_ = cameras_[(++current_camera_id) % num_cameras_];
-            renderer_->toggle_camera_info(active_camera_->view_id());
-        }
+    {
+        lamure::view_t current_camera_id = active_camera_->view_id();
+        active_camera_ = cameras_[(++current_camera_id) % num_cameras_];
+        renderer_->toggle_camera_info(active_camera_->view_id());
+    }
 #endif
 #endif
-        break;
+    break;
 
     case 'd':
         this->Toggledispatching();
@@ -681,40 +666,39 @@ dispatchKeyboardInput(unsigned char key)
         break;
 
     case 'z':
-        {
-        lamure::ren::ooc_cache* ooc_cache = lamure::ren::ooc_cache::get_instance();
+    {
+        lamure::ren::ooc_cache *ooc_cache = lamure::ren::ooc_cache::get_instance();
         ooc_cache->begin_measure();
-        }
-        break;
+    }
+    break;
 
     case 'Z':
-        {
-        lamure::ren::ooc_cache* ooc_cache = lamure::ren::ooc_cache::get_instance();
+    {
+        lamure::ren::ooc_cache *ooc_cache = lamure::ren::ooc_cache::get_instance();
         ooc_cache->end_measure();
-        }
-        break;
+    }
+    break;
 
     case 'e':
         trigger_one_update_ = true;
         break;
 
     case 'x':
-        {
+    {
 #ifdef LAMURE_RENDERING_ENABLE_MULTI_VIEW_TEST
         cameras_.push_back(new lamure::ren::camera(num_cameras_, reset_matrix_, reset_diameter_, fast_travel_));
         int w = width_;
         int h = height_;
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-        w/=2;
+        w /= 2;
 #endif
 
-        cameras_.back()->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
+        cameras_.back()->set_projection_matrix(30.0f, float(w) / float(h), near_plane_, far_plane_);
 
         ++num_cameras_;
 #endif
-        }
-        break;
-
+    }
+    break;
 
     case 'f':
       {
@@ -753,32 +737,46 @@ dispatchKeyboardInput(unsigned char key)
 #ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
     
  
-    case 'V':
+    case 'Q':
+    {
         {
-           override_center_of_rotation = true;
-
+            travel_speed_mode_ = 0;
         }
+        const float travel_speed = (travel_speed_mode_ == 0 ? 0.5f : travel_speed_mode_ == 1 ? 20.5f : travel_speed_mode_ == 2 ? 100.5f : 300.5f);
+        std::cout << "setting travel speed to " << travel_speed << std::endl;
+        for(auto &cam : cameras_)
+        {
+            cam->set_dolly_sens_(travel_speed);
+        }
+    }
+    break;
+#endif
+#ifndef LAMURE_RENDERING_USE_SPLIT_SCREEN
+
+    case 'V':
+    {
+        override_center_of_rotation = true;
+    }
 
 #if 1
     case 'v':
-        {
-            scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
-            scm::math::vec3f cam_pos = scm::math::vec3f(cm[12], cm[13], cm[14]);
-            scm::math::vec3f cam_fwd = -scm::math::normalize(scm::math::vec3f(cm[8], cm[9], cm[10]));
-            scm::math::vec3f cam_right = scm::math::normalize(scm::math::vec3f(cm[4], cm[5], cm[6]));
-            scm::math::vec3f cam_up = scm::math::normalize(scm::math::vec3f(cm[0], cm[1], cm[2]));
+    {
+        scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(active_camera_->trackball_matrix()));
+        scm::math::vec3f cam_pos = scm::math::vec3f(cm[12], cm[13], cm[14]);
+        scm::math::vec3f cam_fwd = -scm::math::normalize(scm::math::vec3f(cm[8], cm[9], cm[10]));
+        scm::math::vec3f cam_right = scm::math::normalize(scm::math::vec3f(cm[4], cm[5], cm[6]));
+        scm::math::vec3f cam_up = scm::math::normalize(scm::math::vec3f(cm[0], cm[1], cm[2]));
 
-            float max_distance = 100000.0f;
- 
-            lamure::ren::ray::intersection intersectn;
-            std::vector<lamure::ren::ray::intersection> dbg_intersections;
-            lamure::ren::ray intersection_ray(cam_pos, cam_fwd, max_distance);
-          
-            //sample params for single pick (wysiwg)
-            unsigned int max_depth = 255;
-            unsigned int surfel_skip = 1;
-            float plane_dim = 0.11f;//e.g. 5.0 for valley, 0.05 for seradina rock
+        float max_distance = 100000.0f;
 
+        lamure::ren::ray::intersection intersectn;
+        std::vector<lamure::ren::ray::intersection> dbg_intersections;
+        lamure::ren::ray ray_brush(cam_pos, cam_fwd, max_distance);
+
+        // sample params for single pick (wysiwg)
+        unsigned int max_depth = 255;
+        unsigned int surfel_skip = 1;
+        float plane_dim = 0.11f; // e.g. 5.0 for valley, 0.05 for seradina rock
 
 #if 0 /*INTERPOLATION PICK*/
                 if (intersection_ray.intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersectn)) {
@@ -802,89 +800,92 @@ dispatchKeyboardInput(unsigned char key)
 #endif
                 }
 
-#elif 0 /*SINGLE PICK SPLAT-BASED*/
-            lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-            for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-               scm::math::mat4f model_transform = database->get_model(model_id)->transform();
-               lamure::ren::ray::Intersection temp;
-               if (intersection_ray.intersect_model(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp)) {
-                  intersectn = temp;
-               }
-            }
+#elif 1 /*SINGLE PICK SPLAT-BASED*/
+// lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+// for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+// {
+//     scm::math::mat4f model_transform = database->get_model(model_id)->transform();
+//     lamure::ren::ray::Intersection temp;
+//     if(intersection_ray.intersect_model(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp))
+//     {
+//         intersectn = temp;
+//     }
+// }
 
 #elif 0 /*SINGLE PICK BVH-BASED*/
 
-            lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-            for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-               scm::math::mat4f model_transform = database->get_model(model_id)->transform();
-               lamure::ren::ray::Intersectionbvh temp;
-               if (intersection_ray.intersect_model_bvh(model_id, model_transform, 1.0f, temp)) {
-                  //std::cout << "hit i model id " << model_id << " distance: " << temp.tmin_ << std::endl;
-                  intersectn.position_ = temp.position_;
-                  intersectn.normal_ = scm::math::vec3f(0.0f, 1.0f, 0.f);
-                  intersectn.error_ = 0.f;
-                  intersectn.distance_ = temp.tmin_;   
-               }
-
+        lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+        for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+        {
+            scm::math::mat4f model_transform = database->get_model(model_id)->transform();
+            lamure::ren::ray::Intersectionbvh temp;
+            if(intersection_ray.intersect_model_bvh(model_id, model_transform, 1.0f, temp))
+            {
+                // std::cout << "hit i model id " << model_id << " distance: " << temp.tmin_ << std::endl;
+                intersectn.position_ = temp.position_;
+                intersectn.normal_ = scm::math::vec3f(0.0f, 1.0f, 0.f);
+                intersectn.error_ = 0.f;
+                intersectn.distance_ = temp.tmin_;
             }
-            
+        }
+
 #else /*DISAMBIGUATION SINGLE PICK BVH-BASED*/
 
-      //compile list of model kdn filenames
-      lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-      std::set<std::string> bvh_filenames;
-      for (lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id) {
-         const std::string& bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
-         bvh_filenames.insert(bvh_filename);
-      }
+        // compile list of model kdn filenames
+        lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+        std::set<std::string> bvh_filenames;
+        for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+        {
+            const std::string &bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
+            bvh_filenames.insert(bvh_filename);
+        }
 
-      //now test the list of files
-      lamure::ren::ray::intersection_bvh temp;
-      if (intersection_ray.intersect_bvh(bvh_filenames, 1.0f, temp)) {
-         intersectn.position_ = temp.position_;
-         intersectn.normal_ = scm::math::vec3f(0.f, 1.0f, 1.0f);
-         intersectn.error_ = 0.f;
-         intersectn.distance_ = temp.tmin_;
-         std::cout << temp.bvh_filename_ << std::endl;
-      }
-    
+        // now test the list of files
+        lamure::ren::ray::intersection_bvh temp;
+        if(intersection_ray.intersect_bvh(bvh_filenames, 1.0f, temp))
+        {
+            intersectn.position_ = temp.position_;
+            intersectn.normal_ = scm::math::vec3f(0.f, 1.0f, 1.0f);
+            intersectn.error_ = 0.f;
+            intersectn.distance_ = temp.tmin_;
+            std::cout << temp.bvh_filename_ << std::endl;
+        }
 
 #endif
 
 #ifdef LAMURE_ENABLE_INFO
-                std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
-                std::cout << "intersection position: " << intersectn.position_ << std::endl;
+        std::cout << "intersection distance: " << intersectn.distance_ << std::endl;
+        std::cout << "intersection position: " << intersectn.position_ << std::endl;
 #endif
 
-                if (intersectn.error_ < std::numeric_limits<float>::max()) {
-                  renderer_->clear_line_begin();
-                  renderer_->clear_line_end();
-                  renderer_->add_line_begin(intersectn.position_);
-                  renderer_->add_line_end(intersectn.position_ + intersectn.normal_ * 5.f);
-                 // std::cout << "num debug intersections " << dbg_intersections.size() << std::endl;
-                  for (const auto& dbg : dbg_intersections) {
-                    renderer_->add_line_begin(dbg.position_);
-                    //renderer_->add_line_end(dbg.position_ - (cam_fwd) * 5.f);
-                    renderer_->add_line_end(dbg.position_ - dbg.normal_ * 5.f);
-
-                  }
-                }
-           
-
-        
-
-#if 1
-             if (override_center_of_rotation) {
-               //move center of rotation to intersection
-               if (intersectn.error_ < std::numeric_limits<float>::max()) {
-                   active_camera_->set_trackball_center_of_rotation(intersectn.position_);
-
-               }
-             }
-#endif
+        if(intersectn.error_ < std::numeric_limits<float>::max())
+        {
+            renderer_->clear_line_begin();
+            renderer_->clear_line_end();
+            renderer_->add_line_begin(intersectn.position_);
+            renderer_->add_line_end(intersectn.position_ + intersectn.normal_ * 5.f);
+            // std::cout << "num debug intersections " << dbg_intersections.size() << std::endl;
+            for(const auto &dbg : dbg_intersections)
+            {
+                renderer_->add_line_begin(dbg.position_);
+                // renderer_->add_line_end(dbg.position_ - (cam_fwd) * 5.f);
+                renderer_->add_line_end(dbg.position_ - dbg.normal_ * 5.f);
+            }
         }
 
-        break;
+#if 1
+        if(override_center_of_rotation)
+        {
+            // move center of rotation to intersection
+            if(intersectn.error_ < std::numeric_limits<float>::max())
+            {
+                active_camera_->set_trackball_center_of_rotation(intersectn.position_);
+            }
+        }
+#endif
+    }
+
+    break;
 
 #endif
 
@@ -911,7 +912,6 @@ dispatchKeyboardInput(unsigned char key)
         renderer_->toggle_display_info();
         break;
 
-
     case 'k':
         DecreaseErrorThreshold();
         std::cout << "error threshold: " << error_threshold_ << std::endl;
@@ -924,6 +924,7 @@ dispatchKeyboardInput(unsigned char key)
 
     }
 }
+
 
 void management::
 dispatchSpecialInput(int key) {
@@ -984,31 +985,35 @@ dispatchResize(int w, int h)
     height_ = h;
 
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-    w/=2;
+    w /= 2;
 #endif
 
     // if snapshots are taken, use the user specified resolution
-    if( measurement_session_descriptor_.snapshot_session_enabled_ ) {
-        renderer_->reset_viewport(measurement_session_descriptor_.snapshot_resolution_[0],
-                                  measurement_session_descriptor_.snapshot_resolution_[1]);
-    } else { // otherwise react on window resizing 
-        renderer_->reset_viewport(w,h);
+    if(measurement_session_descriptor_.snapshot_session_enabled_)
+    {
+        renderer_->reset_viewport(measurement_session_descriptor_.snapshot_resolution_[0], measurement_session_descriptor_.snapshot_resolution_[1]);
     }
-    lamure::ren::policy* policy = lamure::ren::policy::get_instance();
+    else
+    { // otherwise react on window resizing
+        renderer_->reset_viewport(w, h);
+    }
+    lamure::ren::policy *policy = lamure::ren::policy::get_instance();
     policy->set_window_width(w);
     policy->set_window_height(h);
 
-
-    for (auto& cam : cameras_)
+    for(auto &cam : cameras_)
     {
-        if(measurement_session_descriptor_.snapshot_session_enabled_ ) {
-            cam->set_projection_matrix(30.0f, float(measurement_session_descriptor_.snapshot_resolution_[0])/float(measurement_session_descriptor_.snapshot_resolution_[1]),  near_plane_, far_plane_);
+        if(measurement_session_descriptor_.snapshot_session_enabled_)
+        {
+            cam->set_projection_matrix(30.0f, float(measurement_session_descriptor_.snapshot_resolution_[0]) / float(measurement_session_descriptor_.snapshot_resolution_[1]), near_plane_, far_plane_);
         }
-        else {
-            cam->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
+        else
+        {
+            cam->set_projection_matrix(30.0f, float(w) / float(h), near_plane_, far_plane_);
         }
     }
 }
+
 
 void management::
 forward_background_color(float bg_r, float bg_g, float bg_b) {
@@ -1021,104 +1026,93 @@ Toggledispatching()
     dispatch_ = ! dispatch_;
 };
 
-
-void management::
-DecreaseErrorThreshold() {
-    error_threshold_ -= 0.1f;
-    if (error_threshold_ < LAMURE_MIN_THRESHOLD)
-        error_threshold_ = LAMURE_MIN_THRESHOLD;
-
-}
-
-void management::
-IncreaseErrorThreshold() {
-    error_threshold_ += 0.1f;
-    if (error_threshold_ > LAMURE_MAX_THRESHOLD)
-        error_threshold_ = LAMURE_MAX_THRESHOLD;
-
-}
-
-void management::
-PrintInfo()
+void management::DecreaseErrorThreshold()
 {
-    std::cout<<"\n"<<
-               "Controls: w - enable/disable bounding box rendering\n"<<
-               "\n"<<
-               "          U/u - increase point size by 1.0/0.1\n"<<
-               "          J/j - decrease point size by 1.0/0.1\n"<<
-               "\n"<<
-               "          o - switch to circle/ellipse rendering\n"<<
-               "          c - toggle normal clamping\n"<<
-               "\n"<<
-               "          A/a - increase clamping ratio by 0.1/0.01f\n"<<
-               "          S/s - decrease clamping ratio by 0.1/0.01f\n"<<
-               "\n"<<
-               "          d - toggle dispatching\n"<<
-               "          e - trigger 1 dispatch, if dispatch is frozen\n"<<
-               "          f - toggle fast travel\n"<<
-               "          . - toggle fullscreen\n"<<
-               "\n"<< 
-               "          i - increase error threshold\n" <<
-               "          k - decrease error threshold\n" <<
-               "\n"<< 
-               "          + (NUMPAD) - increase importance\n" <<
-               "          - (NUMPAD) - decrease importance\n" <<
+    error_threshold_ -= 0.1f;
+    if(error_threshold_ < LAMURE_MIN_THRESHOLD)
+        error_threshold_ = LAMURE_MIN_THRESHOLD;
+}
 
+void management::IncreaseErrorThreshold()
+{
+    error_threshold_ += 0.1f;
+    if(error_threshold_ > LAMURE_MAX_THRESHOLD)
+        error_threshold_ = LAMURE_MAX_THRESHOLD;
+}
+
+void management::PrintInfo()
+{
+    std::cout << "\n"
+              << "Controls: w - enable/disable bounding box rendering\n"
+              << "\n"
+              << "          U/u - increase point size by 1.0/0.1\n"
+              << "          J/j - decrease point size by 1.0/0.1\n"
+              << "\n"
+              << "          o - switch to circle/ellipse rendering\n"
+              << "          c - toggle normal clamping\n"
+              << "\n"
+              << "          A/a - increase clamping ratio by 0.1/0.01f\n"
+              << "          S/s - decrease clamping ratio by 0.1/0.01f\n"
+              << "\n"
+              << "          d - toggle dispatching\n"
+              << "          e - trigger 1 dispatch, if dispatch is frozen\n"
+              << "          f - toggle fast travel\n"
+              << "          . - toggle fullscreen\n"
+              << "\n"
+              << "          i - increase error threshold\n"
+              << "          k - decrease error threshold\n"
+              << "\n"
+              << "          + (NUMPAD) - increase importance\n"
+              << "          - (NUMPAD) - decrease importance\n"
+              <<
 
 #ifdef LAMURE_RENDERING_ENABLE_MULTI_VIEW_TEST
-               "\n"<<
-               "          x - add camera\n"<<
-               "          Space - switch to next camera\n" <<
+        "\n"
+              << "          x - add camera\n"
+              << "          Space - switch to next camera\n"
+              <<
 #ifdef LAMURE_RENDERING_USE_SPLIT_SCREEN
-               "\n"<<
-               "          1 - control left screen"<<
-               "\n"<<
-               "          2 - control right screen"<<
+        "\n"
+              << "          1 - control left screen"
+              << "\n"
+              << "          2 - control right screen"
+              <<
 #endif
 #endif
 
-               "\n";
-
-
+        "\n";
 }
 
-void management::
-toggle_camera_session() {
-    camera_recording_enabled_ = !camera_recording_enabled_;
-}
+void management::toggle_camera_session() { camera_recording_enabled_ = !camera_recording_enabled_; }
 
-void management::
-record_next_camera_position() {
-    if (camera_recording_enabled_) {
+void management::record_next_camera_position()
+{
+    if(camera_recording_enabled_)
+    {
         create_quality_measurement_resources();
     }
 }
 
-void management::
-create_quality_measurement_resources() {
-
+void management::create_quality_measurement_resources()
+{
     std::string base_quality_measurement_path = "../quality_measurement/";
     std::string session_file_prefix = "session_";
 
-    if(! boost::filesystem::exists(base_quality_measurement_path)) {
-        std::cout<<"Creating Folder.\n\n";
+    if(!boost::filesystem::exists(base_quality_measurement_path))
+    {
+        std::cout << "Creating Folder.\n\n";
         boost::filesystem::create_directories(base_quality_measurement_path);
     }
 
-    if( current_session_file_path_.empty() ) {
-
+    if(current_session_file_path_.empty())
+    {
         boost::filesystem::directory_iterator begin(base_quality_measurement_path), end;
-        
-        int num_existing_sessions = std::count_if(begin, end,
-            [](const boost::filesystem::directory_entry & d) {
-                return !boost::filesystem::is_directory(d.path());
-            });
 
-        current_session_number_ = num_existing_sessions+1;
+        int num_existing_sessions = std::count_if(begin, end, [](const boost::filesystem::directory_entry &d) { return !boost::filesystem::is_directory(d.path()); });
 
-        current_session_file_path_ = base_quality_measurement_path+session_file_prefix+std::to_string(current_session_number_)+".csn";
-        
+        current_session_number_ = num_existing_sessions + 1;
 
+        current_session_file_path_ = base_quality_measurement_path + session_file_prefix + std::to_string(current_session_number_) + ".csn";
     }
 
     std::ofstream camera_session_file(current_session_file_path_, std::ios_base::out | std::ios_base::app);

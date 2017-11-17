@@ -9,28 +9,32 @@
 
 #include <lamure/pre/serialized_surfel.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 bvh_stream::
 bvh_stream()
-: filename_(""),
-  num_segments_(0) {
-
+    : filename_(""),
+      num_segments_(0)
+{
 
 }
 
 bvh_stream::
-~bvh_stream() {
+~bvh_stream()
+{
     close_stream(false);
 }
 
 void bvh_stream::
-open_stream(const std::string& bvh_filename,
-           const bvh_stream_type type) {
+open_stream(const std::string &bvh_filename,
+            const bvh_stream_type type)
+{
 
     close_stream(false);
-    
+
     num_segments_ = 0;
     filename_ = bvh_filename;
     type_ = type;
@@ -51,12 +55,13 @@ open_stream(const std::string& bvh_filename,
         throw std::runtime_error(
             "PLOD: bvh_stream::Unable to open stream: " + filename_);
     }
-   
+
 }
 
 void bvh_stream::
-close_stream(const bool remove_file) {
-    
+close_stream(const bool remove_file)
+{
+
     if (file_.is_open()) {
         if (type_ == bvh_stream_type::BVH_STREAM_OUT) {
             file_.flush();
@@ -80,9 +85,9 @@ close_stream(const bool remove_file) {
 
 }
 
-
 void bvh_stream::
-write(bvh_stream::bvh_serializable& serializable) {
+write(bvh_stream::bvh_serializable &serializable)
+{
 
     if (!file_.is_open()) {
         throw std::runtime_error(
@@ -98,7 +103,7 @@ write(bvh_stream::bvh_serializable& serializable) {
         ++allocated_size;
         ++padding;
     }
-    
+
     serializable.signature(sig.signature_);
 
     sig.reserved_ = 0;
@@ -116,10 +121,10 @@ write(bvh_stream::bvh_serializable& serializable) {
 
 }
 
-
 void bvh_stream::
-read_bvh(const std::string& filename, bvh& bvh) {
- 
+read_bvh(const std::string &filename, bvh &bvh)
+{
+
     open_stream(filename, bvh_stream_type::BVH_STREAM_IN);
 
     if (type_ != BVH_STREAM_IN) {
@@ -127,13 +132,13 @@ read_bvh(const std::string& filename, bvh& bvh) {
             "PLOD: bvh_stream::Failed to read bvh from: " + filename_);
     }
     if (!file_.is_open()) {
-         throw std::runtime_error(
+        throw std::runtime_error(
             "PLOD: bvh_stream::Failed to read bvh from: " + filename_);
     }
-   
+
     //scan stream
     file_.seekg(0, std::ios::end);
-    size_t filesize = (size_t)file_.tellg();
+    size_t filesize = (size_t) file_.tellg();
     file_.seekg(0, std::ios::beg);
 
     num_segments_ = 0;
@@ -156,11 +161,11 @@ read_bvh(const std::string& filename, bvh& bvh) {
             sig.signature_[1] != 'V' ||
             sig.signature_[2] != 'H' ||
             sig.signature_[3] != 'X') {
-             throw std::runtime_error(
-                 "PLOD: bvh_stream::Invalid magic encountered: " + filename_);
+            throw std::runtime_error(
+                "PLOD: bvh_stream::Invalid magic encountered: " + filename_);
         }
-            
-        size_t anchor = (size_t)file_.tellg();
+
+        size_t anchor = (size_t) file_.tellg();
 
         switch (sig.signature_[4]) {
 
@@ -169,7 +174,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
                 seg.deserialize(file_);
                 break;
             }
-            case 'T': { 
+            case 'T': {
                 switch (sig.signature_[5]) {
                     case 'R': { //"BVHXTREE"
                         tree.deserialize(file_);
@@ -179,7 +184,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
                     case 'E': { //"BVHXTEXT"
                         tree_ext.deserialize(file_);
                         ++tree_ext_id;
-                        break;                     
+                        break;
                     }
                     default: {
                         throw std::runtime_error(
@@ -189,7 +194,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
                 }
                 break;
             }
-            case 'N': { 
+            case 'N': {
                 switch (sig.signature_[5]) {
                     case 'O': { //"BVHXNODE"
                         bvh_node_seg node;
@@ -240,14 +245,14 @@ read_bvh(const std::string& filename, bvh& bvh) {
     close_stream(false);
 
     if (tree_id != 1) {
-       throw std::runtime_error(
-           "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh segments");
-    }   
+        throw std::runtime_error(
+            "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh segments");
+    }
 
     if (tree_ext_id > 1) {
-       throw std::runtime_error(
-           "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh extensions");
-    }    
+        throw std::runtime_error(
+            "PLOD: bvh_stream::Stream corrupt -- Invalid number of bvh extensions");
+    }
 
     //Note: This is the preprocessing library version of the file reader!
 
@@ -269,14 +274,14 @@ read_bvh(const std::string& filename, bvh& bvh) {
                 "PLOD: bvh_stream::Stream corrupt -- Invalid number of node extensions");
         }
     }
-    
+
     std::vector<shared_file> level_temp_files;
-    
+
     bvh::state_type current_state = static_cast<bvh::state_type>(tree.state_);
-    
+
     //check if intermediate state
     bool interm_state = current_state == bvh::state_type::after_downsweep
-      || current_state == bvh::state_type::after_upsweep;
+        || current_state == bvh::state_type::after_upsweep;
 
     boost::filesystem::path base_path;
     if (interm_state) {
@@ -290,8 +295,8 @@ read_bvh(const std::string& filename, bvh& bvh) {
 
         //setup level temp files
         for (uint32_t i = 0; i < tree_ext.num_disk_accesses_; ++i) {
-             level_temp_files.push_back(std::make_shared<file>());
-             level_temp_files.back()->open(tree_ext.disk_accesses_[i].string_, false);
+            level_temp_files.push_back(std::make_shared<file>());
+            level_temp_files.back()->open(tree_ext.disk_accesses_[i].string_, false);
         }
     }
     else {
@@ -304,6 +309,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
     std::vector<bvh_node> bvh_nodes(tree.num_nodes_);
 
     for (uint32_t i = 0; i < tree.num_nodes_; ++i) {
+
        const auto& node = nodes[i];
 
        if (i != node.node_id_) {
@@ -351,6 +357,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
        bvh_nodes[i].set_avg_surfel_radius(node.avg_surfel_radius_);
        bvh_nodes[i].set_visibility((bvh_node::node_visibility)node.visibility_);
        bvh_nodes[i].set_max_surfel_radius_deviation(node.max_surfel_radius_deviation_);
+
     }
 
     bvh.set_first_leaf(tree.num_nodes_ - std::pow(tree.fan_factor_, tree.depth_));
@@ -487,8 +494,8 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
 
    close_stream(false);
 
+
 }
 
-
-
-} } // namespace lamure
+}
+} // namespace lamure

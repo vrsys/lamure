@@ -8,33 +8,36 @@
 #include <lamure/pre/external_sort.h>
 
 #if WIN32
-  #include <ppl.h>
+#include <ppl.h>
 #else
-  #include <parallel/algorithm>
+#include <parallel/algorithm>
 #endif
 
 #include <numeric>
 
-namespace lamure {
+namespace lamure
+{
 namespace pre
 {
 
-const uint32_t    MAX_RUNS_COUNT = 512;
-const size_t      MIN_MERGE_BUFFER_SIZE = 3;
+const uint32_t MAX_RUNS_COUNT = 512;
+
+const size_t MIN_MERGE_BUFFER_SIZE = 3;
+
 const std::string TEMP_FILE_EXT = ".runs";
 
 external_sort::
 external_sort(const size_t memory_limit,
-             const surfel::compare_function& compare)
+              const surfel::compare_function &compare)
     : memory_limit_(memory_limit),
       compare_(compare),
       runs_file_(std::make_shared<file>())
 {}
 
 void external_sort::
-sort(surfel_disk_array& array,
+sort(surfel_disk_array &array,
      const size_t memory_limit,
-     const surfel::compare_function& compare)
+     const surfel::compare_function &compare)
 {
     assert(!array.is_empty());
     assert(array.file());
@@ -43,29 +46,29 @@ sort(surfel_disk_array& array,
         return;
 
     external_sort es(memory_limit, compare);
-    
+
     // compute sort parameters
     const size_t run_length = memory_limit / sizeof(surfel) / 3u;
     const uint32_t runs_count = std::ceil(array.length() / double(run_length));
     const size_t merge_buffer_size = memory_limit / sizeof(surfel) / (runs_count + 1u);
 
     LOGGER_INFO("External sort. Length: " << array.length());
-    LOGGER_INFO("Max run length: " << run_length << 
-            " surfels. runs: " << runs_count << 
-            ". merge buffer size: " << merge_buffer_size << " surfels.");
+    LOGGER_INFO("Max run length: " << run_length <<
+                                   " surfels. runs: " << runs_count <<
+                                   ". merge buffer size: " << merge_buffer_size << " surfels.");
 
 
     if (runs_count > MAX_RUNS_COUNT) {
         LOGGER_WARN("External sort has been called with an inadequate "
-                                  "memory limit, which produces more than " <<
-                                  MAX_RUNS_COUNT << " runs.");
+                        "memory limit, which produces more than " <<
+                                                                  MAX_RUNS_COUNT << " runs.");
     }
 
     if (merge_buffer_size < MIN_MERGE_BUFFER_SIZE)
         LOGGER_WARN("External sort has been called with an inadequate "
-                                  "memory limit, which forces merge algorithm to allocate "
-                                  "buffers that store less than " <<
-                                  MIN_MERGE_BUFFER_SIZE << " surfels.");
+                        "memory limit, which forces merge algorithm to allocate "
+                        "buffers that store less than " <<
+                                                        MIN_MERGE_BUFFER_SIZE << " surfels.");
 
     if (runs_count > 1u) {
         // external sort
@@ -91,9 +94,9 @@ sort(surfel_disk_array& array,
 }
 
 void external_sort::
-create_runs(surfel_disk_array& array,
-           const size_t run_length, 
-           const uint32_t runs_count)
+create_runs(surfel_disk_array &array,
+            const size_t run_length,
+            const uint32_t runs_count)
 {
     // construct runs' surfel_disk_arrays
     size_t offset = 0;
@@ -101,20 +104,21 @@ create_runs(surfel_disk_array& array,
         runs_.push_back(surfel_disk_array(array, array.offset() + offset, run_length));
         offset += run_length;
     }
-    runs_.push_back(surfel_disk_array(array, array.offset() + offset, 
-                                           array.length() - offset));
+    runs_.push_back(surfel_disk_array(array, array.offset() + offset,
+                                      array.length() - offset));
 
     assert(std::accumulate(runs_.begin(), runs_.end(), 0u,
-                           [](const size_t& a,
-                              const surfel_disk_array& b) { return a + b.length(); }) ==
-                                                                 array.length());
+                           [](const size_t &a,
+                              const surfel_disk_array &b)
+                           { return a + b.length(); }) ==
+        array.length());
     // sort the runs
     shared_surfel_vector next_data;
 
     for (uint32_t i = 0; i < runs_.size(); ++i) {
-        
+
         shared_surfel_vector data;
-        
+
         if (next_data) {
             data = next_data;
             next_data.reset();
@@ -124,33 +128,33 @@ create_runs(surfel_disk_array& array,
             data = runs_[i].read_all();
         }
 
-        #pragma omp parallel sections
+#pragma omp parallel sections
         {
             {
                 LOGGER_TRACE("sort run " << i);
 #if WIN32
-                Concurrency::parallel_sort(data->begin(), data->end(), compare_);           
+                Concurrency::parallel_sort(data->begin(), data->end(), compare_);
 #else
                 __gnu_parallel::sort(data->begin(), data->end(), compare_);
 #endif
             }
-            #pragma omp section
+#pragma omp section
             {
                 if (i + 1 < runs_.size()) {
-                    LOGGER_TRACE("read run " << i+1);
+                    LOGGER_TRACE("read run " << i + 1);
                     next_data = runs_[i + 1].read_all();
                 }
             }
         }
         LOGGER_TRACE("Save run " << i);
         runs_file_->append(&(*data));
-        runs_[i].reset(runs_file_, runs_[i].offset() - array.offset(), 
-                                   runs_[i].length());
+        runs_[i].reset(runs_file_, runs_[i].offset() - array.offset(),
+                       runs_[i].length());
     }
 }
 
 void external_sort::
-merge(surfel_disk_array& array, const size_t buffer_size)
+merge(surfel_disk_array &array, const size_t buffer_size)
 {
     size_t file_offset = 0;
     surfel_vector output;
@@ -168,8 +172,8 @@ merge(surfel_disk_array& array, const size_t buffer_size)
         for (size_t i = 0; i < buffers.size(); ++i) {
             surfel current_surfel;
 
-            if (buffers[i].front(current_surfel) && (least_idx == -1 || 
-                        compare_(current_surfel, least))) {
+            if (buffers[i].front(current_surfel) && (least_idx == -1 ||
+                compare_(current_surfel, least))) {
                 least = current_surfel;
                 least_idx = i;
             }
@@ -178,22 +182,24 @@ merge(surfel_disk_array& array, const size_t buffer_size)
             buffers[least_idx].pop_front();
             output.push_back(least);
             if (output.size() >= buffer_size) {
-                array.file()->write(&output, 0, array.offset() + file_offset, 
-                                                output.size());
+                array.file()->write(&output, 0, array.offset() + file_offset,
+                                    output.size());
                 file_offset += output.size();
                 output.clear();
             }
         }
-    } while (least_idx != -1);
+    }
+    while (least_idx != -1);
 
     if (output.size() > 0) {
-        array.file()->write(&output, 0, array.offset() + file_offset, 
-                                        output.size());
+        array.file()->write(&output, 0, array.offset() + file_offset,
+                            output.size());
         file_offset += output.size();
         output.clear();
     }
     assert(file_offset == array.length());
 }
 
-} } // namespace lamure
+}
+} // namespace lamure
 

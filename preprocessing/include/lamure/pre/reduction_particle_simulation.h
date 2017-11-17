@@ -18,8 +18,10 @@
 #include <queue>
 
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 using neighbours_t = std::vector<std::pair<surfel_id_t, real> >;
 
@@ -32,19 +34,20 @@ class PREPROCESSING_DLL reduction_particle_simulation: public reduction_strategy
 {
 public:
 
-    explicit  reduction_particle_simulation() {}
+    explicit reduction_particle_simulation()
+    {}
 
-    surfel_mem_array      create_lod(real& reduction_error,
-                                  const std::vector<surfel_mem_array*>& input,
-                                  const uint32_t surfels_per_node,
-          						  const bvh& tree,
-          						  const size_t start_node_id) const override;
+    surfel_mem_array create_lod(real &reduction_error,
+                                const std::vector<surfel_mem_array *> &input,
+                                const uint32_t surfels_per_node,
+                                const bvh &tree,
+                                const size_t start_node_id) const override;
 private:
 
-	real 
-	compute_enclosing_sphere_radius(surfel const& target_surfel,
-                                	neighbours_t const& neighbour_ids,
-                                	bvh const& tree) const;
+    real
+    compute_enclosing_sphere_radius(surfel const &target_surfel,
+                                    neighbours_t const &neighbour_ids,
+                                    bvh const &tree) const;
 
 };
 

@@ -18,7 +18,8 @@
 #include <deque>
 
 
-namespace lamure {
+namespace lamure
+{
 namespace pre
 {
 
@@ -28,39 +29,40 @@ namespace pre
 class PREPROCESSING_DLL node_serializer
 {
 public:
-    explicit            node_serializer(const size_t surfels_per_node,
-                                       const size_t buffer_size); // buffer_size - in bytes
+    explicit node_serializer(const size_t surfels_per_node,
+                             const size_t buffer_size); // buffer_size - in bytes
 
-                        node_serializer(const node_serializer&) = delete;
-                        node_serializer& operator=(const node_serializer&) = delete;
+    node_serializer(const node_serializer &) = delete;
+    node_serializer &operator=(const node_serializer &) = delete;
     virtual             ~node_serializer();
 
-    void                open(const std::string& file_name, const bool read_write_mode = false);
-    void                close();
-    const bool          is_open() const;
+    void open(const std::string &file_name, const bool read_write_mode = false);
+    void close();
+    const bool is_open() const;
 
-    void                serialize_nodes(const std::vector<bvh_node>& nodes);
+    void serialize_nodes(const std::vector<bvh_node> &nodes);
 
-    void                read_node_immediate(surfel_vector& surfels, 
-                                          const size_t offset);
-    void                write_node_immediate(const surfel_vector& surfels, 
-                                           const size_t offset);
+    void read_node_immediate(surfel_vector &surfels,
+                             const size_t offset);
+    void write_node_immediate(const surfel_vector &surfels,
+                              const size_t offset);
 
 private:
 
-    void                write_node_streamed(const bvh_node& node);
-    void                flush_buffer();
+    void write_node_streamed(const bvh_node &node);
+    void flush_buffer();
 
     mutable std::fstream stream_;
-    std::string         file_name_;
-    size_t              surfels_per_node_;
+    std::string file_name_;
+    size_t surfels_per_node_;
 
-    std::deque<surfel_vector*> 
-                        buffer_;
-    size_t              max_nodes_in_buffer_;
+    std::deque<surfel_vector *>
+        buffer_;
+    size_t max_nodes_in_buffer_;
 };
 
-} } // namespace lamure
+}
+} // namespace lamure
 
 #endif // PRE_NODE_SERIALIZER_H_
 

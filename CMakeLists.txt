@@ -90,7 +90,7 @@ ELSEIF (UNIX)
   set(BOOST_LIBRARYDIR /opt/boost/boost_1_62_0/lib)
 ENDIF ()
 
-find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex system thread timer iostreams)
+find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex serialization system thread timer wserialization iostreams)
 find_package( Threads )
 
 ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
@@ -109,6 +109,14 @@ find_package(GLUT REQUIRED)
 #link_directories(${GLUT_LIBRARY_DIRS})
 
 #add_definitions(${GLUT_DEFINITIONS})
+
+################################
+# glfw
+################################
+find_package(GLFW3 REQUIRED)
+include(findGLFW3)
+include(FindOpenGL)
+include(FindGLEW)
 
 ################################
 # OpenGL
@@ -168,13 +176,18 @@ include (FindZLIB)
 add_subdirectory(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
+add_subdirectory(${CMAKE_SOURCE_DIR}/provenance)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
 add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 
-add_dependencies(lamure_preprocessing lamure_common)
-add_dependencies(lamure_rendering lamure_common)
+# add_dependencies(lamure_preprocessing lamure_common)
+# add_dependencies(lamure_provenance lamure_common)
+# add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_provenance PROPERTIES DEBUG_POSTFIX "d")
+
+

@@ -7,26 +7,28 @@
 
 #include <lamure/pre/reduction_every_second.h>
 
-namespace lamure {
-namespace pre {
+namespace lamure
+{
+namespace pre
+{
 
 surfel_mem_array reduction_every_second::
-create_lod(real& reduction_error,
-          const std::vector<surfel_mem_array*>& input,
-          const uint32_t surfels_per_node,
-          const bvh& tree,
-          const size_t start_node_id) const
+create_lod(real &reduction_error,
+           const std::vector<surfel_mem_array *> &input,
+           const uint32_t surfels_per_node,
+           const bvh &tree,
+           const size_t start_node_id) const
 {
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
     const real fan_factor = 2;
-    const real mult = sqrt(1.0 + 1.0 / fan_factor)*1.0;
+    const real mult = sqrt(1.0 + 1.0 / fan_factor) * 1.0;
 
     //create lod from input
     for (size_t i = 0; i < input.size(); ++i) {
         for (size_t j = input[i]->offset() + i;
-                    j < input[i]->offset() + input[i]->length();
-                    j += input.size()) {
+             j < input[i]->offset() + input[i]->length();
+             j += input.size()) {
 
             auto surfel = input[i]->mem_data()->at(j);
 
