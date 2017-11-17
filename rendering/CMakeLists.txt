@@ -28,7 +28,9 @@ SOURCE_GROUP("shaders" FILES ${SHADERS})
 # Build library
 
 include_directories(${PROJECT_INCLUDE_DIR} 
-                    ${COMMON_INCLUDE_DIR} 
+                    ${COMMON_INCLUDE_DIR}
+                    ${GLM_INCLUDE_DIR}
+                    ${PVS_COMMON_INCLUDE_DIR} 
                     ${LAMURE_CONFIG_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
@@ -38,7 +40,7 @@ link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES} ${SHADERS})
 
-add_dependencies(${PROJECT_NAME} lamure_common lamure_preprocessing)
+add_dependencies(${PROJECT_NAME} lamure_common lamure_preprocessing lamure_pvs_common)
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_RENDERING_LIBRARY")
@@ -55,6 +57,7 @@ set(REND_LIBRARY ${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${COMMON_LIBRARY}
+    ${PVS_COMMON_LIBRARY}
     optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
     optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
     optimized ${Boost_DATE_TIME_LIBRARY_RELEASE} debug ${Boost_DATE_TIME_LIBRARY_DEBUG}
@@ -98,5 +101,24 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure
         PATTERN "*.glslf"
         PATTERN "*.glslg"
         )
+
+# shader and material resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/common DESTINATION share/lamure/shaders
+        FILES_MATCHING 
+        PATTERN "*.glsl"
+        PATTERN "*.glsv"
+        PATTERN "*.glsf"
+        PATTERN "*.glsg"
+        )
+
+# shader and material resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/common/heatmapping DESTINATION share/lamure/shaders/common
+        FILES_MATCHING 
+        PATTERN "*.glsl"
+        PATTERN "*.glsv"
+        PATTERN "*.glsf"
+        PATTERN "*.glsg"
+        )
+
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/fonts/Ubuntu.ttf DESTINATION share/lamure/fonts)
 

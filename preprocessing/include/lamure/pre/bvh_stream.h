@@ -349,7 +349,7 @@ protected:
         float avg_surfel_radius_;
 
         bvh_node_visibility visibility_;
-        uint32_t reserved_;
+        float max_surfel_radius_deviation_;
 
         bvh_bounding_box bounding_box_;
 
@@ -376,22 +376,24 @@ protected:
                 throw std::runtime_error(
                     "PLOD: bvh_stream::Unable to serialize");
             }
-            file.write((char *) &segment_id_, 4);
-            file.write((char *) &node_id_, 4);
-            file.write((char *) &centroid_.x_, 4);
-            file.write((char *) &centroid_.y_, 4);
-            file.write((char *) &centroid_.z_, 4);
-            file.write((char *) &depth_, 4);
-            file.write((char *) &reduction_error_, 4);
-            file.write((char *) &avg_surfel_radius_, 4);
-            file.write((char *) &visibility_, 4);
-            file.write((char *) &reserved_, 4);
-            file.write((char *) &bounding_box_.min_.x_, 4);
-            file.write((char *) &bounding_box_.min_.y_, 4);
-            file.write((char *) &bounding_box_.min_.z_, 4);
-            file.write((char *) &bounding_box_.max_.x_, 4);
-            file.write((char *) &bounding_box_.max_.y_, 4);
-            file.write((char *) &bounding_box_.max_.z_, 4);
+
+            file.write((char*)&segment_id_, 4);
+            file.write((char*)&node_id_, 4);
+            file.write((char*)&centroid_.x_, 4);
+            file.write((char*)&centroid_.y_, 4);
+            file.write((char*)&centroid_.z_, 4);
+            file.write((char*)&depth_, 4);
+            file.write((char*)&reduction_error_, 4);
+            file.write((char*)&avg_surfel_radius_, 4);
+            file.write((char*)&visibility_, 4);
+            file.write((char*)&max_surfel_radius_deviation_, 4);
+            file.write((char*)&bounding_box_.min_.x_, 4);
+            file.write((char*)&bounding_box_.min_.y_, 4);
+            file.write((char*)&bounding_box_.min_.z_, 4);
+            file.write((char*)&bounding_box_.max_.x_, 4);
+            file.write((char*)&bounding_box_.max_.y_, 4);
+            file.write((char*)&bounding_box_.max_.z_, 4);
+
         }
         void deserialize(std::fstream &file)
         {
@@ -399,22 +401,24 @@ protected:
                 throw std::runtime_error(
                     "PLOD: bvh_stream::Unable to deserialize");
             }
-            file.read((char *) &segment_id_, 4);
-            file.read((char *) &node_id_, 4);
-            file.read((char *) &centroid_.x_, 4);
-            file.read((char *) &centroid_.y_, 4);
-            file.read((char *) &centroid_.z_, 4);
-            file.read((char *) &depth_, 4);
-            file.read((char *) &reduction_error_, 4);
-            file.read((char *) &avg_surfel_radius_, 4);
-            file.read((char *) &visibility_, 4);
-            file.read((char *) &reserved_, 4);
-            file.read((char *) &bounding_box_.min_.x_, 4);
-            file.read((char *) &bounding_box_.min_.y_, 4);
-            file.read((char *) &bounding_box_.min_.z_, 4);
-            file.read((char *) &bounding_box_.max_.x_, 4);
-            file.read((char *) &bounding_box_.max_.y_, 4);
-            file.read((char *) &bounding_box_.max_.z_, 4);
+
+            file.read((char*)&segment_id_, 4);
+            file.read((char*)&node_id_, 4);
+            file.read((char*)&centroid_.x_, 4);
+            file.read((char*)&centroid_.y_, 4);
+            file.read((char*)&centroid_.z_, 4);
+            file.read((char*)&depth_, 4);
+            file.read((char*)&reduction_error_, 4);
+            file.read((char*)&avg_surfel_radius_, 4);
+            file.read((char*)&visibility_, 4);
+            file.read((char*)&max_surfel_radius_deviation_, 4);
+            file.read((char*)&bounding_box_.min_.x_, 4);
+            file.read((char*)&bounding_box_.min_.y_, 4);
+            file.read((char*)&bounding_box_.min_.z_, 4);
+            file.read((char*)&bounding_box_.max_.x_, 4);
+            file.read((char*)&bounding_box_.max_.y_, 4);
+            file.read((char*)&bounding_box_.max_.z_, 4);
+
         }
 
     };

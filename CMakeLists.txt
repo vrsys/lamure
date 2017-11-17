@@ -31,6 +31,11 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(LAMURE_CONFIG_DIR ${CMAKE_BINARY_DIR})
 
 option (LAMURE_USE_CGAL_FOR_NNI "Set to enable CGAL library for natural neighbor interpolation. NNI will not work without CGAL." ON)
+option (LAMURE_ENABLE_ALTERNATIVE_COMPUTATION_STRATEGIES "Enables preprocessing strategies different than NDC (requries CGAL)." OFF)
+
+if (LAMURE_ENABLE_ALTERNATIVE_COMPUTATION_STRATEGIES)
+add_definitions(-DCMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES)
+endif()
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/install" CACHE PATH "default install path" FORCE )
@@ -85,7 +90,7 @@ ELSEIF (UNIX)
   set(BOOST_LIBRARYDIR /opt/boost/boost_1_62_0/lib)
 ENDIF ()
 
-find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex serialization system thread timer wserialization)
+find_package( Boost 1.54.0 REQUIRED chrono date_time filesystem program_options regex serialization system thread timer wserialization iostreams)
 find_package( Threads )
 
 ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
@@ -148,6 +153,20 @@ else()
   # include NNI alternative here
 endif (${LAMURE_USE_CGAL_FOR_NNI})
 
+################################
+# GLM
+################################
+include(find_glm)
+
+################################
+# ZLIB
+################################
+
+IF (MSVC)
+  set(ZLIB_ROOT ${GLOBAL_EXT_DIR}/zlib)
+ENDIF (MSVC)
+include (FindZLIB)
+
 ############################################################
 # Build 3rd-party
 
@@ -155,12 +174,12 @@ endif (${LAMURE_USE_CGAL_FOR_NNI})
 # Targets
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/common)
+add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/provenance)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
-add_subdirectory(${CMAKE_SOURCE_DIR}/quality_measurement)
+add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
 # add_dependencies(lamure_preprocessing lamure_common)
 # add_dependencies(lamure_provenance lamure_common)
@@ -170,5 +189,5 @@ set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_provenance PROPERTIES DEBUG_POSTFIX "d")
-set_target_properties(lamure_quality_measurement PROPERTIES DEBUG_POSTFIX "d")
+
 

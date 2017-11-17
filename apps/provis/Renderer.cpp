@@ -55,36 +55,42 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     std::string visibility_fs_source;
 
     // create shader program for sparse points
+    std::cout << "shader: nvm_explorer_vertex_points" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_points.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_points.glslf", visibility_fs_source);
     _program_points = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for cameras
+    std::cout << "shader: nvm_explorer_vertex_cameras" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_cameras.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_cameras.glslf", visibility_fs_source);
     _program_cameras = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for images
+    std::cout << "shader: nvm_explorer_vertex_images" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_images.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_images.glslf", visibility_fs_source);
     _program_images = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for frustra
+    std::cout << "shader: nvm_explorer_vertex_frustra" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_frustra.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_frustra.glslf", visibility_fs_source);
     _program_frustra = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for lines
+    std::cout << "shader: nvm_explorer_vertex_lines" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_lines.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_lines.glslf", visibility_fs_source);
     _program_lines = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for surfels brush
+    std::cout << "shader: nvm_explorer_vertex_surfels_brush" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_surfels_brush.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_geometry_surfels_brush.glslg", visibility_gs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_surfels_brush.glslf", visibility_fs_source);
@@ -92,6 +98,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for pixels brush
+    std::cout << "shader: nvm_explorer_vertex_pixels_brush" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_pixels_brush.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_geometry_pixels_brush.glslg", visibility_gs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_pixels_brush.glslf", visibility_fs_source);
@@ -99,9 +106,10 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for dense points
-    scm::io::read_text_file(root_path + "/lq_one_pass.glslv", visibility_vs_source);
-    scm::io::read_text_file(root_path + "/lq_one_pass.glslg", visibility_gs_source);
-    scm::io::read_text_file(root_path + "/lq_one_pass.glslf", visibility_fs_source);
+    std::cout << "shader: lq_one_pass" << std::endl;
+    scm::io::read_text_file(root_path + "/nvm_explorer_lq_one_pass.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_lq_one_pass.glslg", visibility_gs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_lq_one_pass.glslf", visibility_fs_source);
     _program_points_dense = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
@@ -114,6 +122,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     if(!_program_points_dense)
     {
         std::cout << "error creating shader programs" << std::endl;
+        throw std::runtime_error("error creating shaders");
     }
     _rasterizer_state = device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
 

@@ -5,14 +5,11 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <lamure/ren/semaphore.h>
+#include <lamure/semaphore.h>
 
 #include <iostream>
 
 namespace lamure
-{
-
-namespace ren
 {
 
 semaphore::
@@ -32,25 +29,53 @@ semaphore::
 
 void semaphore::
 wait() {
-    {
-        std::unique_lock<std::mutex> ulock(mutex_);
-        signal_lock_.wait(ulock, [&]{ return signal_count_ >= min_signal_count_ || shutdown_; });
-        if (signal_count_ >= min_signal_count_) {
-            signal_count_ -= min_signal_count_;
-        }
+#if 1
+  {
+    std::unique_lock<std::mutex> ulock(mutex_);
+    signal_lock_.wait(ulock, [&]{ return signal_count_ >= min_signal_count_ || shutdown_; });
+    if (signal_count_ >= min_signal_count_) {
+      signal_count_ -= min_signal_count_;
     }
+  }
+#else 
+  while (true) {
+    if (signal_count_ >= min_signal_count_) {
+      mutex_.lock();
+      if (signal_count_ >= min_signal_count_) {
+        signal_count_ -= min_signal_count_;
+        mutex_.unlock();
+        break;
+      }
+      mutex_.unlock();
+    }
+    
+    if (shutdown_) {
+      break;
+    }
+  
+  }
+
+#endif
 
 }
 
 void semaphore::
 signal(const size_t signal_count) {
-    {
-        std::lock_guard<std::mutex> ulock(mutex_);
-        if (signal_count_+signal_count <= max_signal_count_) {
-            signal_count_ += signal_count;
-        }
+#if 1
+  {
+    std::unique_lock<std::mutex> ulock(mutex_);
+    if (signal_count_+signal_count <= max_signal_count_) {
+      signal_count_ += signal_count;
     }
-    signal_lock_.notify_all();
+  }
+  signal_lock_.notify_all();
+#else 
+  mutex_.lock();
+  if (signal_count_+signal_count <= max_signal_count_) {
+    signal_count_ += signal_count;
+  }
+  mutex_.unlock();
+#endif
 
 }
 
@@ -76,9 +101,6 @@ shutdown() {
     shutdown_ = true;
     signal_lock_.notify_all();
 }
-
-
-} // namespace ren
 
 } // namespace lamure
 

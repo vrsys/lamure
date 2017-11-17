@@ -14,30 +14,33 @@ namespace pre
 
 bvh_node::
 bvh_node(const node_id_type id,
-         const uint32_t depth,
-         const bounding_box &bounding_box,
-         const surfel_mem_array &array)
-    : node_id_(id),
-      depth_(depth),
-      bounding_box_(bounding_box),
-      reduction_error_(0.0),
-      avg_surfel_radius_(0.0),
-      centroid_(vec3r(0.0))
+        const uint32_t depth,
+        const bounding_box& bounding_box,
+        const surfel_mem_array& array)
+: node_id_(id),
+  depth_(depth),
+  bounding_box_(bounding_box),
+  reduction_error_(0.0),
+  avg_surfel_radius_(0.0),
+  centroid_(vec3r(0.0)),
+  max_surfel_radius_deviation_(0.0)
 {
     reset(array);
 }
 
 bvh_node::
 bvh_node(const node_id_type id,
-         const uint32_t depth,
-         const bounding_box &bounding_box,
-         const surfel_disk_array &array)
-    : node_id_(id),
-      depth_(depth),
-      bounding_box_(bounding_box),
-      reduction_error_(0.0),
-      avg_surfel_radius_(0.0),
-      centroid_(vec3r(0.0))
+        const uint32_t depth,
+        const bounding_box& bounding_box,
+        const surfel_disk_array& array)
+: node_id_(id),
+  depth_(depth),
+  bounding_box_(bounding_box),
+  reduction_error_(0.0),
+  avg_surfel_radius_(0.0),
+  centroid_(vec3r(0.0)),
+  max_surfel_radius_deviation_(0.0)
+
 {
     reset(array);
 }

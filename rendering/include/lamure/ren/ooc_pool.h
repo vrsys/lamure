@@ -15,7 +15,6 @@
 #include <lamure/ren/lod_stream.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/provenance_stream.h>
-#include <lamure/ren/semaphore.h>
 #include <lamure/types.h>
 #include <lamure/utils.h>
 #include <map>
@@ -24,10 +23,18 @@
 #include <thread>
 #include <vector>
 
-namespace lamure
-{
-namespace ren
-{
+#include <lamure/semaphore.h>
+#include <lamure/utils.h>
+#include <lamure/types.h>
+#include <lamure/ren/config.h>
+#include <lamure/ren/model_database.h>
+#include <lamure/ren/lod_stream.h>
+#include <lamure/ren/cache_queue.h>
+#include <lamure/ren/cache_index.h>
+
+namespace lamure {
+namespace ren {
+
 class ooc_pool
 {
   public:

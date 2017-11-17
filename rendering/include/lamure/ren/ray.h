@@ -19,9 +19,12 @@
 #include <lamure/ren/dataset.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/ooc_cache.h>
+
 #include <lamure/ren/platform.h>
-#include <lamure/ren/semaphore.h>
 #include <lamure/types.h>
+
+#include <lamure/ren/dataset.h>
+#include <lamure/semaphore.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/primitives/box.h>

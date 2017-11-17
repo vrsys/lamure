@@ -27,44 +27,44 @@ namespace pre
 class PREPROCESSING_DLL bvh_node
 {
 public:
-    explicit bvh_node()
-        : node_id_(0),
-          depth_(0),
-          bounding_box_(vec3r(0.0), vec3r(0.0)),
-          reduction_error_(0.0),
-          avg_surfel_radius_(0.0),
-          centroid_(vec3r(0.0)),
-          visibility_(node_visibility::node_visible)
-    {}
 
-    explicit bvh_node(const node_id_type id,
-                      const uint32_t depth,
-                      const bounding_box &bounding_box)
-        : node_id_(id),
-          depth_(depth),
-          bounding_box_(bounding_box),
-          reduction_error_(0.0),
-          avg_surfel_radius_(0.0),
-          centroid_(vec3r(0.0)),
-          visibility_(node_visibility::node_visible)
-    {}
+    explicit            bvh_node()
+                            : node_id_(0),
+                              depth_(0),
+                              bounding_box_(vec3r(0.0), vec3r(0.0)),
+                              reduction_error_(0.0),
+                              avg_surfel_radius_(0.0),
+                              centroid_(vec3r(0.0)),
+                              visibility_(node_visibility::node_visible),
+                              max_surfel_radius_deviation_(0.0) {}
 
-    explicit bvh_node(const node_id_type id,
-                      const uint32_t depth,
-                      const bounding_box &bounding_box,
-                      const surfel_mem_array &array);
+    explicit            bvh_node(const node_id_type id,
+                                const uint32_t depth,
+                                const bounding_box& bounding_box)
+                            : node_id_(id),
+                              depth_(depth),
+                              bounding_box_(bounding_box),
+                              reduction_error_(0.0),
+                              avg_surfel_radius_(0.0),
+                              centroid_(vec3r(0.0)),
+                              visibility_(node_visibility::node_visible),
+                              max_surfel_radius_deviation_(0.0) {}
 
-    explicit bvh_node(const node_id_type id,
-                      const uint32_t depth,
-                      const bounding_box &bounding_box,
-                      const surfel_disk_array &array);
+    explicit            bvh_node(const node_id_type id,
+                                const uint32_t depth,
+                                const bounding_box& bounding_box,
+                                const surfel_mem_array& array);
 
-    ~bvh_node();
+    explicit            bvh_node(const node_id_type id,
+                                const uint32_t depth,
+                                const bounding_box& bounding_box,
+                                const surfel_disk_array& array);
 
-    enum node_visibility
-    {
-        node_visible = 0,
-        node_invisible = 1
+                        ~bvh_node();
+
+    enum node_visibility {
+       node_visible   = 0,
+       node_invisible = 1
     };
 
     const node_id_type node_id() const
@@ -100,6 +100,10 @@ public:
     { return visibility_; }
     void set_visibility(const node_visibility visibility)
     { visibility_ = visibility; }
+
+    const real          max_surfel_radius_deviation() const { return max_surfel_radius_deviation_; }
+    void                set_max_surfel_radius_deviation(const real value)
+                            { max_surfel_radius_deviation_ = value; }
 
     void calculate_statistics();
 
@@ -184,13 +188,14 @@ public:
 
 private:
 
-    node_id_type node_id_;
-    uint32_t depth_;
-    bounding_box bounding_box_;
-    real reduction_error_;
-    real avg_surfel_radius_;
-    vec3r centroid_;
-    node_visibility visibility_;
+    node_id_type         node_id_;
+    uint32_t             depth_;
+    bounding_box         bounding_box_;
+    real                 reduction_error_;
+    real                 avg_surfel_radius_;
+    vec3r                centroid_;
+    node_visibility      visibility_;
+    real                 max_surfel_radius_deviation_;
 
     surfel_mem_array mem_array_;
     surfel_disk_array disk_array_;

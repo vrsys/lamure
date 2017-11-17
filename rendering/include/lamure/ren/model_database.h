@@ -43,6 +43,8 @@ public:
 
     const size_t        get_slot_size() const;
     const size_t        get_primitives_per_node() const;
+
+    static bool         contains_only_compressed_data_;
 protected:
 
                         model_database();

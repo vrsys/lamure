@@ -106,7 +106,7 @@ public:
 
     void                display_status(std::string const& information_to_display);
 
-    
+    void                set_user_defined_background_color(float bg_r, float bg_g, float bg_b);
 
 protected:
     bool                initialize_schism_device_and_shaders(int resX, int resY);
@@ -114,6 +114,7 @@ protected:
     void                update_frustum_dependent_parameters(lamure::ren::camera const& camera);
 
     void                bind_storage_buffer(scm::gl::buffer_ptr buffer);
+    void                bind_bvh_attributes_for_compression_ssbo_buffer(scm::gl::buffer_ptr& buffer, lamure::context_t context_id, std::set<lamure::model_t> const& current_set, lamure::view_t const view_id);
 
     void                upload_uniforms(lamure::ren::camera const& camera) const;
     void                upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_t const model_id, RenderPass const pass_id) const;
@@ -138,6 +139,11 @@ protected:
                                            const lamure::view_t view_id, 
                                            scm::gl::vertex_array_ptr const& render_VAO, 
                                            std::set<lamure::model_t> const& current_set, std::vector<uint32_t>& frustum_culling_results);
+
+    bool                read_shader(std::string const& path_string, std::string& shader_string);
+    bool const          parse_prefix(std::string& in_string, std::string const& prefix);
+    std::string const   strip_whitespace(std::string const& in_string);
+
 private:
 
         int                                         win_x_;
@@ -156,14 +162,20 @@ private:
 
         //shader programs
         scm::gl::program_ptr                        LQ_one_pass_program_;
+        scm::gl::program_ptr                        compressed_LQ_one_pass_program_;
 
         scm::gl::program_ptr                        pass1_visibility_shader_program_;
+        scm::gl::program_ptr                        pass1_compressed_visibility_shader_program_;
         scm::gl::program_ptr                        pass2_accumulation_shader_program_;
+        scm::gl::program_ptr                        pass2_compressed_accumulation_shader_program_;
         scm::gl::program_ptr                        pass3_pass_through_shader_program_;
         scm::gl::program_ptr                        pass_filling_program_;
+
         scm::gl::program_ptr                        bounding_box_vis_shader_program_;
+        scm::gl::program_ptr                        pvs_grid_cell_vis_shader_program_;
 
 	    scm::gl::program_ptr                        pass1_linked_list_accumulate_program_;
+        scm::gl::program_ptr                        pass1_compressed_linked_list_accumulate_program_;
 	    scm::gl::program_ptr                        pass2_linked_list_resolve_program_;
 	    scm::gl::program_ptr                        pass3_repair_program_;
 
@@ -196,10 +208,12 @@ private:
 	    float                                       blending_threshold_;
 	
 
-	int                                         render_provenance_;
-	bool                                        do_measurement_;
-	bool                                        use_black_background_;
+	    int                                         render_provenance_;
+	    bool                                        do_measurement_;
+	    bool                                        use_user_defined_background_color_;
         bool                                        render_bounding_boxes_;
+        bool                                        render_pvs_grid_cells_;
+        bool                                        render_occluded_geometry_;
 
         //variables related to text rendering
         scm::gl::text_renderer_ptr                              text_renderer_;
@@ -217,11 +231,13 @@ private:
         std::vector<float>                                      radius_scale_per_model_;
         float                                                   radius_scale_;
 
-	Measurement                                             measurement_;
+	    Measurement                                             measurement_;
 
         size_t                                                  elapsed_ms_since_cut_update_;
 
         RenderMode                                              render_mode_;
+
+        scm::math::vec3f                                        user_defined_background_color_ = scm::math::vec3f(0.0f, 0.0f, 0.0f);
 
         std::set<lamure::model_t> visible_set_;
         std::set<lamure::model_t> invisible_set_;
@@ -233,6 +249,9 @@ private:
         scm::gl::program_ptr trimesh_shader_program_;
         std::vector<scm::math::vec3f> line_begin_;
         std::vector<scm::math::vec3f> line_end_;
+
+        std::map<lamure::context_t, std::vector<float>> bvh_ssbo_cpu_data;
+        std::map<lamure::context_t, scm::gl::buffer_ptr> bvh_ssbos_per_context;
         unsigned int max_lines_;
 
 //methods for changing rendering settings dynamically
@@ -245,14 +264,22 @@ public:
     void mouse(int button, int state, int x, int y, lamure::ren::camera const& camera);
     void toggle_provenance_rendering();
     void toggle_do_measurement();
-    void toggle_use_black_background();
+    void toggle_use_user_defined_background_color();
     void toggle_bounding_box_rendering();
+    void toggle_pvs_grid_cell_rendering();
     void change_point_size(float amount);
     void toggle_cut_update_info();
     void toggle_camera_info(const lamure::view_t current_cam_id);
     void take_screenshot(std::string const& screenshot_path, std::string const& screenshot_name);
     void toggle_visible_set();
     void toggle_display_info();
+
+    void toggle_culling();
+    void enable_culling(const bool& enable);
+    double get_fps() const;
+
+    void toggle_ssbo_update();
+
 };
 
 #endif // REN_OLD_RENDERER_H_
