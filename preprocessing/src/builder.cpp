@@ -371,19 +371,14 @@ bool builder::reserialize(boost::filesystem::path const &input_file, uint16_t st
 
 size_t builder::calculate_memory_limit() const
 {
-    // compute memory parameters
-    const size_t memory_budget = get_total_memory() * desc_.memory_ratio;
-    const size_t occupied = get_total_memory() - get_available_memory();
-
-    if (occupied >= memory_budget) {
-        LOGGER_ERROR("Memory ratio is too small");
+    LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024.0 / 1024.0 / 1024.0 << " GiB");
+    LOGGER_INFO("Memory budget: " << desc_.memory_budget << " GiB");
+    if (get_total_memory() <= desc_.memory_budget) {
+        LOGGER_ERROR("Not enough memory. Go buy more RAM");
         return false;
     }
-    size_t memory_limit = memory_budget - occupied;
-    LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024 / 1024 << " MiB");
-    LOGGER_INFO("Memory limit: " << memory_limit / 1024 / 1024 << " MiB");
     LOGGER_INFO("Precision for storing coordinates and radii: " << std::string((sizeof(real) == 8) ? "double" : "single"));
-    return memory_limit;
+    return desc_.memory_budget;
 }
 
 bool builder::resample()

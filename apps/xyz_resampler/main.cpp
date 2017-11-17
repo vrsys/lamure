@@ -55,15 +55,14 @@ int main(int argc, const char *argv[])
          "If this option is set, the surfels in the input file will not be "
          "translated to the root bounding box center.")
 
-        ("mem-ratio,m",
-         po::value<float>()->default_value(0.6, "0.6"),
-         "the ratio to the total amount of physical memory available on the "
-         "current system. This value denotes how much memory is allowed to "
-         "use by the application")
+        ("memory_budget,m",
+         po::value<float>()->default_value(8.0, "8.0"),
+         "the total amount of physical memory allowed to be used by "
+         "the application in gigabytes")
 
         ("buffer-size,b",
          po::value<int>()->default_value(150),
-         "buffer size in MiB")
+         "buffer size in megabytes")
 
         ("rep-radius-algo",
          po::value<std::string>()->default_value("gmean"),
@@ -189,10 +188,7 @@ int main(int argc, const char *argv[])
         }
 
         // manual check because typed_value doenst support check whether default is used
-        if(vm["mem-ratio"].as<float>() != 0.6f) {
-            std::cerr << "WARNING: \"mem-ratio\" flag deprecated" << std::endl;
-        }
-        desc.memory_ratio                 = std::max(vm["mem-ratio"].as<float>(), 0.05f);
+        desc.memory_budget                = std::max(vm["memory-budget"].as<float>(), 1.0f);
         desc.buffer_size                  = buffer_size;
         desc.input_file                   = fs::canonical(input_file).string();
         desc.working_directory            = fs::canonical(wd).string();
