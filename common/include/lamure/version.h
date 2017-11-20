@@ -13,20 +13,20 @@ namespace lamure
   static const std::string    LAMURE_LIBRARY_NAME = std::string("lamure - Large Multi-Resolution Library");
 
   static const unsigned       VERSION_MAJOR = 0;
-  static const unsigned       VERSION_MINOR = 1;
+  static const unsigned       VERSION_MINOR = 2;
   static const unsigned       VERSION_REVISION = 0;
 
   static const std::string    VERSION_TAG = std::string("development");
-  static const std::string    VERSION_NAME = std::string("archimedes");
+  static const std::string    VERSION_NAME = std::string("bohr");
 
   // oncoming version names :
-  // - bohr
   // - coulomb
   // - euler
   // - dirac
   // - faraday
 
   // recent version names :
+  // - archimedes
 
 } // namespace lamure
 
