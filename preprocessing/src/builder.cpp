@@ -371,9 +371,11 @@ bool builder::reserialize(boost::filesystem::path const &input_file, uint16_t st
 
 size_t builder::calculate_memory_limit() const
 {
+
+    size_t memory_budget = desc_.memory_budget * 1024UL * 1024UL * 1024UL;
     LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024.0 / 1024.0 / 1024.0 << " GiB");
-    LOGGER_INFO("Memory budget: " << desc_.memory_budget << " GiB");
-    if (get_total_memory() <= desc_.memory_budget) {
+    LOGGER_INFO("Memory budget: " << desc_.memory_budget << " GiB (use -m to choose memory budget in GiB)");
+    if (get_total_memory() <= memory_budget) {
         LOGGER_ERROR("Not enough memory. Go buy more RAM");
         return false;
     }
