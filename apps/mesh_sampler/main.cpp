@@ -37,10 +37,9 @@ int main(int argc, char **argv)
     if (!sampler.load(argv[1]))
         return -1;
 
-    if (!sampler.SampleMesh(argv[2]), 
-      cmd_option_exists(argv, argv+argc, "-fx"), 
-      cmd_option_exists(argv, argv+argc, "-fy"))
+    if (!sampler.SampleMesh(argv[2], cmd_option_exists(argv, argv+argc, "-fx"), cmd_option_exists(argv, argv+argc, "-fy"))) {
         return -1;
+    }
 
     return 0;
 }

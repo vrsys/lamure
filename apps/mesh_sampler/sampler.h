@@ -61,7 +61,7 @@ public:
 
     bool load(const std::string& filename);
     bool SampleMesh(const std::string& outputFilename,
-      bool flip_x = false, bool flip_y = false);
+      bool flip_x, bool flip_y);
 
 private:
 

@@ -13,6 +13,7 @@
 #include <lamure/pre/io/format_abstract.h>
 #include <lamure/pre/io/format_xyz.h>
 #include <lamure/pre/io/format_xyz_all.h>
+#include <lamure/pre/io/format_xyz_bin.h>
 #include <lamure/pre/io/format_ply.h>
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
@@ -129,6 +130,10 @@ boost::filesystem::path builder::convert_to_binary(std::string const &input_type
     else if (input_type == ".xyz_all") {
         binary_file += ".bin_all";
         format_in = std::unique_ptr<format_xyzall>{new format_xyzall()};
+    }
+    else if (input_type == ".xyz_bin") {
+        binary_file += ".bin";
+        format_in = std::unique_ptr<format_xyz_bin>{new format_xyz_bin()};
     }
     else if (input_type == ".ply") {
         binary_file += ".bin";
@@ -396,6 +401,7 @@ bool builder::resample()
         input_file_type == ".bin" ||
         input_file_type == ".xyz" ||
         input_file_type == ".xyz_all" ||
+        input_file_type == ".xyz_bin" ||
         input_file_type == ".ply")
         start_stage = 0;
     else if (input_file_type == ".bin" || input_file_type == ".bin_all")
@@ -440,6 +446,7 @@ construct()
 
     if (input_file_type == ".xyz" ||
         input_file_type == ".xyz_all" ||
+        input_file_type == ".xyz_bin" ||
         input_file_type == ".ply")
         start_stage = 0;
     else if (input_file_type == ".bin" || input_file_type == ".bin_all")
