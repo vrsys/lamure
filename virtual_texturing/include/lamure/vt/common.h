@@ -21,7 +21,7 @@ public:
 
   // Texture management fields
   static constexpr const char *TILE_SIZE = "TILE_SIZE";
-  static constexpr const char *FILE_TEXTURE = "FILE_TEXTURE";
+  static constexpr const char *NAME_TEXTURE = "NAME_TEXTURE";
   static constexpr const char *FILE_MIPMAP = "FILE_MIPMAP";
 
   static constexpr const char *OPT_RUN_IN_PARALLEL = "OPT_RUN_IN_PARALLEL";
@@ -29,11 +29,11 @@ public:
 
   static constexpr const char *TEXTURE_FORMAT = "TEXTURE_FORMAT";
   static constexpr const char *TEXTURE_FORMAT_RGBA8 = "RGBA8";
-  static constexpr const char *TEXTURE_FORMAT_RGB6 = "RGB6";
-  static constexpr const char *TEXTURE_FORMAT_R2 = "R2";
+  static constexpr const char *TEXTURE_FORMAT_RGB8 = "RGB8";
+  static constexpr const char *TEXTURE_FORMAT_R8 = "R8";
 
   enum FORMAT_TEXTURE {
-    RGBA8, RGB6, R2
+    RGBA8, RGB8, R8
   };
 
   static const FORMAT_TEXTURE which_texture_format(const char *_texture_format) {
@@ -41,13 +41,13 @@ public:
       {
           return RGBA8;
       }
-      else if (strcmp(_texture_format, TEXTURE_FORMAT_RGB6) == 0)
+      else if (strcmp(_texture_format, TEXTURE_FORMAT_RGB8) == 0)
       {
-          return RGB6;
+          return RGB8;
       }
-      else if (strcmp(_texture_format, TEXTURE_FORMAT_R2) == 0)
+      else if (strcmp(_texture_format, TEXTURE_FORMAT_R8) == 0)
       {
-          return R2;
+          return R8;
       }
       throw std::runtime_error("Unknown texture format");
   }

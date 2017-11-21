@@ -19,29 +19,28 @@
 #include <lamure/vt/common.h>
 #include <lamure/vt/ext/morton.h>
 
-namespace vt {
+namespace vt
+{
 
-class Preprocessor {
+class Preprocessor
+{
 public:
-  CSimpleIniA *config;
+    CSimpleIniA *config;
 
-  explicit Preprocessor(const char *path_config);
-  ~Preprocessor() = default;
+    explicit Preprocessor(const char *path_config);
+    ~Preprocessor() = default;
 
-  bool prepare_single_raster(const char *name_raster);
-  bool prepare_mipmap();
+    bool prepare_single_raster(const char *name_raster);
+    bool prepare_mipmap();
 
 private:
 
-  void read_ppm_header(std::ifstream &_ifs, size_t &_dim_x, size_t &_dim_y);
-
-  void extract_leaf_tile_range(uint32_t _thread_id);
-
-  void stitch_tile_range(uint32_t _thread_id, size_t _node_start, size_t _node_end);
-
-  void write_stitched_tile(size_t _id, size_t _tile_size, std::array<Magick::Image, 4> &_child_imgs);
-
-  void extract_leaf_tile_rows(uint32_t _thread_id);
+    void extract_leaf_tile_range(uint32_t _thread_id);
+    void stitch_tile_range(uint32_t _thread_id, size_t _node_start, size_t _node_end);
+    void write_stitched_tile(size_t id, size_t tile_size, std::array<Magick::Image, 4> &child_imgs);
+    void extract_leaf_tile_rows(uint32_t _thread_id);
+    void read_dimensions(ifstream &ifs, size_t &dim_x, size_t &dim_y);
+    uint8_t get_byte_stride(Config::FORMAT_TEXTURE _format_texture);
 };
 
 }

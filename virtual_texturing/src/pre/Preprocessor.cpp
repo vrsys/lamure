@@ -1,8 +1,10 @@
 #include <lamure/vt/pre/Preprocessor.h>
 
-namespace vt {
+namespace vt
+{
 
-Preprocessor::Preprocessor(const char *path_config) {
+Preprocessor::Preprocessor(const char *path_config)
+{
     config = new CSimpleIniA(true, false, false);
 
     if (config->LoadFile(path_config) < 0)
@@ -10,7 +12,24 @@ Preprocessor::Preprocessor(const char *path_config) {
         throw std::runtime_error("Configuration file parsing error");
     }
 
-    boost::filesystem::path path_texture(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF));
+    Config::FORMAT_TEXTURE format_texture = Config::which_texture_format(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
+
+    boost::filesystem::path path_texture;
+    switch (format_texture)
+    {
+        case Config::FORMAT_TEXTURE::RGBA8:
+
+            path_texture = boost::filesystem::path(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgba");
+            break;
+        case Config::FORMAT_TEXTURE::RGB8:
+
+            path_texture = boost::filesystem::path(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgb");
+            break;
+        case Config::FORMAT_TEXTURE::R8:
+
+            path_texture = boost::filesystem::path(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".gray");
+            break;
+    }
     boost::filesystem::path dir_texture = path_texture.parent_path();
     Magick::InitializeMagick(dir_texture.c_str());
 
@@ -24,11 +43,12 @@ Preprocessor::Preprocessor(const char *path_config) {
     }
 }
 
-bool Preprocessor::prepare_single_raster(const char *name_raster) {
+bool Preprocessor::prepare_single_raster(const char *name_raster)
+{
     if (atoi(config->GetValue(Config::DEBUG, Config::VERBOSE, Config::UNDEF)) == 1)
     {
         std::cout << std::endl;
-        std::cout << "Attempting to convert image to bitmap in-core..." << std::endl;
+        std::cout << "Attempting to convert full image in-core..." << std::endl;
     }
 
     Config::FORMAT_TEXTURE format_texture = Config::which_texture_format(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
@@ -44,29 +64,27 @@ bool Preprocessor::prepare_single_raster(const char *name_raster) {
         geometry.height(side);
         image.crop(geometry);
 
-        // TODO: complete color space support
         switch (format_texture)
         {
-        case Config::FORMAT_TEXTURE::RGBA8:
+            case Config::FORMAT_TEXTURE::RGBA8:
 
-            image.type(Magick::TrueColorType);
-            image.depth(8);
-            break;
-        case Config::FORMAT_TEXTURE::RGB6:
+                image.type(Magick::TrueColorMatteType);
+                image.depth(8);
+                image.write(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgba");
+                break;
+            case Config::FORMAT_TEXTURE::RGB8:
 
-            image.quantizeColorSpace(Magick::RGBColorspace);
-            image.quantizeColors(256);
-            image.quantize();
-            break;
-        case Config::FORMAT_TEXTURE::R2:
+                image.type(Magick::TrueColorType);
+                image.depth(8);
+                image.write(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgb");
+                break;
+            case Config::FORMAT_TEXTURE::R8:
 
-            image.quantizeColorSpace(Magick::GRAYColorspace);
-            image.quantizeColors(256);
-            image.quantize();
-            break;
+                image.type(Magick::GrayscaleType);
+                image.depth(8);
+                image.write(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".gray");
+                break;
         }
-
-        image.write(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF));
     }
     catch (Magick::Exception &error_)
     {
@@ -83,7 +101,8 @@ bool Preprocessor::prepare_single_raster(const char *name_raster) {
     return true;
 }
 
-bool Preprocessor::prepare_mipmap() {
+bool Preprocessor::prepare_mipmap()
+{
     auto tile_size = (size_t) atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF));
     if ((tile_size & (tile_size - 1)) != 0)
     {
@@ -92,12 +111,27 @@ bool Preprocessor::prepare_mipmap() {
 
     uint32_t count_threads = 0;
     count_threads = atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::OPT_RUN_IN_PARALLEL, Config::UNDEF)) != 1 ? 1 : thread::hardware_concurrency();
+    Config::FORMAT_TEXTURE format_texture = Config::which_texture_format(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
 
     size_t dim_x = 0, dim_y = 0;
 
     std::ifstream input;
-    input.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF), std::ifstream::in | std::ifstream::binary);
-    read_ppm_header(input, dim_x, dim_y);
+    switch (format_texture)
+    {
+        case Config::FORMAT_TEXTURE::RGBA8:
+
+            input.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgba", std::ifstream::in | std::ifstream::binary);
+            break;
+        case Config::FORMAT_TEXTURE::RGB8:
+
+            input.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgb", std::ifstream::in | std::ifstream::binary);
+            break;
+        case Config::FORMAT_TEXTURE::R8:
+
+            input.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".gray", std::ifstream::in | std::ifstream::binary);
+            break;
+    }
+    read_dimensions(input, dim_x, dim_y);
     input.close();
 
     bool verbose = atoi(config->GetValue(Config::DEBUG, Config::VERBOSE, Config::UNDEF)) == 1;
@@ -120,12 +154,16 @@ bool Preprocessor::prepare_mipmap() {
 
     for (uint32_t _thread_id = 0; _thread_id < count_threads; _thread_id++)
     {
-        if(atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF)) == 1)
-//        thread_pool.emplace_back([=]()
-//                                 { extract_leaf_tile_range(_thread_id); });
-
-        thread_pool.emplace_back([=]()
-                                 { extract_leaf_tile_rows(_thread_id); });
+        if (atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::OPT_TILE_ROW_IN_CORE, Config::UNDEF)) == 1)
+        {
+            thread_pool.emplace_back([=]()
+                                     { extract_leaf_tile_rows(_thread_id); });
+        }
+        else
+        {
+            thread_pool.emplace_back([=]()
+                                     { extract_leaf_tile_range(_thread_id); });
+        }
     }
     for (auto &_thread : thread_pool)
     {
@@ -187,7 +225,7 @@ bool Preprocessor::prepare_mipmap() {
     std::ofstream output;
     output.open(file_mipmap, std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
 
-    auto *buf_tile = new char[tile_size * tile_size * 3];
+    auto *buf_tile = new char[tile_size * tile_size * get_byte_stride(format_texture)];
 
     for (uint32_t _depth = 0; _depth <= tree_depth; _depth++)
     {
@@ -197,18 +235,46 @@ bool Preprocessor::prepare_mipmap() {
         for (size_t _id = first_node_depth; _id <= last_node_depth; _id++)
         {
             std::ifstream input_tile;
-            input_tile.open("id_" + std::to_string(_id) + ".ppm", std::ifstream::in | std::ifstream::binary);
+            switch (format_texture)
+            {
+                case Config::FORMAT_TEXTURE::RGBA8:
 
-            read_ppm_header(input_tile, dim_x, dim_y);
-            input_tile.read(&buf_tile[0], tile_size * tile_size * 3);
+                    input_tile.open("id_" + std::to_string(_id) + ".rgba", std::ifstream::in | std::ifstream::binary);
+                    break;
+                case Config::FORMAT_TEXTURE::RGB8:
+
+                    input_tile.open("id_" + std::to_string(_id) + ".rgb", std::ifstream::in | std::ifstream::binary);
+                    break;
+                case Config::FORMAT_TEXTURE::R8:
+
+                    input_tile.open("id_" + std::to_string(_id) + ".gray", std::ifstream::in | std::ifstream::binary);
+                    break;
+            }
+
+            read_dimensions(input_tile, dim_x, dim_y);
+            input_tile.read(&buf_tile[0], tile_size * tile_size * get_byte_stride(format_texture));
 
             input_tile.close();
 
-            output.write(&buf_tile[0], tile_size * tile_size * 3);
+            output.write(&buf_tile[0], tile_size * tile_size * get_byte_stride(format_texture));
 
             if (atoi(config->GetValue(Config::DEBUG, Config::KEEP_INTERMEDIATE_DATA, Config::UNDEF)) != 1)
             {
-                std::remove(("id_" + std::to_string(_id) + ".ppm").c_str());
+                switch (format_texture)
+                {
+                    case Config::FORMAT_TEXTURE::RGBA8:
+
+                        std::remove(("id_" + std::to_string(_id) + ".rgba").c_str());
+                        break;
+                    case Config::FORMAT_TEXTURE::RGB8:
+
+                        std::remove(("id_" + std::to_string(_id) + ".rgb").c_str());
+                        break;
+                    case Config::FORMAT_TEXTURE::R8:
+
+                        std::remove(("id_" + std::to_string(_id) + ".gray").c_str());
+                        break;
+                }
             }
         }
     }
@@ -224,48 +290,32 @@ bool Preprocessor::prepare_mipmap() {
     return false;
 }
 
-void Preprocessor::read_ppm_header(std::ifstream &_ifs, size_t &_dim_x, size_t &_dim_y) {
-    auto *buf_file_version = new char[3];
-    _ifs.getline(&buf_file_version[0], 3, '\x0A');
+void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id)
+{
+    Config::FORMAT_TEXTURE format_texture = Config::which_texture_format(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
+    std::ifstream ifs;
 
-    if (strcmp(buf_file_version, "P6") != 0)
+    switch (format_texture)
     {
-        throw std::runtime_error("PPM file format not equal to P6");
+        case Config::FORMAT_TEXTURE::RGBA8:
+
+            ifs.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgba", std::ifstream::in | std::ifstream::binary);
+            break;
+        case Config::FORMAT_TEXTURE::RGB8:
+
+            ifs.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgb", std::ifstream::in | std::ifstream::binary);
+            break;
+        case Config::FORMAT_TEXTURE::R8:
+
+            ifs.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".gray", std::ifstream::in | std::ifstream::binary);
+            break;
     }
-
-    auto *buf_dim_x = new char[8];
-    auto *buf_dim_y = new char[8];
-    auto *buf_color_depth = new char[8];
-
-    _ifs.getline(&buf_dim_x[0], 8, '\x20');
-    _ifs.getline(&buf_dim_y[0], 8, '\x0A');
-    _ifs.getline(&buf_color_depth[0], 8, '\x0A');
-
-    _dim_x = (size_t) atol(buf_dim_x);
-    _dim_y = (size_t) atol(buf_dim_y);
-    auto color_depth = (short) atoi(buf_color_depth);
-
-    if (color_depth != 255)
-    {
-        throw std::runtime_error("PPM color depth not equal to 255");
-    }
-
-    if (_dim_x != _dim_y || (_dim_x & (_dim_x - 1)) != 0)
-    {
-        throw std::runtime_error("PPM dimensions are not equal or not a power of 2");
-    }
-}
-
-void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
-    std::ifstream _ifs;
-    _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF),
-              std::ifstream::in | std::ifstream::binary);
 
     size_t dim_x = 0, dim_y = 0;
 
-    read_ppm_header(_ifs, dim_x, dim_y);
+    read_dimensions(ifs, dim_x, dim_y);
 
-    streamoff _offset_header = _ifs.tellg();
+    streamoff _offset_header = ifs.tellg();
 
     auto _tile_size = (size_t) atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF));
     if ((_tile_size & (_tile_size - 1)) != 0)
@@ -275,8 +325,7 @@ void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
 
     uint32_t _tree_depth = QuadTree::calculate_depth(dim_x, _tile_size);
 
-    auto *buf_tile = new char[_tile_size * _tile_size * 3];
-    std::string buf_header = "P6\x0A" + std::to_string(_tile_size) + "\x20" + std::to_string(_tile_size) + "\x0A" + "255" + "\x0A";
+    auto *buf_tile = new char[_tile_size * _tile_size * get_byte_stride(format_texture)];
 
     size_t _node_first_leaf = QuadTree::get_first_node_id_of_depth(_tree_depth);
     size_t _node_last_leaf = QuadTree::get_first_node_id_of_depth(_tree_depth) + QuadTree::get_length_of_depth(_tree_depth) - 1;
@@ -304,20 +353,35 @@ void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
         uint_fast64_t skip_cols, skip_rows;
         morton2D_64_decode((uint_fast64_t) (_id - _node_first_leaf), skip_cols, skip_rows);
 
-        _ifs.seekg(_offset_header);
-        _ifs.ignore(skip_rows * _tiles_per_row * _tile_size * _tile_size * 3);
+        ifs.seekg(_offset_header);
+        ifs.ignore(skip_rows * _tiles_per_row * _tile_size * _tile_size * get_byte_stride(format_texture));
 
         for (uint32_t _row = 0; _row < _tile_size; _row++)
         {
-            _ifs.ignore(skip_cols * _tile_size * 3);
-            _ifs.read(&buf_tile[_row * _tile_size * 3], _tile_size * 3);
-            _ifs.ignore((_tiles_per_row - skip_cols - 1) * _tile_size * 3);
+            ifs.ignore(skip_cols * _tile_size * get_byte_stride(format_texture));
+            ifs.read(&buf_tile[_row * _tile_size * get_byte_stride(format_texture)], _tile_size * get_byte_stride(format_texture));
+            ifs.ignore((_tiles_per_row - skip_cols - 1) * _tile_size * get_byte_stride(format_texture));
         }
 
         std::ofstream output;
-        output.open("id_" + std::to_string(_id) + ".ppm", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-        output.write(&buf_header.c_str()[0], buf_header.size());
-        output.write(&buf_tile[0], _tile_size * _tile_size * 3);
+
+        switch (format_texture)
+        {
+            case Config::FORMAT_TEXTURE::RGBA8:
+
+                output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                break;
+            case Config::FORMAT_TEXTURE::RGB8:
+
+                output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                break;
+            case Config::FORMAT_TEXTURE::R8:
+
+                output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                break;
+        }
+
+        output.write(&buf_tile[0], _tile_size * _tile_size * get_byte_stride(format_texture));
         output.close();
 
         if (verbose)
@@ -341,7 +405,7 @@ void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
         }
     }
 
-    _ifs.close();
+    ifs.close();
 
     if (verbose)
     {
@@ -350,13 +414,30 @@ void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id) {
     }
 }
 
-void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
-    std::ifstream _ifs;
-    _ifs.open(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::FILE_TEXTURE, Config::UNDEF), std::ifstream::in | std::ifstream::binary);
+void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id)
+{
+    Config::FORMAT_TEXTURE format_texture = Config::which_texture_format(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
+    std::ifstream ifs;
+
+    switch (format_texture)
+    {
+        case Config::FORMAT_TEXTURE::RGBA8:
+
+            ifs.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgba", std::ifstream::in | std::ifstream::binary);
+            break;
+        case Config::FORMAT_TEXTURE::RGB8:
+
+            ifs.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".rgb", std::ifstream::in | std::ifstream::binary);
+            break;
+        case Config::FORMAT_TEXTURE::R8:
+
+            ifs.open(std::string(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF)) + ".gray", std::ifstream::in | std::ifstream::binary);
+            break;
+    }
 
     size_t dim_x = 0, dim_y = 0;
 
-    read_ppm_header(_ifs, dim_x, dim_y);
+    read_dimensions(ifs, dim_x, dim_y);
 
     const auto tile_size = static_cast<const size_t>(atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF)));
     if ((tile_size & (tile_size - 1)) != 0)
@@ -372,10 +453,8 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
     auto **buf_tiles = new char *[tiles_per_row];
     for (int _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
     {
-        buf_tiles[_tile_row] = new char[tile_size * tile_size * 3];
+        buf_tiles[_tile_row] = new char[tile_size * tile_size * get_byte_stride(format_texture)];
     }
-
-    std::string buf_header = "P6\x0A" + std::to_string(tile_size) + "\x20" + std::to_string(tile_size) + "\x0A" + "255" + "\x0A";
 
     size_t _tile_row = _thread_id * rows_per_thread;
 
@@ -391,7 +470,7 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
             start = std::chrono::high_resolution_clock::now();
         }
 
-        _ifs.ignore(_tile_row * tiles_per_row * tile_size * tile_size * 3);
+        ifs.ignore(_tile_row * tiles_per_row * tile_size * tile_size * get_byte_stride(format_texture));
 
         while (_tile_row < (_thread_id + 1) * rows_per_thread && _tile_row < tiles_per_row)
         {
@@ -399,7 +478,7 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
             {
                 for (uint32_t _tile_col = 0; _tile_col < tiles_per_row; _tile_col++)
                 {
-                    _ifs.read(&buf_tiles[_tile_col][_row * tile_size * 3], tile_size * 3);
+                    ifs.read(&buf_tiles[_tile_col][_row * tile_size * get_byte_stride(format_texture)], tile_size * get_byte_stride(format_texture));
                 }
             }
 
@@ -408,9 +487,22 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
                 uint_fast64_t _id = morton2D_64_encode(_tile_col, _tile_row) + QuadTree::get_first_node_id_of_depth(tree_depth);
 
                 std::ofstream output;
-                output.open("id_" + std::to_string(_id) + ".ppm", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-                output.write(&buf_header.c_str()[0], buf_header.size());
-                output.write(&buf_tiles[_tile_col][0], tile_size * tile_size * 3);
+                switch (format_texture)
+                {
+                    case Config::FORMAT_TEXTURE::RGBA8:
+
+                        output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                        break;
+                    case Config::FORMAT_TEXTURE::RGB8:
+
+                        output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                        break;
+                    case Config::FORMAT_TEXTURE::R8:
+
+                        output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                        break;
+                }
+                output.write(&buf_tiles[_tile_col][0], tile_size * tile_size * get_byte_stride(format_texture));
                 output.close();
             }
 
@@ -431,7 +523,7 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
         }
     }
 
-    _ifs.close();
+    ifs.close();
 
     for (int _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
         delete[] buf_tiles[_tile_row];
@@ -444,27 +536,24 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id) {
     }
 }
 
-void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, size_t _node_end) {
-    auto _tile_size = (size_t) atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF));
-    if ((_tile_size & (_tile_size - 1)) != 0)
+void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, size_t _node_end)
+{
+    auto tile_size = (size_t) atoi(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF));
+    if ((tile_size & (tile_size - 1)) != 0)
     {
         throw std::runtime_error("Tile size is not a power of 2");
     }
 
     bool verbose = atoi(config->GetValue(Config::DEBUG, Config::VERBOSE, Config::UNDEF)) == 1;
+    Config::FORMAT_TEXTURE format_texture = Config::which_texture_format(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
 
     size_t _range = _node_end - _node_start + 1;
 
     auto start = std::chrono::high_resolution_clock::now();
     double average = 0.0;
 
-    std::array<Magick::Image, 4> children_imgs;
-
-    for (size_t i = 0; i < 4; i++)
-    {
-        Magick::Image _child;
-        children_imgs[i] = _child;
-    }
+    char *_buf_concat = new char[2 * tile_size * 2 * tile_size * get_byte_stride(format_texture)];
+    char *_buf_out = new char[tile_size * tile_size * get_byte_stride(format_texture)];
 
     for (size_t _id = _node_start; _id <= _node_end; _id++)
     {
@@ -473,12 +562,118 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
             start = std::chrono::high_resolution_clock::now();
         }
 
-        for (size_t i = 0; i < 4; i++)
+        std::ifstream _ifs_0;
+        std::ifstream _ifs_1;
+        std::ifstream _ifs_2;
+        std::ifstream _ifs_3;
+
+        switch (format_texture)
         {
-            children_imgs[i].read("id_" + std::to_string(QuadTree::get_child_id(_id, i)) + ".ppm");
+            case Config::FORMAT_TEXTURE::RGBA8:
+
+                _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".rgba");
+                _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".rgba");
+                _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".rgba");
+                _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".rgba");
+                break;
+            case Config::FORMAT_TEXTURE::RGB8:
+
+                _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".rgb");
+                _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".rgb");
+                _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".rgb");
+                _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".rgb");
+                break;
+            case Config::FORMAT_TEXTURE::R8:
+
+                _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".gray");
+                _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".gray");
+                _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".gray");
+                _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".gray");
+                break;
         }
 
-        write_stitched_tile(_id, _tile_size, children_imgs);
+        for (size_t _row = 0; _row < 2 * tile_size; _row++)
+        {
+            if (_row < tile_size)
+            {
+                _ifs_0.read(&_buf_concat[_row * 2 * tile_size * get_byte_stride(format_texture)], tile_size * get_byte_stride(format_texture));
+                _ifs_1.read(&_buf_concat[(_row * 2 + 1) * tile_size * get_byte_stride(format_texture)], tile_size * get_byte_stride(format_texture));
+            }
+            else
+            {
+                _ifs_2.read(&_buf_concat[_row * 2 * tile_size * get_byte_stride(format_texture)], tile_size * get_byte_stride(format_texture));
+                _ifs_3.read(&_buf_concat[(_row * 2 + 1) * tile_size * get_byte_stride(format_texture)], tile_size * get_byte_stride(format_texture));
+            }
+        }
+
+        _ifs_0.close();
+        _ifs_1.close();
+        _ifs_2.close();
+        _ifs_3.close();
+
+        for (size_t _row = 0; _row < 2 * tile_size; _row+=2)
+        {
+            for (size_t _col = 0; _col < 2 * tile_size; _col+=2)
+            {
+                // TODO: implement a better downscaling algo
+                switch (format_texture)
+                {
+                    case Config::FORMAT_TEXTURE::RGBA8:
+                    {
+                        char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 0];
+                        char pixel_g = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 1];
+                        char pixel_b = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 2];
+                        char pixel_a = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 3];
+
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 0] = pixel_r;
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 1] = pixel_g;
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 2] = pixel_b;
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 3] = pixel_a;
+
+                        break;
+                    }
+                    case Config::FORMAT_TEXTURE::RGB8:
+                    {
+                        char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 0];
+                        char pixel_g = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 1];
+                        char pixel_b = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 2];
+
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 0] = pixel_r;
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 1] = pixel_g;
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 2] = pixel_b;
+
+                        break;
+                    }
+                    case Config::FORMAT_TEXTURE::R8:
+                    {
+                        char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * get_byte_stride(format_texture) + 0];
+
+                        _buf_out[(_row / 2 * tile_size + _col / 2) * get_byte_stride(format_texture) + 0] = pixel_r;
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        std::ofstream output;
+        switch (format_texture)
+        {
+            case Config::FORMAT_TEXTURE::RGBA8:
+
+                output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                break;
+            case Config::FORMAT_TEXTURE::RGB8:
+
+                output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                break;
+            case Config::FORMAT_TEXTURE::R8:
+
+                output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+                break;
+        }
+        output.write(&_buf_out[0], tile_size * tile_size * get_byte_stride(format_texture));
+        output.close();
 
         if (verbose)
         {
@@ -501,6 +696,9 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
         }
     }
 
+    delete [] _buf_concat;
+    delete [] _buf_out;
+
     if (verbose)
     {
         std::cout << "Thread #" << _thread_id << " done" << std::endl;
@@ -508,23 +706,35 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
     }
 }
 
-void Preprocessor::write_stitched_tile(size_t _id, size_t _tile_size, std::array<Magick::Image, 4> &_child_imgs) {
-    Magick::Montage montage_settings;
-    montage_settings.tile(Magick::Geometry(2, 2));
-    montage_settings.geometry(Magick::Geometry(_tile_size, _tile_size));
+void Preprocessor::read_dimensions(std::ifstream &ifs, size_t &dim_x, size_t &dim_y)
+{
+    size_t fsize = (size_t) ifs.tellg();
+    ifs.seekg(0, std::ios::end);
+    fsize = (size_t) (ifs.tellg()) - fsize;
 
-    std::list<Magick::Image> montage_list;
-    Magick::montageImages(&montage_list, _child_imgs.begin(), _child_imgs.end(), montage_settings);
-    Magick::writeImages(montage_list.begin(), montage_list.end(), "id_" + std::to_string(_id) + ".ppm");
+    Config::FORMAT_TEXTURE format_texture = Config::which_texture_format(config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
 
-    Magick::Image image;
-    image.read("id_" + std::to_string(_id) + ".ppm");
-    Magick::Geometry geometry = image.size();
-    geometry.width(_tile_size);
-    geometry.height(_tile_size);
-    image.scale(geometry);
-    image.depth(8);
-    image.write("id_" + std::to_string(_id) + ".ppm");
+    auto byte_stride = get_byte_stride(format_texture);
+
+    dim_x = dim_y = (size_t) std::sqrt(fsize / byte_stride);
+
+    ifs.seekg(0);
+}
+
+uint8_t Preprocessor::get_byte_stride(Config::FORMAT_TEXTURE _format_texture)
+{
+    uint8_t _byte_stride = 0;
+    switch (_format_texture)
+    {
+        case Config::FORMAT_TEXTURE::RGBA8:_byte_stride = 4;
+            break;
+        case Config::FORMAT_TEXTURE::RGB8:_byte_stride = 3;
+            break;
+        case Config::FORMAT_TEXTURE::R8:_byte_stride = 1;
+            break;
+    }
+
+    return _byte_stride;
 }
 
 }
