@@ -5,15 +5,27 @@
 #include "TileStitcher.h"
 #include <iomanip>
 
-TileStitcher::TileStitcher(std::string input_dir, std::string output_file, int tiles_per_row, int tiles_per_column) {
+TileStitcher::TileStitcher(
+        std::string input_dir,
+        std::string output_dir,
+        std::string name,
+        int tiles_per_row,
+        int tiles_per_column) {
     this -> in_dir += input_dir;
-    out_file.open(output_file, std::ios::out | std::ios::binary);
+    this -> out_dir += output_dir;
 
-    // TODO read somewhere somehow the information about how much tiles in x direction we have
-    this -> tiles_per_row = (uint64_t) tiles_per_row;
+    this -> tiles_per_row    = (uint64_t) tiles_per_row;
     this -> tiles_per_column = (uint64_t) tiles_per_column;
 
     extract_tile_information();
+
+    uint64_t height = standard_tile_height * (tiles_per_row - 1)    + last_column_height;
+    uint64_t width  = standard_tile_width  * (tiles_per_column - 1) + last_row_width;
+    std::string filename = out_dir.string() + name
+                           + "_w" + std::to_string(width)
+                           + "_h" + std::to_string(height)
+                           + ".data";
+    out_file.open(filename, std::ios::out | std::ios::binary);
 }
 
 TileStitcher::~TileStitcher() = default;
@@ -60,21 +72,21 @@ bool TileStitcher::stitch() {
 
 void TileStitcher::extract_tile_information() {
     fs::path first_tile_path;
-    first_tile_path += in_dir;
-    first_tile_path.append("0_0.jpeg");
+    first_tile_path += get_path(0,0);
     auto first_tile_file = load_and_convert_tile(first_tile_path);
 
     standard_tile_width  = FreeImage_GetWidth(first_tile_file);
     standard_tile_height = FreeImage_GetHeight(first_tile_file);
     FreeImage_Unload(first_tile_file);
 
-    fs::path last_row_path;
-    last_row_path += in_dir;
-    last_row_path.append(std::to_string(tiles_per_row - 1) + "_0.jpeg");
-    auto last_row_file = load_and_convert_tile(last_row_path);
+    fs::path last_tile_path;
+    last_tile_path += get_path((int)(tiles_per_row - 1), (int)(tiles_per_column - 1));
 
-    last_row_width = FreeImage_GetWidth(last_row_file);
-    FreeImage_Unload(last_row_file);
+    auto last_tile_file = load_and_convert_tile(last_tile_path);
+
+    last_row_width     = FreeImage_GetWidth(last_tile_file);
+    last_column_height = FreeImage_GetHeight(last_tile_file);
+    FreeImage_Unload(last_tile_file);
 }
 
 
@@ -130,7 +142,7 @@ uint64_t TileStitcher::absolute_byte_pos(int index_x,
 }
 
 
-void TileStitcher::log(const std::chrono::time_point &begin, uint64_t counter) {
+void TileStitcher::log(std::chrono::system_clock::time_point const& begin, uint64_t counter) {
     if (++counter % 100 == 0) {
         auto curr_t = std::chrono::system_clock::now();
         auto curr_time = std::chrono::system_clock::to_time_t(curr_t);

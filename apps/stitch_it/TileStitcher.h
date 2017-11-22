@@ -7,6 +7,9 @@
 
 #include <iostream>
 #include <fstream>
+#include <chrono>
+#include <ctime>
+
 #include <FreeImage.h>
 #include <FreeImagePlus.h>
 #include <experimental/filesystem>
@@ -24,7 +27,12 @@ namespace fs = std::experimental::filesystem;
  */
 class TileStitcher {
 public:
-    TileStitcher(std::string input_dir, std::string output_file, int tiles_per_row, int i);
+    TileStitcher(
+            std::string input_dir,
+            std::string output_dir,
+            std::string name,
+            int tiles_per_row,
+            int tiles_per_column);
     virtual ~TileStitcher();
 
     /**
@@ -49,9 +57,11 @@ private:
     // Width of the last tile row for images which are not equally tiled
     // (e.g. each tile is 256x256 but last row tiles are 200x256)
     uint64_t last_row_width;
+    uint64_t last_column_height;
 
     // In- and output members
     fs::path in_dir;
+    fs::path out_dir;
     std::ofstream out_file;
 
     /***
@@ -115,7 +125,7 @@ private:
      * @param begin Time point when the process begun
      * @param counter Number of processed tiles so far
      */
-    void log(const std::chrono::time_point &begin, uint64_t counter);
+    void log(std::chrono::system_clock::time_point const& begin, uint64_t counter);
 };
 
 #endif //LAMURE_TILESTITCHER_H
