@@ -125,7 +125,7 @@ private:
      * @param begin Time point when the process begun
      * @param counter Number of processed tiles so far
      */
-    void log(std::chrono::system_clock::time_point const& begin, uint64_t counter);
+    void log(std::chrono::system_clock::time_point const& begin, uint64_t &counter);
 };
 
 #endif //LAMURE_TILESTITCHER_H

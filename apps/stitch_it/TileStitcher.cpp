@@ -19,8 +19,8 @@ TileStitcher::TileStitcher(
 
     extract_tile_information();
 
-    uint64_t height = standard_tile_height * (tiles_per_row - 1)    + last_column_height;
-    uint64_t width  = standard_tile_width  * (tiles_per_column - 1) + last_row_width;
+    uint64_t height = standard_tile_height * (tiles_per_column - 1) + last_column_height;
+    uint64_t width  = standard_tile_width  * (tiles_per_row - 1)    + last_row_width;
     std::string filename = out_dir.string() + name
                            + "_w" + std::to_string(width)
                            + "_h" + std::to_string(height)
@@ -104,10 +104,10 @@ FIBITMAP* TileStitcher::load_and_convert_tile(const std::string &file_path) {
     FIBITMAP* tile = FreeImage_Load(format, file_path.c_str());
 
     // Convert tile in 32 bit representation for RGBA und swap red and blue channel
-    tile = FreeImage_ConvertTo32Bits(tile);
-    swap_red_blue_32(tile);
-
-    return tile;
+    FIBITMAP* converted_tile = FreeImage_ConvertTo32Bits(tile);
+    swap_red_blue_32(converted_tile);
+    FreeImage_Unload(tile);
+    return converted_tile;
 }
 
 
@@ -142,7 +142,7 @@ uint64_t TileStitcher::absolute_byte_pos(int index_x,
 }
 
 
-void TileStitcher::log(std::chrono::system_clock::time_point const& begin, uint64_t counter) {
+void TileStitcher::log(std::chrono::system_clock::time_point const& begin, uint64_t &counter) {
     if (++counter % 100 == 0) {
         auto curr_t = std::chrono::system_clock::now();
         auto curr_time = std::chrono::system_clock::to_time_t(curr_t);
