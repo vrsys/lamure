@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
 #else
     std::string in_folder = "/mnt/terabytes_of_textures/montblanc/jpeg_tiles";
     std::string out_folder = "/mnt/terabytes_of_textures/montblanc";
-    std::string file_name  = "mountblanc";
+    std::string file_name  = "montblanc";
     TileStitcher stitcher(in_folder, out_folder, file_name, 4696, 1189);
 
 //    std::string out_folder = "/mnt/terabytes_of_textures/montblanc";

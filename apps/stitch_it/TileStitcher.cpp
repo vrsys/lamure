@@ -21,7 +21,7 @@ TileStitcher::TileStitcher(
 
     uint64_t height = standard_tile_height * (tiles_per_column - 1) + last_column_height;
     uint64_t width  = standard_tile_width  * (tiles_per_row - 1)    + last_row_width;
-    std::string filename = out_dir.string() + name
+    std::string filename = out_dir.string() + "/" + name
                            + "_w" + std::to_string(width)
                            + "_h" + std::to_string(height)
                            + ".data";
