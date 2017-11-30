@@ -21,6 +21,7 @@
 #include <lamure/pre/radius_computation_average_distance.h>
 #include <lamure/pre/radius_computation_natural_neighbours.h>
 #include <lamure/pre/reduction_normal_deviation_clustering.h>
+#include <lamure/pre/reduction_normal_deviation_clustering_provenance.h>
 #include <lamure/pre/reduction_constant.h>
 #include <lamure/pre/reduction_every_second.h>
 #ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
@@ -63,6 +64,8 @@ reduction_strategy *builder::get_reduction_strategy(reduction_algorithm algo) co
     switch (algo) {
         case reduction_algorithm::ndc:
             return new reduction_normal_deviation_clustering();
+        case reduction_algorithm::ndc_prov:
+            return new reduction_normal_deviation_clustering_provenance();
         case reduction_algorithm::constant:
             return new reduction_constant();
         case reduction_algorithm::every_second:

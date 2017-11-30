@@ -5,8 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#ifndef PRE_REDUCTION_NORMAL_DEVIATON_CLUSTERING_H_
-#define PRE_REDUCTION_NORMAL_DEVIATON_CLUSTERING_H_
+#ifndef PRE_REDUCTION_NORMAL_DEVIATON_CLUSTERING_PROV_H_
+#define PRE_REDUCTION_NORMAL_DEVIATON_CLUSTERING_PROV_H_
 
 #include <lamure/pre/logger.h>
 #include <lamure/pre/reduction_strategy.h>
@@ -20,10 +20,10 @@ namespace lamure
 {
 namespace pre
 {
-class PREPROCESSING_DLL reduction_normal_deviation_clustering : public reduction_strategy_provenance
+class PREPROCESSING_DLL reduction_normal_deviation_clustering_provenance : public reduction_strategy_provenance
 {
   public:
-    explicit reduction_normal_deviation_clustering() {}
+    explicit reduction_normal_deviation_clustering_provenance() {}
 
     surfel_mem_array create_lod(real &reduction_error, const std::vector<surfel_mem_array *> &input, std::vector<LoDMetaData> &deviations, const uint32_t surfels_per_node,
                                 const bvh &tree, const size_t start_node_id) const override;
@@ -67,4 +67,4 @@ class PREPROCESSING_DLL reduction_normal_deviation_clustering : public reduction
 } // namespace pre
 } // namespace lamure
 
-#endif // PRE_REDUCTION_NORMAL_DEVIATON_CLUSTERING_H_
+#endif // PRE_REDUCTION_NORMAL_DEVIATON_CLUSTERING_PROV_H_

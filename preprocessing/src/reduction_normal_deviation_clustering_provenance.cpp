@@ -5,7 +5,7 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <lamure/pre/reduction_normal_deviation_clustering.h>
+#include <lamure/pre/reduction_normal_deviation_clustering_provenance.h>
 
 #include <lamure/pre/basic_algorithms.h>
 #include <lamure/utils.h>
@@ -22,7 +22,7 @@ namespace lamure
 {
 namespace pre
 {
-surfel reduction_normal_deviation_clustering::create_representative(const std::vector<surfel> &input)
+surfel reduction_normal_deviation_clustering_provenance::create_representative(const std::vector<surfel> &input)
 {
     assert(input.size() > 0);
 
@@ -61,7 +61,7 @@ surfel reduction_normal_deviation_clustering::create_representative(const std::v
     return surfel(pos, vec3b((const uint8_t)col.x, (const uint8_t)col.y, (const uint8_t)col.z), radius, nml);
 }
 
-std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering::compute_grid_dimensions(const std::vector<surfel_mem_array *> &input, const bounding_box &bounding_box,
+std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering_provenance::compute_grid_dimensions(const std::vector<surfel_mem_array *> &input, const bounding_box &bounding_box,
                                                                                         const uint32_t surfels_per_node) const
 {
     uint16_t max_axis_ratio = 1000;
@@ -303,7 +303,7 @@ std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering::compute_grid_dim
     return std::make_pair(grid_dimensions, locked_grid_dimensions);
 }
 
-surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reduction_error, const std::vector<surfel_mem_array *> &input, std::vector<LoDMetaData> &deviations,
+surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(real &reduction_error, const std::vector<surfel_mem_array *> &input, std::vector<LoDMetaData> &deviations,
                                                                    const uint32_t surfels_per_node, const bvh &tree, const size_t start_node_id) const
 {
     // compute bounding box for actual surfels
@@ -635,7 +635,7 @@ surfel_mem_array reduction_normal_deviation_clustering::create_lod(real &reducti
     return mem_array;
 }
 
-reduction_normal_deviation_clustering::LoDMetaData reduction_normal_deviation_clustering::calculate_deviations(surfel repr, const std::vector<surfel> &input) const
+reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_deviation_clustering_provenance::calculate_deviations(surfel repr, const std::vector<surfel> &input) const
 {
     assert(input.size() > 0);
 
@@ -672,7 +672,7 @@ reduction_normal_deviation_clustering::LoDMetaData reduction_normal_deviation_cl
     return data;
 }
 
-std::list<reduction_strategy_provenance::LoDMetaData> reduction_normal_deviation_clustering::generate_provenance_empties(std::list<surfel> *&surfels) const
+std::list<reduction_strategy_provenance::LoDMetaData> reduction_normal_deviation_clustering_provenance::generate_provenance_empties(std::list<surfel> *&surfels) const
 {
     std::list<reduction_strategy_provenance::LoDMetaData> empties = std::list<reduction_strategy_provenance::LoDMetaData>();
 
