@@ -10,6 +10,7 @@
 // #include "utils.h"
 #include <lamure/ren/Data_Provenance.h>
 #include <lamure/ren/Item_Provenance.h>
+#include <lamure/ren/policy.h>
 
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
@@ -116,17 +117,19 @@ GLFWwindow *init_glfw_and_glew()
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
 
-    // glfwWindowHint(GLFW_AUTO_ICONFIY, GLFW_FALSE);
+    glfwWindowHint(GLFW_DECORATED, GL_FALSE);
     width_window = mode->width;
     height_window = mode->height;
 
     GLFWwindow *window = glfwCreateWindow(mode->width, mode->height, "ProVis", monitor, NULL);
+
     if(window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
     }
     glfwMakeContextCurrent(window);
+
     glfwSwapInterval(1);
     glewInit();
 
@@ -175,6 +178,41 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
 void set_styles();
 int main(int argc, char *argv[])
 {
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-d"))
+    {
+        std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
+                  << "INFO: nvm_explorer " << std::endl
+                  << "\t-d: selects .prov input file" << std::endl
+                  << "\t    (-d flag is required) " << std::endl
+                  << "\t-l: selects .bvh input file" << std::endl
+                  << "\t    (-l flag is required) " << std::endl
+                  << "\t[-s: selects sparse.prov input file]" << std::endl
+                  << "\t    (-s flag is optional) " << std::endl
+                  << "\t[-j: selects json input file]" << std::endl
+                  << "\t    (-j flag is optional) " << std::endl
+                  << std::endl;
+        return 0;
+    }
+
+    
+    lamure::ren::policy *policy = lamure::ren::policy::get_instance();
+    policy->set_max_upload_budget_in_mb(64);
+
+    policy->set_render_budget_in_mb(2000);
+    // policy->set_render_budget_in_mb(1024 * 6);
+    // policy->set_render_budget_in_mb(1024 * 40);
+    // policy->set_render_budget_in_mb(256);
+
+    policy->set_out_of_core_budget_in_mb(1024*4);
+    // policy->set_out_of_core_budget_in_mb(1024 * 3);
+    // policy->set_out_of_core_budget_in_mb(1024 * 20);
+    // policy->set_out_of_core_budget_in_mb(256);
+
+    //enable provenance in backend
+    policy->set_size_of_provenance(24);
+
+    std::cout << "SETTING POLICY" << std::endl;
+
     GLFWwindow *window = init_glfw_and_glew();
 
     load_scene_depending_on_arguments(argc, argv);
@@ -244,21 +282,6 @@ int main(int argc, char *argv[])
         glfwPollEvents();
     }
 
-    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-d"))
-    {
-        std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
-                  << "INFO: nvm_explorer " << std::endl
-                  << "\t-d: selects .prov input file" << std::endl
-                  << "\t    (-d flag is required) " << std::endl
-                  << "\t-l: selects .bvh input file" << std::endl
-                  << "\t    (-l flag is required) " << std::endl
-                  << "\t[-s: selects sparse.prov input file]" << std::endl
-                  << "\t    (-s flag is optional) " << std::endl
-                  << "\t[-j: selects json input file]" << std::endl
-                  << "\t    (-j flag is optional) " << std::endl
-                  << std::endl;
-        return 0;
-    }
     glfwTerminate();
     return 0;
 }

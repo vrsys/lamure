@@ -19,23 +19,19 @@ in VertexData
     vec3 pass_point_color;
     vec3 pass_normal;
     vec2 pass_uv_coords;
-    float pass_prov_float;
 }
 VertexIn;
 
 layout(location = 0) out vec4 out_color;
 
-void main()
-{
-    vec2 uv_coords = VertexIn.pass_uv_coords;
 
-    if(dot(uv_coords, uv_coords) > 1)
-    {
-        discard;
-    }
-    else
-    {
-        // out_color = vec4(VertexIn.pass_point_color, 1.0);
-        out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4, 1.4, 1.4)), 1.0);
-    }
+void main() {
+  vec2 uv_coords = VertexIn.pass_uv_coords;
+
+  if ( dot(uv_coords, uv_coords)> 1 ) {
+    discard;
+  }
+  else {
+    out_color = vec4(pow(VertexIn.pass_point_color, vec3(1.4,1.4,1.4)), 1.0);
+  }
 }

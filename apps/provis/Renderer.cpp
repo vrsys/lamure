@@ -41,7 +41,6 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     // >>>>>>> 18079d42e0652b76c02ff4b771c776fced1d7b86
     // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
 
-    //_quad_legend.reset(new scm::gl::quad_geometry(device, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
     _data_provenance = data_provenance;
     _camera_view.update_window_size(width_window, height_window);
 
@@ -56,36 +55,42 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     std::string visibility_fs_source;
 
     // create shader program for sparse points
+    std::cout << "shader: nvm_explorer_vertex_points" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_points.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_points.glslf", visibility_fs_source);
     _program_points = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for cameras
+    std::cout << "shader: nvm_explorer_vertex_cameras" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_cameras.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_cameras.glslf", visibility_fs_source);
     _program_cameras = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for images
+    std::cout << "shader: nvm_explorer_vertex_images" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_images.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_images.glslf", visibility_fs_source);
     _program_images = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for frustra
+    std::cout << "shader: nvm_explorer_vertex_frustra" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_frustra.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_frustra.glslf", visibility_fs_source);
     _program_frustra = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for lines
+    std::cout << "shader: nvm_explorer_vertex_lines" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_lines.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_lines.glslf", visibility_fs_source);
     _program_lines = device->create_program(
         boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for surfels brush
+    std::cout << "shader: nvm_explorer_vertex_surfels_brush" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_surfels_brush.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_geometry_surfels_brush.glslg", visibility_gs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_surfels_brush.glslf", visibility_fs_source);
@@ -93,22 +98,18 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
     // create shader program for pixels brush
+    std::cout << "shader: nvm_explorer_vertex_pixels_brush" << std::endl;
     scm::io::read_text_file(root_path + "/nvm_explorer_vertex_pixels_brush.glslv", visibility_vs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_geometry_pixels_brush.glslg", visibility_gs_source);
     scm::io::read_text_file(root_path + "/nvm_explorer_fragment_pixels_brush.glslf", visibility_fs_source);
     _program_pixels_brush = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
-    // // create shader program for legend
-    // scm::io::read_text_file(root_path + "/provenance_legend.glslv", visibility_vs_source);
-    // scm::io::read_text_file(root_path + "/provenance_legend.glslf", visibility_fs_source);
-    // _program_legend = device->create_program(
-    //     boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
-
     // create shader program for dense points
-    scm::io::read_text_file(root_path + "/lq_one_pass.glslv", visibility_vs_source);
-    scm::io::read_text_file(root_path + "/lq_one_pass.glslg", visibility_gs_source);
-    scm::io::read_text_file(root_path + "/lq_one_pass.glslf", visibility_fs_source);
+    std::cout << "shader: lq_one_pass" << std::endl;
+    scm::io::read_text_file(root_path + "/nvm_explorer_lq_one_pass.glslv", visibility_vs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_lq_one_pass.glslg", visibility_gs_source);
+    scm::io::read_text_file(root_path + "/nvm_explorer_lq_one_pass.glslf", visibility_fs_source);
     _program_points_dense = device->create_program(boost::assign::list_of(device->create_shader(scm::gl::STAGE_VERTEX_SHADER, visibility_vs_source))(
         device->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, visibility_gs_source))(device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, visibility_fs_source)));
 
@@ -121,23 +122,10 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     if(!_program_points_dense)
     {
         std::cout << "error creating shader programs" << std::endl;
+        throw std::runtime_error("error creating shaders");
     }
     _rasterizer_state = device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
 
-    lamure::ren::policy *policy = lamure::ren::policy::get_instance();
-    policy->set_max_upload_budget_in_mb(64);
-
-    policy->set_render_budget_in_mb(2000);
-    // policy->set_render_budget_in_mb(1024 * 6);
-    // policy->set_render_budget_in_mb(1024 * 40);
-    // policy->set_render_budget_in_mb(256);
-
-    policy->set_out_of_core_budget_in_mb(2000);
-    // policy->set_out_of_core_budget_in_mb(1024 * 3);
-    // policy->set_out_of_core_budget_in_mb(1024 * 20);
-    // policy->set_out_of_core_budget_in_mb(256);
-
-    std::cout << "SETTING POLICY" << std::endl;
 
     // scm::gl::boxf bb;
     lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
@@ -258,6 +246,25 @@ void Renderer::start_brushing(float x, float y, Scene &scene)
 
     // _vertex_buffer_object_lines = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * 2, &vector_struct_line[0]);
     // _vertex_array_object_lines = _device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
+}
+
+void Renderer::reset_surfels_brush(Scene &scene)
+{
+    _set_seen_cameras.clear();
+
+    _surfels_brush.clear();
+    _buffer_surfels_brush_size = 0;
+
+    _vertex_buffer_object_surfels_brush = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 6) * _surfels_brush.size(), &_surfels_brush[0]);
+    std::vector<scm::gl::vertex_format::element> vertex_format;
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_VEC3F, sizeof(float) * 3 * 2));
+    _vertex_array_object_surfels_brush = _device->create_vertex_array(vertex_format, boost::assign::list_of(_vertex_buffer_object_surfels_brush));
+
+    for(Camera_Custom &camera : scene.get_vector_camera())
+    {
+        camera.reset_pixels_brush(_device);
+    }
 }
 
 void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush const &surfel_brush, Scene &scene)
@@ -581,23 +588,6 @@ bool Renderer::draw_points_dense(Scene &scene)
     return true;
 }
 
-// void Renderer::draw_legend()
-// {
-//     // _context->bind_program(_program_legend);
-
-//     // float scale_x = 0.2f;
-//     // float scale_y = 0.06f;
-//     // float margin = 0.05;
-
-//     // scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(-1.0f + scale_x + margin, -1.0f + scale_y + margin, 0.0f));
-//     // scm::math::mat4f matrix_scale = scm::math::make_scale(scm::math::vec3f(scale_x, scale_y, 1.0f));
-
-//     // scm::math::mat4f matrix_model = matrix_translation * matrix_scale;
-//     // _program_legend->uniform("matrix_model", matrix_model);
-//     // _context->apply();
-//     // _quad_legend->draw(_context);
-// }
-
 void Renderer::update_vector_nodes()
 {
     std::queue<prov::OctreeNode *> queue_nodes;
@@ -689,6 +679,7 @@ void Renderer::draw_surfels_brush()
     _program_surfels_brush->uniform("point_size_factor", 0.1f);
     _program_surfels_brush->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
     _program_surfels_brush->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+    _program_surfels_brush->uniform("color_brush_surfels", scm::math::vec3f(_color_brush_surfels[0], _color_brush_surfels[1], _color_brush_surfels[2]));
 
     _context->bind_vertex_array(_vertex_array_object_surfels_brush);
     _context->apply();
@@ -844,7 +835,7 @@ void Renderer::render_menu(Scene &scene)
     {
         ImGui::SliderFloat("Line density", &_line_density, 0.0f, 100.0f, "%.4f %%\045", 2.71828381f);
     }
-    ImGui::SliderFloat("Pixel size", &_size_pixels_brush_current, _size_pixels_brush_minimum, 1.0f, "%.4f %%\045", 2.71828381f);
+    ImGui::SliderFloat("Pixel size", &_size_pixels_brush_current, _size_pixels_brush_minimum, 1.0f, "%.4f", 2.71828381f);
 
     // const char *listbox_items = &scene.get_vector_camera()[0];
     // const char* listbox_items[] = { "Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon" };
@@ -897,15 +888,25 @@ void Renderer::render_menu(Scene &scene)
             ImGui::ColorPicker3("Color", (float *)&_heatmap_max_color);
             ImGui::TreePop();
         }
+
+        if(ImGui::TreeNode("Brush Surfels"))
+        {
+            if(ImGui::Button("Clear"))
+            {
+                reset_surfels_brush(scene);
+            }
+            ImGui::ColorPicker3("Color", (float *)&_color_brush_surfels);
+            ImGui::TreePop();
+        }
     }
 
     if(ImGui::CollapsingHeader("Navigation"))
     {
-        ImGui::Checkbox("Ego mode", &_mode_is_ego);
-        if(!_mode_is_ego)
-        {
-            ImGui::SliderFloat3("Rotation center", _center_non_ego_mode, 0.0f, 1.0f, "%.2f");
-        }
+        // ImGui::Checkbox("Ego mode", &_mode_is_ego);
+        // if(!_mode_is_ego)
+        // {
+        //     ImGui::SliderFloat3("Rotation center", _center_non_ego_mode, 0.0f, 1.0f, "%.2f");
+        // }
         ImGui::SliderFloat("Movement speed", &_speed, 0.0f, 0.4f, "%.2f");
         ImGui::SliderFloat("Yaw speed", &_speed_yaw, 0.0f, 100.0f, "%.0f");
         ImGui::SliderFloat("Pitch speed", &_speed_pitch, 0.0f, 100.0f, "%.0f");
@@ -936,7 +937,7 @@ void Renderer::update_size_pixels_brush(float scale)
     _size_pixels_brush_current = std::max(_size_pixels_brush_current, _size_pixels_brush_minimum);
 }
 
-void Renderer::toggle_camera(Scene scene)
+void Renderer::toggle_camera(Scene &scene)
 {
     is_default_camera = !is_default_camera;
     if(is_default_camera)

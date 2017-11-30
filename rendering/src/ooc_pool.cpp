@@ -109,11 +109,16 @@ void ooc_pool::run()
     std::vector<std::string> provenance_files;
 #endif
 
-    for(model_t model_id = 0; model_id < num_models; ++model_id)
-    {
-        std::string bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();
-        std::string lod_file_name = bvh_filename.substr(0, bvh_filename.size() - 3) + "lod";
+
+    for (model_t model_id = 0; model_id < num_models; ++model_id) {
+        
+        std::string bvh_filename = database->get_model(model_id)->get_bvh()->get_filename();        
+        std::string base_name = bvh_filename.substr(0, bvh_filename.find_last_of(".") + 1);
+        std::string file_extension = bvh_filename.substr(base_name.size());
+        std::string bvh_suffix = file_extension.substr(3);
+        std::string lod_file_name = base_name + "lod" + bvh_suffix;
         std::string provenance_file_name = bvh_filename.substr(0, bvh_filename.size() - 3) + "prov";
+
 
 #ifdef LAMURE_ENABLE_CONCURRENT_FILE_ACCESS
         lod_stream *access = new lod_stream();

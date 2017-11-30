@@ -31,7 +31,7 @@ void main()
 		out_color  = vec4(pow(texColor.xyz, vec3(1.4f)), 1.0f);
 		out_normal = vec3(texNormal.xyz);
 	} else {		
-		out_color = vec4(0.f,0.0f,0.0f,1.0f);
+		out_color = vec4(0.0, 0.0, 0.0, 1.0);
 		out_normal = vec3(0.0, 0.0, 0.0);
 	}
  }

@@ -14,7 +14,7 @@
 #include <lamure/ren/lod_stream.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/provenance_stream.h>
-#include <lamure/ren/semaphore.h>
+#include <lamure/semaphore.h>
 #include <lamure/types.h>
 #include <lamure/utils.h>
 #include <map>

@@ -35,9 +35,9 @@ dataset::
 void dataset::
 load(const std::string& filename) {
 
-    std::string extension = filename.substr(filename.size()-3);
+    std::string extension = filename.substr(filename.find_last_of(".") + 1);
     
-    if (extension.compare("bvh") == 0) {
+    if (extension.compare("bvhqz") == 0 || extension.compare("bvh") == 0) {
         bvh_ = new bvh(filename);
         is_loaded_ = true;
     }

@@ -78,7 +78,7 @@ class Renderer
 
     Camera_View &get_camera_view();
 
-    void toggle_camera(Scene scene);
+    void toggle_camera(Scene &scene);
     void toggle_is_camera_active();
     void previous_camera(Scene scene);
     void next_camera(Scene scene);
@@ -105,6 +105,8 @@ class Renderer
     std::vector<prov::OctreeNode *> _vector_nodes;
     // std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
     void update_vector_nodes();
+
+    float _color_brush_surfels[3] = {1.0, 1.0, 0.0};
 
     // Maybe not the best way to access stuff
     float _speed = 0.04f;
@@ -181,6 +183,7 @@ class Renderer
     scm::gl::depth_stencil_state_ptr depth_state_enable_;
 
     void add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush const &surfel_brush, Scene &scene);
+    void reset_surfels_brush(Scene &scene);
 
     lamure::model_t _model_id;
     // BRUSHING ///////////////////////////////////////////////

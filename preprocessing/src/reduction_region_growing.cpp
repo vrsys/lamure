@@ -5,6 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
+
 #include <lamure/pre/reduction_region_growing.h>
 
 namespace lamure
@@ -207,3 +209,5 @@ find_neighbours(const std::vector<surfel *> &cluster, const surfel *core_surfel,
 
 } // namespace pre
 } // namespace lamure
+
+#endif // CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES

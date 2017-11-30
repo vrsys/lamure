@@ -309,52 +309,54 @@ read_bvh(const std::string &filename, bvh &bvh)
     std::vector<bvh_node> bvh_nodes(tree.num_nodes_);
 
     for (uint32_t i = 0; i < tree.num_nodes_; ++i) {
-        const auto &node = nodes[i];
 
-        if (i != node.node_id_) {
-            throw std::runtime_error(
-                "PLOD: bvh_stream::Stream corrupt -- Invalid node ordering");
-        }
+       const auto& node = nodes[i];
 
-        scm::math::vec3f centroid(node.centroid_.x_,
-                                  node.centroid_.y_,
-                                  node.centroid_.z_);
-        scm::math::vec3f box_min(node.bounding_box_.min_.x_,
-                                 node.bounding_box_.min_.y_,
-                                 node.bounding_box_.min_.z_);
-        scm::math::vec3f box_max(node.bounding_box_.max_.x_,
-                                 node.bounding_box_.max_.y_,
-                                 node.bounding_box_.max_.z_);
+       if (i != node.node_id_) {
+           throw std::runtime_error(
+               "PLOD: bvh_stream::Stream corrupt -- Invalid node ordering");
+       }
 
-        if (interm_state) {
-            const auto &node_ext = nodes_ext[i];
-            if (i != node_ext.node_id_) {
-                throw std::runtime_error(
-                    "PLOD: bvh_stream::Stream corrupt -- Invalid extension ordering");
-            }
+       scm::math::vec3f centroid(node.centroid_.x_,
+                                 node.centroid_.y_,
+                                 node.centroid_.z_);
+       scm::math::vec3f box_min(node.bounding_box_.min_.x_,
+                                node.bounding_box_.min_.y_,
+                                node.bounding_box_.min_.z_);
+       scm::math::vec3f box_max(node.bounding_box_.max_.x_,
+                                node.bounding_box_.max_.y_,
+                                node.bounding_box_.max_.z_);
 
-            if (node_ext.empty_ == 1) {
-                bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)));
-            }
-            else {
-                const auto &disk_array = node_ext.disk_array_;
-                surfel_disk_array sdarray = surfel_disk_array(level_temp_files[disk_array.disk_access_ref_],
-                                                              disk_array.offset_,
-                                                              disk_array.length_);
-                bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)), sdarray);
-            }
-        }
-        else {
-            //init empty nodes. We don't use surfelDIskArray
-            //because we deal with serialized data
-            bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)));
-        }
+       if (interm_state) {
+           const auto& node_ext = nodes_ext[i];
+           if (i != node_ext.node_id_) {
+               throw std::runtime_error(
+                   "PLOD: bvh_stream::Stream corrupt -- Invalid extension ordering");
+           }
+           
+           if (node_ext.empty_ == 1) {
+               bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)));
+           }
+           else {
+               const auto& disk_array = node_ext.disk_array_;
+               surfel_disk_array sdarray = surfel_disk_array(level_temp_files[disk_array.disk_access_ref_],
+                                                                   disk_array.offset_,
+                                                                   disk_array.length_);
+               bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)), sdarray);
+           }
+       }
+       else {
+           //init empty nodes. We don't use surfelDIskArray
+           //because we deal with serialized data
+           bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)));
+       }
 
-        //set node params
-        bvh_nodes[i].set_reduction_error(node.reduction_error_);
-        bvh_nodes[i].set_centroid(vec3r(centroid));
-        bvh_nodes[i].set_avg_surfel_radius(node.avg_surfel_radius_);
-        bvh_nodes[i].set_visibility((bvh_node::node_visibility) node.visibility_);
+       //set node params
+       bvh_nodes[i].set_reduction_error(node.reduction_error_);
+       bvh_nodes[i].set_centroid(vec3r(centroid));
+       bvh_nodes[i].set_avg_surfel_radius(node.avg_surfel_radius_);
+       bvh_nodes[i].set_visibility((bvh_node::node_visibility)node.visibility_);
+       bvh_nodes[i].set_max_surfel_radius_deviation(node.max_surfel_radius_deviation_);
 
     }
 
@@ -365,133 +367,133 @@ read_bvh(const std::string &filename, bvh &bvh)
 }
 
 void bvh_stream::
-write_bvh(const std::string &filename, bvh &bvh, const bool intermediate)
-{
+write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
 
-    open_stream(filename, bvh_stream_type::BVH_STREAM_OUT);
+   open_stream(filename, bvh_stream_type::BVH_STREAM_OUT);
 
-    if (type_ != BVH_STREAM_OUT) {
-        throw std::runtime_error(
-            "PLOD: bvh_stream::Failed to append tree to: " + filename_);
-    }
-    if (!file_.is_open()) {
-        throw std::runtime_error(
-            "PLOD: bvh_stream::Failed to append tree to: " + filename_);
-    }
+   if (type_ != BVH_STREAM_OUT) {
+       throw std::runtime_error(
+           "PLOD: bvh_stream::Failed to append tree to: " + filename_);
+   }
+   if (!file_.is_open()) {
+       throw std::runtime_error(
+           "PLOD: bvh_stream::Failed to append tree to: " + filename_);
+   }
+   
+   file_.seekp(0, std::ios::beg);
 
-    file_.seekp(0, std::ios::beg);
+   bvh_file_seg seg;
+   seg.major_version_ = 1;
+   seg.minor_version_ = 1;
+   seg.reserved_ = 0;
 
-    bvh_file_seg seg;
-    seg.major_version_ = 0;
-    seg.minor_version_ = 1;
-    seg.reserved_ = 0;
+   write(seg);
 
-    write(seg);
+   //Note: This is the preprocessing library version of the file writer!
 
-    //Note: This is the preprocessing library version of the file writer!
+   bvh_tree_seg tree;
+   tree.segment_id_ = num_segments_++;
+   tree.depth_ = bvh.depth();
+   tree.num_nodes_ = bvh.nodes().size();
+   tree.fan_factor_ = bvh.fan_factor();
+   tree.max_surfels_per_node_ = bvh.max_surfels_per_node();
+   tree.serialized_surfel_size_ = serialized_surfel::get_size();
+   tree.reserved_0_ = 0;
+   tree.state_ = (bvh_stream::bvh_tree_state)bvh.state();
+   tree.reserved_1_ = 0;
+   tree.reserved_2_ = 0;
+   tree.translation_.x_ = bvh.translation().x;
+   tree.translation_.y_ = bvh.translation().y;
+   tree.translation_.z_ = bvh.translation().z;
+   tree.reserved_3_ = 0;
 
-    bvh_tree_seg tree;
-    tree.segment_id_ = num_segments_++;
-    tree.depth_ = bvh.depth();
-    tree.num_nodes_ = bvh.nodes().size();
-    tree.fan_factor_ = bvh.fan_factor();
-    tree.max_surfels_per_node_ = bvh.max_surfels_per_node();
-    tree.serialized_surfel_size_ = serialized_surfel::get_size();
-    tree.reserved_0_ = 0;
-    tree.state_ = (bvh_stream::bvh_tree_state) bvh.state();
-    tree.reserved_1_ = 0;
-    tree.reserved_2_ = 0;
-    tree.translation_.x_ = bvh.translation().x;
-    tree.translation_.y_ = bvh.translation().y;
-    tree.translation_.z_ = bvh.translation().z;
-    tree.reserved_3_ = 0;
+   write(tree);
 
-    write(tree);
+   const auto& bvh_nodes = bvh.nodes();
+   for (uint32_t i = 0; i < bvh_nodes.size(); ++i) {
+       const auto& bvh_node = bvh_nodes[i];
+       bvh_node_seg node;
+       node.segment_id_ = num_segments_++;
+       node.node_id_ = i;
+       node.centroid_.x_ = bvh_node.centroid().x;
+       node.centroid_.y_ = bvh_node.centroid().y;
+       node.centroid_.z_ = bvh_node.centroid().z;
+       node.depth_ = bvh_node.depth();
+       node.reduction_error_ = bvh_node.reduction_error();
+       node.avg_surfel_radius_ = bvh_node.avg_surfel_radius();
+       node.visibility_ = (bvh_node_visibility)bvh_node.visibility();
+       node.max_surfel_radius_deviation_ = bvh_node.max_surfel_radius_deviation();
+       node.bounding_box_.min_.x_ = bvh_node.get_bounding_box().min().x;
+       node.bounding_box_.min_.y_ = bvh_node.get_bounding_box().min().y;
+       node.bounding_box_.min_.z_ = bvh_node.get_bounding_box().min().z;
+       node.bounding_box_.max_.x_ = bvh_node.get_bounding_box().max().x;
+       node.bounding_box_.max_.y_ = bvh_node.get_bounding_box().max().y;
+       node.bounding_box_.max_.z_ = bvh_node.get_bounding_box().max().z;
 
-    const auto &bvh_nodes = bvh.nodes();
-    for (uint32_t i = 0; i < bvh_nodes.size(); ++i) {
-        const auto &bvh_node = bvh_nodes[i];
-        bvh_node_seg node;
-        node.segment_id_ = num_segments_++;
-        node.node_id_ = i;
-        node.centroid_.x_ = bvh_node.centroid().x;
-        node.centroid_.y_ = bvh_node.centroid().y;
-        node.centroid_.z_ = bvh_node.centroid().z;
-        node.depth_ = bvh_node.depth();
-        node.reduction_error_ = bvh_node.reduction_error();
-        node.avg_surfel_radius_ = bvh_node.avg_surfel_radius();
-        node.visibility_ = (bvh_node_visibility) bvh_node.visibility();
-        node.reserved_ = 0;
-        node.bounding_box_.min_.x_ = bvh_node.get_bounding_box().min().x;
-        node.bounding_box_.min_.y_ = bvh_node.get_bounding_box().min().y;
-        node.bounding_box_.min_.z_ = bvh_node.get_bounding_box().min().z;
-        node.bounding_box_.max_.x_ = bvh_node.get_bounding_box().max().x;
-        node.bounding_box_.max_.y_ = bvh_node.get_bounding_box().max().y;
-        node.bounding_box_.max_.z_ = bvh_node.get_bounding_box().max().z;
+       write(node);
+   }
 
-        write(node);
-    }
+   if (intermediate) {
+       bvh_tree_extension_seg tree_ext;
+       tree_ext.segment_id_ = num_segments_++;
+       tree_ext.working_directory_.string_ = "DEADBEEF";
+       tree_ext.working_directory_.length_ = tree_ext.working_directory_.string_.length();
+       tree_ext.filename_.string_ = bvh.base_path().string();
+       tree_ext.filename_.length_ = tree_ext.filename_.string_.length();
+       tree_ext.num_disk_accesses_ = 0;
 
-    if (intermediate) {
-        bvh_tree_extension_seg tree_ext;
-        tree_ext.segment_id_ = num_segments_++;
-        tree_ext.working_directory_.string_ = "DEADBEEF";
-        tree_ext.working_directory_.length_ = tree_ext.working_directory_.string_.length();
-        tree_ext.filename_.string_ = bvh.base_path().string();
-        tree_ext.filename_.length_ = tree_ext.filename_.string_.length();
-        tree_ext.num_disk_accesses_ = 0;
+       for (uint32_t i = 0; i < bvh_nodes.size(); ++i) {
+           const auto& bvh_node = bvh_nodes[i];
+           bvh_node_extension_seg node_ext;
+           node_ext.segment_id_ = num_segments_++;
+           node_ext.node_id_ = bvh_node.node_id();
+           node_ext.empty_ = 1;
+           node_ext.reserved_ = 0;
+           node_ext.disk_array_.disk_access_ref_ = 0;
+           node_ext.disk_array_.reserved_ = 0;
+           node_ext.disk_array_.offset_ = 0;
+           node_ext.disk_array_.length_ = 0;
 
-        for (uint32_t i = 0; i < bvh_nodes.size(); ++i) {
-            const auto &bvh_node = bvh_nodes[i];
-            bvh_node_extension_seg node_ext;
-            node_ext.segment_id_ = num_segments_++;
-            node_ext.node_id_ = bvh_node.node_id();
-            node_ext.empty_ = 1;
-            node_ext.reserved_ = 0;
-            node_ext.disk_array_.disk_access_ref_ = 0;
-            node_ext.disk_array_.reserved_ = 0;
-            node_ext.disk_array_.offset_ = 0;
-            node_ext.disk_array_.length_ = 0;
+           //only OOC nodes are saved, IC nodes are considered empty
 
-            //only OOC nodes are saved, IC nodes are considered empty
+           if (bvh_node.is_out_of_core()) {
+               node_ext.empty_ = 0;
 
-            if (bvh_node.is_out_of_core()) {
-                node_ext.empty_ = 0;
+               bool disk_access_found = false;
+               for (uint32_t k = 0; k < tree_ext.num_disk_accesses_; ++k) {
+                   if (tree_ext.disk_accesses_.size() < k) {
+                       throw std::runtime_error(
+                           "PLOD: bvh_stream::Stream corrupt");
+                   }
+                   if (tree_ext.disk_accesses_[k].string_ == bvh_node.disk_array().file()->file_name()) {
+                       node_ext.disk_array_.disk_access_ref_ = k;
+                       disk_access_found = true;
+                       break;
+                   }
+               }
+               
+               if (!disk_access_found) {
+                  bvh_string disk_access;
+                  disk_access.string_ = bvh_node.disk_array().file()->file_name();
+                  disk_access.length_ = disk_access.string_.length();
+                  tree_ext.disk_accesses_.push_back(disk_access);
+                  node_ext.disk_array_.disk_access_ref_ = tree_ext.num_disk_accesses_;
+                  ++tree_ext.num_disk_accesses_;
+               }
 
-                bool disk_access_found = false;
-                for (uint32_t k = 0; k < tree_ext.num_disk_accesses_; ++k) {
-                    if (tree_ext.disk_accesses_.size() < k) {
-                        throw std::runtime_error(
-                            "PLOD: bvh_stream::Stream corrupt");
-                    }
-                    if (tree_ext.disk_accesses_[k].string_ == bvh_node.disk_array().file()->file_name()) {
-                        node_ext.disk_array_.disk_access_ref_ = k;
-                        disk_access_found = true;
-                        break;
-                    }
-                }
+               node_ext.disk_array_.offset_ = bvh_node.disk_array().offset();
+               node_ext.disk_array_.length_ = bvh_node.disk_array().length();
+               
+           }
 
-                if (!disk_access_found) {
-                    bvh_string disk_access;
-                    disk_access.string_ = bvh_node.disk_array().file()->file_name();
-                    disk_access.length_ = disk_access.string_.length();
-                    tree_ext.disk_accesses_.push_back(disk_access);
-                    node_ext.disk_array_.disk_access_ref_ = tree_ext.num_disk_accesses_;
-                    ++tree_ext.num_disk_accesses_;
-                }
+           write(node_ext);
+       }
 
-                node_ext.disk_array_.offset_ = bvh_node.disk_array().offset();
-                node_ext.disk_array_.length_ = bvh_node.disk_array().length();
+       write(tree_ext);
+   }
 
-            }
+   close_stream(false);
 
-            write(node_ext);
-        }
-
-        write(tree_ext);
-    }
-
-    close_stream(false);
 
 }
 

@@ -8,6 +8,7 @@
 #version 420 core
 
 uniform mat4 model_view_matrix;
+uniform vec3 color_brush_surfels;
 
 in VertexData
 {
@@ -46,5 +47,5 @@ void main()
 
     dot_product = (dot_product + 1.0) * 0.5;
 
-    out_color = vec4(dot_product, dot_product, 0.0, 1.0);
+    out_color = vec4(color_brush_surfels * dot_product, 1.0);
 }

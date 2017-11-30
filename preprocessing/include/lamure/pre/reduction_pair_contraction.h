@@ -5,6 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
+
 #ifndef PRE_REDUCTION_PAIR_H_
 #define PRE_REDUCTION_PAIR_H_
 
@@ -45,3 +47,4 @@ get_local_nearest_neighbours(const std::vector<surfel_mem_array *> &input,
 } // namespace lamure
 
 #endif // PRE_REDUCTION_PAIR_H_
+#endif // CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES

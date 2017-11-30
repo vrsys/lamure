@@ -26,7 +26,7 @@ ooc_cache::ooc_cache(const slot_t num_slots, Data_Provenance const &data_provena
     pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, database->get_slot_size(), slot_size_provenance, data_provenance);
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "lamure: ooc-cache init" << std::endl;
+    std::cout << "lamure: ooc-cache init (WITH PROVENANCE)" << std::endl;
 #endif
 }
 
@@ -38,7 +38,7 @@ ooc_cache::ooc_cache(const slot_t num_slots) : cache(num_slots), maintenance_cou
     pool_ = new ooc_pool(LAMURE_CUT_UPDATE_NUM_LOADING_THREADS, database->get_slot_size());
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "lamure: ooc-cache init" << std::endl;
+    std::cout << "lamure: ooc-cache init (WITHOUT PROVENANCE)" << std::endl;
 #endif
 }
 
@@ -86,7 +86,7 @@ ooc_cache *ooc_cache::get_instance(Data_Provenance const &data_provenance)
             struct sysinfo info;
             sysinfo(&info);
             // std::cout << "uptime: " << info.uptime << std::endl;
-            // std::cout << "freeram: " << info.freeram << std::endl;
+            //std::cout << "freeram: " << info.freeram << std::endl;
 
             float safety = 0.75;
             long ram_free_in_bytes = info.freeram * safety;
@@ -109,7 +109,12 @@ ooc_cache *ooc_cache::get_instance(Data_Provenance const &data_provenance)
             long node_size_total = database->get_primitives_per_node() * data_provenance.get_size_in_bytes() + database->get_slot_size();
             size_t out_of_core_budget_in_nodes = out_of_core_budget_in_bytes / node_size_total;
 
-            single_ = new ooc_cache(out_of_core_budget_in_nodes, data_provenance);
+            if(data_provenance.get_size_in_bytes() > 0) {
+              single_ = new ooc_cache(out_of_core_budget_in_nodes, data_provenance);
+            }
+            else {
+              single_ = new ooc_cache(out_of_core_budget_in_nodes);
+            }
             is_instanced_ = true;
         }
 
@@ -156,7 +161,7 @@ ooc_cache *ooc_cache::get_instance()
             {
                 std::cout << "##### " << policy->out_of_core_budget_in_mb() << " MB will be used for the out of core budget #####" << std::endl;
             }
-            long node_size_total = +database->get_slot_size();
+            long node_size_total = database->get_slot_size();
             size_t out_of_core_budget_in_nodes = out_of_core_budget_in_bytes / node_size_total;
 
             single_ = new ooc_cache(out_of_core_budget_in_nodes);

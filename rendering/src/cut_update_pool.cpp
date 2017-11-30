@@ -6,6 +6,9 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/ren/cut_update_pool.h>
+#include <lamure/pvs/pvs_database.h>
+
+#include <iostream>
 
 namespace lamure
 {
@@ -82,8 +85,12 @@ void cut_update_pool::initialize()
     index_->update_policy(0);
     gpu_cache_ = new gpu_cache(render_budget_in_nodes_);
 
+    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+
     semaphore_.set_max_signal_count(1);
     semaphore_.set_min_signal_count(1);
+
+    
 
 #ifdef LAMURE_ENABLE_INFO
     std::cout << "lamure: num models: " << index_->num_models() << std::endl;
@@ -449,8 +456,12 @@ void cut_update_pool::cut_master()
     }
 }
 
-void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
-{
+
+void cut_update_pool::
+cut_analysis(view_t view_id, model_t model_id) {
+
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+
     assert(view_id != invalid_view_t);
     assert(model_id != invalid_model_t);
     assert(view_id < index_->num_views());
@@ -494,6 +505,7 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
 
         bool all_siblings_in_cut = false;
         bool no_sibling_in_frustum = true;
+        bool no_sibling_visible_in_pvs = true;
 
         node_t parent_id = 0;
         float parent_error = 0;
@@ -502,7 +514,8 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
         assert(node_id != invalid_node_t);
         assert(node_id < index_->num_nodes(model_id));
 
-        if(node_id > 0 && node_id < index_->num_nodes(model_id))
+
+        if (node_id > 0 && node_id < index_->num_nodes(model_id))
         {
             parent_id = index_->get_parent_id(model_id, node_id);
             parent_error = calculate_node_error(view_id, model_id, parent_id);
@@ -511,22 +524,32 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
 
             all_siblings_in_cut = is_all_nodes_in_cut(model_id, siblings, old_cut);
             no_sibling_in_frustum = !is_node_in_frustum(view_id, model_id, parent_id, frustum);
+
+            // Check if no sibling is visible via PVS.
+            for(node_t sibling_id : siblings)
+            {
+                if(pvs->get_viewer_visibility(model_id, sibling_id))
+                {
+                    no_sibling_visible_in_pvs = false;
+                    break;
+                }
+            }
         }
 
-        if(!all_siblings_in_cut)
+        if (!all_siblings_in_cut)
         {
             float node_error = calculate_node_error(view_id, model_id, node_id);
             bool node_in_frustum = is_node_in_frustum(view_id, model_id, node_id, frustum);
 
-            if(node_in_frustum && node_error > max_error_threshold)
+            if (node_in_frustum && node_error > max_error_threshold && pvs->get_viewer_visibility(model_id, node_id))
             {
-                // only split if the predicted error of children does not require collapsing
+                //only split if the predicted error of children does not require collapsing
                 bool split = true;
                 std::vector<node_t> children;
                 index_->get_all_children(model_id, node_id, children);
-                for(const auto &child_id : children)
+                for (const auto& child_id : children)
                 {
-                    if(child_id == invalid_node_t)
+                    if (child_id == invalid_node_t)
                     {
                         split = false;
                         break;
@@ -539,13 +562,14 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
                         break;
                     }
                 }
-                if(!split || freshness_timeout)
+
+                if (!split || freshness_timeout)
                 {
                     index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, view_id, model_id, node_id, parent_error), false);
                 }
                 else
                 {
-                    index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_SPLIT, view_id, model_id, node_id, node_error), false);
+                    index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_SPLIT,view_id, model_id, node_id, node_error), false);
                 }
             }
             else
@@ -555,7 +579,8 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
         }
         else
         {
-            if(no_sibling_in_frustum)
+
+            if (no_sibling_in_frustum)
             {
 #ifdef LAMURE_CUT_UPDATE_MUST_COLLAPSE_OUTSIDE_FRUSTUM
                 index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
@@ -563,11 +588,16 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
                 index_->push_action(cut_update_index::action(cut_update_index::queue_t::COLLAPSE_ON_NEED, view_id, model_id, parent_id, parent_error), false);
 #endif
             }
+            else if(no_sibling_visible_in_pvs)
+            {
+                // Parent is invisible from current view point per PVS.
+                index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
+            }
             else
             {
-                // the entire group of siblings is in the cut and visible
+                //the entire group of siblings is in the cut and visible
 
-                if(freshness_timeout)
+                if (freshness_timeout)
                 {
                     index_->push_action(cut_update_index::action(cut_update_index::queue_t::COLLAPSE_ON_NEED, view_id, model_id, parent_id, parent_error), false);
 
@@ -582,33 +612,35 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
 
                 std::vector<bool> keep_sibling;
 
-                for(const auto &sibling_id : siblings)
+                for (const auto& sibling_id : siblings)
                 {
                     float sibling_error = calculate_node_error(view_id, model_id, sibling_id);
                     bool sibling_in_frustum = is_node_in_frustum(view_id, model_id, sibling_id, frustum);
 
-                    if(sibling_error > max_error_threshold && sibling_in_frustum)
+                    if (sibling_error > max_error_threshold && sibling_in_frustum && pvs->get_viewer_visibility(model_id, sibling_id))
                     {
-                        // only split if the predicted error of children does not require collapsing
+                        //only split if the predicted error of children does not require collapsing
                         bool split = true;
                         std::vector<node_t> children;
                         index_->get_all_children(model_id, sibling_id, children);
-                        for(const auto &child_id : children)
+                        for (const auto& child_id : children)
                         {
-                            if(child_id == invalid_node_t)
+                            if (child_id == invalid_node_t)
                             {
                                 split = false;
                                 break;
                             }
 
                             float child_error = calculate_node_error(view_id, model_id, child_id);
-                            if(child_error < min_error_threshold)
+
+                            if (child_error < min_error_threshold)
                             {
                                 split = false;
                                 break;
                             }
                         }
-                        if(!split)
+
+                        if (!split)
                         {
                             keep_sibling.push_back(true);
                         }
@@ -621,27 +653,31 @@ void cut_update_pool::cut_analysis(view_t view_id, model_t model_id)
                         }
                     }
                     else
+                    {
                         keep_sibling.push_back(true);
+                    }
 
-                    if(sibling_error >= min_error_threshold)
+                    if (sibling_error >= min_error_threshold)
                     {
                         all_sibling_errors_below_min_error_threshold = false;
                     }
                 }
 
-                if(keep_all_siblings && all_sibling_errors_below_min_error_threshold)
+
+                if (keep_all_siblings && all_sibling_errors_below_min_error_threshold)
                 {
                     index_->push_action(cut_update_index::action(cut_update_index::queue_t::MUST_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
                 }
-                else if(keep_all_siblings)
+                else if (keep_all_siblings)
                 {
                     index_->push_action(cut_update_index::action(cut_update_index::queue_t::MAYBE_COLLAPSE, view_id, model_id, parent_id, parent_error), false);
                 }
                 else
                 {
-                    for(uint32_t j = 0; j < fan_factor; ++j)
+
+                    for (uint32_t j = 0; j < fan_factor; ++j)
                     {
-                        if(keep_sibling[j])
+                        if (keep_sibling[j])
                         {
                             index_->push_action(cut_update_index::action(cut_update_index::queue_t::KEEP, view_id, model_id, siblings[j], parent_error), false);
                         }
@@ -1162,7 +1198,7 @@ void cut_update_pool::compile_transfer_list()
 
             memcpy(current_gpu_storage_ + slot_count * database->get_slot_size(), node_data, database->get_slot_size());
 
-            if(_data_provenance.get_size_in_bytes() != 0)
+            if(_data_provenance.get_size_in_bytes() > 0)
             {
                 memcpy(current_gpu_storage_provenance_ + slot_count * database->get_primitives_per_node() * _data_provenance.get_size_in_bytes(), node_data_provenance,
                        database->get_primitives_per_node() * _data_provenance.get_size_in_bytes());

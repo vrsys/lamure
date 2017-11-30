@@ -70,7 +70,7 @@ using mat4r  = scm::math::mat<real, 4, 4>;
 using mat4f  = scm::math::mat4f;
 
 //rendering system types
-using node_t    = size_t;
+using node_t    = uint32_t;
 using slot_t    = size_t;
 using model_t   = uint32_t;
 using view_t    = uint32_t;

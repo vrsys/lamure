@@ -82,8 +82,11 @@ class RENDERING_DLL camera
     scm::math::mat4d const get_high_precision_view_matrix() const;
     scm::math::mat4f const get_projection_matrix() const;
 
-    void write_view_matrix(std::ofstream &matrix_stream);
-    void set_trackball_center_of_rotation(const scm::math::vec3f &cor);
+    void                        write_view_matrix(std::ofstream& matrix_stream);
+    void                        set_trackball_center_of_rotation(const scm::math::vec3f& cor);
+
+    void                        translate(const float& x, const float& y, const float& z);
+    void                        rotate(const float& x, const float& y, const float& z);
 
   protected:
     enum camera_state

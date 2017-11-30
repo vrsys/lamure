@@ -32,11 +32,13 @@ public:
     void                set_max_upload_budget_in_mb(const size_t max_upload_budget) { max_upload_budget_in_mb_ = max_upload_budget; };
     void                set_render_budget_in_mb(const size_t render_budget) { render_budget_in_mb_ = render_budget; };
     void                set_out_of_core_budget_in_mb(const size_t out_of_core_budget) { out_of_core_budget_in_mb_ = out_of_core_budget; };
+    void                set_size_of_provenance(const size_t size_of_provenance) { size_of_provenance_ = size_of_provenance; };
 
     const bool          reset_system() const { return reset_system_; };
     const size_t        max_upload_budget_in_mb() const { return max_upload_budget_in_mb_; };
     const size_t        render_budget_in_mb() const { return render_budget_in_mb_; };
     const size_t        out_of_core_budget_in_mb() const { return out_of_core_budget_in_mb_; };
+    const size_t        size_of_provenance() const { return size_of_provenance_; };
 
     const int32_t       window_width() const { return window_width_; };
     const int32_t       window_height() const { return window_height_; };
@@ -59,6 +61,8 @@ private:
     size_t              max_upload_budget_in_mb_;
     size_t              render_budget_in_mb_;
     size_t              out_of_core_budget_in_mb_;
+
+    size_t              size_of_provenance_;
 
     int32_t             window_width_;
     int32_t             window_height_;

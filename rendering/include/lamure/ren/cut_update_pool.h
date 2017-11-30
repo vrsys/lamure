@@ -8,8 +8,10 @@
 #ifndef REN_CUT_UPDATE_POOL_H_
 #define REN_CUT_UPDATE_POOL_H_
 
+
 #include <lamure/ren/config.h>
-#include <lamure/ren/semaphore.h>
+#include <lamure/semaphore.h>
+
 #include <lamure/utils.h>
 #include <vector>
 

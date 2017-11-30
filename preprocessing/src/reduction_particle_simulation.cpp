@@ -5,6 +5,8 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#ifdef CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES
+
 #include <lamure/pre/reduction_particle_simulation.h>
 
 #include <lamure/pre/radius_computation_natural_neighbours.h>
@@ -292,3 +294,5 @@ compute_enclosing_sphere_radius(surfel const &target_surfel,
 
 } // namespace pre
 } // namespace lamure
+
+#endif // CMAKE_OPTION_ENABLE_ALTERNATIVE_STRATEGIES

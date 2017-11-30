@@ -269,5 +269,40 @@ std::vector<scm::math::vec3d> camera::get_frustum_corners() const
 
     return result;
 }
+
+void camera::
+translate(const float& x, const float& y, const float& z)
+{
+    if(cam_state_ == CAM_STATE_GUA)
+    {
+        view_matrix_ = scm::math::make_translation(x, y, z) * view_matrix_;
+    }
+    else if(cam_state_ == CAM_STATE_LAMURE)
+    {
+        scm::math::mat4d trackball_trans = trackball_.transform();
+        trackball_.set_transform(scm::math::make_translation((double)x, (double)y, (double)z) * trackball_trans);
+    }
+}
+
+void camera::
+rotate(const float& x, const float& y, const float& z)
+{
+    if(cam_state_ == CAM_STATE_GUA)
+    {
+        view_matrix_ = scm::math::make_rotation(x, scm::math::vec3f(1.0f, 0.0f, 0.0f)) * 
+                      scm::math::make_rotation(y, scm::math::vec3f(0.0f, 1.0f, 0.0f)) * 
+                      scm::math::make_rotation(z, scm::math::vec3f(0.0f, 0.0f, 1.0f)) * 
+                      view_matrix_;
+    }
+    else if(cam_state_ == CAM_STATE_LAMURE)
+    {
+        scm::math::mat4d trackball_trans = trackball_.transform();
+        trackball_.set_transform(scm::math::make_rotation((double)x, scm::math::vec3d(1.0, 0.0, 0.0)) * 
+                                scm::math::make_rotation((double)y, scm::math::vec3d(0.0, 1.0, 0.0)) * 
+                                scm::math::make_rotation((double)z, scm::math::vec3d(0.0, 0.0, 1.0)) * 
+                                trackball_trans);
+    }
+}
+
 }
 }

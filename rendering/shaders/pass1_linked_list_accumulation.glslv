@@ -27,25 +27,18 @@ out VertexData {
   flat uint pass_global_surfel_id;
 } VertexOut;
 
+INCLUDE common/compute_tangent_vectors.glsl
 
 void main() {
-  vec3 ms_n = normalize(in_normal.xyz);
-  vec3 ms_u;
+  // precalculate tangent vectors to establish the surfel shape
+  vec3 tangent = vec3(0.0);
+  vec3 bitangent = vec3(0.0);
 
-  //**compute tangent vectors**//
-  if(ms_n.z != 0.0) {
-    ms_u = vec3( 1, 1, (-ms_n.x -ms_n.y)/ms_n.z);
-  } else if (ms_n.y != 0.0) {
-    ms_u = vec3( 1, (-ms_n.x -ms_n.z)/ms_n.y, 1);
-  } else {
-    ms_u = vec3( (-ms_n.y -ms_n.z)/ms_n.x, 1, 1);
-  }
+  compute_tangent_vectors(in_normal, in_radius, tangent, bitangent);
 
-
-  //**assign tangent vectors**//
-  VertexOut.pass_ms_u = normalize(ms_u) * point_size_factor * model_radius_scale * in_radius;
-  VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * point_size_factor * model_radius_scale * in_radius;
-
+  // passed attributes: vertex shader -> geometry shader
+  VertexOut.pass_ms_u = tangent;
+  VertexOut.pass_ms_v = bitangent;
   gl_Position = vec4(in_position, 1.0);
 
   uint global_surfel_idx = gl_VertexID;

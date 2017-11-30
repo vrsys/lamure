@@ -20,11 +20,14 @@
 #include <GL/freeglut.h>
 
 #include <lamure/types.h>
+
 #include <lamure/ren/config.h>
 #include <lamure/ren/model_database.h>
 #include <lamure/ren/cut_database.h>
 #include <lamure/ren/dataset.h>
 #include <lamure/ren/policy.h>
+
+#include <lamure/pvs/pvs_database.h>
 
 #include <scm/core/math.h>
 
@@ -40,6 +43,9 @@ void glut_mousemotion(int x, int y);
 void glut_idle();
 void glut_keyboard(unsigned char key, int x, int y);
 void glut_keyboard_release(unsigned char key, int x, int y);
+void glut_specialfunc(int key, int x, int y);
+void glut_specialfunc_release(int key, int x, int y);
+
 void glut_timer(int value);
 void glut_close();
 
@@ -94,6 +100,8 @@ void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
     glutDisplayFunc(glut_display);
     glutKeyboardFunc(glut_keyboard);
     glutKeyboardUpFunc(glut_keyboard_release);
+    glutSpecialFunc(glut_specialfunc);
+    glutSpecialUpFunc(glut_specialfunc_release);
     glutMouseFunc(glut_mousefunc);
     glutMotionFunc(glut_mousemotion);
     glutIdleFunc(glut_idle);
@@ -132,6 +140,14 @@ int main(int argc, char** argv)
 
     std::string resource_file_path = "";
     std::string measurement_file_path = "";
+    bool measurement_file_interpolation = false;
+    float measurement_interpolation_stepsize = 1.0f;
+
+
+    std::string default_background_color_rgb_string = "0x000000";
+
+    std::string pvs_file_path = "";
+    bool pvs_culling = true;
 
     po::options_description desc("Usage: " + exec_name + " [OPTION]... INPUT\n\n"
                                "Allowed Options");
@@ -143,7 +159,12 @@ int main(int argc, char** argv)
       ("vram,v", po::value<unsigned>(&video_memory_budget)->default_value(2048), "specify graphics memory budget in MB (default=2048)")
       ("mem,m", po::value<unsigned>(&main_memory_budget)->default_value(4096), "specify main memory budget in MB (default=4096)")
       ("upload,u", po::value<unsigned>(&max_upload_budget)->default_value(64), "specify maximum video memory upload budget per frame in MB (default=64)")
-      ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")");
+      ("measurement-file", po::value<std::string>(&measurement_file_path)->default_value(""), "specify camera session for quality measurement_file (default = \"\")")
+      ("measurement-interpolate", po::value<bool>(&measurement_file_interpolation)->default_value(false), "allow interpolation between measurement transformations (default=false)")
+      ("measurement-stepsize", po::value<float>(&measurement_interpolation_stepsize)->default_value(1.0f), "if interpolation is activated, this will be the stepsize in spatial units between interpolation points")
+      ("pvs-file,p", po::value<std::string>(&pvs_file_path), "specify potentially visible set file.")
+      ("pvs-culling", po::value<bool>(&pvs_culling)->default_value(true), "pvs will optimize drawn level of detail, yet if pvs culling is set to true, potentially occluded geometry will not be renderer")
+      ("bg-color", po::value<std::string>(&default_background_color_rgb_string), "specify the default background color as RGB in hexadecimal format. (default=0x000000)");
       ;
 
     po::positional_options_description p;
@@ -195,6 +216,31 @@ int main(int argc, char** argv)
     video_memory_budget = std::max(int(video_memory_budget), 1);
     max_upload_budget   = std::max(int(max_upload_budget), 64);
 
+    std::string hex_string_prefix = "0x";
+    //if the hex string starts with the proper prefix '0x', strip it first
+    if( hex_string_prefix == default_background_color_rgb_string.substr(0, hex_string_prefix.size() ) ) { 
+        default_background_color_rgb_string = default_background_color_rgb_string.substr(hex_string_prefix.size());
+    }
+
+
+    std::transform(default_background_color_rgb_string.begin(), default_background_color_rgb_string.end(), default_background_color_rgb_string.begin(), ::tolower);
+
+    // check if size of prefix removed hex string is what we expect and the digits are valid.
+    if( (default_background_color_rgb_string.size() != 6) || (default_background_color_rgb_string.find_first_not_of("0123456789abcdef") != std::string::npos) ){
+        std::cout << "Warning: The RGB hex string does not contain 6 hex digits.\nSetting it to 0x000000.\n";
+        default_background_color_rgb_string = "000000";
+    }
+
+    float bg_rgb[3] = {0.0f, 0.0f, 0.0f};
+
+    for( int color_channel_idx = 0; color_channel_idx < 3; ++color_channel_idx) {
+      unsigned color_channel_string_offset = color_channel_idx * 2;
+
+      int unnormalized_color =  strtoul( default_background_color_rgb_string.substr( color_channel_string_offset, 2).c_str() , NULL ,16);
+
+      bg_rgb[color_channel_idx] = unnormalized_color / 255.0f;
+    }
+
     initialize_glut(argc, argv, window_width, window_height);
 
     std::pair< std::vector<std::string>, std::vector<scm::math::mat4f> > model_attributes;
@@ -235,7 +281,24 @@ int main(int argc, char** argv)
     }
 
     management_ = new management(model_filenames, model_transformations, visible_set, invisible_set, measurement_descriptor);
+    management_->interpolate_between_measurement_transforms(measurement_file_interpolation);
+    management_->set_interpolation_step_size(measurement_interpolation_stepsize);
+    management_->enable_culling(pvs_culling);
 
+    management_->forward_background_color(bg_rgb[0], bg_rgb[1], bg_rgb[2]);
+
+    // PVS basic setup. If no path is given, runtime access to the PVS will always return true (visible).
+    if(pvs_file_path != "")
+    {
+        std::string pvs_grid_file_path = pvs_file_path;
+        pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
+        pvs_grid_file_path = pvs_grid_file_path + "grid";
+
+        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+        pvs->load_pvs_from_file(pvs_grid_file_path, pvs_file_path, false);
+    }
+
+    // Start rendering main loop.
     glutMainLoop();
 
 
@@ -260,14 +323,14 @@ void glut_display()
     if (management_ != nullptr)
     {
         signaled_shutdown = management_->MainLoop(); 
-
         glutSwapBuffers();
     }
 
-        if(signaled_shutdown) {
-            glutExit();
-            exit(0);
-        }
+    if(signaled_shutdown)
+    {
+        glutExit();
+        exit(0);
+    }
 }
 
 
@@ -277,7 +340,6 @@ void glut_resize(int w, int h)
     {
         management_->dispatchResize(w, h);
     }
-
 }
 
 void glut_mousefunc(int button, int state, int x, int y)
@@ -286,8 +348,6 @@ void glut_mousefunc(int button, int state, int x, int y)
     {
         management_->RegisterMousePresses(button, state, x, y);
     }
-
-
 }
 
 void glut_mousemotion(int x, int y)
@@ -305,7 +365,6 @@ void glut_idle()
 
 void Cleanup()
 {
-
     if (management_ != nullptr)
     {
         delete management_;
@@ -316,12 +375,10 @@ void Cleanup()
         delete lamure::ren::policy::get_instance();
         delete lamure::ren::ooc_cache::get_instance();
     }
-
 }
 
 void glut_close()
 {
-
     if (management_ != nullptr)
     {
         delete management_;
@@ -357,6 +414,31 @@ void glut_keyboard(unsigned char key, int x, int y)
             break;
 
     }
+}
+
+
+void glut_specialfunc(int key, int x, int y) {
+  switch(key) {
+    default:
+        if (management_ != nullptr)
+        {
+            management_->dispatchSpecialInput(key);
+        }
+        break;
+
+  }   
+}
+
+void glut_specialfunc_release(int key, int x, int y) {
+  switch(key) {
+    default:
+        if (management_ != nullptr)
+        {
+            management_->dispatchSpecialInputRelease(key);
+        }
+        break;
+
+  }   
 }
 
 void glut_keyboard_release(unsigned char key, int x, int y)
