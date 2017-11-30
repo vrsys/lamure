@@ -22,7 +22,8 @@ bool cmd_option_exists(char **begin, char **end, const std::string &option) {
     return std::find(begin, end, option) != end;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     if (argc == 1 || !cmd_option_exists(argv, argv + argc, "-c"))
     {
         std::cout << "Usage: " << argv[0] << " <flags> -p <image> -c <config>" << std::endl << std::endl;
