@@ -40,7 +40,7 @@ public:
         bool compute_normals_and_radii;
         bool keep_intermediate_files;
         bool resample;
-        float memory_ratio;
+        float memory_budget;
         float radius_multiplier;
         size_t buffer_size;
         uint16_t number_of_neighbours;

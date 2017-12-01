@@ -13,6 +13,7 @@
 #include <lamure/pre/io/format_abstract.h>
 #include <lamure/pre/io/format_xyz.h>
 #include <lamure/pre/io/format_xyz_all.h>
+#include <lamure/pre/io/format_xyz_bin.h>
 #include <lamure/pre/io/format_ply.h>
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
@@ -132,6 +133,10 @@ boost::filesystem::path builder::convert_to_binary(std::string const &input_type
     else if (input_type == ".xyz_all") {
         binary_file += ".bin_all";
         format_in = std::unique_ptr<format_xyzall>{new format_xyzall()};
+    }
+    else if (input_type == ".xyz_bin") {
+        binary_file += ".bin";
+        format_in = std::unique_ptr<format_xyz_bin>{new format_xyz_bin()};
     }
     else if (input_type == ".ply") {
         binary_file += ".bin";
@@ -374,19 +379,16 @@ bool builder::reserialize(boost::filesystem::path const &input_file, uint16_t st
 
 size_t builder::calculate_memory_limit() const
 {
-    // compute memory parameters
-    const size_t memory_budget = get_total_memory() * desc_.memory_ratio;
-    const size_t occupied = get_total_memory() - get_available_memory();
 
-    if (occupied >= memory_budget) {
-        LOGGER_ERROR("Memory ratio is too small");
+    size_t memory_budget = desc_.memory_budget * 1024UL * 1024UL * 1024UL;
+    LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024.0 / 1024.0 / 1024.0 << " GiB");
+    LOGGER_INFO("Memory budget: " << desc_.memory_budget << " GiB (use -m to choose memory budget in GiB)");
+    if (get_total_memory() <= memory_budget) {
+        LOGGER_ERROR("Not enough memory. Go buy more RAM");
         return false;
     }
-    size_t memory_limit = memory_budget - occupied;
-    LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024 / 1024 << " MiB");
-    LOGGER_INFO("Memory limit: " << memory_limit / 1024 / 1024 << " MiB");
     LOGGER_INFO("Precision for storing coordinates and radii: " << std::string((sizeof(real) == 8) ? "double" : "single"));
-    return memory_limit;
+    return desc_.memory_budget;
 }
 
 bool builder::resample()
@@ -402,6 +404,7 @@ bool builder::resample()
         input_file_type == ".bin" ||
         input_file_type == ".xyz" ||
         input_file_type == ".xyz_all" ||
+        input_file_type == ".xyz_bin" ||
         input_file_type == ".ply")
         start_stage = 0;
     else if (input_file_type == ".bin" || input_file_type == ".bin_all")
@@ -446,6 +449,7 @@ construct()
 
     if (input_file_type == ".xyz" ||
         input_file_type == ".xyz_all" ||
+        input_file_type == ".xyz_bin" ||
         input_file_type == ".ply")
         start_stage = 0;
     else if (input_file_type == ".bin" || input_file_type == ".bin_all")

@@ -218,8 +218,11 @@ void bvh::downsweep(bool adjust_translation, const std::string &surfels_input_fi
     uint32_t final_depth = std::max(0.0, std::ceil(std::log(input.length() / double(in_core_surfel_capacity)) / std::log(double(fan_factor_))));
 
     assert(final_depth <= depth_);
+    if (final_depth != 0) {
+      LOGGER_ERROR("The dataset does not fit in the specified memory budget. Use flag -m and choose more gigabytes");
+    }
 
-    LOGGER_INFO("Tree depth to switch in-core: " << final_depth);
+    //LOGGER_INFO("Tree depth to switch in-core: " << final_depth);
 
     // construct root node
     nodes_[0] = bvh_node(0, 0, bounding_box(), input);

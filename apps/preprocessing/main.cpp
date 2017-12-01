@@ -104,15 +104,14 @@ int main(int argc, const char *argv[])
         ("resample",
          "resample to replace huge surfels by collection of smaller one")
 
-        ("mem-ratio,m",
-         po::value<float>()->default_value(0.6, "0.6"),
-         "the ratio to the total amount of physical memory available on the "
-         "current system. This value denotes how much memory is allowed to "
-         "use by the application")
+        ("memory-budget,m",
+         po::value<float>()->default_value(8.0, "8.0"),
+         "the total amount of physical memory allowed to be used by the "
+         "application in gigabytes")
 
         ("buffer-size,b",
          po::value<int>()->default_value(150),
-         "buffer size in MiB")
+         "buffer size in megabytes")
 
         ("reduction-algo",
          po::value<std::string>()->default_value("ndc"),
@@ -349,11 +348,8 @@ int main(int argc, const char *argv[])
         desc.keep_intermediate_files      = vm.count("keep-interm");
         desc.resample                     = vm.count("resample");
         // manual check because typed_value doenst support check whether default is used
-        if(vm["mem-ratio"].as<float>() != 0.6f) {
-            std::cerr << "WARNING: \"mem-ratio\" flag deprecated" << std::endl;
-        }
 
-        desc.memory_ratio                 = std::max(vm["mem-ratio"].as<float>(), 0.05f);
+        desc.memory_budget                = std::max(vm["memory-budget"].as<float>(), 1.0f);
 
         desc.buffer_size                  = buffer_size;
         desc.number_of_neighbours         = std::max(vm["neighbours"].as<int>(), 1);

@@ -60,7 +60,8 @@ public:
     virtual ~sampler() {};
 
     bool load(const std::string& filename);
-    bool SampleMesh(const std::string& outputFilename);
+    bool SampleMesh(const std::string& outputFilename,
+      bool flip_x, bool flip_y);
 
 private:
 
@@ -126,10 +127,9 @@ private:
 
     void compute_normals();
 
-    bool sample_face(int faceId, splat_vector& out/*, bool onlyCoords*/);
+    bool sample_face(int faceId, bool flip_x, bool flip_y, splat_vector& out);
 
-    bool sample_face(face_pointer facePtr, 
-                     splat_vector& out/*, bool onlyCoords*/);
+    bool sample_face(face_pointer facePtr, bool flip_x, bool flip_y, splat_vector& out);
 
     MyMesh m;
     std::vector<texture> textures;

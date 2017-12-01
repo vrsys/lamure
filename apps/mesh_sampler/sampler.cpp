@@ -101,7 +101,7 @@ load(const std::string& filename)
 }
 
 bool sampler::
-SampleMesh(const std::string& outputFilename)
+SampleMesh(const std::string& outputFilename, bool flip_x, bool flip_y)
 {
     std::ofstream out(outputFilename, std::ios::out);
     if (out.fail()) {
@@ -125,7 +125,7 @@ SampleMesh(const std::string& outputFilename)
     #pragma omp parallel for private(points) schedule(dynamic, 35)
     for (size_t i = 0; i < m.face.size(); ++i) {
         bool discard = false;
-        if (sample_face(i, points/*, false*/)) {
+        if (sample_face(i, flip_x, flip_y, points)) {
             /*
             auto& face = m.face[i];
             face_set faceList;
@@ -220,14 +220,17 @@ SampleMesh(const std::string& outputFilename)
 }
 
 bool sampler::
-sample_face(int faceId, splat_vector& out/*, bool onlyCoords*/) 
+sample_face(int faceId, 
+  bool flip_x, bool flip_y,
+  splat_vector& out) 
 {
-    return sample_face(&m.face[faceId], out/*, onlyCoords*/);
+    return sample_face(&m.face[faceId], flip_x, flip_y, out);
 }
 
 bool sampler::
 sample_face(face_pointer facePtr, 
-           splat_vector& out/*, bool onlyCoords*/)
+  bool flip_x, bool flip_y,
+  splat_vector& out)
 {
     out.clear();
 
@@ -248,28 +251,31 @@ sample_face(face_pointer facePtr,
     }
 
     // calculate 2D vertex positions [0, tex_width-1][0, tex_height-1] in ints
-#if 1
-    //flip of texcoord v
-    float tax = face.WT(0).U() * (tex.width() - 1) + 0.5f;
-    float tay = (1.0 - face.WT(0).V()) * (tex.height() - 1) + 0.5f;
+    
+    float tax, tbx, tcx;
+    float tay, tby, tcy;
 
-    float tbx = face.WT(1).U() * (tex.width() - 1) + 0.5f;
-    float tby = (1.0 - face.WT(1).V()) * (tex.height() - 1) + 0.5f;
+    if (flip_x) {
+      tax = (1.0 - face.WT(0).U()) * (tex.width() - 1) + 0.5f;
+      tbx = (1.0 - face.WT(1).U()) * (tex.width() - 1) + 0.5f;
+      tcx = (1.0 - face.WT(2).U()) * (tex.width() - 1) + 0.5f;
+    }
+    else {
+      tax = face.WT(0).U() * (tex.width() - 1) + 0.5f;
+      tbx = face.WT(1).U() * (tex.width() - 1) + 0.5f;
+      tcx = face.WT(2).U() * (tex.width() - 1) + 0.5f;
+    }
 
-    float tcx = face.WT(2).U() * (tex.width() - 1) + 0.5f;
-    float tcy = (1.0 - face.WT(2).V()) * (tex.height() - 1) + 0.5f;
-#else
-    //do not flip texcoord v
-    float tax = face.WT(0).U() * (tex.width() - 1) + 0.5f;
-    float tay = face.WT(0).V() * (tex.Height() - 1) + 0.5f;
-
-    float tbx = face.WT(1).U() * (tex.width() - 1) + 0.5f;
-    float tby = face.WT(1).V() * (tex.height() - 1) + 0.5f;
-
-    float tcx = face.WT(2).U() * (tex.width() - 1) + 0.5f;
-    float tcy = face.WT(2).V() * (tex.height() - 1) + 0.5f;
-
-#endif
+    if (flip_y) {
+      tay = (1.0 - face.WT(0).V()) * (tex.height() - 1) + 0.5f;
+      tby = (1.0 - face.WT(1).V()) * (tex.height() - 1) + 0.5f;
+      tcy = (1.0 - face.WT(2).V()) * (tex.height() - 1) + 0.5f;
+    }
+    else {
+      tay = face.WT(0).V() * (tex.height() - 1) + 0.5f;
+      tby = face.WT(1).V() * (tex.height() - 1) + 0.5f;
+      tcy = face.WT(2).V() * (tex.height() - 1) + 0.5f;
+    }
 
     vcg::Triangle2<double> T(vcg::Point2d(tax,tay), vcg::Point2d(tbx, tby), vcg::Point2d(tcx, tcy));
 
