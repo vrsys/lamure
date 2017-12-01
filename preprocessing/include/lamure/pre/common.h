@@ -43,7 +43,8 @@ enum class reduction_algorithm
     k_clustering = 7,
     spatially_subdivided_random = 8,
     pair = 9,
-    hierarchical_clustering_extended = 10
+    hierarchical_clustering_extended = 10,
+    ndc_prov = 11
 };
 
 }
