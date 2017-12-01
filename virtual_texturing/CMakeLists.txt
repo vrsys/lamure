@@ -9,7 +9,9 @@ set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
 add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
+
 find_package(ImageMagick COMPONENTS Magick++ MagickWand MagickCore montage)
+find_package(glfw3 REQUIRED)
 
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
@@ -50,15 +52,16 @@ include_directories(${PROJECT_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${CGAL_INCLUDE_DIR}
         ${GMP_INCLUDE_DIR}
+        ${GLFW_INCLUDE_DIR}
         ${ImageMagick_INCLUDE_DIRS}
         ${MPFR_INCLUDE_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR})
 
-link_directories(${SCHISM_LIBRARY_DIRS})
+link_directories(${SCHISM_LIBRARY_DIRS} ${GLFW3_LIBRARY})
 
-add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES})
+add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES} ${GLFW3_LIBRARY})
 
 add_dependencies(${PROJECT_NAME} lamure_common)
 

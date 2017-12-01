@@ -24,24 +24,31 @@ int main(int argc, char *argv[])
 {
     if(argc == 1 || !cmd_option_exists(argv, argv + argc, "-c"))
     {
-        std::cout << "Usage: " << argv[0] << " <flags> -p <image> -c <config>" << std::endl << std::endl;
+        std::cout << "Preprocessing in-core: " << argv[0] << " <flags> -p <raster> -c <config>" << std::endl;
+        std::cout << "Preprocessing out-of-core: " << argv[0] << " <flags> -m -c <config>" << std::endl;
+        std::cout << "Texturing context: " << argv[0] << " <flags> -c <config>" << std::endl;
         return -1;
     }
 
     std::string file_config = std::string(get_cmd_option(argv, argv + argc, "-c"));
 
-    Context context(file_config.c_str());
-    Preprocessor preprocessor(context);
+    Context context = Context::Builder().with_path_config((file_config.c_str()))->build();
 
-    if(get_cmd_option(argv, argv + argc, "-p") != nullptr && get_cmd_option(argv, argv + argc, "-c") != nullptr)
+    if(get_cmd_option(argv, argv + argc, "-m") != nullptr)
     {
-        std::string file_raster = std::string(get_cmd_option(argv, argv + argc, "-p"));
+        Preprocessor preprocessor(context);
 
-        preprocessor.prepare_raster(file_raster.c_str());
+        if(get_cmd_option(argv, argv + argc, "-p") != nullptr && get_cmd_option(argv, argv + argc, "-c") != nullptr)
+        {
+            std::string file_raster = std::string(get_cmd_option(argv, argv + argc, "-p"));
+
+            preprocessor.prepare_raster(file_raster.c_str());
+        }
+
         preprocessor.prepare_mipmap();
     }
 
-    preprocessor.prepare_mipmap();
+    context.start();
 
-    return 0;
+    return EXIT_SUCCESS;
 }
