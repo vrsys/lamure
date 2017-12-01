@@ -45,7 +45,7 @@
 #endif
 
 #include <fcntl.h>
-#include <lamure/pre/provenance_reduction_strategy.h>
+#include <lamure/pre/reduction_strategy_provenance.h>
 #include <sys/stat.h>
 
 namespace fs = boost::filesystem;
@@ -1039,11 +1039,10 @@ void bvh::thread_create_lod(const uint32_t start_marker, const uint32_t end_mark
 
             real reduction_error;
 
-            // TODO: Inject a call to provenance method, collecting deviations from lod
             reduction_strategy *p_reduction_strgy = (reduction_strategy *)&reduction_strgy;
-            if(provenance_reduction_strategy *cast = dynamic_cast<provenance_reduction_strategy *>(p_reduction_strgy))
+            if(reduction_strategy_provenance *cast = dynamic_cast<reduction_strategy_provenance *>(p_reduction_strgy))
             {
-                std::vector<provenance_reduction_strategy::LoDMetaData> deviations;
+                std::vector<reduction_strategy_provenance::LoDMetaData> deviations;
                 reduction_result = cast->create_lod(reduction_error, input_mem_arrays, deviations, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0));
                 cast->output_lod(deviations, node_index);
             }
@@ -1397,7 +1396,7 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
 
     // TODO: Inject a call to provenance method, collecting level data into one file
     reduction_strategy *p_reduction_strgy = (reduction_strategy *)&reduction_strgy;
-    if(provenance_reduction_strategy *cast = dynamic_cast<provenance_reduction_strategy *>(p_reduction_strgy))
+    if(reduction_strategy_provenance *cast = dynamic_cast<reduction_strategy_provenance *>(p_reduction_strgy))
     {
         uint16_t w_level = 0;
 

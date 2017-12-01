@@ -117,6 +117,7 @@ int main(int argc, const char *argv[])
          po::value<std::string>()->default_value("ndc"),
          "Reduction strategy for the LOD construction. Possible values:\n"
          "  ndc - normal deviation clustering (ndc)\n"
+         "  ndc_prov - normal deviation clustering (ndc)\n"
          "  const - ndc with constant radius\n"
          "  everysecond - take every fanout-factor's surfel\n"
          "  random - randomly select points with possible duplicates\n"
@@ -273,6 +274,9 @@ int main(int argc, const char *argv[])
 
         if (reduction_algo == "ndc")
             desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc;
+        else if (reduction_algo == "ndc_prov") {
+            desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc_prov;
+        }
         else if (reduction_algo == "const") {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
             desc.reduction_algo        = lamure::pre::reduction_algorithm::constant;
