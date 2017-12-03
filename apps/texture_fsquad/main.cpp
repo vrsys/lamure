@@ -1,12 +1,8 @@
 #include <algorithm>
-#include <boost/crc.hpp>
-#include <boost/sort/spreadsort/spreadsort.hpp>
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <lamure/vt/pre/Preprocessor.h>
-#include <scm/core.h>
-#include <scm/core/math.h>
 
 using namespace vt;
 
@@ -32,9 +28,9 @@ int main(int argc, char *argv[])
 
     std::string file_config = std::string(get_cmd_option(argv, argv + argc, "-c"));
 
-    Context context = Context::Builder().with_path_config((file_config.c_str()))->build();
+    VTContext context = VTContext::Builder().with_path_config((file_config.c_str()))->build();
 
-    if(get_cmd_option(argv, argv + argc, "-m") != nullptr)
+    if(get_cmd_option(argv, argv + argc, "-m") != nullptr || get_cmd_option(argv, argv + argc, "-p") != nullptr)
     {
         Preprocessor preprocessor(context);
 
@@ -47,8 +43,10 @@ int main(int argc, char *argv[])
 
         preprocessor.prepare_mipmap();
     }
-
-    context.start();
+    else
+    {
+        context.start();
+    }
 
     return EXIT_SUCCESS;
 }

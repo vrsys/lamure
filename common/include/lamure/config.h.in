@@ -10,6 +10,7 @@
 
 #define LAMURE_SHADERS_DIR "@CMAKE_INSTALL_PREFIX@/share/lamure/shaders"
 #define LAMURE_FONTS_DIR "@CMAKE_INSTALL_PREFIX@/share/lamure/fonts"
+#define LAMURE_PRIMITIVES_DIR "@CMAKE_INSTALL_PREFIX@/share/lamure/primitives"
 
 #cmakedefine LAMURE_USE_CGAL_FOR_NNI
 

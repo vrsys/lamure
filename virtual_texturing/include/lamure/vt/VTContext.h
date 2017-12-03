@@ -1,12 +1,12 @@
-#ifndef LAMURE_CONTEXT_H
-#define LAMURE_CONTEXT_H
+#ifndef VT_CONTEXT_H
+#define VT_CONTEXT_H
 
-#include "common.h"
-#include <lamure/vt/ext/SimpleIni.h>
-#include <lamure/vt/ren/Renderer.h>
+#include <lamure/vt/common.h>
+#include <lamure/vt/QuadTree.h>
 namespace vt
 {
-class Context
+class VTRenderer;
+class VTContext
 {
   public:
     class Config
@@ -70,9 +70,9 @@ class Context
             this->_path_config = path_config;
             return this;
         }
-        Context build()
+        VTContext build()
         {
-            Context context;
+            VTContext context;
 
             if(this->_path_config != nullptr)
             {
@@ -85,7 +85,7 @@ class Context
       private:
         const char *_path_config;
 
-        void read_config(Context &_context, const char *path_config)
+        void read_config(VTContext &_context, const char *path_config)
         {
             if(_context._config->LoadFile(path_config) < 0)
             {
@@ -103,8 +103,7 @@ class Context
         }
     };
 
-    explicit Context();
-    ~Context() = default;
+    ~VTContext() = default;
 
     void start();
 
@@ -119,12 +118,24 @@ class Context
     bool is_keep_intermediate_data() const;
     bool is_verbose() const;
 
-  private:
+    uint16_t get_depth_quadtree() const;
+    uint32_t get_size_index_texture() const;
+    uint32_t get_size_physical_texture() const;
+
+    const scm::gl::trackball_manipulator &get_trackball_manip() const;
+    bool isToggle_phyiscal_texture_image_viewer() const;
+
+private:
+    explicit VTContext();
+    bool touch(const std::string& pathname);
+    uint16_t identify_depth();
+    uint32_t identify_size_index_texture();
+
     CSimpleIniA *_config;
 
     GLFWwindow *_window;
 
-    Renderer *_renderer;
+    VTRenderer *_vtrenderer;
 
     uint16_t _size_tile;
     std::string _name_texture;
@@ -134,7 +145,28 @@ class Context
     Config::FORMAT_TEXTURE _format_texture;
     bool _keep_intermediate_data;
     bool _verbose;
+
+    uint16_t _depth_quadtree;
+    uint32_t _size_index_texture;
+    uint32_t _size_physical_texture;
+
+    //trackball -> mouse and x+y coord.
+    scm::gl::trackball_manipulator _trackball_manip;
+    float _initx;
+    float _inity;
+
+    //mouse button state
+    bool _lb_down;
+    bool _mb_down;
+    bool _rb_down;
+
+    //intensity of zoom
+    float _dolly_sens;
+
+    bool toggle_phyiscal_texture_image_viewer = true;
+
+    uint32_t calculate_size_physical_texture();
 };
 }
 
-#endif // LAMURE_CONTEXT_H
+#endif // VT_CONTEXT_H

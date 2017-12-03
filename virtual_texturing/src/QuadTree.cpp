@@ -39,9 +39,9 @@ namespace vt {
         return (uint32_t) (log((node_id + 1) * (4 - 1)) / log(4));
     }
 
-    const uint32_t QuadTree::calculate_depth(size_t dim, size_t tile_size) {
+    const uint16_t QuadTree::calculate_depth(size_t dim, size_t tile_size) {
         size_t dim_tiled = dim / tile_size;
-        return (uint32_t) (log(dim_tiled * dim_tiled) / log(4));
+        return (uint16_t) (log(dim_tiled * dim_tiled) / log(4));
     }
 
     size_t QuadTree::get_tiles_per_row(uint32_t _depth) {

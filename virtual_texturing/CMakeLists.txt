@@ -23,8 +23,8 @@ file(GLOB EXT_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ext/*.h)
 file(GLOB PRE_SRC ${PROJECT_SOURCE_DIR}/pre/*.cpp)
 file(GLOB PRE_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/pre/*.h)
 
-file(GLOB OOC_SRC ${PROJECT_SOURCE_DIR}/ooc/*.cpp)
-file(GLOB OOC_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ooc/*.h)
+#file(GLOB OOC_SRC ${PROJECT_SOURCE_DIR}/ooc/*.cpp)
+#file(GLOB OOC_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ooc/*.h)
 
 file(GLOB REN_SRC ${PROJECT_SOURCE_DIR}/ren/*.cpp)
 file(GLOB REN_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ren/*.h)
@@ -38,14 +38,14 @@ SOURCE_GROUP("ext" FILES ${EXT_INC})
 SOURCE_GROUP("pre" FILES ${PRE_SRC})
 SOURCE_GROUP("pre" FILES ${PRE_INC})
 
-SOURCE_GROUP("ooc" FILES ${OOC_SRC})
-SOURCE_GROUP("ooc" FILES ${OOC_INC})
+#SOURCE_GROUP("ooc" FILES ${OOC_SRC})
+#SOURCE_GROUP("ooc" FILES ${OOC_INC})
 
 SOURCE_GROUP("ren" FILES ${REN_SRC})
 SOURCE_GROUP("ren" FILES ${REN_INC})
 
-set(PROJECT_SOURCES ${MAIN_SRC} ${EXT_SRC} ${PRE_SRC} ${OOC_SRC} ${REN_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${EXT_INC} ${PRE_INC} ${OOC_INC} ${REN_INC})
+set(PROJECT_SOURCES ${MAIN_SRC} ${EXT_SRC} ${PRE_SRC} ${REN_SRC}) #${OOC_SRC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${EXT_INC} ${PRE_INC} ${REN_INC}) #${OOC_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
@@ -121,3 +121,15 @@ ENDIF (MSVC)
 
 # header files
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/vt DESTINATION include/lamure FILES_MATCHING PATTERN "*.h")
+
+# shader and material resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure
+        FILES_MATCHING
+        PATTERN "*.glslv"
+        PATTERN "*.glslf")
+
+# shader and material resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/primitives DESTINATION share/lamure
+        FILES_MATCHING
+        PATTERN "*.mtl"
+        PATTERN "*.obj")

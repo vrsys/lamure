@@ -36,7 +36,7 @@ namespace vt {
 
         static const uint32_t get_depth_of_node(uint64_t node_id);
 
-        static const uint32_t calculate_depth(size_t dim, size_t tile_size);
+        static const uint16_t calculate_depth(size_t dim, size_t tile_size);
 
         static size_t get_tiles_per_row(uint32_t _depth);
 

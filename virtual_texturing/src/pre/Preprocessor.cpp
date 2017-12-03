@@ -1,24 +1,24 @@
-#include <lamure/vt/Context.h>
+#include <lamure/vt/VTContext.h>
 #include <lamure/vt/pre/Preprocessor.h>
 
 namespace vt
 {
-Preprocessor::Preprocessor(vt::Context &context)
+Preprocessor::Preprocessor(vt::VTContext &context)
 {
-    this->_context = new Context(context);
+    this->_context = new VTContext(context);
 
     boost::filesystem::path path_texture;
     switch(_context->get_format_texture())
     {
-    case Context::Config::FORMAT_TEXTURE::RGBA8:
+    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
         path_texture = boost::filesystem::path(_context->get_name_texture() + ".rgba");
         break;
-    case Context::Config::FORMAT_TEXTURE::RGB8:
+    case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
         path_texture = boost::filesystem::path(_context->get_name_texture() + ".rgb");
         break;
-    case Context::Config::FORMAT_TEXTURE::R8:
+    case VTContext::Config::FORMAT_TEXTURE::R8:
 
         path_texture = boost::filesystem::path(_context->get_name_texture() + ".gray");
         break;
@@ -56,19 +56,19 @@ bool Preprocessor::prepare_raster(const char *name_raster)
 
         switch(_context->get_format_texture())
         {
-        case Context::Config::FORMAT_TEXTURE::RGBA8:
+        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
             image.type(Magick::TrueColorMatteType);
             image.depth(8);
             image.write(std::string(_context->get_name_texture() + ".rgba"));
             break;
-        case Context::Config::FORMAT_TEXTURE::RGB8:
+        case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
             image.type(Magick::TrueColorType);
             image.depth(8);
             image.write(std::string(_context->get_name_texture() + ".rgb"));
             break;
-        case Context::Config::FORMAT_TEXTURE::R8:
+        case VTContext::Config::FORMAT_TEXTURE::R8:
 
             image.type(Magick::GrayscaleType);
             image.depth(8);
@@ -107,15 +107,15 @@ bool Preprocessor::prepare_mipmap()
     std::ifstream input;
     switch(_context->get_format_texture())
     {
-    case Context::Config::FORMAT_TEXTURE::RGBA8:
+    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
         input.open(_context->get_name_texture() + ".rgba", std::ifstream::in | std::ifstream::binary);
         break;
-    case Context::Config::FORMAT_TEXTURE::RGB8:
+    case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
         input.open(_context->get_name_texture() + ".rgb", std::ifstream::in | std::ifstream::binary);
         break;
-    case Context::Config::FORMAT_TEXTURE::R8:
+    case VTContext::Config::FORMAT_TEXTURE::R8:
 
         input.open(_context->get_name_texture() + ".gray", std::ifstream::in | std::ifstream::binary);
         break;
@@ -220,15 +220,15 @@ bool Preprocessor::prepare_mipmap()
             std::ifstream input_tile;
             switch(_context->get_format_texture())
             {
-            case Context::Config::FORMAT_TEXTURE::RGBA8:
+            case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
                 input_tile.open("id_" + std::to_string(_id) + ".rgba", std::ifstream::in | std::ifstream::binary);
                 break;
-            case Context::Config::FORMAT_TEXTURE::RGB8:
+            case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
                 input_tile.open("id_" + std::to_string(_id) + ".rgb", std::ifstream::in | std::ifstream::binary);
                 break;
-            case Context::Config::FORMAT_TEXTURE::R8:
+            case VTContext::Config::FORMAT_TEXTURE::R8:
 
                 input_tile.open("id_" + std::to_string(_id) + ".gray", std::ifstream::in | std::ifstream::binary);
                 break;
@@ -245,15 +245,15 @@ bool Preprocessor::prepare_mipmap()
             {
                 switch(_context->get_format_texture())
                 {
-                case Context::Config::FORMAT_TEXTURE::RGBA8:
+                case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
                     std::remove(("id_" + std::to_string(_id) + ".rgba").c_str());
                     break;
-                case Context::Config::FORMAT_TEXTURE::RGB8:
+                case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
                     std::remove(("id_" + std::to_string(_id) + ".rgb").c_str());
                     break;
-                case Context::Config::FORMAT_TEXTURE::R8:
+                case VTContext::Config::FORMAT_TEXTURE::R8:
 
                     std::remove(("id_" + std::to_string(_id) + ".gray").c_str());
                     break;
@@ -279,15 +279,15 @@ void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id)
 
     switch(_context->get_format_texture())
     {
-    case Context::Config::FORMAT_TEXTURE::RGBA8:
+    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
         ifs.open(_context->get_name_texture() + ".rgba", std::ifstream::in | std::ifstream::binary);
         break;
-    case Context::Config::FORMAT_TEXTURE::RGB8:
+    case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
         ifs.open(_context->get_name_texture() + ".rgb", std::ifstream::in | std::ifstream::binary);
         break;
-    case Context::Config::FORMAT_TEXTURE::R8:
+    case VTContext::Config::FORMAT_TEXTURE::R8:
 
         ifs.open(_context->get_name_texture() + ".gray", std::ifstream::in | std::ifstream::binary);
         break;
@@ -347,15 +347,15 @@ void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id)
 
         switch(_context->get_format_texture())
         {
-        case Context::Config::FORMAT_TEXTURE::RGBA8:
+        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
             output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
             break;
-        case Context::Config::FORMAT_TEXTURE::RGB8:
+        case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
             output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
             break;
-        case Context::Config::FORMAT_TEXTURE::R8:
+        case VTContext::Config::FORMAT_TEXTURE::R8:
 
             output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
             break;
@@ -400,15 +400,15 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id)
 
     switch(_context->get_format_texture())
     {
-    case Context::Config::FORMAT_TEXTURE::RGBA8:
+    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
         ifs.open(_context->get_name_texture() + ".rgba", std::ifstream::in | std::ifstream::binary);
         break;
-    case Context::Config::FORMAT_TEXTURE::RGB8:
+    case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
         ifs.open(_context->get_name_texture() + ".rgb", std::ifstream::in | std::ifstream::binary);
         break;
-    case Context::Config::FORMAT_TEXTURE::R8:
+    case VTContext::Config::FORMAT_TEXTURE::R8:
 
         ifs.open(_context->get_name_texture() + ".gray", std::ifstream::in | std::ifstream::binary);
         break;
@@ -430,7 +430,7 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id)
     size_t rows_per_thread = tiles_per_row / thread::hardware_concurrency();
 
     auto **buf_tiles = new char *[tiles_per_row];
-    for(int _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
+    for(size_t _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
     {
         buf_tiles[_tile_row] = new char[tile_size * tile_size * _context->get_byte_stride()];
     }
@@ -466,15 +466,15 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id)
                 std::ofstream output;
                 switch(_context->get_format_texture())
                 {
-                case Context::Config::FORMAT_TEXTURE::RGBA8:
+                case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
                     output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
                     break;
-                case Context::Config::FORMAT_TEXTURE::RGB8:
+                case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
                     output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
                     break;
-                case Context::Config::FORMAT_TEXTURE::R8:
+                case VTContext::Config::FORMAT_TEXTURE::R8:
 
                     output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
                     break;
@@ -502,8 +502,8 @@ void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id)
 
     ifs.close();
 
-    for(int _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
-        delete[] buf_tiles[_tile_row];
+    for(size_t __tile_row = 0; __tile_row < tiles_per_row; __tile_row++)
+        delete[] buf_tiles[__tile_row];
     delete[] buf_tiles;
 
     if(_context->is_verbose())
@@ -543,21 +543,21 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
 
         switch(_context->get_format_texture())
         {
-        case Context::Config::FORMAT_TEXTURE::RGBA8:
+        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
             _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".rgba");
             _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".rgba");
             _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".rgba");
             _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".rgba");
             break;
-        case Context::Config::FORMAT_TEXTURE::RGB8:
+        case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
             _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".rgb");
             _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".rgb");
             _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".rgb");
             _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".rgb");
             break;
-        case Context::Config::FORMAT_TEXTURE::R8:
+        case VTContext::Config::FORMAT_TEXTURE::R8:
 
             _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".gray");
             _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".gray");
@@ -592,7 +592,7 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
                 // TODO: implement a better downscaling algo
                 switch(_context->get_format_texture())
                 {
-                case Context::Config::FORMAT_TEXTURE::RGBA8:
+                case VTContext::Config::FORMAT_TEXTURE::RGBA8:
                 {
                     char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 0];
                     char pixel_g = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 1];
@@ -606,7 +606,7 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
 
                     break;
                 }
-                case Context::Config::FORMAT_TEXTURE::RGB8:
+                case VTContext::Config::FORMAT_TEXTURE::RGB8:
                 {
                     char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 0];
                     char pixel_g = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 1];
@@ -618,7 +618,7 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
 
                     break;
                 }
-                case Context::Config::FORMAT_TEXTURE::R8:
+                case VTContext::Config::FORMAT_TEXTURE::R8:
                 {
                     char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 0];
 
@@ -633,15 +633,15 @@ void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, si
         std::ofstream output;
         switch(_context->get_format_texture())
         {
-        case Context::Config::FORMAT_TEXTURE::RGBA8:
+        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
 
             output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
             break;
-        case Context::Config::FORMAT_TEXTURE::RGB8:
+        case VTContext::Config::FORMAT_TEXTURE::RGB8:
 
             output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
             break;
-        case Context::Config::FORMAT_TEXTURE::R8:
+        case VTContext::Config::FORMAT_TEXTURE::R8:
 
             output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
             break;

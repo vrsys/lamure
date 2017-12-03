@@ -18,7 +18,7 @@
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
 #include <lamure/vt/ext/morton.h>
-#include <lamure/vt/Context.h>
+#include <lamure/vt/VTContext.h>
 
 namespace vt
 {
@@ -26,14 +26,14 @@ namespace vt
 class Preprocessor
 {
 public:
-    explicit Preprocessor(Context &context);
+    explicit Preprocessor(VTContext &context);
     ~Preprocessor() = default;
 
     bool prepare_raster(const char *name_raster);
     bool prepare_mipmap();
 
 private:
-    Context *_context;
+    VTContext *_context;
 
     void extract_leaf_tile_range(uint32_t _thread_id);
     void stitch_tile_range(uint32_t _thread_id, size_t _node_start, size_t _node_end);

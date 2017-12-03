@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <iostream>
-#include <lamure/vt/ooc/TileAtlas.h>
 
 using namespace std;
 
@@ -24,8 +23,6 @@ void printHex(uint8_t *data, size_t len, size_t chars_per_line = 0)
 
     cout.flags(f);
 }
-
-using namespace seb;
 
 int main()
 {
