@@ -9,7 +9,7 @@ namespace vt
 class VTRenderer
 {
   public:
-    VTRenderer(VTContext *context, CutUpdate *cut_update);
+    VTRenderer(VTContext *context, uint32_t _width, uint32_t _height, CutUpdate *cut_update);
     ~VTRenderer();
 
     void render();
@@ -38,7 +38,7 @@ class VTRenderer
     scm::gl::sampler_state_ptr _filter_linear;
     scm::gl::rasterizer_state_ptr _ms_no_cull;
 
-    uint32_t _width = 800, _height = 800;
+    uint32_t _width, _height;
 
     scm::math::vec2ui _index_texture_dimension;
     scm::math::vec2ui _physical_texture_dimension;

@@ -11,7 +11,6 @@ add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
 add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
 
 find_package(ImageMagick COMPONENTS Magick++ MagickWand MagickCore montage)
-find_package(glfw3 REQUIRED)
 
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
@@ -23,8 +22,8 @@ file(GLOB EXT_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ext/*.h)
 file(GLOB PRE_SRC ${PROJECT_SOURCE_DIR}/pre/*.cpp)
 file(GLOB PRE_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/pre/*.h)
 
-#file(GLOB OOC_SRC ${PROJECT_SOURCE_DIR}/ooc/*.cpp)
-#file(GLOB OOC_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ooc/*.h)
+file(GLOB OOC_SRC ${PROJECT_SOURCE_DIR}/ooc/*.cpp)
+file(GLOB OOC_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ooc/*.h)
 
 file(GLOB REN_SRC ${PROJECT_SOURCE_DIR}/ren/*.cpp)
 file(GLOB REN_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/ren/*.h)
@@ -38,30 +37,38 @@ SOURCE_GROUP("ext" FILES ${EXT_INC})
 SOURCE_GROUP("pre" FILES ${PRE_SRC})
 SOURCE_GROUP("pre" FILES ${PRE_INC})
 
-#SOURCE_GROUP("ooc" FILES ${OOC_SRC})
-#SOURCE_GROUP("ooc" FILES ${OOC_INC})
+SOURCE_GROUP("ooc" FILES ${OOC_SRC})
+SOURCE_GROUP("ooc" FILES ${OOC_INC})
 
 SOURCE_GROUP("ren" FILES ${REN_SRC})
 SOURCE_GROUP("ren" FILES ${REN_INC})
 
-set(PROJECT_SOURCES ${MAIN_SRC} ${EXT_SRC} ${PRE_SRC} ${REN_SRC}) #${OOC_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${EXT_INC} ${PRE_INC} ${REN_INC}) #${OOC_INC})
+set(PROJECT_SOURCES ${MAIN_SRC} ${EXT_SRC} ${PRE_SRC} ${REN_SRC} ${OOC_SRC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${EXT_INC} ${PRE_INC} ${REN_INC} ${OOC_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${CGAL_INCLUDE_DIR}
         ${GMP_INCLUDE_DIR}
-        ${GLFW_INCLUDE_DIR}
+        #${GLFW_INCLUDE_DIR}
+        ${GLEW_INCLUDE_DIR}
         ${ImageMagick_INCLUDE_DIRS}
         ${MPFR_INCLUDE_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR})
 
-link_directories(${SCHISM_LIBRARY_DIRS} ${GLFW3_LIBRARY})
+link_directories(${SCHISM_LIBRARY_DIRS}
+        #${GLFW_LIBRARIES}
+        ${GLEW_LIBRARY}
+        )
 
-add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES} ${GLFW3_LIBRARY})
+add_library(${PROJECT_NAME} SHARED
+        ${PROJECT_INCLUDES}
+        ${PROJECT_SOURCES}
+        #${GLFW_LIBRARIES}
+        ${GLEW_LIBRARY})
 
 add_dependencies(${PROJECT_NAME} lamure_common)
 

@@ -7,19 +7,19 @@
 
 #include <cstdint>
 
-namespace seb {
+namespace vt
+{
+typedef uint32_t event_type;
 
-    typedef uint32_t event_type;
+class Observable;
 
-    class Observable;
-
-    class Observer {
-    protected:
-    public:
-        Observer() = default;
-        virtual void inform(event_type event, Observable *observable) = 0;
-    };
-
+class Observer
+{
+  protected:
+  public:
+    Observer() = default;
+    virtual void inform(event_type event, Observable *observable) = 0;
+};
 }
 
-#endif //TILE_PROVIDER_OBSERVER_H
+#endif // TILE_PROVIDER_OBSERVER_H

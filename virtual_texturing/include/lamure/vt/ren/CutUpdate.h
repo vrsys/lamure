@@ -7,8 +7,9 @@
 
 #include <lamure/vt/common.h>
 
-class CutUpdate {
-public:
+class CutUpdate
+{
+  public:
     CutUpdate();
     ~CutUpdate() = default;
 
@@ -16,17 +17,17 @@ public:
     void stop();
     void feedback();
 
-private:
+  private:
     std::thread _worker;
     std::mutex _dispatch_lock;
     std::condition_variable _cv;
 
     std::set<uint32_t> _cut;
 
-    bool _should_stop = false;
+    std::atomic<bool> _should_stop;
 
     void run();
     void dispatch();
 };
 
-#endif //LAMURE_CUTUPDATE_H
+#endif // LAMURE_CUTUPDATE_H

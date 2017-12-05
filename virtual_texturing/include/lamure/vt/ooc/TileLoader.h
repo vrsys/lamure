@@ -7,11 +7,11 @@
 
 #include <fstream>
 #include <thread>
-#include "lamure/vt/ooc/TileBuffer.h"
+#include <lamure/vt/ooc/TileBuffer.h>
 
 using namespace std;
 
-namespace seb {
+namespace vt {
 
     template<typename priority_type>
     class TileLoader {

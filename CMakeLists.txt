@@ -98,6 +98,11 @@ ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
 #INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 #LINK_DIRECTORIES(${Boost_LIBRARY_DIR})
 
+find_package(GLFW3 REQUIRED)
+include(findGLFW3)
+include(FindOpenGL)
+include(FindGLEW)
+
 ################################
 # GLUT
 ################################
@@ -158,6 +163,8 @@ IF (MSVC)
   set(ZLIB_ROOT ${GLOBAL_EXT_DIR}/zlib)
 ENDIF (MSVC)
 include (FindZLIB)
+
+include(FindGLEW)
 
 ############################################################
 # Build 3rd-party

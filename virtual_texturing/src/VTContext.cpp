@@ -81,30 +81,32 @@ void VTContext::start()
 
     glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    _cut_update = new CutUpdate();
-    _cut_update->start();
+    //_cut_update = new CutUpdate();
+    //_cut_update->start();
 
-    _vtrenderer = new VTRenderer(this, _cut_update);
+    _vtrenderer = new VTRenderer(this, (uint32_t)mode->width, (uint32_t)mode->height, _cut_update);
+
+    glewInit();
 
     while(!glfwWindowShouldClose(_window))
     {
-        std::cout << "0" << std::endl;
+        // std::cout << "0" << std::endl;
 
         _vtrenderer->render();
 
-        std::cout << "1" << std::endl;
+        // std::cout << "1" << std::endl;
 
-        _vtrenderer->render_feedback();
+        //_vtrenderer->render_feedback();
 
-        std::cout << "2" << std::endl;
+        // std::cout << "2" << std::endl;
 
         glfwSwapBuffers(_window);
         glfwPollEvents();
 
-        std::cout << "3" << std::endl;
+        // std::cout << "3" << std::endl;
     }
 
-    _cut_update->stop();
+    //_cut_update->stop();
 
     glfwDestroyWindow(_window);
     glfwTerminate();
@@ -130,39 +132,14 @@ uint16_t VTContext::identify_depth()
 
     auto texel_count = static_cast<uint32_t>((size_t)fsize / get_byte_stride());
 
-    size_t dim_tiled = texel_count / _size_tile / _size_tile;
+    size_t count_tiled = texel_count / _size_tile / _size_tile;
 
-    size_t depth = QuadTree::get_depth_of_node(dim_tiled);
+    size_t depth = QuadTree::get_depth_of_node(count_tiled - 1);
 
     return static_cast<uint16_t>(depth);
 }
 
-uint32_t VTContext::identify_size_index_texture()
-{
-    size_t fsize = 0;
-    std::ifstream file;
-
-    file.open(_name_mipmap + ".data", std::ifstream::in | std::ifstream::binary);
-
-    if(!file.is_open())
-    {
-        throw std::runtime_error("Mipmap could not be read");
-    }
-
-    fsize = static_cast<size_t>(file.tellg());
-    file.seekg(0, std::ios::end);
-    fsize = static_cast<size_t>(file.tellg()) - fsize;
-
-    file.close();
-
-    auto texel_count = static_cast<uint32_t>((size_t)fsize / get_byte_stride());
-
-    size_t dim_tiled = texel_count / _size_tile / _size_tile;
-
-    size_t depth = QuadTree::get_depth_of_node(dim_tiled);
-
-    return static_cast<uint32_t>(std::pow(4, depth));
-}
+uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2, identify_depth()); }
 
 uint32_t VTContext::calculate_size_physical_texture()
 {

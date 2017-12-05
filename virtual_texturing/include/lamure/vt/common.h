@@ -5,37 +5,39 @@
 #ifndef VT_COMMON_H
 #define VT_COMMON_H
 
-#include <sys/types.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <fcntl.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <utime.h>
 
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <mutex>
 #include <condition_variable>
+#include <fstream>
+#include <iostream>
+#include <mutex>
+#include <set>
+#include <atomic>
+#include <string>
 #include <thread>
 
 #include <cstdlib>
 
-#include <lamure/config.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <boost/assign/list_of.hpp>
 #include <cstdint>
 #include <cstring>
 #include <functional>
-#include <boost/assign/list_of.hpp>
+#include <lamure/config.h>
 #include <lamure/vt/ext/SimpleIni.h>
 
 #include <scm/core.h>
-#include <scm/log.h>
-#include <scm/core/pointer_types.h>
 #include <scm/core/io/tools.h>
+#include <scm/core/pointer_types.h>
 #include <scm/core/time/accum_timer.h>
 #include <scm/core/time/high_res_timer.h>
+#include <scm/log.h>
 
 #include <scm/gl_core.h>
 

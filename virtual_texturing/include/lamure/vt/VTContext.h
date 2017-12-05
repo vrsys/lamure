@@ -1,8 +1,8 @@
 #ifndef VT_CONTEXT_H
 #define VT_CONTEXT_H
 
-#include <lamure/vt/common.h>
 #include <lamure/vt/QuadTree.h>
+#include <lamure/vt/common.h>
 #include <lamure/vt/ren/CutUpdate.h>
 namespace vt
 {
@@ -97,7 +97,7 @@ class VTContext
 
         bool isToggle_phyiscal_texture_image_viewer() const;
 
-    private:
+      private:
         bool toggle_phyiscal_texture_image_viewer = true;
 
         // trackball -> mouse and x+y coord.

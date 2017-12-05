@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <fstream>
 #include <iostream>
+#include <lamure/vt/ooc/TileAtlas.h>
 
 using namespace std;
 
@@ -26,78 +28,84 @@ void printHex(uint8_t *data, size_t len, size_t chars_per_line = 0)
 
 int main()
 {
-    // TODO: write benchmarks
+    // ofstream file("/home/towe2387/Desktop/image.data");
 
-    /*ofstream file("/home/towe2387/Desktop/image.data");
-
-    for(size_t i = 0; i < 128; ++i){
+    /*for(size_t i = 0; i < 128; ++i){
     for(size_t n = 0; n < (256 * 256 * 4); ++n){
       file << (char)i;
     }
     }
 
-    file.close();*/ /*
+    file.close();*/
 
+    vt::TileAtlas<uint32_t> atlas("/mnt/terabytes_of_textures/montblanc/montblanc_w1202116_h304384.data", 256 * 256 * 4);
 
-    TileAtlas<uint32_t > atlas("/home/towe2387/Desktop/image.data", 256 * 256 * 4);
-
-    atlas.start();
+    // atlas.start();
 
     uint8_t *ptr = nullptr;
     size_t indices[16];
 
-    for(size_t i = 0; i < 16; ++i) {
-     indices[i] = i;
+    for(size_t i = 0; i < 16; ++i)
+    {
+        indices[i] = i;
     }
 
     random_shuffle(indices, &indices[16]);
 
     clock_t start;
 
-    time(&start);
+    start = clock();
 
-    cout << "Start requesting: " << start  << endl;
+    cout << "Start requesting: " << start << endl;
 
     size_t ctr = 0;
 
-    for(size_t i = 0; i < 16; ++i){
-     ptr = atlas.getPageById(indices[i]);
+    for(size_t i = 0; i < 16; ++i)
+    {
+        ptr = atlas.get(indices[i], 100);
 
-     if(ptr == nullptr){
-       cout << "Cache miss: " << indices[i] << endl;
-     }else{
-       cout << "Cache hit: " << indices[i] << endl;
-     }
+        if(ptr == nullptr)
+        {
+            cout << "Cache miss: " << indices[i] << endl;
+        }
+        else
+        {
+            cout << "Cache hit: " << indices[i] << endl;
+        }
     }
 
     clock_t end;
-    time(&end);
+    end = clock();
 
-    cout << "Done requesting: " << end  << endl;
+    cout << "Done requesting: " << end << endl;
 
-    this_thread::sleep_for(chrono::milliseconds(1));
+    atlas.wait();
 
-    time(&end);
+    end = clock();
 
-    cout << "Start requesting: " << end  << endl;
+    cout << "Start requesting: " << end << endl;
 
-    for(size_t i = 0; i < 16; ++i){
-     ptr = atlas.getPageById(i);
+    for(size_t i = 0; i < 16; ++i)
+    {
+        ptr = atlas.get(i, 100);
 
-     if(ptr == nullptr){
-       cout << "Cache miss: " << i << endl;
-     }else{
-       cout << "Cache hit: " << i << endl;
-       ++ctr;
-       //printHex(ptr, 256 * 256 * 4, 128);
-     }
+        if(ptr == nullptr)
+        {
+            cout << "Cache miss: " << i << endl;
+        }
+        else
+        {
+            cout << "Cache hit: " << i << endl;
+            ++ctr;
+            // printHex(ptr, 256 * 256 * 4, 128);
+        }
     }
 
-    time(&end);
+    end = clock();
 
-    cout << "Done requesting: " << end  << endl;
+    cout << "Done requesting: " << end << endl;
 
-    cout << "Total: " << ctr << " Cache hits in " << ((end - start) * 1000 / CLOCKS_PER_SEC) << " ms.";*/
+    cout << "Total: " << ctr << " Cache hits in " << ((end - start) * 1000 / CLOCKS_PER_SEC) << " ms.";
 
     return 0;
 }

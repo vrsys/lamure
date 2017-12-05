@@ -3,68 +3,74 @@
 //
 
 #include <iostream>
-#include "lamure/vt/ooc/Observable.h"
+#include <lamure/vt/ooc/Observable.h>
 
-namespace seb {
+namespace vt
+{
+void Observable::observe(event_type event, Observer *observer)
+{
+    auto eventIter = _events.find(event);
 
-    void Observable::observe(event_type event, Observer *observer) {
-        auto eventIter = _events.find(event);
-
-        if (eventIter == _events.end()) {
-            eventIter = _events.insert(pair<event_type, set<Observer*>>(event, set<Observer*>())).first;
-        }
-
-        auto observerSet = eventIter->second;
-
-        auto observerIter = observerSet.find(observer);
-
-        if(observerIter != observerSet.end()){
-            return;
-        }
-
-        eventIter->second.insert(observer);
+    if(eventIter == _events.end())
+    {
+        eventIter = _events.insert(pair<event_type, set<Observer *>>(event, set<Observer *>())).first;
     }
 
-    void Observable::unobserve(event_type event, Observer *observer){
-        auto eventIter = _events.find(event);
+    auto observerSet = eventIter->second;
 
-        if (eventIter == _events.end()) {
-            return;
-        }
+    auto observerIter = observerSet.find(observer);
 
-        auto observerSet = eventIter->second;
-
-        auto observerIter = observerSet.find(observer);
-
-        if(observerIter == observerSet.end()){
-            return;
-        }
-
-        //(*observerIter) = nullptr;
-        observerSet.erase(observer);
+    if(observerIter != observerSet.end())
+    {
+        return;
     }
 
-    void Observable::inform(event_type event) {
-        auto iter = _events.find(event);
+    eventIter->second.insert(observer);
+}
 
-        if (iter == _events.end()) {
-            return;
-        }
+void Observable::unobserve(event_type event, Observer *observer)
+{
+    auto eventIter = _events.find(event);
 
-        auto observers = iter->second;
-        //Observer arr[observers.size()];
-        //size_t ctr = 0;
-
-        for(auto observer = observers.begin(); observer != observers.end(); ++observer){
-            //auto nxt = next(observer);
-
-            //arr[ctr] = (*observer);
-            (*observer)->inform(event, this);
-            //observer = nxt;
-            //++ctr;
-        }
-
-
+    if(eventIter == _events.end())
+    {
+        return;
     }
 
+    auto observerSet = eventIter->second;
+
+    auto observerIter = observerSet.find(observer);
+
+    if(observerIter == observerSet.end())
+    {
+        return;
+    }
+
+    //(*observerIter) = nullptr;
+    observerSet.erase(observer);
+}
+
+void Observable::inform(event_type event)
+{
+    auto iter = _events.find(event);
+
+    if(iter == _events.end())
+    {
+        return;
+    }
+
+    auto observers = iter->second;
+    // Observer arr[observers.size()];
+    // size_t ctr = 0;
+
+    for(auto observer = observers.begin(); observer != observers.end(); ++observer)
+    {
+        // auto nxt = next(observer);
+
+        // arr[ctr] = (*observer);
+        (*observer)->inform(event, this);
+        // observer = nxt;
+        //++ctr;
+    }
+}
 }

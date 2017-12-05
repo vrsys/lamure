@@ -5,34 +5,33 @@
 #ifndef LAMURE_PREPROCESSOR_H
 #define LAMURE_PREPROCESSOR_H
 
-#include <iostream>
-#include <list>
-#include <chrono>
-#include <algorithm>
-#include <fstream>
-#include <memory>
 #include <ImageMagick-6/Magick++.h>
+#include <algorithm>
 #include <boost/filesystem/path.hpp>
-#include <mutex>
-#include <lamure/vt/ext/SimpleIni.h>
+#include <chrono>
+#include <fstream>
+#include <iostream>
 #include <lamure/vt/QuadTree.h>
-#include <lamure/vt/common.h>
-#include <lamure/vt/ext/morton.h>
 #include <lamure/vt/VTContext.h>
+#include <lamure/vt/common.h>
+#include <lamure/vt/ext/SimpleIni.h>
+#include <lamure/vt/ext/morton.h>
+#include <list>
+#include <memory>
+#include <mutex>
 
 namespace vt
 {
-
 class Preprocessor
 {
-public:
+  public:
     explicit Preprocessor(VTContext &context);
     ~Preprocessor() = default;
 
     bool prepare_raster(const char *name_raster);
     bool prepare_mipmap();
 
-private:
+  private:
     VTContext *_context;
 
     void extract_leaf_tile_range(uint32_t _thread_id);
@@ -40,7 +39,6 @@ private:
     void extract_leaf_tile_rows(uint32_t _thread_id);
     void read_dimensions(ifstream &ifs, size_t &dim_x, size_t &dim_y);
 };
-
 }
 
-#endif //LAMURE_PREPROCESSOR_H
+#endif // LAMURE_PREPROCESSOR_H

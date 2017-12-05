@@ -1,10 +1,12 @@
 #include <lamure/vt/ren/VTRenderer.h>
 namespace vt
 {
-VTRenderer::VTRenderer(VTContext *context, CutUpdate *cut_update)
+VTRenderer::VTRenderer(VTContext *context, uint32_t _width, uint32_t _height, CutUpdate *cut_update)
 {
     this->_vtcontext = context;
     this->_cut_update = _cut_update;
+    this->_width = _width;
+    this->_height = _height;
     this->init();
 }
 
@@ -57,12 +59,10 @@ void VTRenderer::init()
 
 void VTRenderer::render()
 {
-    // clear the color and depth buffer
-    // glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
 
     scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
     scm::math::mat4f model_matrix = scm::math::mat4f::identity();
-    // scale(model_matrix, 0.01f, 0.01f, 0.01f);
 
     model_matrix = scm::math::make_translation(0.0f, 0.0f, -2.0f);
     scm::math::mat4f model_view_matrix = /*view_matrix **/ model_matrix;
@@ -78,18 +78,16 @@ void VTRenderer::render()
     _shader_program->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
     _shader_program->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
 
-    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.2f, .2f, .2f, 1.0f));
+    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.6f, .2f, .2f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
 
-    _render_context->reset();
+    _render_context->apply();
 
     {
         // multi sample pass
         scm::gl::context_state_objects_guard csg(_render_context);
         scm::gl::context_texture_units_guard tug(_render_context);
         scm::gl::context_framebuffer_guard fbg(_render_context);
-
-        _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
 
         _render_context->set_depth_stencil_state(_dstate_less);
 
@@ -103,10 +101,10 @@ void VTRenderer::render()
         _render_context->bind_texture(_physical_texture, _filter_nearest, 0);
         _render_context->bind_texture(_index_texture, _filter_nearest, 1);
 
+        _render_context->apply();
+
         _obj->draw(_render_context, scm::gl::geometry::MODE_SOLID);
     }
-
-    _render_context->reset();
 }
 
 void VTRenderer::render_feedback()
@@ -139,32 +137,22 @@ void VTRenderer::initialize_physical_texture()
 
 void VTRenderer::physical_texture_test_layout()
 {
-    int tilesize = _vtcontext->get_byte_stride();
-
-    std::ifstream is(_vtcontext->get_name_mipmap(), std::ios::binary);
-
-    int offset_beg = 0;
-    int offset_end = tilesize * _physical_texture_dimension.x * _physical_texture_dimension.y;
+    int tilesize = _vtcontext->get_size_tile() * _vtcontext->get_size_tile() * 4;
+    std::ifstream is(_vtcontext->get_name_mipmap() + ".data", std::ios::binary);
 
     if(is)
     {
-        int length = offset_end - offset_beg;
-
-        // allocate memory
-        auto *buffer = new char[length];
-
-        // read data as a block
-        is.read(buffer, length);
-        int counter = 0;
+        auto *buffer = new char[tilesize];
         for(unsigned y = 0; y < _physical_texture_dimension.y; ++y)
         {
             for(unsigned x = 0; x < _physical_texture_dimension.x; ++x)
             {
+                is.read(buffer, tilesize);
                 _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(scm::math::vec3ui(x * _vtcontext->get_size_tile(), y * _vtcontext->get_size_tile(), 0),
                                                                                                scm::math::vec3ui(_vtcontext->get_size_tile(), _vtcontext->get_size_tile(), 1)),
-                                                    0, scm::gl::FORMAT_RGBA_8, &buffer[counter]);
-                counter += tilesize;
+                                                    0, scm::gl::FORMAT_RGBA_8, &buffer[0]);
             }
+            is.seekg(is.tellg());
         }
 
         delete[] buffer;

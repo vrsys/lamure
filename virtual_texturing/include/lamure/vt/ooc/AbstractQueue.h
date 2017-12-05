@@ -12,7 +12,7 @@
 
 using namespace std;
 
-namespace seb {
+namespace vt {
 
     template<typename content_type>
     class AbstractQueue;

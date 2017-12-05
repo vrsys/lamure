@@ -5,30 +5,27 @@
 #ifndef TILE_PROVIDER_OBSERVABLE_H
 #define TILE_PROVIDER_OBSERVABLE_H
 
-#include <vector>
-#include <cstdint>
-#include <map>
-#include <set>
-#include "Observer.h"
+#include <lamure/vt/common.h>
+#include <lamure/vt/ooc/Observer.h>
 
 using namespace std;
 
-namespace seb {
+namespace vt
+{
+class Observable
+{
+  protected:
+    map<event_type, set<Observer *>> _events;
 
-    class Observable {
-    protected:
-        map<event_type, set<Observer*>> _events;
-    public:
-        Observable() = default;
+  public:
+    Observable() = default;
 
-        void observe(event_type event, Observer *observer);
+    void observe(event_type event, Observer *observer);
 
-        void unobserve(event_type event, Observer *observer);
+    void unobserve(event_type event, Observer *observer);
 
-        virtual void inform(event_type event);
-    };
-
+    virtual void inform(event_type event);
+};
 }
 
-
-#endif //TILE_PROVIDER_OBSERVABLE_H
+#endif // TILE_PROVIDER_OBSERVABLE_H
