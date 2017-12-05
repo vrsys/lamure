@@ -117,7 +117,7 @@ int main(int argc, const char *argv[])
          po::value<std::string>()->default_value("ndc"),
          "Reduction strategy for the LOD construction. Possible values:\n"
          "  ndc - normal deviation clustering (ndc)\n"
-         "  ndc_prov - normal deviation clustering (ndc)\n"
+         "  ndc_prov - output provenance information alongside ndc\n"
          "  const - ndc with constant radius\n"
          "  everysecond - take every fanout-factor's surfel\n"
          "  random - randomly select points with possible duplicates\n"
