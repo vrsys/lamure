@@ -44,14 +44,14 @@ int main(int argc, char *argv[])
         throw std::runtime_error("File format is incompatible");
     }
 
-    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
-    prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+    //prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+    //prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
     prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
     prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
 
-    prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
+    //prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
     prov::DenseCache cache_dense(in_dense, in_dense_meta);
-
+/*
     if(in_sparse.is_open())
     {
         auto start = std::chrono::high_resolution_clock::now();
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
         printf("Caching sparse data took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
         in_sparse.close();
     }
-
+*/
     if(in_dense.is_open())
     {
         auto start = std::chrono::high_resolution_clock::now();
