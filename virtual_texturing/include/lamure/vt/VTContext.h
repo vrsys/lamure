@@ -3,6 +3,7 @@
 
 #include <lamure/vt/common.h>
 #include <lamure/vt/QuadTree.h>
+#include <lamure/vt/ren/CutUpdate.h>
 namespace vt
 {
 class VTRenderer;
@@ -60,6 +61,60 @@ class VTContext
         }
     };
 
+    class EventHandler
+    {
+      public:
+        EventHandler();
+        ~EventHandler() = default;
+
+        enum MouseButtonState
+        {
+            LEFT = 0,
+            WHEEL = 1,
+            RIGHT = 2,
+            IDLE = 3
+        };
+
+        static void on_error(int _err_code, const char *_err_msg);
+        static void on_window_resize(GLFWwindow *_window, int _width, int _height);
+        static void on_window_key_press(GLFWwindow *_window, int _key, int _scancode, int _action, int _mods);
+        static void on_window_char(GLFWwindow *_window, unsigned int _codepoint);
+        static void on_window_button_press(GLFWwindow *_window, int _button, int _action, int _mods);
+        static void on_window_move_cursor(GLFWwindow *_window, double _xpos, double _ypos);
+        static void on_window_scroll(GLFWwindow *_window, double _xoffset, double _yoffset);
+        static void on_window_enter(GLFWwindow *_window, int _entered);
+
+        const scm::gl::trackball_manipulator &get_trackball_manip() const;
+        void set_trackball_manip(const scm::gl::trackball_manipulator &_trackball_manip);
+        float get_initx() const;
+        void set_initx(float _initx);
+        float get_inity() const;
+        void set_inity(float _inity);
+        MouseButtonState get_mouse_button_state() const;
+        void set_mouse_button_state(MouseButtonState _mouse_button_state);
+        float get_dolly_sensitivity() const;
+        void set_dolly_sensitivity(float _dolly_sensitivity);
+
+        bool isToggle_phyiscal_texture_image_viewer() const;
+
+    private:
+        bool toggle_phyiscal_texture_image_viewer = true;
+
+        // trackball -> mouse and x+y coord.
+        scm::gl::trackball_manipulator _trackball_manip;
+        float _initx;
+        float _inity;
+
+        float _ref_width;
+        float _ref_height;
+
+        // mouse button state
+        MouseButtonState _mouse_button_state;
+
+        // intensity of zoom
+        float _dolly_sensitivity;
+    };
+
     class Builder
     {
       public:
@@ -68,6 +123,11 @@ class VTContext
         Builder *with_path_config(const char *path_config)
         {
             this->_path_config = path_config;
+            return this;
+        }
+        Builder *with_event_handler(EventHandler *_event_handler)
+        {
+            this->_event_handler = _event_handler;
             return this;
         }
         VTContext build()
@@ -79,11 +139,17 @@ class VTContext
                 read_config(context, this->_path_config);
             }
 
+            if(this->_event_handler != nullptr)
+            {
+                context.set_event_handler(_event_handler);
+            }
+
             return context;
         }
 
       private:
         const char *_path_config;
+        EventHandler *_event_handler;
 
         void read_config(VTContext &_context, const char *path_config)
         {
@@ -122,20 +188,23 @@ class VTContext
     uint32_t get_size_index_texture() const;
     uint32_t get_size_physical_texture() const;
 
-    const scm::gl::trackball_manipulator &get_trackball_manip() const;
-    bool isToggle_phyiscal_texture_image_viewer() const;
+    VTRenderer *get_vtrenderer() const;
+    EventHandler *get_event_handler() const;
+    void set_event_handler(EventHandler *_event_handler);
 
-private:
+  private:
     explicit VTContext();
-    bool touch(const std::string& pathname);
     uint16_t identify_depth();
     uint32_t identify_size_index_texture();
+    uint32_t calculate_size_physical_texture();
 
     CSimpleIniA *_config;
 
     GLFWwindow *_window;
+    EventHandler *_event_handler;
 
     VTRenderer *_vtrenderer;
+    CutUpdate *_cut_update;
 
     uint16_t _size_tile;
     std::string _name_texture;
@@ -149,23 +218,6 @@ private:
     uint16_t _depth_quadtree;
     uint32_t _size_index_texture;
     uint32_t _size_physical_texture;
-
-    //trackball -> mouse and x+y coord.
-    scm::gl::trackball_manipulator _trackball_manip;
-    float _initx;
-    float _inity;
-
-    //mouse button state
-    bool _lb_down;
-    bool _mb_down;
-    bool _rb_down;
-
-    //intensity of zoom
-    float _dolly_sens;
-
-    bool toggle_phyiscal_texture_image_viewer = true;
-
-    uint32_t calculate_size_physical_texture();
 };
 }
 

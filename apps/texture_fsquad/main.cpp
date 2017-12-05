@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     std::string file_config = std::string(get_cmd_option(argv, argv + argc, "-c"));
 
-    VTContext context = VTContext::Builder().with_path_config((file_config.c_str()))->build();
+    VTContext context = VTContext::Builder().with_path_config((file_config.c_str()))->with_event_handler(new VTContext::EventHandler())->build();
 
     if(get_cmd_option(argv, argv + argc, "-m") != nullptr || get_cmd_option(argv, argv + argc, "-p") != nullptr)
     {

@@ -1,9 +1,10 @@
 #include <lamure/vt/ren/VTRenderer.h>
 namespace vt
 {
-VTRenderer::VTRenderer(VTContext *context)
+VTRenderer::VTRenderer(VTContext *context, CutUpdate *cut_update)
 {
     this->_vtcontext = context;
+    this->_cut_update = _cut_update;
     this->init();
 }
 
@@ -54,12 +55,12 @@ void VTRenderer::init()
     _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
 }
 
-void VTRenderer::render(GLFWwindow *_window)
+void VTRenderer::render()
 {
     // clear the color and depth buffer
     // glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-    scm::math::mat4f view_matrix = _vtcontext->get_trackball_manip().transform_matrix();
+    scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
     scm::math::mat4f model_matrix = scm::math::mat4f::identity();
     // scale(model_matrix, 0.01f, 0.01f, 0.01f);
 
@@ -75,7 +76,7 @@ void VTRenderer::render(GLFWwindow *_window)
     _shader_program->uniform("in_physical_texture_dim", _physical_texture_dimension);
     _shader_program->uniform("in_index_texture_dim", _index_texture_dimension);
     _shader_program->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
-    _shader_program->uniform("in_toggle_view", _vtcontext->isToggle_phyiscal_texture_image_viewer());
+    _shader_program->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
 
     _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.2f, .2f, .2f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
@@ -88,7 +89,7 @@ void VTRenderer::render(GLFWwindow *_window)
         scm::gl::context_texture_units_guard tug(_render_context);
         scm::gl::context_framebuffer_guard fbg(_render_context);
 
-        _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(winx, winy)));
+        _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
 
         _render_context->set_depth_stencil_state(_dstate_less);
 
@@ -106,6 +107,12 @@ void VTRenderer::render(GLFWwindow *_window)
     }
 
     _render_context->reset();
+}
+
+void VTRenderer::render_feedback()
+{
+    // TODO
+    _cut_update->feedback();
 }
 
 void VTRenderer::initialize_index_texture()
@@ -179,5 +186,12 @@ VTRenderer::~VTRenderer()
     _render_context.reset();
     _device.reset();
     _scm_core.reset();
+}
+void VTRenderer::resize(int _width, int _height)
+{
+    this->_width = static_cast<uint32_t>(_width);
+    this->_height = static_cast<uint32_t>(_height);
+    _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(this->_width, this->_height)));
+    scm::math::perspective_matrix(_projection_matrix, 60.f, float(_width) / float(_height), 0.01f, 1000.0f);
 }
 }

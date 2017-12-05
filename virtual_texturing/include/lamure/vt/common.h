@@ -15,11 +15,14 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
 #include <cstdlib>
 
 #include <lamure/config.h>
-
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <cstdint>
 #include <cstring>
