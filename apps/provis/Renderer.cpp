@@ -2,6 +2,7 @@
 #include <scm/gl_core/render_device/opengl/gl_core.h>
 #include <scm/gl_util/data/imaging/texture_loader.h>
 #include <scm/gl_util/data/imaging/texture_loader_dds.h>
+#include <lamure/ren/config.h>
 
 // Renderer::Renderer()
 // {
@@ -752,7 +753,8 @@ bool Renderer::render(Scene &scene)
     _context->set_viewport(scm::gl::viewport(scm::math::vec2f(0, 0), scm::math::vec2f(_camera_view.get_width_window(), _camera_view.get_height_window())));
 
     _context->clear_default_depth_stencil_buffer();
-    _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(0.0f, 0.0f, 0.0f, 1.0f));
+    _context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, 
+          scm::math::vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));
 
     _context->set_default_frame_buffer();
 

@@ -198,12 +198,12 @@ int main(int argc, char *argv[])
     lamure::ren::policy *policy = lamure::ren::policy::get_instance();
     policy->set_max_upload_budget_in_mb(64);
 
-    policy->set_render_budget_in_mb(2000);
+    policy->set_render_budget_in_mb(1024*4);
     // policy->set_render_budget_in_mb(1024 * 6);
     // policy->set_render_budget_in_mb(1024 * 40);
     // policy->set_render_budget_in_mb(256);
 
-    policy->set_out_of_core_budget_in_mb(1024*4);
+    policy->set_out_of_core_budget_in_mb(1024*8);
     // policy->set_out_of_core_budget_in_mb(1024 * 3);
     // policy->set_out_of_core_budget_in_mb(1024 * 20);
     // policy->set_out_of_core_budget_in_mb(256);
@@ -300,7 +300,7 @@ void set_styles()
     style->ScrollbarRounding = 9.0f;
     style->GrabMinSize = 5.0f;
     style->GrabRounding = 3.0f;
-
+/*
     style->Colors[ImGuiCol_Text] = ImVec4(0.80f, 0.80f, 0.83f, 1.00f);
     style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
     style->Colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.05f, 0.07f, 0.50f);
@@ -344,7 +344,7 @@ void set_styles()
     style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
     style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
     style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
-
+*/
     ImGuiIO io = ImGui::GetIO();
 
     // io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 12);

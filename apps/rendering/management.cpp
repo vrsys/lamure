@@ -116,6 +116,7 @@ management::management(std::vector<std::string> const &model_filenames, std::vec
     snapshot_frame_counter_ = 0;
 
     use_wasd_camera_control_scheme_ = false;
+    renderer_->toggle_use_user_defined_background_color();
 }
 
 management::~management()

@@ -392,14 +392,7 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
                                                    gpu_context_it->second->get_fix_a().fix_buffer_provenance_, gpu_context_it->second->get_fix_b().fix_buffer_provenance_);
 
         GLenum first_error = device->opengl_api().glGetError();
-        // if(first_error != 0)
-        // {
-        //     std::cout << "------------------------------ DISPATCH ERROR CODE controller::dispatch1: " << first_error << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << "------------------------------ no error inside controller::dispatch1" << std::endl;
-        // }
+
         if(cuts->is_front_modified(context_id))
         {
             cut_database_record::temporary_buffer current = cuts->get_buffer(context_id);
@@ -416,14 +409,7 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
             // ctx->map_temporary_storage(current, device, data_provenance);
         }
         first_error = device->opengl_api().glGetError();
-        // if(first_error != 0)
-        // {
-        //     std::cout << "------------------------------ DISPATCH ERROR CODE controller::dispatch2: " << first_error << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << "------------------------------ no error inside controller::dispatch2" << std::endl;
-        // }
+
     }
     else
     {
@@ -434,17 +420,9 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
             //    "lamure: controller::Gpu Context not created for context: " + context_id);
 
             // fix for gua:
-            std::cout << "tttttttttttttttttttttttttttttt" << std::endl;
             ctx->create(device, data_provenance);
             int first_error = device->opengl_api().glGetError();
-            if(first_error != 0)
-            {
-                std::cout << "------------------------------ DISPATCH ERROR CODE controller::dispatch: " << first_error << std::endl;
-            }
-            else
-            {
-                std::cout << "------------------------------ no error inside controller::dispatch" << std::endl;
-            }
+            
         }
 
         cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes(), data_provenance);
