@@ -28,6 +28,7 @@ ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_byte
         threads_.push_back(std::thread(&ooc_pool::run, this));
     }
 }
+
 ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes, const size_t size_of_slot_provenance, Data_Provenance const &data_provenance)
     : locked_(false), size_of_slot_(size_of_slot_in_bytes), size_of_slot_provenance_(size_of_slot_provenance), num_threads_(num_threads), shutdown_(false), bytes_loaded_(0)
 {
@@ -35,8 +36,7 @@ ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_byte
 
     _data_provenance = data_provenance;
     model_database *database = model_database::get_instance();
-    //size_of_slot_provenance_ = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
-    // configure semaphore
+
     semaphore_.set_min_signal_count(1);
     semaphore_.set_max_signal_count(std::numeric_limits<size_t>::max());
 
@@ -135,7 +135,11 @@ void ooc_pool::run()
     }
 
     char *local_cache = new char[size_of_slot_];
-    char *local_cache_provenance = new char[size_of_slot_provenance_];
+    
+    char *local_cache_provenance = nullptr;
+    if(_data_provenance.get_size_in_bytes() > 0) {
+      local_cache_provenance = new char[size_of_slot_provenance_];
+    }
 
     while(true)
     {
@@ -163,15 +167,13 @@ void ooc_pool::run()
 #endif
             std::lock_guard<std::mutex> lock(mutex_);
             bytes_loaded_ += stride_in_bytes;
-            // ASK CARL should create new member?
-            // std::cout << "before" << std::endl;
+
             memcpy(job.slot_mem_, local_cache, stride_in_bytes);
-            // std::cout << "after" << std::endl;
+
             history_.push_back(job);
 
 
-            if(_data_provenance.get_size_in_bytes() > 0)
-            {
+            if(_data_provenance.get_size_in_bytes() > 0) {
                 provenance_stream access_provenance;
                 access_provenance.open(provenance_files[job.model_id_]);
                 size_t stride_in_bytes_provenance = database->get_primitives_per_node() * _data_provenance.get_size_in_bytes();

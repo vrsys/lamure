@@ -82,10 +82,6 @@ add_model(const std::string& filepath, const std::string& model_key) {
     if (model->is_loaded()) {
         const bvh* bvh = model->get_bvh();
 
-        std::cout << "#get_num_nodes: " << bvh->get_num_nodes() << std::endl;
-        std::cout << "#get_primitives_per_node: " << bvh->get_primitives_per_node() << std::endl;
-        std::cout << "#get_size_of_primitive: " << bvh->get_size_of_primitive() << std::endl;
-
         if( lamure::ren::bvh::primitive_type::POINTCLOUD_QZ != bvh->get_primitive() ) {
             model_database::contains_only_compressed_data_ = false;
         }

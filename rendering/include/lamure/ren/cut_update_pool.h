@@ -45,7 +45,7 @@ class cut_update_pool
     const bool is_running();
 
   protected:
-    void initialize();
+    void initialize(bool provenance = false);
     const bool prepare();
 
     void split_node(const cut_update_index::action &item);

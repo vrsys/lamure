@@ -88,22 +88,10 @@ void gpu_context::create(scm::gl::render_device_ptr device, Data_Provenance cons
     fix_b_.fix_buffer_ = new char[8 * sizeof(float) * database->get_primitives_per_node() * upload_budget_in_nodes_];
     fix_b_.fix_buffer_provenance_ = new char[data_provenance.get_size_in_bytes() * database->get_primitives_per_node() * upload_budget_in_nodes_];
 
-    // temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, false);
-    // temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, false);
+
     primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, true);
 
-    // map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_A, device, data_provenance);
-    // map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device, data_provenance);
 
-    // int first_error = device->opengl_api().glGetError();
-    // if(first_error != 0)
-    // {
-    //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_context::create: " << first_error << std::endl;
-    // }
-    // else
-    // {
-    //     std::cout << "------------------------------ no error inside gpu_context::create" << std::endl;
-    // }
 }
 
 void gpu_context::test_video_memory(scm::gl::render_device_ptr device)
@@ -132,14 +120,6 @@ void gpu_context::test_video_memory(scm::gl::render_device_ptr device)
     }
     long node_size_total = database->get_slot_size();
     render_budget_in_nodes_ = (render_budget_in_mb * 1024 * 1024) / node_size_total;
-
-    // render_budget_in_mb = policy->render_budget_in_mb();
-
-    // // render_budget_in_mb = render_budget_in_mb < LAMURE_MIN_VIDEO_MEMORY_BUDGET ? LAMURE_MIN_VIDEO_MEMORY_BUDGET : render_budget_in_mb;
-    // render_budget_in_mb = render_budget_in_mb > video_ram_free_in_mb * 0.75 ? video_ram_free_in_mb * 0.75 : render_budget_in_mb;
-
-    // render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / (database->get_primitives_per_node() * sizeof(data_provenance) + database->get_slot_size());
-    // std::cout << "RENDER2: " << render_budget_in_nodes_ << std::endl;
 
     size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
     max_upload_budget_in_mb = max_upload_budget_in_mb < LAMURE_MIN_UPLOAD_BUDGET ? LAMURE_MIN_UPLOAD_BUDGET : max_upload_budget_in_mb;
@@ -239,14 +219,6 @@ void gpu_context::test_video_memory(scm::gl::render_device_ptr device, Data_Prov
     }
     long node_size_total = database->get_primitives_per_node() * data_provenance.get_size_in_bytes() + database->get_slot_size();
     render_budget_in_nodes_ = (render_budget_in_mb * 1024 * 1024) / node_size_total;
-
-    // render_budget_in_mb = policy->render_budget_in_mb();
-
-    // // render_budget_in_mb = render_budget_in_mb < LAMURE_MIN_VIDEO_MEMORY_BUDGET ? LAMURE_MIN_VIDEO_MEMORY_BUDGET : render_budget_in_mb;
-    // render_budget_in_mb = render_budget_in_mb > video_ram_free_in_mb * 0.75 ? video_ram_free_in_mb * 0.75 : render_budget_in_mb;
-
-    // render_budget_in_nodes_ = (render_budget_in_mb * 1024u * 1024u) / (database->get_primitives_per_node() * sizeof(data_provenance) + database->get_slot_size());
-    // std::cout << "RENDER2: " << render_budget_in_nodes_ << std::endl;
 
     size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
     max_upload_budget_in_mb = max_upload_budget_in_mb < LAMURE_MIN_UPLOAD_BUDGET ? LAMURE_MIN_UPLOAD_BUDGET : max_upload_budget_in_mb;
@@ -408,17 +380,6 @@ void gpu_context::map_temporary_storage(const cut_database_record::temporary_buf
         if(!temp_buffer_a_->is_mapped())
         {
             temporary_storages_.storage_a_ = temp_buffer_a_->map(device);
-
-            // temporary_storages_provenance_.storage_a_ = temp_buffer_a_->map_provenance(device);
-            // first_error = device->opengl_api().glGetError();
-            // if(first_error != 0)
-            // {
-            //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_context::map_temporary_storage: " << first_error << std::endl;
-            // }
-            // else
-            // {
-            //     std::cout << "------------------------------ no error inside gpu_context::map_temporary_storage" << std::endl;
-            // }
         }
 
         return;
@@ -427,17 +388,7 @@ void gpu_context::map_temporary_storage(const cut_database_record::temporary_buf
     case cut_database_record::temporary_buffer::BUFFER_B:
         if(!temp_buffer_b_->is_mapped())
         {
-            // first_error = device->opengl_api().glGetError();
-            // if(first_error != 0)
-            // {
-            //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_context::map_temporary_storage2: " << first_error << std::endl;
-            // }
-            // else
-            // {
-            //     std::cout << "------------------------------ no error inside gpu_context::map_temporary_storage2" << std::endl;
-            // }
             temporary_storages_.storage_b_ = temp_buffer_b_->map(device);
-            // temporary_storages_provenance_.storage_b_ = temp_buffer_b_->map_provenance(device);
         }
 
         return;
@@ -463,7 +414,6 @@ void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_b
         if(temp_buffer_a_->is_mapped())
         {
             temp_buffer_a_->unmap(device);
-            //temp_buffer_a_->unmap_provenance(device);
         }
         break;
 
@@ -471,7 +421,6 @@ void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_b
         if(temp_buffer_b_->is_mapped())
         {
             temp_buffer_b_->unmap(device);
-            //temp_buffer_b_->unmap_provenance(device);
         }
         break;
 
@@ -492,16 +441,14 @@ void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_b
     case cut_database_record::temporary_buffer::BUFFER_A:
         if(temp_buffer_a_->is_mapped())
         {
-            //temp_buffer_a_->unmap(device);
-             temp_buffer_a_->unmap_provenance(device);
+           temp_buffer_a_->unmap_provenance(device);
         }
         break;
 
     case cut_database_record::temporary_buffer::BUFFER_B:
         if(temp_buffer_b_->is_mapped())
         {
-            //temp_buffer_b_->unmap(device);
-             temp_buffer_b_->unmap_provenance(device);
+           temp_buffer_b_->unmap_provenance(device);
         }
         break;
 
@@ -606,28 +553,10 @@ bool gpu_context::update_primary_buffer(const cut_database_record::temporary_buf
                 size_t offset_in_render_VBO = transfer_desc.dst_ * database->get_slot_size();
                 device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), temp_buffer_a_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
 
-                // int first_error = device->opengl_api().glGetError();
-                // if(first_error != 0)
-                // {
-                //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_context::update_primary_buffer: " << first_error << std::endl;
-                // }
-                // else
-                // {
-                //     std::cout << "------------------------------ no error inside gpu_context::update_primary_buffer" << std::endl;
-                // }
                 size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
                 size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
                 device->main_context()->copy_buffer_data(primary_buffer_->get_buffer_provenance(), temp_buffer_a_->get_buffer_provenance(), offset_in_render_VBO_provenance,
                                                          offset_in_temp_VBO_provenance, database->get_primitives_per_node() * data_provenance.get_size_in_bytes());
-                // first_error = device->opengl_api().glGetError();
-                // if(first_error != 0)
-                // {
-                //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_context::update_primary_buffer_prov: " << first_error << std::endl;
-                // }
-                // else
-                // {
-                //     std::cout << "------------------------------ no error inside gpu_context::update_primary_buffer_prov" << std::endl;
-                // }
             }
         }
         break;
@@ -646,15 +575,7 @@ bool gpu_context::update_primary_buffer(const cut_database_record::temporary_buf
 
             for(const auto &transfer_desc : transfer_descr_list)
             {
-                // int first_error = device->opengl_api().glGetError();
-                // if(first_error != 0)
-                // {
-                //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_context::update_primary_buffer1: " << first_error << std::endl;
-                // }
-                // else
-                // {
-                //     std::cout << "------------------------------ no error inside gpu_context::update_primary_buffer1" << std::endl;
-                // }
+
                 size_t offset_in_temp_VBO = transfer_desc.src_ * database->get_slot_size();
                 size_t offset_in_render_VBO = transfer_desc.dst_ * database->get_slot_size();
                 device->main_context()->copy_buffer_data(primary_buffer_->get_buffer(), temp_buffer_b_->get_buffer(), offset_in_render_VBO, offset_in_temp_VBO, database->get_slot_size());
@@ -663,15 +584,7 @@ bool gpu_context::update_primary_buffer(const cut_database_record::temporary_buf
                 size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
                 device->main_context()->copy_buffer_data(primary_buffer_->get_buffer_provenance(), temp_buffer_b_->get_buffer_provenance(), offset_in_render_VBO_provenance,
                                                          offset_in_temp_VBO_provenance, database->get_primitives_per_node() * data_provenance.get_size_in_bytes());
-                // first_error = device->opengl_api().glGetError();
-                // if(first_error != 0)
-                // {
-                //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_context::update_primary_buffer2: " << first_error << std::endl;
-                // }
-                // else
-                // {
-                //     std::cout << "------------------------------ no error inside gpu_context::update_primary_buffer2" << std::endl;
-                // }
+
             }
         }
         break;

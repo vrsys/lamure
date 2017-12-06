@@ -25,13 +25,14 @@ cut_update_pool::cut_update_pool(const context_t context_id, const node_t upload
 {
     _data_provenance = data_provenance;
 
-    initialize();
+    initialize(true);
 
     for(uint32_t i = 0; i < num_threads_; ++i)
     {
         threads_.push_back(std::thread(&cut_update_pool::run, this));
     }
 }
+
 cut_update_pool::cut_update_pool(const context_t context_id, const node_t upload_budget_in_nodes, const node_t render_budget_in_nodes)
     : context_id_(context_id), locked_(false), num_threads_(LAMURE_CUT_UPDATE_NUM_CUT_UPDATE_THREADS), shutdown_(false), current_gpu_storage_A_(nullptr), current_gpu_storage_B_(nullptr),
       current_gpu_storage_(nullptr), current_gpu_storage_A_provenance_(nullptr), current_gpu_storage_B_provenance_(nullptr), current_gpu_storage_provenance_(nullptr),
@@ -41,7 +42,7 @@ cut_update_pool::cut_update_pool(const context_t context_id, const node_t upload
 #endif
       master_dispatched_(false)
 {
-    initialize();
+    initialize(false);
 
     for(uint32_t i = 0; i < num_threads_; ++i)
     {
@@ -69,7 +70,7 @@ cut_update_pool::~cut_update_pool()
     shutdown();
 }
 
-void cut_update_pool::initialize()
+void cut_update_pool::initialize(bool provenance)
 {
     model_database *database = model_database::get_instance();
     policy *policy = policy::get_instance();
@@ -77,15 +78,16 @@ void cut_update_pool::initialize()
     assert(policy->render_budget_in_mb() > 0);
     assert(policy->out_of_core_budget_in_mb() > 0);
 
-    // out_of_core_budget_in_nodes_ =
-    //     (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();
-    // std::cout << "SETTING RAM" << std::endl;
-
     index_ = new cut_update_index();
     index_->update_policy(0);
     gpu_cache_ = new gpu_cache(render_budget_in_nodes_);
 
-    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+    if (provenance) {
+      ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+    }
+    else {
+      ooc_cache *ooc_cache = ooc_cache::get_instance();
+    }
 
     semaphore_.set_max_signal_count(1);
     semaphore_.set_min_signal_count(1);
@@ -317,6 +319,7 @@ void cut_update_pool::cut_master()
         master_dispatched_ = false;
         return;
     }
+
 
 #ifdef LAMURE_CUT_UPDATE_ENABLE_SHOW_GPU_CACHE_USAGE
     std::cout << "lamure: free slots gpu : " << gpu_cache_->num_free_slots() << "\t\t( " << gpu_cache_->num_slots() - gpu_cache_->num_free_slots() << " occupied)" << std::endl;

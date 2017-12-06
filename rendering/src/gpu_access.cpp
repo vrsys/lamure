@@ -30,11 +30,8 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     assert(sizeof(float) == 4);
 
     num_slots_ = num_slots;
-    std::cout << "slots: " << num_slots << std::endl;
     size_of_slot_ = num_surfels_per_node * size_of_surfel_;
-    std::cout << "size of surfel: " << size_of_surfel_ << std::endl;
-    std::cout << "size of slot: " << size_of_slot_ << std::endl;
-    std::cout << "num_surfels_per_node " << num_surfels_per_node << " size_of_surfel_ " << size_of_surfel_ << std::endl;
+    //std::cout << "num_surfels_per_node: " << num_surfels_per_node << ", size_of_surfel: " << size_of_surfel_ << std::endl;
 
     buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_, 0);
 
@@ -83,12 +80,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     assert(sizeof(float) == 4);
 
     num_slots_ = num_slots;
-    std::cout << "slots: " << num_slots << std::endl;
     size_of_slot_ = num_surfels_per_node * size_of_surfel_;
-
-    std::cout << "size of surfel: " << size_of_surfel_ << std::endl;
-    std::cout << "size of slot: " << size_of_slot_ << std::endl;
-    std::cout << "size of prov: " << data_provenance.get_size_in_bytes() << std::endl;
 
     buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_, 0);
 
@@ -110,7 +102,6 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
         {
             if(item.get_visualization() == Item_Provenance::visualization_item::VISUALIZATION_COLOR)
             {
-                std::cout << item.get_type() << std::endl;
                 switch(item.get_type())
                 {
                 case Item_Provenance::type_item::TYPE_INT:
@@ -148,15 +139,6 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
 
     device->main_context()->apply();
 
-    int first_error = device->opengl_api().glGetError();
-    if(first_error != 0)
-    {
-        std::cout << "------------------------------ DISPATCH ERROR CODE gpu_access::gpu_accesss: " << first_error << std::endl;
-    }
-    else
-    {
-        std::cout << "------------------------------ no error inside gpu_access::gpu_accesss" << std::endl;
-    }
 #ifdef LAMURE_ENABLE_INFO
     std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << " (WITH PROVENANCE)" << std::endl;
 #endif
@@ -176,7 +158,6 @@ gpu_access::~gpu_access()
 
 char *gpu_access::map(scm::gl::render_device_ptr const &device)
 {
-    //std::cout << "called!!!!!!!!!!!!!!!" << std::endl;
     if(!is_mapped_)
     {
         assert(device);
@@ -198,30 +179,10 @@ void gpu_access::unmap(scm::gl::render_device_ptr const &device)
 
 char *gpu_access::map_provenance(scm::gl::render_device_ptr const &device)
 {
-    std::cout << "called provenance!!!!!!!!!!!!!!!" << std::endl;
     if(!is_mapped_provenance_)
     {
         assert(device);
         is_mapped_provenance_ = true;
-        // int first_error = device->opengl_api().glGetError();
-        // if(first_error != 0)
-        // {
-        //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_access::map_provenance1: " << first_error << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << "------------------------------ no error inside gpu_access::map_provenance1" << std::endl;
-        // }
-        // (char *)device->main_context()->map_buffer(buffer_provenance_, scm::gl::ACCESS_READ_WRITE);
-        // first_error = device->opengl_api().glGetError();
-        // if(first_error != 0)
-        // {
-        //     std::cout << "------------------------------ DISPATCH ERROR CODE gpu_access::map_provenance2: " << first_error << std::endl;
-        // }
-        // else
-        // {
-        //     std::cout << "------------------------------ no error inside gpu_access::map_provenance2" << std::endl;
-        // }
         return (char *)device->main_context()->map_buffer(buffer_provenance_, scm::gl::ACCESS_READ_WRITE);
     }
     return nullptr;
