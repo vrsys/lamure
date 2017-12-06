@@ -157,6 +157,7 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
 
     std::string name_file_lod = std::string(get_cmd_option(argv, argv + argc, "-l"));
     std::string name_file_dense = std::string(get_cmd_option(argv, argv + argc, "-d"));
+    std::string name_file_tree = std::string(get_cmd_option(argv, argv + argc, "-t"));
 
     lamure::ren::Data_Provenance data_provenance;
     if(cmd_option_exists(argv, argv + argc, "-j"))
@@ -171,7 +172,7 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
     }
     std::cout << data_provenance.get_size_in_bytes() << std::endl;
 
-    controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_dense, data_provenance);
+    controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_dense, name_file_tree, data_provenance);
     return controller;
 }
 

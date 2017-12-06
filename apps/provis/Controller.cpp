@@ -1,6 +1,7 @@
 #include "Controller.h"
 
-Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense, lamure::ren::Data_Provenance &data_provenance)
+Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, 
+    std::string const& name_file_lod, std::string const& name_file_dense, std::string const& name_file_tree, lamure::ren::Data_Provenance &data_provenance)
     : _scene(scene)
 {
     // initialize context
@@ -15,7 +16,7 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
         _renderer.dense_points_only = true;
     }
 
-    _renderer.init(argv, _device, width_window, height_window, name_file_lod, name_file_dense, data_provenance);
+    _renderer.init(argv, _device, width_window, height_window, name_file_lod, name_file_dense, name_file_tree, data_provenance);
 }
 
 bool Controller::update()

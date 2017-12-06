@@ -22,8 +22,10 @@
 //     // = renderer.cpp (see render_one_pass_LQ func: ll. 270)
 // }
 
-void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, int width_window, int height_window, std::string name_file_lod, std::string name_file_dense,
-                    lamure::ren::Data_Provenance &data_provenance)
+void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device, 
+    int width_window, int height_window, 
+    std::string const& name_file_lod, std::string const& name_file_dense, std::string const& name_file_tree,
+    lamure::ren::Data_Provenance &data_provenance)
 {
     // <<<<<<< HEAD
     //     prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
@@ -38,7 +40,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     //     // prov::SparseOctree sparse_octree = (builder.from(cache_dense)->with_sort(prov::SparseOctree::PDQ_SORT)->with_max_depth(10)->with_min_per_node(8)->build());
     //     // _sparse_octree = &sparse_octree;
     // =======
-    _sparse_octree = prov::SparseOctree::load_tree("tree.prov");
+    _sparse_octree = prov::SparseOctree::load_tree(name_file_tree);
     // >>>>>>> 18079d42e0652b76c02ff4b771c776fced1d7b86
     // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
 
