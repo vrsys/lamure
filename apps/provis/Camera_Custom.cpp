@@ -157,12 +157,12 @@ std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector
 
 // scm::gl::sampler_state_ptr Camera_Custom::get_state() { return _state; }
 
-void Camera_Custom::load_texture(scm::shared_ptr<scm::gl::render_device> device)
+void Camera_Custom::load_texture(scm::shared_ptr<scm::gl::render_device> device, std::string const& image_directory)
 {
     scm::gl::texture_loader tl;
-    std::cout << "creating texture " << _im_file_name << ", camera index:" << _index << std::endl;
+    std::cout << "creating texture " << image_directory + _im_file_name << ", camera index:" << _index << std::endl;
     // _texture.reset();
-    _texture = tl.load_texture_2d(*device, _im_file_name, true, false);
+    _texture = tl.load_texture_2d(*device, image_directory + _im_file_name, true, false);
 
     _state = device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 }
@@ -194,14 +194,14 @@ scm::math::mat4f &Camera_Custom::get_transformation_image_plane() { return _tran
 
 // const Image &Camera_Custom::get_still_image() const { return _still_image; }
 
-void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::vector<prov::SparsePoint> &vector_point)
+void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::vector<prov::SparsePoint> &vector_point, std::string const& image_directory)
 {
     // create buffer for the lines connecting the sparse points with the projection center
     std::vector<Struct_Line> vector_struct_line = convert_lines_to_struct_line(vector_point);
     _vertex_buffer_object_lines = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * vector_struct_line.size(), &vector_struct_line[0]);
     _vertex_array_object_lines = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_lines));
 
-    load_texture(device);
+    load_texture(device, image_directory);
     _frustum.init(device);
 }
 

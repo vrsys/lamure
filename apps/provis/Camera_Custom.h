@@ -14,7 +14,9 @@ class Camera_Custom : public prov::Camera
   public:
     Camera_Custom(prov::Camera camera);
 
-    void init(scm::shared_ptr<scm::gl::render_device> device, std::vector<prov::SparsePoint> &vector_point);
+    void init(scm::shared_ptr<scm::gl::render_device> device, 
+        std::vector<prov::SparsePoint> &vector_point, 
+        std::string const& image_directory);
     void update_scale_frustum(float offset);
     void bind_texture(scm::shared_ptr<scm::gl::render_context> context);
     void update_transformation();
@@ -22,7 +24,8 @@ class Camera_Custom : public prov::Camera
     // scm::gl::sampler_state_ptr get_state();
     // scm::gl::texture_2d_ptr get_texture();
 
-    void load_texture(scm::shared_ptr<scm::gl::render_device> device);
+    void load_texture(scm::shared_ptr<scm::gl::render_device> device, 
+        std::string const& image_directory);
 
     int &get_count_lines();
     scm::math::mat4f &get_transformation();

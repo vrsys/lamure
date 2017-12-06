@@ -32,7 +32,7 @@ bool Scene::update(float time_delta)
     // }
 }
 
-void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
+void Scene::init(scm::shared_ptr<scm::gl::render_device> device, std::string const& image_directory)
 {
     // create buffer for the points
 
@@ -52,7 +52,7 @@ void Scene::init(scm::shared_ptr<scm::gl::render_device> device)
 
     for(Camera_Custom &camera : _vector_camera)
     {
-        camera.init(device, _vector_point);
+        camera.init(device, _vector_point, image_directory);
     }
 
     device->main_context()->apply();

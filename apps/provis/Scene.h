@@ -62,7 +62,7 @@ class Scene
     Scene();
     Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Camera> &vector_camera);
 
-    void init(scm::shared_ptr<scm::gl::render_device> device);
+    void init(scm::shared_ptr<scm::gl::render_device> device, std::string const& image_directory);
     scm::gl::vertex_array_ptr get_vertex_array_object_points();
     scm::gl::vertex_array_ptr get_vertex_array_object_cameras();
     scm::shared_ptr<scm::gl::quad_geometry> get_quad();

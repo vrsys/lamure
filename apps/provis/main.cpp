@@ -141,9 +141,9 @@ GLFWwindow *init_glfw_and_glew()
 Controller *load_scene_depending_on_arguments(int argc, char *argv[])
 {
     Scene scene;
-    if(cmd_option_exists(argv, argv + argc, "-s"))
+    if(cmd_option_exists(argv, argv + argc, "-sparse"))
     {
-        std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-s"));
+        std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-sparse"));
         prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
         prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
         prov::SparseCache cache_sparse = prov::SparseCache(in_sparse, in_sparse_meta);
@@ -155,14 +155,15 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
         scene = Scene(vec_point, vec_camera);
     }
 
-    std::string name_file_lod = std::string(get_cmd_option(argv, argv + argc, "-l"));
-    std::string name_file_dense = std::string(get_cmd_option(argv, argv + argc, "-d"));
-    std::string name_file_tree = std::string(get_cmd_option(argv, argv + argc, "-t"));
+    std::string name_file_lod = std::string(get_cmd_option(argv, argv + argc, "-lod"));
+    std::string name_file_dense = std::string(get_cmd_option(argv, argv + argc, "-dense"));
+    std::string name_file_tree = std::string(get_cmd_option(argv, argv + argc, "-tree"));
+    std::string image_directory = std::string(get_cmd_option(argv, argv + argc, "-fotos"));
 
     lamure::ren::Data_Provenance data_provenance;
-    if(cmd_option_exists(argv, argv + argc, "-j"))
+    if(cmd_option_exists(argv, argv + argc, "-json"))
     {
-        data_provenance = lamure::ren::Data_Provenance::parse_json(std::string(get_cmd_option(argv, argv + argc, "-j")));
+        data_provenance = lamure::ren::Data_Provenance::parse_json(std::string(get_cmd_option(argv, argv + argc, "-json")));
     }
 
     for(lamure::ren::Item_Provenance const &item : data_provenance.get_items())
@@ -172,25 +173,29 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
     }
     std::cout << data_provenance.get_size_in_bytes() << std::endl;
 
-    controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_dense, name_file_tree, data_provenance);
+    controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_dense, name_file_tree, image_directory, data_provenance);
     return controller;
 }
 
 void set_styles();
 int main(int argc, char *argv[])
 {
-    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h") || !cmd_option_exists(argv, argv + argc, "-d"))
+    if(argc == 1 || cmd_option_exists(argv, argv + argc, "-h")
+     || !cmd_option_exists(argv, argv + argc, "-lod")
+     || !cmd_option_exists(argv, argv + argc, "-dense")
+     || !cmd_option_exists(argv, argv + argc, "-sparse")
+     || !cmd_option_exists(argv, argv + argc, "-json")
+     || !cmd_option_exists(argv, argv + argc, "-tree")
+     || !cmd_option_exists(argv, argv + argc, "-fotos"))
     {
         std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
                   << "INFO: nvm_explorer " << std::endl
-                  << "\t-d: selects .prov input file" << std::endl
-                  << "\t    (-d flag is required) " << std::endl
-                  << "\t-l: selects .bvh input file" << std::endl
-                  << "\t    (-l flag is required) " << std::endl
-                  << "\t[-s: selects sparse.prov input file]" << std::endl
-                  << "\t    (-s flag is optional) " << std::endl
-                  << "\t[-j: selects json input file]" << std::endl
-                  << "\t    (-j flag is optional) " << std::endl
+                  << "\t-lod: select .bvh file" << std::endl
+                  << "\t-dense: select dense.prov file" << std::endl
+                  << "\t-sparse: select sparse.prov file" << std::endl
+                  << "\t-json: select provenance_data_structure.json file" << std::endl
+                  << "\t-tree: select tree.prov file" << std::endl
+                  << "\t-fotos: select foto directory" << std::endl
                   << std::endl;
         return 0;
     }

@@ -1,7 +1,10 @@
 #include "Controller.h"
 
-Controller::Controller(Scene const &scene, char **argv, int width_window, int height_window, 
-    std::string const& name_file_lod, std::string const& name_file_dense, std::string const& name_file_tree, lamure::ren::Data_Provenance &data_provenance)
+Controller::Controller(Scene const &scene, char **argv, 
+    int width_window, int height_window, 
+    std::string const& name_file_lod, std::string const& name_file_dense, 
+    std::string const& name_file_tree, std::string const& image_directory, 
+    lamure::ren::Data_Provenance &data_provenance)
     : _scene(scene)
 {
     // initialize context
@@ -9,7 +12,7 @@ Controller::Controller(Scene const &scene, char **argv, int width_window, int he
     // initialize device
     _device.reset(new scm::gl::render_device());
 
-    _scene.init(_device);
+    _scene.init(_device, image_directory);
 
     if(_scene.get_vector_point().size() == 0)
     {
