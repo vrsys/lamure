@@ -27,6 +27,7 @@ class VTRenderer
     scm::shared_ptr<scm::gl::render_context> _render_context;
     scm::gl::texture_2d_ptr _physical_texture;
     scm::gl::texture_2d_ptr _index_texture;
+    scm::gl::texture_2d_ptr _feedback_image;
     scm::shared_ptr<scm::gl::render_device> _device;
     scm::gl::program_ptr _shader_program;
     scm::gl::buffer_ptr _index_buffer;
@@ -46,7 +47,9 @@ class VTRenderer
     void init();
     void initialize_index_texture();
     void initialize_physical_texture();
+    void initialize_feedback_image();
     void physical_texture_test_layout();
+    void reset_feedback_image();
 };
 }
 
