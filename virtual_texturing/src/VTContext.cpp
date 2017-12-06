@@ -139,7 +139,7 @@ uint16_t VTContext::identify_depth()
     return static_cast<uint16_t>(depth);
 }
 
-uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2, identify_depth()); }
+uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2, _depth_quadtree); }
 
 uint32_t VTContext::calculate_size_physical_texture()
 {

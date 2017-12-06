@@ -48,7 +48,7 @@ void VTRenderer::init()
 
     _index_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_index_texture(), _vtcontext->get_size_index_texture());
     // TODO: uncomment when physical texture size calculation is complete
-    // _physical_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_physical_texture(), _vtcontext->get_size_physical_texture());
+    // _physical_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_physical_texture(), _vtcontext->get_size_physical_texture().);
     _physical_texture_dimension = scm::math::vec2ui(7, 3);
 
     initialize_index_texture();

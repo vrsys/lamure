@@ -15,7 +15,7 @@ class CutUpdate
 
     void start();
     void stop();
-    void feedback();
+    void feedback(const uint8_t*buf);
 
   private:
     std::thread _worker;

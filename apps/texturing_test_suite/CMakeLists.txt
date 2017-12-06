@@ -7,7 +7,7 @@ include_directories(${REND_INCLUDE_DIR}
                     ${COMMON_INCLUDE_DIR}
                     ${PVS_COMMON_INCLUDE_DIR}
                     ${GLM_INCLUDE_DIR}
-                    ${GLFW_INCLUDE_DIR}
+                    ${GLFW_INCLUDE_DIRS}
 					${GLEW_INCLUDE_DIR}
                     ${FREEIMAGE_INCLUDE_DIR}
 					${VT_INCLUDE_DIR}
@@ -27,7 +27,7 @@ target_link_libraries(${PROJECT_NAME}
     ${PVS_COMMON_LIBRARY}
 	${VT_LIBRARY}
     ${OpenGL_LIBRARIES}
-    ${GLFW3_LIBRARY}
+    ${GLFW_LIBRARIES}
     ${GLEW_LIBRARY}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
     optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
