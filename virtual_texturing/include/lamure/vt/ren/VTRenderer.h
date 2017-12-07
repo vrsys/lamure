@@ -28,6 +28,14 @@ class VTRenderer
     scm::gl::texture_2d_ptr _physical_texture;
     scm::gl::texture_2d_ptr _index_texture;
     scm::gl::texture_2d_ptr _feedback_image;
+
+    // necessary for feedback
+    scm::gl::frame_buffer_ptr _copy_framebuffer;
+    scm::gl::buffer_ptr _copy_buffer_0;
+    scm::gl::buffer_ptr _copy_buffer_1;
+    scm::gl::sync_ptr _capture_finished;
+    shared_ptr<uint32_t> _copy_memory;
+
     scm::shared_ptr<scm::gl::render_device> _device;
     scm::gl::program_ptr _shader_program;
     scm::gl::buffer_ptr _index_buffer;

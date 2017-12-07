@@ -19,9 +19,12 @@ void main()
     swapped_y_texture_coordinates.y = 1.0 - swapped_y_texture_coordinates.y;
 
     vec4 c;
+
+    uint reference_count = 0;
     if(toggle_view == 0)
     { // Show the physical texture
         c = texture(physical_texture, swapped_y_texture_coordinates);
+        out_color = c;
     }
     else
     { // Show the image viewer
@@ -63,15 +66,12 @@ void main()
 
         // simple feedback
         // TODO SOMETHING IS FISHY HERE
-        imageAtomicAdd(feedback_image, ivec2(base_xy_offset.xy), 1);
+        reference_count = imageAtomicAdd(feedback_image, ivec2(base_xy_offset.xy), 1);
+        reference_count += 1;
 
         c = imageLoad(feedback_image, ivec2(swapped_y_texture_coordinates * physical_texture_dim));
 
-        // c = vec4((swapped_y_texture_coordinates.xy),0.0,1.0);
-
-        //        if(ivec2(swapped_y_texture_coordinates * physical_texture_dim) == ivec2(2,0)) {
-        //            c = vec4(0, 1, 0, 1);
-        //        }
+        // c = vec4( float(reference_count) / (10*375542.857 / float( (current_level+1) * (current_level+1) )), (float(reference_count) / (10*375542.857 / float(current_level+1) * (current_level+1) )) * 0.3, 0.0, 1.0 );
     }
 
     out_color = c;
