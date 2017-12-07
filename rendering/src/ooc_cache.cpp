@@ -192,7 +192,6 @@ void ooc_cache::register_node(const model_t model_id, const node_t node_id, cons
         Data_Provenance data_provenance;
         model_database *database = model_database::get_instance();
         slot_t slot_id = index_->reserve_slot();
-        // ASK CARL really duplicate each memory?
         cache_queue::job job(model_id, node_id, slot_id, priority, cache_data_ + slot_id * slot_size(),
                              cache_data_provenance_ + slot_id * database->get_primitives_per_node() * data_provenance.get_size_in_bytes());
         if(!pool_->acknowledge_request(job))
@@ -216,7 +215,9 @@ void ooc_cache::register_node(const model_t model_id, const node_t node_id, cons
     }
 }
 
-char *ooc_cache::node_data(const model_t model_id, const node_t node_id) { return cache_data_ + index_->get_slot(model_id, node_id) * slot_size(); }
+char *ooc_cache::node_data(const model_t model_id, const node_t node_id) { 
+    return cache_data_ + index_->get_slot(model_id, node_id) * slot_size(); 
+}
 
 char *ooc_cache::node_data_provenance(const model_t model_id, const node_t node_id)
 {
@@ -225,7 +226,9 @@ char *ooc_cache::node_data_provenance(const model_t model_id, const node_t node_
     return cache_data_provenance_ + index_->get_slot(model_id, node_id) * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
 }
 
-const bool ooc_cache::is_node_resident_and_aquired(const model_t model_id, const node_t node_id) { return index_->is_node_aquired(model_id, node_id); }
+const bool ooc_cache::is_node_resident_and_aquired(const model_t model_id, const node_t node_id) { 
+    return index_->is_node_aquired(model_id, node_id); 
+}
 
 void ooc_cache::refresh()
 {

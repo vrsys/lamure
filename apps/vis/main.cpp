@@ -36,7 +36,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-//#include <chrono>
+#include <chrono>
 #include <vector>
 #include <algorithm>
 
@@ -95,6 +95,93 @@ scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 
 lamure::ren::Data_Provenance data_provenance_;
 
+struct settings {
+  int32_t width_;
+  int32_t height_;
+  int32_t vram_;
+  int32_t ram_;
+  int32_t upload_;
+  int32_t prov_;
+  std::string json_;
+  std::string pvs_;
+  std::vector<std::string> models_;
+
+};
+
+void load_settings(std::string const& vis_file_name, settings& settings) {
+
+  std::ifstream vis_file(vis_file_name.c_str());
+
+  if (!vis_file.is_open()) {
+    std::cout << "could not open vis file" << std::endl;
+    exit(-1);
+  }
+  else {
+    lamure::model_t model_id = 0;
+
+    std::string line;
+    while(std::getline(vis_file, line)) {
+      if(line.length() >= 2) {
+        if (line[0] == '#') {
+          continue;
+        }
+        std::istringstream line_ss(line);
+        
+        auto colon = line.find_first_of(':');
+        if (colon == std::string::npos) {
+          std::cout << "lod: " << line << std::endl;
+          settings.models_.push_back(line);
+
+        }
+        else {
+          std::string key = line.substr(0, colon);
+          key.erase(std::remove(key.begin(), key.end(), ' '), key.end());
+          std::string value = line.substr(colon+1);
+          value.erase(std::remove(value.begin(), value.end(), ' '), value.end());
+          if (key == "width") {
+            settings.width_ = std::max(atoi(value.c_str()), 64);
+          }
+          else if (key == "height") {
+            settings.height_ = std::max(atoi(value.c_str()), 64);
+          }
+          else if (key == "vram") {
+            settings.vram_ = std::max(atoi(value.c_str()), 8);
+          }
+          else if (key == "ram") {
+            settings.ram_ = std::max(atoi(value.c_str()), 8);
+          }
+          else if (key == "upload") {
+            settings.upload_ = std::max(atoi(value.c_str()), 8);
+          }
+          else if (key == "prov") {
+            settings.prov_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "json") {
+            settings.json_ = value;
+          }
+
+          std::cout << key << " : " << value << std::endl;
+        }
+
+      }
+    }
+    vis_file.close();
+  }
+
+  //assertions
+  if (settings.prov_ != 0) {
+    if (settings.json_ == "") {
+      std::cout << "error: pls provide a provenance json description or set prov to 0" << std::endl;
+      exit(-1);
+    }
+  }
+  if (settings.models_.empty()) {
+    std::cout << "error: no model filename specified" << std::endl;
+    exit(-1);
+  }
+
+
+}
 
 char* get_cmd_option(char** begin, char** end, const std::string& option) {
   char** it = std::find(begin, end, option);
@@ -149,8 +236,12 @@ void glut_display() {
 
   cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
  
-  controller->dispatch(context_id, device_, data_provenance_);
-  
+  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
+    controller->dispatch(context_id, device_, data_provenance_);
+  }
+  else {
+    controller->dispatch(context_id, device_); 
+  }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
  
   context_->set_frame_buffer(fbo_);
@@ -172,11 +263,20 @@ void glut_display() {
   vis_xyz_shader_->uniform("far_plane", far_plane_);
   vis_xyz_shader_->uniform("point_size_factor", point_size_);
   
-  context_->bind_vertex_array(
-    controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_, data_provenance_));
+  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
+    context_->bind_vertex_array(
+      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_, data_provenance_));
+  }
+  else {
+   context_->bind_vertex_array(
+      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_)); 
+  }
   context_->apply();
   
   for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+    if (selected_model_ != -1) {
+      model_id = selected_model_;
+    }
     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
     std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
     const lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
@@ -218,6 +318,9 @@ void glut_display() {
           (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
       
       }
+    }
+    if (selected_model_ != -1) {
+      break;
     }
   }
   
@@ -299,31 +402,31 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       selected_model_ = -1;
       break;
     case '1':
-      selected_model_ = 0;
+      selected_model_ = std::min(num_models_-1, 0);
       break;
     case '2':
-      selected_model_ = 1;
+      selected_model_ = std::min(num_models_-1, 1);
       break;
     case '3':
-      selected_model_ = 2;
+      selected_model_ = std::min(num_models_-1, 2);
       break;
     case '4':
-      selected_model_ = 3;
+      selected_model_ = std::min(num_models_-1, 3);
       break;
     case '5':
-      selected_model_ = 4;
+      selected_model_ = std::min(num_models_-1, 4);
       break;
     case '6':
-      selected_model_ = 5;
+      selected_model_ = std::min(num_models_-1, 5);
       break;
     case '7':
-      selected_model_ = 6;
+      selected_model_ = std::min(num_models_-1, 6);
       break;
     case '8':
-      selected_model_ = 7;
+      selected_model_ = std::min(num_models_-1, 7);
       break;
     case '9':
-      selected_model_ = 8;
+      selected_model_ = std::min(num_models_-1, 8);
       break;
       
 
@@ -367,36 +470,38 @@ void glut_mouse(int32_t button, int32_t state, int32_t x, int32_t y) {
 
 int32_t main(int argc, char* argv[]) {
 
-  if (cmd_option_exists(argv, argv+argc, "-f")) {
-    input_files_.push_back(std::string(get_cmd_option(argv, argv+argc, "-f")));
-  }
-  else if (cmd_option_exists(argv, argv+argc, "-f0")) {
-    for (uint32_t i = 0; i < 10; ++i) {
-      if (cmd_option_exists(argv, argv+argc, "-f"+std::to_string(i))) {
-        input_files_.push_back(get_cmd_option(argv, argv+argc, "-f"+std::to_string(i)));
-      }
-    }
+  std::string vis_file = "";
+  if (argc == 2) {
+    vis_file = std::string(argv[1]);
   }
   else {
-    std::cout << "Usage: " << argv[0] << "<flags>\n" << 
-      "INFO: " << argv[0] << "\n" <<
-      "\t-f[0...7]: selects .bvh input files\n" <<
+    std::cout << "Usage: " << argv[0] << " <vis_file.vis>\n" << 
       "\n";
     return 0;
   }
+
+  settings settings{1920, 1080, 2048, 4096, 32, 0, "", "", std::vector<std::string>()};
+  load_settings(vis_file, settings);
  
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
-  policy->set_max_upload_budget_in_mb(64);
-  policy->set_render_budget_in_mb(1024*4);
-  policy->set_out_of_core_budget_in_mb(1024*8);
+  policy->set_max_upload_budget_in_mb(settings.upload_);
+  policy->set_render_budget_in_mb(settings.vram_);
+  policy->set_out_of_core_budget_in_mb(settings.ram_);
+  window_width_ = settings.width_;
+  window_height_ = settings.height_;
   policy->set_window_width(window_width_);
   policy->set_window_height(window_height_);
-  policy->set_size_of_provenance(24);
-  
+  policy->set_size_of_provenance(settings.prov_);
+
+  if (policy->size_of_provenance() > 0) {
+    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings.json_);
+  }
+
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   
   float scene_diameter = far_plane_;
-  for (const auto& input_file : input_files_) {
+  num_models_ = 0;
+  for (const auto& input_file : settings.models_) {
     lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
     
     const auto& bb = database->get_model(num_models_)->get_bvh()->get_bounding_boxes()[0];
@@ -406,6 +511,15 @@ int32_t main(int argc, char* argv[]) {
     ++num_models_;
   }
   
+  if(settings.pvs_ != "") {
+    std::cout << "loading pvs: " << settings.pvs_ << std::endl;
+    std::string pvs_grid_file_path = settings.pvs_;
+    pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
+    pvs_grid_file_path = pvs_grid_file_path + "grid";
+
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+    pvs->load_pvs_from_file(pvs_grid_file_path, settings.pvs_, false);
+  }
  
   glutInit(&argc, argv);
   glutInitContextVersion(4, 4);
@@ -414,7 +528,7 @@ int32_t main(int argc, char* argv[]) {
   glutInitWindowSize(window_width_, window_height_);
   glutInitWindowPosition(64, 64);
   glutCreateWindow(argv[0]);
-  glutSetWindowTitle("lod_renderer");
+  glutSetWindowTitle("lamure_vis");
   //glewExperimental = GL_TRUE;
   //glewInit();
   //glutHideWindow();
@@ -466,17 +580,13 @@ int32_t main(int argc, char* argv[]) {
     return 1;
   }
 
-  if(cmd_option_exists(argv, argv + argc, "-json")) {
-    data_provenance_ = lamure::ren::Data_Provenance::parse_json(std::string(get_cmd_option(argv, argv + argc, "-json")));
-  }
-
   glutShowWindow();
   
   glutTimerFunc(update_ms_, glut_timer, 1);
 
   fbo_ = device_->create_frame_buffer();
   color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
-  depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_) * 1, scm::gl::FORMAT_D32F, 1, 1, 1);
+  depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D32F, 1, 1, 1);
   fbo_->attach_color_buffer(0, color_buffer_);
   fbo_->attach_depth_stencil_buffer(depth_buffer_);
   
