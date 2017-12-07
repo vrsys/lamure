@@ -26,9 +26,9 @@ namespace ren {
 
 //#define LAMURE_CUT_UPDATE_ENABLE_MEASURE_SYSTEM_PERFORMANCE
 
-#define LAMURE_DEFAULT_COLOR_R 0.3f
-#define LAMURE_DEFAULT_COLOR_G 0.3f
-#define LAMURE_DEFAULT_COLOR_B 0.3f
+#define LAMURE_DEFAULT_COLOR_R 0.25f
+#define LAMURE_DEFAULT_COLOR_G 0.25f
+#define LAMURE_DEFAULT_COLOR_B 0.25f
 
 //------------------------------
 //for cut_update_pool:
