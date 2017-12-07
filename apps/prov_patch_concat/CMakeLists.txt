@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the preprocessing executable
+# CMake Build Script for the patch_concat executable
 
 include_directories(${PREPROC_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR})
@@ -9,7 +9,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
-InitApp(${CMAKE_PROJECT_NAME}_option_concat)
+InitApp(${CMAKE_PROJECT_NAME}_prov_patch_concat)
 
 ############################################################
 # Libraries
