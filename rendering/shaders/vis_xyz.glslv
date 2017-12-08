@@ -69,9 +69,9 @@ void main()
 
   //VertexOut.pass_point_color = vec3(in_r, in_g, in_b);
 
-  //float value = (prov_float1 - heatmap_min) / (heatmap_max - heatmap_min);
-  //VertexOut.pass_point_color = quick_interp(heatmap_min_color, heatmap_max_color, value);
+  float value = (prov_float1 - heatmap_min) / (heatmap_max - heatmap_min);
+  VertexOut.pass_point_color = quick_interp(heatmap_min_color, heatmap_max_color, value);
 
-  VertexOut.pass_point_color = vec3(prov_float3 / 255.0, prov_float4 / 255.0, prov_float5 / 255.0);
+  //VertexOut.pass_point_color = vec3(prov_float3 / 255.0, prov_float4 / 255.0, prov_float5 / 255.0);
 }
 

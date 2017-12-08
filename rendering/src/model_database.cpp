@@ -115,6 +115,7 @@ add_model(const std::string& filepath, const std::string& model_key) {
 
             num_datasets_ = num_datasets_pending_;
             primitives_per_node_ = primitives_per_node_pending_;
+            std::cout << "model " << model_id << " prims " << bvh->get_primitives_per_node() << std::endl;
 
             controller::get_instance()->signal_system_reset();
         }
@@ -190,6 +191,19 @@ get_node_size(const model_t model_id) const {
     if (model_it != datasets_.end()) {
         const bvh* bvh = model_it->second->get_bvh();
         return get_primitive_size(bvh->get_primitive()) * bvh->get_primitives_per_node();
+    }
+    throw std::runtime_error(
+        "lamure: model_database::Model was not found:" + std::to_string(model_id));
+    return 0;
+
+}
+
+const size_t model_database::
+get_primitives_per_node(const model_t model_id) const {
+    auto model_it = datasets_.find(model_id);
+    if (model_it != datasets_.end()) {
+        const bvh* bvh = model_it->second->get_bvh();
+        return bvh->get_primitives_per_node();
     }
     throw std::runtime_error(
         "lamure: model_database::Model was not found:" + std::to_string(model_id));

@@ -129,7 +129,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
         
         auto colon = line.find_first_of(':');
         if (colon == std::string::npos) {
-          std::cout << "lod: " << line << std::endl;
+          //std::cout << "lod: " << line << std::endl;
           settings.models_.push_back(line);
 
         }
@@ -160,7 +160,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             settings.json_ = value;
           }
 
-          std::cout << key << " : " << value << std::endl;
+          //std::cout << key << " : " << value << std::endl;
         }
 
       }
@@ -211,8 +211,12 @@ void glut_display() {
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
 
   bool signal_shutdown = false;
-  
-  controller->reset_system();
+  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
+    controller->reset_system(data_provenance_);
+  }
+  else {
+    controller->reset_system();
+  }
   lamure::context_t context_id = controller->deduce_context_id(0);
   
   
@@ -558,8 +562,6 @@ int32_t main(int argc, char* argv[]) {
     std::cout << "error reading shader files" << std::endl;
     return 1; 
   }
-
-  std::cout << "done" << std::endl;
 
   vis_xyz_shader_ = device_->create_program(
     boost::assign::list_of

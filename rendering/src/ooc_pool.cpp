@@ -162,13 +162,12 @@ void ooc_pool::run()
             if(_data_provenance.get_size_in_bytes() > 0) {
                 provenance_stream access_provenance;
                 access_provenance.open(provenance_files[job.model_id_]);
-                size_t stride_in_bytes_provenance = database->get_primitives_per_node() * _data_provenance.get_size_in_bytes();
+                size_t stride_in_bytes_provenance = database->get_primitives_per_node(job.model_id_) * _data_provenance.get_size_in_bytes();
                 bytes_loaded_ += stride_in_bytes_provenance;
                 size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
                 access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
                 access_provenance.close();
                 memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
-                
             }
 
         }
