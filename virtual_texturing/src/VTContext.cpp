@@ -41,8 +41,7 @@ void VTContext::start()
 
     _depth_quadtree = identify_depth();
     _size_index_texture = identify_size_index_texture();
-    _size_physical_texture = calculate_size_physical_texture();
-
+    _size_physical_texture = get_size_physical_texture();
     glfwSetErrorCallback(&VTContext::EventHandler::on_error);
 
     if(!glfwInit())
@@ -141,10 +140,15 @@ uint16_t VTContext::identify_depth()
 
 uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2, identify_depth()); }
 
-uint32_t VTContext::calculate_size_physical_texture()
+scm::math::vec2ui VTContext::calculate_size_physical_texture(int physical_texture_max_size_mb)
 {
     // TODO: define physical texture size, as huge as possible
-    return 0;
+    uint32_t tilesize = _size_tile*_size_tile*4*8;
+    uint32_t number_of_tiles =  physical_texture_max_size_mb * 1024 * 1024 / tilesize;
+    uint32_t tiles_per_dim_x = 8192 /  _size_tile;
+    uint32_t tiles_per_dim_y = number_of_tiles / tiles_per_dim_x;
+    std::cout << "phy_tex_dim: " << tiles_per_dim_x << " , " << tiles_per_dim_y << std::endl;
+    return scm::math::vec2ui(tiles_per_dim_x, tiles_per_dim_y);
 }
 
 bool VTContext::EventHandler::isToggle_phyiscal_texture_image_viewer() const { return toggle_phyiscal_texture_image_viewer; }

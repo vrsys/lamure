@@ -190,13 +190,13 @@ class VTContext
 
     VTRenderer *get_vtrenderer() const;
     EventHandler *get_event_handler() const;
-    void set_event_handler(EventHandler *_event_handler);
+    scm::math::vec2ui calculate_size_physical_texture(int physical_texture_max_size_mb);
 
-  private:
+    void set_event_handler(EventHandler *_event_handler);
+private:
     explicit VTContext();
     uint16_t identify_depth();
     uint32_t identify_size_index_texture();
-    uint32_t calculate_size_physical_texture();
 
     CSimpleIniA *_config;
 
@@ -218,6 +218,7 @@ class VTContext
     uint16_t _depth_quadtree;
     uint32_t _size_index_texture;
     uint32_t _size_physical_texture;
+    scm::math::vec2ui _x_y_ratio_tiles;
 };
 }
 

@@ -47,9 +47,11 @@ void VTRenderer::init()
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 
     _index_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_index_texture(), _vtcontext->get_size_index_texture());
-    // TODO: uncomment when physical texture size calculation is complete
-    // _physical_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_physical_texture(), _vtcontext->get_size_physical_texture());
-    _physical_texture_dimension = scm::math::vec2ui(7, 3);
+    // TODO: size dynamisch rein
+    //_physical_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_physical_texture(), _vtcontext->get_size_physical_texture());
+    _physical_texture_dimension = _vtcontext->calculate_size_physical_texture(5000);
+
+    //_physical_texture_dimension = scm::math::vec2ui(7, 3);
 
     initialize_index_texture();
     initialize_physical_texture();
