@@ -84,12 +84,33 @@ lamure::ren::camera* camera_ = nullptr;
 
 scm::shared_ptr<scm::gl::render_device> device_;
 scm::shared_ptr<scm::gl::render_context> context_;
-scm::gl::program_ptr vis_xyz_shader_;
+
+scm::gl::program_ptr vis_xyz_pass1_shader_;
+scm::gl::program_ptr vis_xyz_pass2_shader_;
+scm::gl::program_ptr vis_xyz_pass3_shader_;
+
 scm::gl::frame_buffer_ptr fbo_;
+scm::gl::frame_buffer_ptr pass1_fbo_;
+scm::gl::texture_2d_ptr pass1_depth_buffer_;
+scm::gl::frame_buffer_ptr pass2_fbo_;
+scm::gl::texture_2d_ptr pass2_color_buffer_;
+scm::gl::texture_2d_ptr pass2_depth_buffer_;
+
+scm::gl::texture_2d_ptr gaussian_texture_;
+
+scm::gl::depth_stencil_state_ptr depth_state_disable_;
+scm::gl::depth_stencil_state_ptr depth_state_less_;
 scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
+scm::gl::rasterizer_state_ptr change_point_size_in_shader_state_;
+
+scm::gl::blend_state_ptr color_blending_state_;
+scm::gl::blend_state_ptr color_no_blending_state_;
+
 scm::gl::texture_2d_ptr color_buffer_;
 scm::gl::texture_2d_ptr depth_buffer_;
-scm::gl::sampler_state_ptr state_linear_;
+scm::gl::sampler_state_ptr filter_linear_;
+scm::gl::sampler_state_ptr filter_nearest_;
+
 scm::gl::program_ptr quad_shader_;
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 
@@ -200,6 +221,69 @@ static void glut_timer(int e) {
   glutTimerFunc(update_ms_, glut_timer, 1);
 }
 
+void draw_all_models(const lamure::context_t context_id, const lamure::view_t view_id, scm::gl::program_ptr shader) {
+
+  lamure::ren::controller* controller = lamure::ren::controller::get_instance();
+  lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+  lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+
+  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
+    context_->bind_vertex_array(
+      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_, data_provenance_));
+  }
+  else {
+   context_->bind_vertex_array(
+      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_)); 
+  }
+  context_->apply();
+  
+  for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+    if (selected_model_ != -1) {
+      model_id = selected_model_;
+    }
+    lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+    std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
+    const lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
+    if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
+      continue;
+    }
+    
+    //uniforms per model
+    scm::math::mat4d model_matrix = model_transformations_[model_id];
+    scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
+    scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
+    scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
+    scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
+
+    shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+    shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+    shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+    //shader->uniform("model_radius_scale", 1.f);
+    //shader->uniform("projection_matrix", scm::math::mat4f(projection_matrix));
+
+    size_t surfels_per_node = database->get_primitives_per_node();
+    std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
+    
+    scm::gl::frustum frustum_by_model = camera_->get_frustum_by_model(scm::math::mat4f(model_transformations_[model_id]));
+    
+    for(auto const& node_slot_aggregate : renderable) {
+      uint32_t node_culling_result = camera_->cull_against_frustum(
+        frustum_by_model,
+        bounding_box_vector[node_slot_aggregate.node_id_]);
+        
+      if (node_culling_result != 1) {
+        context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
+          (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+      
+      }
+    }
+    if (selected_model_ != -1) {
+      break;
+    }
+  }
+
+}
+
 void glut_display() {
   if (rendering_) {
     return;
@@ -207,8 +291,9 @@ void glut_display() {
   rendering_ = true;
 
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-  lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+  lamure::ren::controller* controller = lamure::ren::controller::get_instance();
+  
 
   bool signal_shutdown = false;
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
@@ -248,95 +333,105 @@ void glut_display() {
   }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
  
-  context_->set_frame_buffer(fbo_);
-  //context_->set_default_frame_buffer();
+
+  //PASS 1
+
+  context_->clear_depth_stencil_buffer(pass1_fbo_);
+  context_->set_frame_buffer(pass1_fbo_);
+    
   
+  context_->bind_program(vis_xyz_pass1_shader_);
+  context_->set_blend_state(color_no_blending_state_);
+  context_->set_rasterizer_state(change_point_size_in_shader_state_);
+  context_->set_depth_stencil_state(depth_state_less_);
   
+  vis_xyz_pass1_shader_->uniform("near_plane", near_plane_);
+  vis_xyz_pass1_shader_->uniform("point_size_factor", point_size_);
+  vis_xyz_pass1_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom);
+  vis_xyz_pass1_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
+
+  vis_xyz_pass1_shader_->uniform("ellipsify", true);
+  vis_xyz_pass1_shader_->uniform("clamped_normal_mode", true);
+  vis_xyz_pass1_shader_->uniform("max_deform_ratio", 0.35f);
+
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
-  context_->clear_depth_stencil_buffer(fbo_);
-  context_->clear_color_buffer(fbo_, 0, 
-    scm::math::vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));
-  //context_->clear_default_depth_stencil_buffer();
-  //context_->clear_default_color_buffer();
-  
-  
-  context_->bind_program(vis_xyz_shader_);
-  context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-  
-  vis_xyz_shader_->uniform("near_plane", near_plane_);
-  vis_xyz_shader_->uniform("far_plane", far_plane_);
-  vis_xyz_shader_->uniform("point_size_factor", point_size_);
-  
-  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-    context_->bind_vertex_array(
-      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_, data_provenance_));
-  }
-  else {
-   context_->bind_vertex_array(
-      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_)); 
-  }
   context_->apply();
+
+  draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
+
+  //PASS 2
+
+  context_->clear_color_buffer(pass2_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
+  context_->set_frame_buffer(pass2_fbo_);
+
+  context_->set_blend_state(color_blending_state_);
+  context_->set_depth_stencil_state(depth_state_disable_);
+
+  context_->bind_program(vis_xyz_pass2_shader_);
   
-  for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-    if (selected_model_ != -1) {
-      model_id = selected_model_;
-    }
-    lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
-    std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
-    const lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
-    if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
-      continue;
-    }
-    
-    //uniforms per model
-    scm::math::mat4d model_matrix = model_transformations_[model_id];
-    scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
-    scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
-    scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
-    scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
+  vis_xyz_pass2_shader_->uniform("depth_texture_pass1", 0);
+  vis_xyz_pass2_shader_->uniform("pointsprite_texture", 1);
 
-    vis_xyz_shader_->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
-    vis_xyz_shader_->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
-    vis_xyz_shader_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
-    vis_xyz_shader_->uniform("model_radius_scale", 1.f);
-    vis_xyz_shader_->uniform("projection_matrix", scm::math::mat4f(projection_matrix));
+  context_->bind_texture(pass1_depth_buffer_, filter_nearest_, 0);
+  context_->bind_texture(gaussian_texture_, filter_nearest_, 1);
 
-    vis_xyz_shader_->uniform("heatmap_min", 0.0f);
-    vis_xyz_shader_->uniform("heatmap_max", 0.05f);
-    vis_xyz_shader_->uniform("heatmap_min_color", scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f));
-    vis_xyz_shader_->uniform("heatmap_max_color", scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f));
+  vis_xyz_pass2_shader_->uniform("win_size", scm::math::vec2f(window_width_, window_height_));
+
+  vis_xyz_pass2_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom);
+  vis_xyz_pass2_shader_->uniform("near_plane", near_plane_);
+  vis_xyz_pass2_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
+  vis_xyz_pass2_shader_->uniform("point_size_factor", point_size_);
+
+  vis_xyz_pass2_shader_->uniform("ellipsify", true);
+  vis_xyz_pass2_shader_->uniform("clamped_normal_mode", true);
+  vis_xyz_pass2_shader_->uniform("max_deform_ratio", 0.35f);
+
+
+  vis_xyz_pass2_shader_->uniform("heatmap_min", 0.0f);
+  vis_xyz_pass2_shader_->uniform("heatmap_max", 0.05f);
+  vis_xyz_pass2_shader_->uniform("heatmap_min_color", scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f));
+  vis_xyz_pass2_shader_->uniform("heatmap_max_color", scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f));
 
     
-    size_t surfels_per_node = database->get_primitives_per_node();
-    std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
-    
-    scm::gl::frustum frustum_by_model = camera_->get_frustum_by_model(scm::math::mat4f(model_transformations_[model_id]));
-    
-    for(auto const& node_slot_aggregate : renderable) {
-      uint32_t node_culling_result = camera_->cull_against_frustum(
-        frustum_by_model,
-        bounding_box_vector[node_slot_aggregate.node_id_]);
-        
-      if (node_culling_result != 1) {
-        context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
-          (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
-      
-      }
-    }
-    if (selected_model_ != -1) {
-      break;
-    }
-  }
+
+
+  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
+  context_->apply();
+
+  draw_all_models(context_id, view_id, vis_xyz_pass2_shader_);
+
+  //PASS 3
+
+  context_->set_frame_buffer(fbo_);
+  context_->clear_color_buffer(fbo_, 0, scm::math::vec4f(0.0, 0.0, 0.0, 1.0f));
   
+  context_->set_depth_stencil_state(depth_state_disable_);
+  context_->bind_program(vis_xyz_pass3_shader_);
+
+  vis_xyz_pass3_shader_->uniform("background_color", 
+    scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B));
+
+  vis_xyz_pass3_shader_->uniform_sampler("in_color_texture", 0);
+  context_->bind_texture(pass2_color_buffer_, filter_nearest_, 0);
+
+  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
+  context_->apply();
+
+  screen_quad_->draw(context_);
+
+
+  //PASS 4: fullscreen quad
   
   context_->set_default_frame_buffer();
-  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
   context_->clear_default_depth_stencil_buffer();
   context_->clear_default_color_buffer();
   
   context_->bind_program(quad_shader_);
   
-  context_->bind_texture(color_buffer_, state_linear_, 0);
+  context_->bind_texture(color_buffer_, filter_linear_, 0);
+  //context_->bind_texture(pass2_color_buffer_, filter_linear_, 0);
+
+  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
   context_->apply();
   
   screen_quad_->draw(context_);
@@ -357,6 +452,15 @@ void glut_resize(int32_t w, int32_t h) {
   depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(w, h) * 1, scm::gl::FORMAT_D32F, 1, 1, 1);
   fbo_->attach_color_buffer(0, color_buffer_);
   fbo_->attach_depth_stencil_buffer(depth_buffer_);
+
+  pass1_fbo_ = device_->create_frame_buffer();
+  pass1_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
+  pass1_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
+
+  pass2_fbo_ = device_->create_frame_buffer();
+  pass2_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F, 1, 1, 1);
+  pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
+
   
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_window_width(w);
@@ -548,28 +652,25 @@ int32_t main(int argc, char* argv[]) {
 
   context_ = device_->main_context();
   
-
-  std::string lq_one_pass_vs_source;
-  std::string lq_one_pass_gs_source;
-  std::string lq_one_pass_fs_source;
   std::string quad_shader_fs_source;
   std::string quad_shader_vs_source;
-  if (!scm::io::read_text_file("../share/lamure/shaders/vis_xyz.glslv", lq_one_pass_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz.glslg", lq_one_pass_gs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz.glslf", lq_one_pass_fs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_quad.glslv", quad_shader_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_quad.glslf", quad_shader_fs_source)) {
-    std::cout << "error reading shader files" << std::endl;
-    return 1; 
-  }
 
-  vis_xyz_shader_ = device_->create_program(
-    boost::assign::list_of
-      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, lq_one_pass_vs_source))
-      (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, lq_one_pass_gs_source))
-      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, lq_one_pass_fs_source)));
-  if (!vis_xyz_shader_) {
-    std::cout << "error creating shader programs" << std::endl;
+  std::string vis_xyz_pass1_vs_source;
+  std::string vis_xyz_pass1_fs_source;
+  std::string vis_xyz_pass2_vs_source;
+  std::string vis_xyz_pass2_fs_source;
+  std::string vis_xyz_pass3_vs_source;
+  std::string vis_xyz_pass3_fs_source;
+  if (!scm::io::read_text_file("../share/lamure/shaders/vis_quad.glslv", quad_shader_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis_quad.glslf", quad_shader_fs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
+    ) {
+    std::cout << "error reading shader files" << std::endl;
     return 1;
   }
 
@@ -582,6 +683,33 @@ int32_t main(int argc, char* argv[]) {
     return 1;
   }
 
+  vis_xyz_pass1_shader_ = device_->create_program(
+    boost::assign::list_of
+      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass1_vs_source))
+      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
+  if (!vis_xyz_pass1_shader_) {
+    std::cout << "error creating shader programs" << std::endl;
+    return 1;
+  }
+
+  vis_xyz_pass2_shader_ = device_->create_program(
+    boost::assign::list_of
+      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_source))
+      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
+  if (!vis_xyz_pass2_shader_) {
+    std::cout << "error creating shader programs" << std::endl;
+    return 1;
+  }
+
+  vis_xyz_pass3_shader_ = device_->create_program(
+    boost::assign::list_of
+      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_source))
+      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_source)));
+  if (!vis_xyz_pass3_shader_) {
+    std::cout << "error creating shader programs" << std::endl;
+    return 1;
+  }
+
   glutShowWindow();
   
   glutTimerFunc(update_ms_, glut_timer, 1);
@@ -590,15 +718,44 @@ int32_t main(int argc, char* argv[]) {
   color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
   depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D32F, 1, 1, 1);
   fbo_->attach_color_buffer(0, color_buffer_);
-  fbo_->attach_depth_stencil_buffer(depth_buffer_);
-  
+  //fbo_->attach_depth_stencil_buffer(depth_buffer_);
+
+
+  pass1_fbo_ = device_->create_frame_buffer();
+  pass1_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
+  pass1_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
+
+  pass2_fbo_ = device_->create_frame_buffer();
+  pass2_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F, 1, 1, 1);
+  pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
+
+
+  color_blending_state_ = device_->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, 
+    scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
+  color_no_blending_state_ = device_->create_blend_state(false);
+
+  depth_state_less_ = device_->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
+  auto no_depth_test_descriptor = depth_state_less_->descriptor();
+  no_depth_test_descriptor._depth_test = false;
+  depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
+
+  change_point_size_in_shader_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
   no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
 
   auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
   scm::math::vec3f center = scm::math::mat4f(model_transformations_[0]) * ((root_bb.min_vertex() + root_bb.max_vertex()) / 2.f);
 
-  state_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
-    
+  filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);  
+  filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
+
+  float gaussian_buffer[32] = {255, 255, 252, 247, 244, 234, 228, 222, 208, 201,
+                              191, 176, 167, 158, 141, 131, 125, 117, 100,  91,
+                              87,  71,  65,  58,  48,  42,  39,  32,  28,  25,
+                              19, 16};
+  scm::gl::texture_region ur(scm::math::vec3ui(0u), scm::math::vec3ui(32, 1, 1));
+  gaussian_texture_ = device_->create_texture_2d(scm::math::vec2ui(32,1), scm::gl::FORMAT_R_32F, 1, 1, 1);
+  context_->update_sub_texture(gaussian_texture_, ur, 0u, scm::gl::FORMAT_R_32F, gaussian_buffer);
+
 
   camera_ = new lamure::ren::camera(0, 
     scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)), 
