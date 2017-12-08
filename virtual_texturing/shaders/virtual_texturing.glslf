@@ -6,9 +6,12 @@ flat in uint toggle_view;
 flat in uvec2 physical_texture_dim;
 flat in uvec2 index_texture_dim;
 
+layout (std430, binding = 0) buffer out_feedback_ssbo{
+  uint[] out_feedback_values;
+};
+
 layout(binding = 0) uniform sampler2D physical_texture;
 layout(binding = 1) uniform usampler2D index_texture;
-layout(binding = 2, r32ui) coherent uniform uimage2D feedback_image;
 
 layout(location = 0) out vec4 out_color;
 
@@ -44,7 +47,7 @@ void main()
         // offset represented as tiles is divided by total num tiles per axis
         // (replace max_width_tiles later by correct uniform)
         // extracting x,y from index texture
-        vec2 base_xy_offset = index_triplet.xy;
+        uvec2 base_xy_offset = index_triplet.xy;
 
         // just to be conformant to the modf interface (integer parts are ignored)
         vec2 dummy;
@@ -66,12 +69,17 @@ void main()
 
         // simple feedback
         // TODO SOMETHING IS FISHY HERE
-        reference_count = imageAtomicAdd(feedback_image, ivec2(base_xy_offset.xy), 1);
+        //reference_count = imageAtomicAdd(feedback_image, ivec2(base_xy_offset.xy), 1);
+        //reference_count += 1;
+
+        //c = imageLoad(feedback_image, ivec2(swapped_y_texture_coordinates * physical_texture_dim));
+
+        uint one_d_feedback_ssbo_index = base_xy_offset.x + base_xy_offset.y * physical_texture_dim.x;
+
+        reference_count = atomicAdd(out_feedback_values[one_d_feedback_ssbo_index], 1);
         reference_count += 1;
 
-        c = imageLoad(feedback_image, ivec2(swapped_y_texture_coordinates * physical_texture_dim));
-
-        // c = vec4( float(reference_count) / (10*375542.857 / float( (current_level+1) * (current_level+1) )), (float(reference_count) / (10*375542.857 / float(current_level+1) * (current_level+1) )) * 0.3, 0.0, 1.0 );
+         c = vec4( float(reference_count) / (10*375542.857 / float( (current_level+1) * (current_level+1) )), (float(reference_count) / (10*375542.857 / float(current_level+1) * (current_level+1) )) * 0.3, 0.0, 1.0 );
     }
 
     out_color = c;

@@ -39,7 +39,10 @@
 #include <scm/core/time/high_res_timer.h>
 #include <scm/log.h>
 
+
 #include <scm/gl_core.h>
+
+
 
 #include <scm/gl_util/data/imaging/texture_loader.h>
 #include <scm/gl_util/manipulators/trackball_manipulator.h>

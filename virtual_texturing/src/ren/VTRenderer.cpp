@@ -1,4 +1,6 @@
 #include <lamure/vt/ren/VTRenderer.h>
+
+
 namespace vt
 {
 VTRenderer::VTRenderer(VTContext *context, uint32_t _width, uint32_t _height, CutUpdate *cut_update)
@@ -107,45 +109,50 @@ void VTRenderer::render()
         // bind feedback image
         _render_context->bind_image(_feedback_image, scm::gl::FORMAT_R_32UI, scm::gl::ACCESS_READ_WRITE, 2);
 
+        _render_context->bind_storage_buffer(_atomic_feedback_storage_ssbo, 0);
+
         _render_context->apply();
 
         _obj->draw(_render_context, scm::gl::geometry::MODE_SOLID);
+
+        _draw_ended = _render_context->insert_fence_sync();
 
         //////////////////////////////////////////////////////////////////////////////
         // FEEDBACK STUFF
         //////////////////////////////////////////////////////////////////////////////
 
-        if(!_capture_finished)
+        auto data = (char*)_render_context->map_buffer(_atomic_feedback_storage_ssbo, scm::gl::ACCESS_READ_ONLY);
+
+        if(data)
         {
-            _render_context->orphane_buffer(_copy_buffer_0);
-            _render_context->capture_color_buffer(_copy_framebuffer, 0, scm::gl::texture_region(scm::math::vec3ui(0), scm::math::vec3ui(_physical_texture_dimension, 1)), scm::gl::FORMAT_R_32UI,
-                                                  _copy_buffer_0);
-            _capture_finished = _render_context->insert_fence_sync();
+            memcpy(&_copy_memory[0], data, _copy_buffer_size);
         }
 
-        if(_render_context->sync_signal_status(_capture_finished) == scm::gl::SYNC_SIGNALED)
-        {
-            _render_context->sync_server_wait(_capture_finished);
+        _render_context->unmap_buffer(_atomic_feedback_storage_ssbo);
 
-            auto data = _render_context->map_buffer(_copy_buffer_1, scm::gl::ACCESS_READ_ONLY);
+        _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, 0);
 
-            if(data)
-            {
-                memcpy(_copy_memory.get(), data, _copy_buffer_size);
-                std::cout << *_copy_memory.get() << std::endl;
-            }
+        // Test prints for feedback
+//        for( uint32_t y_feedback_slot_id = 0; y_feedback_slot_id < _physical_texture_dimension.y; ++y_feedback_slot_id ) {
+//            for( uint32_t x_feedback_slot_id = 0; x_feedback_slot_id < _physical_texture_dimension.x; ++x_feedback_slot_id ) {
+//                uint32_t one_d_feedback_idx = x_feedback_slot_id + _physical_texture_dimension.x * y_feedback_slot_id;
+//                std::cout << _copy_memory[one_d_feedback_idx] << " ";
+//            }
+//            std::cout << "\n";
+//        }
+//
+//        std::cout << "\n";
 
-            _render_context->unmap_buffer(_copy_buffer_1);
-            _capture_finished.reset();
-            std::swap(_copy_buffer_0, _copy_buffer_1);
-        }
+        // TODO enable when cut update is done
+//        _cut_update->feedback(_copy_memory);
+
     }
 }
 
 void VTRenderer::render_feedback()
 {
     // TODO
-    _cut_update->feedback();
+//    _cut_update->feedback();
 }
 
 void VTRenderer::initialize_index_texture()
@@ -208,14 +215,20 @@ void VTRenderer::initialize_feedback()
     using namespace scm::math;
     _copy_buffer_size = _physical_texture_dimension.x * _physical_texture_dimension.y * size_of_format(scm::gl::FORMAT_R_32UI);
     _copy_framebuffer = _device->create_frame_buffer();
-    _copy_buffer_0 = _device->create_buffer(scm::gl::BIND_PIXEL_PACK_BUFFER, scm::gl::USAGE_STREAM_READ, _copy_buffer_size);
-    _copy_buffer_1 = _copy_buffer_0;
+    _copy_buffer_0 = _device->create_buffer(scm::gl::BIND_PIXEL_PACK_BUFFER, scm::gl::USAGE_STREAM_DRAW, _copy_buffer_size);
+    _copy_buffer_1 = _device->create_buffer(scm::gl::BIND_PIXEL_PACK_BUFFER, scm::gl::USAGE_STREAM_DRAW, _copy_buffer_size);
+
+    _atomic_feedback_storage_ssbo = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, _copy_buffer_size);
+
+    _synchronized_copy_buffer = _device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STREAM_READ, _copy_buffer_size);
 
     _feedback_image = _device->create_texture_2d(_physical_texture_dimension, scm::gl::FORMAT_R_32UI);
     reset_feedback_image();
 
     _copy_framebuffer->attach_color_buffer(0, _feedback_image);
-    _copy_memory.reset(new uint32_t[_copy_buffer_size]);
+    _copy_memory = std::vector<uint32_t>(_copy_buffer_size/4, 0);
+
+
 }
 
 void VTRenderer::reset_feedback_image()

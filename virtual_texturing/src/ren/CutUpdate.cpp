@@ -17,7 +17,7 @@ void CutUpdate::run()
         _cv.wait(lk);
     }
 }
-void CutUpdate::feedback()
+void CutUpdate::feedback(std::vector<uint32_t> buf)
 {
     std::cout << "2: " << std::this_thread::get_id() << std::endl;
     // TODO
