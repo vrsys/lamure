@@ -53,19 +53,7 @@ void VTRenderer::init()
 
     initialize_index_texture();
     initialize_physical_texture();
-
-    // TODO put in ini feedback
-    size_t copy_buffer_size = _physical_texture_dimension.x * _physical_texture_dimension.y * size_of_format(scm::gl::FORMAT_R_32UI);
-    _copy_framebuffer = _device->create_frame_buffer();
-    _copy_buffer_0 = _device->create_buffer(scm::gl::BIND_PIXEL_PACK_BUFFER,
-                                            scm::gl::USAGE_STREAM_READ,
-                                            copy_buffer_size);
-    _copy_buffer_1 = _copy_buffer_0;
-
-    initialize_feedback_image();
-    _copy_framebuffer->attach_color_buffer(0, _feedback_image);
-    _copy_memory.reset(new uint32_t[copy_buffer_size]);
-
+    initialize_feedback();
 
     _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
 }
@@ -123,30 +111,30 @@ void VTRenderer::render()
 
         _obj->draw(_render_context, scm::gl::geometry::MODE_SOLID);
 
-
         //////////////////////////////////////////////////////////////////////////////
         // FEEDBACK STUFF
         //////////////////////////////////////////////////////////////////////////////
 
-        if(!_capture_finished) {
+        if(!_capture_finished)
+        {
             _render_context->orphane_buffer(_copy_buffer_0);
-            _render_context->capture_color_buffer(_copy_framebuffer, 0,
-                                                  scm::gl::texture_region(scm::math::vec3ui(0), scm::math::vec3ui(_physical_texture_dimension, 1)),
-                                                  scm::gl::FORMAT_R_32UI,
+            _render_context->capture_color_buffer(_copy_framebuffer, 0, scm::gl::texture_region(scm::math::vec3ui(0), scm::math::vec3ui(_physical_texture_dimension, 1)), scm::gl::FORMAT_R_32UI,
                                                   _copy_buffer_0);
-            _capture_finished    = _render_context->insert_fence_sync();
+            _capture_finished = _render_context->insert_fence_sync();
         }
 
-        if (_render_context->sync_signal_status(_capture_finished) == scm::gl::SYNC_SIGNALED) {
+        if(_render_context->sync_signal_status(_capture_finished) == scm::gl::SYNC_SIGNALED)
+        {
             _render_context->sync_server_wait(_capture_finished);
 
             auto data = _render_context->map_buffer(_copy_buffer_1, scm::gl::ACCESS_READ_ONLY);
 
-            if (data) {
-                size_t data_size = _physical_texture_dimension.x * _physical_texture_dimension.y * size_of_format(scm::gl::FORMAT_R_32UI);
-                memcpy(_copy_memory.get(), data, data_size);
+            if(data)
+            {
+                memcpy(_copy_memory.get(), data, _copy_buffer_size);
                 std::cout << *_copy_memory.get() << std::endl;
             }
+
             _render_context->unmap_buffer(_copy_buffer_1);
             _capture_finished.reset();
             std::swap(_copy_buffer_0, _copy_buffer_1);
@@ -182,8 +170,18 @@ void VTRenderer::initialize_physical_texture()
     physical_texture_test_layout();
 }
 
-void VTRenderer::physical_texture_test_layout()
+void VTRenderer::update_physical_texture_blockwise(char *buffer, uint32_t x, uint32_t y)
 {
+    _render_context->update_sub_texture(_physical_texture,
+                                        scm::gl::texture_region(scm::math::vec3ui(x * _vtcontext->get_size_tile(),
+                                                                                  y * _vtcontext->get_size_tile(), 0),
+                                                                scm::math::vec3ui(_vtcontext->get_size_tile(),
+                                                                                  _vtcontext->get_size_tile(), 1)),
+                                        0,
+                                        scm::gl::FORMAT_RGBA_8, &buffer[0]);
+}
+
+void VTRenderer::physical_texture_test_layout() {
     int tilesize = _vtcontext->get_size_tile() * _vtcontext->get_size_tile() * 4;
     std::ifstream is(_vtcontext->get_name_mipmap() + ".data", std::ios::binary);
 
@@ -195,9 +193,7 @@ void VTRenderer::physical_texture_test_layout()
             for(unsigned x = 0; x < _physical_texture_dimension.x; ++x)
             {
                 is.read(buffer, tilesize);
-                _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(scm::math::vec3ui(x * _vtcontext->get_size_tile(), y * _vtcontext->get_size_tile(), 0),
-                                                                                               scm::math::vec3ui(_vtcontext->get_size_tile(), _vtcontext->get_size_tile(), 1)),
-                                                    0, scm::gl::FORMAT_RGBA_8, &buffer[0]);
+                update_physical_texture_blockwise(buffer, x, y);
             }
             is.seekg(is.tellg());
         }
@@ -206,12 +202,20 @@ void VTRenderer::physical_texture_test_layout()
     };
 }
 
-void VTRenderer::initialize_feedback_image()
+void VTRenderer::initialize_feedback()
 {
     using namespace scm::gl;
     using namespace scm::math;
+    _copy_buffer_size = _physical_texture_dimension.x * _physical_texture_dimension.y * size_of_format(scm::gl::FORMAT_R_32UI);
+    _copy_framebuffer = _device->create_frame_buffer();
+    _copy_buffer_0 = _device->create_buffer(scm::gl::BIND_PIXEL_PACK_BUFFER, scm::gl::USAGE_STREAM_READ, _copy_buffer_size);
+    _copy_buffer_1 = _copy_buffer_0;
+
     _feedback_image = _device->create_texture_2d(_physical_texture_dimension, scm::gl::FORMAT_R_32UI);
     reset_feedback_image();
+
+    _copy_framebuffer->attach_color_buffer(0, _feedback_image);
+    _copy_memory.reset(new uint32_t[_copy_buffer_size]);
 }
 
 void VTRenderer::reset_feedback_image()

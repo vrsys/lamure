@@ -35,6 +35,7 @@ class VTRenderer
     scm::gl::buffer_ptr _copy_buffer_1;
     scm::gl::sync_ptr _capture_finished;
     shared_ptr<uint32_t> _copy_memory;
+    size_t _copy_buffer_size;
 
     scm::shared_ptr<scm::gl::render_device> _device;
     scm::gl::program_ptr _shader_program;
@@ -55,7 +56,8 @@ class VTRenderer
     void init();
     void initialize_index_texture();
     void initialize_physical_texture();
-    void initialize_feedback_image();
+    void initialize_feedback();
+    void update_physical_texture_blockwise(char *buffer, uint32_t x, uint32_t y);
     void physical_texture_test_layout();
     void reset_feedback_image();
 };
