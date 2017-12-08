@@ -90,6 +90,8 @@ scm::gl::program_ptr vis_xyz_pass2_shader_;
 scm::gl::program_ptr vis_xyz_pass3_shader_;
 
 scm::gl::frame_buffer_ptr fbo_;
+scm::gl::texture_2d_ptr fbo_color_buffer_;
+
 scm::gl::frame_buffer_ptr pass1_fbo_;
 scm::gl::texture_2d_ptr pass1_depth_buffer_;
 scm::gl::frame_buffer_ptr pass2_fbo_;
@@ -106,8 +108,6 @@ scm::gl::rasterizer_state_ptr change_point_size_in_shader_state_;
 scm::gl::blend_state_ptr color_blending_state_;
 scm::gl::blend_state_ptr color_no_blending_state_;
 
-scm::gl::texture_2d_ptr color_buffer_;
-scm::gl::texture_2d_ptr depth_buffer_;
 scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
 
@@ -123,11 +123,19 @@ struct settings {
   int32_t ram_;
   int32_t upload_;
   int32_t prov_;
+  int32_t channel_;
+  int32_t heatmap_;
+  float heatmap_min_;
+  float heatmap_max_;
+  scm::math::vec3f heatmap_color_min_;
+  scm::math::vec3f heatmap_color_max_;
   std::string json_;
   std::string pvs_;
   std::vector<std::string> models_;
 
 };
+
+settings settings_;
 
 void load_settings(std::string const& vis_file_name, settings& settings) {
 
@@ -174,8 +182,38 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "upload") {
             settings.upload_ = std::max(atoi(value.c_str()), 8);
           }
-          else if (key == "prov") {
+          else if (key == "provenance") {
             settings.prov_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "channel") {
+            settings.channel_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "heatmap") {
+            settings.heatmap_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "heatmap_min") {
+            settings.heatmap_min_ = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "heatmap_max") {
+            settings.heatmap_max_ = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "heatmap_min_r") {
+            settings.heatmap_color_min_.x = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
+          }
+          else if (key == "heatmap_min_g") {
+            settings.heatmap_color_min_.y = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
+          }
+          else if (key == "heatmap_min_b") {
+            settings.heatmap_color_min_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
+          }
+          else if (key == "heatmap_max_r") {
+            settings.heatmap_color_max_.x = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
+          }
+          else if (key == "heatmap_max_g") {
+            settings.heatmap_color_max_.y = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
+          }
+          else if (key == "heatmap_max_b") {
+            settings.heatmap_color_max_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
           }
           else if (key == "json") {
             settings.json_ = value;
@@ -258,8 +296,6 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
-    //shader->uniform("model_radius_scale", 1.f);
-    //shader->uniform("projection_matrix", scm::math::mat4f(projection_matrix));
 
     size_t surfels_per_node = database->get_primitives_per_node();
     std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
@@ -386,15 +422,15 @@ void glut_display() {
   vis_xyz_pass2_shader_->uniform("clamped_normal_mode", true);
   vis_xyz_pass2_shader_->uniform("max_deform_ratio", 0.35f);
 
+  vis_xyz_pass2_shader_->uniform("channel", settings_.channel_);
+  vis_xyz_pass2_shader_->uniform("heatmap", (bool)settings_.heatmap_);
 
-  vis_xyz_pass2_shader_->uniform("heatmap_min", 0.0f);
-  vis_xyz_pass2_shader_->uniform("heatmap_max", 0.05f);
-  vis_xyz_pass2_shader_->uniform("heatmap_min_color", scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f));
-  vis_xyz_pass2_shader_->uniform("heatmap_max_color", scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f));
+  vis_xyz_pass2_shader_->uniform("heatmap_min", settings_.heatmap_min_);
+  vis_xyz_pass2_shader_->uniform("heatmap_max", settings_.heatmap_max_);
+  vis_xyz_pass2_shader_->uniform("heatmap_min_color", settings_.heatmap_color_min_);
+  vis_xyz_pass2_shader_->uniform("heatmap_max_color", settings_.heatmap_color_max_);
 
-    
-
-
+  
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
   context_->apply();
 
@@ -428,8 +464,7 @@ void glut_display() {
   
   context_->bind_program(quad_shader_);
   
-  context_->bind_texture(color_buffer_, filter_linear_, 0);
-  //context_->bind_texture(pass2_color_buffer_, filter_linear_, 0);
+  context_->bind_texture(fbo_color_buffer_, filter_linear_, 0);
 
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
   context_->apply();
@@ -448,10 +483,8 @@ void glut_resize(int32_t w, int32_t h) {
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(w, h)));
 
   fbo_ = device_->create_frame_buffer();
-  color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_) * 1, scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
-  depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(w, h) * 1, scm::gl::FORMAT_D32F, 1, 1, 1);
-  fbo_->attach_color_buffer(0, color_buffer_);
-  fbo_->attach_depth_stencil_buffer(depth_buffer_);
+  fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_) * 1, scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
+  fbo_->attach_color_buffer(0, fbo_color_buffer_);
 
   pass1_fbo_ = device_->create_frame_buffer();
   pass1_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
@@ -588,28 +621,31 @@ int32_t main(int argc, char* argv[]) {
     return 0;
   }
 
-  settings settings{1920, 1080, 2048, 4096, 32, 0, "", "", std::vector<std::string>()};
-  load_settings(vis_file, settings);
+
+  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 0, 0, 0.f, 0.05f, 
+    scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
+    "", "", std::vector<std::string>()};
+  load_settings(vis_file, settings_);
  
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
-  policy->set_max_upload_budget_in_mb(settings.upload_);
-  policy->set_render_budget_in_mb(settings.vram_);
-  policy->set_out_of_core_budget_in_mb(settings.ram_);
-  window_width_ = settings.width_;
-  window_height_ = settings.height_;
+  policy->set_max_upload_budget_in_mb(settings_.upload_);
+  policy->set_render_budget_in_mb(settings_.vram_);
+  policy->set_out_of_core_budget_in_mb(settings_.ram_);
+  window_width_ = settings_.width_;
+  window_height_ = settings_.height_;
   policy->set_window_width(window_width_);
   policy->set_window_height(window_height_);
-  policy->set_size_of_provenance(settings.prov_);
+  policy->set_size_of_provenance(settings_.prov_);
 
   if (policy->size_of_provenance() > 0) {
-    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings.json_);
+    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
   }
 
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   
   float scene_diameter = far_plane_;
   num_models_ = 0;
-  for (const auto& input_file : settings.models_) {
+  for (const auto& input_file : settings_.models_) {
     lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
     
     const auto& bb = database->get_model(num_models_)->get_bvh()->get_bounding_boxes()[0];
@@ -619,14 +655,14 @@ int32_t main(int argc, char* argv[]) {
     ++num_models_;
   }
   
-  if(settings.pvs_ != "") {
-    std::cout << "loading pvs: " << settings.pvs_ << std::endl;
-    std::string pvs_grid_file_path = settings.pvs_;
+  if(settings_.pvs_ != "") {
+    std::cout << "loading pvs: " << settings_.pvs_ << std::endl;
+    std::string pvs_grid_file_path = settings_.pvs_;
     pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
     pvs_grid_file_path = pvs_grid_file_path + "grid";
 
     lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-    pvs->load_pvs_from_file(pvs_grid_file_path, settings.pvs_, false);
+    pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
   }
  
   glutInit(&argc, argv);
@@ -637,9 +673,6 @@ int32_t main(int argc, char* argv[]) {
   glutInitWindowPosition(64, 64);
   glutCreateWindow(argv[0]);
   glutSetWindowTitle("lamure_vis");
-  //glewExperimental = GL_TRUE;
-  //glewInit();
-  //glutHideWindow();
   
   glutDisplayFunc(glut_display);
   glutReshapeFunc(glut_resize);
@@ -715,10 +748,8 @@ int32_t main(int argc, char* argv[]) {
   glutTimerFunc(update_ms_, glut_timer, 1);
 
   fbo_ = device_->create_frame_buffer();
-  color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
-  depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D32F, 1, 1, 1);
-  fbo_->attach_color_buffer(0, color_buffer_);
-  //fbo_->attach_depth_stencil_buffer(depth_buffer_);
+  fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
+  fbo_->attach_color_buffer(0, fbo_color_buffer_);
 
 
   pass1_fbo_ = device_->create_frame_buffer();

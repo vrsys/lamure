@@ -30,14 +30,12 @@ layout(location = 4) in float empty;
 layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
 
-
-layout(location = 7) in float prov_float;
-layout(location = 8) in float prov_float1;
-layout(location = 9) in float prov_float2;
-layout(location = 10) in float prov_float3;
-layout(location = 11) in float prov_float4;
-layout(location = 12) in float prov_float5;
-
+layout(location = 7) in float prov1;
+layout(location = 8) in float prov2;
+layout(location = 9) in float prov3;
+layout(location = 10) in float prov4;
+layout(location = 11) in float prov5;
+layout(location = 12) in float prov6;
 
 
 void main()

@@ -17,13 +17,9 @@ out VertexData {
 
 uniform mat4 mvp_matrix;
 uniform mat4 model_view_matrix;
-
 uniform mat4 inv_mv_matrix;
-
 uniform float height_divided_by_top_minus_bottom;
-
 uniform float near_plane;
-
 uniform float point_size_factor;
 
 
@@ -38,18 +34,20 @@ layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
 
 
-layout(location = 7) in float prov_float;
-layout(location = 8) in float prov_float1;
-layout(location = 9) in float prov_float2;
-layout(location = 10) in float prov_float3;
-layout(location = 11) in float prov_float4;
-layout(location = 12) in float prov_float5;
+layout(location = 7) in float prov1;
+layout(location = 8) in float prov2;
+layout(location = 9) in float prov3;
+layout(location = 10) in float prov4;
+layout(location = 11) in float prov5;
+layout(location = 12) in float prov6;
 
-
+uniform int channel;
+uniform bool heatmap;
 uniform float heatmap_min;
 uniform float heatmap_max;
 uniform vec3 heatmap_min_color;
 uniform vec3 heatmap_max_color;
+
 
 vec3 quick_interp(vec3 color1, vec3 color2, float value) {
   return color1 + (color2 - color1) * clamp(value, 0, 1);
@@ -75,17 +73,41 @@ void main()
 		    float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
          	gl_Position = mvp_matrix * vec4(in_position, 1.0);
 
-			//VertexOut.color = vec3(in_r, in_g, in_b);
 
-			float value = (prov_float1 - heatmap_min) / (heatmap_max - heatmap_min);
-			VertexOut.color = quick_interp(heatmap_min_color, heatmap_max_color, value);
+            float prov_value = 0.0;
 
-			//VertexOut.color = vec3(prov_float3 / 255.0, prov_float4 / 255.0, prov_float5 / 255.0);
-
+            if (channel == 0) {
+              VertexOut.color = vec3(in_r, in_g, in_b);
+            }
+            else {
+              if (channel == 1) {
+                prov_value = prov1;
+              }
+              else if (channel == 2) {
+                prov_value = prov2;
+              }
+              else if (channel == 3) {
+                prov_value = prov3;
+              }
+              else if (channel == 4) {
+                prov_value = prov4;
+              }
+              else if (channel == 5) {
+                prov_value = prov5;
+              }
+              else if (channel == 6) {
+                prov_value = prov6;
+              }
+              if (heatmap) {
+                float value = (prov_value - heatmap_min) / (heatmap_max - heatmap_min);
+			    VertexOut.color = quick_interp(heatmap_min_color, heatmap_max_color, value);
+              }
+              else {
+                VertexOut.color = vec3(prov_value, prov_value, prov_value);
+              }
+			}
 
 		    VertexOut.nor = inv_mv_matrix * vec4(in_normal,0.0f);
-
-
 
 		    gl_PointSize = ps;
 		    VertexOut.pointSize = ps;
