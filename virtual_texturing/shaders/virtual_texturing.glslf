@@ -68,18 +68,12 @@ void main()
         c = texture(physical_texture, physical_texture_coordinates);
 
         // simple feedback
-        // TODO SOMETHING IS FISHY HERE
-        //reference_count = imageAtomicAdd(feedback_image, ivec2(base_xy_offset.xy), 1);
-        //reference_count += 1;
-
-        //c = imageLoad(feedback_image, ivec2(swapped_y_texture_coordinates * physical_texture_dim));
-
         uint one_d_feedback_ssbo_index = base_xy_offset.x + base_xy_offset.y * physical_texture_dim.x;
 
         reference_count = atomicAdd(out_feedback_values[one_d_feedback_ssbo_index], 1);
         reference_count += 1;
 
-         c = vec4( float(reference_count) / (10*375542.857 / float( (current_level+1) * (current_level+1) )), (float(reference_count) / (10*375542.857 / float(current_level+1) * (current_level+1) )) * 0.3, 0.0, 1.0 );
+        // c = vec4( float(reference_count) / (10*375542.857 / float( (current_level+1) * (current_level+1) )), (float(reference_count) / (10*375542.857 / float(current_level+1) * (current_level+1) )) * 0.3, 0.0, 1.0 );
     }
 
     out_color = c;

@@ -25,24 +25,12 @@ class VTRenderer
 
     scm::shared_ptr<scm::core> _scm_core;
     scm::shared_ptr<scm::gl::render_context> _render_context;
+
     scm::gl::texture_2d_ptr _physical_texture;
     scm::gl::texture_2d_ptr _index_texture;
-    scm::gl::texture_2d_ptr _feedback_image;
 
     // necessary for feedback
-    scm::gl::frame_buffer_ptr _copy_framebuffer;
-
-
     scm::gl::buffer_ptr _atomic_feedback_storage_ssbo;
-
-    scm::gl::buffer_ptr _copy_buffer_0;
-    scm::gl::buffer_ptr _copy_buffer_1;
-
-    scm::gl::buffer_ptr _synchronized_copy_buffer;
-
-    scm::gl::sync_ptr _draw_ended;
-
-    scm::gl::sync_ptr _capture_finished;
     std::vector<uint32_t> _copy_memory;
     size_t _copy_buffer_size;
 
@@ -68,7 +56,6 @@ class VTRenderer
     void initialize_feedback();
     void update_physical_texture_blockwise(char *buffer, uint32_t x, uint32_t y);
     void physical_texture_test_layout();
-    void reset_feedback_image();
 };
 }
 
