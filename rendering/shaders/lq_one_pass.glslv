@@ -55,7 +55,7 @@ void main()
 
   // finalize color with provenance overlay
   vec3 in_out_color = vec3(in_r, in_g, in_b);
-  resolve_provenance_coloring(in_position, normal, tangent, bitangent, in_radius, in_out_color);//, in_normal, tangent, bitangent, in_radius, in_out_color);
+  resolve_provenance_coloring(in_position, normal, tangent, bitangent, in_radius, in_out_color);
   
   // passed attributes: vertex shader -> geometry shader
   VertexOut.pass_ms_u = tangent;

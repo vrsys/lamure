@@ -7,6 +7,7 @@
 
 #version 420 core
 
+
 out VertexData {
     vec3 color;
     vec4 nor;
@@ -22,8 +23,6 @@ uniform float height_divided_by_top_minus_bottom;
 uniform float near_plane;
 uniform float point_size_factor;
 
-
-uniform bool is_leaf;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -41,6 +40,10 @@ layout(location = 10) in float prov4;
 layout(location = 11) in float prov5;
 layout(location = 12) in float prov6;
 
+uniform bool show_normals;
+uniform bool show_accuracy;
+uniform float accuracy;
+
 uniform int channel;
 uniform bool heatmap;
 uniform float heatmap_min;
@@ -52,6 +55,7 @@ uniform vec3 heatmap_max_color;
 vec3 quick_interp(vec3 color1, vec3 color2, float value) {
   return color1 + (color2 - color1) * clamp(value, 0, 1);
 }
+
 
 void main()
 {
@@ -66,17 +70,26 @@ void main()
 
       float scaled_radius = in_radius;
 
+          vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
+
+
 	    {
 
 		    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
 
 		    float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
          	gl_Position = mvp_matrix * vec4(in_position, 1.0);
-
-
+           
             float prov_value = 0.0;
 
-            if (channel == 0) {
+            if (show_normals) {
+              vec4 vis_normal = normal;
+              if( vis_normal.z < 0 ) {
+                vis_normal = vis_normal * -1;
+              }
+              VertexOut.color = vec3(vis_normal.xyz * 0.5 + 0.5);
+            }
+            else if (channel == 0) {
               VertexOut.color = vec3(in_r, in_g, in_b);
             }
             else {
@@ -105,9 +118,14 @@ void main()
               else {
                 VertexOut.color = vec3(prov_value, prov_value, prov_value);
               }
-			}
+			      }
 
-		    VertexOut.nor = inv_mv_matrix * vec4(in_normal,0.0f);
+            if (show_accuracy) {
+
+              VertexOut.color = VertexOut.color + vec3(accuracy, 0.0, 0.0);
+            }
+
+        VertexOut.nor = normal;
 
 		    gl_PointSize = ps;
 		    VertexOut.pointSize = ps;

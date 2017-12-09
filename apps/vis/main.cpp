@@ -75,7 +75,6 @@ std::vector<scm::math::mat4d> model_transformations_;
 int32_t num_models_ = 0;
 int32_t selected_model_ = -1;
 
-float point_size_ = 1.0f;
 float error_threshold_ = 2.0f;
 
 lamure::ren::camera::mouse_state mouse_state_;
@@ -123,7 +122,10 @@ struct settings {
   int32_t ram_;
   int32_t upload_;
   int32_t prov_;
+  int32_t show_normals_;
+  int32_t show_accuracy_;
   int32_t channel_;
+  float point_size_;
   int32_t heatmap_;
   float heatmap_min_;
   float heatmap_max_;
@@ -185,8 +187,17 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "provenance") {
             settings.prov_ = std::max(atoi(value.c_str()), 0);
           }
+          else if (key == "show_normals") {
+            settings.show_normals_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "show_accuracy") {
+            settings.show_accuracy_ = std::max(atoi(value.c_str()), 0);
+          }
           else if (key == "channel") {
             settings.channel_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "point_size") {
+            settings.point_size_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
           }
           else if (key == "heatmap") {
             settings.heatmap_ = std::max(atoi(value.c_str()), 0);
@@ -308,6 +319,12 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         bounding_box_vector[node_slot_aggregate.node_id_]);
         
       if (node_culling_result != 1) {
+        
+        if (settings_.show_accuracy_) {
+          const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
+          shader->uniform("accuracy", accuracy);
+        }
+
         context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
           (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
       
@@ -382,7 +399,7 @@ void glut_display() {
   context_->set_depth_stencil_state(depth_state_less_);
   
   vis_xyz_pass1_shader_->uniform("near_plane", near_plane_);
-  vis_xyz_pass1_shader_->uniform("point_size_factor", point_size_);
+  vis_xyz_pass1_shader_->uniform("point_size_factor", settings_.point_size_);
   vis_xyz_pass1_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom);
   vis_xyz_pass1_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
 
@@ -416,11 +433,14 @@ void glut_display() {
   vis_xyz_pass2_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom);
   vis_xyz_pass2_shader_->uniform("near_plane", near_plane_);
   vis_xyz_pass2_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
-  vis_xyz_pass2_shader_->uniform("point_size_factor", point_size_);
+  vis_xyz_pass2_shader_->uniform("point_size_factor", settings_.point_size_);
 
   vis_xyz_pass2_shader_->uniform("ellipsify", true);
   vis_xyz_pass2_shader_->uniform("clamped_normal_mode", true);
   vis_xyz_pass2_shader_->uniform("max_deform_ratio", 0.35f);
+
+  vis_xyz_pass2_shader_->uniform("show_normals", (bool)settings_.show_normals_);
+  vis_xyz_pass2_shader_->uniform("show_accuracy", (bool)settings_.show_accuracy_);
 
   vis_xyz_pass2_shader_->uniform("channel", settings_.channel_);
   vis_xyz_pass2_shader_->uniform("heatmap", (bool)settings_.heatmap_);
@@ -514,14 +534,16 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       break;
 
     case 'u':
-      if (point_size_ > 0.1) {
-        point_size_ -= 0.1;
+      if (settings_.point_size_ > 0.1) {
+        settings_.point_size_ -= 0.1;
+        std::cout << "point_size: " << settings_.point_size_ << std::endl;
       }
       break;
 
     case 'j':
-      if (point_size_ < 6) {
-        point_size_ += 0.1;
+      if (settings_.point_size_ < 10.0) {
+        settings_.point_size_ += 0.1;
+        std::cout << "point_size: " << settings_.point_size_ << std::endl;
       }
       break;
       
@@ -622,7 +644,7 @@ int32_t main(int argc, char* argv[]) {
   }
 
 
-  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 0, 0, 0.f, 0.05f, 
+  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
     scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
     "", "", std::vector<std::string>()};
   load_settings(vis_file, settings_);
@@ -694,14 +716,14 @@ int32_t main(int argc, char* argv[]) {
   std::string vis_xyz_pass2_fs_source;
   std::string vis_xyz_pass3_vs_source;
   std::string vis_xyz_pass3_fs_source;
-  if (!scm::io::read_text_file("../share/lamure/shaders/vis_quad.glslv", quad_shader_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_quad.glslf", quad_shader_fs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
+  if (!scm::io::read_text_file("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
+    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
     ) {
     std::cout << "error reading shader files" << std::endl;
     return 1;
