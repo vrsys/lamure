@@ -100,6 +100,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure
         PATTERN "*.glslv"
         PATTERN "*.glslf"
         PATTERN "*.glslg"
+        PATTERN "*.glsl"
         )
 
 # shader and material resources

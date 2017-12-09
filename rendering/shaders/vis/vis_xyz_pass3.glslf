@@ -23,7 +23,8 @@ void main()	{
 
     if(texColor.w != 0.0f) {
       texColor = (texColor/texColor.w);
-      out_color = vec4(pow(texColor.xyz, vec3(1.4f)), 1.0f);  
+      
+      out_color = vec4(texColor.xyz, 1.0);
     }
 
  }

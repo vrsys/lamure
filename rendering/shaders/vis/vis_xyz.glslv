@@ -74,6 +74,8 @@ void main()
 	    float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
      	gl_Position = mvp_matrix * vec4(in_position, 1.0);
       
+      
+      
       VertexOut.color = get_color();
 
       VertexOut.nor = normal;

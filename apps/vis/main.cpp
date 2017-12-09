@@ -32,6 +32,9 @@
 
 //boost
 #include <boost/assign/list_of.hpp>
+#include <boost/regex.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/filesystem.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -77,6 +80,8 @@ int32_t selected_model_ = -1;
 
 float error_threshold_ = 2.0f;
 
+float height_divided_by_top_minus_bottom_ = 0.f;
+
 lamure::ren::camera::mouse_state mouse_state_;
 
 lamure::ren::camera* camera_ = nullptr;
@@ -84,12 +89,14 @@ lamure::ren::camera* camera_ = nullptr;
 scm::shared_ptr<scm::gl::render_device> device_;
 scm::shared_ptr<scm::gl::render_context> context_;
 
+scm::gl::program_ptr vis_xyz_shader_;
 scm::gl::program_ptr vis_xyz_pass1_shader_;
 scm::gl::program_ptr vis_xyz_pass2_shader_;
 scm::gl::program_ptr vis_xyz_pass3_shader_;
 
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
+scm::gl::texture_2d_ptr fbo_depth_buffer_;
 
 scm::gl::frame_buffer_ptr pass1_fbo_;
 scm::gl::texture_2d_ptr pass1_depth_buffer_;
@@ -122,6 +129,8 @@ struct settings {
   int32_t ram_;
   int32_t upload_;
   int32_t prov_;
+  int32_t splatting_;
+  int32_t gamma_correction_;
   int32_t show_normals_;
   int32_t show_accuracy_;
   int32_t channel_;
@@ -183,6 +192,12 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "upload") {
             settings.upload_ = std::max(atoi(value.c_str()), 8);
+          }
+          else if (key == "splatting") {
+            settings.splatting_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "gamma_correction") {
+            settings.gamma_correction_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "provenance") {
             settings.prov_ = std::max(atoi(value.c_str()), 0);
@@ -337,6 +352,33 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 
 }
 
+void set_uniforms(scm::gl::program_ptr shader) {
+
+    shader->uniform("win_size", scm::math::vec2f(window_width_, window_height_));
+
+    shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
+    shader->uniform("near_plane", near_plane_);
+    shader->uniform("far_minus_near_plane", far_plane_-near_plane_);
+    shader->uniform("point_size_factor", settings_.point_size_);
+
+    shader->uniform("ellipsify", true);
+    shader->uniform("clamped_normal_mode", true);
+    shader->uniform("max_deform_ratio", 0.35f);
+
+    shader->uniform("show_normals", (bool)settings_.show_normals_);
+    shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
+
+    shader->uniform("channel", settings_.channel_);
+    shader->uniform("heatmap", (bool)settings_.heatmap_);
+
+    shader->uniform("heatmap_min", settings_.heatmap_min_);
+    shader->uniform("heatmap_max", settings_.heatmap_max_);
+    shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
+    shader->uniform("heatmap_max_color", settings_.heatmap_color_max_);
+
+    
+}
+
 void glut_display() {
   if (rendering_) {
     return;
@@ -374,9 +416,9 @@ void glut_display() {
 
   std::vector<scm::math::vec3d> corner_values = camera_->get_frustum_corners();
   double top_minus_bottom = scm::math::length((corner_values[2]) - (corner_values[0]));
-  float height_divided_by_top_minus_bottom = lamure::ren::policy::get_instance()->window_height() / top_minus_bottom;
+  height_divided_by_top_minus_bottom_ = lamure::ren::policy::get_instance()->window_height() / top_minus_bottom;
 
-  cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom);
+  cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom_);
  
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
     controller->dispatch(context_id, device_, data_provenance_);
@@ -386,105 +428,111 @@ void glut_display() {
   }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
  
+  if (settings_.splatting_) {
+    //2 pass splatting
+    //PASS 1
 
-  //PASS 1
-
-  context_->clear_depth_stencil_buffer(pass1_fbo_);
-  context_->set_frame_buffer(pass1_fbo_);
+    context_->clear_color_buffer(pass1_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
+    context_->clear_depth_stencil_buffer(pass1_fbo_);
+    context_->set_frame_buffer(pass1_fbo_);
+      
     
-  
-  context_->bind_program(vis_xyz_pass1_shader_);
-  context_->set_blend_state(color_no_blending_state_);
-  context_->set_rasterizer_state(change_point_size_in_shader_state_);
-  context_->set_depth_stencil_state(depth_state_less_);
-  
-  vis_xyz_pass1_shader_->uniform("near_plane", near_plane_);
-  vis_xyz_pass1_shader_->uniform("point_size_factor", settings_.point_size_);
-  vis_xyz_pass1_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom);
-  vis_xyz_pass1_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
+    context_->bind_program(vis_xyz_pass1_shader_);
+    context_->set_blend_state(color_no_blending_state_);
+    context_->set_rasterizer_state(change_point_size_in_shader_state_);
+    context_->set_depth_stencil_state(depth_state_less_);
+    
+    vis_xyz_pass1_shader_->uniform("near_plane", near_plane_);
+    vis_xyz_pass1_shader_->uniform("point_size_factor", settings_.point_size_);
+    vis_xyz_pass1_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
+    vis_xyz_pass1_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
 
-  vis_xyz_pass1_shader_->uniform("ellipsify", true);
-  vis_xyz_pass1_shader_->uniform("clamped_normal_mode", true);
-  vis_xyz_pass1_shader_->uniform("max_deform_ratio", 0.35f);
+    vis_xyz_pass1_shader_->uniform("ellipsify", true);
+    vis_xyz_pass1_shader_->uniform("clamped_normal_mode", true);
+    vis_xyz_pass1_shader_->uniform("max_deform_ratio", 0.35f);
 
-  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
-  context_->apply();
+    context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
+    context_->apply();
 
-  draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
+    draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
 
-  //PASS 2
+    //PASS 2
 
-  context_->clear_color_buffer(pass2_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
-  context_->set_frame_buffer(pass2_fbo_);
+    context_->clear_color_buffer(pass2_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
+    context_->set_frame_buffer(pass2_fbo_);
 
-  context_->set_blend_state(color_blending_state_);
-  context_->set_depth_stencil_state(depth_state_disable_);
+    context_->set_blend_state(color_blending_state_);
+    context_->set_depth_stencil_state(depth_state_disable_);
 
-  context_->bind_program(vis_xyz_pass2_shader_);
-  
-  vis_xyz_pass2_shader_->uniform("depth_texture_pass1", 0);
-  vis_xyz_pass2_shader_->uniform("pointsprite_texture", 1);
+    context_->bind_program(vis_xyz_pass2_shader_);
+    
+    vis_xyz_pass2_shader_->uniform("depth_texture_pass1", 0);
+    vis_xyz_pass2_shader_->uniform("pointsprite_texture", 1);
 
-  context_->bind_texture(pass1_depth_buffer_, filter_nearest_, 0);
-  context_->bind_texture(gaussian_texture_, filter_nearest_, 1);
+    context_->bind_texture(pass1_depth_buffer_, filter_nearest_, 0);
+    context_->bind_texture(gaussian_texture_, filter_nearest_, 1);
 
-  vis_xyz_pass2_shader_->uniform("win_size", scm::math::vec2f(window_width_, window_height_));
+    set_uniforms(vis_xyz_pass2_shader_);
 
-  vis_xyz_pass2_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom);
-  vis_xyz_pass2_shader_->uniform("near_plane", near_plane_);
-  vis_xyz_pass2_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
-  vis_xyz_pass2_shader_->uniform("point_size_factor", settings_.point_size_);
+    context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
+    context_->apply();
 
-  vis_xyz_pass2_shader_->uniform("ellipsify", true);
-  vis_xyz_pass2_shader_->uniform("clamped_normal_mode", true);
-  vis_xyz_pass2_shader_->uniform("max_deform_ratio", 0.35f);
+    draw_all_models(context_id, view_id, vis_xyz_pass2_shader_);
 
-  vis_xyz_pass2_shader_->uniform("show_normals", (bool)settings_.show_normals_);
-  vis_xyz_pass2_shader_->uniform("show_accuracy", (bool)settings_.show_accuracy_);
+    //PASS 3
 
-  vis_xyz_pass2_shader_->uniform("channel", settings_.channel_);
-  vis_xyz_pass2_shader_->uniform("heatmap", (bool)settings_.heatmap_);
+    context_->clear_color_buffer(fbo_, 0, scm::math::vec4f(0.0, 0.0, 0.0, 1.0f));
+    context_->clear_depth_stencil_buffer(fbo_);
+    context_->set_frame_buffer(fbo_);
+    
+    context_->set_depth_stencil_state(depth_state_disable_);
+    context_->bind_program(vis_xyz_pass3_shader_);
 
-  vis_xyz_pass2_shader_->uniform("heatmap_min", settings_.heatmap_min_);
-  vis_xyz_pass2_shader_->uniform("heatmap_max", settings_.heatmap_max_);
-  vis_xyz_pass2_shader_->uniform("heatmap_min_color", settings_.heatmap_color_min_);
-  vis_xyz_pass2_shader_->uniform("heatmap_max_color", settings_.heatmap_color_max_);
+    vis_xyz_pass3_shader_->uniform("background_color", 
+      scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B));
 
-  
-  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
-  context_->apply();
+    vis_xyz_pass3_shader_->uniform_sampler("in_color_texture", 0);
+    context_->bind_texture(pass2_color_buffer_, filter_nearest_, 0);
 
-  draw_all_models(context_id, view_id, vis_xyz_pass2_shader_);
+    context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
+    context_->apply();
 
-  //PASS 3
+    screen_quad_->draw(context_);
 
-  context_->set_frame_buffer(fbo_);
-  context_->clear_color_buffer(fbo_, 0, scm::math::vec4f(0.0, 0.0, 0.0, 1.0f));
-  
-  context_->set_depth_stencil_state(depth_state_disable_);
-  context_->bind_program(vis_xyz_pass3_shader_);
+  }
+  else {
+    //single pass
 
-  vis_xyz_pass3_shader_->uniform("background_color", 
-    scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B));
+    context_->clear_color_buffer(fbo_, 0,
+      scm::math::vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));   
+    context_->clear_depth_stencil_buffer(fbo_);
+    context_->set_frame_buffer(fbo_);
 
-  vis_xyz_pass3_shader_->uniform_sampler("in_color_texture", 0);
-  context_->bind_texture(pass2_color_buffer_, filter_nearest_, 0);
+    context_->bind_program(vis_xyz_shader_);
+    context_->set_rasterizer_state(change_point_size_in_shader_state_);
+    context_->set_blend_state(color_no_blending_state_);
+    context_->set_depth_stencil_state(depth_state_less_);
+    
+    set_uniforms(vis_xyz_shader_);
 
-  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
-  context_->apply();
+    context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
+    context_->apply();
 
-  screen_quad_->draw(context_);
+    draw_all_models(context_id, view_id, vis_xyz_shader_);
+
+  }
 
 
   //PASS 4: fullscreen quad
   
-  context_->set_default_frame_buffer();
   context_->clear_default_depth_stencil_buffer();
   context_->clear_default_color_buffer();
+  context_->set_default_frame_buffer();
   
   context_->bind_program(quad_shader_);
   
   context_->bind_texture(fbo_color_buffer_, filter_linear_, 0);
+  quad_shader_->uniform("gamma_correction", (bool)settings_.gamma_correction_);
 
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(window_width_, window_height_)));
   context_->apply();
@@ -503,8 +551,10 @@ void glut_resize(int32_t w, int32_t h) {
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(w, h)));
 
   fbo_ = device_->create_frame_buffer();
-  fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_) * 1, scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
+  fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
+  fbo_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
   fbo_->attach_color_buffer(0, fbo_color_buffer_);
+  fbo_->attach_depth_stencil_buffer(fbo_depth_buffer_);
 
   pass1_fbo_ = device_->create_frame_buffer();
   pass1_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
@@ -531,6 +581,11 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
     case '.':
       glutFullScreenToggle();
+      break;
+
+
+    case 'q':
+      settings_.splatting_ = !settings_.splatting_;
       break;
 
     case 'u':
@@ -630,6 +685,61 @@ void glut_mouse(int32_t button, int32_t state, int32_t x, int32_t y) {
   camera_->update_trackball_mouse_pos(trackball_x_, trackball_y_);
 }
 
+std::string const strip_whitespace(std::string const& in_string) {
+  return boost::regex_replace(in_string, boost::regex("^ +| +$|( ) +"), "$1");
+
+}
+
+//checks for prefix AND removes it (+ whitespace) if it is found; 
+//returns true, if prefix was found; else false
+bool parse_prefix(std::string& in_string, std::string const& prefix) {
+
+ uint32_t num_prefix_characters = prefix.size();
+
+ bool prefix_found 
+  = (!(in_string.size() < num_prefix_characters ) 
+     && strncmp(in_string.c_str(), prefix.c_str(), num_prefix_characters ) == 0); 
+
+  if( prefix_found ) {
+    in_string = in_string.substr(num_prefix_characters);
+    in_string = strip_whitespace(in_string);
+  }
+
+  return prefix_found;
+}
+
+bool read_shader(std::string const& path_string, 
+                 std::string& shader_string) {
+
+
+  if ( !boost::filesystem::exists( path_string ) ) {
+    std::cout << "WARNING: File " << path_string << "does not exist." <<  std::endl;
+    return false;
+  }
+
+  std::ifstream shader_source(path_string, std::ios::in);
+  std::string line_buffer;
+
+  std::string include_prefix("INCLUDE");
+
+  std::size_t slash_position = path_string.find_last_of("/\\");
+  std::string const base_path =  path_string.substr(0,slash_position+1);
+
+  while( std::getline(shader_source, line_buffer) ) {
+    line_buffer = strip_whitespace(line_buffer);
+    //std::cout << line_buffer << "\n";
+
+    if( parse_prefix(line_buffer, include_prefix) ) {
+      std::string filename_string = line_buffer;
+      read_shader(base_path+filename_string, shader_string);
+    } else {
+      shader_string += line_buffer+"\n";
+    }
+  }
+
+  return true;
+}
+
 
 int32_t main(int argc, char* argv[]) {
 
@@ -644,7 +754,7 @@ int32_t main(int argc, char* argv[]) {
   }
 
 
-  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
+  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 1, 1, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
     scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
     "", "", std::vector<std::string>()};
   load_settings(vis_file, settings_);
@@ -707,63 +817,85 @@ int32_t main(int argc, char* argv[]) {
 
   context_ = device_->main_context();
   
-  std::string quad_shader_fs_source;
-  std::string quad_shader_vs_source;
+  try
+  {
+    std::string quad_shader_fs_source;
+    std::string quad_shader_vs_source;
+    
+    std::string vis_xyz_vs_source;
+    std::string vis_xyz_fs_source;
+    
+    std::string vis_xyz_pass1_vs_source;
+    std::string vis_xyz_pass1_fs_source;
+    std::string vis_xyz_pass2_vs_source;
+    std::string vis_xyz_pass2_fs_source;
+    std::string vis_xyz_pass3_vs_source;
+    std::string vis_xyz_pass3_fs_source;
+    if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
+      ) {
+      std::cout << "error reading shader files" << std::endl;
+      return 1;
+    }
 
-  std::string vis_xyz_pass1_vs_source;
-  std::string vis_xyz_pass1_fs_source;
-  std::string vis_xyz_pass2_vs_source;
-  std::string vis_xyz_pass2_fs_source;
-  std::string vis_xyz_pass3_vs_source;
-  std::string vis_xyz_pass3_fs_source;
-  if (!scm::io::read_text_file("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
-    || !scm::io::read_text_file("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
-    ) {
-    std::cout << "error reading shader files" << std::endl;
-    return 1;
+    quad_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, quad_shader_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, quad_shader_fs_source)));
+    if (!quad_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+
+    vis_xyz_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
+    if (!vis_xyz_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+
+    vis_xyz_pass1_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass1_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
+    if (!vis_xyz_pass1_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+
+    vis_xyz_pass2_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
+    if (!vis_xyz_pass2_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+
+    vis_xyz_pass3_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_source)));
+    if (!vis_xyz_pass3_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+  }
+  catch (std::exception& e)
+  {
+      std::cout << e.what() << std::endl;
   }
 
-  quad_shader_ = device_->create_program(
-    boost::assign::list_of
-      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, quad_shader_vs_source))
-      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, quad_shader_fs_source)));
-  if (!quad_shader_) {
-    std::cout << "error creating shader programs" << std::endl;
-    return 1;
-  }
-
-  vis_xyz_pass1_shader_ = device_->create_program(
-    boost::assign::list_of
-      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass1_vs_source))
-      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
-  if (!vis_xyz_pass1_shader_) {
-    std::cout << "error creating shader programs" << std::endl;
-    return 1;
-  }
-
-  vis_xyz_pass2_shader_ = device_->create_program(
-    boost::assign::list_of
-      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_source))
-      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
-  if (!vis_xyz_pass2_shader_) {
-    std::cout << "error creating shader programs" << std::endl;
-    return 1;
-  }
-
-  vis_xyz_pass3_shader_ = device_->create_program(
-    boost::assign::list_of
-      (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_source))
-      (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_source)));
-  if (!vis_xyz_pass3_shader_) {
-    std::cout << "error creating shader programs" << std::endl;
-    return 1;
-  }
 
   glutShowWindow();
   
@@ -771,8 +903,9 @@ int32_t main(int argc, char* argv[]) {
 
   fbo_ = device_->create_frame_buffer();
   fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
+  fbo_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
   fbo_->attach_color_buffer(0, fbo_color_buffer_);
-
+  fbo_->attach_depth_stencil_buffer(fbo_depth_buffer_);
 
   pass1_fbo_ = device_->create_frame_buffer();
   pass1_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
