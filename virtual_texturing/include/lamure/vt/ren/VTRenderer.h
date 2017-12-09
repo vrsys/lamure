@@ -13,7 +13,6 @@ class VTRenderer
     ~VTRenderer();
 
     void render();
-    void render_feedback();
 
     void resize(int _width, int _height);
 
@@ -21,6 +20,7 @@ class VTRenderer
 
   private:
     VTContext *_vtcontext;
+
     CutUpdate *_cut_update;
 
     scm::shared_ptr<scm::core> _scm_core;
@@ -32,6 +32,7 @@ class VTRenderer
     // necessary for feedback
     scm::gl::buffer_ptr _atomic_feedback_storage_ssbo;
     std::vector<uint32_t> _copy_memory;
+    uint32_t *_copy_memory_new;
     size_t _copy_buffer_size;
 
     scm::shared_ptr<scm::gl::render_device> _device;

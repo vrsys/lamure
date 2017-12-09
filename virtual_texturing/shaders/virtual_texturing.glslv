@@ -25,5 +25,6 @@ void main()
     index_texture_dim = in_index_texture_dim;
     physical_texture_dim = in_physical_texture_dim;
 
-    gl_Position = /*projection_matrix * model_view_matrix **/ vec4(in_position, 1.0);
+    // gl_Position = /*projection_matrix * model_view_matrix **/ vec4(in_position, 1.0);
+    gl_Position = projection_matrix * model_view_matrix * vec4(in_position, 1.0);
 }

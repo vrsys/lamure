@@ -80,8 +80,8 @@ void VTContext::start()
 
     glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    //_cut_update = new CutUpdate();
-    //_cut_update->start();
+    _cut_update = new CutUpdate();
+    _cut_update->start();
 
     _vtrenderer = new VTRenderer(this, (uint32_t)mode->width, (uint32_t)mode->height, _cut_update);
 
@@ -95,8 +95,6 @@ void VTContext::start()
 
         // std::cout << "1" << std::endl;
 
-        //_vtrenderer->render_feedback();
-
         // std::cout << "2" << std::endl;
 
         glfwSwapBuffers(_window);
@@ -105,7 +103,7 @@ void VTContext::start()
         // std::cout << "3" << std::endl;
     }
 
-    //_cut_update->stop();
+    _cut_update->stop();
 
     glfwDestroyWindow(_window);
     glfwTerminate();
@@ -143,9 +141,9 @@ uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2,
 scm::math::vec2ui VTContext::calculate_size_physical_texture(int physical_texture_max_size_mb)
 {
     // TODO: define physical texture size, as huge as possible
-    uint32_t tilesize = _size_tile*_size_tile*4*8;
-    uint32_t number_of_tiles =  physical_texture_max_size_mb * 1024 * 1024 / tilesize;
-    uint32_t tiles_per_dim_x = 8192 /  _size_tile;
+    uint32_t tilesize = _size_tile * _size_tile * 4 * 8;
+    uint32_t number_of_tiles = physical_texture_max_size_mb * 1024 * 1024 / tilesize;
+    uint32_t tiles_per_dim_x = 8192 / _size_tile;
     uint32_t tiles_per_dim_y = number_of_tiles / tiles_per_dim_x;
     std::cout << "phy_tex_dim: " << tiles_per_dim_x << " , " << tiles_per_dim_y << std::endl;
     return scm::math::vec2ui(tiles_per_dim_x, tiles_per_dim_y);
@@ -157,6 +155,8 @@ uint32_t VTContext::get_size_physical_texture() const { return _size_physical_te
 VTRenderer *VTContext::get_vtrenderer() const { return _vtrenderer; }
 VTContext::EventHandler *VTContext::get_event_handler() const { return _event_handler; }
 void VTContext::set_event_handler(VTContext::EventHandler *_event_handler) { VTContext::_event_handler = _event_handler; }
+
+VTContext::~VTContext() { delete _cut_update; }
 
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)
@@ -231,16 +231,18 @@ void VTContext::EventHandler::on_window_button_press(GLFWwindow *_window, int _b
 }
 void VTContext::EventHandler::on_window_move_cursor(GLFWwindow *_window, double _xpos, double _ypos)
 {
+    // TODO
+}
+void VTContext::EventHandler::on_window_scroll(GLFWwindow *_window, double _xoffset, double _yoffset)
+{
     auto _vtcontext(static_cast<VTContext *>(glfwGetWindowUserPointer(_window)));
 
     EventHandler *_event_handler = _vtcontext->get_event_handler();
 
-    _event_handler->_initx = 2.f * float(_xpos - (_event_handler->_ref_width / 2)) / float(_event_handler->_ref_width);
-    _event_handler->_inity = 2.f * float(_event_handler->_ref_height - _ypos - (_event_handler->_ref_height / 2)) / float(_event_handler->_ref_height);
-}
-void VTContext::EventHandler::on_window_scroll(GLFWwindow *_window, double _xoffset, double _yoffset)
-{
-    // TODO
+    //    _event_handler->_initx = 2.f * float(_xpos - (_event_handler->_ref_width / 2)) / float(_event_handler->_ref_width);
+    //    _event_handler->_inity = 2.f * float(_event_handler->_ref_height - _ypos - (_event_handler->_ref_height / 2)) / float(_event_handler->_ref_height);
+
+    _event_handler->_trackball_manip.dolly(static_cast<float>(_yoffset));
 }
 void VTContext::EventHandler::on_window_enter(GLFWwindow *_window, int _entered)
 {

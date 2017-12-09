@@ -1,7 +1,3 @@
-//
-// Created by tihi6213 on 12/5/17.
-//
-
 #ifndef LAMURE_CUTUPDATE_H
 #define LAMURE_CUTUPDATE_H
 
@@ -11,18 +7,20 @@ class CutUpdate
 {
   public:
     CutUpdate();
-    ~CutUpdate() = default;
+    ~CutUpdate();
 
     void start();
     void stop();
-    void feedback(std::vector<uint32_t> buf);
+    void feedback(uint32_t *buf);
 
   private:
     std::thread _worker;
     std::mutex _dispatch_lock;
     std::condition_variable _cv;
+    std::atomic<bool> _new_feedback;
 
     std::set<uint32_t> _cut;
+    uint32_t *_feedback_buffer;
 
     std::atomic<bool> _should_stop;
 

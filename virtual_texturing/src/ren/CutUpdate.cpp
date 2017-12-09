@@ -1,38 +1,54 @@
 #include <lamure/vt/ren/CutUpdate.h>
 
-CutUpdate::CutUpdate()
+CutUpdate::CutUpdate() : _dispatch_lock()
 {
     _cut = std::set<uint32_t>();
     _should_stop.store(false);
+    _new_feedback.store(false);
+    _feedback_buffer = nullptr;
 }
-void CutUpdate::start() { _worker = std::thread(&CutUpdate::run, this); }
+void CutUpdate::start() {
+    _worker = std::thread(&CutUpdate::run, this);
+}
+
 void CutUpdate::run()
 {
-    std::unique_lock<std::mutex> lk(_dispatch_lock);
-    std::cout << "1: " << std::this_thread::get_id() << std::endl;
-
     while(!_should_stop.load())
     {
-        dispatch();
+        //if(_new_feedback.load()) {
+            std::unique_lock<std::mutex> lk(_dispatch_lock, std::defer_lock);
+            dispatch();
+            //_new_feedback.store(false);
+        //}
         _cv.wait(lk);
+        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
-void CutUpdate::feedback(std::vector<uint32_t> buf)
+void CutUpdate::feedback(uint32_t *buf)
 {
-    std::cout << "2: " << std::this_thread::get_id() << std::endl;
-    // TODO
-    std::lock_guard<std::mutex> lk(_dispatch_lock);
-    std::cout << "feedback()" << std::endl;
-    _cv.notify_one();
+    //if(!_new_feedback.load()) {
+        std::unique_lock<std::mutex> lk(_dispatch_lock);
+        this->_feedback_buffer = buf;
+        //_new_feedback.store(true);
+        lk.unlock();
+        _cv.notify_one();
+    //}
 }
 void CutUpdate::dispatch()
 {
     // TODO
-    std::cout << "dispatch()" << std::endl;
+    if(_feedback_buffer != nullptr) {
+        uint32_t dummy = this->_feedback_buffer[0];
+        dummy += 1;
+        this->_feedback_buffer[0] = dummy;
+    }
 }
 void CutUpdate::stop()
 {
-    std::unique_lock<std::mutex> lk(_dispatch_lock);
-    _should_stop.store(true);
+    //_should_stop.store(true);
     _worker.join();
+}
+
+CutUpdate::~CutUpdate() {
+    std::cout << "burn it down" << std::endl;
 }

@@ -3,12 +3,12 @@
 
 namespace vt
 {
-VTRenderer::VTRenderer(VTContext *context, uint32_t _width, uint32_t _height, CutUpdate *cut_update)
+VTRenderer::VTRenderer(VTContext *context, uint32_t width, uint32_t height, CutUpdate *cut_update)
 {
     this->_vtcontext = context;
-    this->_cut_update = _cut_update;
-    this->_width = _width;
-    this->_height = _height;
+    this->_cut_update = cut_update;
+    this->_width = width;
+    this->_height = height;
     this->init();
 }
 
@@ -67,8 +67,8 @@ void VTRenderer::render()
     scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
     scm::math::mat4f model_matrix = scm::math::mat4f::identity();
 
-    model_matrix = scm::math::make_translation(0.0f, 0.0f, -2.0f);
-    scm::math::mat4f model_view_matrix = /*view_matrix **/ model_matrix;
+    // model_matrix = scm::math::make_translation(0.0f, 0.0f, -2.0f);
+    scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
     scm::math::mat4f mv_inv_transpose = transpose(inverse(model_view_matrix));
 
     _shader_program->uniform("projection_matrix", _projection_matrix);
@@ -115,38 +115,19 @@ void VTRenderer::render()
         // FEEDBACK STUFF
         //////////////////////////////////////////////////////////////////////////////
 
-        auto data = (char*)_render_context->map_buffer(_atomic_feedback_storage_ssbo, scm::gl::ACCESS_READ_ONLY);
+        auto data = _render_context->map_buffer(_atomic_feedback_storage_ssbo, scm::gl::ACCESS_READ_ONLY);
 
         if(data)
         {
-            memcpy(&_copy_memory[0], data, _copy_buffer_size);
+            //memcpy(&_copy_memory[0], data, _copy_buffer_size);
+            memcpy(_copy_memory_new, data, _copy_buffer_size);
         }
 
         _render_context->unmap_buffer(_atomic_feedback_storage_ssbo);
 
         _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, 0);
-
-        // Test prints for feedback
-//        for( uint32_t y_feedback_slot_id = 0; y_feedback_slot_id < _physical_texture_dimension.y; ++y_feedback_slot_id ) {
-//            for( uint32_t x_feedback_slot_id = 0; x_feedback_slot_id < _physical_texture_dimension.x; ++x_feedback_slot_id ) {
-//                uint32_t one_d_feedback_idx = x_feedback_slot_id + _physical_texture_dimension.x * y_feedback_slot_id;
-//                std::cout << _copy_memory[one_d_feedback_idx] << " ";
-//            }
-//            std::cout << "\n";
-//        }
-//
-//        std::cout << "\n";
-
-        // TODO enable when cut update is done
-//        _cut_update->feedback(_copy_memory);
-
+        _cut_update->feedback(_copy_memory_new);
     }
-}
-
-void VTRenderer::render_feedback()
-{
-    // TODO
-//    _cut_update->feedback();
 }
 
 void VTRenderer::initialize_index_texture()
@@ -211,7 +192,14 @@ void VTRenderer::initialize_feedback()
 
     _atomic_feedback_storage_ssbo = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, _copy_buffer_size);
 
-    _copy_memory = std::vector<uint32_t>(_copy_buffer_size/4, 0);
+    size_t len = _copy_buffer_size / sizeof(uint32_t);
+
+    //_copy_memory = std::vector<uint32_t>(len, 0);
+    _copy_memory_new = new uint32_t[len];
+
+    for(size_t i = 0; i < len; ++i){
+        _copy_memory_new[i] = 0;
+    }
 }
 
 VTRenderer::~VTRenderer()
