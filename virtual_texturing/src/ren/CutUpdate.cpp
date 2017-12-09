@@ -1,27 +1,29 @@
 #include <lamure/vt/ren/CutUpdate.h>
 
-CutUpdate::CutUpdate()
+namespace vt
+{
+CutUpdate::CutUpdate() : _dispatch_lock()
 {
     _cut = std::set<uint32_t>();
     _should_stop.store(false);
+    _new_feedback.store(false);
+    _feedback_buffer = nullptr;
 }
 CutUpdate::~CutUpdate() {}
 void CutUpdate::start() { _worker = std::thread(&CutUpdate::run, this); }
+
 void CutUpdate::run()
 {
-    std::unique_lock<std::mutex> lk(_dispatch_lock);
-
     while(!_should_stop.load())
     {
+        // if(_new_feedback.load()) {
+        std::unique_lock<std::mutex> lk(_dispatch_lock, std::defer_lock);
         dispatch();
+        //_new_feedback.store(false);
+        //}
         _cv.wait(lk);
+        // std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-}
-void CutUpdate::feedback(std::vector<uint32_t> &buf)
-{
-    // TODO
-    std::lock_guard<std::mutex> lk(_dispatch_lock);
-    _cv.notify_one();
 }
 void CutUpdate::dispatch()
 {
@@ -94,10 +96,20 @@ void CutUpdate::dispatch()
         _new_cut.insert(_tile_id);
     }
 }
+
+void CutUpdate::feedback(uint32_t *buf)
+{
+    // if(!_new_feedback.load()) {
+    std::unique_lock<std::mutex> lk(_dispatch_lock);
+    this->_feedback_buffer = buf;
+    //_new_feedback.store(true);
+    lk.unlock();
+    _cv.notify_one();
+    //}
+}
 void CutUpdate::stop()
 {
-    std::unique_lock<std::mutex> lk(_dispatch_lock);
-    _should_stop.store(true);
+    //_should_stop.store(true);
     _worker.join();
 }
 bool CutUpdate::check_siblings_in_cut(const uint32_t _tile_id, std::set<uint32_t> &_cut)
@@ -125,4 +137,5 @@ bool CutUpdate::memory_available_for_split()
 {
     // TODO
     return false;
+}
 }

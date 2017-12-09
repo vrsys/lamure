@@ -169,7 +169,7 @@ class VTContext
         }
     };
 
-    ~VTContext() = default;
+    ~VTContext();
 
     void start();
 
@@ -193,7 +193,8 @@ class VTContext
     scm::math::vec2ui calculate_size_physical_texture(int physical_texture_max_size_mb);
 
     void set_event_handler(EventHandler *_event_handler);
-private:
+
+  private:
     explicit VTContext();
     uint16_t identify_depth();
     uint32_t identify_size_index_texture();
@@ -204,6 +205,7 @@ private:
     EventHandler *_event_handler;
 
     VTRenderer *_vtrenderer;
+
     CutUpdate *_cut_update;
 
     uint16_t _size_tile;
