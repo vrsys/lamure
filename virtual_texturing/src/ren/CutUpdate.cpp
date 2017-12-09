@@ -9,6 +9,7 @@ CutUpdate::CutUpdate() : _dispatch_lock()
     _new_feedback.store(false);
     _feedback_buffer = nullptr;
 }
+
 CutUpdate::~CutUpdate() {}
 void CutUpdate::start() { _worker = std::thread(&CutUpdate::run, this); }
 
@@ -21,7 +22,15 @@ void CutUpdate::run()
         dispatch();
         //_new_feedback.store(false);
         //}
-        _cv.wait(lk);
+        _new_feedback.store(false);
+
+        while(!_cv.wait_for(lk, std::chrono::milliseconds(100), [this]{
+            return _new_feedback.load();
+        })){
+            if(_should_stop.load()){
+                break;
+            }
+        }
         // std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
@@ -35,11 +44,11 @@ void CutUpdate::dispatch()
     {
         if(this->check_siblings_in_cut(iter_old_cut, _cut))
         {
-            if(calculate_error_id(iter_old_cut) > max_threshold)
+            if(interpret_feedback(iter_old_cut) > max_threshold)
             {
                 queue_split.push(iter_old_cut);
             }
-            else if(calculate_error_id(iter_old_cut) > min_threshold)
+            else if(interpret_feedback(iter_old_cut) > min_threshold)
             {
                 queue_collapse.push(iter_old_cut);
             }
@@ -50,7 +59,7 @@ void CutUpdate::dispatch()
         }
         else
         {
-            if(calculate_error_id(iter_old_cut) > max_threshold)
+            if(interpret_feedback(iter_old_cut) > max_threshold)
             {
                 queue_split.push(iter_old_cut);
             }
@@ -103,13 +112,14 @@ void CutUpdate::feedback(uint32_t *buf)
     std::unique_lock<std::mutex> lk(_dispatch_lock);
     this->_feedback_buffer = buf;
     //_new_feedback.store(true);
+    _new_feedback.store(true);
     lk.unlock();
     _cv.notify_one();
     //}
 }
 void CutUpdate::stop()
 {
-    //_should_stop.store(true);
+    _should_stop.store(true);
     _worker.join();
 }
 bool CutUpdate::check_siblings_in_cut(const uint32_t _tile_id, std::set<uint32_t> &_cut)
@@ -124,7 +134,7 @@ bool CutUpdate::check_siblings_in_cut(const uint32_t _tile_id, std::set<uint32_t
     }
     return true;
 }
-uint32_t CutUpdate::calculate_error_id(uint32_t _tile_id)
+uint32_t CutUpdate::interpret_feedback(uint32_t _tile_id)
 {
     // TODO
     return 0;

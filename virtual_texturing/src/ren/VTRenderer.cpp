@@ -160,24 +160,29 @@ void VTRenderer::update_physical_texture_blockwise(char *buffer, uint32_t x, uin
                                                                 scm::math::vec3ui(_vtcontext->get_size_tile(),
                                                                                   _vtcontext->get_size_tile(), 1)),
                                         0,
-                                        scm::gl::FORMAT_RGBA_8, &buffer[0]);
+                                        scm::gl::FORMAT_RGBA_8, buffer);
 }
 
 void VTRenderer::physical_texture_test_layout() {
     int tilesize = _vtcontext->get_size_tile() * _vtcontext->get_size_tile() * 4;
-    std::ifstream is(_vtcontext->get_name_mipmap() + ".data", std::ios::binary);
+
+    std::ifstream is(_vtcontext->get_name_mipmap() + ".data", std::ios::binary | std::ios::ate);
+    auto len = is.tellg();
+    is.seekg(0);
+
+    std::cout << "file len: " << len << std::endl;
 
     if(is)
     {
         auto *buffer = new char[tilesize];
-        for(unsigned y = 0; y < _physical_texture_dimension.y; ++y)
+        for(unsigned y = 0; y < _physical_texture_dimension.y && is.tellg() < len; ++y)
         {
-            for(unsigned x = 0; x < _physical_texture_dimension.x; ++x)
+            for(unsigned x = 0; x < _physical_texture_dimension.x && is.tellg() < len; ++x)
             {
+                std::cout << is.tellg() << std::endl;
                 is.read(buffer, tilesize);
                 update_physical_texture_blockwise(buffer, x, y);
             }
-            is.seekg(is.tellg());
         }
 
         delete[] buffer;

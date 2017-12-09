@@ -103,7 +103,11 @@ void VTContext::start()
         // std::cout << "3" << std::endl;
     }
 
+    std::cout << "rendering stopped" << std::endl;
+
     _cut_update->stop();
+
+    std::cout << "cut update stopped" << std::endl;
 
     glfwDestroyWindow(_window);
     glfwTerminate();
@@ -181,7 +185,8 @@ void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key,
     switch(_key)
     {
     case GLFW_KEY_ESCAPE:
-        glfwSetWindowShouldClose(_window, 1);
+    std::cout << "should close" << std::endl;
+        glfwSetWindowShouldClose(_window, GL_TRUE);
         break;
     case GLFW_KEY_SPACE:
         _vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer = !_vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer;

@@ -33,7 +33,7 @@ private:
     void run();
     void dispatch();
     bool check_siblings_in_cut(uint32_t _tile_id, std::set<uint32_t> &_cut);
-    uint32_t calculate_error_id(uint32_t _tile_id);
+    uint32_t interpret_feedback(uint32_t _tile_id);
     void collapse_id(unsigned int id);
     bool memory_available_for_split();
 };
