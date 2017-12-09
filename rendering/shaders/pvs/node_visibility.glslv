@@ -22,7 +22,7 @@ out VertexData {
   vec3 pass_normal;
 } VertexOut;
 
-INCLUDE common/compute_tangent_vectors.glsl
+INCLUDE ../common/compute_tangent_vectors.glsl
 
 void main() {
 

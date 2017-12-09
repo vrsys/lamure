@@ -68,9 +68,6 @@ Renderer::
 
     depth_state_disable_.reset();
 
-    trimesh_shader_program_.reset();
-
-    bounding_box_vis_shader_program_.reset();
 
     visible_node_shader_program_.reset();
     node_texture_shader_program_.reset();
@@ -141,15 +138,6 @@ upload_transformation_matrices(lamure::ren::camera const& camera, lamure::model_
             visible_node_shader_program_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(vmd))));
             visible_node_shader_program_->uniform("model_radius_scale", total_radius_scale);
         break;
-
-        case RenderPass::BOUNDING_BOX:
-            bounding_box_vis_shader_program_->uniform("projection_matrix", projection_matrix);
-            bounding_box_vis_shader_program_->uniform("model_view_matrix", model_view_matrix );
-            break;
-
-        case RenderPass::TRIMESH:
-            trimesh_shader_program_->uniform("mvp_matrix", scm::math::mat4f(mvpd));
-            break;
 
         default:
             //LOGGER_ERROR("Unknown Pass ID used in function 'upload_transformation_matrices'");
@@ -431,86 +419,6 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
                 break;
         }
 
-        //TRIMESH PASS
-        context_->set_default_frame_buffer();
-        context_->bind_program(trimesh_shader_program_);
-               
-        scm::gl::vertex_array_ptr memory = lamure::ren::controller::get_instance()->get_context_memory(context_id, bvh::primitive_type::TRIMESH, device_);
-        context_->bind_vertex_array(memory);
-        context_->apply();
-
-        for (auto& model_id : current_set) {
-
-            const bvh* bvh = database->get_model(model_id)->get_bvh();
-
-            if (bvh->get_primitive() == bvh::primitive_type::TRIMESH) {
-               cut& cut = cuts->get_cut(context_id, view_id, model_id);
-               std::vector<cut::node_slot_aggregate> renderable = cut.complete_set();
-
-               upload_transformation_matrices(camera, model_id, RenderPass::TRIMESH);
-               
-               size_t surfels_per_node_of_model = bvh->get_primitives_per_node();
-
-               std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
-
-               scm::gl::frustum frustum_by_model = camera.get_frustum_by_model(model_transformations_[model_id]);
-
-               for (auto const& node_slot_aggregate : renderable) {
-                  uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
-
-                  if( node_culling_result != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
-                  {
-                      context_->apply();
-                      context_->draw_arrays(PRIMITIVE_TRIANGLE_LIST, (node_slot_aggregate.slot_id_) * database->get_primitives_per_node(), surfels_per_node_of_model);
-                  }
-               }
-            }
-        }
-
-        if(render_bounding_boxes_)
-        {
-
-            context_->set_default_frame_buffer();
-
-            context_->bind_program(bounding_box_vis_shader_program_);
-
-            context_->apply();
-
-            node_t node_counter = 0;
-
-            for (auto& model_id : current_set)
-            {
-                cut& c = cuts->get_cut(context_id, view_id, model_id);
-                std::vector<cut::node_slot_aggregate> renderable = c.complete_set();
-
-                upload_transformation_matrices(camera, model_id, RenderPass::BOUNDING_BOX);
-
-                for( auto const& node_slot_aggregate : renderable ) {
-
-                    int culling_result = frustum_culling_results[node_counter];
-
-                    if( culling_result  != 1 )  // 0 = inside, 1 = outside, 2 = intersectingS
-                    {
-
-                        scm::gl::boxf temp_box = database->get_model(model_id)->get_bvh()->get_bounding_boxes()[node_slot_aggregate.node_id_ ];
-                        scm::gl::box_geometry box_to_render(device_,temp_box.min_vertex(), temp_box.max_vertex());
-
-
-
-
-                        bounding_box_vis_shader_program_->uniform("culling_status", culling_result);
-
-
-                        device_->opengl_api().glDisable(GL_DEPTH_TEST);
-                        box_to_render.draw(context_, scm::gl::geometry::MODE_WIRE_FRAME);
-                        device_->opengl_api().glEnable(GL_DEPTH_TEST);
-
-                    }
-
-                    ++node_counter;
-                }
-            }
-        }
 
         context_->reset();
         frame_time_.stop();
@@ -608,9 +516,6 @@ initialize_schism_device_and_shaders(int resX, int resY)
 {
     std::string root_path = LAMURE_SHADERS_DIR;
 
-    std::string bounding_box_vs_source;
-    std::string bounding_box_fs_source;
-
     std::string node_visibility_vs_source;
     std::string node_visibility_gs_source;
     std::string node_visibility_fs_source;
@@ -618,22 +523,15 @@ initialize_schism_device_and_shaders(int resX, int resY)
     std::string node_texture_vs_source;
     std::string node_texture_fs_source;
 
-    std::string trimesh_vs_source;
-    std::string trimesh_fs_source;
-
     try
     {
         using scm::io::read_text_file;
 
-        if (!read_shader(root_path + "/bounding_box_vis.glslv", bounding_box_vs_source)
-            || !read_shader(root_path + "/bounding_box_vis.glslf", bounding_box_fs_source)
-            || !read_shader(root_path + "/node_visibility.glslv", node_visibility_vs_source)
-            || !read_shader(root_path + "/node_visibility.glslg", node_visibility_gs_source)
-            || !read_shader(root_path + "/node_visibility.glslf", node_visibility_fs_source)
-            || !read_shader(root_path + "/node_render_texture.glslv", node_texture_vs_source)
-            || !read_shader(root_path + "/node_render_texture.glslf", node_texture_fs_source)
-            || !read_shader(root_path + "/trimesh.glslv", trimesh_vs_source)
-            || !read_shader(root_path + "/trimesh.glslf", trimesh_fs_source)
+        if (!read_shader(root_path + "/pvs/node_visibility.glslv", node_visibility_vs_source)
+            || !read_shader(root_path + "/pvs/node_visibility.glslg", node_visibility_gs_source)
+            || !read_shader(root_path + "/pvs/node_visibility.glslf", node_visibility_fs_source)
+            || !read_shader(root_path + "/pvs/node_render_texture.glslv", node_texture_vs_source)
+            || !read_shader(root_path + "/pvs/node_render_texture.glslf", node_texture_fs_source)
            )
            {
                scm::err() << "error reading shader files" << scm::log::end;
@@ -649,9 +547,6 @@ initialize_schism_device_and_shaders(int resX, int resY)
     context_ = device_->main_context();
     scm::out() << *device_ << scm::log::end;
 
-    bounding_box_vis_shader_program_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, bounding_box_vs_source))
-                                                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, bounding_box_fs_source)));
-
     visible_node_shader_program_ = device_->create_program(
         boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER,   node_visibility_vs_source ))
                               (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, node_visibility_gs_source ))
@@ -663,14 +558,8 @@ initialize_schism_device_and_shaders(int resX, int resY)
                               (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, node_texture_fs_source ))
     );
 
-    trimesh_shader_program_ = device_->create_program(
-       boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, trimesh_vs_source))
-                             (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, trimesh_fs_source)) );
-
-    if (    !trimesh_shader_program_
-         || !visible_node_shader_program_
+    if (!visible_node_shader_program_
          || !node_texture_shader_program_
-         || !bounding_box_vis_shader_program_
        )
     {
         scm::err() << "error creating shader programs" << scm::log::end;

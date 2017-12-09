@@ -68,75 +68,75 @@ void main()
 	else
 	{
 
-      float scaled_radius = in_radius;
+    float scaled_radius = in_radius;
+    vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
 
-          vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
+    {
 
+	    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
 
-	    {
+	    float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
+     	gl_Position = mvp_matrix * vec4(in_position, 1.0);
+         
+      float prov_value = 0.0;
+      vec3 color = vec3(0.0);
 
-		    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
+      if (show_normals) {
+        vec4 vis_normal = normal;
+        if( vis_normal.z < 0 ) {
+          vis_normal = vis_normal * -1;
+        }
+        color = vec3(vis_normal.xyz * 0.5 + 0.5);
+      }
+      else if (channel == 0) {
+        color = vec3(in_r, in_g, in_b);
+      }
+      else {
+        if (channel == 1) {
+          prov_value = prov1;
+        }
+        else if (channel == 2) {
+          prov_value = prov2;
+        }
+        else if (channel == 3) {
+          prov_value = prov3;
+        }
+        else if (channel == 4) {
+          prov_value = prov4;
+        }
+        else if (channel == 5) {
+          prov_value = prov5;
+        }
+        else if (channel == 6) {
+          prov_value = prov6;
+        }
+        if (heatmap) {
+          float value = (prov_value - heatmap_min) / (heatmap_max - heatmap_min);
+          color = quick_interp(heatmap_min_color, heatmap_max_color, value);
+        }
+        else {
+          color = vec3(prov_value, prov_value, prov_value);
+        }
+      }
 
-		    float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
-         	gl_Position = mvp_matrix * vec4(in_position, 1.0);
-           
-            float prov_value = 0.0;
+      if (show_accuracy) {
+        color = color + vec3(accuracy, 0.0, 0.0);
+      }
 
-            if (show_normals) {
-              vec4 vis_normal = normal;
-              if( vis_normal.z < 0 ) {
-                vis_normal = vis_normal * -1;
-              }
-              VertexOut.color = vec3(vis_normal.xyz * 0.5 + 0.5);
-            }
-            else if (channel == 0) {
-              VertexOut.color = vec3(in_r, in_g, in_b);
-            }
-            else {
-              if (channel == 1) {
-                prov_value = prov1;
-              }
-              else if (channel == 2) {
-                prov_value = prov2;
-              }
-              else if (channel == 3) {
-                prov_value = prov3;
-              }
-              else if (channel == 4) {
-                prov_value = prov4;
-              }
-              else if (channel == 5) {
-                prov_value = prov5;
-              }
-              else if (channel == 6) {
-                prov_value = prov6;
-              }
-              if (heatmap) {
-                float value = (prov_value - heatmap_min) / (heatmap_max - heatmap_min);
-			    VertexOut.color = quick_interp(heatmap_min_color, heatmap_max_color, value);
-              }
-              else {
-                VertexOut.color = vec3(prov_value, prov_value, prov_value);
-              }
-			      }
+      VertexOut.color = color;
 
-            if (show_accuracy) {
+      VertexOut.nor = normal;
 
-              VertexOut.color = VertexOut.color + vec3(accuracy, 0.0, 0.0);
-            }
-
-        VertexOut.nor = normal;
-
-		    gl_PointSize = ps;
-		    VertexOut.pointSize = ps;
-
-
-		    VertexOut.mv_vertex_depth = (pos_es).z;
+	    gl_PointSize = ps;
+	    VertexOut.pointSize = ps;
 
 
-		    VertexOut.rad = (scaled_radius) * point_size_factor;
+	    VertexOut.mv_vertex_depth = (pos_es).z;
 
-	    }
-	  }
+
+	    VertexOut.rad = (scaled_radius) * point_size_factor;
+
+    }
+  }
 
 }

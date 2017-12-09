@@ -154,7 +154,6 @@ private:
         scm::gl::rasterizer_state_ptr               no_backface_culling_rasterizer_state_;
 
         //shader programs
-        scm::gl::program_ptr                        bounding_box_vis_shader_program_;
         scm::gl::program_ptr                        visible_node_shader_program_;
         scm::gl::program_ptr                        node_texture_shader_program_;
 
@@ -198,7 +197,6 @@ private:
         std::set<lamure::model_t> invisible_set_;
         bool render_visible_set_;
 
-        scm::gl::program_ptr trimesh_shader_program_;
 
 //methods for changing rendering settings dynamically
 public:
