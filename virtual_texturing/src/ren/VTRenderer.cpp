@@ -143,12 +143,6 @@ void VTRenderer::render()
     }
 }
 
-void VTRenderer::render_feedback()
-{
-    // TODO
-//    _cut_update->feedback();
-}
-
 void VTRenderer::initialize_index_texture()
 {
     int img_size = _index_texture_dimension.x * _index_texture_dimension.y * 3;
