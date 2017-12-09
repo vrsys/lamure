@@ -43,19 +43,6 @@
 #include <vector>
 #include <algorithm>
 
-//fwd
-void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height);
-void glut_display();
-void glut_resize(int w, int h);
-void glut_mousefunc(int button, int state, int x, int y);
-void glut_mousemotion(int x, int y);
-void glut_idle();
-void glut_keyboard(unsigned char key, int x, int y);
-void glut_keyboard_release(unsigned char key, int x, int y);
-void glut_specialfunc(int key, int x, int y);
-void glut_specialfunc_release(int key, int x, int y);
-void glut_close();
-
 uint32_t update_ms_ = 16;
 bool rendering_ = false;
 int32_t window_width_ = 1280;
@@ -133,6 +120,7 @@ struct settings {
   int32_t gamma_correction_;
   int32_t show_normals_;
   int32_t show_accuracy_;
+  int32_t show_output_sensitivity_;
   int32_t channel_;
   float point_size_;
   int32_t heatmap_;
@@ -207,6 +195,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "show_accuracy") {
             settings.show_accuracy_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "show_output_sensitivity") {
+            settings.show_output_sensitivity_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "channel") {
             settings.channel_ = std::max(atoi(value.c_str()), 0);
@@ -323,6 +314,13 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 
+    const scm::math::mat4f viewport_scale = scm::math::make_scale(window_width_ * 0.5f, window_width_ * 0.5f, 0.5f);;
+    const scm::math::mat4f viewport_translate = scm::math::make_translation(1.0f,1.0f,1.0f);
+    const scm::math::mat4d model_to_screen =  scm::math::mat4d(viewport_scale) * scm::math::mat4d(viewport_translate) * model_view_projection_matrix;
+    shader->uniform("model_to_screen_matrix", scm::math::mat4f(model_to_screen));
+
+    shader->uniform("model_radius_scale", 1.0f);
+
     size_t surfels_per_node = database->get_primitives_per_node();
     std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
     
@@ -354,6 +352,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 
 void set_uniforms(scm::gl::program_ptr shader) {
 
+
     shader->uniform("win_size", scm::math::vec2f(window_width_, window_height_));
 
     shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
@@ -367,6 +366,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
     shader->uniform("show_normals", (bool)settings_.show_normals_);
     shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
+    shader->uniform("show_output_sensitivity", (bool)settings_.show_output_sensitivity_);
 
     shader->uniform("channel", settings_.channel_);
     shader->uniform("heatmap", (bool)settings_.heatmap_);
@@ -583,7 +583,6 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       glutFullScreenToggle();
       break;
 
-
     case 'q':
       settings_.splatting_ = !settings_.splatting_;
       break;
@@ -753,8 +752,9 @@ int32_t main(int argc, char* argv[]) {
     return 0;
   }
 
+  putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
-  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 1, 1, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
+  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 1, 1, 0, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
     scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
     "", "", std::vector<std::string>()};
   load_settings(vis_file, settings_);

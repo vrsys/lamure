@@ -18,10 +18,12 @@ out VertexData {
 
 uniform mat4 mvp_matrix;
 uniform mat4 model_view_matrix;
+uniform mat4 model_to_screen_matrix;
 uniform mat4 inv_mv_matrix;
 uniform float height_divided_by_top_minus_bottom;
 uniform float near_plane;
 uniform float point_size_factor;
+uniform float model_radius_scale;
 
 
 layout(location = 0) in vec3 in_position;
@@ -40,16 +42,6 @@ layout(location = 10) in float prov4;
 layout(location = 11) in float prov5;
 layout(location = 12) in float prov6;
 
-uniform bool show_normals;
-uniform bool show_accuracy;
-uniform float accuracy;
-
-uniform int channel;
-uniform bool heatmap;
-uniform float heatmap_min;
-uniform float heatmap_max;
-uniform vec3 heatmap_min_color;
-uniform vec3 heatmap_max_color;
 
 INCLUDE vis_color.glsl
 
