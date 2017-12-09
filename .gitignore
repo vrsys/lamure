@@ -4,3 +4,4 @@ install
 *~
 *.nfs000*
 .idea
+cmake-build-debug
