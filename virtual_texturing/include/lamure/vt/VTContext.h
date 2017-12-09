@@ -3,10 +3,12 @@
 
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
-#include <lamure/vt/ren/CutUpdate.h>
+#include <lamure/vt/ooc/TileAtlas.h>
+
 namespace vt
 {
 class VTRenderer;
+    class CutUpdate;
 class VTContext
 {
   public:
@@ -207,6 +209,7 @@ class VTContext
     VTRenderer *_vtrenderer;
 
     CutUpdate *_cut_update;
+    vt::TileAtlas<priority_type> *_atlas;
 
     uint16_t _size_tile;
     std::string _name_texture;

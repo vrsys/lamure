@@ -1,9 +1,10 @@
 #include <lamure/vt/ren/VTRenderer.h>
-
+#include <lamure/vt/VTContext.h>
+#include <lamure/vt/ren/CutUpdate.h>
 
 namespace vt
 {
-VTRenderer::VTRenderer(VTContext *context, uint32_t width, uint32_t height, CutUpdate *cut_update)
+VTRenderer::VTRenderer(vt::VTContext *context, uint32_t width, uint32_t height, vt::CutUpdate *cut_update)
 {
     this->_vtcontext = context;
     this->_cut_update = cut_update;
@@ -99,6 +100,16 @@ void VTRenderer::render()
 
         _render_context->bind_program(_shader_program);
 
+        if(_indexBufferReady.load()){
+            _render_context->update_sub_texture(_index_texture,
+                                                scm::gl::texture_region(scm::math::vec3ui(0, 0, 0),
+                                                                        scm::math::vec3ui(_index_texture_dimension, 1)),
+                                                0, scm::gl::FORMAT_RGB_8UI,
+                                                _indexBuffer);
+
+            _indexBufferReady.store(false);
+        }
+
         // bind our texture and tell the graphics card to filter the samples linearly
         // TODO physical texture later with linear filter
         _render_context->bind_texture(_physical_texture, _filter_nearest, 0);
@@ -134,11 +145,32 @@ void VTRenderer::initialize_index_texture()
 {
     int img_size = _index_texture_dimension.x * _index_texture_dimension.y * 3;
     _index_texture = _device->create_texture_2d(_index_texture_dimension, scm::gl::FORMAT_RGB_8UI);
+    _indexBuffer = new uint8_t[img_size];
 
-    // create img_size elements in vector with value 0
-    std::vector<uint8_t> cpu_index_buffer(img_size, 0);
-    update_index_texture(cpu_index_buffer);
+    for(size_t i = 0; i < img_size; ++i){
+        _indexBuffer[i] = 0;
+    }
+
+    update_index_texture(_indexBuffer);
+    _indexBufferReady.store(false);
 }
+
+    /*void VTRenderer::update_index_texture(uint8_t *cpu_buffer)
+    {
+        _render_context->update_sub_texture(_index_texture,
+                                            scm::gl::texture_region(scm::math::vec3ui(0, 0, 0),
+                                                                    scm::math::vec3ui(_index_texture_dimension, 1)),
+                                            0, scm::gl::FORMAT_RGB_8UI,
+                                            cpu_buffer);
+    }*/
+
+    void VTRenderer::update_index_texture(uint8_t *cpu_buffer)
+    {
+        std::lock_guard<mutex> lock(_indexBufferLock);
+
+        _indexBuffer = cpu_buffer;
+        _indexBufferReady.store(true);
+    }
 
 void VTRenderer::update_index_texture(std::vector<uint8_t> const &cpu_buffer)
 {
@@ -181,7 +213,7 @@ void VTRenderer::physical_texture_test_layout() {
             {
                 std::cout << is.tellg() << std::endl;
                 is.read(buffer, tilesize);
-                update_physical_texture_blockwise(buffer, x, y);
+                //update_physical_texture_blockwise(buffer, x, y);
             }
         }
 

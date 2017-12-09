@@ -1,5 +1,6 @@
 #include <lamure/vt/VTContext.h>
-#include <lamure/vt/ren/VTRenderer.h>
+#include <lamure/vt/ren/CutUpdate.h>
+
 namespace vt
 {
 VTContext::VTContext() { _config = new CSimpleIniA(true, false, false); }
@@ -34,11 +35,14 @@ uint16_t VTContext::get_byte_stride() const
 
 void VTContext::start()
 {
-    if(access((_name_mipmap + ".data").c_str(), F_OK) != -1)
+    auto fileName = _name_mipmap + ".data";
+
+    if(access((fileName).c_str(), F_OK) != -1)
     {
         std::runtime_error("Mipmap file not found: " + _name_mipmap);
     }
 
+    _atlas = new vt::TileAtlas<priority_type>(fileName, _size_tile * _size_tile * 4);
     _depth_quadtree = identify_depth();
     _size_index_texture = identify_size_index_texture();
     _size_physical_texture = get_size_physical_texture();
@@ -80,10 +84,27 @@ void VTContext::start()
 
     glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
-    _cut_update = new CutUpdate();
+    _cut_update = new CutUpdate(this, _atlas);
+    _vtrenderer = new VTRenderer(this, (uint32_t)mode->width, (uint32_t)mode->height, _cut_update);
+    _cut_update->set_renderer(_vtrenderer);
+
     _cut_update->start();
 
-    _vtrenderer = new VTRenderer(this, (uint32_t)mode->width, (uint32_t)mode->height, _cut_update);
+    // request tile 0 and wait until it is there
+    _atlas->get(0, 100);
+    _atlas->wait();
+    char *root_tile = (char*)_atlas->get(0, 0);
+
+    uint8_t cpu_idx_texture_buffer_state[48];
+
+    for(size_t i = 0; i < 48; ++i){
+        cpu_idx_texture_buffer_state[i] = 0;
+    }
+
+    _vtrenderer->update_physical_texture_blockwise(root_tile, 0, 0);
+    _vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
+
+    std::cout << "first byte of tile 0: " << (int)root_tile[0] << std::endl;
 
     glewInit();
 
@@ -196,7 +217,11 @@ void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key,
         _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
         break;
     case GLFW_KEY_1:
-        cpu_idx_texture_buffer_state = {1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 3, 0, 1, 3, 0, 1, 4, 0, 1, 4, 0, 1, 3, 0, 1, 3, 0, 1, 4, 0, 1, 4, 0, 1};
+        cpu_idx_texture_buffer_state = {1, 0, 1, 1, 0, 1, 2, 0, 1, 2,
+                                        0, 1, 1, 0, 1, 1, 0, 1, 2, 0,
+                                        1, 2, 0, 1, 3, 0, 1, 3, 0, 1,
+                                        4, 0, 1, 4, 0, 1, 3, 0, 1, 3,
+                                        0, 1, 4, 0, 1, 4, 0, 1};
         _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
         break;
     case GLFW_KEY_2:

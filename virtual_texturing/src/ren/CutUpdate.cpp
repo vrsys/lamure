@@ -1,14 +1,31 @@
 #include <lamure/vt/ren/CutUpdate.h>
+#include <lamure/vt/VTContext.h>
 
 namespace vt
 {
-CutUpdate::CutUpdate() : _dispatch_lock()
+CutUpdate::CutUpdate(vt::VTContext *context, vt::TileAtlas<priority_type> *atlas) : _dispatch_lock()
 {
     _cut = std::set<uint32_t>();
     _should_stop.store(false);
     _new_feedback.store(false);
     _feedback_buffer = nullptr;
+    _atlas = atlas;
+
+    _context = context;
+
+    // TODO: adapt to phys. texture size
+    _slots = new id_type[10];
+
+    _slots[0] = 1;
+
+    for(size_t i = 1; i < 10; ++i){
+        _slots[i] = 0;
+    }
 }
+
+    void CutUpdate::set_renderer(VTRenderer *renderer){
+        _renderer = renderer;
+    }
 
 CutUpdate::~CutUpdate() {}
 void CutUpdate::start() { _worker = std::thread(&CutUpdate::run, this); }
@@ -19,7 +36,7 @@ void CutUpdate::run()
     {
         // if(_new_feedback.load()) {
         std::unique_lock<std::mutex> lk(_dispatch_lock, std::defer_lock);
-        dispatch();
+        if(_new_feedback.load()) dispatch();
         //_new_feedback.store(false);
         //}
         _new_feedback.store(false);
@@ -34,7 +51,8 @@ void CutUpdate::run()
         // std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
-void CutUpdate::dispatch()
+
+    /*void CutUpdate::dispatch()
 {
     std::queue<uint32_t> queue_collapse = std::queue<uint32_t>();
     std::queue<uint32_t> queue_split = std::queue<uint32_t>();
@@ -104,7 +122,107 @@ void CutUpdate::dispatch()
         queue_keep.pop();
         _new_cut.insert(_tile_id);
     }
+}*/
+
+void CutUpdate::dispatch(){
+    for(size_t i = 0; i < 10; ++i){
+        auto tile_id = _slots[i];
+
+        if(tile_id == 0){
+            continue;
+        }
+
+        --tile_id;
+
+        if(_feedback_buffer[i] > (256 * 256 * 2)){
+            // split
+
+            for(size_t n = 0; n < 4; ++n){
+                auto child_id = QuadTree::get_child_id(tile_id, n);
+                auto tile_ptr = _atlas->get(child_id, 100);
+
+                if(tile_ptr != nullptr){
+                    auto free_slot = get_free_slot();
+
+                    if(free_slot != 0){
+                        _slots[free_slot - 1] = child_id;
+
+                        auto idx_tex_size = _context->get_size_index_texture() * _context->get_size_index_texture() * 3;
+                        //std::cout << idx_tex_size << std::endl;
+
+                        //uint8_t *idx = new uint8_t[idx_tex_size];
+                        uint8_t idx[512];
+
+                        auto level = 0;
+                        bool no_more_levels = true;
+
+                        do{
+                            no_more_levels = true;
+
+                            for(size_t slot = 0; slot < 10; ++slot){
+                                if(_slots[slot] != 0){
+                                    auto slot_id = _slots[slot] - 1;
+                                    auto slot_level = QuadTree::get_depth_of_node(slot_id);
+
+                                    if(slot_level >= level){
+                                        no_more_levels = false;
+                                    }
+
+                                    if(slot_level == level){
+                                        auto tile_width = _context->get_size_index_texture() / (1 << level);
+
+                                        for(size_t x = 0; x < tile_width; ++x){
+                                            for(size_t y = 0; y < tile_width; ++y){
+                                                auto ptr = &idx[y * _context->get_size_index_texture() * 3 + x * 3];
+
+                                                ptr[0] = slot_id;
+                                                ptr[1] = 0;
+                                                ptr[2] = slot_level;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            ++level;
+                        }while(!no_more_levels);
+
+                        for(size_t x = 0; x < _context->get_size_index_texture(); ++x){
+                            for(size_t y = 0; y < _context->get_size_index_texture(); ++y){
+                                auto ptr = &idx[y * _context->get_size_index_texture() * 3 + x * 3];
+
+                                std::cout << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << " ";
+                            }
+
+                            std::cout << std::endl;
+                        }
+
+                        _renderer->update_index_texture(idx);
+                        //delete[] idx;
+                    }
+                }
+            }
+
+            //std::cout << "split " << (_slots[i] - 1) << std::endl;
+        }else if(_feedback_buffer[i] < (256 * 256 / 2) && _slots[i] > 0){
+            // collapse
+
+            //std::cout << "collapse " << (_slots[i] - 1) << std::endl;
+        }else{
+            // keep it like it is
+        }
+    }
 }
+
+    size_t CutUpdate::get_free_slot() {
+        for(size_t i = 0; i < 10; ++i){
+            if(_slots[i] == 0){
+                return i + 1;
+            }
+        }
+
+        return 0;
+    }
 
 void CutUpdate::feedback(uint32_t *buf)
 {

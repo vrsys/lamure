@@ -1,22 +1,25 @@
 #ifndef VT_RENDERER_H
 #define VT_RENDERER_H
 
-#include <lamure/vt/VTContext.h>
 #include <lamure/vt/common.h>
 
 namespace vt
 {
+    class VTContext;
+    class CutUpdate;
 class VTRenderer
 {
   public:
-    VTRenderer(VTContext *context, uint32_t _width, uint32_t _height, CutUpdate *cut_update);
+    VTRenderer(vt::VTContext *context, uint32_t _width, uint32_t _height, CutUpdate *cut_update);
     ~VTRenderer();
 
     void render();
 
     void resize(int _width, int _height);
 
+    void update_index_texture(uint8_t *cpu_buffer);
     void update_index_texture(std::vector<uint8_t> const &cpu_buffer);
+    void update_physical_texture_blockwise(char *buffer, uint32_t x, uint32_t y);
 
   private:
     VTContext *_vtcontext;
@@ -47,6 +50,9 @@ class VTRenderer
     scm::gl::rasterizer_state_ptr _ms_no_cull;
 
     uint32_t _width, _height;
+    uint8_t *_indexBuffer;
+    std::atomic<bool> _indexBufferReady;
+    std::mutex _indexBufferLock;
 
     scm::math::vec2ui _index_texture_dimension;
     scm::math::vec2ui _physical_texture_dimension;
@@ -55,7 +61,6 @@ class VTRenderer
     void initialize_index_texture();
     void initialize_physical_texture();
     void initialize_feedback();
-    void update_physical_texture_blockwise(char *buffer, uint32_t x, uint32_t y);
     void physical_texture_test_layout();
 };
 }
