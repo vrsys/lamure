@@ -4,10 +4,10 @@
 
 namespace vt
 {
-VTRenderer::VTRenderer(vt::VTContext *context, uint32_t width, uint32_t height, vt::CutUpdate *cut_update)
+VTRenderer::VTRenderer(vt::VTContext *context, uint32_t width, uint32_t height)
 {
     this->_vtcontext = context;
-    this->_cut_update = cut_update;
+    this->_cut_update = context->get_cut_update();
     this->_width = width;
     this->_height = height;
     this->init();

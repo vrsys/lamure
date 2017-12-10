@@ -38,7 +38,9 @@ int main()
 
     file.close();*/
 
-    vt::TileAtlas<uint32_t> atlas("/mnt/terabytes_of_textures/montblanc/montblanc_w1202116_h304384.data", 256 * 256 * 4);
+    string fname = string("/mnt/terabytes_of_textures/montblanc/montblanc_w1202116_h304384.data");
+
+    vt::TileAtlas<uint32_t> atlas(fname, 256 * 256 * 4);
 
     // atlas.start();
 

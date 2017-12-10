@@ -1,5 +1,7 @@
 #include <lamure/vt/VTContext.h>
 #include <lamure/vt/ren/CutUpdate.h>
+#include <lamure/vt/ren/VTRenderer.h>
+#include <lamure/vt/ooc/TileAtlas.h>
 
 namespace vt
 {
@@ -159,6 +161,10 @@ void VTContext::set_event_handler(VTContext::EventHandler *_event_handler) { VTC
 
 VTContext::~VTContext() { delete _cut_update; }
 TileAtlas<priority_type> *VTContext::get_atlas() const { return _atlas; }
+CutUpdate *VTContext::get_cut_update() const
+{
+    return _cut_update;
+}
 
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)

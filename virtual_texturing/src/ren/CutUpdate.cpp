@@ -1,5 +1,6 @@
 #include <lamure/vt/VTContext.h>
 #include <lamure/vt/ren/CutUpdate.h>
+#include <lamure/vt/ren/VTRenderer.h>
 
 namespace vt
 {
@@ -40,7 +41,7 @@ void CutUpdate::start()
     }
 
     _context->get_vtrenderer()->update_physical_texture_blockwise(root_tile, 0, 0);
-    _context->get_vtrenderer()->update_index_texture(cpu_idx_texture_buffer_state);
+    _context->get_vtrenderer()->update_index_texture(_buf_idx);
 
     _worker = std::thread(&CutUpdate::run, this);
 }
@@ -68,8 +69,6 @@ void CutUpdate::run()
 
 void CutUpdate::dispatch()
 {
-    _size_feedback = _context->get_size_physical_texture() * _context->get_size_physical_texture();
-
     auto threshold_max = _context->get_size_tile() * _context->get_size_tile() * 2;
     auto threshold_min = _context->get_size_tile() * _context->get_size_tile() / 2;
 
@@ -217,7 +216,20 @@ void CutUpdate::split_id(id_type tile_id, size_t size_feedback)
 
 // check if 4 nodes can be created in memory
 bool CutUpdate::memory_available_for_split() { return !_mem_slots_free.size() < 4; } // NOLINT
-size_t CutUpdate::get_free_mem_slot() { return !_mem_slots_free.empty() ? _mem_slots_free.pop() : SIZE_MAX; }
+size_t CutUpdate::get_free_mem_slot()
+{
+    if(!_mem_slots_free.empty())
+    {
+        size_t free_mem_slot = _mem_slots_free.front();
+        _mem_slots_free.pop();
+
+        return free_mem_slot;
+    }
+    else
+    {
+        return SIZE_MAX;
+    }
+}
 void CutUpdate::feedback(uint32_t *buf)
 {
     std::unique_lock<std::mutex> lk(_dispatch_lock);

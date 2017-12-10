@@ -1,8 +1,8 @@
 #ifndef LAMURE_CUTUPDATE_H
 #define LAMURE_CUTUPDATE_H
 
-#include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
+#include <lamure/vt/QuadTree.h>
 #include <lamure/vt/ooc/TileAtlas.h>
 
 namespace vt

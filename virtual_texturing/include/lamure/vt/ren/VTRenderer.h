@@ -5,12 +5,12 @@
 
 namespace vt
 {
-    class VTContext;
-    class CutUpdate;
+class VTContext;
+class CutUpdate;
 class VTRenderer
 {
   public:
-    VTRenderer(vt::VTContext *context, uint32_t _width, uint32_t _height, CutUpdate *cut_update);
+    VTRenderer(vt::VTContext *context, uint32_t _width, uint32_t _height);
     ~VTRenderer();
 
     void render();

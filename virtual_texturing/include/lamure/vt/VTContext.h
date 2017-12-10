@@ -1,14 +1,15 @@
 #ifndef VT_CONTEXT_H
 #define VT_CONTEXT_H
 
-#include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
-#include <lamure/vt/ooc/TileAtlas.h>
 
 namespace vt
 {
 class VTRenderer;
 class CutUpdate;
+
+template <typename priority_type>
+class TileAtlas;
 class VTContext
 {
   public:
@@ -190,6 +191,7 @@ class VTContext
     uint32_t get_size_index_texture() const;
     uint32_t get_size_physical_texture() const;
 
+    CutUpdate *get_cut_update() const;
     TileAtlas<priority_type> *get_atlas() const;
     VTRenderer *get_vtrenderer() const;
     EventHandler *get_event_handler() const;
@@ -210,7 +212,7 @@ class VTContext
     VTRenderer *_vtrenderer;
 
     CutUpdate *_cut_update;
-    vt::TileAtlas<priority_type> *_atlas;
+    TileAtlas<priority_type> *_atlas;
 
     uint16_t _size_tile;
     std::string _name_texture;
@@ -224,7 +226,6 @@ class VTContext
     uint16_t _depth_quadtree;
     uint32_t _size_index_texture;
     uint32_t _size_physical_texture;
-    scm::math::vec2ui _x_y_ratio_tiles;
 };
 }
 
