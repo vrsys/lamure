@@ -19,6 +19,7 @@ class VTContext
 
         // Texture management fields
         static constexpr const char *TILE_SIZE = "TILE_SIZE";
+        static constexpr const char *PHYSICAL_SIZE_MB = "PHYSICAL_SIZE_MB";
         static constexpr const char *NAME_TEXTURE = "NAME_TEXTURE";
         static constexpr const char *NAME_MIPMAP = "NAME_MIPMAP";
 
@@ -159,6 +160,7 @@ class VTContext
             }
 
             _context._size_tile = (uint16_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF));
+            _context._size_physical_texture = atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::PHYSICAL_SIZE_MB, Config::UNDEF));
             _context._name_texture = std::string(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF));
             _context._name_mipmap = std::string(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_MIPMAP, Config::UNDEF));
             _context._opt_run_in_parallel = atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::OPT_RUN_IN_PARALLEL, Config::UNDEF)) == 1;
@@ -190,7 +192,7 @@ class VTContext
 
     VTRenderer *get_vtrenderer() const;
     EventHandler *get_event_handler() const;
-    scm::math::vec2ui calculate_size_physical_texture(int physical_texture_max_size_mb);
+    scm::math::vec2ui calculate_size_physical_texture();
 
     void set_event_handler(EventHandler *_event_handler);
 private:

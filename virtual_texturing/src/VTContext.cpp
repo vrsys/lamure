@@ -1,5 +1,6 @@
 #include <lamure/vt/VTContext.h>
 #include <lamure/vt/ren/VTRenderer.h>
+#include <math.h>
 namespace vt
 {
 VTContext::VTContext() { _config = new CSimpleIniA(true, false, false); }
@@ -140,14 +141,20 @@ uint16_t VTContext::identify_depth()
 
 uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2, identify_depth()); }
 
-scm::math::vec2ui VTContext::calculate_size_physical_texture(int physical_texture_max_size_mb)
+scm::math::vec2ui VTContext::calculate_size_physical_texture()
 {
     // TODO: define physical texture size, as huge as possible
-    uint32_t tilesize = _size_tile*_size_tile*4*8;
-    uint32_t number_of_tiles =  physical_texture_max_size_mb * 1024 * 1024 / tilesize;
+   /* uint32_t number_of_tiles =  _size_physical_texture * 1024 * 1024 / tilesize;
     uint32_t tiles_per_dim_x = 8192 /  _size_tile;
-    uint32_t tiles_per_dim_y = number_of_tiles / tiles_per_dim_x;
-    std::cout << "phy_tex_dim: " << tiles_per_dim_x << " , " << tiles_per_dim_y << std::endl;
+    uint64_t tiles_per_dim_y = ceil((double)number_of_tiles / (double)tiles_per_dim_x);
+    std::cout << "phy_tex_dim: " << tiles_per_dim_x << " , " << tiles_per_dim_y << std::endl;*/
+    uint32_t input_in_byte = _size_physical_texture * 1024 * 1024;
+    uint32_t tilesize = _size_tile*_size_tile*4;
+    uint32_t total_amount_of_tiles = input_in_byte / tilesize;
+    uint32_t tiles_per_dim_x = floor(sqrt(total_amount_of_tiles));
+    uint32_t tiles_per_dim_y = total_amount_of_tiles / tiles_per_dim_x;
+
+    std::cout << tiles_per_dim_x << " " << tiles_per_dim_y << std::endl;
     return scm::math::vec2ui(tiles_per_dim_x, tiles_per_dim_y);
 }
 
@@ -199,7 +206,22 @@ void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key,
         _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
         break;
     case GLFW_KEY_3:
-        cpu_idx_texture_buffer_state = {1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 3, 0, 1, 3, 0, 1, 3, 2, 2, 4, 2, 2, 3, 0, 1, 3, 0, 1, 5, 2, 2, 6, 2, 2};
+        cpu_idx_texture_buffer_state = {1, 0, 1,
+                                        1, 0, 1,
+                                        2, 0, 1,
+                                        2, 0, 1,
+                                        1, 0, 1,
+                                        1, 0, 1,
+                                        2, 0, 1,
+                                        2, 0, 1,
+                                        3, 0, 1,
+                                        3, 0, 1,
+                                        17, 0, 2,
+                                        18, 0, 2,
+                                        3, 0, 1,
+                                        3, 0, 1,
+                                        19, 0, 2,
+                                        20, 0, 2};
         _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
         break;
     }
