@@ -4,6 +4,7 @@
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
 #include <lamure/vt/ooc/TileAtlas.h>
+#include <lamure/vt/DoubleBuffer.h>
 #include "VTRenderer.h"
 
 namespace vt
@@ -22,6 +23,14 @@ public:
 
     void set_renderer(VTRenderer *renderer);
 
+    uint8_t *start_reading_idx(){
+        return _idx_buffer.startReading();
+    }
+
+    void stop_reading_idx(){
+        _idx_buffer.stopReading();
+    }
+
 private:
     uint32_t max_threshold;
     uint32_t min_threshold;
@@ -33,6 +42,7 @@ private:
     TileAtlas<priority_type> *_atlas;
     VTRenderer *_renderer;
     VTContext *_context;
+    DoubleBuffer _idx_buffer;
 
     std::set<uint32_t> _cut;
     uint32_t *_feedback_buffer;

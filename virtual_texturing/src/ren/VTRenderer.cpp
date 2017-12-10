@@ -100,15 +100,17 @@ void VTRenderer::render()
 
         _render_context->bind_program(_shader_program);
 
-        if(_indexBufferReady.load()){
+
+        auto idx = _vtcontext->get_cut_update()->start_reading_idx();
+
             _render_context->update_sub_texture(_index_texture,
                                                 scm::gl::texture_region(scm::math::vec3ui(0, 0, 0),
                                                                         scm::math::vec3ui(_index_texture_dimension, 1)),
                                                 0, scm::gl::FORMAT_RGB_8UI,
-                                                _indexBuffer);
+                                                idx);
 
-            _indexBufferReady.store(false);
-        }
+        _vtcontext->get_cut_update()->stop_reading_idx();
+
 
         // bind our texture and tell the graphics card to filter the samples linearly
         // TODO physical texture later with linear filter

@@ -92,8 +92,11 @@ void VTContext::start()
 
     // request tile 0 and wait until it is there
     _atlas->get(0, 100);
+    _atlas->get(1, 100);
+    _atlas->get(2, 100);
+    _atlas->get(3, 100);
+    _atlas->get(4, 100);
     _atlas->wait();
-    char *root_tile = (char*)_atlas->get(0, 0);
 
     uint8_t cpu_idx_texture_buffer_state[48];
 
@@ -101,10 +104,13 @@ void VTContext::start()
         cpu_idx_texture_buffer_state[i] = 0;
     }
 
-    _vtrenderer->update_physical_texture_blockwise(root_tile, 0, 0);
+    for(size_t i = 0; i < 5; ++i) {
+        char *tile = (char*)_atlas->get(i, 0);
+        _vtrenderer->update_physical_texture_blockwise(tile, i, 0);
+    }
     _vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
 
-    std::cout << "first byte of tile 0: " << (int)root_tile[0] << std::endl;
+    //std::cout << "first byte of tile 0: " << (int)root_tile[0] << std::endl;
 
     glewInit();
 

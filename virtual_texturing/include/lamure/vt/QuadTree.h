@@ -39,7 +39,7 @@ class QuadTree
 
     static const size_t get_tiles_per_row(uint32_t _depth);
 
-    static void get_pos_by_id(id_type node_id);
+    static void get_pos_by_id(uint64_t node_id, size_t &x, size_t &y);
 };
 }
 

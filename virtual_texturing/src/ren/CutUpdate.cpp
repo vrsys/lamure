@@ -3,7 +3,7 @@
 
 namespace vt
 {
-CutUpdate::CutUpdate(vt::VTContext *context, vt::TileAtlas<priority_type> *atlas) : _dispatch_lock()
+CutUpdate::CutUpdate(vt::VTContext *context, vt::TileAtlas<priority_type> *atlas) : _dispatch_lock(), _idx_buffer(context->get_size_index_texture() * context->get_size_index_texture() * 3)
 {
     _cut = std::set<uint32_t>();
     _should_stop.store(false);
@@ -28,7 +28,19 @@ CutUpdate::CutUpdate(vt::VTContext *context, vt::TileAtlas<priority_type> *atlas
     }
 
 CutUpdate::~CutUpdate() {}
-void CutUpdate::start() { _worker = std::thread(&CutUpdate::run, this); }
+void CutUpdate::start() {
+    _worker = std::thread(&CutUpdate::run, this);
+    auto idx = _idx_buffer.startWriting();
+
+    std::fill(idx, idx + _idx_buffer.getSize(), 0);
+
+    _idx_buffer.stopWriting();
+    idx = _idx_buffer.startWriting();
+
+    std::fill(idx, idx + _idx_buffer.getSize(), 0);
+
+    _idx_buffer.stopWriting();
+}
 
 void CutUpdate::run()
 {
@@ -147,13 +159,33 @@ void CutUpdate::dispatch(){
                     if(free_slot != 0){
                         _slots[free_slot - 1] = child_id;
 
-                        auto idx_tex_size = _context->get_size_index_texture() * _context->get_size_index_texture() * 3;
+                        //auto idx_tex_size = _context->get_size_index_texture() * _context->get_size_index_texture() * 3;
                         //std::cout << idx_tex_size << std::endl;
 
-                        //uint8_t *idx = new uint8_t[idx_tex_size];
-                        uint8_t idx[512];
+                        uint8_t *idx = _idx_buffer.startWriting();
 
-                        auto level = 0;
+                        auto level = QuadTree::get_depth_of_node(child_id);
+                        size_t x_pos;
+                        size_t y_pos;
+
+                        QuadTree::get_pos_by_id(child_id, x_pos, y_pos);
+                        auto tile_width = _context->get_size_index_texture() / (1 << level);
+
+                        std::cout << child_id << " " << x_pos << " " << y_pos << std::endl;
+
+                        for(size_t x = x_pos * tile_width; x < (x_pos + 1) * tile_width; ++x){
+                            for(size_t y = y_pos * tile_width; y < (y_pos + 1) * tile_width; ++y){
+                                auto ptr = &idx[y * _context->get_size_index_texture() * 3 + x * 3];
+
+                                ptr[0] = child_id;
+                                ptr[1] = 0;
+                                ptr[2] = level;
+                            }
+                        }
+
+                        //uint8_t idx[512];
+
+                        /*auto level = 0;
                         bool no_more_levels = true;
 
                         do{
@@ -169,10 +201,14 @@ void CutUpdate::dispatch(){
                                     }
 
                                     if(slot_level == level){
+                                        size_t x_pos;
+                                        size_t y_pos;
+
+                                        QuadTree::get_pos_by_id(child_id, x_pos, y_pos);
                                         auto tile_width = _context->get_size_index_texture() / (1 << level);
 
-                                        for(size_t x = 0; x < tile_width; ++x){
-                                            for(size_t y = 0; y < tile_width; ++y){
+                                        for(size_t x = x_pos * tile_width; x < (x_pos + 1) * tile_width; ++x){
+                                            for(size_t y = y_pos * tile_width; y < (y_pos + 1) * tile_width; ++y){
                                                 auto ptr = &idx[y * _context->get_size_index_texture() * 3 + x * 3];
 
                                                 ptr[0] = slot_id;
@@ -186,6 +222,7 @@ void CutUpdate::dispatch(){
 
                             ++level;
                         }while(!no_more_levels);
+*/
 
                         for(size_t x = 0; x < _context->get_size_index_texture(); ++x){
                             for(size_t y = 0; y < _context->get_size_index_texture(); ++y){
@@ -197,7 +234,8 @@ void CutUpdate::dispatch(){
                             std::cout << std::endl;
                         }
 
-                        _renderer->update_index_texture(idx);
+                        _idx_buffer.stopWriting();
+
                         //delete[] idx;
                     }
                 }
