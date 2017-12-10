@@ -21,6 +21,7 @@ uniform float height_divided_by_top_minus_bottom;
 uniform float near_plane;
 
 uniform float point_size_factor;
+uniform float model_radius_scale;
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -47,21 +48,22 @@ void main()
   }
   else
   {
-    float scaled_radius = in_radius;
-  
+    float scaled_radius = model_radius_scale * in_radius * point_size_factor;
+      vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
+    //normal = normalize(normal);
 
 	vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
 
-	float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z) * height_divided_by_top_minus_bottom;
+	float ps = 3.0f*(scaled_radius) * (near_plane/-pos_es.z) * height_divided_by_top_minus_bottom;
 
    	gl_Position = mvp_matrix * vec4(in_position, 1.0);
 
 
-    VertexOut.nor = (inv_mv_matrix * vec4(in_normal,0.0f)) .xyz;
+    VertexOut.nor = normal.xyz;
 
 
     gl_PointSize = ps;
-    VertexOut.rad = (scaled_radius) * point_size_factor;
+    VertexOut.rad = (scaled_radius);
 
     VertexOut.mv_vertex_depth = pos_es.z;
 

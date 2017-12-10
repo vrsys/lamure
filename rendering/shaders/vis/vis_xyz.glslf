@@ -66,9 +66,9 @@ float get_gaussianValue(float depth_offset, vec2 mappedPointCoord, vec3 newNorma
 
 
     if(radius > 1.0)
-	discard;
+	    discard;
     else
-	return 1.0f;
+	    return 1.0f;
 }
 
 
@@ -80,8 +80,8 @@ void main()
    vec3 adjustedNormal = vec3(0.0,0.0,0.0);
    if(VertexIn.nor.z < 0)
    {
-	//discard;
-	adjustedNormal = VertexIn.nor.xyz * -1;
+	   //discard;
+	   adjustedNormal = VertexIn.nor.xyz * -1;
    }
    else
    {

@@ -51,8 +51,8 @@ float frame_div = 1;
 uint64_t frame_ = 0;
 bool fast_travel_ = false;
 
-float near_plane_ = 0.01f;
-float far_plane_ = 60.f;
+float near_plane_ = 0.001f;
+float far_plane_ = 1000.f;
 
 float trackball_x_ = 0.f;
 float trackball_y_ = 0.f;
@@ -126,15 +126,41 @@ struct settings {
   int32_t heatmap_;
   float heatmap_min_;
   float heatmap_max_;
+  scm::math::vec3f background_color_;
   scm::math::vec3f heatmap_color_min_;
   scm::math::vec3f heatmap_color_max_;
   std::string json_;
   std::string pvs_;
   std::vector<std::string> models_;
+  std::vector<scm::math::mat4d> transforms_;
 
 };
 
 settings settings_;
+
+scm::math::mat4f load_matrix(const std::string& filename) {
+  std::ifstream file(filename);
+  if (!file.is_open()) {
+      std::cerr << "Unable to open transformation file: \"" 
+          << filename << "\"\n";
+      return scm::math::mat4f::identity();
+  }
+  scm::math::mat4f mat = scm::math::mat4f::identity();
+  std::string matrix_values_string;
+  std::getline(file, matrix_values_string);
+  std::stringstream sstr(matrix_values_string);
+  for (int i = 0; i < 16; ++i)
+      sstr >> mat[i];
+  file.close();
+  return scm::math::transpose(mat);
+}
+
+
+std::string const strip_whitespace(std::string const& in_string) {
+  return boost::regex_replace(in_string, boost::regex("^ +| +$|( ) +"), "$1");
+
+}
+
 
 void load_settings(std::string const& vis_file_name, settings& settings) {
 
@@ -153,19 +179,34 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
         if (line[0] == '#') {
           continue;
         }
-        std::istringstream line_ss(line);
-        
         auto colon = line.find_first_of(':');
         if (colon == std::string::npos) {
-          //std::cout << "lod: " << line << std::endl;
-          settings.models_.push_back(line);
+          scm::math::mat4d transform = scm::math::mat4d::identity();
+          std::string model;
+
+          std::istringstream line_ss(line);
+          line_ss >> model;
+
+          if (line_ss.rdbuf()->in_avail() != 0) {
+            std::string tf_file;
+            line_ss >> tf_file;
+            tf_file = strip_whitespace(tf_file);
+            if (tf_file.size() > 0) {
+              if (tf_file.substr(tf_file.size()-3) == ".tf") {
+                auto vis_filepath = boost::filesystem::canonical(vis_file_name);
+                auto tf_filepath = boost::filesystem::absolute(boost::filesystem::path(tf_file), vis_filepath.parent_path());
+                transform = load_matrix(tf_filepath.string());
+              }
+            }
+          }
+        
+          settings.models_.push_back(model);
+          settings.transforms_.push_back(transform);
 
         }
         else {
-          std::string key = line.substr(0, colon);
-          key.erase(std::remove(key.begin(), key.end(), ' '), key.end());
-          std::string value = line.substr(colon+1);
-          value.erase(std::remove(value.begin(), value.end(), ' '), value.end());
+          std::string key = strip_whitespace(line.substr(0, colon));
+          std::string value = strip_whitespace(line.substr(colon+1));
           if (key == "width") {
             settings.width_ = std::max(atoi(value.c_str()), 64);
           }
@@ -204,6 +245,15 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "point_size") {
             settings.point_size_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
+          }
+          else if (key == "background_color_r") {
+            settings.background_color_.x = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
+          }
+          else if (key == "background_color_g") {
+            settings.background_color_.y = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
+          }
+          else if (key == "background_color_b") {
+            settings.background_color_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
           }
           else if (key == "heatmap") {
             settings.heatmap_ = std::max(atoi(value.c_str()), 0);
@@ -291,14 +341,15 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
       controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_)); 
   }
   context_->apply();
-  
+
   for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
     if (selected_model_ != -1) {
       model_id = selected_model_;
     }
-    lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, model_id);
+    lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
+    lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
     std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
-    const lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
+    const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
     if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
       continue;
     }
@@ -319,12 +370,15 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     const scm::math::mat4d model_to_screen =  scm::math::mat4d(viewport_scale) * scm::math::mat4d(viewport_translate) * model_view_projection_matrix;
     shader->uniform("model_to_screen_matrix", scm::math::mat4f(model_to_screen));
 
-    shader->uniform("model_radius_scale", 1.0f);
+    scm::math::vec4d x_unit_vec = scm::math::vec4d(1.0,0.0,0.0,0.0);
+    float model_radius_scale = scm::math::length(model_matrix * x_unit_vec);
+    shader->uniform("model_radius_scale", model_radius_scale);
+
 
     size_t surfels_per_node = database->get_primitives_per_node();
     std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
     
-    scm::gl::frustum frustum_by_model = camera_->get_frustum_by_model(scm::math::mat4f(model_transformations_[model_id]));
+    scm::gl::frustum frustum_by_model = camera_->get_frustum_by_model(scm::math::mat4f(model_matrix));
     
     for(auto const& node_slot_aggregate : renderable) {
       uint32_t node_culling_result = camera_->cull_against_frustum(
@@ -334,9 +388,11 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
       if (node_culling_result != 1) {
         
         if (settings_.show_accuracy_) {
-          const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);// 0...1
+          const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);
           shader->uniform("accuracy", accuracy);
         }
+
+        context_->apply();
 
         context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
           (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
@@ -489,7 +545,7 @@ void glut_display() {
     context_->bind_program(vis_xyz_pass3_shader_);
 
     vis_xyz_pass3_shader_->uniform("background_color", 
-      scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B));
+      scm::math::vec3f(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z));
 
     vis_xyz_pass3_shader_->uniform_sampler("in_color_texture", 0);
     context_->bind_texture(pass2_color_buffer_, filter_nearest_, 0);
@@ -504,7 +560,7 @@ void glut_display() {
     //single pass
 
     context_->clear_color_buffer(fbo_, 0,
-      scm::math::vec4f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B, 1.0f));   
+      scm::math::vec4f(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z, 1.0f));   
     context_->clear_depth_stencil_buffer(fbo_);
     context_->set_frame_buffer(fbo_);
 
@@ -544,11 +600,7 @@ void glut_display() {
   
 }
 
-
-void glut_resize(int32_t w, int32_t h) {
-  window_width_ = w;
-  window_height_ = h;
-  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(w, h)));
+void create_framebuffers() {
 
   fbo_ = device_->create_frame_buffer();
   fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
@@ -564,11 +616,20 @@ void glut_resize(int32_t w, int32_t h) {
   pass2_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F, 1, 1, 1);
   pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
 
+}
+
+
+void glut_resize(int32_t w, int32_t h) {
+  window_width_ = w;
+  window_height_ = h;
+  create_framebuffers();
   
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_window_width(w);
   policy->set_window_height(h);
   
+  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(w, h)));
+
   camera_->set_projection_matrix(30.0f, float(w)/float(h),  near_plane_, far_plane_);
 
 }
@@ -584,7 +645,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       break;
 
     case 'q':
-      settings_.splatting_ = !settings_.splatting_;
+      //settings_.splatting_ = !settings_.splatting_;
       break;
 
     case 'u':
@@ -684,11 +745,6 @@ void glut_mouse(int32_t button, int32_t state, int32_t x, int32_t y) {
   camera_->update_trackball_mouse_pos(trackball_x_, trackball_y_);
 }
 
-std::string const strip_whitespace(std::string const& in_string) {
-  return boost::regex_replace(in_string, boost::regex("^ +| +$|( ) +"), "$1");
-
-}
-
 //checks for prefix AND removes it (+ whitespace) if it is found; 
 //returns true, if prefix was found; else false
 bool parse_prefix(std::string& in_string, std::string const& prefix) {
@@ -755,8 +811,9 @@ int32_t main(int argc, char* argv[]) {
   putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
   settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 1, 1, 0, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
+    scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B),
     scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
-    "", "", std::vector<std::string>()};
+    "", "", std::vector<std::string>(), std::vector<scm::math::mat4d>()};
   load_settings(vis_file, settings_);
  
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
@@ -775,15 +832,10 @@ int32_t main(int argc, char* argv[]) {
 
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   
-  float scene_diameter = far_plane_;
   num_models_ = 0;
   for (const auto& input_file : settings_.models_) {
     lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
-    
-    const auto& bb = database->get_model(num_models_)->get_bvh()->get_bounding_boxes()[0];
-    scene_diameter = scm::math::max(scm::math::length(bb.max_vertex()-bb.min_vertex()), scene_diameter);
-    model_transformations_.push_back(scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
-    
+    model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
     ++num_models_;
   }
   
@@ -901,20 +953,7 @@ int32_t main(int argc, char* argv[]) {
   
   glutTimerFunc(update_ms_, glut_timer, 1);
 
-  fbo_ = device_->create_frame_buffer();
-  fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
-  fbo_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
-  fbo_->attach_color_buffer(0, fbo_color_buffer_);
-  fbo_->attach_depth_stencil_buffer(fbo_depth_buffer_);
-
-  pass1_fbo_ = device_->create_frame_buffer();
-  pass1_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_D24, 1, 1, 1);
-  pass1_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
-
-  pass2_fbo_ = device_->create_frame_buffer();
-  pass2_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(window_width_, window_height_), scm::gl::FORMAT_RGBA_32F, 1, 1, 1);
-  pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
-
+  create_framebuffers();
 
   color_blending_state_ = device_->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, 
     scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
@@ -928,9 +967,6 @@ int32_t main(int argc, char* argv[]) {
   change_point_size_in_shader_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
   no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
 
-  auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
-  scm::math::vec3f center = scm::math::mat4f(model_transformations_[0]) * ((root_bb.min_vertex() + root_bb.max_vertex()) / 2.f);
-
   filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);  
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 
@@ -943,10 +979,14 @@ int32_t main(int argc, char* argv[]) {
   context_->update_sub_texture(gaussian_texture_, ur, 0u, scm::gl::FORMAT_R_32F, gaussian_buffer);
 
 
+  auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
+  auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
+  auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
+  scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
+
   camera_ = new lamure::ren::camera(0, 
     scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)), 
-    scm::math::length(root_bb.max_vertex()-root_bb.min_vertex()), false, false);
-  
+    scm::math::length(root_bb_max-root_bb_min), false, false);
   
   screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
   

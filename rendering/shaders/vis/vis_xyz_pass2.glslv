@@ -56,14 +56,14 @@ void main()
 	else
 	{
 
-    float scaled_radius = in_radius;
+    float scaled_radius = model_radius_scale * in_radius * point_size_factor;
     vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
-
+    //normal = normalize(normal);
     {
 
 	    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
 
-	    float ps = 3.0f*(scaled_radius) * point_size_factor * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
+	    float ps = 3.0f*(scaled_radius) * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
      	gl_Position = mvp_matrix * vec4(in_position, 1.0);
       
       VertexOut.color = get_color();
@@ -77,7 +77,7 @@ void main()
 	    VertexOut.mv_vertex_depth = (pos_es).z;
 
 
-	    VertexOut.rad = (scaled_radius) * point_size_factor;
+	    VertexOut.rad = (scaled_radius);
 
     }
   }

@@ -1,4 +1,9 @@
-
+// Copyright (c) 2014 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
 
 INCLUDE ../common/heatmapping/wavelength_to_rainbow.glsl
 
@@ -72,7 +77,7 @@ vec3 get_color() {
   vec3 color = vec3(0.0);
 
   if (show_normals) {
-    vec4 vis_normal = normal;
+    vec4 vis_normal = model_radius_scale * normal;
     if( vis_normal.z < 0 ) {
       vis_normal = vis_normal * -1;
     }
