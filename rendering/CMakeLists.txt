@@ -121,5 +121,10 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/common/heatmapping DESTINA
         PATTERN "*.glsg"
         )
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/fonts/Ubuntu.ttf DESTINATION share/lamure/fonts)
+# fonts
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/fonts DESTINATION share/lamure
+        FILES_MATCHING 
+        PATTERN "*.ttf"
+        )
+
 

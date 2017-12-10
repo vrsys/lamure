@@ -115,7 +115,6 @@ add_model(const std::string& filepath, const std::string& model_key) {
 
             num_datasets_ = num_datasets_pending_;
             primitives_per_node_ = primitives_per_node_pending_;
-            std::cout << "model " << model_id << " prims " << bvh->get_primitives_per_node() << std::endl;
 
             controller::get_instance()->signal_system_reset();
         }

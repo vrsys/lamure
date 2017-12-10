@@ -17,8 +17,8 @@
 #include <lamure/pvs/pvs_database.h>
 
 //schism
-#include <scm/core/math.h>
 #include <scm/core.h>
+#include <scm/core/math.h>
 #include <scm/core/io/tools.h>
 #include <scm/core/pointer_types.h>
 #include <scm/gl_core/gl_core_fwd.h>
@@ -27,6 +27,12 @@
 #include <scm/core/utilities/platform_warning_disable.h>
 #include <scm/gl_core/render_device/opengl/gl_core.h>
 #include <scm/gl_util/primitives/quad.h>
+#include <scm/gl_util/font/font_face.h>
+#include <scm/gl_util/font/text.h>
+#include <scm/gl_util/font/text_renderer.h>
+#include <scm/core/time/accum_timer.h>
+#include <scm/core/time/high_res_timer.h>
+
 
 #include <GL/freeglut.h>
 
@@ -106,6 +112,13 @@ scm::gl::sampler_state_ptr filter_nearest_;
 
 scm::gl::program_ptr quad_shader_;
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
+scm::gl::text_renderer_ptr text_renderer_;
+scm::gl::text_ptr renderable_text_;
+std::string text_ = "";
+scm::time::accum_timer<scm::time::high_res_timer> frame_time_;
+double fps_ = 0.0;
+uint64_t rendered_splats_ = 0;
+uint64_t rendered_nodes_ = 0;
 
 lamure::ren::Data_Provenance data_provenance_;
 
@@ -118,6 +131,8 @@ struct settings {
   int32_t prov_;
   int32_t splatting_;
   int32_t gamma_correction_;
+  int32_t info_;
+  int32_t pvs_cull_;
   int32_t show_normals_;
   int32_t show_accuracy_;
   int32_t show_output_sensitivity_;
@@ -197,6 +212,10 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
                 auto tf_filepath = boost::filesystem::absolute(boost::filesystem::path(tf_file), vis_filepath.parent_path());
                 transform = load_matrix(tf_filepath.string());
               }
+              else {
+                std::cout << "unsupported transformation file" << std::endl;
+
+              }
             }
           }
         
@@ -227,6 +246,12 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "gamma_correction") {
             settings.gamma_correction_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "info") {
+            settings.info_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "pvs_cull") {
+            settings.pvs_cull_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "provenance") {
             settings.prov_ = std::max(atoi(value.c_str()), 0);
@@ -285,6 +310,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "json") {
             settings.json_ = value;
           }
+          else if (key == "pvs") {
+            settings.pvs_ = value;
+          }
 
           //std::cout << key << " : " << value << std::endl;
         }
@@ -300,10 +328,20 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
       std::cout << "error: pls provide a provenance json description or set prov to 0" << std::endl;
       exit(-1);
     }
+    if (settings.json_.size() > 0) {
+      if (settings.json_.substr(settings.json_.size()-5) != ".json") {
+        std::cout << "unsupported json file" << std::endl;
+      }
+    }
   }
   if (settings.models_.empty()) {
     std::cout << "error: no model filename specified" << std::endl;
     exit(-1);
+  }
+  if (settings.pvs_.size() > 0) {
+    if (settings.pvs_.substr(settings.pvs_.size()-4) != ".pvs") {
+      std::cout << "unsupported pvs file" << std::endl;
+    }
   }
 
 
@@ -341,6 +379,9 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
       controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_)); 
   }
   context_->apply();
+
+  rendered_splats_ = 0;
+  rendered_nodes_ = 0;
 
   for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
     if (selected_model_ != -1) {
@@ -386,6 +427,10 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         bounding_box_vector[node_slot_aggregate.node_id_]);
         
       if (node_culling_result != 1) {
+
+        if (settings_.pvs_cull_ && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_)) {
+          continue;
+        }
         
         if (settings_.show_accuracy_) {
           const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);
@@ -396,6 +441,9 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 
         context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
           (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+
+        rendered_splats_ += surfels_per_node;
+        ++rendered_nodes_;
       
       }
     }
@@ -444,7 +492,16 @@ void glut_display() {
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
+  lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
   
+  if (settings_.info_) {
+    std::ostringstream text_ss;
+    text_ss << "fps: " << std::setprecision(2) << fps_ << "\n";
+    text_ss << "# points: " << std::setprecision(2) << (rendered_splats_ / 1000000.0) << " mio.\n";
+    text_ss << "# nodes: " << std::to_string(rendered_nodes_) << "\n";
+    text_ss << "pvs: " << pvs->is_activated() << "\n";
+    text_ = text_ss.str();
+  }
 
   bool signal_shutdown = false;
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
@@ -475,6 +532,12 @@ void glut_display() {
   height_divided_by_top_minus_bottom_ = lamure::ren::policy::get_instance()->window_height() / top_minus_bottom;
 
   cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom_);
+
+  if (true) {
+    scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(camera_->trackball_matrix()));
+    scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
+    pvs->set_viewer_position(cam_pos);
+  }
  
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
     controller->dispatch(context_id, device_, data_provenance_);
@@ -595,8 +658,21 @@ void glut_display() {
   
   screen_quad_->draw(context_);
 
+  if (settings_.info_) {
+    renderable_text_->text_string(text_);
+    text_renderer_->draw_shadowed(context_, scm::math::vec2i(20, window_height_- 40), renderable_text_);
+  }
+
   rendering_ = false;
   glutSwapBuffers();
+
+  frame_time_.stop();
+  frame_time_.start();
+  //schism bug ? time::to_seconds yields milliseconds
+  if (scm::time::to_seconds(frame_time_.accumulated_duration()) > 100.0) {
+    fps_ = 1000.0f / scm::time::to_seconds(frame_time_.average_duration());
+    frame_time_.reset();
+  }
   
 }
 
@@ -647,6 +723,13 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 'q':
       //settings_.splatting_ = !settings_.splatting_;
       break;
+
+    case 'p':
+      {
+        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+        pvs->activate(!pvs->is_activated());
+        break;
+      }
 
     case 'u':
       if (settings_.point_size_ > 0.1) {
@@ -810,7 +893,7 @@ int32_t main(int argc, char* argv[]) {
 
   putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
-  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 1, 1, 0, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
+  settings_ = settings{1920, 1080, 2048, 4096, 32, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1.f, 0, 0.f, 0.05f, 
     scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B),
     scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
     "", "", std::vector<std::string>(), std::vector<scm::math::mat4d>()};
@@ -839,8 +922,9 @@ int32_t main(int argc, char* argv[]) {
     ++num_models_;
   }
   
+  std::cout << settings_.pvs_ << std::endl;
   if(settings_.pvs_ != "") {
-    std::cout << "loading pvs: " << settings_.pvs_ << std::endl;
+    std::cout << "pvs: " << settings_.pvs_ << std::endl;
     std::string pvs_grid_file_path = settings_.pvs_;
     pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
     pvs_grid_file_path = pvs_grid_file_path + "grid";
@@ -990,6 +1074,21 @@ int32_t main(int argc, char* argv[]) {
   
   screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
   
+
+  try {
+    scm::gl::font_face_ptr output_font(new scm::gl::font_face(device_, std::string(LAMURE_FONTS_DIR) + "/Ubuntu.ttf", 24, 0, scm::gl::font_face::smooth_lcd));
+    text_renderer_ = scm::make_shared<scm::gl::text_renderer>(device_);
+    renderable_text_ = scm::make_shared<scm::gl::text>(device_, output_font, scm::gl::font_face::style_regular, "sick, sad world...");
+    text_renderer_->projection_matrix(
+      scm::math::make_ortho_matrix(0.0f, static_cast<float>(window_width_),
+      0.0f, static_cast<float>(window_height_), -1.0f, 1.0f));
+    renderable_text_->text_color(scm::math::vec4f(1.0f, 1.0f, 0.0f, 1.0f));
+    renderable_text_->text_kerning(true);
+  }
+  catch(const std::exception& e) {
+      throw std::runtime_error(e.what());
+  }
+
   
   glutMainLoop();
 
