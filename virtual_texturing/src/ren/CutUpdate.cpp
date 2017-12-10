@@ -4,7 +4,7 @@
 
 namespace vt
 {
-CutUpdate::CutUpdate(vt::VTContext *context) : _dispatch_lock(), _mem_slots_free()
+CutUpdate::CutUpdate(vt::VTContext *context) : _dispatch_lock(), _mem_slots_free(), _idx_buffer(context->get_size_index_texture() * context->get_size_index_texture() * 3)
 {
     _cut = std::set<id_type>();
     _should_stop.store(false);
@@ -44,6 +44,15 @@ void CutUpdate::start()
     _context->get_vtrenderer()->update_index_texture(_buf_idx);
 
     _worker = std::thread(&CutUpdate::run, this);
+
+    auto idx = _idx_buffer.startWriting();
+
+    std::fill(idx, idx + _idx_buffer.getSize(), 0);
+    _idx_buffer.stopWriting();
+
+    idx = _idx_buffer.startWriting();
+    std::fill(idx, idx + _idx_buffer.getSize(), 0);
+    _idx_buffer.stopWriting();
 }
 
 void CutUpdate::run()
@@ -255,4 +264,8 @@ bool CutUpdate::check_children_in_cut(id_type tile_id, std::set<id_type> &cut)
     }
     return true;
 }
+
+uint8_t *CutUpdate::start_reading_idx() { return _idx_buffer.startReading(); }
+
+void CutUpdate::stop_reading_idx() { _idx_buffer.stopReading(); }
 }

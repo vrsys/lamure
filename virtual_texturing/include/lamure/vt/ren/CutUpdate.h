@@ -4,6 +4,7 @@
 #include <lamure/vt/common.h>
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/ooc/TileAtlas.h>
+#include <lamure/vt/DoubleBuffer.h>
 
 namespace vt
 {
@@ -17,13 +18,17 @@ class CutUpdate
     void stop();
     void feedback(uint32_t *buf);
 
-  private:
+    uint8_t *start_reading_idx();
+    void stop_reading_idx();
+
+private:
     std::thread _worker;
     std::mutex _dispatch_lock;
     std::condition_variable _cv;
     std::atomic<bool> _new_feedback;
     TileAtlas<priority_type> *_atlas;
     VTContext *_context;
+    DoubleBuffer _idx_buffer;
 
     std::set<id_type> _cut;
 

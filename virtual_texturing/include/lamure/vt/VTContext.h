@@ -196,6 +196,9 @@ class VTContext
     CutUpdate *get_cut_update() const;
     TileAtlas<priority_type> *get_atlas() const;
     VTRenderer *get_vtrenderer() const;
+    CutUpdate *get_cut_update(){
+        return _cut_update;
+    }
     EventHandler *get_event_handler() const;
     scm::math::vec2ui calculate_size_physical_texture();
 

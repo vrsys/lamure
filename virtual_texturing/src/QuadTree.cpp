@@ -6,24 +6,21 @@
 
 using namespace std;
 
-namespace vt
-{
-const uint64_t QuadTree::get_child_id(const uint64_t node_id, const uint64_t child_index) { return node_id * 4 + 1 + child_index; }
-
-const uint64_t QuadTree::get_parent_id(const uint64_t node_id)
-{
-    if(node_id == 0)
-        return 0;
-
-    if(node_id % 4 == 0)
-    {
-        return node_id / 4 - 1;
+namespace vt {
+    const uint64_t QuadTree::get_child_id(const uint64_t node_id, const uint64_t child_index) {
+        return node_id * 4 + 1 + child_index;
     }
-    else
-    {
-        return (node_id + 4 - (node_id % 4)) / 4 - 1;
+
+    const uint64_t QuadTree::get_parent_id(const uint64_t node_id) {
+        if (node_id == 0)
+            return 0;
+
+        if (node_id % 4 == 0) {
+            return node_id / 4 - 1;
+        } else {
+            return (node_id + 4 - (node_id % 4)) / 4 - 1;
+        }
     }
-}
 
 /*const uint64_t QuadTree::get_first_node_id_of_depth(uint32_t depth)
 {
@@ -36,20 +33,22 @@ const uint64_t QuadTree::get_parent_id(const uint64_t node_id)
     return id;
 }*/
 
-const uint64_t QuadTree::get_first_node_id_of_depth(uint32_t depth)
-{
-    return (uint64_t)0x5555555555555555 ^ ((uint64_t)0x5555555555555555 << (depth << 1));
-}
+    const uint64_t QuadTree::get_first_node_id_of_depth(uint32_t depth) {
+        return (uint64_t) 0x5555555555555555 ^ ((uint64_t) 0x5555555555555555 << (depth << 1));
+    }
 
-const uint32_t QuadTree::get_length_of_depth(uint32_t depth) { return (const uint32_t)pow((double)4, (double)depth); }
+    const uint32_t QuadTree::get_length_of_depth(uint32_t depth) {
+        return (const uint32_t) pow((double) 4, (double) depth);
+    }
 
-const uint16_t QuadTree::get_depth_of_node(const uint64_t node_id) { return (uint16_t)(log((node_id + 1) * (4 - 1)) / log(4)); }
+    const uint16_t QuadTree::get_depth_of_node(const uint64_t node_id) {
+        return (uint16_t) (log((node_id + 1) * (4 - 1)) / log(4));
+    }
 
-const uint16_t QuadTree::calculate_depth(size_t dim, size_t tile_size)
-{
-    size_t dim_tiled = dim / tile_size;
-    return (uint16_t)(log(dim_tiled * dim_tiled) / log(4));
-}
+    const uint16_t QuadTree::calculate_depth(size_t dim, size_t tile_size) {
+        size_t dim_tiled = dim / tile_size;
+        return (uint16_t) (log(dim_tiled * dim_tiled) / log(4));
+    }
 
 const size_t QuadTree::get_tiles_per_row(uint32_t _depth) { return (size_t)pow(2, _depth); }
 
@@ -80,5 +79,6 @@ void QuadTree::get_pos_by_id(uint64_t node_id, size_t &x, size_t &y){
 //
 //    std::cout << "coordinates of " << node_id << std::endl;
 //    std::cout << "x: " << x << " " << "y: " << y << std::endl;
+
 }
 }
