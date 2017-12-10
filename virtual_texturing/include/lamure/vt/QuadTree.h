@@ -38,6 +38,8 @@ class QuadTree
     static const uint16_t calculate_depth(size_t dim, size_t tile_size);
 
     static const size_t get_tiles_per_row(uint32_t _depth);
+
+    static void get_pos_by_id(id_type node_id);
 };
 }
 
