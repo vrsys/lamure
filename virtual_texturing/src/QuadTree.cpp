@@ -52,32 +52,33 @@ const uint16_t QuadTree::calculate_depth(size_t dim, size_t tile_size)
 }
 
 const size_t QuadTree::get_tiles_per_row(uint32_t _depth) { return (size_t)pow(2, _depth); }
-}
 
-static void QuadTree::get_pos_by_id(id_type node_id){
-    auto depth = QuadTree::get_depth_of_node();
+void QuadTree::get_pos_by_id(uint64_t node_id, size_t &x, size_t &y){
+    auto depth = QuadTree::get_depth_of_node(node_id);
     auto first_id = QuadTree::get_first_node_id_of_depth(depth);
-    auto normalised_id = node_id - first_id;
-    size_t x = 0;
-    size_t y = 0;
 
-    for(size_t level = depth; level > 0;){
-        x <<= 1;
-        y <<= 1;
+    morton2D_64_decode((uint_fast64_t)(node_id - first_id), x, y);
 
-        --level;
-
-        uint8_t quadrant = (normalised_id >> (level << 1)) & 0x3;
-
-        if(quadrant & 0x1){
-            x |= 0x1;
-        }
-
-        if(quadrant & 0x2){
-            y |= 0x1;
-        }
-    }
-
-    std::cout << "coordinates of " << node_id << std::endl;
-    std::cout << "x: " << x << " " << "y: " << y << std::endl;
+//    auto normalised_id = node_id - first_id;
+//
+//    for(size_t level = depth; level > 0;){
+//        x <<= 1;
+//        y <<= 1;
+//
+//        --level;
+//
+//        uint8_t quadrant = (normalised_id >> (level << 1)) & 0x3;
+//
+//        if(quadrant & 0x1){
+//            x |= 0x1;
+//        }
+//
+//        if(quadrant & 0x2){
+//            y |= 0x1;
+//        }
+//    }
+//
+//    std::cout << "coordinates of " << node_id << std::endl;
+//    std::cout << "x: " << x << " " << "y: " << y << std::endl;
+}
 }

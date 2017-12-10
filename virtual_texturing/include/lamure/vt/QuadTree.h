@@ -5,18 +5,8 @@
 #ifndef QUAD_TREE_H
 #define QUAD_TREE_H
 
-#include <cstdint>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <map>
-#include <math.h>
-#include <memory>
-#include <set>
-#include <stdio.h>
-#include <stdlib.h>
-#include <thread>
-#include <unordered_set>
+#include <lamure/vt/common.h>
+#include <lamure/vt/ext/morton.h>
 
 using namespace std;
 
@@ -39,7 +29,7 @@ class QuadTree
 
     static const size_t get_tiles_per_row(uint32_t _depth);
 
-    static void get_pos_by_id(id_type node_id);
+    static void get_pos_by_id(uint64_t node_id, size_t &x, size_t &y);
 };
 }
 

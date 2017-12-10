@@ -8,7 +8,7 @@
 namespace vt
 {
 class VTRenderer;
-    class CutUpdate;
+class CutUpdate;
 class VTContext
 {
   public:
@@ -190,6 +190,7 @@ class VTContext
     uint32_t get_size_index_texture() const;
     uint32_t get_size_physical_texture() const;
 
+    TileAtlas<priority_type> *get_atlas() const;
     VTRenderer *get_vtrenderer() const;
     EventHandler *get_event_handler() const;
     scm::math::vec2ui calculate_size_physical_texture(int physical_texture_max_size_mb);

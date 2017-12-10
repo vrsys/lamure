@@ -167,7 +167,6 @@ void VTRenderer::initialize_index_texture()
     void VTRenderer::update_index_texture(uint8_t *cpu_buffer)
     {
         std::lock_guard<mutex> lock(_indexBufferLock);
-
         _indexBuffer = cpu_buffer;
         _indexBufferReady.store(true);
     }
