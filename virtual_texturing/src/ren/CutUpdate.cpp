@@ -14,7 +14,7 @@ CutUpdate::CutUpdate(vt::VTContext *context) : _dispatch_lock(), _mem_slots_free
 
     _context = context;
 
-    _size_feedback = _context->get_size_physical_texture() * _context->get_size_physical_texture();
+    _size_feedback = _context->calculate_size_physical_texture().x * _context->calculate_size_physical_texture().y;
     _mem_slots = new id_type[_size_feedback];
 
     _mem_slots[0] = 0;
