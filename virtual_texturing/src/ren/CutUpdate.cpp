@@ -4,55 +4,28 @@
 
 namespace vt
 {
-CutUpdate::CutUpdate(vt::VTContext *context) : _dispatch_lock(), _mem_slots_free(), _idx_buffer(context->get_size_index_texture() * context->get_size_index_texture() * 3)
+CutUpdate::CutUpdate(vt::VTContext *context) : _dispatch_lock(), _cut(context)
 {
-    _cut = std::set<id_type>();
     _should_stop.store(false);
     _new_feedback.store(false);
     _feedback_buffer = nullptr;
     _atlas = context->get_atlas();
-
     _context = context;
-
-    _size_feedback = _context->calculate_size_physical_texture().x * _context->calculate_size_physical_texture().y;
-    _mem_slots = new id_type[_size_feedback];
-
-    _mem_slots[0] = 0;
-
-    std::fill(_mem_slots, _mem_slots + _size_feedback, UINT64_MAX);
 }
 
 CutUpdate::~CutUpdate() {}
 
 void CutUpdate::start()
 {
-    // request tile 0 and wait until it is there
     _atlas->get(0, 100);
     _atlas->wait();
-    auto *root_tile = (char *)_atlas->get(0, 0);
+    auto *root_tile = _atlas->get(0, 0);
 
-    _size_buf_idx = _context->get_size_index_texture() * _context->get_size_index_texture() * 3;
-    _buf_idx = new uint8_t[_size_buf_idx];
-    std::fill(_buf_idx, _buf_idx + _size_buf_idx, 0);
-
-    for(size_t i = 0; i < _size_feedback; i++)
-    {
-        _mem_slots_free.push(i);
-    }
-
-    _context->get_vtrenderer()->update_physical_texture_blockwise(root_tile, 0, 0);
-    _context->get_vtrenderer()->update_index_texture(_buf_idx);
+    _cut.start_writing();
+    add_to_indexed_memory(0, root_tile, 0);
+    _cut.stop_writing();
 
     _worker = std::thread(&CutUpdate::run, this);
-
-    auto idx = _idx_buffer.startWriting();
-
-    std::fill(idx, idx + _idx_buffer.getSize(), 0);
-    _idx_buffer.stopWriting();
-
-    idx = _idx_buffer.startWriting();
-    std::fill(idx, idx + _idx_buffer.getSize(), 0);
-    _idx_buffer.stopWriting();
 }
 
 void CutUpdate::run()
@@ -85,32 +58,64 @@ void CutUpdate::dispatch()
     std::queue<uint64_t> queue_split = std::queue<uint64_t>();
     std::queue<uint64_t> queue_keep = std::queue<uint64_t>();
 
-    for(size_t i = 0; i < _size_feedback; ++i)
+    _cut.start_writing();
+
+    // TODO: remove
+    std::cout << "Cut { ";
+    for(id_type iter : _cut.get_back_cut())
     {
-        if(_mem_slots[i] == UINT64_MAX)
+        std::cout << iter << " ";
+    }
+    std::cout << "}" << std::endl;
+
+    // TODO: remove
+    for(size_t x = 0; x < _cut.get_size_mem_x(); ++x)
+    {
+        for(size_t y = 0; y < _cut.get_size_mem_y(); ++y)
+        {
+            if(_cut.get_back_mem_slots()[x + y * _cut.get_size_mem_x()] == UINT64_MAX)
+            {
+                std::cout << "F ";
+            }
+            else
+            {
+                std::cout << _cut.get_back_mem_slots()[x + y * _cut.get_size_mem_x()] << " ";
+            }
+        }
+
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+    for(size_t i = 0; i < _cut.get_size_feedback(); ++i)
+    {
+        if(_cut.get_back_mem_slots()[i] == UINT64_MAX)
         {
             continue;
         }
 
-        auto tile_id = _mem_slots[i];
+        auto tile_id = _cut.get_back_mem_slots()[i];
 
-        if(_cut.find(tile_id) == _cut.cend())
+        if(_cut.get_back_cut().find(tile_id) == _cut.get_back_cut().cend())
         {
             continue;
         }
 
-        if(this->check_children_in_cut(tile_id, _cut))
+        if(this->check_children_in_cut(tile_id, _cut.get_back_cut()))
         {
             if(_feedback_buffer[i] > threshold_max)
             {
+                std::cout << "decision: split, " << _feedback_buffer[i] << " is over " << threshold_max << std::endl;
                 queue_split.push(tile_id);
             }
             else if(_feedback_buffer[i] < threshold_min)
             {
+                std::cout << "decision: collapse, " << _feedback_buffer[i] << " is under " << threshold_min << std::endl;
                 queue_collapse.push(tile_id);
             }
             else
             {
+                std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
                 queue_keep.push(tile_id);
             }
         }
@@ -118,65 +123,135 @@ void CutUpdate::dispatch()
         {
             if(_feedback_buffer[i] > threshold_max)
             {
+                std::cout << "decision: split, " << _feedback_buffer[i] << " is over " << threshold_max << std::endl;
                 queue_split.push(tile_id);
             }
             else
             {
+                std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
                 queue_keep.push(tile_id);
             }
         }
     }
 
-    std::set<id_type> new_cut;
+    std::set<id_type> cut_new;
+    std::queue<std::pair<size_t, uint8_t *>>().swap(_cut.get_back_mem_cut());
 
     while(!queue_collapse.empty())
     {
-        auto _tile_id = queue_collapse.front();
-        collapse_id(_tile_id);
+        std::cout << "action: collapse" << std::endl;
+        auto tile_id = queue_collapse.front();
         queue_collapse.pop();
-        new_cut.insert(_tile_id);
+
+        collapse_id(tile_id, cut_new);
+        keep_id(tile_id, cut_new);
     }
 
     while(!queue_split.empty())
     {
-        auto _tile_id = queue_split.front();
+        auto tile_id = queue_split.front();
+        queue_split.pop();
+
         if(memory_available_for_split())
         {
-            for(uint8_t i = 0; i < 4; i++)
-            {
-                id_type _child_id = QuadTree::get_child_id(_tile_id, i);
-                new_cut.insert(_child_id);
-            }
+            std::cout << "action: split" << std::endl;
+            split_id(tile_id, cut_new);
+            keep_id(tile_id, cut_new);
         }
         else
         {
-            new_cut.insert(_tile_id);
+            std::cout << "action: keep" << std::endl;
+            keep_id(tile_id, cut_new);
         }
-        queue_split.pop();
     }
 
     while(!queue_keep.empty())
     {
-        auto _tile_id = queue_keep.front();
+        std::cout << "action: keep" << std::endl;
+        auto tile_id = queue_keep.front();
         queue_keep.pop();
-        new_cut.insert(_tile_id);
+
+        keep_id(tile_id, cut_new);
     }
-}
 
-void CutUpdate::collapse_id(id_type tile_id)
-{
-    // TODO
-}
-
-// add children if the memory is available, otherwise keep
-void CutUpdate::split_id(id_type tile_id, size_t size_feedback)
-{
-    if(memory_available_for_split())
+    // TODO: remove
+    for(size_t x = 0; x < _context->get_size_index_texture(); ++x)
     {
-        return;
+        for(size_t y = 0; y < _context->get_size_index_texture(); ++y)
+        {
+            auto ptr = &_cut.get_back_index()[y * _context->get_size_index_texture() * 3 + x * 3];
+
+            std::cout << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << " ";
+        }
+
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+    if(cut_new.empty())
+    {
+        throw std::runtime_error("updated cut is empty");
     }
 
+    //    if(cut_new.size() != _cut.get_back_mem_cut().size())
+    //    {
+    //        throw std::runtime_error("physical memory not aligned with the cut");
+    //    }
+
+    _cut.get_back_cut().swap(cut_new);
+    _cut.stop_writing();
+}
+
+void CutUpdate::add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr, size_t mem_slot_index)
+{
+    _cut.get_back_mem_slots()[mem_slot_index] = tile_id;
+    _cut.get_back_mem_slots_free().erase(mem_slot_index);
+
+    size_t x, y;
+    QuadTree::get_pos_by_id(tile_id, x, y);
+
+    auto buf_idx = _cut.get_back_index();
+    auto ptr = &buf_idx[y * _context->get_size_index_texture() * 3 + x * 3];
+
+    auto tile_depth = QuadTree::get_depth_of_node(tile_id);
+
+    ptr[0] = (uint8_t)(mem_slot_index % _cut.get_size_mem_x());
+    ptr[1] = (uint8_t)(mem_slot_index / _cut.get_size_mem_x());
+    ptr[2] = (uint8_t)tile_depth;
+
+    _cut.get_back_mem_cut().push(std::pair<id_type, uint8_t *>(tile_id, tile_ptr));
+}
+
+// check if 4 nodes can be created in memory
+void CutUpdate::remove_from_indexed_memory(id_type tile_id, size_t mem_slot_index)
+{
+    _cut.get_back_mem_slots()[mem_slot_index] = UINT64_MAX;
+    _cut.get_back_mem_slots_free().insert(mem_slot_index);
+}
+
+// remove children from memory
+void CutUpdate::collapse_id(id_type tile_id, std::set<id_type> &cut_new)
+{
     for(size_t n = 0; n < 4; ++n)
+    {
+        auto child_id = QuadTree::get_child_id(tile_id, n);
+        auto mem_iter = std::find(_cut.get_back_mem_slots(), _cut.get_back_mem_slots() + _cut.get_size_feedback(), child_id);
+
+        if(mem_iter == _cut.get_back_mem_slots() + _cut.get_size_feedback())
+        {
+            continue;
+        }
+
+        auto mem_index = (size_t)std::distance(_cut.get_back_mem_slots(), mem_iter);
+
+        _atlas->unget(child_id);
+        remove_from_indexed_memory(tile_id, mem_index);
+    }
+}
+// add children if the memory is available
+void CutUpdate::split_id(id_type tile_id, std::set<id_type> &cut_new)
+{
+    for(size_t n = 0; n < 4; n++)
     {
         auto child_id = QuadTree::get_child_id(tile_id, n);
         auto tile_ptr = _atlas->get(child_id, 100);
@@ -184,54 +259,42 @@ void CutUpdate::split_id(id_type tile_id, size_t size_feedback)
         if(tile_ptr == nullptr)
             continue;
 
-        auto free_slot = get_free_mem_slot();
+        auto free_mem_slot_index = get_free_mem_slot_index();
 
-        if(free_slot == SIZE_MAX)
-            break;
-
-        _mem_slots[free_slot] = child_id;
-
-        size_t x, y;
-
-        QuadTree::get_pos_by_id(child_id, x, y);
-
-        auto ptr = &_buf_idx[y * _context->get_size_index_texture() * 3 + x * 3];
-
-        auto slot_level = QuadTree::get_depth_of_node(child_id);
-
-        if(ptr[2] > slot_level)
+        if(free_mem_slot_index == SIZE_MAX)
         {
-            continue;
+            throw std::runtime_error("out of mem slots");
         }
 
-        ptr[0] = 0;
-        ptr[1] = 0;
-        // TODO: crazy shit
-        ptr[2] = static_cast<uint8_t>(slot_level);
-
-        //        for(size_t x = 0; x < _context->get_size_index_texture(); ++x)
-        //        {
-        //            for(size_t y = 0; y < _context->get_size_index_texture(); ++y)
-        //            {
-        //                auto ptr = &idx[y * _context->get_size_index_texture() * 3 + x * 3];
-        //
-        //                std::cout << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << " ";
-        //            }
-        //
-        //            std::cout << std::endl;
-        //        }
+        add_to_indexed_memory(tile_id, tile_ptr, free_mem_slot_index);
+        cut_new.insert(child_id);
     }
 }
-
-// check if 4 nodes can be created in memory
-bool CutUpdate::memory_available_for_split() { return !_mem_slots_free.size() < 4; } // NOLINT
-size_t CutUpdate::get_free_mem_slot()
+void CutUpdate::keep_id(id_type tile_id, std::set<id_type> &cut_new)
 {
-    if(!_mem_slots_free.empty())
+    auto tile_ptr = _atlas->get(tile_id, 100);
+    if(tile_ptr == nullptr)
     {
-        size_t free_mem_slot = _mem_slots_free.front();
-        _mem_slots_free.pop();
+        throw std::runtime_error("kept tile #" + std::to_string(tile_id) + "not found in RAM");
+    }
 
+    auto mem_iter = std::find(_cut.get_back_mem_slots(), _cut.get_back_mem_slots() + _cut.get_size_feedback(), tile_id);
+    if(mem_iter == _cut.get_back_mem_slots() + _cut.get_size_feedback())
+    {
+        throw std::runtime_error("kept tile #" + std::to_string(tile_id) + " not found in physical memory");
+    }
+    auto mem_index = (size_t)std::distance(_cut.get_back_mem_slots(), mem_iter);
+
+    add_to_indexed_memory(tile_id, tile_ptr, mem_index);
+    cut_new.insert(tile_id);
+}
+bool CutUpdate::memory_available_for_split() { return !_cut.get_back_mem_slots_free().size() < 4; } // NOLINT
+size_t CutUpdate::get_free_mem_slot_index()
+{
+    if(!_cut.get_back_mem_slots_free().empty())
+    {
+        size_t free_mem_slot = *_cut.get_back_mem_slots_free().begin();
+        _cut.get_back_mem_slots_free().erase(free_mem_slot);
         return free_mem_slot;
     }
     else
@@ -239,10 +302,11 @@ size_t CutUpdate::get_free_mem_slot()
         return SIZE_MAX;
     }
 }
+
 void CutUpdate::feedback(uint32_t *buf)
 {
     std::unique_lock<std::mutex> lk(_dispatch_lock);
-    this->_feedback_buffer = buf;
+    _feedback_buffer = buf;
     _new_feedback.store(true);
     lk.unlock();
     _cv.notify_one();
@@ -252,20 +316,23 @@ void CutUpdate::stop()
     _should_stop.store(true);
     _worker.join();
 }
-bool CutUpdate::check_children_in_cut(id_type tile_id, std::set<id_type> &cut)
+
+bool CutUpdate::check_children_in_cut(id_type tile_id, const std::set<id_type> &cut)
 {
     for(uint8_t i = 0; i < 4; i++)
     {
-        id_type _child_id = QuadTree::get_child_id(tile_id, i);
-        if(cut.find(_child_id) != cut.cend())
+        id_type child_id = QuadTree::get_child_id(tile_id, i);
+        if(cut.find(child_id) != cut.cend())
         {
-            return false;
+            return true;
         }
     }
-    return true;
+    return false;
 }
-
-uint8_t *CutUpdate::start_reading_idx() { return _idx_buffer.startReading(); }
-
-void CutUpdate::stop_reading_idx() { _idx_buffer.stopReading(); }
+Cut *CutUpdate::start_reading_cut()
+{
+    _cut.start_reading();
+    return &_cut;
+}
+void CutUpdate::stop_reading_cut() { _cut.stop_reading(); }
 }

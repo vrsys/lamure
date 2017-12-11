@@ -47,6 +47,7 @@ void VTContext::start()
 
     _depth_quadtree = identify_depth();
     _size_index_texture = identify_size_index_texture();
+
     glfwSetErrorCallback(&VTContext::EventHandler::on_error);
 
     if(!glfwInit())
@@ -86,9 +87,9 @@ void VTContext::start()
     glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     _cut_update = new CutUpdate(this);
-    _vtrenderer = new VTRenderer(this, (uint32_t)mode->width, (uint32_t)mode->height);
-
     _cut_update->start();
+
+    _vtrenderer = new VTRenderer(this, (uint32_t)mode->width, (uint32_t)mode->height);
 
     glewInit();
 
@@ -134,7 +135,7 @@ uint16_t VTContext::identify_depth()
 
     size_t depth = QuadTree::get_depth_of_node(count_tiled - 1);
 
-    return static_cast<uint16_t>(depth);
+    return (uint16_t)depth;
 }
 
 uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2, _depth_quadtree); }
@@ -158,14 +159,13 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
 
 bool VTContext::EventHandler::isToggle_phyiscal_texture_image_viewer() const { return toggle_phyiscal_texture_image_viewer; }
 uint32_t VTContext::get_size_index_texture() const { return _size_index_texture; }
-uint32_t VTContext::get_size_physical_texture() const { return _size_physical_texture; }
 VTRenderer *VTContext::get_vtrenderer() const { return _vtrenderer; }
 VTContext::EventHandler *VTContext::get_event_handler() const { return _event_handler; }
 void VTContext::set_event_handler(VTContext::EventHandler *_event_handler) { VTContext::_event_handler = _event_handler; }
 
 VTContext::~VTContext() { delete _cut_update; }
 TileAtlas<priority_type> *VTContext::get_atlas() const { return _atlas; }
-CutUpdate *VTContext::get_cut_update() const { return _cut_update; }
+CutUpdate *VTContext::get_cut_update() { return _cut_update; }
 
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)
@@ -195,22 +195,6 @@ void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key,
         break;
     case GLFW_KEY_SPACE:
         _vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer = !_vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer;
-        break;
-    case GLFW_KEY_0:
-        cpu_idx_texture_buffer_state = std::vector<uint8_t>(16 * 3, 0);
-        _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
-        break;
-    case GLFW_KEY_1:
-        cpu_idx_texture_buffer_state = {1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 3, 0, 1, 3, 0, 1, 4, 0, 1, 4, 0, 1, 3, 0, 1, 3, 0, 1, 4, 0, 1, 4, 0, 1};
-        _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
-        break;
-    case GLFW_KEY_2:
-        cpu_idx_texture_buffer_state = {5, 0, 2, 6, 0, 2, 2, 1, 2, 3, 1, 2, 0, 1, 2, 1, 1, 2, 4, 1, 2, 5, 1, 2, 6, 1, 2, 0, 2, 2, 3, 2, 2, 4, 2, 2, 1, 2, 2, 2, 2, 2, 5, 2, 2, 6, 2, 2};
-        _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
-        break;
-    case GLFW_KEY_3:
-        cpu_idx_texture_buffer_state = {1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 1, 0, 1, 1, 0, 1, 2, 0, 1, 2, 0, 1, 3, 0, 1, 3, 0, 1, 17, 0, 2, 18, 0, 2, 3, 0, 1, 3, 0, 1, 19, 0, 2, 20, 0, 2};
-        _vtcontext->_vtrenderer->update_index_texture(cpu_idx_texture_buffer_state);
         break;
     }
 }

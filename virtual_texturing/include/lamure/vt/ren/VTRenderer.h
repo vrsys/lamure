@@ -17,10 +17,6 @@ class VTRenderer
 
     void resize(int _width, int _height);
 
-    void update_index_texture(uint8_t *cpu_buffer);
-    void update_index_texture(std::vector<uint8_t> const &cpu_buffer);
-    void update_physical_texture_blockwise(char *buffer, uint32_t x, uint32_t y);
-
   private:
     VTContext *_vtcontext;
 
@@ -34,9 +30,8 @@ class VTRenderer
 
     // necessary for feedback
     scm::gl::buffer_ptr _atomic_feedback_storage_ssbo;
-    std::vector<uint32_t> _copy_memory;
     uint32_t *_copy_memory_new;
-    size_t _copy_buffer_size;
+    size_t _size_copy_buf;
 
     scm::shared_ptr<scm::gl::render_device> _device;
     scm::gl::program_ptr _shader_program;
@@ -50,9 +45,6 @@ class VTRenderer
     scm::gl::rasterizer_state_ptr _ms_no_cull;
 
     uint32_t _width, _height;
-    uint8_t *_indexBuffer;
-    std::atomic<bool> _indexBufferReady;
-    std::mutex _indexBufferLock;
 
     scm::math::vec2ui _index_texture_dimension;
     scm::math::vec2ui _physical_texture_dimension;
@@ -61,7 +53,9 @@ class VTRenderer
     void initialize_index_texture();
     void initialize_physical_texture();
     void initialize_feedback();
-    void physical_texture_test_layout();
+    void update_index_texture(const uint8_t *buf_cpu);
+    void update_physical_texture_blockwise(const uint8_t *buf_texel, uint32_t x, uint32_t y);
+    void apply_cut_update();
 };
 }
 

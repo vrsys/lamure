@@ -191,14 +191,10 @@ class VTContext
 
     uint16_t get_depth_quadtree() const;
     uint32_t get_size_index_texture() const;
-    uint32_t get_size_physical_texture() const;
 
-    CutUpdate *get_cut_update() const;
     TileAtlas<priority_type> *get_atlas() const;
     VTRenderer *get_vtrenderer() const;
-    CutUpdate *get_cut_update(){
-        return _cut_update;
-    }
+    CutUpdate *get_cut_update();
     EventHandler *get_event_handler() const;
     scm::math::vec2ui calculate_size_physical_texture();
 
