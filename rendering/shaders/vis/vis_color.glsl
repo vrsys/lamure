@@ -6,6 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 INCLUDE ../common/heatmapping/wavelength_to_rainbow.glsl
+INCLUDE ../common/heatmapping/colormap.glsl
 
 uniform bool show_normals;
 uniform bool show_accuracy;
@@ -113,7 +114,9 @@ vec3 get_color() {
       color = quick_interp(heatmap_min_color, heatmap_max_color, value);
     }
     else {
-      color = vec3(prov_value, prov_value, prov_value);
+      init_colormap();
+      float value = (prov_value - heatmap_min) / (heatmap_max - heatmap_min);
+      color = get_colormap_value(value);
     }
   }
 

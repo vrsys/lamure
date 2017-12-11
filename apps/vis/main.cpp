@@ -53,19 +53,13 @@ bool rendering_ = false;
 int32_t render_width_ = 1280;
 int32_t render_height_ = 720;
 
-float near_plane_ = 0.001f;
-float far_plane_ = 1000.f;
-
 float trackball_x_ = 0.f;
 float trackball_y_ = 0.f;
 float dolly_sens_ = 10.f;
-float fov_ = 30.f;
 
-std::vector<std::string> input_files_;
-
-std::vector<scm::math::mat4d> model_transformations_;
 int32_t num_models_ = 0;
 int32_t selected_model_ = -1;
+std::vector<scm::math::mat4d> model_transformations_;
 
 float height_divided_by_top_minus_bottom_ = 0.f;
 
@@ -124,12 +118,17 @@ struct settings {
   int32_t ram_;
   int32_t upload_;
   int32_t prov_;
+  float near_plane_;
+  float far_plane_;
+  float fov_;
   int32_t splatting_;
   int32_t gamma_correction_;
   int32_t info_;
   int32_t travel_;
   float travel_speed_;
+  int32_t lod_update_;
   int32_t pvs_cull_;
+  int32_t vis_;
   int32_t show_normals_;
   int32_t show_accuracy_;
   int32_t show_output_sensitivity_;
@@ -241,6 +240,15 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "upload") {
             settings.upload_ = std::max(atoi(value.c_str()), 8);
+          }
+          else if (key == "near") {
+            settings.near_plane_ = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "far") {
+            settings.far_plane_ = std::max(atof(value.c_str()), 0.1);
+          }
+          else if (key == "fov") {
+            settings.fov_ = std::max(atof(value.c_str()), 9.0);
           }
           else if (key == "splatting") {
             settings.splatting_ = std::max(atoi(value.c_str()), 0);
@@ -371,6 +379,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+  lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
     context_->bind_vertex_array(
@@ -430,7 +439,8 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         
       if (node_culling_result != 1) {
 
-        if (settings_.pvs_cull_ && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_)) {
+        if (pvs->is_activated() && settings_.pvs_cull_ 
+          && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_)) {
           continue;
         }
         
@@ -462,8 +472,8 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
 
     shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
-    shader->uniform("near_plane", near_plane_);
-    shader->uniform("far_minus_near_plane", far_plane_-near_plane_);
+    shader->uniform("near_plane", settings_.near_plane_);
+    shader->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
     shader->uniform("point_size_factor", settings_.point_scale_);
 
     shader->uniform("ellipsify", true);
@@ -502,10 +512,13 @@ void glut_display() {
     text_ss << "# points: " << std::setprecision(2) << (rendered_splats_ / 1000000.0) << " mio.\n";
     text_ss << "# nodes: " << std::to_string(rendered_nodes_) << "\n";
     text_ss << "\n";
+    text_ss << "vis (e/E): " << settings_.vis_ << "\n";
+    text_ss << "\n";
+    text_ss << "lod_update (d): " << settings_.lod_update_ << "\n";
     text_ss << "splatting (q): " << settings_.splatting_ << "\n";
+    text_ss << "pvs (p): " << pvs->is_activated() << "\n";
     text_ss << "point_scale (u/j): " << std::setprecision(2) << settings_.point_scale_ << "\n";
     text_ss << "error (i/k): " << std::setprecision(2) << settings_.error_threshold_ << "\n";
-    text_ss << "pvs (p): " << pvs->is_activated() << "\n";
     text_ss << "speed (f/F): " << std::setprecision(3) << settings_.travel_speed_ << "\n";
     text_ = text_ss.str();
   }
@@ -546,11 +559,13 @@ void glut_display() {
     pvs->set_viewer_position(cam_pos);
   }
  
-  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-    controller->dispatch(context_id, device_, data_provenance_);
-  }
-  else {
-    controller->dispatch(context_id, device_); 
+  if (settings_.lod_update_) {
+    if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
+      controller->dispatch(context_id, device_, data_provenance_);
+    }
+    else {
+      controller->dispatch(context_id, device_); 
+    }
   }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
  
@@ -568,10 +583,10 @@ void glut_display() {
     context_->set_rasterizer_state(change_point_size_in_shader_state_);
     context_->set_depth_stencil_state(depth_state_less_);
     
-    vis_xyz_pass1_shader_->uniform("near_plane", near_plane_);
+    vis_xyz_pass1_shader_->uniform("near_plane", settings_.near_plane_);
     vis_xyz_pass1_shader_->uniform("point_size_factor", settings_.point_scale_);
     vis_xyz_pass1_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
-    vis_xyz_pass1_shader_->uniform("far_minus_near_plane", far_plane_-near_plane_);
+    vis_xyz_pass1_shader_->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
 
     vis_xyz_pass1_shader_->uniform("ellipsify", true);
     vis_xyz_pass1_shader_->uniform("clamped_normal_mode", true);
@@ -667,7 +682,7 @@ void glut_display() {
 
   if (settings_.info_) {
     renderable_text_->text_string(text_);
-    text_renderer_->draw_shadowed(context_, scm::math::vec2i(20, settings_.height_- 40), renderable_text_);
+    text_renderer_->draw_shadowed(context_, scm::math::vec2i(28, settings_.height_- 40), renderable_text_);
   }
 
   rendering_ = false;
@@ -717,7 +732,7 @@ void glut_resize(int32_t w, int32_t h) {
   
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
 
-  camera_->set_projection_matrix(30.0f, float(settings_.width_)/float(settings_.height_),  near_plane_, far_plane_);
+  camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
   text_renderer_->projection_matrix(
     scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
@@ -737,6 +752,46 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
     case 'q':
       settings_.splatting_ = !settings_.splatting_;
+      break;
+
+    case 'd':
+      settings_.lod_update_ = !settings_.lod_update_;
+      break;
+
+    case 'e':
+      ++settings_.vis_;
+      if(settings_.vis_ > (3 + settings_.prov_/12)) {
+        settings_.vis_ = 0;
+      }
+      settings_.show_normals_ = (settings_.vis_ == 1);
+      settings_.show_accuracy_ = (settings_.vis_ == 2);
+      settings_.show_output_sensitivity_ = (settings_.vis_ == 3);
+      if (settings_.vis_ > 3) {
+        settings_.channel_ = (settings_.vis_-3);
+      }
+      else {
+        settings_.channel_ = 0;
+      }
+      break;
+
+    case 'E':
+      --settings_.vis_;
+      if(settings_.vis_ < 0) {
+        settings_.vis_ = (3 + settings_.prov_/12);
+      }
+      settings_.show_normals_ = (settings_.vis_ == 1);
+      settings_.show_accuracy_ = (settings_.vis_ == 2);
+      settings_.show_output_sensitivity_ = (settings_.vis_ == 3);
+      if (settings_.vis_ > 3) {
+        settings_.channel_ = (settings_.vis_-3);
+      }
+      else {
+        settings_.channel_ = 0;
+      }
+      break;
+
+    case 'h':
+      settings_.heatmap_ = !settings_.heatmap_;
       break;
 
     case 'p':
@@ -940,11 +995,18 @@ int32_t main(int argc, char* argv[]) {
 
   putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
-  settings_ = settings{1920, 1080, 1, 2048, 4096, 32, 0, 1, 1, 1, 2, 20.5f, 0, 0, 0, 0, 0, 1.f, LAMURE_DEFAULT_THRESHOLD, 0, 0.f, 0.05f, 
+  settings_ = settings{1920, 1080, 1, 2048, 4096, 32, 0, 0.001f, 1000.f, 30.f, 1, 1, 1, 2, 20.5f, 1, 0, 0, 0, 0, 0, 0, 1.f, LAMURE_DEFAULT_THRESHOLD, 0, 0.f, 0.05f, 
     scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B),
     scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
     "", "", std::vector<std::string>(), std::vector<scm::math::mat4d>()};
   load_settings(vis_file, settings_);
+
+  settings_.vis_ = settings_.show_normals_ ? 1
+    : settings_.show_accuracy_ ? 2
+    : settings_.show_output_sensitivity_ ? 3
+    : settings_.channel_ > 0 ? 3+settings_.channel_
+    : 0;
+
  
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_max_upload_budget_in_mb(settings_.upload_);
@@ -1117,12 +1179,13 @@ int32_t main(int argc, char* argv[]) {
   camera_ = new lamure::ren::camera(0, 
     scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)), 
     scm::math::length(root_bb_max-root_bb_min), false, false);
-  
+  camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
+  camera_->set_dolly_sens_(settings_.travel_speed_);
+
   screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
   
-
   try {
-    scm::gl::font_face_ptr output_font(new scm::gl::font_face(device_, std::string(LAMURE_FONTS_DIR) + "/Ubuntu.ttf", 24, 0, scm::gl::font_face::smooth_lcd));
+    scm::gl::font_face_ptr output_font(new scm::gl::font_face(device_, std::string(LAMURE_FONTS_DIR) + "/Ubuntu.ttf", 20, 0, scm::gl::font_face::smooth_lcd));
     text_renderer_ = scm::make_shared<scm::gl::text_renderer>(device_);
     renderable_text_ = scm::make_shared<scm::gl::text>(device_, output_font, scm::gl::font_face::style_regular, "sick, sad world...");
     text_renderer_->projection_matrix(
