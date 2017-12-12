@@ -15,6 +15,11 @@ namespace vt
 class QuadTree
 {
   public:
+    struct less_then_by_depth
+    {
+        bool operator()(const id_type &lhs, const id_type &rhs) const { return QuadTree::get_depth_of_node(lhs) < QuadTree::get_depth_of_node(rhs); }
+    };
+
     static const uint64_t get_child_id(uint64_t node_id, uint64_t child_index);
 
     static const uint64_t get_parent_id(uint64_t node_id);

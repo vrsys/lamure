@@ -54,9 +54,9 @@ void CutUpdate::dispatch()
     auto threshold_max = _context->get_size_tile() * _context->get_size_tile() * 2;
     auto threshold_min = _context->get_size_tile() * _context->get_size_tile() / 2;
 
-    std::queue<uint64_t> queue_collapse = std::queue<uint64_t>();
-    std::queue<uint64_t> queue_split = std::queue<uint64_t>();
-    std::queue<uint64_t> queue_keep = std::queue<uint64_t>();
+    std::priority_queue<uint64_t, std::vector<uint64_t>, QuadTree::less_then_by_depth> queue_collapse;
+    std::priority_queue<uint64_t, std::vector<uint64_t>, QuadTree::less_then_by_depth> queue_split;
+    std::priority_queue<uint64_t, std::vector<uint64_t>, QuadTree::less_then_by_depth> queue_keep;
 
     _cut.start_writing();
 
@@ -74,8 +74,8 @@ void CutUpdate::dispatch()
             continue;
         }
 
-        if(this->check_children_in_cut(tile_id, _cut.get_back_cut()))
-        {
+        /*if(this->check_children_in_cut(tile_id, _cut.get_back_cut()))
+        {*/
             if(_feedback_buffer[i] > threshold_max && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
             {
                 std::cout << "decision: split, " << _feedback_buffer[i] << " is over " << threshold_max << std::endl;
@@ -91,7 +91,7 @@ void CutUpdate::dispatch()
                 std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
                 queue_keep.push(tile_id);
             }
-        }
+        /*}
         else
         {
             if(_feedback_buffer[i] > threshold_max && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
@@ -104,7 +104,7 @@ void CutUpdate::dispatch()
                 std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
                 queue_keep.push(tile_id);
             }
-        }
+        }*/
     }
 
     std::set<id_type> cut_new;
@@ -113,16 +113,19 @@ void CutUpdate::dispatch()
     while(!queue_collapse.empty())
     {
         std::cout << "action: collapse" << std::endl;
-        auto tile_id = queue_collapse.front();
+        auto tile_id = queue_collapse.top();
         queue_collapse.pop();
 
-        collapse_id(tile_id, cut_new);
+        if(!collapse_id(tile_id, cut_new)){
+            keep_id(tile_id, cut_new);
+            std::cout << tile_id << std::endl;
+        }
         // keep_id(tile_id, cut_new);
     }
 
     while(!queue_split.empty())
     {
-        auto tile_id = queue_split.front();
+        auto tile_id = queue_split.top();
         queue_split.pop();
 
         if(memory_available_for_split())
@@ -143,7 +146,7 @@ void CutUpdate::dispatch()
     while(!queue_keep.empty())
     {
         std::cout << "action: keep" << std::endl;
-        auto tile_id = queue_keep.front();
+        auto tile_id = queue_keep.top();
         queue_keep.pop();
 
         keep_id(tile_id, cut_new);
@@ -228,11 +231,13 @@ bool CutUpdate::try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr)
     auto tile_depth = QuadTree::get_depth_of_node(tile_id);
     auto tile_width = _context->get_size_index_texture() >> tile_depth;
 
+    //std::cout << tile_id << " " << x_orig << y_orig << std::endl;
+
     auto buf_idx = _cut.get_back_index();
 
-    for(size_t x = x_orig; x < (x_orig + tile_width); ++x)
+    for(size_t x = x_orig; x < (x_orig + tile_width); x++)
     {
-        for(size_t y = y_orig; y < (y_orig + tile_width); ++y)
+        for(size_t y = y_orig; y < (y_orig + tile_width); y++)
         {
             auto ptr = &buf_idx[y * _context->get_size_index_texture() * 3 + x * 3];
 
@@ -264,15 +269,20 @@ void CutUpdate::remove_from_indexed_memory(id_type tile_id)
 }
 
 // remove children from memory
-void CutUpdate::collapse_id(id_type tile_id, std::set<id_type> &cut_new)
+bool CutUpdate::collapse_id(id_type tile_id, std::set<id_type> &cut_new)
 {
-    for(size_t n = 0; n < 4; ++n)
-    {
-        auto child_id = QuadTree::get_child_id(tile_id, n);
+    auto parent_id = QuadTree::get_parent_id(tile_id);
+    auto tile_ptr = _atlas->get(parent_id, 100);
 
-        // _atlas->unget(child_id);
-        // remove_from_indexed_memory(child_id);
+    if(tile_ptr == nullptr)
+    {
+        return false;
     }
+
+    try_add_to_indexed_memory(parent_id, tile_ptr);
+    cut_new.insert(parent_id);
+
+    return true;
 }
 // add children if the memory is available
 bool CutUpdate::split_id(id_type tile_id, std::set<id_type> &cut_new)
