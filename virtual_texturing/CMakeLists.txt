@@ -129,14 +129,19 @@ ENDIF (MSVC)
 # header files
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/vt DESTINATION include/lamure FILES_MATCHING PATTERN "*.h")
 
-# shader and material resources
+# shader resources
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure
         FILES_MATCHING
         PATTERN "*.glslv"
         PATTERN "*.glslf")
 
-# shader and material resources
+# material and geometry resources
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/primitives DESTINATION share/lamure
         FILES_MATCHING
         PATTERN "*.mtl"
         PATTERN "*.obj")
+
+# material and geometry resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/fonts DESTINATION share/lamure
+        FILES_MATCHING
+        PATTERN "*.ttf")

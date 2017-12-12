@@ -17,7 +17,8 @@ class VTRenderer
 
     void resize(int _width, int _height);
 
-  private:
+    void render_debug_view();
+private:
     VTContext *_vtcontext;
 
     CutUpdate *_cut_update;

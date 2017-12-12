@@ -26,16 +26,16 @@ class Cut
     const size_t get_size_mem_y() const;
     const size_t get_size_feedback() const;
 
-    const std::set<id_type> &get_front_cut() const;
+    const cut_type &get_front_cut() const;
     const uint8_t *get_front_index() const;
-    const std::queue<std::pair<size_t, uint8_t *>> &get_front_mem_cut() const;
+    const mem_cut_type &get_front_mem_cut() const;
     const id_type *get_front_mem_slots() const;
 
-    std::set<id_type> &get_back_cut();
+    cut_type &get_back_cut();
     uint8_t *get_back_index();
-    std::queue<std::pair<size_t, uint8_t *>> &get_back_mem_cut();
+    mem_cut_type &get_back_mem_cut();
     id_type *get_back_mem_slots();
-    std::set<size_t> &get_back_mem_slots_free();
+    mem_slots_free_type &get_back_mem_slots_free();
 
   private:
     size_t _size_index;
@@ -44,18 +44,18 @@ class Cut
     size_t _size_feedback;
 
     std::mutex _front_lock;
-    std::set<id_type> _front_cut;
+    cut_type _front_cut;
     uint8_t *_front_index;
-    std::queue<std::pair<size_t, uint8_t *>> _front_mem_cut;
+    mem_cut_type _front_mem_cut;
     id_type *_front_mem_slots;
-    std::set<size_t> _front_mem_slots_free;
+    mem_slots_free_type _front_mem_slots_free;
 
     std::mutex _back_lock;
-    std::set<id_type> _back_cut;
+    cut_type _back_cut;
     uint8_t *_back_index;
-    std::queue<std::pair<size_t, uint8_t *>> _back_mem_cut;
+    mem_cut_type _back_mem_cut;
     id_type *_back_mem_slots;
-    std::set<size_t> _back_mem_slots_free;
+    mem_slots_free_type _back_mem_slots_free;
     bool _new_data;
 
     void _swap();

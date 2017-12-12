@@ -2,6 +2,7 @@
 #include <lamure/vt/ooc/TileAtlas.h>
 #include <lamure/vt/ren/CutUpdate.h>
 #include <lamure/vt/ren/VTRenderer.h>
+#include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
 namespace vt
 {
 VTContext::VTContext() { _config = new CSimpleIniA(true, false, false); }
@@ -55,8 +56,8 @@ void VTContext::start()
         std::runtime_error("GLFW initialisation failed");
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
@@ -93,12 +94,26 @@ void VTContext::start()
 
     glewInit();
 
+    if(_show_debug_view)
+    {
+        ImGui_ImplGlfwGL3_Init(_window, true);
+    }
+
     while(!glfwWindowShouldClose(_window))
     {
         _vtrenderer->render();
+        if(_show_debug_view)
+        {
+            _vtrenderer->render_debug_view();
+        }
 
         glfwSwapBuffers(_window);
         glfwPollEvents();
+    }
+
+    if(_show_debug_view)
+    {
+        ImGui_ImplGlfwGL3_Shutdown();
     }
 
     std::cout << "rendering stopped" << std::endl;
@@ -161,8 +176,9 @@ bool VTContext::EventHandler::isToggle_phyiscal_texture_image_viewer() const { r
 uint32_t VTContext::get_size_index_texture() const { return _size_index_texture; }
 VTRenderer *VTContext::get_vtrenderer() const { return _vtrenderer; }
 VTContext::EventHandler *VTContext::get_event_handler() const { return _event_handler; }
-void VTContext::set_event_handler(VTContext::EventHandler *_event_handler) { VTContext::_event_handler = _event_handler; }
 
+void VTContext::set_event_handler(VTContext::EventHandler *_event_handler) { VTContext::_event_handler = _event_handler; }
+void VTContext::set_debug_view(bool show_debug_view) { this->_show_debug_view = show_debug_view; }
 VTContext::~VTContext() { delete _cut_update; }
 TileAtlas<priority_type> *VTContext::get_atlas() const { return _atlas; }
 CutUpdate *VTContext::get_cut_update() { return _cut_update; }

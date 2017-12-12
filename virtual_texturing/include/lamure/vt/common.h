@@ -51,8 +51,10 @@
 namespace vt
 {
 typedef uint64_t id_type;
-
 typedef uint32_t priority_type;
+typedef std::set<id_type> cut_type;
+typedef std::queue<std::pair<size_t, uint8_t *>> mem_cut_type;
+typedef std::set<size_t> mem_slots_free_type;
 }
 
 #endif // VT_COMMON_H

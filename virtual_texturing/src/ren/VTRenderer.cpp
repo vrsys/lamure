@@ -1,6 +1,8 @@
 #include <lamure/vt/VTContext.h>
 #include <lamure/vt/ren/CutUpdate.h>
 #include <lamure/vt/ren/VTRenderer.h>
+#include <lamure/vt/ext/imgui.h>
+#include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
 
 namespace vt
 {
@@ -132,6 +134,22 @@ void VTRenderer::render()
         _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, nullptr);
         _cut_update->feedback(_copy_memory_new);
     }
+}
+
+void VTRenderer::render_debug_view()
+{
+    ImGui_ImplGlfwGL3_NewFrame();
+
+    ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiSetCond_Once);
+
+    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiSetCond_Once);
+
+    ImGui::Begin("Settings");
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+    ImGui::End();
+
+    ImGui::Render();
 }
 
 void VTRenderer::apply_cut_update()

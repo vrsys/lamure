@@ -39,7 +39,7 @@ class CutUpdate
 
     void run();
     void dispatch();
-    bool check_children_in_cut(id_type tile_id, const std::set<id_type> &cut);
+    uint8_t count_children_in_cut(id_type tile_id, const std::set<id_type> &cut);
     bool collapse_id(id_type tile_id, std::set<id_type> &cut_new);
     bool split_id(id_type tile_id, std::set<id_type> &cut_new);
     bool memory_available_for_split();

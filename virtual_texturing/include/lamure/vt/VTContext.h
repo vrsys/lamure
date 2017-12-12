@@ -129,6 +129,10 @@ class VTContext
             this->_path_config = path_config;
             return this;
         }
+        Builder *with_debug_view(){
+            this->_has_debug_view = true;
+            return this;
+        }
         Builder *with_event_handler(EventHandler *_event_handler)
         {
             this->_event_handler = _event_handler;
@@ -148,11 +152,16 @@ class VTContext
                 context.set_event_handler(_event_handler);
             }
 
+            if(this->_has_debug_view){
+                context.set_debug_view(true);
+            }
+
             return context;
         }
 
       private:
         const char *_path_config;
+        bool _has_debug_view = false;
         EventHandler *_event_handler;
 
         void read_config(VTContext &_context, const char *path_config)
@@ -199,6 +208,7 @@ class VTContext
     scm::math::vec2ui calculate_size_physical_texture();
 
     void set_event_handler(EventHandler *_event_handler);
+    void set_debug_view(bool show_debug_view);
 
   private:
     explicit VTContext();
@@ -227,6 +237,7 @@ class VTContext
     uint16_t _depth_quadtree;
     uint32_t _size_index_texture;
     uint32_t _size_physical_texture;
+    bool _show_debug_view;
 };
 }
 
