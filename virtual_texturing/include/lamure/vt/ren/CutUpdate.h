@@ -41,12 +41,14 @@ class CutUpdate
     void dispatch();
     bool check_children_in_cut(id_type tile_id, const std::set<id_type> &cut);
     void collapse_id(id_type tile_id, std::set<id_type> &cut_new);
-    void split_id(id_type tile_id, std::set<id_type> &cut_new);
+    bool split_id(id_type tile_id, std::set<id_type> &cut_new);
     bool memory_available_for_split();
     size_t get_free_mem_slot_index();
-    void add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr, size_t mem_slot_index);
-    void remove_from_indexed_memory(id_type tile_id, size_t mem_index);
+    bool try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr);
+    void remove_from_indexed_memory(id_type tile_id);
     void keep_id(id_type tile_id, std::set<id_type> &cut_new);
+
+    size_t get_mem_slot_for_id(id_type tile_id);
 };
 }
 

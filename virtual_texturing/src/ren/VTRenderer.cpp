@@ -140,24 +140,17 @@ void VTRenderer::apply_cut_update()
 
     update_index_texture(cut->get_front_index());
 
-    auto mem_cut = cut->get_front_mem_cut();
+    std::queue<std::pair<size_t, uint8_t *>> mem_cut(cut->get_front_mem_cut());
+
     while(!mem_cut.empty())
     {
-        auto mem_tile = mem_cut.front();
-        mem_cut.pop();
-
-        auto mem_iter = std::find(cut->get_front_mem_slots(), cut->get_front_mem_slots() + cut->get_size_feedback(), mem_tile.first);
-
-        if(mem_iter == cut->get_front_mem_slots() + cut->get_size_feedback())
-        {
-            continue;
-        }
-
-        auto mem_index = (size_t)std::distance(cut->get_front_mem_slots(), mem_iter);
+        auto mem_index = mem_cut.front().first;
         auto x = (uint8_t)(mem_index % cut->get_size_mem_x());
         auto y = (uint8_t)(mem_index / cut->get_size_mem_x());
 
-        update_physical_texture_blockwise(mem_tile.second, x, y);
+        update_physical_texture_blockwise(mem_cut.front().second, x, y);
+
+        mem_cut.pop();
     }
 
     _vtcontext->get_cut_update()->stop_reading_cut();

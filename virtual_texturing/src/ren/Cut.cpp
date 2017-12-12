@@ -43,9 +43,15 @@ Cut::~Cut()
 }
 void Cut::_swap()
 {
-    _front_cut.swap(_back_cut);
-    _front_mem_cut.swap(_back_mem_cut);
-    _front_mem_slots_free.swap(_back_mem_slots_free);
+    /*for(auto id : _back_cut){
+        std::cout << id << " ";
+    }
+
+    std::cout << std::endl;*/
+
+    _front_cut = _back_cut;
+    _front_mem_cut = _back_mem_cut;
+    _front_mem_slots_free = _back_mem_slots_free;
 
     auto tmp_index = _back_index;
     _back_index = _front_index;

@@ -22,7 +22,7 @@ void CutUpdate::start()
     auto *root_tile = _atlas->get(0, 0);
 
     _cut.start_writing();
-    add_to_indexed_memory(0, root_tile, 0);
+    try_add_to_indexed_memory(0, root_tile);
     _cut.stop_writing();
 
     _worker = std::thread(&CutUpdate::run, this);
@@ -60,6 +60,95 @@ void CutUpdate::dispatch()
 
     _cut.start_writing();
 
+    for(size_t i = 0; i < _cut.get_size_feedback(); ++i)
+    {
+        if(_cut.get_back_mem_slots()[i] == UINT64_MAX)
+        {
+            continue;
+        }
+
+        auto tile_id = _cut.get_back_mem_slots()[i];
+
+        if(_cut.get_back_cut().find(tile_id) == _cut.get_back_cut().cend())
+        {
+            continue;
+        }
+
+        if(this->check_children_in_cut(tile_id, _cut.get_back_cut()))
+        {
+            if(_feedback_buffer[i] > threshold_max && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
+            {
+                std::cout << "decision: split, " << _feedback_buffer[i] << " is over " << threshold_max << std::endl;
+                queue_split.push(tile_id);
+            }
+            else if(_feedback_buffer[i] < threshold_min && tile_id > 0)
+            {
+                std::cout << "decision: collapse, " << _feedback_buffer[i] << " is under " << threshold_min << std::endl;
+                queue_collapse.push(tile_id);
+            }
+            else
+            {
+                std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
+                queue_keep.push(tile_id);
+            }
+        }
+        else
+        {
+            if(_feedback_buffer[i] > threshold_max && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
+            {
+                std::cout << "decision: split, " << _feedback_buffer[i] << " is over " << threshold_max << std::endl;
+                queue_split.push(tile_id);
+            }
+            else
+            {
+                std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
+                queue_keep.push(tile_id);
+            }
+        }
+    }
+
+    std::set<id_type> cut_new;
+    // std::queue<std::pair<size_t, uint8_t *>>().swap(_cut.get_back_mem_cut());
+
+    while(!queue_collapse.empty())
+    {
+        std::cout << "action: collapse" << std::endl;
+        auto tile_id = queue_collapse.front();
+        queue_collapse.pop();
+
+        collapse_id(tile_id, cut_new);
+        // keep_id(tile_id, cut_new);
+    }
+
+    while(!queue_split.empty())
+    {
+        auto tile_id = queue_split.front();
+        queue_split.pop();
+
+        if(memory_available_for_split())
+        {
+            std::cout << "action: split" << std::endl;
+            if(!split_id(tile_id, cut_new))
+            {
+                keep_id(tile_id, cut_new);
+            }
+        }
+        else
+        {
+            std::cout << "action: keep" << std::endl;
+            keep_id(tile_id, cut_new);
+        }
+    }
+
+    while(!queue_keep.empty())
+    {
+        std::cout << "action: keep" << std::endl;
+        auto tile_id = queue_keep.front();
+        queue_keep.pop();
+
+        keep_id(tile_id, cut_new);
+    }
+
     // TODO: remove
     std::cout << "Cut { ";
     for(id_type iter : _cut.get_back_cut())
@@ -86,93 +175,6 @@ void CutUpdate::dispatch()
         std::cout << std::endl;
     }
     std::cout << std::endl;
-
-    for(size_t i = 0; i < _cut.get_size_feedback(); ++i)
-    {
-        if(_cut.get_back_mem_slots()[i] == UINT64_MAX)
-        {
-            continue;
-        }
-
-        auto tile_id = _cut.get_back_mem_slots()[i];
-
-        if(_cut.get_back_cut().find(tile_id) == _cut.get_back_cut().cend())
-        {
-            continue;
-        }
-
-        if(this->check_children_in_cut(tile_id, _cut.get_back_cut()))
-        {
-            if(_feedback_buffer[i] > threshold_max)
-            {
-                std::cout << "decision: split, " << _feedback_buffer[i] << " is over " << threshold_max << std::endl;
-                queue_split.push(tile_id);
-            }
-            else if(_feedback_buffer[i] < threshold_min)
-            {
-                std::cout << "decision: collapse, " << _feedback_buffer[i] << " is under " << threshold_min << std::endl;
-                queue_collapse.push(tile_id);
-            }
-            else
-            {
-                std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
-                queue_keep.push(tile_id);
-            }
-        }
-        else
-        {
-            if(_feedback_buffer[i] > threshold_max)
-            {
-                std::cout << "decision: split, " << _feedback_buffer[i] << " is over " << threshold_max << std::endl;
-                queue_split.push(tile_id);
-            }
-            else
-            {
-                std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
-                queue_keep.push(tile_id);
-            }
-        }
-    }
-
-    std::set<id_type> cut_new;
-    std::queue<std::pair<size_t, uint8_t *>>().swap(_cut.get_back_mem_cut());
-
-    while(!queue_collapse.empty())
-    {
-        std::cout << "action: collapse" << std::endl;
-        auto tile_id = queue_collapse.front();
-        queue_collapse.pop();
-
-        collapse_id(tile_id, cut_new);
-        keep_id(tile_id, cut_new);
-    }
-
-    while(!queue_split.empty())
-    {
-        auto tile_id = queue_split.front();
-        queue_split.pop();
-
-        if(memory_available_for_split())
-        {
-            std::cout << "action: split" << std::endl;
-            split_id(tile_id, cut_new);
-            keep_id(tile_id, cut_new);
-        }
-        else
-        {
-            std::cout << "action: keep" << std::endl;
-            keep_id(tile_id, cut_new);
-        }
-    }
-
-    while(!queue_keep.empty())
-    {
-        std::cout << "action: keep" << std::endl;
-        auto tile_id = queue_keep.front();
-        queue_keep.pop();
-
-        keep_id(tile_id, cut_new);
-    }
 
     // TODO: remove
     for(size_t x = 0; x < _context->get_size_index_texture(); ++x)
@@ -202,31 +204,63 @@ void CutUpdate::dispatch()
     _cut.stop_writing();
 }
 
-void CutUpdate::add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr, size_t mem_slot_index)
+bool CutUpdate::try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr)
 {
-    _cut.get_back_mem_slots()[mem_slot_index] = tile_id;
-    _cut.get_back_mem_slots_free().erase(mem_slot_index);
+    auto mem_slot = get_mem_slot_for_id(tile_id);
 
-    size_t x, y;
-    QuadTree::get_pos_by_id(tile_id, x, y);
+    if(mem_slot == SIZE_MAX)
+    {
+        auto free_mem_slot_index = get_free_mem_slot_index();
+
+        if(free_mem_slot_index == SIZE_MAX)
+        {
+            throw std::runtime_error("out of mem slots");
+        }
+
+        _cut.get_back_mem_slots()[free_mem_slot_index] = tile_id;
+        _cut.get_back_mem_slots_free().erase(free_mem_slot_index);
+
+        mem_slot = free_mem_slot_index;
+    }
+
+    size_t x_orig, y_orig;
+    QuadTree::get_pos_by_id(tile_id, x_orig, y_orig);
+    auto tile_depth = QuadTree::get_depth_of_node(tile_id);
+    auto tile_width = _context->get_size_index_texture() >> tile_depth;
 
     auto buf_idx = _cut.get_back_index();
-    auto ptr = &buf_idx[y * _context->get_size_index_texture() * 3 + x * 3];
 
-    auto tile_depth = QuadTree::get_depth_of_node(tile_id);
+    for(size_t x = x_orig; x < (x_orig + tile_width); ++x)
+    {
+        for(size_t y = y_orig; y < (y_orig + tile_width); ++y)
+        {
+            auto ptr = &buf_idx[y * _context->get_size_index_texture() * 3 + x * 3];
 
-    ptr[0] = (uint8_t)(mem_slot_index % _cut.get_size_mem_x());
-    ptr[1] = (uint8_t)(mem_slot_index / _cut.get_size_mem_x());
-    ptr[2] = (uint8_t)tile_depth;
+            ptr[0] = (uint8_t)(mem_slot % _cut.get_size_mem_x());
+            ptr[1] = (uint8_t)(mem_slot / _cut.get_size_mem_x());
+            ptr[2] = (uint8_t)tile_depth;
+        }
+    }
 
-    _cut.get_back_mem_cut().push(std::pair<id_type, uint8_t *>(tile_id, tile_ptr));
+    _cut.get_back_mem_cut().push(std::pair<size_t, uint8_t *>(mem_slot, tile_ptr));
+
+    return true;
 }
 
 // check if 4 nodes can be created in memory
-void CutUpdate::remove_from_indexed_memory(id_type tile_id, size_t mem_slot_index)
+void CutUpdate::remove_from_indexed_memory(id_type tile_id)
 {
-    _cut.get_back_mem_slots()[mem_slot_index] = UINT64_MAX;
-    _cut.get_back_mem_slots_free().insert(mem_slot_index);
+    auto mem_iter = std::find(_cut.get_back_mem_slots(), _cut.get_back_mem_slots() + _cut.get_size_feedback(), tile_id);
+
+    if(mem_iter == _cut.get_back_mem_slots() + _cut.get_size_feedback())
+    {
+        throw std::runtime_error("can not remove tile #" + std::to_string(tile_id) + "from RAM (not found)");
+    }
+
+    auto mem_index = (size_t)std::distance(_cut.get_back_mem_slots(), mem_iter);
+
+    _cut.get_back_mem_slots()[mem_index] = UINT64_MAX;
+    _cut.get_back_mem_slots_free().insert(mem_index);
 }
 
 // remove children from memory
@@ -235,40 +269,32 @@ void CutUpdate::collapse_id(id_type tile_id, std::set<id_type> &cut_new)
     for(size_t n = 0; n < 4; ++n)
     {
         auto child_id = QuadTree::get_child_id(tile_id, n);
-        auto mem_iter = std::find(_cut.get_back_mem_slots(), _cut.get_back_mem_slots() + _cut.get_size_feedback(), child_id);
 
-        if(mem_iter == _cut.get_back_mem_slots() + _cut.get_size_feedback())
-        {
-            continue;
-        }
-
-        auto mem_index = (size_t)std::distance(_cut.get_back_mem_slots(), mem_iter);
-
-        _atlas->unget(child_id);
-        remove_from_indexed_memory(tile_id, mem_index);
+        // _atlas->unget(child_id);
+        // remove_from_indexed_memory(child_id);
     }
 }
 // add children if the memory is available
-void CutUpdate::split_id(id_type tile_id, std::set<id_type> &cut_new)
+bool CutUpdate::split_id(id_type tile_id, std::set<id_type> &cut_new)
 {
+    bool all_children_available = true;
+
     for(size_t n = 0; n < 4; n++)
     {
         auto child_id = QuadTree::get_child_id(tile_id, n);
         auto tile_ptr = _atlas->get(child_id, 100);
 
         if(tile_ptr == nullptr)
-            continue;
-
-        auto free_mem_slot_index = get_free_mem_slot_index();
-
-        if(free_mem_slot_index == SIZE_MAX)
         {
-            throw std::runtime_error("out of mem slots");
+            all_children_available = false;
+            continue;
         }
 
-        add_to_indexed_memory(tile_id, tile_ptr, free_mem_slot_index);
+        try_add_to_indexed_memory(child_id, tile_ptr);
         cut_new.insert(child_id);
     }
+
+    return all_children_available;
 }
 void CutUpdate::keep_id(id_type tile_id, std::set<id_type> &cut_new)
 {
@@ -278,14 +304,14 @@ void CutUpdate::keep_id(id_type tile_id, std::set<id_type> &cut_new)
         throw std::runtime_error("kept tile #" + std::to_string(tile_id) + "not found in RAM");
     }
 
-    auto mem_iter = std::find(_cut.get_back_mem_slots(), _cut.get_back_mem_slots() + _cut.get_size_feedback(), tile_id);
-    if(mem_iter == _cut.get_back_mem_slots() + _cut.get_size_feedback())
-    {
-        throw std::runtime_error("kept tile #" + std::to_string(tile_id) + " not found in physical memory");
-    }
-    auto mem_index = (size_t)std::distance(_cut.get_back_mem_slots(), mem_iter);
+    //    auto mem_iter = std::find(_cut.get_back_mem_slots(), _cut.get_back_mem_slots() + _cut.get_size_feedback(), tile_id);
+    //    if(mem_iter == _cut.get_back_mem_slots() + _cut.get_size_feedback())
+    //    {
+    //        throw std::runtime_error("kept tile #" + std::to_string(tile_id) + " not found in physical memory");
+    //    }
+    //    auto mem_index = (size_t)std::distance(_cut.get_back_mem_slots(), mem_iter);
 
-    add_to_indexed_memory(tile_id, tile_ptr, mem_index);
+    try_add_to_indexed_memory(tile_id, tile_ptr);
     cut_new.insert(tile_id);
 }
 bool CutUpdate::memory_available_for_split() { return !_cut.get_back_mem_slots_free().size() < 4; } // NOLINT
@@ -302,7 +328,6 @@ size_t CutUpdate::get_free_mem_slot_index()
         return SIZE_MAX;
     }
 }
-
 void CutUpdate::feedback(uint32_t *buf)
 {
     std::unique_lock<std::mutex> lk(_dispatch_lock);
@@ -335,4 +360,16 @@ Cut *CutUpdate::start_reading_cut()
     return &_cut;
 }
 void CutUpdate::stop_reading_cut() { _cut.stop_reading(); }
+
+size_t CutUpdate::get_mem_slot_for_id(id_type tile_id)
+{
+    auto mem_iter = std::find(_cut.get_back_mem_slots(), _cut.get_back_mem_slots() + _cut.get_size_feedback(), tile_id);
+
+    if(mem_iter == _cut.get_back_mem_slots() + _cut.get_size_feedback())
+    {
+        return SIZE_MAX;
+    }
+
+    return (size_t)std::distance(_cut.get_back_mem_slots(), mem_iter);
+}
 }
