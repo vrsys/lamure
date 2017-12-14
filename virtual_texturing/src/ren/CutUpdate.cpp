@@ -195,13 +195,11 @@ bool CutUpdate::try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr)
     auto tile_depth = QuadTree::get_depth_of_node(tile_id);
     auto tile_span = _context->get_size_index_texture() >> tile_depth;
 
-    // std::cout << tile_id << " " << x_orig << y_orig << std::endl;
-
     auto buf_idx = _cut.get_back_index();
 
-    for(size_t x = x_orig; x < (x_orig + tile_span); x++)
+    for(size_t x = x_orig * tile_span; x < (x_orig + 1) * tile_span; x++)
     {
-        for(size_t y = y_orig; y < (y_orig + tile_span); y++)
+        for(size_t y = y_orig * tile_span; y < (y_orig + 1) * tile_span; y++)
         {
             auto ptr = &buf_idx[y * _context->get_size_index_texture() * 3 + x * 3];
 

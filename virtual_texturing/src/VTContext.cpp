@@ -165,7 +165,7 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
      uint64_t tiles_per_dim_y = ceil((double)number_of_tiles / (double)tiles_per_dim_x);
      std::cout << "phy_tex_dim: " << tiles_per_dim_x << " , " << tiles_per_dim_y << std::endl;*/
     uint32_t input_in_byte = _size_physical_texture * 1024 * 1024;
-    uint32_t tilesize = (uint32_t)_size_tile * _size_tile * 4;
+    uint32_t tilesize = (uint32_t)_size_tile * _size_tile * get_byte_stride();
     uint32_t total_amount_of_tiles = input_in_byte / tilesize;
     uint32_t tiles_per_dim_x = (uint32_t)floor(sqrt(total_amount_of_tiles));
     uint32_t tiles_per_dim_y = total_amount_of_tiles / tiles_per_dim_x;
@@ -189,12 +189,12 @@ VTContext::Debug *VTContext::get_debug() { return &_debug; }
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)
 {
-    auto _vtcontext(static_cast<VTContext *>(glfwGetWindowUserPointer(_window)));
+    auto vtcontext(static_cast<VTContext *>(glfwGetWindowUserPointer(_window)));
 
-    _vtcontext->_event_handler->_ref_width = _width;
-    _vtcontext->_event_handler->_ref_height = _height;
+    vtcontext->_event_handler->_ref_width = _width;
+    vtcontext->_event_handler->_ref_height = _height;
 
-    _vtcontext->get_vtrenderer()->resize(_width, _height);
+    vtcontext->get_vtrenderer()->resize(_width, _height);
 }
 void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key, int _scancode, int _action, int _mods)
 {
@@ -203,7 +203,7 @@ void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key,
         return;
     }
 
-    auto _vtcontext(static_cast<VTContext *>(glfwGetWindowUserPointer(_window)));
+    auto vtcontext(static_cast<VTContext *>(glfwGetWindowUserPointer(_window)));
 
     std::vector<uint8_t> cpu_idx_texture_buffer_state;
     switch(_key)
@@ -213,7 +213,7 @@ void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key,
         glfwSetWindowShouldClose(_window, GL_TRUE);
         break;
     case GLFW_KEY_SPACE:
-        _vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer = !_vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer;
+        vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer = !vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer;
         break;
     }
 
@@ -273,7 +273,7 @@ void VTContext::EventHandler::on_window_scroll(GLFWwindow *_window, double _xoff
 
     EventHandler *event_handler = vtcontext->get_event_handler();
 
-    event_handler->_trackball_manip.dolly(static_cast<float>(_yoffset));
+    event_handler->_trackball_manip.dolly((float)_yoffset);
 
     ImGui_ImplGlfwGL3_ScrollCallback(_window, _xoffset, _yoffset);
 }

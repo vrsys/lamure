@@ -37,6 +37,7 @@ class TileAtlas : public Observer
     TileDecompressor<priority_type> _decompressor;
     TileCache _cache;
     ifstream _fileStream;
+    size_t _tileSize;
 
     mutex _emptyLock;
     condition_variable cond;
@@ -45,6 +46,7 @@ class TileAtlas : public Observer
   public:
     explicit TileAtlas(string &fileName, size_t tileSize) : _buffer(tileSize, 64), _cache(tileSize, 128), _fileStream(fileName)
     {
+        _tileSize = tileSize;
         _loader.setFileStream(&_fileStream);
         _loader.setBuffer(&_buffer);
 
@@ -81,7 +83,7 @@ class TileAtlas : public Observer
 
         lock.unlock();
 
-        auto req = new TileRequest<priority_type>(id, id * 256 * 256 * 4, 256 * 256 * 4);
+        auto req = new TileRequest<priority_type>(id, id * _tileSize, _tileSize);
 
         insert(req);
 

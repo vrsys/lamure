@@ -74,11 +74,9 @@ void VTRenderer::render()
     scm::math::mat4f model_matrix = scm::math::mat4f::identity();
 
     scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
-    scm::math::mat4f mv_inv_transpose = transpose(inverse(model_view_matrix));
 
     _shader_program->uniform("projection_matrix", _projection_matrix);
     _shader_program->uniform("model_view_matrix", model_view_matrix);
-    _shader_program->uniform("model_view_matrix_inverse_transpose", mv_inv_transpose);
 
     // upload necessary information to vertex shader
     _shader_program->uniform("in_physical_texture_dim", _physical_texture_dimension);
@@ -291,14 +289,44 @@ void VTRenderer::update_index_texture(const uint8_t *buf_cpu)
     _render_context->update_sub_texture(_index_texture, scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGB_8UI, buf_cpu);
 }
 
-void VTRenderer::initialize_physical_texture() { _physical_texture = _device->create_texture_2d(_physical_texture_dimension * _vtcontext->get_size_tile(), scm::gl::FORMAT_RGBA_8); }
+void VTRenderer::initialize_physical_texture()
+{
+    scm::gl::data_format format;
+    switch(_vtcontext->get_format_texture())
+    {
+    case VTContext::Config::R8:
+        format = scm::gl::FORMAT_R_8;
+        break;
+    case VTContext::Config::RGB8:
+        format = scm::gl::FORMAT_RGB_8;
+        break;
+    case VTContext::Config::RGBA8:
+        format = scm::gl::FORMAT_RGBA_8;
+        break;
+    }
+    _physical_texture = _device->create_texture_2d(_physical_texture_dimension * _vtcontext->get_size_tile(), format);
+}
 
 void VTRenderer::update_physical_texture_blockwise(const uint8_t *buf_texel, uint32_t x, uint32_t y)
 {
+    scm::gl::data_format format;
+    switch(_vtcontext->get_format_texture())
+    {
+        case VTContext::Config::R8:
+            format = scm::gl::FORMAT_R_8;
+            break;
+        case VTContext::Config::RGB8:
+            format = scm::gl::FORMAT_RGB_8;
+            break;
+        case VTContext::Config::RGBA8:
+            format = scm::gl::FORMAT_RGBA_8;
+            break;
+    }
+
     scm::math::vec3ui origin = scm::math::vec3ui(x * _vtcontext->get_size_tile(), y * _vtcontext->get_size_tile(), 0);
     scm::math::vec3ui dimensions = scm::math::vec3ui(_vtcontext->get_size_tile(), _vtcontext->get_size_tile(), 1);
 
-    _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8, buf_texel);
+    _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(origin, dimensions), 0, format, buf_texel);
 }
 
 void VTRenderer::initialize_feedback()
