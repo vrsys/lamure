@@ -1,8 +1,8 @@
 #include <lamure/vt/VTContext.h>
-#include <lamure/vt/ren/CutUpdate.h>
-#include <lamure/vt/ren/VTRenderer.h>
 #include <lamure/vt/ext/imgui.h>
 #include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
+#include <lamure/vt/ren/CutUpdate.h>
+#include <lamure/vt/ren/VTRenderer.h>
 
 namespace vt
 {
@@ -140,14 +140,55 @@ void VTRenderer::render_debug_view()
 {
     ImGui_ImplGlfwGL3_NewFrame();
 
-    ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiSetCond_Once);
+    ImVec2 plot_dims(0, 160);
 
-    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiSetCond_Once);
+    ImGui::SetNextTreeNodeOpen(true);
 
-    ImGui::Begin("Settings");
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    if(ImGui::CollapsingHeader("Performance metrics"))
+    {
+        auto max_fps = *std::max_element(_vtcontext->get_debug()->get_fps().begin(), _vtcontext->get_debug()->get_fps().end());
+        auto min_fps = *std::min_element(_vtcontext->get_debug()->get_fps().begin(), _vtcontext->get_debug()->get_fps().end());
 
-    ImGui::End();
+        std::stringstream stream_average;
+        stream_average << "Application average " << 1000.0f / ImGui::GetIO().Framerate << " ms/frame (" << ImGui::GetIO().Framerate << " FPS)\"";
+
+        ImGui::PlotHistogram("FPS", &_vtcontext->get_debug()->get_fps()[0], VTContext::Debug::FPS_S, 0, stream_average.str().c_str(), min_fps, max_fps, plot_dims);
+
+        std::stringstream stream_usage;
+        stream_usage << "Physical texture slots usage: " << _vtcontext->get_debug()->get_mem_slots_busy() << "%";
+
+        ImGui::ProgressBar(_vtcontext->get_debug()->get_mem_slots_busy(), ImVec2(0, 80), stream_usage.str().c_str());
+    }
+
+    ImGui::SetNextTreeNodeOpen(true);
+
+    if(ImGui::CollapsingHeader("Cut update metrics"))
+    {
+        auto max_swap = *std::max_element(_vtcontext->get_debug()->get_cut_swap_times().begin(), _vtcontext->get_debug()->get_cut_swap_times().end());
+        auto max_disp = *std::max_element(_vtcontext->get_debug()->get_cut_dispatch_times().begin(), _vtcontext->get_debug()->get_cut_dispatch_times().end());
+        auto max_apply = *std::max_element(_vtcontext->get_debug()->get_apply_times().begin(), _vtcontext->get_debug()->get_apply_times().end());
+
+        auto min_swap = *std::min_element(_vtcontext->get_debug()->get_cut_swap_times().begin(), _vtcontext->get_debug()->get_cut_swap_times().end());
+        auto min_disp = *std::min_element(_vtcontext->get_debug()->get_cut_dispatch_times().begin(), _vtcontext->get_debug()->get_cut_dispatch_times().end());
+        auto min_apply = *std::min_element(_vtcontext->get_debug()->get_apply_times().begin(), _vtcontext->get_debug()->get_apply_times().end());
+
+        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0), _vtcontext->get_debug()->get_cut_string().c_str());
+        ImGui::Text(_vtcontext->get_debug()->get_mem_slots_string().c_str());
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0), _vtcontext->get_debug()->get_index_string().c_str());
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0), ("RAM pointer count: " + std::to_string(_vtcontext->get_debug()->get_size_mem_cut())).c_str());
+
+        std::stringstream stream_swap_max;
+        stream_swap_max << "Max: " << max_swap << " microsec";
+        ImGui::PlotLines("Swap time, microsec", &_vtcontext->get_debug()->get_cut_swap_times()[0], VTContext::Debug::SWAP_S, 0, stream_swap_max.str().c_str(), min_swap, max_swap, plot_dims);
+
+        std::stringstream stream_dispatch_max;
+        stream_dispatch_max << "Max: " << max_disp << " msec";
+        ImGui::PlotLines("Dispatch time, msec", &_vtcontext->get_debug()->get_cut_dispatch_times()[0], VTContext::Debug::DISP_S, 0, stream_dispatch_max.str().c_str(), min_disp, max_disp, plot_dims);
+
+        std::stringstream stream_apply_max;
+        stream_apply_max << "Max: " << max_apply << " msec";
+        ImGui::PlotLines("Apply time, msec", &_vtcontext->get_debug()->get_apply_times()[0], VTContext::Debug::APPLY_S, 0, stream_apply_max.str().c_str(), min_apply, max_apply, plot_dims);
+    }
 
     ImGui::Render();
 }
@@ -156,22 +197,88 @@ void VTRenderer::apply_cut_update()
 {
     Cut *cut = _vtcontext->get_cut_update()->start_reading_cut();
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     update_index_texture(cut->get_front_index());
 
-    std::queue<std::pair<size_t, uint8_t *>> mem_cut(cut->get_front_mem_cut());
-
-    while(!mem_cut.empty())
+    for(auto iter = cut->get_front_mem_cut().begin(); iter != cut->get_front_mem_cut().end(); iter++)
     {
-        auto mem_index = mem_cut.front().first;
+        auto mem_index = (*iter).first;
         auto x = (uint8_t)(mem_index % cut->get_size_mem_x());
         auto y = (uint8_t)(mem_index / cut->get_size_mem_x());
 
-        update_physical_texture_blockwise(mem_cut.front().second, x, y);
-
-        mem_cut.pop();
+        update_physical_texture_blockwise((*iter).second, x, y);
     }
 
+    auto end = std::chrono::high_resolution_clock::now();
+    _apply_time = std::chrono::duration<float, std::milli>(end - start).count();
+
+    extract_debug_data(cut);
+
     _vtcontext->get_cut_update()->stop_reading_cut();
+}
+
+void VTRenderer::extract_debug_data(Cut *cut)
+{
+    _vtcontext->get_debug()->get_fps().push_back(ImGui::GetIO().Framerate);
+    _vtcontext->get_debug()->get_fps().pop_front();
+
+    _vtcontext->get_debug()->set_mem_slots_busy((cut->get_size_feedback() - cut->get_front_mem_slots_free().size()) / (float)cut->get_size_feedback());
+
+    std::stringstream stream_cut;
+    stream_cut << "Cut { ";
+    for(id_type iter : cut->get_front_cut())
+    {
+        stream_cut << iter << " ";
+    }
+    stream_cut << "}" << std::endl;
+
+    _vtcontext->get_debug()->set_cut_string(stream_cut.str());
+
+    std::stringstream stream_mem_slots;
+    for(size_t x = 0; x < cut->get_size_mem_x(); ++x)
+    {
+        for(size_t y = 0; y < cut->get_size_mem_y(); ++y)
+        {
+            if(cut->get_front_mem_slots()[x + y * cut->get_size_mem_x()] == UINT64_MAX)
+            {
+                stream_mem_slots << "F ";
+            }
+            else
+            {
+                stream_mem_slots << cut->get_front_mem_slots()[x + y * cut->get_size_mem_x()] << " ";
+            }
+        }
+
+        stream_mem_slots << std::endl;
+    }
+    _vtcontext->get_debug()->set_mem_slots_string(stream_mem_slots.str());
+
+    std::stringstream stream_index_string;
+    for(size_t x = 0; x < _vtcontext->get_size_index_texture(); ++x)
+    {
+        for(size_t y = 0; y < _vtcontext->get_size_index_texture(); ++y)
+        {
+            auto ptr = &cut->get_front_index()[y * _vtcontext->get_size_index_texture() * 3 + x * 3];
+
+            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << " ";
+        }
+
+        stream_index_string << std::endl;
+    }
+
+    _vtcontext->get_debug()->set_index_string(stream_index_string.str());
+
+    _vtcontext->get_debug()->get_cut_dispatch_times().push_back(_cut_update->get_dispatch_time());
+    _vtcontext->get_debug()->get_cut_dispatch_times().pop_front();
+
+    _vtcontext->get_debug()->get_cut_swap_times().push_back(cut->get_swap_time());
+    _vtcontext->get_debug()->get_cut_swap_times().pop_front();
+
+    _vtcontext->get_debug()->get_apply_times().push_back(_apply_time);
+    _vtcontext->get_debug()->get_apply_times().pop_front();
+
+    _vtcontext->get_debug()->set_size_mem_cut(cut->get_front_mem_cut().size());
 }
 
 void VTRenderer::initialize_index_texture() { _index_texture = _device->create_texture_2d(_index_texture_dimension, scm::gl::FORMAT_RGB_8UI); }

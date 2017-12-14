@@ -3,7 +3,7 @@
 
 namespace vt
 {
-Cut::Cut(VTContext *context) : _front_cut(), _front_mem_cut(), _front_mem_slots_free(), _back_cut(), _back_mem_cut(), _back_mem_slots_free()
+Cut::Cut(VTContext *context) : _front_cut(), _front_mem_cut(), _front_mem_slots_free(), _back_cut(), _back_mem_cut(), _back_mem_slots_free(), _swap_time()
 {
     _size_index = context->get_size_index_texture() * context->get_size_index_texture() * 3;
     _size_mem_x = context->calculate_size_physical_texture().x;
@@ -49,6 +49,8 @@ void Cut::_swap()
 
     std::cout << std::endl;*/
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     _front_cut = _back_cut;
     _front_mem_cut = _back_mem_cut;
     _front_mem_slots_free = _back_mem_slots_free;
@@ -64,6 +66,10 @@ void Cut::_swap()
     _front_mem_slots = tmp_mem_slots;
 
     memcpy(_back_mem_slots, _front_mem_slots, _size_feedback);
+
+    auto end = std::chrono::high_resolution_clock::now();
+
+    _swap_time = std::chrono::duration<float, std::micro>(end - start).count();
 }
 void Cut::start_writing() { _back_lock.lock(); }
 void Cut::stop_writing()
@@ -106,12 +112,14 @@ const size_t Cut::get_size_feedback() const { return _size_feedback; }
 
 const std::set<id_type> &Cut::get_front_cut() const { return _front_cut; }
 const uint8_t *Cut::get_front_index() const { return _front_index; }
-const std::queue<std::pair<size_t, uint8_t *>> &Cut::get_front_mem_cut() const { return _front_mem_cut; }
+const std::map<size_t, uint8_t *> &Cut::get_front_mem_cut() const { return _front_mem_cut; }
 const id_type *Cut::get_front_mem_slots() const { return _front_mem_slots; }
 
 std::set<id_type> &Cut::get_back_cut() { return _back_cut; }
 uint8_t *Cut::get_back_index() { return _back_index; }
-std::queue<std::pair<size_t, uint8_t *>> &Cut::get_back_mem_cut() { return _back_mem_cut; }
+std::map<size_t, uint8_t *> &Cut::get_back_mem_cut() { return _back_mem_cut; }
 id_type *Cut::get_back_mem_slots() { return _back_mem_slots; }
 std::set<size_t> &Cut::get_back_mem_slots_free() { return _back_mem_slots_free; }
+const mem_slots_free_type &Cut::get_front_mem_slots_free() const { return _front_mem_slots_free; }
+const float &Cut::get_swap_time() const { return _swap_time; }
 }

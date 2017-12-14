@@ -1,4 +1,4 @@
-#version 330 core
+#version 440 core
 
 in vec2 texture_coord;
 flat in uint max_level;

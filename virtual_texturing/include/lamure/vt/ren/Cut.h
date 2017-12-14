@@ -30,6 +30,8 @@ class Cut
     const uint8_t *get_front_index() const;
     const mem_cut_type &get_front_mem_cut() const;
     const id_type *get_front_mem_slots() const;
+    const mem_slots_free_type &get_front_mem_slots_free() const;
+    const float &get_swap_time() const;
 
     cut_type &get_back_cut();
     uint8_t *get_back_index();
@@ -57,6 +59,8 @@ class Cut
     id_type *_back_mem_slots;
     mem_slots_free_type _back_mem_slots_free;
     bool _new_data;
+
+    float _swap_time;
 
     void _swap();
 };

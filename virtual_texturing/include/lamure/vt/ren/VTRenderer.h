@@ -18,7 +18,9 @@ class VTRenderer
     void resize(int _width, int _height);
 
     void render_debug_view();
-private:
+
+  private:
+
     VTContext *_vtcontext;
 
     CutUpdate *_cut_update;
@@ -50,6 +52,8 @@ private:
     scm::math::vec2ui _index_texture_dimension;
     scm::math::vec2ui _physical_texture_dimension;
 
+    float _apply_time;
+
     void init();
     void initialize_index_texture();
     void initialize_physical_texture();
@@ -57,6 +61,7 @@ private:
     void update_index_texture(const uint8_t *buf_cpu);
     void update_physical_texture_blockwise(const uint8_t *buf_texel, uint32_t x, uint32_t y);
     void apply_cut_update();
+    void extract_debug_data(Cut *cut);
 };
 }
 

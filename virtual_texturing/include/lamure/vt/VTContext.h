@@ -13,6 +13,43 @@ class TileAtlas;
 class VTContext
 {
   public:
+    class Debug
+    {
+      public:
+        static const int FPS_S = 60;
+        static const int SWAP_S = 60;
+        static const int DISP_S = 60;
+        static const int APPLY_S = 60;
+
+        Debug() : _fps(FPS_S, 0.0f), _times_cut_swap(SWAP_S, 0.0f), _times_cut_dispatch(DISP_S, 0.0f), _times_apply(APPLY_S, 0.0f),_string_cut() { _mem_slots_busy = 0.0f; }
+        ~Debug() {}
+
+        std::deque<float> &get_fps();
+        float get_mem_slots_busy();
+        void set_mem_slots_busy(float _mem_slots_busy);
+        const std::string &get_cut_string() const;
+        void set_cut_string(const std::string &_cut_string);
+        const std::string &get_mem_slots_string() const;
+        void set_mem_slots_string(const std::string &_mem_slots_string);
+        const std::string &get_index_string() const;
+        void set_index_string(const std::string &_index_string);
+        std::deque<float> &get_cut_swap_times();
+        std::deque<float> &get_cut_dispatch_times();
+        std::deque<float> &get_apply_times();
+        size_t get_size_mem_cut() const;
+        void set_size_mem_cut(size_t _size_mem_cut);
+
+    private:
+        std::string _string_cut;
+        std::string _string_mem_slots;
+        std::string _string_index;
+        std::deque<float> _fps;
+        std::deque<float> _times_cut_swap;
+        std::deque<float> _times_cut_dispatch;
+        std::deque<float> _times_apply;
+        float _mem_slots_busy;
+        size_t _size_mem_cut;
+    };
     class Config
     {
       public:
@@ -90,14 +127,8 @@ class VTContext
 
         const scm::gl::trackball_manipulator &get_trackball_manip() const;
         void set_trackball_manip(const scm::gl::trackball_manipulator &_trackball_manip);
-        float get_initx() const;
-        void set_initx(float _initx);
-        float get_inity() const;
-        void set_inity(float _inity);
         MouseButtonState get_mouse_button_state() const;
         void set_mouse_button_state(MouseButtonState _mouse_button_state);
-        float get_dolly_sensitivity() const;
-        void set_dolly_sensitivity(float _dolly_sensitivity);
 
         bool isToggle_phyiscal_texture_image_viewer() const;
 
@@ -106,17 +137,14 @@ class VTContext
 
         // trackball -> mouse and x+y coord.
         scm::gl::trackball_manipulator _trackball_manip;
-        float _initx;
-        float _inity;
 
         float _ref_width;
         float _ref_height;
+        float _ref_rot_x;
+        float _ref_rot_y;
 
         // mouse button state
         MouseButtonState _mouse_button_state;
-
-        // intensity of zoom
-        float _dolly_sensitivity;
     };
 
     class Builder
@@ -129,7 +157,8 @@ class VTContext
             this->_path_config = path_config;
             return this;
         }
-        Builder *with_debug_view(){
+        Builder *with_debug_view()
+        {
             this->_has_debug_view = true;
             return this;
         }
@@ -152,7 +181,8 @@ class VTContext
                 context.set_event_handler(_event_handler);
             }
 
-            if(this->_has_debug_view){
+            if(this->_has_debug_view)
+            {
                 context.set_debug_view(true);
             }
 
@@ -205,6 +235,8 @@ class VTContext
     VTRenderer *get_vtrenderer() const;
     CutUpdate *get_cut_update();
     EventHandler *get_event_handler() const;
+    Debug *get_debug();
+
     scm::math::vec2ui calculate_size_physical_texture();
 
     void set_event_handler(EventHandler *_event_handler);
@@ -221,9 +253,10 @@ class VTContext
     EventHandler *_event_handler;
 
     VTRenderer *_vtrenderer;
-
     CutUpdate *_cut_update;
     TileAtlas<priority_type> *_atlas;
+
+    Debug _debug;
 
     uint16_t _size_tile;
     std::string _name_texture;

@@ -6,13 +6,14 @@
 // If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 // https://github.com/ocornut/imgui
 
-#include "imgui_impl_glfw_gl3.h"
-#include "imgui.h"
+#include <lamure/vt/ext/imgui.h>
+#include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
+#include <string>
 
 // GL3W/GLFW
-#include <GL/glew.h> // This example is using gl3w to access OpenGL functions (because it is small). You may use glew/glad/glLoadGen/etc. whatever already works for you.
+#include <GL/glew.h>    // This example is using gl3w to access OpenGL functions (because it is small). You may use glew/glad/glLoadGen/etc. whatever already works for you.
 #include <GLFW/glfw3.h>
-
+#include <lamure/config.h>
 #ifdef _WIN32
 #undef APIENTRY
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -21,97 +22,91 @@
 #endif
 
 // Data
-static GLFWwindow *g_Window = NULL;
-static double g_Time = 0.0f;
-static bool g_MousePressed[3] = {false, false, false};
-static float g_MouseWheel = 0.0f;
-static GLuint g_FontTexture = 0;
-static int g_ShaderHandle = 0, g_VertHandle = 0, g_FragHandle = 0;
-static int g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0;
-static int g_AttribLocationPosition = 0, g_AttribLocationUV = 0, g_AttribLocationColor = 0;
+static GLFWwindow*  g_Window = NULL;
+static double       g_Time = 0.0f;
+static bool         g_MouseJustPressed[3] = { false, false, false };
+static float        g_MouseWheel = 0.0f;
+static GLuint       g_FontTexture = 0;
+static int          g_ShaderHandle = 0, g_VertHandle = 0, g_FragHandle = 0;
+static int          g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0;
+static int          g_AttribLocationPosition = 0, g_AttribLocationUV = 0, g_AttribLocationColor = 0;
 static unsigned int g_VboHandle = 0, g_VaoHandle = 0, g_ElementsHandle = 0;
 
 // This is the main rendering function that you have to implement and provide to ImGui (via setting up 'RenderDrawListsFn' in the ImGuiIO structure)
-// If text or lines are blurry when integrating ImGui in your engine:
-// - in your Render function, try translating your projection matrix by (0.5f,0.5f) or (0.375f,0.375f)
-void ImGui_ImplGlfwGL3_RenderDrawLists(ImDrawData *draw_data)
+// Note that this implementation is little overcomplicated because we are saving/setting up/restoring every OpenGL state explicitly, in order to be able to run within any OpenGL engine that doesn't do so. 
+// If text or lines are blurry when integrating ImGui in your engine: in your Render function, try translating your projection matrix by (0.5f,0.5f) or (0.375f,0.375f)
+void ImGui_ImplGlfwGL3_RenderDrawLists(ImDrawData* draw_data)
 {
     // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
     int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
-    if(fb_width == 0 || fb_height == 0)
+    if (fb_width == 0 || fb_height == 0)
         return;
     draw_data->ScaleClipRects(io.DisplayFramebufferScale);
 
     // Backup GL state
-    GLint last_active_texture;
-    glGetIntegerv(GL_ACTIVE_TEXTURE, &last_active_texture);
+    GLenum last_active_texture; glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&last_active_texture);
     glActiveTexture(GL_TEXTURE0);
-    GLint last_program;
-    glGetIntegerv(GL_CURRENT_PROGRAM, &last_program);
-    GLint last_texture;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
-    GLint last_array_buffer;
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &last_array_buffer);
-    GLint last_element_array_buffer;
-    glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &last_element_array_buffer);
-    GLint last_vertex_array;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &last_vertex_array);
-    GLint last_blend_src_rgb;
-    glGetIntegerv(GL_BLEND_SRC_RGB, &last_blend_src_rgb);
-    GLint last_blend_dst_rgb;
-    glGetIntegerv(GL_BLEND_DST_RGB, &last_blend_dst_rgb);
-    GLint last_blend_src_alpha;
-    glGetIntegerv(GL_BLEND_SRC_ALPHA, &last_blend_src_alpha);
-    GLint last_blend_dst_alpha;
-    glGetIntegerv(GL_BLEND_DST_ALPHA, &last_blend_dst_alpha);
-    GLint last_blend_equation_rgb;
-    glGetIntegerv(GL_BLEND_EQUATION_RGB, &last_blend_equation_rgb);
-    GLint last_blend_equation_alpha;
-    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &last_blend_equation_alpha);
-    GLint last_viewport[4];
-    glGetIntegerv(GL_VIEWPORT, last_viewport);
-    GLint last_scissor_box[4];
-    glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box);
+    GLint last_program; glGetIntegerv(GL_CURRENT_PROGRAM, &last_program);
+    GLint last_texture; glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
+    GLint last_sampler; glGetIntegerv(GL_SAMPLER_BINDING, &last_sampler);
+    GLint last_array_buffer; glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &last_array_buffer);
+    GLint last_element_array_buffer; glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &last_element_array_buffer);
+    GLint last_vertex_array; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &last_vertex_array);
+    GLint last_polygon_mode[2]; glGetIntegerv(GL_POLYGON_MODE, last_polygon_mode);
+    GLint last_viewport[4]; glGetIntegerv(GL_VIEWPORT, last_viewport);
+    GLint last_scissor_box[4]; glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box);
+    GLenum last_blend_src_rgb; glGetIntegerv(GL_BLEND_SRC_RGB, (GLint*)&last_blend_src_rgb);
+    GLenum last_blend_dst_rgb; glGetIntegerv(GL_BLEND_DST_RGB, (GLint*)&last_blend_dst_rgb);
+    GLenum last_blend_src_alpha; glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint*)&last_blend_src_alpha);
+    GLenum last_blend_dst_alpha; glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint*)&last_blend_dst_alpha);
+    GLenum last_blend_equation_rgb; glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint*)&last_blend_equation_rgb);
+    GLenum last_blend_equation_alpha; glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint*)&last_blend_equation_alpha);
     GLboolean last_enable_blend = glIsEnabled(GL_BLEND);
     GLboolean last_enable_cull_face = glIsEnabled(GL_CULL_FACE);
     GLboolean last_enable_depth_test = glIsEnabled(GL_DEPTH_TEST);
     GLboolean last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);
 
-    // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled
+    // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // Setup viewport, orthographic projection matrix
     glViewport(0, 0, (GLsizei)fb_width, (GLsizei)fb_height);
-    const float ortho_projection[4][4] = {
-        {2.0f / io.DisplaySize.x, 0.0f, 0.0f, 0.0f}, {0.0f, 2.0f / -io.DisplaySize.y, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f, 0.0f}, {-1.0f, 1.0f, 0.0f, 1.0f},
+    const float ortho_projection[4][4] =
+    {
+        { 2.0f/io.DisplaySize.x, 0.0f,                   0.0f, 0.0f },
+        { 0.0f,                  2.0f/-io.DisplaySize.y, 0.0f, 0.0f },
+        { 0.0f,                  0.0f,                  -1.0f, 0.0f },
+        {-1.0f,                  1.0f,                   0.0f, 1.0f },
     };
     glUseProgram(g_ShaderHandle);
     glUniform1i(g_AttribLocationTex, 0);
     glUniformMatrix4fv(g_AttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[0][0]);
     glBindVertexArray(g_VaoHandle);
+    glBindSampler(0, 0); // Rely on combined texture/sampler state.
 
-    for(int n = 0; n < draw_data->CmdListsCount; n++)
+    for (int n = 0; n < draw_data->CmdListsCount; n++)
     {
-        const ImDrawList *cmd_list = draw_data->CmdLists[n];
-        const ImDrawIdx *idx_buffer_offset = 0;
+        const ImDrawList* cmd_list = draw_data->CmdLists[n];
+        const ImDrawIdx* idx_buffer_offset = 0;
 
         glBindBuffer(GL_ARRAY_BUFFER, g_VboHandle);
-        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)cmd_list->VtxBuffer.Size * sizeof(ImDrawVert), (const GLvoid *)cmd_list->VtxBuffer.Data, GL_STREAM_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)cmd_list->VtxBuffer.Size * sizeof(ImDrawVert), (const GLvoid*)cmd_list->VtxBuffer.Data, GL_STREAM_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_ElementsHandle);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx), (const GLvoid *)cmd_list->IdxBuffer.Data, GL_STREAM_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx), (const GLvoid*)cmd_list->IdxBuffer.Data, GL_STREAM_DRAW);
 
-        for(int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
+        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
         {
-            const ImDrawCmd *pcmd = &cmd_list->CmdBuffer[cmd_i];
-            if(pcmd->UserCallback)
+            const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+            if (pcmd->UserCallback)
             {
                 pcmd->UserCallback(cmd_list, pcmd);
             }
@@ -128,53 +123,49 @@ void ImGui_ImplGlfwGL3_RenderDrawLists(ImDrawData *draw_data)
     // Restore modified GL state
     glUseProgram(last_program);
     glBindTexture(GL_TEXTURE_2D, last_texture);
+    glBindSampler(0, last_sampler);
     glActiveTexture(last_active_texture);
     glBindVertexArray(last_vertex_array);
     glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, last_element_array_buffer);
     glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);
     glBlendFuncSeparate(last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha);
-    if(last_enable_blend)
-        glEnable(GL_BLEND);
-    else
-        glDisable(GL_BLEND);
-    if(last_enable_cull_face)
-        glEnable(GL_CULL_FACE);
-    else
-        glDisable(GL_CULL_FACE);
-    if(last_enable_depth_test)
-        glEnable(GL_DEPTH_TEST);
-    else
-        glDisable(GL_DEPTH_TEST);
-    if(last_enable_scissor_test)
-        glEnable(GL_SCISSOR_TEST);
-    else
-        glDisable(GL_SCISSOR_TEST);
+    if (last_enable_blend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+    if (last_enable_cull_face) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+    if (last_enable_depth_test) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    if (last_enable_scissor_test) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+    glPolygonMode(GL_FRONT_AND_BACK, last_polygon_mode[0]);
     glViewport(last_viewport[0], last_viewport[1], (GLsizei)last_viewport[2], (GLsizei)last_viewport[3]);
     glScissor(last_scissor_box[0], last_scissor_box[1], (GLsizei)last_scissor_box[2], (GLsizei)last_scissor_box[3]);
 }
 
-static const char *ImGui_ImplGlfwGL3_GetClipboardText(void *user_data) { return glfwGetClipboardString((GLFWwindow *)user_data); }
-
-static void ImGui_ImplGlfwGL3_SetClipboardText(void *user_data, const char *text) { glfwSetClipboardString((GLFWwindow *)user_data, text); }
-
-void ImGui_ImplGlfwGL3_MouseButtonCallback(GLFWwindow *, int button, int action, int /*mods*/)
+static const char* ImGui_ImplGlfwGL3_GetClipboardText(void* user_data)
 {
-    if(action == GLFW_PRESS && button >= 0 && button < 3)
-        g_MousePressed[button] = true;
+    return glfwGetClipboardString((GLFWwindow*)user_data);
 }
 
-void ImGui_ImplGlfwGL3_ScrollCallback(GLFWwindow *, double /*xoffset*/, double yoffset)
+static void ImGui_ImplGlfwGL3_SetClipboardText(void* user_data, const char* text)
+{
+    glfwSetClipboardString((GLFWwindow*)user_data, text);
+}
+
+void ImGui_ImplGlfwGL3_MouseButtonCallback(GLFWwindow*, int button, int action, int /*mods*/)
+{
+    if (action == GLFW_PRESS && button >= 0 && button < 3)
+        g_MouseJustPressed[button] = true;
+}
+
+void ImGui_ImplGlfwGL3_ScrollCallback(GLFWwindow*, double /*xoffset*/, double yoffset)
 {
     g_MouseWheel += (float)yoffset; // Use fractional mouse wheel, 1.0 unit 5 lines.
 }
 
-void ImGui_ImplGlfwGL3_KeyCallback(GLFWwindow *, int key, int, int action, int mods)
+void ImGui_ImplGlfwGL3_KeyCallback(GLFWwindow*, int key, int, int action, int mods)
 {
-    ImGuiIO &io = ImGui::GetIO();
-    if(action == GLFW_PRESS)
+    ImGuiIO& io = ImGui::GetIO();
+    if (action == GLFW_PRESS)
         io.KeysDown[key] = true;
-    if(action == GLFW_RELEASE)
+    if (action == GLFW_RELEASE)
         io.KeysDown[key] = false;
 
     (void)mods; // Modifiers are not reliable across systems
@@ -184,22 +175,20 @@ void ImGui_ImplGlfwGL3_KeyCallback(GLFWwindow *, int key, int, int action, int m
     io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
 }
 
-void ImGui_ImplGlfwGL3_CharCallback(GLFWwindow *, unsigned int c)
+void ImGui_ImplGlfwGL3_CharCallback(GLFWwindow*, unsigned int c)
 {
-    ImGuiIO &io = ImGui::GetIO();
-    if(c > 0 && c < 0x10000)
+    ImGuiIO& io = ImGui::GetIO();
+    if (c > 0 && c < 0x10000)
         io.AddInputCharacter((unsigned short)c);
 }
 
 bool ImGui_ImplGlfwGL3_CreateFontsTexture()
 {
     // Build texture atlas
-    ImGuiIO &io = ImGui::GetIO();
-    unsigned char *pixels;
+    ImGuiIO& io = ImGui::GetIO();
+    unsigned char* pixels;
     int width, height;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height); // Load as RGBA 32-bits (75% of the memory is wasted, but default font is so small) because it is more likely to be compatible with user's
-                                                            // existing shaders. If your ImTextureId represent a higher-level concept than just a GL texture id, consider calling GetTexDataAsAlpha8()
-                                                            // instead to save on GPU memory.
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);   // Load as RGBA 32-bits (75% of the memory is wasted, but default font is so small) because it is more likely to be compatible with user's existing shaders. If your ImTextureId represent a higher-level concept than just a GL texture id, consider calling GetTexDataAsAlpha8() instead to save on GPU memory.
 
     // Upload texture to graphics system
     GLint last_texture;
@@ -227,29 +216,31 @@ bool ImGui_ImplGlfwGL3_CreateDeviceObjects()
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &last_array_buffer);
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &last_vertex_array);
 
-    const GLchar *vertex_shader = "#version 330\n"
-                                  "uniform mat4 ProjMtx;\n"
-                                  "in vec2 Position;\n"
-                                  "in vec2 UV;\n"
-                                  "in vec4 Color;\n"
-                                  "out vec2 Frag_UV;\n"
-                                  "out vec4 Frag_Color;\n"
-                                  "void main()\n"
-                                  "{\n"
-                                  " Frag_UV = UV;\n"
-                                  " Frag_Color = Color;\n"
-                                  " gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
-                                  "}\n";
+    const GLchar *vertex_shader =
+        "#version 330\n"
+        "uniform mat4 ProjMtx;\n"
+        "in vec2 Position;\n"
+        "in vec2 UV;\n"
+        "in vec4 Color;\n"
+        "out vec2 Frag_UV;\n"
+        "out vec4 Frag_Color;\n"
+        "void main()\n"
+        "{\n"
+        "	Frag_UV = UV;\n"
+        "	Frag_Color = Color;\n"
+        "	gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+        "}\n";
 
-    const GLchar *fragment_shader = "#version 330\n"
-                                    "uniform sampler2D Texture;\n"
-                                    "in vec2 Frag_UV;\n"
-                                    "in vec4 Frag_Color;\n"
-                                    "out vec4 Out_Color;\n"
-                                    "void main()\n"
-                                    "{\n"
-                                    "   Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
-                                    "}\n";
+    const GLchar* fragment_shader =
+        "#version 330\n"
+        "uniform sampler2D Texture;\n"
+        "in vec2 Frag_UV;\n"
+        "in vec4 Frag_Color;\n"
+        "out vec4 Out_Color;\n"
+        "void main()\n"
+        "{\n"
+        "	Out_Color = Frag_Color * texture( Texture, Frag_UV.st);\n"
+        "}\n";
 
     g_ShaderHandle = glCreateProgram();
     g_VertHandle = glCreateShader(GL_VERTEX_SHADER);
@@ -278,10 +269,10 @@ bool ImGui_ImplGlfwGL3_CreateDeviceObjects()
     glEnableVertexAttribArray(g_AttribLocationUV);
     glEnableVertexAttribArray(g_AttribLocationColor);
 
-#define OFFSETOF(TYPE, ELEMENT) ((size_t) & (((TYPE *)0)->ELEMENT))
-    glVertexAttribPointer(g_AttribLocationPosition, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid *)OFFSETOF(ImDrawVert, pos));
-    glVertexAttribPointer(g_AttribLocationUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid *)OFFSETOF(ImDrawVert, uv));
-    glVertexAttribPointer(g_AttribLocationColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid *)OFFSETOF(ImDrawVert, col));
+#define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
+    glVertexAttribPointer(g_AttribLocationPosition, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, pos));
+    glVertexAttribPointer(g_AttribLocationUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, uv));
+    glVertexAttribPointer(g_AttribLocationColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, col));
 #undef OFFSETOF
 
     ImGui_ImplGlfwGL3_CreateFontsTexture();
@@ -294,33 +285,25 @@ bool ImGui_ImplGlfwGL3_CreateDeviceObjects()
     return true;
 }
 
-void ImGui_ImplGlfwGL3_InvalidateDeviceObjects()
+void    ImGui_ImplGlfwGL3_InvalidateDeviceObjects()
 {
-    if(g_VaoHandle)
-        glDeleteVertexArrays(1, &g_VaoHandle);
-    if(g_VboHandle)
-        glDeleteBuffers(1, &g_VboHandle);
-    if(g_ElementsHandle)
-        glDeleteBuffers(1, &g_ElementsHandle);
+    if (g_VaoHandle) glDeleteVertexArrays(1, &g_VaoHandle);
+    if (g_VboHandle) glDeleteBuffers(1, &g_VboHandle);
+    if (g_ElementsHandle) glDeleteBuffers(1, &g_ElementsHandle);
     g_VaoHandle = g_VboHandle = g_ElementsHandle = 0;
 
-    if(g_ShaderHandle && g_VertHandle)
-        glDetachShader(g_ShaderHandle, g_VertHandle);
-    if(g_VertHandle)
-        glDeleteShader(g_VertHandle);
+    if (g_ShaderHandle && g_VertHandle) glDetachShader(g_ShaderHandle, g_VertHandle);
+    if (g_VertHandle) glDeleteShader(g_VertHandle);
     g_VertHandle = 0;
 
-    if(g_ShaderHandle && g_FragHandle)
-        glDetachShader(g_ShaderHandle, g_FragHandle);
-    if(g_FragHandle)
-        glDeleteShader(g_FragHandle);
+    if (g_ShaderHandle && g_FragHandle) glDetachShader(g_ShaderHandle, g_FragHandle);
+    if (g_FragHandle) glDeleteShader(g_FragHandle);
     g_FragHandle = 0;
 
-    if(g_ShaderHandle)
-        glDeleteProgram(g_ShaderHandle);
+    if (g_ShaderHandle) glDeleteProgram(g_ShaderHandle);
     g_ShaderHandle = 0;
 
-    if(g_FontTexture)
+    if (g_FontTexture)
     {
         glDeleteTextures(1, &g_FontTexture);
         ImGui::GetIO().Fonts->TexID = 0;
@@ -328,12 +311,12 @@ void ImGui_ImplGlfwGL3_InvalidateDeviceObjects()
     }
 }
 
-bool ImGui_ImplGlfwGL3_Init(GLFWwindow *window, bool install_callbacks)
+bool    ImGui_ImplGlfwGL3_Init(GLFWwindow* window, bool install_callbacks)
 {
     g_Window = window;
 
-    ImGuiIO &io = ImGui::GetIO();
-    io.KeyMap[ImGuiKey_Tab] = GLFW_KEY_TAB; // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.
+    ImGuiIO& io = ImGui::GetIO();
+    io.KeyMap[ImGuiKey_Tab] = GLFW_KEY_TAB;                         // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.
     io.KeyMap[ImGuiKey_LeftArrow] = GLFW_KEY_LEFT;
     io.KeyMap[ImGuiKey_RightArrow] = GLFW_KEY_RIGHT;
     io.KeyMap[ImGuiKey_UpArrow] = GLFW_KEY_UP;
@@ -353,7 +336,7 @@ bool ImGui_ImplGlfwGL3_Init(GLFWwindow *window, bool install_callbacks)
     io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
     io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
 
-    io.RenderDrawListsFn = ImGui_ImplGlfwGL3_RenderDrawLists; // Alternatively you can set this to NULL and call ImGui::GetDrawData() after ImGui::Render() to get the same ImDrawData pointer.
+    io.RenderDrawListsFn = ImGui_ImplGlfwGL3_RenderDrawLists;       // Alternatively you can set this to NULL and call ImGui::GetDrawData() after ImGui::Render() to get the same ImDrawData pointer.
     io.SetClipboardTextFn = ImGui_ImplGlfwGL3_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplGlfwGL3_GetClipboardText;
     io.ClipboardUserData = g_Window;
@@ -361,13 +344,73 @@ bool ImGui_ImplGlfwGL3_Init(GLFWwindow *window, bool install_callbacks)
     io.ImeWindowHandle = glfwGetWin32Window(g_Window);
 #endif
 
-    if(install_callbacks)
+    if (install_callbacks)
     {
         glfwSetMouseButtonCallback(window, ImGui_ImplGlfwGL3_MouseButtonCallback);
         glfwSetScrollCallback(window, ImGui_ImplGlfwGL3_ScrollCallback);
         glfwSetKeyCallback(window, ImGui_ImplGlfwGL3_KeyCallback);
         glfwSetCharCallback(window, ImGui_ImplGlfwGL3_CharCallback);
     }
+
+    ImGuiStyle *style = &ImGui::GetStyle();
+
+    style->WindowPadding = ImVec2(15, 15);
+    style->WindowRounding = 5.0f;
+    style->FramePadding = ImVec2(5, 5);
+    style->FrameRounding = 4.0f;
+    style->ItemSpacing = ImVec2(12, 8);
+    style->ItemInnerSpacing = ImVec2(8, 6);
+    style->IndentSpacing = 25.0f;
+    style->ScrollbarSize = 15.0f;
+    style->ScrollbarRounding = 9.0f;
+    style->GrabMinSize = 5.0f;
+    style->GrabRounding = 3.0f;
+
+    style->Colors[ImGuiCol_Text] = ImVec4(0.80f, 0.80f, 0.83f, 1.00f);
+    style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+    style->Colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.05f, 0.07f, 0.50f);
+    style->Colors[ImGuiCol_ChildWindowBg] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+    style->Colors[ImGuiCol_PopupBg] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+    style->Colors[ImGuiCol_Border] = ImVec4(0.80f, 0.80f, 0.83f, 0.88f);
+    style->Colors[ImGuiCol_BorderShadow] = ImVec4(0.92f, 0.91f, 0.88f, 0.00f);
+    style->Colors[ImGuiCol_FrameBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+    style->Colors[ImGuiCol_FrameBgActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_TitleBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.00f, 0.98f, 0.95f, 0.75f);
+    style->Colors[ImGuiCol_TitleBgActive] = ImVec4(0.07f, 0.07f, 0.09f, 1.00f);
+    style->Colors[ImGuiCol_MenuBarBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+    style->Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_ComboBg] = ImVec4(0.19f, 0.18f, 0.21f, 1.00f);
+    style->Colors[ImGuiCol_CheckMark] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+    style->Colors[ImGuiCol_SliderGrab] = ImVec4(0.80f, 0.80f, 0.83f, 0.31f);
+    style->Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_Button] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_ButtonHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+    style->Colors[ImGuiCol_ButtonActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_Header] = ImVec4(0.10f, 0.09f, 0.12f, 1.00f);
+    style->Colors[ImGuiCol_HeaderHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_HeaderActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_Column] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_ColumnHovered] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
+    style->Colors[ImGuiCol_ColumnActive] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_ResizeGrip] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    style->Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.56f, 0.56f, 0.58f, 1.00f);
+    style->Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.06f, 0.05f, 0.07f, 1.00f);
+    style->Colors[ImGuiCol_CloseButton] = ImVec4(0.40f, 0.39f, 0.38f, 0.16f);
+    style->Colors[ImGuiCol_CloseButtonHovered] = ImVec4(0.40f, 0.39f, 0.38f, 0.39f);
+    style->Colors[ImGuiCol_CloseButtonActive] = ImVec4(0.40f, 0.39f, 0.38f, 1.00f);
+    style->Colors[ImGuiCol_PlotLines] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
+    style->Colors[ImGuiCol_PlotLinesHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
+    style->Colors[ImGuiCol_PlotHistogram] = ImVec4(0.40f, 0.39f, 0.38f, 0.63f);
+    style->Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.25f, 1.00f, 0.00f, 1.00f);
+    style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
+    style->Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(1.00f, 0.98f, 0.95f, 0.73f);
+
+    io.Fonts->AddFontFromFileTTF((std::string(LAMURE_FONTS_DIR) + "/Roboto-Medium.ttf").c_str(), 18);
 
     return true;
 }
@@ -380,10 +423,10 @@ void ImGui_ImplGlfwGL3_Shutdown()
 
 void ImGui_ImplGlfwGL3_NewFrame()
 {
-    if(!g_FontTexture)
+    if (!g_FontTexture)
         ImGui_ImplGlfwGL3_CreateDeviceObjects();
 
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
 
     // Setup display size (every frame to accommodate for window resizing)
     int w, h;
@@ -394,29 +437,35 @@ void ImGui_ImplGlfwGL3_NewFrame()
     io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
 
     // Setup time step
-    double current_time = glfwGetTime();
-    io.DeltaTime = g_Time > 0.0 ? (float)(current_time - g_Time) : (float)(1.0f / 60.0f);
+    double current_time =  glfwGetTime();
+    io.DeltaTime = g_Time > 0.0 ? (float)(current_time - g_Time) : (float)(1.0f/60.0f);
     g_Time = current_time;
 
     // Setup inputs
     // (we already got mouse wheel, keyboard keys & characters from glfw callbacks polled in glfwPollEvents())
-    if(glfwGetWindowAttrib(g_Window, GLFW_FOCUSED))
+    if (glfwGetWindowAttrib(g_Window, GLFW_FOCUSED))
     {
-        double mouse_x, mouse_y;
-        glfwGetCursorPos(g_Window, &mouse_x, &mouse_y);
-        io.MousePos = ImVec2((float)mouse_x, (float)mouse_y); // Mouse position in screen coordinates (set to -1,-1 if no mouse / on another screen, etc.)
+        if (io.WantMoveMouse)
+        {
+            glfwSetCursorPos(g_Window, (double)io.MousePos.x, (double)io.MousePos.y);   // Set mouse position if requested by io.WantMoveMouse flag (used when io.NavMovesTrue is enabled by user and using directional navigation)
+        }
+        else
+        {
+            double mouse_x, mouse_y;
+            glfwGetCursorPos(g_Window, &mouse_x, &mouse_y);
+            io.MousePos = ImVec2((float)mouse_x, (float)mouse_y);   // Get mouse position in screen coordinates (set to -1,-1 if no mouse / on another screen, etc.)
+        }
     }
     else
     {
-        io.MousePos = ImVec2(-1, -1);
+        io.MousePos = ImVec2(-FLT_MAX,-FLT_MAX);
     }
 
-    for(int i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++)
     {
-        io.MouseDown[i] =
-            g_MousePressed[i] ||
-            glfwGetMouseButton(g_Window, i) != 0; // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
-        g_MousePressed[i] = false;
+        // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
+        io.MouseDown[i] = g_MouseJustPressed[i] || glfwGetMouseButton(g_Window, i) != 0;
+        g_MouseJustPressed[i] = false;
     }
 
     io.MouseWheel = g_MouseWheel;

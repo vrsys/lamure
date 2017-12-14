@@ -1,10 +1,10 @@
 #ifndef LAMURE_CUTUPDATE_H
 #define LAMURE_CUTUPDATE_H
 
-#include <lamure/vt/ren/Cut.h>
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
 #include <lamure/vt/ooc/TileAtlas.h>
+#include <lamure/vt/ren/Cut.h>
 
 namespace vt
 {
@@ -21,6 +21,7 @@ class CutUpdate
     void stop_reading_cut();
 
     void feedback(uint32_t *buf);
+    const float &get_dispatch_time() const;
 
   private:
     std::thread _worker;
@@ -33,21 +34,23 @@ class CutUpdate
 
     Cut _cut;
 
+    float _dispatch_time;
+
     uint32_t *_feedback_buffer;
 
     std::atomic<bool> _should_stop;
 
     void run();
     void dispatch();
-    uint8_t count_children_in_cut(id_type tile_id, const std::set<id_type> &cut);
-    bool collapse_id(id_type tile_id, std::set<id_type> &cut_new);
-    bool split_id(id_type tile_id, std::set<id_type> &cut_new);
+    bool collapse_id(id_type tile_id, cut_type &cut_new);
+    bool split_id(id_type tile_id, cut_type &cut_new);
+    void keep_id(id_type tile_id, cut_type &cut_new);
     bool memory_available_for_split();
-    size_t get_free_mem_slot_index();
     bool try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr);
     void remove_from_indexed_memory(id_type tile_id);
-    void keep_id(id_type tile_id, std::set<id_type> &cut_new);
 
+    uint8_t count_children_in_cut(id_type tile_id);
+    size_t get_free_mem_slot_index();
     size_t get_mem_slot_for_id(id_type tile_id);
 };
 }

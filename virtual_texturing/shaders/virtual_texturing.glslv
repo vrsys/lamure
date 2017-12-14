@@ -1,4 +1,4 @@
-#version 330 core
+#version 440 core
 
 out vec2 texture_coord;
 flat out uvec2 physical_texture_dim;

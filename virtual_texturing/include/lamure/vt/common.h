@@ -24,8 +24,11 @@
 
 #include <cstdlib>
 
+#include <lamure/vt/ext/imgui.h>
+#include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
 #include <boost/assign/list_of.hpp>
 #include <cstdint>
 #include <cstring>
@@ -53,7 +56,7 @@ namespace vt
 typedef uint64_t id_type;
 typedef uint32_t priority_type;
 typedef std::set<id_type> cut_type;
-typedef std::queue<std::pair<size_t, uint8_t *>> mem_cut_type;
+typedef std::map<size_t, uint8_t *> mem_cut_type;
 typedef std::set<size_t> mem_slots_free_type;
 }
 
