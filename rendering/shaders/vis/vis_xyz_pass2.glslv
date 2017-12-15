@@ -20,11 +20,12 @@ uniform mat4 mvp_matrix;
 uniform mat4 model_view_matrix;
 uniform mat4 model_to_screen_matrix;
 uniform mat4 inv_mv_matrix;
+
 uniform float height_divided_by_top_minus_bottom;
 uniform float near_plane;
+
 uniform float point_size_factor;
 uniform float model_radius_scale;
-
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -33,7 +34,6 @@ layout(location = 3) in float in_b;
 layout(location = 4) in float empty;
 layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
-
 
 layout(location = 7) in float prov1;
 layout(location = 8) in float prov2;
@@ -48,38 +48,27 @@ INCLUDE vis_color.glsl
 void main()
 {
 
-
-	if(in_radius == 0.0f)
-	{
-   		 gl_Position = vec4(2.0,2.0,2.0,1.0);
-	}
-	else
-	{
-
+  if (in_radius == 0.0f) {
+    gl_Position = vec4(2.0,2.0,2.0,1.0);
+  }
+  else {
+    
     float scaled_radius = model_radius_scale * in_radius * point_size_factor;
     vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
-    //normal = normalize(normal);
-    {
+    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
 
-	    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
-
-	    float ps = 3.0f*(scaled_radius) * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
-     	gl_Position = mvp_matrix * vec4(in_position, 1.0);
+    float ps = 3.0f*(scaled_radius) * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
+    gl_Position = mvp_matrix * vec4(in_position, 1.0);
       
-      VertexOut.color = get_color();
+    VertexOut.color = get_color(in_position, in_normal, vec3(in_r, in_g, in_b), in_radius);
+    VertexOut.nor = normal;
 
-      VertexOut.nor = normal;
+    gl_PointSize = ps;
+    VertexOut.pointSize = ps;
 
-	    gl_PointSize = ps;
-	    VertexOut.pointSize = ps;
+    VertexOut.mv_vertex_depth = (pos_es).z;
+    VertexOut.rad = (scaled_radius);
 
-
-	    VertexOut.mv_vertex_depth = (pos_es).z;
-
-
-	    VertexOut.rad = (scaled_radius);
-
-    }
   }
 
 }

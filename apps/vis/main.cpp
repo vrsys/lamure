@@ -69,6 +69,10 @@ scm::gl::program_ptr vis_xyz_pass1_shader_;
 scm::gl::program_ptr vis_xyz_pass2_shader_;
 scm::gl::program_ptr vis_xyz_pass3_shader_;
 
+scm::gl::program_ptr vis_xyz_qz_shader_;
+scm::gl::program_ptr vis_xyz_qz_pass1_shader_;
+scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
+
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
 scm::gl::texture_2d_ptr fbo_depth_buffer_;
@@ -111,8 +115,8 @@ lamure::ren::Data_Provenance data_provenance_;
 struct input {
   float trackball_x_ = 0.f;
   float trackball_y_ = 0.f;
-  int32_t mouse_x_;
-  int32_t mouse_y_;
+  scm::math::vec2i mouse_;
+  scm::math::vec2i prev_mouse_;
   int32_t brush_mode_ = 0;
   lamure::ren::camera::mouse_state mouse_state_;
 };
@@ -414,8 +418,6 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
 void draw_brush(scm::gl::program_ptr shader) {
 
   if (selection_.num_strokes_ > 0) {
-
-    std::cout << "brush " << selection_.num_strokes_ << std::endl;
 
     //draw brush surfels
     context_->bind_vertex_array(brush_array_);
@@ -842,10 +844,14 @@ void brush() {
     return;
   }
 
+  if (scm::math::length(input_.mouse_-input_.prev_mouse_) < 2) {
+    return;
+  }
+
   lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
 
-  scm::math::vec3f front = deproject(input_.mouse_x_, input_.mouse_y_, -1.0);
-  scm::math::vec3f back = deproject(input_.mouse_x_, input_.mouse_y_, 1.0);
+  scm::math::vec3f front = deproject(input_.mouse_.x, input_.mouse_.y, -1.0);
+  scm::math::vec3f back = deproject(input_.mouse_.x, input_.mouse_.y, 1.0);
   scm::math::vec3f direction_ray = back - front;
 
   lamure::ren::ray ray_brush(front, direction_ray, 100000.0f);
@@ -875,10 +881,11 @@ void brush() {
   }
 
   if (hit) {
+    auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
     selection_.brush_.push_back(
       xyz{
         intersection.position_ + intersection.normal_ * brush_default_offset_,
-        (char)255, (char)240, (char)0, (char)255,
+        (char)color.x, (char)color.y, (char)color.z, (char)255,
         brush_default_size_,
         intersection.normal_});
   }
@@ -1072,8 +1079,8 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
 void glut_motion(int32_t x, int32_t y) {
 
-  input_.mouse_x_ = x;
-  input_.mouse_y_ = y;
+  input_.prev_mouse_ = input_.mouse_;
+  input_.mouse_ = scm::math::vec2i(x, y);
   
   if (!input_.brush_mode_) {
     camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
@@ -1098,8 +1105,8 @@ void glut_mouse(int32_t button, int32_t state, int32_t x, int32_t y) {
     default: break;
   }
 
-  input_.mouse_x_ = x;
-  input_.mouse_y_ = y;
+  input_.prev_mouse_ = input_.mouse_;
+  input_.mouse_ = scm::math::vec2i(x, y);
 
   if (!input_.brush_mode_) {
     input_.trackball_x_ = 2.f * float(x - (settings_.width_/2))/float(settings_.width_) ;
@@ -1266,6 +1273,11 @@ int32_t main(int argc, char* argv[]) {
     std::string vis_xyz_pass2_fs_source;
     std::string vis_xyz_pass3_vs_source;
     std::string vis_xyz_pass3_fs_source;
+
+    std::string vis_xyz_qz_vs_source;
+    std::string vis_xyz_qz_pass1_vs_source;
+    std::string vis_xyz_qz_pass2_vs_source;
+
     if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_source)
@@ -1276,6 +1288,9 @@ int32_t main(int argc, char* argv[]) {
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_qz.glslv", vis_xyz_qz_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_qz_pass1.glslv", vis_xyz_qz_pass1_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_qz_pass2.glslv", vis_xyz_qz_pass2_vs_source)
       ) {
       std::cout << "error reading shader files" << std::endl;
       return 1;
@@ -1325,6 +1340,34 @@ int32_t main(int argc, char* argv[]) {
       std::cout << "error creating shader programs" << std::endl;
       return 1;
     }
+
+    vis_xyz_qz_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
+    if (!vis_xyz_qz_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+
+    vis_xyz_qz_pass1_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass1_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
+    if (!vis_xyz_qz_pass1_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+
+    vis_xyz_qz_pass2_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass2_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
+    if (!vis_xyz_qz_pass2_shader_) {
+      std::cout << "error creating shader programs" << std::endl;
+      return 1;
+    }
+
   }
   catch (std::exception& e)
   {

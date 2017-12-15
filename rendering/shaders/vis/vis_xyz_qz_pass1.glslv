@@ -23,24 +23,31 @@ uniform float near_plane;
 uniform float point_size_factor;
 uniform float model_radius_scale;
 
-layout(location = 0) in vec3 in_position;
-layout(location = 1) in float in_r;
-layout(location = 2) in float in_g;
-layout(location = 3) in float in_b;
-layout(location = 4) in float empty;
-layout(location = 5) in float in_radius;
-layout(location = 6) in vec3 in_normal;
+INCLUDE ../common/attribute_dequantization_header.glsl
 
-layout(location = 7) in float prov1;
-layout(location = 8) in float prov2;
-layout(location = 9) in float prov3;
-layout(location = 10) in float prov4;
-layout(location = 11) in float prov5;
-layout(location = 12) in float prov6;
+layout(location = 3) in float prov1;
+layout(location = 4) in float prov2;
+layout(location = 5) in float prov3;
+layout(location = 6) in float prov4;
+layout(location = 7) in float prov5;
+layout(location = 8) in float prov6;
 
+INCLUDE ../common/attribute_dequantization_functions.glsl
 
 void main()
 {
+  // the "in" prefix is kept to be consistent with the interface of the uncompressed shaders.
+  // conceptually, the decompressed attributes are the input for the next stages.
+  vec3  in_position = vec3(0.0);
+  vec3  in_normal   = vec3(0.0);
+  float in_radius  = 0.0;
+  vec3  in_rgb = vec3(0.0);
+
+  dequantize_surfel_attributes_full(
+    in_qz_pos_xy_16_16, 
+    in_qz_pos_z_normal_enum_16_16, 
+    in_rgb_777_and_radius_11, //compressed v-attributes
+    in_position, in_normal, in_radius, in_rgb); //decompressed v-attributes
 
   if(in_radius == 0.0) {
     gl_Position = vec4(2.0,2.0,2.0,1.0);
