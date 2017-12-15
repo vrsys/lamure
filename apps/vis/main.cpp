@@ -5,7 +5,6 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-
 //lamure
 #include <lamure/types.h>
 #include <lamure/ren/config.h>
@@ -15,6 +14,8 @@
 #include <lamure/ren/policy.h>
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
+#include <lamure/ren/ray.h>
+
 
 //schism
 #include <scm/core.h>
@@ -32,7 +33,6 @@
 #include <scm/gl_util/font/text_renderer.h>
 #include <scm/core/time/accum_timer.h>
 #include <scm/core/time/high_res_timer.h>
-
 
 #include <GL/freeglut.h>
 
@@ -53,17 +53,11 @@ bool rendering_ = false;
 int32_t render_width_ = 1280;
 int32_t render_height_ = 720;
 
-float trackball_x_ = 0.f;
-float trackball_y_ = 0.f;
-float dolly_sens_ = 10.f;
-
 int32_t num_models_ = 0;
-int32_t selected_model_ = -1;
 std::vector<scm::math::mat4d> model_transformations_;
 
 float height_divided_by_top_minus_bottom_ = 0.f;
 
-lamure::ren::camera::mouse_state mouse_state_;
 
 lamure::ren::camera* camera_ = nullptr;
 
@@ -98,6 +92,10 @@ scm::gl::blend_state_ptr color_no_blending_state_;
 scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
 
+scm::gl::buffer_ptr brush_buffer_;
+scm::gl::vertex_array_ptr brush_array_;
+scm::gl::program_ptr brush_shader_;
+
 scm::gl::program_ptr quad_shader_;
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 scm::gl::text_renderer_ptr text_renderer_;
@@ -109,6 +107,41 @@ uint64_t rendered_splats_ = 0;
 uint64_t rendered_nodes_ = 0;
 
 lamure::ren::Data_Provenance data_provenance_;
+
+struct input {
+  float trackball_x_ = 0.f;
+  float trackball_y_ = 0.f;
+  int32_t mouse_x_;
+  int32_t mouse_y_;
+  int32_t brush_mode_ = 0;
+  lamure::ren::camera::mouse_state mouse_state_;
+};
+
+input input_;
+
+struct gui {
+  scm::math::mat4f ortho_matrix_;
+};
+
+gui gui_;
+
+struct xyz {
+  scm::math::vec3f pos_;
+  char r_;
+  char g_;
+  char b_;
+  char a_;
+  float rad_;
+  scm::math::vec3f nml_;
+};
+
+struct selection {
+  int32_t selected_model_ = -1;
+  int32_t num_strokes_ = 0;
+  std::vector<xyz> brush_;
+};
+
+selection selection_;
 
 struct settings {
   int32_t width_;
@@ -147,6 +180,9 @@ struct settings {
   std::vector<scm::math::mat4d> transforms_;
 
 };
+
+float brush_default_size_ = 0.002f;
+float brush_default_offset_ = brush_default_size_;
 
 settings settings_;
 
@@ -374,6 +410,40 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
   return std::find(begin, end, option) != end;
 }
 
+
+void draw_brush(scm::gl::program_ptr shader) {
+
+  if (selection_.num_strokes_ > 0) {
+
+    std::cout << "brush " << selection_.num_strokes_ << std::endl;
+
+    //draw brush surfels
+    context_->bind_vertex_array(brush_array_);
+
+    scm::math::mat4d model_matrix = scm::math::mat4d::identity();
+    scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
+    scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
+    scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
+    scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
+
+    //uniforms for brush
+    shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+    shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+    shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+
+    shader->uniform("point_size_factor", settings_.point_scale_);
+    shader->uniform("show_normals", false);
+    shader->uniform("show_accuracy", false);
+    shader->uniform("show_output_sensitivity", false);
+    shader->uniform("channel", 0);
+
+    context_->apply();
+
+    context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, selection_.num_strokes_);
+  }
+
+}
+
 void draw_all_models(const lamure::context_t context_id, const lamure::view_t view_id, scm::gl::program_ptr shader) {
 
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
@@ -395,8 +465,8 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
   rendered_nodes_ = 0;
 
   for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-    if (selected_model_ != -1) {
-      model_id = selected_model_;
+    if (selection_.selected_model_ != -1) {
+      model_id = selection_.selected_model_;
     }
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
@@ -459,7 +529,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
       
       }
     }
-    if (selected_model_ != -1) {
+    if (selection_.selected_model_ != -1) {
       break;
     }
   }
@@ -495,6 +565,35 @@ void set_uniforms(scm::gl::program_ptr shader) {
     
 }
 
+void create_brush() {
+
+  if (selection_.brush_.empty()) {
+    selection_.num_strokes_ = 0;
+    return;
+  }
+  if (selection_.num_strokes_ == selection_.brush_.size()) {
+    return;
+  }
+
+  selection_.num_strokes_ = selection_.brush_.size();
+  
+  brush_buffer_.reset();
+  brush_array_.reset(); 
+
+  brush_buffer_ = device_->create_buffer(
+    scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * selection_.num_strokes_, &selection_.brush_[0]);
+  brush_array_ = device_->create_vertex_array(scm::gl::vertex_format
+    (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
+    (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
+    (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
+    boost::assign::list_of(brush_buffer_));
+
+}
+
 void glut_display() {
   if (rendering_) {
     return;
@@ -513,6 +612,13 @@ void glut_display() {
     text_ss << "# nodes: " << std::to_string(rendered_nodes_) << "\n";
     text_ss << "\n";
     text_ss << "vis (e/E): " << settings_.vis_ << "\n";
+    if (selection_.selected_model_ == -1) {
+      text_ss << "datasets: " << num_models_ << "\n";
+    }
+    else {
+      text_ss << "dataset: " << selection_.selected_model_+1 << " / " << num_models_ << "\n";
+    }
+    text_ss << "brush (b): " << input_.brush_mode_ << "\n";
     text_ss << "\n";
     text_ss << "lod_update (d): " << settings_.lod_update_ << "\n";
     text_ss << "splatting (q): " << settings_.splatting_ << "\n";
@@ -569,6 +675,9 @@ void glut_display() {
   }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
  
+  
+  create_brush();
+
   if (settings_.splatting_) {
     //2 pass splatting
     //PASS 1
@@ -597,6 +706,8 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
 
+    draw_brush(vis_xyz_pass1_shader_);
+
     //PASS 2
 
     context_->clear_color_buffer(pass2_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
@@ -619,6 +730,8 @@ void glut_display() {
     context_->apply();
 
     draw_all_models(context_id, view_id, vis_xyz_pass2_shader_);
+
+    draw_brush(vis_xyz_pass2_shader_);
 
     //PASS 3
 
@@ -661,6 +774,7 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, vis_xyz_shader_);
 
+    draw_brush(vis_xyz_shader_);
   }
 
 
@@ -696,6 +810,79 @@ void glut_display() {
     frame_time_.reset();
   }
   
+}
+
+
+scm::math::vec3f deproject(float x, float y, float z) {
+  scm::math::mat4f matrix_inverse = scm::math::inverse(camera_->get_projection_matrix() * camera_->get_view_matrix());
+
+  float x_normalized = 2.0f * x / settings_.width_ - 1;
+  float y_normalized = -2.0f * y / settings_.height_ + 1;
+
+  scm::math::vec4f point_screen = scm::math::vec4f(x_normalized, y_normalized, z, 1.0f);
+  scm::math::vec4f point_world = matrix_inverse * point_screen;
+
+  return scm::math::vec3f(point_world[0] / point_world[3], point_world[1] / point_world[3], point_world[2] / point_world[3]);
+}
+
+
+
+void brush() {
+  
+  if (!input_.brush_mode_) {
+    return;
+  }
+
+  if (input_.mouse_state_.rb_down_) {
+    selection_.brush_.clear();
+    return;
+  }
+
+  if (!input_.mouse_state_.lb_down_) {
+    return;
+  }
+
+  lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+
+  scm::math::vec3f front = deproject(input_.mouse_x_, input_.mouse_y_, -1.0);
+  scm::math::vec3f back = deproject(input_.mouse_x_, input_.mouse_y_, 1.0);
+  scm::math::vec3f direction_ray = back - front;
+
+  lamure::ren::ray ray_brush(front, direction_ray, 100000.0f);
+
+  bool hit = false;
+
+  uint32_t max_depth = 255;
+  uint32_t surfel_skip = 1;
+  lamure::ren::ray::intersection intersection;
+  if (selection_.selected_model_ != -1) {
+    scm::math::mat4f model_transform = database->get_model(selection_.selected_model_)->transform();
+    if (ray_brush.intersect_model(selection_.selected_model_, model_transform, 1.0f, max_depth, surfel_skip, false, intersection)) {
+      hit = true;
+    }
+  }
+  else {
+    scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(camera_->trackball_matrix()));
+    scm::math::vec3f cam_up = scm::math::normalize(scm::math::vec3f(cm[0], cm[1], cm[2]));
+    float plane_dim = 0.1f;
+    if (ray_brush.intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
+      hit = true;
+    }
+  }
+
+  if (scm::math::length(intersection.position_) < 0.000001f) {
+    return;
+  }
+
+  if (hit) {
+    selection_.brush_.push_back(
+      xyz{
+        intersection.position_ + intersection.normal_ * brush_default_offset_,
+        (char)255, (char)240, (char)0, (char)255,
+        brush_default_size_,
+        intersection.normal_});
+  }
+
 }
 
 void create_framebuffers() {
@@ -734,9 +921,14 @@ void glut_resize(int32_t w, int32_t h) {
 
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
-  text_renderer_->projection_matrix(
+  gui_.ortho_matrix_ = 
     scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
-    0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f));
+    0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
+
+  
+  text_renderer_->projection_matrix(gui_.ortho_matrix_);
+
+  
 
 }
 
@@ -792,6 +984,10 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
     case 'h':
       settings_.heatmap_ = !settings_.heatmap_;
+      break;
+
+    case 'b':
+      input_.brush_mode_ = !input_.brush_mode_;
       break;
 
     case 'p':
@@ -857,36 +1053,14 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       break;
 
     case '0':
-      selected_model_ = -1;
+      selection_.selected_model_ = -1;
       break;
-    case '1':
-      selected_model_ = std::min(num_models_-1, 0);
+    case '-':
+      if (--selection_.selected_model_ < 0) selection_.selected_model_ = num_models_-1;
       break;
-    case '2':
-      selected_model_ = std::min(num_models_-1, 1);
+    case '=':
+      if (++selection_.selected_model_ >= num_models_) selection_.selected_model_ = 0;
       break;
-    case '3':
-      selected_model_ = std::min(num_models_-1, 2);
-      break;
-    case '4':
-      selected_model_ = std::min(num_models_-1, 3);
-      break;
-    case '5':
-      selected_model_ = std::min(num_models_-1, 4);
-      break;
-    case '6':
-      selected_model_ = std::min(num_models_-1, 5);
-      break;
-    case '7':
-      selected_model_ = std::min(num_models_-1, 6);
-      break;
-    case '8':
-      selected_model_ = std::min(num_models_-1, 7);
-      break;
-    case '9':
-      selected_model_ = std::min(num_models_-1, 8);
-      break;
-      
 
     default:
       break;
@@ -898,31 +1072,44 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
 void glut_motion(int32_t x, int32_t y) {
 
-  camera_->update_trackball(x,y, settings_.width_, settings_.height_, mouse_state_);
-
+  input_.mouse_x_ = x;
+  input_.mouse_y_ = y;
+  
+  if (!input_.brush_mode_) {
+    camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
+  }
+  else {
+    brush();
+  }
 }
 
 void glut_mouse(int32_t button, int32_t state, int32_t x, int32_t y) {
 
   switch (button) {
     case GLUT_LEFT_BUTTON:
-    {
-        mouse_state_.lb_down_ = (state == GLUT_DOWN) ? true : false;
-    } break;
+      input_.mouse_state_.lb_down_ = (state == GLUT_DOWN) ? true : false;
+      break;
     case GLUT_MIDDLE_BUTTON:
-    {
-        mouse_state_.mb_down_ = (state == GLUT_DOWN) ? true : false;
-    } break;
+      input_.mouse_state_.mb_down_ = (state == GLUT_DOWN) ? true : false;
+      break;
     case GLUT_RIGHT_BUTTON:
-    {
-        mouse_state_.rb_down_ = (state == GLUT_DOWN) ? true : false;
-    } break;
+      input_.mouse_state_.rb_down_ = (state == GLUT_DOWN) ? true : false;
+      break;
+    default: break;
   }
 
-  trackball_x_ = 2.f * float(x - (settings_.width_/2))/float(settings_.width_) ;
-  trackball_y_ = 2.f * float(settings_.height_ - y - (settings_.height_/2))/float(settings_.height_);
+  input_.mouse_x_ = x;
+  input_.mouse_y_ = y;
+
+  if (!input_.brush_mode_) {
+    input_.trackball_x_ = 2.f * float(x - (settings_.width_/2))/float(settings_.width_) ;
+    input_.trackball_y_ = 2.f * float(settings_.height_ - y - (settings_.height_/2))/float(settings_.height_);
   
-  camera_->update_trackball_mouse_pos(trackball_x_, trackball_y_);
+    camera_->update_trackball_mouse_pos(input_.trackball_x_, input_.trackball_y_);
+  }
+  else {
+    brush();
+  }
 }
 
 
@@ -1046,6 +1233,8 @@ int32_t main(int argc, char* argv[]) {
   glutInitContextVersion(4, 4);
   glutInitContextProfile(GLUT_CORE_PROFILE);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
+  //glewExperimental = GL_TRUE;
+  //glewInit();
   glutInitWindowSize(settings_.width_, settings_.height_);
   glutInitWindowPosition(64, 64);
   glutCreateWindow(argv[0]);
@@ -1170,7 +1359,6 @@ int32_t main(int argc, char* argv[]) {
   gaussian_texture_ = device_->create_texture_2d(scm::math::vec2ui(32,1), scm::gl::FORMAT_R_32F, 1, 1, 1);
   context_->update_sub_texture(gaussian_texture_, ur, 0u, scm::gl::FORMAT_R_32F, gaussian_buffer);
 
-
   auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
   auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
   auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
@@ -1184,13 +1372,17 @@ int32_t main(int argc, char* argv[]) {
 
   screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
   
+  gui_.ortho_matrix_ = scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
+      0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
+
+
   try {
     scm::gl::font_face_ptr output_font(new scm::gl::font_face(device_, std::string(LAMURE_FONTS_DIR) + "/Ubuntu.ttf", 20, 0, scm::gl::font_face::smooth_lcd));
     text_renderer_ = scm::make_shared<scm::gl::text_renderer>(device_);
     renderable_text_ = scm::make_shared<scm::gl::text>(device_, output_font, scm::gl::font_face::style_regular, "sick, sad world...");
-    text_renderer_->projection_matrix(
-      scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
-      0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f));
+
+    text_renderer_->projection_matrix(gui_.ortho_matrix_);
+      
     renderable_text_->text_color(scm::math::vec4f(1.0f, 1.0f, 0.0f, 1.0f));
     renderable_text_->text_kerning(true);
   }
@@ -1198,7 +1390,6 @@ int32_t main(int argc, char* argv[]) {
       throw std::runtime_error(e.what());
   }
 
-  
   glutMainLoop();
 
   return 0;
