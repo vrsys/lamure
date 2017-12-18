@@ -109,7 +109,7 @@ compute_aabb(const surfel_disk_array& sa,
             surfels_in_buffer;
 
         surfel_vector data(len);
-        sa.file()->read(&data, 0, offset, len);
+        sa.get_file()->read(&data, 0, offset, len);
 
         if (!parallelize) {
 
@@ -192,12 +192,12 @@ translate_surfels(surfel_disk_array& sa,
             surfels_in_buffer;
 
         surfel_vector data(len);
-        sa.file()->read(&data, 0, offset, len);
+        sa.get_file()->read(&data, 0, offset, len);
 
         for (size_t s = 0; s < len; ++s) {
             data[s].pos() += translation;
         }
-        sa.file()->write(&data, 0, offset, len);
+        sa.get_file()->write(&data, 0, offset, len);
     }
 }
 
@@ -252,7 +252,7 @@ split_surfel_array(T& sa,
                  const uint8_t split_axis,
                  const uint8_t fan_factor)
 {
-    using Traits = surfel_array_traits<T>;
+    using Traits = array_traits<T>;
     static_assert(Traits::is_in_core || Traits::is_out_of_core, "Wrong type");
 
     const uint32_t child_size = (int)sa.length() / fan_factor;

@@ -5,21 +5,19 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <lamure/pre/surfel_array_abstract.h>
+#include <lamure/pre/prov.h>
+
+#include <lamure/config.h>
+
+#include <iostream>
+#include <limits.h>
 
 namespace lamure
 {
 namespace pre
 {
 
-surfel_array_abstract::
-~surfel_array_abstract()
-{
-    try {
-        reset();
-    }
-    catch (...) {}
-}
+
 
 }
 } // namespace lamure

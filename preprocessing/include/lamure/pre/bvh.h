@@ -21,6 +21,8 @@
 
 #include <lamure/pre/io/converter.h>
 
+
+
 #include <atomic>
 #include <boost/filesystem.hpp>
 #include <unordered_set>
@@ -29,6 +31,7 @@ namespace lamure
 {
 namespace pre
 {
+
 class reduction_strategy;
 
 class normal_computation_strategy;
@@ -188,7 +191,7 @@ class PREPROCESSING_DLL bvh
 
     vec3r translation_ = vec3r(0.0); ///< translation of surfels
 
-    void downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, shared_file leaf_level_access);
+    void downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, shared_surfel_file leaf_level_access);
 
     void get_descendant_leaves(const node_id_type node, std::vector<node_id_type> &result, const node_id_type first_leaf, const std::unordered_set<size_t> &excluded_leaves) const;
     void get_descendant_nodes(const node_id_type node, std::vector<node_id_type> &result, const node_id_type desired_depth, const std::unordered_set<size_t> &excluded_nodes) const;

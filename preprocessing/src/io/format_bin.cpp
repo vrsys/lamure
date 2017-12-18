@@ -24,7 +24,7 @@ void format_bin::
 write(const std::string &filename, buffer_callback_function callback)
 {
 
-    file file;
+    surfel_file file;
     surfel_vector buffer;
     size_t count = 0;
 

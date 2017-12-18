@@ -9,7 +9,7 @@
 #define PRE_REDUCTION_STRATEGY_H_
 
 #include <lamure/pre/bvh_node.h>
-#include <lamure/pre/surfel_mem_array.h>
+#include <lamure/pre/mem_array.h>
 
 namespace lamure
 {

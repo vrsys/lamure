@@ -54,6 +54,7 @@ namespace lamure
 {
 namespace pre
 {
+
 class reduction_strategy;
 
 #ifdef LAMURE_USE_CGAL_FOR_NNI
@@ -78,7 +79,7 @@ void bvh::init_tree(const std::string &surfels_input_file, const uint32_t max_fa
     base_path_ = base_path;
 
     // get number of surfels
-    file input;
+    surfel_file input;
     input.open(surfels_input_file);
     size_t num_surfels = input.get_size();
     input.close();
@@ -201,10 +202,10 @@ void bvh::downsweep(bool adjust_translation, const std::string &surfels_input_fi
     LOGGER_INFO("Build bvh for \"" << surfels_input_file << "\"");
 
     // open input file and leaf level file
-    shared_file input_file_disk_access = std::make_shared<file>();
+    shared_surfel_file input_file_disk_access = std::make_shared<surfel_file>();
     input_file_disk_access->open(surfels_input_file);
 
-    shared_file leaf_level_access = std::make_shared<file>();
+    shared_surfel_file leaf_level_access = std::make_shared<surfel_file>();
     std::string file_extension = ".lv" + std::to_string(depth_);
     if(bin_all_file_extension)
         file_extension = ".bin_all";
@@ -343,7 +344,7 @@ void bvh::downsweep(bool adjust_translation, const std::string &surfels_input_fi
     state_ = state_type::after_downsweep;
 }
 
-void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, shared_file leaf_level_access)
+void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, shared_surfel_file leaf_level_access)
 {
     size_t slice_left = node.node_id(), slice_right = node.node_id();
 
@@ -1328,10 +1329,10 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
                   bool resample)
 {
     // Create level temp files
-    std::vector<shared_file> level_temp_files;
+    std::vector<shared_surfel_file> level_temp_files;
     for(uint32_t level = 0; level <= depth_; ++level)
     {
-        level_temp_files.push_back(std::make_shared<file>());
+        level_temp_files.push_back(std::make_shared<surfel_file>());
         std::string ext = ".lv" + std::to_string(level);
         level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
     }
@@ -1617,9 +1618,9 @@ void bvh::reset_nodes()
 {
     for(auto &n : nodes_)
     {
-        if(n.is_out_of_core() && n.disk_array().file().use_count() == 1)
+        if(n.is_out_of_core() && n.disk_array().get_file().use_count() == 1)
         {
-            n.disk_array().file()->close(true);
+            n.disk_array().get_file()->close(true);
         }
         n.reset();
     }

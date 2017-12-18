@@ -138,7 +138,7 @@ write_node_streamed(const bvh_node &node)
                                node.disk_array().length();
 
     surfel_vector *surfel_buffer = new surfel_vector(read_length);
-    node.disk_array().file()->read(surfel_buffer, 0,
+    node.disk_array().get_file()->read(surfel_buffer, 0,
                                    node.disk_array().offset(),
                                    read_length);
     buffer_.push_back(surfel_buffer);

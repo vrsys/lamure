@@ -12,8 +12,8 @@
 #include <lamure/types.h>
 #include <lamure/bounding_box.h>
 
-#include <lamure/pre/surfel_mem_array.h>
-#include <lamure/pre/surfel_disk_array.h>
+#include <lamure/pre/mem_array.h>
+#include <lamure/pre/disk_array.h>
 #include <lamure/pre/node_statistics.h>
 
 #include <typeinfo>
@@ -172,7 +172,7 @@ public:
      * \param[in] offset_in_file  The offset in the provided file.
      * \param[in] dealloc_mem_array  If true, the mem_data_will be reset.
      */
-    void flush_to_disk(const shared_file &file,
+    void flush_to_disk(const shared_surfel_file &file,
                        const size_t offset_in_file,
                        const bool dealloc_mem_array);
 

@@ -34,6 +34,7 @@ public:
     {
         std::string input_file;
         std::string working_directory;
+        std::string prov_file;
         uint32_t max_fan_factor;
         size_t surfels_per_node;
         uint16_t final_stage;

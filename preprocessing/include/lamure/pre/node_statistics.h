@@ -10,7 +10,7 @@
 
 #include <array>
 
-#include <lamure/pre/surfel_mem_array.h>
+#include <lamure/pre/mem_array.h>
 
 namespace lamure
 {

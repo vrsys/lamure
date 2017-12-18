@@ -31,7 +31,7 @@ external_sort(const size_t memory_limit,
               const surfel::compare_function &compare)
     : memory_limit_(memory_limit),
       compare_(compare),
-      runs_file_(std::make_shared<file>())
+      runs_file_(std::make_shared<surfel_file>())
 {}
 
 void external_sort::
@@ -40,7 +40,7 @@ sort(surfel_disk_array &array,
      const surfel::compare_function &compare)
 {
     assert(!array.is_empty());
-    assert(array.file());
+    assert(array.get_file());
 
     if (!array.length())
         return;
@@ -72,7 +72,7 @@ sort(surfel_disk_array &array,
 
     if (runs_count > 1u) {
         // external sort
-        es.runs_file_->open(array.file()->file_name() + TEMP_FILE_EXT, true);
+        es.runs_file_->open(array.get_file()->file_name() + TEMP_FILE_EXT, true);
         LOGGER_TRACE("create runs");
         es.create_runs(array, run_length, runs_count);
         LOGGER_TRACE("merge");
@@ -182,7 +182,7 @@ merge(surfel_disk_array &array, const size_t buffer_size)
             buffers[least_idx].pop_front();
             output.push_back(least);
             if (output.size() >= buffer_size) {
-                array.file()->write(&output, 0, array.offset() + file_offset,
+                array.get_file()->write(&output, 0, array.offset() + file_offset,
                                     output.size());
                 file_offset += output.size();
                 output.clear();
@@ -192,7 +192,7 @@ merge(surfel_disk_array &array, const size_t buffer_size)
     while (least_idx != -1);
 
     if (output.size() > 0) {
-        array.file()->write(&output, 0, array.offset() + file_offset,
+        array.get_file()->write(&output, 0, array.offset() + file_offset,
                             output.size());
         file_offset += output.size();
         output.clear();

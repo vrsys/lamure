@@ -10,6 +10,7 @@
 
 #include <lamure/pre/platform.h>
 #include <lamure/pre/surfel.h>
+#include <lamure/pre/prov.h>
 
 #include <mutex>
 #include <fstream>
@@ -17,16 +18,14 @@
 #include <string>
 #include <memory>
 
-namespace lamure
-{
-namespace pre
-{
+namespace lamure {
+namespace pre {
 
+template<typename T>
 class PREPROCESSING_DLL file
 {
 public:
-    file()
-    {}
+    file() {}
     file(const file &) = delete;
     file &operator=(const file &) = delete;
     virtual             ~file();
@@ -39,22 +38,22 @@ public:
     const std::string &file_name() const
     { return file_name_; }
 
-    void append(const surfel_vector *data,
+    void append(const std::vector<T> *data,
                 const size_t offset_in_mem,
                 const size_t length);
-    void append(const surfel_vector *data);
+    void append(const std::vector<T> *data);
 
-    void write(const surfel_vector *data,
+    void write(const std::vector<T> *data,
                const size_t offset_in_mem,
                const size_t offset_in_file,
                const size_t length);
-    void write(const surfel &surfel, const size_t pos_in_file);
+    void write(const T &surfel, const size_t pos_in_file);
 
-    void read(surfel_vector *data,
+    void read(std::vector<T> *data,
               const size_t offset_in_mem,
               const size_t offset_in_file,
               const size_t length) const;
-    const surfel read(const size_t pos_in_file) const;
+    const T read(const size_t pos_in_file) const;
 
 private:
 
@@ -67,9 +66,18 @@ private:
 
 };
 
-typedef std::shared_ptr<file> shared_file;
-
 } // namespace pre
 } // namespace lamure
+
+#include <lamure/pre/file.inl>
+
+namespace lamure {
+namespace pre {
+
+typedef file<surfel> surfel_file;
+typedef std::shared_ptr<surfel_file> shared_surfel_file;
+
+}
+}
 
 #endif // PRE_FILE_H_

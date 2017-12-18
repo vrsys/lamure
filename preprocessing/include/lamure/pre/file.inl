@@ -5,7 +5,7 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <lamure/pre/io/file.h>
+//#include <lamure/pre/io/file.h>
 
 #include <stdexcept>
 #include <cstdio>
@@ -13,13 +13,11 @@
 
 #include <lamure/pre/logger.h>
 
-namespace lamure
-{
-namespace pre
-{
+namespace lamure {
+namespace pre {
 
-file::
-~file()
+template<typename T>
+file<T>::~file()
 {
     try {
         close();
@@ -27,7 +25,8 @@ file::
     catch (...) {}
 }
 
-void file::
+template<typename T>
+void file<T>::
 open(const std::string &file_name, const bool truncate)
 {
     if (is_open()) {
@@ -55,7 +54,8 @@ open(const std::string &file_name, const bool truncate)
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
-void file::
+template<typename T>
+void file<T>::
 close(const bool remove)
 {
     if (is_open()) {
@@ -76,13 +76,15 @@ close(const bool remove)
     }
 }
 
-const bool file::
+template<typename T>
+const bool file<T>::
 is_open() const
 {
     return stream_.is_open();
 }
 
-const size_t file::
+template<typename T>
+const size_t file<T>::
 get_size() const
 {
     std::lock_guard<std::mutex> lock(read_write_mutex_);
@@ -96,11 +98,12 @@ get_size() const
         LOGGER_ERROR("get_size failed. file: \"" << file_name_ <<
                                                  "\". " << strerror(errno));
     }
-    return len / sizeof(surfel);
+    return len / sizeof(T);
 }
 
-void file::
-append(const surfel_vector *data,
+template<typename T>
+void file<T>::
+append(const std::vector<T> *data,
        const size_t offset_in_mem,
        const size_t length)
 {
@@ -112,8 +115,8 @@ append(const surfel_vector *data,
 
     stream_.seekp(0, stream_.end);
     stream_.write(reinterpret_cast<char *>(
-                      const_cast<surfel *>(&(*data)[offset_in_mem])),
-                  length * sizeof(surfel));
+                      const_cast<T *>(&(*data)[offset_in_mem])),
+                  length * sizeof(T));
 
     if (stream_.fail() || stream_.bad()) {
         LOGGER_ERROR("append failed. file: \"" << file_name_ <<
@@ -123,14 +126,16 @@ append(const surfel_vector *data,
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
-void file::
-append(const surfel_vector *data)
+template<typename T>
+void file<T>::
+append(const std::vector<T> *data)
 {
     append(data, 0, data->size());
 }
 
-void file::
-write(const surfel_vector *data,
+template<typename T>
+void file<T>::
+write(const std::vector<T> *data,
       const size_t offset_in_mem,
       const size_t offset_in_file,
       const size_t length)
@@ -139,19 +144,21 @@ write(const surfel_vector *data,
     assert(offset_in_mem + length <= data->size());
 
     write_data(reinterpret_cast<char *>(
-                   const_cast<surfel *>(&(*data)[offset_in_mem])),
+                   const_cast<T *>(&(*data)[offset_in_mem])),
                offset_in_file, length);
 }
 
-void file::
-write(const surfel &srfl, const size_t pos_in_file)
+template<typename T>
+void file<T>::
+write(const T &srfl, const size_t pos_in_file)
 {
-    write_data(reinterpret_cast<char *>(const_cast<surfel *>(&srfl)),
+    write_data(reinterpret_cast<char *>(const_cast<T *>(&srfl)),
                pos_in_file, 1);
 }
 
-void file::
-read(surfel_vector *data,
+template<typename T>
+void file<T>::
+read(std::vector<T> *data,
      const size_t offset_in_mem,
      const size_t offset_in_file,
      const size_t length) const
@@ -163,22 +170,24 @@ read(surfel_vector *data,
               offset_in_file, length);
 }
 
-const surfel file::
+template<typename T>
+const T file<T>::
 read(const size_t pos_in_file) const
 {
-    surfel s;
+    T s;
     read_data(reinterpret_cast<char *>(&s), pos_in_file, 1);
     return s;
 }
 
-void file::
+template<typename T>
+void file<T>::
 write_data(char *data, const size_t offset_in_file, const size_t length)
 {
     assert(is_open());
 
     std::lock_guard<std::mutex> lock(read_write_mutex_);
-    stream_.seekp(offset_in_file * sizeof(surfel));
-    stream_.write(data, length * sizeof(surfel));
+    stream_.seekp(offset_in_file * sizeof(T));
+    stream_.write(data, length * sizeof(T));
 
     if (stream_.fail() || stream_.bad()) {
         LOGGER_ERROR("write failed. file: \"" << file_name_ <<
@@ -188,14 +197,15 @@ write_data(char *data, const size_t offset_in_file, const size_t length)
     stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 }
 
-void file::
+template<typename T>
+void file<T>::
 read_data(char *data, const size_t offset_in_file, const size_t length) const
 {
     assert(is_open());
 
     std::lock_guard<std::mutex> lock(read_write_mutex_);
-    stream_.seekg(offset_in_file * sizeof(surfel));
-    stream_.read(data, length * sizeof(surfel));
+    stream_.seekg(offset_in_file * sizeof(T));
+    stream_.read(data, length * sizeof(T));
 
     if (stream_.fail() || stream_.bad()) {
         LOGGER_ERROR("read failed. file: \"" << file_name_ <<

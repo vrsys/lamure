@@ -9,8 +9,8 @@
 #define PRE_BASIC_ALGORITHMS_H_
 
 #include <lamure/pre/common.h>
-#include <lamure/pre/surfel_disk_array.h>
-#include <lamure/pre/surfel_mem_array.h>
+#include <lamure/pre/disk_array.h>
+#include <lamure/pre/mem_array.h>
 #include <lamure/bounding_box.h>
 
 namespace lamure

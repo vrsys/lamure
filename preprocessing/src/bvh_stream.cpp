@@ -275,7 +275,7 @@ read_bvh(const std::string &filename, bvh &bvh)
         }
     }
 
-    std::vector<shared_file> level_temp_files;
+    std::vector<shared_surfel_file> level_temp_files;
 
     bvh::state_type current_state = static_cast<bvh::state_type>(tree.state_);
 
@@ -295,7 +295,7 @@ read_bvh(const std::string &filename, bvh &bvh)
 
         //setup level temp files
         for (uint32_t i = 0; i < tree_ext.num_disk_accesses_; ++i) {
-            level_temp_files.push_back(std::make_shared<file>());
+            level_temp_files.push_back(std::make_shared<surfel_file>());
             level_temp_files.back()->open(tree_ext.disk_accesses_[i].string_, false);
         }
     }
@@ -465,7 +465,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
                        throw std::runtime_error(
                            "PLOD: bvh_stream::Stream corrupt");
                    }
-                   if (tree_ext.disk_accesses_[k].string_ == bvh_node.disk_array().file()->file_name()) {
+                   if (tree_ext.disk_accesses_[k].string_ == bvh_node.disk_array().get_file()->file_name()) {
                        node_ext.disk_array_.disk_access_ref_ = k;
                        disk_access_found = true;
                        break;
@@ -474,7 +474,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
                
                if (!disk_access_found) {
                   bvh_string disk_access;
-                  disk_access.string_ = bvh_node.disk_array().file()->file_name();
+                  disk_access.string_ = bvh_node.disk_array().get_file()->file_name();
                   disk_access.length_ = disk_access.string_.length();
                   tree_ext.disk_accesses_.push_back(disk_access);
                   node_ext.disk_array_.disk_access_ref_ = tree_ext.num_disk_accesses_;

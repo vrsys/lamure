@@ -8,7 +8,7 @@
 #ifndef PRE_EXTERNAL_SORT_H_
 #define PRE_EXTERNAL_SORT_H_
 
-#include <lamure/pre/surfel_disk_array.h>
+#include <lamure/pre/disk_array.h>
 #include <vector>
 #include <lamure/pre/logger.h>
 
@@ -76,7 +76,7 @@ private:
                 }
 
                 size = std::min(size, run.length() - file_offset);
-                run.file()->read(&data, 0, run.offset() + file_offset, size);
+                run.get_file()->read(&data, 0, run.offset() + file_offset, size);
                 file_offset += size;
                 candidate_pos = 0;
             }
@@ -93,7 +93,7 @@ private:
     surfel::compare_function
         compare_;
 
-    shared_file runs_file_;
+    shared_surfel_file runs_file_;
 
     std::vector<surfel_disk_array>
         runs_;

@@ -87,7 +87,7 @@ load_from_disk()
 }
 
 void bvh_node::
-flush_to_disk(const shared_file &file,
+flush_to_disk(const shared_surfel_file &file,
               const size_t offset_in_file,
               const bool dealloc_mem_array)
 {

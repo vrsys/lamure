@@ -113,6 +113,10 @@ int main(int argc, const char *argv[])
          po::value<int>()->default_value(150),
          "buffer size in megabytes")
 
+        ("prov-file",
+         po::value<std::string>()->default_value(""),
+         "optional ascii-file with provanance attribs per point")
+
         ("reduction-algo",
          po::value<std::string>()->default_value("ndc"),
          "Reduction strategy for the LOD construction. Possible values:\n"
@@ -357,6 +361,10 @@ int main(int argc, const char *argv[])
         desc.outlier_ratio                = std::max(0.0f, vm["outlier-ratio"].as<float>() );
         desc.number_of_outlier_neighbours = std::max(vm["num-outlier-neighbours"].as<int>(), 1);
         desc.radius_multiplier            = vm["radius-multiplier"].as<float>();
+
+        //optional prov file
+        desc.prov_file                    = vm["prov-file"].as<std::string>();
+
 
         // preprocess
         lamure::pre::builder builder(desc);
