@@ -130,6 +130,20 @@ void VTRenderer::render()
         _render_context->unmap_buffer(_atomic_feedback_storage_ssbo);
 
         _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, nullptr);
+
+        std::stringstream stream_feedback;
+        for(size_t x = 0; x < _physical_texture_dimension.x; ++x)
+        {
+            for(size_t y = 0; y < _physical_texture_dimension.y; ++y)
+            {
+                stream_feedback << _copy_memory_new[x + y * _physical_texture_dimension.x] << " ";
+            }
+
+            stream_feedback << std::endl;
+        }
+
+        _vtcontext->get_debug()->set_feedback_string(stream_feedback.str());
+
         _cut_update->feedback(_copy_memory_new);
     }
 }
@@ -172,6 +186,7 @@ void VTRenderer::render_debug_view()
 
         ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0), _vtcontext->get_debug()->get_cut_string().c_str());
         ImGui::Text(_vtcontext->get_debug()->get_mem_slots_string().c_str());
+        ImGui::Text(_vtcontext->get_debug()->get_feedback_string().c_str());
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0), _vtcontext->get_debug()->get_index_string().c_str());
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0), ("RAM pointer count: " + std::to_string(_vtcontext->get_debug()->get_size_mem_cut())).c_str());
 
@@ -265,6 +280,8 @@ void VTRenderer::extract_debug_data(Cut *cut)
         stream_index_string << std::endl;
     }
 
+    _vtcontext->get_debug()->set_mem_slots_string(stream_mem_slots.str());
+
     _vtcontext->get_debug()->set_index_string(stream_index_string.str());
 
     _vtcontext->get_debug()->get_cut_dispatch_times().push_back(_cut_update->get_dispatch_time());
@@ -312,15 +329,15 @@ void VTRenderer::update_physical_texture_blockwise(const uint8_t *buf_texel, uin
     scm::gl::data_format format;
     switch(_vtcontext->get_format_texture())
     {
-        case VTContext::Config::R8:
-            format = scm::gl::FORMAT_R_8;
-            break;
-        case VTContext::Config::RGB8:
-            format = scm::gl::FORMAT_RGB_8;
-            break;
-        case VTContext::Config::RGBA8:
-            format = scm::gl::FORMAT_RGBA_8;
-            break;
+    case VTContext::Config::R8:
+        format = scm::gl::FORMAT_R_8;
+        break;
+    case VTContext::Config::RGB8:
+        format = scm::gl::FORMAT_RGB_8;
+        break;
+    case VTContext::Config::RGBA8:
+        format = scm::gl::FORMAT_RGBA_8;
+        break;
     }
 
     scm::math::vec3ui origin = scm::math::vec3ui(x * _vtcontext->get_size_tile(), y * _vtcontext->get_size_tile(), 0);

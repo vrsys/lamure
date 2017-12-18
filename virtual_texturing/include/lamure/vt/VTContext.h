@@ -26,13 +26,15 @@ class VTContext
 
         std::deque<float> &get_fps();
         float get_mem_slots_busy();
-        void set_mem_slots_busy(float _mem_slots_busy);
+        void set_mem_slots_busy(float mem_slots_busy);
         const std::string &get_cut_string() const;
-        void set_cut_string(const std::string &_cut_string);
+        void set_cut_string(const std::string &cut_string);
         const std::string &get_mem_slots_string() const;
-        void set_mem_slots_string(const std::string &_mem_slots_string);
+        void set_mem_slots_string(const std::string &mem_slots_string);
         const std::string &get_index_string() const;
-        void set_index_string(const std::string &_index_string);
+        void set_index_string(const std::string &index_string);
+        const std::string &get_feedback_string() const;
+        void set_feedback_string(const std::string &feedback_string);
         std::deque<float> &get_cut_swap_times();
         std::deque<float> &get_cut_dispatch_times();
         std::deque<float> &get_apply_times();
@@ -43,6 +45,7 @@ class VTContext
         std::string _string_cut;
         std::string _string_mem_slots;
         std::string _string_index;
+        std::string _string_feedback;
         std::deque<float> _fps;
         std::deque<float> _times_cut_swap;
         std::deque<float> _times_cut_dispatch;

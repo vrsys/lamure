@@ -50,6 +50,7 @@ class CutUpdate
     void remove_from_indexed_memory(id_type tile_id);
 
     uint8_t count_children_in_cut(id_type tile_id);
+    bool check_all_siblings_in_cut(id_type tile_id);
     size_t get_free_mem_slot_index();
     size_t get_mem_slot_for_id(id_type tile_id);
 };

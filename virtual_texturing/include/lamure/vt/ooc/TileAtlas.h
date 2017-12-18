@@ -65,6 +65,19 @@ class TileAtlas : public Observer
         _decompressor.stop();
     }
 
+    bool alreadyRequested(id_type id){
+        auto ptr = _cache.get(id);
+
+        if(ptr != nullptr)
+        {
+            return true;
+        }
+
+        lock_guard<mutex> lock(_requestsLock);
+
+        return _requests.find(id) != _requests.end();
+    }
+
     uint8_t *get(id_type id, priority_type priority)
     {
         auto ptr = _cache.get(id);

@@ -305,4 +305,6 @@ std::deque<float> &VTContext::Debug::get_cut_dispatch_times() { return _times_cu
 std::deque<float> &VTContext::Debug::get_apply_times() { return _times_apply; }
 size_t VTContext::Debug::get_size_mem_cut() const { return _size_mem_cut; }
 void VTContext::Debug::set_size_mem_cut(size_t _size_mem_cut) { Debug::_size_mem_cut = _size_mem_cut; }
+const std::string &VTContext::Debug::get_feedback_string() const { return _string_feedback; }
+void VTContext::Debug::set_feedback_string(const std::string &feedback_string) { Debug::_string_feedback = feedback_string; }
 }
