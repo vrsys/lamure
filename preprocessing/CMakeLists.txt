@@ -10,6 +10,7 @@ set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/*.h)
+file(GLOB MAIN_INL ${PROJECT_INCLUDE_DIR}/lamure/pre/*.inl)
 
 # IO
 file(GLOB IO_SRC ${PROJECT_SOURCE_DIR}/io/*.cpp)
@@ -20,6 +21,7 @@ file(GLOB PLY_INC ${PROJECT_INCLUDE_DIR}/lamure/pre/io/ply/*.h)
 
 SOURCE_GROUP("preprocessing" FILES ${MAIN_SRC})
 SOURCE_GROUP("preprocessing" FILES ${MAIN_INC})
+SOURCE_GROUP("preprocessing" FILES ${MAIN_INL})
 
 SOURCE_GROUP("io" FILES ${IO_SRC})
 SOURCE_GROUP("io" FILES ${IO_INC})
@@ -28,7 +30,7 @@ SOURCE_GROUP("io\\ply" FILES ${PLY_SRC})
 SOURCE_GROUP("io\\ply" FILES ${PLY_INC})
 
 set(PROJECT_SOURCES ${MAIN_SRC} ${IO_SRC} ${PLY_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${IO_INC} ${PLY_INC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${MAIN_INL} ${IO_INC} ${PLY_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
@@ -103,3 +105,7 @@ ENDIF (MSVC)
 
 # header files 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/pre DESTINATION include/lamure FILES_MATCHING PATTERN "*.h")
+# inline files 
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/pre DESTINATION include/lamure FILES_MATCHING PATTERN "*.inl")
+
+
