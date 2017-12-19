@@ -64,6 +64,7 @@ struct array_traits<mem_array<T>>
 };
 
 typedef mem_array<surfel> surfel_mem_array;
+typedef mem_array<surfel> prov_mem_array;
 
 } // namespace pre
 } // namespace lamure

@@ -75,6 +75,7 @@ struct array_traits<disk_array<T>>
 };
 
 typedef disk_array<surfel> surfel_disk_array;
+typedef disk_array<prov> prov_disk_array;
 
 } // namespace pre
 } // namespace lamure

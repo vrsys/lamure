@@ -238,8 +238,8 @@ void bvh::downsweep(bool adjust_translation, const std::string &surfels_input_fi
     }
     else
     {
-        LOGGER_TRACE("Compute root bounding box out-of-core");
-        input_bb = basic_algorithms::compute_aabb(nodes_[0].disk_array(), buffer_size_);
+        LOGGER_ERROR("Compute root bounding box out-of-core NOT SUPPORTED");
+        //input_bb = basic_algorithms::compute_aabb(nodes_[0].disk_array(), buffer_size_);
     }
     LOGGER_DEBUG("Root AABB: " << input_bb.min() << " - " << input_bb.max());
 
@@ -278,6 +278,11 @@ void bvh::downsweep(bool adjust_translation, const std::string &surfels_input_fi
 
     uint32_t processed_nodes = 0;
     uint8_t percent_processed = 0;
+
+    if (final_depth != 0) {
+        LOGGER_ERROR("out-of-core NOT SUPPORTED");
+    }
+    /*
     for(uint32_t level = 0; level < final_depth; ++level)
     {
         LOGGER_TRACE("Process out-of-core level: " << level);
@@ -322,7 +327,7 @@ void bvh::downsweep(bool adjust_translation, const std::string &surfels_input_fi
         slice_left = new_slice_left;
         slice_right = new_slice_right;
     }
-
+*/
     // construct next level in-core
     for(size_t nid = slice_left; nid <= slice_right; ++nid)
     {

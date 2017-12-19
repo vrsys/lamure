@@ -41,9 +41,6 @@ class PREPROCESSING_DLL surfel /*final*/
     const vec3f normal() const { return normal_; }
     vec3f &normal() { return normal_; }
 
-//    const float ncc() const { return ncc_; }
-//    float &ncc() { return ncc_; }
-
     const vec3r random_point_on_surfel() const;
 
     bool operator==(const surfel &rhs) const { return pos_ == rhs.pos_ && color_ == rhs.color_ && radius_ == rhs.radius_ && normal_ == rhs.normal_; }
@@ -66,7 +63,6 @@ class PREPROCESSING_DLL surfel /*final*/
     vec3b color_;
     real radius_;
     vec3f normal_;
-//    float ncc_;
 };
 
 using surfel_vector = std::vector<surfel>;

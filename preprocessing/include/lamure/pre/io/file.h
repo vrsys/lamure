@@ -69,13 +69,16 @@ private:
 } // namespace pre
 } // namespace lamure
 
-#include <lamure/pre/file.inl>
+#include <lamure/pre/io/file.inl>
 
 namespace lamure {
 namespace pre {
 
 typedef file<surfel> surfel_file;
 typedef std::shared_ptr<surfel_file> shared_surfel_file;
+
+typedef file<prov> prov_file;
+typedef std::shared_ptr<prov_file> shared_prov_file;
 
 }
 }
