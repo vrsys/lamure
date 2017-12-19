@@ -68,7 +68,7 @@ private:
     reduction_strategy *get_reduction_strategy(reduction_algorithm algo) const;
     radius_computation_strategy *get_radius_strategy(radius_computation_algorithm algo) const;
     normal_computation_strategy *get_normal_strategy(normal_computation_algorithm algo) const;
-    boost::filesystem::path convert_to_binary(std::string const &input_type) const;
+    boost::filesystem::path convert_to_binary(std::string const& input_filename, std::string const &input_type) const;
     boost::filesystem::path downsweep(boost::filesystem::path input_file, uint16_t start_stage) const;
     boost::filesystem::path upsweep(boost::filesystem::path input_file,
                                     uint16_t start_stage,

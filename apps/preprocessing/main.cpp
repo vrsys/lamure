@@ -115,7 +115,9 @@ int main(int argc, const char *argv[])
 
         ("prov-file",
          po::value<std::string>()->default_value(""),
-         "optional ascii-file with provanance attribs per point")
+         "Optional ascii-file with provanance attribs per point. Extensions supported: \n"
+         "  .prov for single float value per line\n"
+         "  .xyz_prov for xyzrgb +p per line")
 
         ("reduction-algo",
          po::value<std::string>()->default_value("ndc"),

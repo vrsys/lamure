@@ -17,6 +17,7 @@
 #include <lamure/pre/io/format_ply.h>
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
+#include <lamure/pre/io/format_xyz_prov.h>
 
 #include <lamure/pre/normal_computation_plane_fitting.h>
 #include <lamure/pre/radius_computation_average_distance.h>
@@ -114,19 +115,29 @@ normal_computation_strategy *builder::get_normal_strategy(normal_computation_alg
     };
 }
 
-boost::filesystem::path builder::convert_to_binary(std::string const &input_type) const
+boost::filesystem::path builder::convert_to_binary(std::string const& input_filename, std::string const &input_type) const
 {
     std::cout << std::endl;
     std::cout << "--------------------------------" << std::endl;
     std::cout << "convert input file" << std::endl;
     std::cout << "--------------------------------" << std::endl;
 
-    LOGGER_TRACE("convert to a binary file");
-    auto input_file = fs::canonical(fs::path(desc_.input_file));
+    LOGGER_TRACE("convert " << input_type << " file to a binary file");
+    auto input_file = fs::canonical(fs::path(input_filename));
     std::shared_ptr<format_abstract> format_in{};
     auto binary_file = base_path_;
 
-    if (input_type == ".xyz") {
+    if (input_type == ".xyz_prov") {
+        binary_file += ".bin_prov";
+        format_xyz_prov::convert(input_filename, binary_file.string(), true);
+        return binary_file;
+    }
+    else if (input_type == ".prov") {
+        binary_file += ".bin_prov";
+        format_xyz_prov::convert(input_filename, binary_file.string(), false);
+        return binary_file;
+    }
+    else if (input_type == ".xyz") {
         binary_file += ".bin";
         format_in = std::unique_ptr<format_xyz>{new format_xyz()};
     }
@@ -416,7 +427,7 @@ bool builder::resample()
 
     // convert to binary file
     if (0 >= start_stage) {
-        input_file = convert_to_binary(input_file_type);
+        input_file = convert_to_binary(desc_.input_file, input_file_type);
         if (input_file.empty()) return false;
     }
 
@@ -472,8 +483,16 @@ construct()
 
     // convert to binary file
     if ((0 >= start_stage) && (0 <= final_stage)) {
-        input_file = convert_to_binary(input_file_type);
+        input_file = convert_to_binary(desc_.input_file, input_file_type);
         if (input_file.empty()) return false;
+    }
+
+    // convert prov data to binary
+    if (desc_.prov_file != "") {
+        auto prov_file = fs::canonical(fs::path(desc_.prov_file));
+        const std::string prov_file_type = prov_file.extension().string();
+        prov_file = convert_to_binary(desc_.prov_file, prov_file_type);
+        if (prov_file.empty()) return false;
     }
 
     // downsweep (create bvh)
