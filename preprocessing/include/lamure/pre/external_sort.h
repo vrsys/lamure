@@ -8,7 +8,7 @@
 #ifndef PRE_EXTERNAL_SORT_H_
 #define PRE_EXTERNAL_SORT_H_
 
-#include <lamure/pre/disk_array.h>
+#include <lamure/pre/surfel_disk_array.h>
 #include <vector>
 #include <lamure/pre/logger.h>
 

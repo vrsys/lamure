@@ -203,7 +203,7 @@ boost::filesystem::path builder::downsweep(boost::filesystem::path input_file, u
         LOGGER_TRACE("downsweep stage");
 
         CPU_TIMER;
-        bvh.downsweep(desc_.translate_to_origin, input_file.string());
+        bvh.downsweep(desc_.translate_to_origin, input_file.string(), desc_.prov_file);
 
         auto bvhd_file = add_to_path(base_path_, ".bvhd");
 
@@ -491,7 +491,7 @@ construct()
     if (desc_.prov_file != "") {
         auto prov_file = fs::canonical(fs::path(desc_.prov_file));
         const std::string prov_file_type = prov_file.extension().string();
-        prov_file = convert_to_binary(desc_.prov_file, prov_file_type);
+        desc_.prov_file = convert_to_binary(desc_.prov_file, prov_file_type).string();
         if (prov_file.empty()) return false;
     }
 

@@ -13,7 +13,7 @@
 #include <lamure/bounding_box.h>
 
 #include <lamure/pre/mem_array.h>
-#include <lamure/pre/disk_array.h>
+#include <lamure/pre/surfel_disk_array.h>
 #include <lamure/pre/node_statistics.h>
 
 #include <typeinfo>
@@ -199,6 +199,9 @@ private:
 
     surfel_mem_array mem_array_;
     surfel_disk_array disk_array_;
+
+    //prov_mem_array prov_mem_array_;
+    //prov_disk_array prov_disk_array_;
 
     node_statistics node_stats_;
 };

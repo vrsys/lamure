@@ -191,7 +191,11 @@ void bvh::print_tree_properties() const
     LOGGER_INFO("First leaf node id: " << first_leaf_);
 }
 
-void bvh::downsweep(bool adjust_translation, const std::string &surfels_input_file, bool bin_all_file_extension)
+void bvh::downsweep(
+    bool adjust_translation, 
+    const std::string &surfels_input_file, 
+    const std::string &prov_input_file, 
+    bool bin_all_file_extension)
 {
     assert(state_ == state_type::empty);
 

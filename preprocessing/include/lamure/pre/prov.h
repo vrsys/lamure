@@ -35,6 +35,7 @@ class PREPROCESSING_DLL prov
 using prov_vector = std::vector<prov>;
 using shared_prov = std::shared_ptr<prov>;
 using shared_prov_vector = std::shared_ptr<prov_vector>;
+
 }
 } // namespace lamure
 

@@ -109,7 +109,7 @@ class PREPROCESSING_DLL bvh
     const node_id_type first_leaf() const { return first_leaf_; }
 
     // processing functions
-    void downsweep(bool adjust_translation, const std::string &surfels_input_file, bool bin_all_file_extension = false);
+    void downsweep(bool adjust_translation, const std::string &surfels_input_file, const std::string &prov_input_file, bool bin_all_file_extension = false);
 
     void compute_normals_and_radii(const uint16_t number_of_neighbours);
 
