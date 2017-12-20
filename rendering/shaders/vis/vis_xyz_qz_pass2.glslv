@@ -14,6 +14,7 @@ out VertexData {
     float rad;
     float pointSize;
     float mv_vertex_depth;
+    vec3 mv_vertex_position;
 } VertexOut;
 
 uniform mat4 mvp_matrix;
@@ -75,6 +76,7 @@ void main()
 
     VertexOut.mv_vertex_depth = (pos_es).z;
     VertexOut.rad = (scaled_radius);
+    VertexOut.mv_vertex_position = pos_es;
 
   }
 

@@ -7,13 +7,13 @@
 
 #version 420 core
 
-
 out VertexData {
     vec3 color;
     vec4 nor;
     float rad;
     float pointSize;
     float mv_vertex_depth;
+    vec3 mv_vertex_position;
 } VertexOut;
 
 uniform mat4 mvp_matrix;
@@ -66,8 +66,9 @@ void main()
     gl_PointSize = ps;
     VertexOut.pointSize = ps;
 
-    VertexOut.mv_vertex_depth = (pos_es).z;
+    VertexOut.mv_vertex_depth = pos_es.z;
     VertexOut.rad = (scaled_radius);
+    VertexOut.mv_vertex_position = pos_es.xyz;
 
   }
 

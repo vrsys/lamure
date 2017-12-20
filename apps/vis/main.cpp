@@ -81,6 +81,8 @@ scm::gl::frame_buffer_ptr pass1_fbo_;
 scm::gl::texture_2d_ptr pass1_depth_buffer_;
 scm::gl::frame_buffer_ptr pass2_fbo_;
 scm::gl::texture_2d_ptr pass2_color_buffer_;
+scm::gl::texture_2d_ptr pass2_normal_buffer_;
+scm::gl::texture_2d_ptr pass2_view_space_pos_buffer_;
 scm::gl::texture_2d_ptr pass2_depth_buffer_;
 
 scm::gl::texture_2d_ptr gaussian_texture_;
@@ -713,6 +715,8 @@ void glut_display() {
     //PASS 2
 
     context_->clear_color_buffer(pass2_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
+    context_->clear_color_buffer(pass2_fbo_ , 1, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
+    context_->clear_color_buffer(pass2_fbo_ , 2, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
     context_->set_frame_buffer(pass2_fbo_);
 
     context_->set_blend_state(color_blending_state_);
@@ -749,6 +753,8 @@ void glut_display() {
 
     vis_xyz_pass3_shader_->uniform_sampler("in_color_texture", 0);
     context_->bind_texture(pass2_color_buffer_, filter_nearest_, 0);
+    context_->bind_texture(pass2_normal_buffer_, filter_nearest_, 1);
+    context_->bind_texture(pass2_view_space_pos_buffer_, filter_nearest_, 2);
 
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
@@ -907,6 +913,13 @@ void create_framebuffers() {
   pass2_fbo_ = device_->create_frame_buffer();
   pass2_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGBA_32F, 1, 1, 1);
   pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
+
+  // begin: optional block
+  pass2_normal_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGB_32F, 1, 1, 1);
+  pass2_fbo_->attach_color_buffer(1, pass2_normal_buffer_);
+  pass2_view_space_pos_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGB_32F, 1, 1, 1);
+  pass2_fbo_->attach_color_buffer(2, pass2_view_space_pos_buffer_);
+  // end: optional block
 
 }
 
@@ -1340,7 +1353,7 @@ int32_t main(int argc, char* argv[]) {
       std::cout << "error creating shader programs" << std::endl;
       return 1;
     }
-
+/*
     vis_xyz_qz_shader_ = device_->create_program(
       boost::assign::list_of
         (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_vs_source))
@@ -1367,7 +1380,7 @@ int32_t main(int argc, char* argv[]) {
       std::cout << "error creating shader programs" << std::endl;
       return 1;
     }
-
+*/
   }
   catch (std::exception& e)
   {
