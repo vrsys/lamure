@@ -14,6 +14,9 @@ in VertexData {
   	float rad;
 	float pointSize;
 	float mv_vertex_depth;
+  OPTIONAL_BEGIN
+    vec3 mv_vertex_position;
+  OPTIONAL_END
 } VertexIn;
 
 
@@ -25,6 +28,10 @@ uniform float max_deform_ratio;
 
 layout(location = 0) out vec4 out_color;
 
+OPTIONAL_BEGIN
+  // shading
+  INCLUDE ../common/shading/blinn_phong.glsl
+OPTIONAL_END
 
 
 float calc_depth_offset(vec2 mappedPointCoord, vec3 adjustedNormal)
@@ -96,8 +103,17 @@ void main()
 
    get_gaussianValue(depth_offset, mappedPointCoord, adjustedNormal);
 
+    vec4 color_to_write = vec4(VertexIn.color.xyz, 1.0);
 
-   out_color = vec4(VertexIn.color.xyz, 1.0);
+      //optional code for looking up shading attributes and performing shading
+    OPTIONAL_BEGIN
+      vec3 shaded_color = shade_blinn_phong(VertexIn.mv_vertex_position, adjustedNormal, 
+                                            vec3(0.0, 0.0, 0.0), color_to_write.rgb);
+
+      color_to_write = vec4(shaded_color,  1.0);
+    OPTIONAL_END
+
+   out_color = color_to_write;
 
 }
 

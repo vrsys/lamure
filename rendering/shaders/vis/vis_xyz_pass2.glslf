@@ -15,7 +15,9 @@ in VertexData {
   	float rad;
 	float pointSize;
 	float mv_vertex_depth;
-  vec3 mv_vertex_position;
+  OPTIONAL_BEGIN
+    vec3 mv_vertex_position;
+  OPTIONAL_END
 } VertexIn;
 
 layout(binding  = 0) uniform sampler2D depth_texture_pass1;
@@ -32,9 +34,10 @@ uniform float far_minus_near_plane;
 
 layout(location = 0) out vec4 accumulated_colors;
 
-//optional
-layout(location = 1) out vec3 accumulated_normals;
-layout(location = 2) out vec3 accumulated_vs_positions;
+OPTIONAL_BEGIN
+  layout(location = 1) out vec3 accumulated_normals;
+  layout(location = 2) out vec3 accumulated_vs_positions;
+OPTIONAL_END
 
 #define NORMAL_Z_OFFSET 0.00000001f
 
@@ -115,15 +118,15 @@ else
   depth_to_compare = VertexIn.mv_vertex_depth;
   depthValue = (-depthValue * 1.0 * far_minus_near_plane) + near_plane;
 
-   if( depthValue  - (depth_to_compare)    < 0.00031  + 3.0*(VertexIn.rad) )
-   {
+  if( depthValue  - (depth_to_compare)    < 0.00031  + 3.0*(VertexIn.rad) )
+  {
 
-	   accumulated_colors  = vec4(VertexIn.color * weight, weight);
+	  accumulated_colors  = vec4(VertexIn.color * weight, weight);
 
-     //optional
-     accumulated_normals = vec3(adjustedNormal.xyz * weight);
-     accumulated_vs_positions = vec3(VertexIn.mv_vertex_position.xyz * weight);
-      //accumulated_colors = vec4((adjustedNormal + vec3(1.0))*0.5*weight, weight);
+    OPTIONAL_BEGIN
+      accumulated_normals = vec3(adjustedNormal.xyz * weight);
+      accumulated_vs_positions = vec3(VertexIn.mv_vertex_position.xyz * weight);
+    OPTIONAL_END
    }
    else
   	discard;
