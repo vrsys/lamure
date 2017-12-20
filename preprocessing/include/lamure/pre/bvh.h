@@ -21,8 +21,6 @@
 
 #include <lamure/pre/io/converter.h>
 
-
-
 #include <atomic>
 #include <boost/filesystem.hpp>
 #include <unordered_set>

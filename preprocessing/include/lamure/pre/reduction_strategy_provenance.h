@@ -2,7 +2,7 @@
 #define LAMURE_PROVENANCE_REDUCTION_STRATEGY_H
 
 #include <lamure/pre/bvh_node.h>
-#include <lamure/pre/mem_array.h>
+#include <lamure/pre/surfel_mem_array.h>
 #include <sys/stat.h>
 
 namespace lamure

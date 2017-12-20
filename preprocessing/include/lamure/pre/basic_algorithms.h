@@ -10,7 +10,7 @@
 
 #include <lamure/pre/common.h>
 #include <lamure/pre/surfel_disk_array.h>
-#include <lamure/pre/mem_array.h>
+#include <lamure/pre/surfel_mem_array.h>
 #include <lamure/bounding_box.h>
 
 namespace lamure
