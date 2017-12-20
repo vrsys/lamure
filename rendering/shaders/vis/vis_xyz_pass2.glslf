@@ -7,12 +7,17 @@
 
 #version 420 core
 
+  //optional 
+
 in VertexData {
 	vec3 color;
 	vec4 nor;
   	float rad;
 	float pointSize;
 	float mv_vertex_depth;
+  OPTIONAL_BEGIN
+    vec3 mv_vertex_position;
+  OPTIONAL_END
 } VertexIn;
 
 layout(binding  = 0) uniform sampler2D depth_texture_pass1;
@@ -29,14 +34,18 @@ uniform float far_minus_near_plane;
 
 layout(location = 0) out vec4 accumulated_colors;
 
+OPTIONAL_BEGIN
+  layout(location = 1) out vec3 accumulated_normals;
+  layout(location = 2) out vec3 accumulated_vs_positions;
+OPTIONAL_END
+
 #define NORMAL_Z_OFFSET 0.00000001f
 
 
 float calc_depth_offset(vec2 mappedPointCoord, vec3 adjustedNormal)
 {
-
-    float xzRatio = (adjustedNormal.x/adjustedNormal.z);
-    float yzRatio = (adjustedNormal.y/adjustedNormal.z);
+  float xzRatio = (adjustedNormal.x/adjustedNormal.z);
+  float yzRatio = (adjustedNormal.y/adjustedNormal.z);
 
 if(clamped_normal_mode)
 {
@@ -83,11 +92,11 @@ void main()
    if(VertexIn.nor.z < 0)
    {
 	//discard;
-	adjustedNormal = VertexIn.nor.xyz * -1;
+	   adjustedNormal = VertexIn.nor.xyz * -1;
    }
    else
    {
-        adjustedNormal = VertexIn.nor.xyz;
+    adjustedNormal = VertexIn.nor.xyz;
    }
 
    vec2 mappedPointCoord = gl_PointCoord*2 + vec2(-1.0f, -1.0f);
@@ -106,18 +115,18 @@ void main()
 if(ellipsify)
    depth_to_compare = VertexIn.mv_vertex_depth + depth_offset*VertexIn.rad;
 else
-   depth_to_compare = VertexIn.mv_vertex_depth;
+  depth_to_compare = VertexIn.mv_vertex_depth;
+  depthValue = (-depthValue * 1.0 * far_minus_near_plane) + near_plane;
 
+  if( depthValue  - (depth_to_compare)    < 0.00031  + 3.0*(VertexIn.rad) )
+  {
 
- depthValue = (-depthValue * 1.0 * far_minus_near_plane) + near_plane;
+	  accumulated_colors  = vec4(VertexIn.color * weight, weight);
 
-
-   if( depthValue  - (depth_to_compare)    < 0.00031  + 3.0*(VertexIn.rad) )
-   {
-
-	accumulated_colors = vec4(VertexIn.color * weight, weight);
-        //accumulated_colors = vec4((adjustedNormal + vec3(1.0))*0.5*weight, weight);
-
+    OPTIONAL_BEGIN
+      accumulated_normals = vec3(adjustedNormal.xyz * weight);
+      accumulated_vs_positions = vec3(VertexIn.mv_vertex_position.xyz * weight);
+    OPTIONAL_END
    }
    else
   	discard;

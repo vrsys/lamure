@@ -57,7 +57,6 @@ void main()
     gl_PointSize = ps;
     VertexOut.rad = (scaled_radius);
     VertexOut.mv_vertex_depth = pos_es.z;
-
    }
 
 }
