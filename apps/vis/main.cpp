@@ -148,42 +148,53 @@ struct selection {
 };
 
 selection selection_;
-
+/*
+  settings_ = settings{1920, 1080, 1, 2048, 4096, 32, 0, 0.001f, 1000.f, 30.f, 1, 1, 1, 2, 20.5f, 1, 0, 0, 0, 0, 0, 0, 1.f, LAMURE_DEFAULT_THRESHOLD, 0, 0.f, 0.05f, 
+    scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B),
+    scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
+    "", "", std::vector<std::string>(), std::vector<scm::math::mat4d>()};
+*/
 struct settings {
-  int32_t width_;
-  int32_t height_;
-  int32_t frame_div_;
-  int32_t vram_;
-  int32_t ram_;
-  int32_t upload_;
-  int32_t prov_;
-  float near_plane_;
-  float far_plane_;
-  float fov_;
-  int32_t splatting_;
-  int32_t gamma_correction_;
-  int32_t info_;
-  int32_t travel_;
-  float travel_speed_;
-  int32_t lod_update_;
-  int32_t pvs_cull_;
-  int32_t vis_;
-  int32_t show_normals_;
-  int32_t show_accuracy_;
-  int32_t show_output_sensitivity_;
-  int32_t channel_;
-  float point_scale_;
-  float error_threshold_;
-  int32_t heatmap_;
-  float heatmap_min_;
-  float heatmap_max_;
-  scm::math::vec3f background_color_;
-  scm::math::vec3f heatmap_color_min_;
-  scm::math::vec3f heatmap_color_max_;
-  std::string json_;
-  std::string pvs_;
-  std::vector<std::string> models_;
-  std::vector<scm::math::mat4d> transforms_;
+  int32_t width_ {1920};
+  int32_t height_ {1080};
+  int32_t frame_div_ {1};
+  int32_t vram_ {2048};
+  int32_t ram_ {4096};
+  int32_t upload_ {32};
+  int32_t prov_ {0};
+  float near_plane_ {0.001f};
+  float far_plane_ {1000.0f};
+  float fov_ {30.0f};
+  int32_t splatting_ {1};
+  int32_t gamma_correction_ {1};
+  int32_t info_ {1};
+  int32_t travel_ {2};
+  float travel_speed_ {20.5f};
+  int32_t lod_update_ {1};
+  int32_t pvs_cull_ {0};
+  int32_t vis_ {0};
+  int32_t show_normals_ {0};
+  int32_t show_accuracy_ {0};
+  int32_t show_output_sensitivity_ {0};
+  int32_t channel_ {0};
+  float point_scale_ {1.0f};
+  float error_threshold_ {LAMURE_DEFAULT_THRESHOLD};
+  int32_t enable_lighting_ {1};
+  int32_t use_material_color_ {0};
+  scm::math::vec3f material_diffuse_ {0.6f, 0.6f, 0.6f};
+  scm::math::vec4f material_specular_ {0.4f, 0.4f, 0.4f, 1000.0f};
+  scm::math::vec3f ambient_light_color_ {0.1f, 0.1f, 0.1f};
+  scm::math::vec4f point_light_color_ {1.0f, 1.0f, 1.0f, 1.2f};
+  int32_t heatmap_ {0};
+  float heatmap_min_ {0.0f};
+  float heatmap_max_ {0.05f};
+  scm::math::vec3f background_color_ {LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B};
+  scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f};
+  scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
+  std::string json_ {""};
+  std::string pvs_ {""};
+  std::vector<std::string> models_ {std::vector<std::string>()};
+  std::vector<scm::math::mat4d> transforms_ {std::vector<scm::math::mat4d>()};
 
 };
 
@@ -327,6 +338,54 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "error") {
             settings.error_threshold_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
+          }
+          else if (key == "enable_lighting") {
+            settings.enable_lighting_ = std::min(std::max(atoi(value.c_str()), 0), 1);
+          }
+          else if (key == "use_material_color") {
+            settings.use_material_color_ = std::min(std::max(atoi(value.c_str()), 0), 1);
+          }
+          else if (key == "material_diffuse_r") {
+            settings.material_diffuse_.x = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "material_diffuse_g") {
+            settings.material_diffuse_.y = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "material_diffuse_b") {
+            settings.material_diffuse_.z = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "material_specular_r") {
+            settings.material_specular_.x = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "material_specular_g") {
+            settings.material_specular_.y = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "material_specular_b") {
+            settings.material_specular_.z = std::max(atof(value.c_str()), 0.0);
+          }
+          else if (key == "material_specular_exponent") {
+            settings.material_specular_.w = std::min(std::max(atof(value.c_str()), 0.0), 10000.0);
+          }
+          else if (key == "ambient_light_color_r") {
+            settings.ambient_light_color_.r = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
+          }
+          else if (key == "ambient_light_color_g") {
+            settings.ambient_light_color_.g = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
+          }
+          else if (key == "ambient_light_color_b") {
+            settings.ambient_light_color_.b = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
+          }
+          else if (key == "point_light_color_r") {
+            settings.point_light_color_.r = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
+          }
+          else if (key == "point_light_color_g") {
+            settings.point_light_color_.g = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
+          }
+          else if (key == "point_light_color_b") {
+            settings.point_light_color_.b = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
+          }
+          else if (key == "point_light_intensity") {
+            settings.point_light_color_.w = std::min(std::max(atof(value.c_str()), 0.0), 10000.0);
           }
           else if (key == "background_color_r") {
             settings.background_color_.x = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
@@ -541,32 +600,38 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 }
 
 void set_uniforms(scm::gl::program_ptr shader) {
+  shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
 
+  shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
+  shader->uniform("near_plane", settings_.near_plane_);
+  shader->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
+  shader->uniform("point_size_factor", settings_.point_scale_);
 
-    shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
+  shader->uniform("ellipsify", true);
+  shader->uniform("clamped_normal_mode", true);
+  shader->uniform("max_deform_ratio", 0.35f);
 
-    shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
-    shader->uniform("near_plane", settings_.near_plane_);
-    shader->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
-    shader->uniform("point_size_factor", settings_.point_scale_);
+  shader->uniform("show_normals", (bool)settings_.show_normals_);
+  shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
+  shader->uniform("show_output_sensitivity", (bool)settings_.show_output_sensitivity_);
 
-    shader->uniform("ellipsify", true);
-    shader->uniform("clamped_normal_mode", true);
-    shader->uniform("max_deform_ratio", 0.35f);
+  shader->uniform("channel", settings_.channel_);
+  shader->uniform("heatmap", (bool)settings_.heatmap_);
 
-    shader->uniform("show_normals", (bool)settings_.show_normals_);
-    shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
-    shader->uniform("show_output_sensitivity", (bool)settings_.show_output_sensitivity_);
+  shader->uniform("heatmap_min", settings_.heatmap_min_);
+  shader->uniform("heatmap_max", settings_.heatmap_max_);
+  shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
+  shader->uniform("heatmap_max_color", settings_.heatmap_color_max_);
+}
 
-    shader->uniform("channel", settings_.channel_);
-    shader->uniform("heatmap", (bool)settings_.heatmap_);
+void set_lighting_uniforms(scm::gl::program_ptr shader) {
 
-    shader->uniform("heatmap_min", settings_.heatmap_min_);
-    shader->uniform("heatmap_max", settings_.heatmap_max_);
-    shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
-    shader->uniform("heatmap_max_color", settings_.heatmap_color_max_);
+  shader->uniform("use_material_color", settings_.use_material_color_);
+  shader->uniform("material_diffuse", settings_.material_diffuse_);
+  shader->uniform("material_specular", settings_.material_specular_);
 
-    
+  shader->uniform("ambient_light_color", settings_.ambient_light_color_);
+  shader->uniform("point_light_color", settings_.point_light_color_);
 }
 
 void create_brush() {
@@ -747,6 +812,8 @@ void glut_display() {
     
     context_->set_depth_stencil_state(depth_state_disable_);
     context_->bind_program(vis_xyz_pass3_shader_);
+
+    set_lighting_uniforms(vis_xyz_pass3_shader_);
 
     vis_xyz_pass3_shader_->uniform("background_color", 
       scm::math::vec3f(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z));
@@ -1202,10 +1269,6 @@ int32_t main(int argc, char* argv[]) {
 
   putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
-  settings_ = settings{1920, 1080, 1, 2048, 4096, 32, 0, 0.001f, 1000.f, 30.f, 1, 1, 1, 2, 20.5f, 1, 0, 0, 0, 0, 0, 0, 1.f, LAMURE_DEFAULT_THRESHOLD, 0, 0.f, 0.05f, 
-    scm::math::vec3f(LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B),
-    scm::math::vec3f(68.f/255.f, 0.f, 84.f/255.f), scm::math::vec3f(251.f/255.f, 231.f/255.f, 35.f/255.f),
-    "", "", std::vector<std::string>(), std::vector<scm::math::mat4d>()};
   load_settings(vis_file, settings_);
 
   settings_.vis_ = settings_.show_normals_ ? 1
