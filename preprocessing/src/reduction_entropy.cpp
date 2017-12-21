@@ -29,6 +29,9 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_entropy not supported for PROVENANCE");
+    }
 
     //create output array
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
@@ -48,7 +51,7 @@ create_lod(real &reduction_error,
              ++surfel_id) {
 
             //this surfel will be referenced in the entropy surfel
-            auto current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
+            auto current_surfel = input[node_id]->surfel_mem_data()->at(input[node_id]->offset() + surfel_id);
 
             // ignore outlier radii of any kind
             if (current_surfel.radius() == 0.0) {
@@ -167,7 +170,7 @@ create_lod(real &reduction_error,
 
         if (en_surf->validity) {
             if (chosen_surfels++ < surfels_per_node) {
-                mem_array.mem_data()->push_back(*(en_surf->contained_surfel));
+                mem_array.surfel_mem_data()->push_back(*(en_surf->contained_surfel));
             }
             else {
                 break;
@@ -175,7 +178,7 @@ create_lod(real &reduction_error,
         }
     }
 
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
     reduction_error = 0.0;
 
     return mem_array;

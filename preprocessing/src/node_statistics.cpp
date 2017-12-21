@@ -36,7 +36,7 @@ calculate_statistics(surfel_mem_array const &mem_array)
     for (size_t j = mem_array.offset();
          j < mem_array.offset() + mem_array.length();
          ++j) {
-        surfel const &current_surfel = mem_array.mem_data()->at(j);
+        surfel const &current_surfel = mem_array.surfel_mem_data()->at(j);
         if (current_surfel.radius() != 0.0) {
 
             vec3b const &surfel_color = current_surfel.color();
@@ -91,7 +91,7 @@ calculate_statistics(surfel_mem_array const &mem_array)
         for (size_t j = mem_array.offset();
              j < mem_array.offset() + mem_array.length();
              ++j) {
-            surfel const &current_surfel = mem_array.mem_data()->at(j);
+            surfel const &current_surfel = mem_array.surfel_mem_data()->at(j);
 
             temp_sd += std::pow(scm::math::length(temp_mean - current_surfel.pos()), 2);
             temp_color_sd += std::pow(scm::math::length(temp_mean_color - current_surfel.color()), 2);

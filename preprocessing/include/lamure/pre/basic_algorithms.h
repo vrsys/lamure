@@ -62,13 +62,14 @@ public:
                                const uint8_t split_axis,
                                const uint8_t fan_factor,
                                const bool parallelize = false);
-
+/*
     static void sort_and_split(surfel_disk_array &sa,
                                splitted_array<surfel_disk_array> &out,
                                const bounding_box &box,
                                const uint8_t split_axis,
                                const uint8_t fan_factor,
                                const size_t memory_limit);
+*/
 private:
 
     template<class T>

@@ -446,6 +446,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
     if (settings.json_.size() > 0) {
       if (settings.json_.substr(settings.json_.size()-5) != ".json") {
         std::cout << "unsupported json file" << std::endl;
+        exit(-1);
       }
     }
   }
@@ -456,6 +457,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
   if (settings.pvs_.size() > 0) {
     if (settings.pvs_.substr(settings.pvs_.size()-4) != ".pvs") {
       std::cout << "unsupported pvs file" << std::endl;
+      exit(-1);
     }
   }
 

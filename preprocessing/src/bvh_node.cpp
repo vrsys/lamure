@@ -83,7 +83,12 @@ void bvh_node::
 load_from_disk()
 {
     assert(is_out_of_core());
-    mem_array_.reset(disk_array_.read_all(), 0, disk_array_.length());
+    if (disk_array_.has_provenance()) {
+      mem_array_.reset(disk_array_.read_all(), disk_array_.read_all_prov(), 0, disk_array_.length());
+    }
+    else {
+      mem_array_.reset(disk_array_.read_all(), 0, disk_array_.length());
+    }
 }
 
 void bvh_node::
@@ -94,7 +99,22 @@ flush_to_disk(const shared_surfel_file &file,
     assert(is_in_core());
 
     disk_array_.reset(file, offset_in_file, mem_array_.length());
-    disk_array_.write_all(mem_array_.mem_data(), mem_array_.offset());
+    disk_array_.write_all(mem_array_.surfel_mem_data(), mem_array_.offset());
+
+    if (dealloc_mem_array)
+        mem_array_.reset();
+}
+
+void bvh_node::
+flush_to_disk(const shared_surfel_file &surfel_file,
+              const shared_prov_file &prov_file,
+              const size_t offset_in_file,
+              const bool dealloc_mem_array)
+{
+    assert(is_in_core());
+
+    disk_array_.reset(surfel_file, prov_file, offset_in_file, mem_array_.length());
+    disk_array_.write_all(mem_array_.surfel_mem_data(), mem_array_.prov_mem_data(), mem_array_.offset());
 
     if (dealloc_mem_array)
         mem_array_.reset();
@@ -106,7 +126,12 @@ flush_to_disk(const bool dealloc_mem_array)
     assert(is_in_core());
     assert(is_out_of_core());
 
-    disk_array_.write_all(mem_array_.mem_data(), mem_array_.offset());
+    if (mem_array_.has_provenance()) {
+      disk_array_.write_all(mem_array_.surfel_mem_data(), mem_array_.prov_mem_data(), mem_array_.offset());
+    }
+    else {
+      disk_array_.write_all(mem_array_.surfel_mem_data(), mem_array_.offset());
+    }
 
     if (dealloc_mem_array)
         mem_array_.reset();

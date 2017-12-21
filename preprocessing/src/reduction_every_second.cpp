@@ -19,6 +19,10 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_every_second not supported for PROVENANCE");
+    }
+
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
     const real fan_factor = 2;
@@ -30,15 +34,15 @@ create_lod(real &reduction_error,
              j < input[i]->offset() + input[i]->length();
              j += input.size()) {
 
-            auto surfel = input[i]->mem_data()->at(j);
+            auto surfel = input[i]->surfel_mem_data()->at(j);
 
             real new_rad = mult * surfel.radius();
             surfel.radius() = new_rad;
-            mem_array.mem_data()->push_back(surfel);
+            mem_array.surfel_mem_data()->push_back(surfel);
         }
     }
 
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
 
     reduction_error = 0.0;
 

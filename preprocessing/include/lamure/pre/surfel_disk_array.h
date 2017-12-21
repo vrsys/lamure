@@ -30,7 +30,7 @@ public:
     explicit surfel_disk_array(const surfel_disk_array &other,
                                const size_t offset,
                                const size_t length)
-        : array_abstract<surfel>() { 
+        : array_abstract<surfel>(), has_provenance_(other.has_provenance_) { 
       reset(other.surfel_file_, other.prov_file_, offset, length); 
     }
 
@@ -38,7 +38,7 @@ public:
     explicit surfel_disk_array(const std::shared_ptr<file<surfel>> &surfel_file,
                                const size_t offset,
                                const size_t length)
-        : array_abstract<surfel>() { 
+        : array_abstract<surfel>(), has_provenance_(false) { 
       reset(surfel_file, offset, length); 
     }
 
@@ -46,8 +46,8 @@ public:
                                const std::shared_ptr<file<prov>> &prov_file,
                                const size_t offset,
                                const size_t length)
-        : array_abstract<surfel>() { 
-      reset(surfel_file, prov_file, offset, length); 
+        : array_abstract<surfel>(), has_provenance_(true) { 
+      reset(surfel_file, prov_file, offset, length);
     }
 
     surfel read_surfel(const size_t index) const override;
@@ -86,10 +86,15 @@ public:
                    const std::shared_ptr<std::vector<prov>> &prov_data,
                    const size_t offset_in_vector);
 
+
+    bool has_provenance() const { return has_provenance_; }
+
 protected:
 
     std::shared_ptr<file<surfel>> surfel_file_;
     std::shared_ptr<file<prov>> prov_file_;
+
+    bool has_provenance_;
 
 };
 

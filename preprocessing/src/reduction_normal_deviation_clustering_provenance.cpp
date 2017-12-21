@@ -613,7 +613,7 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
 
         for(; surfel != cluster->end() && meta_data != prov_cluster.end(); ++surfel, ++meta_data)
         {
-            mem_array.mem_data()->push_back(*surfel);
+            mem_array.surfel_mem_data()->push_back(*surfel);
             deviations.push_back(*meta_data);
 
 //            printf("\ncell_red: %f ", (double)(*surfel).color().r);
@@ -625,7 +625,7 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
 
     std::reverse(deviations.begin(), deviations.end());
 
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
 
     //    printf("\nLENGTH: %lu ", mem_array.length());
     //    printf("\nDEVIATIONS: %lu ", deviations.size());

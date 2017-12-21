@@ -56,6 +56,7 @@ reset()
     array_abstract<surfel>::reset();
     surfel_file_.reset();
     prov_file_.reset();
+    has_provenance_ = false;
 }
 
 
@@ -69,6 +70,7 @@ reset(const std::shared_ptr<file<surfel>> &surfel_file,
     length_ = length;
     surfel_file_ = surfel_file;
     prov_file_.reset();
+    has_provenance_ = false;
 }
 
 
@@ -83,6 +85,7 @@ reset(const std::shared_ptr<file<surfel>> &surfel_file,
     length_ = length;
     surfel_file_ = surfel_file;
     prov_file_ = prov_file;
+    has_provenance_ = true;
 }
 
 std::shared_ptr<std::vector<surfel>> surfel_disk_array::

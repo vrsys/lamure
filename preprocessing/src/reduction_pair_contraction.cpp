@@ -238,6 +238,10 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_pair_contraction not supported for PROVENANCE");
+    }
+
     const uint32_t fan_factor = input.size();
     size_t num_surfels = 0;
     size_t min_num_surfels = input[0]->length();
@@ -554,11 +558,11 @@ create_lod(real &reduction_error,
     for (auto &node : node_surfels) {
         for (auto &surfel : node) {
             if (surfel.radius() > 0.0f) {
-                mem_array.mem_data()->push_back(surfel);
+                mem_array.surfel_mem_data()->push_back(surfel);
             }
         }
     }
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
 
     reduction_error = 0.0;
 

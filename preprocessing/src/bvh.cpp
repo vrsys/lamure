@@ -194,8 +194,7 @@ void bvh::print_tree_properties() const
 void bvh::downsweep(
     bool adjust_translation, 
     const std::string &surfels_input_file, 
-    const std::string &prov_input_file, 
-    bool bin_all_file_extension)
+    const std::string &prov_input_file)
 {
     assert(state_ == state_type::empty);
 
@@ -211,12 +210,30 @@ void bvh::downsweep(
 
     shared_surfel_file leaf_level_access = std::make_shared<surfel_file>();
     std::string file_extension = ".lv" + std::to_string(depth_);
-    if(bin_all_file_extension)
-        file_extension = ".bin_all";
     leaf_level_access->open(add_to_path(base_path_, file_extension).string(), true);
 
     // instantiate root surfel array
-    surfel_disk_array input(input_file_disk_access, 0, input_file_disk_access->get_size());
+    surfel_disk_array input;
+
+    // provenance extension
+    shared_prov_file prov_leaf_level_access = std::make_shared<prov_file>();
+    if (prov_input_file == "") {
+      input = surfel_disk_array(input_file_disk_access, 0, input_file_disk_access->get_size());
+    }
+    else {
+      shared_prov_file prov_file_disk_access = std::make_shared<prov_file>();
+      prov_file_disk_access->open(prov_input_file);
+      if (input_file_disk_access->get_size() != prov_file_disk_access->get_size()) {
+        LOGGER_ERROR("Num provenance data and num surfels must match!");
+      }
+      input = surfel_disk_array(input_file_disk_access, prov_file_disk_access, 0, prov_file_disk_access->get_size());
+      std::string prov_file_extension = ".plv" + std::to_string(depth_);
+      prov_leaf_level_access->open(add_to_path(base_path_, prov_file_extension).string(), true);
+      LOGGER_INFO("Input WITH PROVENANCE: " << prov_file_disk_access->file_name());
+      LOGGER_INFO("Output WITH PROVENANCE: " << prov_leaf_level_access->file_name());
+    }
+
+
     LOGGER_INFO("Total number of surfels: " << input.length());
 
     // compute depth at which we can switch to in-core
@@ -345,15 +362,19 @@ void bvh::downsweep(
         }
         LOGGER_TRACE("Process subbvh in-core at node " << nid);
         // process subbvh and save leafs
-        downsweep_subtree_in_core(current_node, disk_leaf_destination, processed_nodes, percent_processed, leaf_level_access);
+        downsweep_subtree_in_core(current_node, disk_leaf_destination, processed_nodes, percent_processed, leaf_level_access, prov_leaf_level_access);
     }
     // std::cout << std::endl << std::endl;
 
     input_file_disk_access->close();
+    if (prov_leaf_level_access->is_open()) {
+      prov_leaf_level_access->close();
+    }
     state_ = state_type::after_downsweep;
 }
 
-void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, shared_surfel_file leaf_level_access)
+void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, 
+    shared_surfel_file leaf_level_access, shared_prov_file prov_leaf_level_access)
 {
     size_t slice_left = node.node_id(), slice_right = node.node_id();
 
@@ -379,7 +400,14 @@ void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_dest
     for(size_t nid = slice_left; nid <= slice_right; ++nid)
     {
         bvh_node &current_node = nodes_[nid];
-        current_node.flush_to_disk(leaf_level_access, disk_leaf_destination, true);
+        
+        if (current_node.has_provenance()) {
+          //LOGGER_TRACE("WITH PROVENANCE");
+          current_node.flush_to_disk(leaf_level_access, prov_leaf_level_access, disk_leaf_destination, true);
+        }
+        else {
+          current_node.flush_to_disk(leaf_level_access, disk_leaf_destination, true);
+        }
         disk_leaf_destination += current_node.disk_array().length();
     }
 }
@@ -853,9 +881,13 @@ void bvh::spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left,
 
 void bvh::resample_based_on_overlap(surfel_mem_array const &joined_input, surfel_mem_array &output_mem_array, std::vector<surfel_id_t> const &resample_candidates) const
 {
-    for(uint32_t i = 0; i < joined_input.mem_data()->size(); ++i)
+    if (joined_input.has_provenance()) {
+        throw std::runtime_error("resample_based_on_overlap to implement for PROVENANCE");
+    }
+
+    for(uint32_t i = 0; i < joined_input.surfel_mem_data()->size(); ++i)
     {
-        output_mem_array.mem_data()->emplace_back(joined_input.read_surfel(i));
+        output_mem_array.surfel_mem_data()->emplace_back(joined_input.read_surfel(i));
     }
 
     auto compute_new_position = [](surfel const &plane_ref_surfel, real radius_offset, real rot_angle) {
@@ -922,21 +954,25 @@ void bvh::resample_based_on_overlap(surfel_mem_array const &joined_input, surfel
             {
                 real radius_offset = k * 2 * reduced_radius;
                 new_surfel.pos() = compute_new_position(current_surfel, radius_offset, angle);
-                modified_mem_array.mem_data()->push_back(new_surfel);
+                modified_mem_array.surfel_mem_data()->push_back(new_surfel);
                 angle = angle + angle_offset;
             }
         }
     }
 
-    for(uint32_t i = 0; i < modified_mem_array.mem_data()->size(); ++i)
+    for(uint32_t i = 0; i < modified_mem_array.surfel_mem_data()->size(); ++i)
     {
-        output_mem_array.mem_data()->push_back(modified_mem_array.mem_data()->at(i));
+        output_mem_array.surfel_mem_data()->push_back(modified_mem_array.surfel_mem_data()->at(i));
     }
 }
 
 std::vector<surfel_id_t> bvh::find_resample_candidates(const uint32_t node_idx) const
 {
-    auto const &node_mem_data = nodes_.at(node_idx).mem_array().mem_data();
+    if (nodes_.at(node_idx).has_provenance()) {
+        throw std::runtime_error("find_resample_candidates to implement for PROVENANCE");
+    }
+
+    auto const &node_mem_data = nodes_.at(node_idx).mem_array().surfel_mem_data();
     const uint16_t num_neighbours = 10;
     std::vector<surfel_id_t> surfel_id_vector;
 
@@ -1087,6 +1123,11 @@ void bvh::thread_create_lod(const uint32_t start_marker, const uint32_t end_mark
 surfel_mem_array bvh::resample_node(uint32_t node_index) const
 {
     bvh_node const *current_node = &nodes_.at(node_index);
+
+    if (current_node->has_provenance()) {
+        throw std::runtime_error("resample_node to implement for PROVENANCE");
+    }
+
     // If a node has no data yet, calculate it based on child nodes.
     if(!current_node->is_in_core())
     {
@@ -1097,7 +1138,7 @@ surfel_mem_array bvh::resample_node(uint32_t node_index) const
 
     std::vector<surfel_id_t> resample_candidates = find_resample_candidates(current_node->node_id());
     resample_based_on_overlap(current_node->mem_array(), result_mem_array, resample_candidates);
-    result_mem_array.set_length(result_mem_array.mem_data()->size());
+    result_mem_array.set_length(result_mem_array.surfel_mem_data()->size());
 
     return result_mem_array;
 }
@@ -1112,9 +1153,9 @@ void bvh::thread_resample(const uint32_t start_marker, const uint32_t end_marker
 
         // surfels after first resampling to be written in a file
         resample_mutex_.lock();
-        for(uint32_t index = 0; index < current_mem_array.mem_data()->size(); ++index)
+        for(uint32_t index = 0; index < current_mem_array.surfel_mem_data()->size(); ++index)
         {
-            resampled_leaf_level_.push_back(current_mem_array.mem_data()->at(index));
+            resampled_leaf_level_.push_back(current_mem_array.surfel_mem_data()->at(index));
         }
         resample_mutex_.unlock();
 
@@ -1324,6 +1365,7 @@ void bvh::thread_split_node_jobs(size_t &slice_left, size_t &slice_right, size_t
         {
             uint32_t child_id = get_child_id(slice_index, i);
             nodes_[child_id] = bvh_node(child_id, level + 1, surfel_arrays[i].second, surfel_arrays[i].first);
+
             if(slice_index == slice_left && i == 0)
                 new_slice_left = child_id;
             if(slice_index == slice_right && i == surfel_arrays.size() - 1)
@@ -1335,15 +1377,23 @@ void bvh::thread_split_node_jobs(size_t &slice_left, size_t &slice_right, size_t
 }
 
 void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_computation_strategy &normal_strategy, const radius_computation_strategy &radius_strategy, bool recompute_leaf_level,
-                  bool resample)
+                  bool resample, bool provenance)
 {
     // Create level temp files
     std::vector<shared_surfel_file> level_temp_files;
+    std::vector<shared_prov_file> prov_temp_files;
     for(uint32_t level = 0; level <= depth_; ++level)
     {
         level_temp_files.push_back(std::make_shared<surfel_file>());
         std::string ext = ".lv" + std::to_string(level);
         level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
+
+        if (provenance) {
+            prov_temp_files.push_back(std::make_shared<prov_file>());
+            std::string prov_ext = ".plv" + std::to_string(level);
+            prov_temp_files.back()->open(add_to_path(base_path_, prov_ext).string(), level != depth_);
+            LOGGER_INFO("Input WITH PROVENANCE: " << prov_temp_files.back()->file_name());
+        }
     }
 
     // Start at bottom level and move up towards root.

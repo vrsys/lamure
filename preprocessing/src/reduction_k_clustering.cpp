@@ -372,7 +372,7 @@ subsample(surfel_mem_array &joined_input, real const avg_radius) const
 
     //create new vector to store node surfels; unmodified + modified ones
     surfel_mem_array modified_mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
-    for (uint32_t i = 0; i < joined_input.mem_data()->size(); ++i) {
+    for (uint32_t i = 0; i < joined_input.surfel_mem_data()->size(); ++i) {
 
         surfel current_surfel = joined_input.read_surfel(i);
 
@@ -384,10 +384,10 @@ subsample(surfel_mem_array &joined_input, real const avg_radius) const
 
             //keep all surfel properties but shrink its radius to the average radius
             surfel new_surfel = current_surfel;
-            joined_input.mem_data()->pop_back(); //remove the big-radius surfel
+            joined_input.surfel_mem_data()->pop_back(); //remove the big-radius surfel
             new_surfel.radius() = avg_radius;
-            joined_input.mem_data()->push_back(new_surfel);
-            //modified_mem_array.mem_data()->push_back(new_surfel);
+            joined_input.surfel_mem_data()->push_back(new_surfel);
+            //modified_mem_array.surfel_mem_data()->push_back(new_surfel);
 
             //create new average-size surfels to fill up the area orininally covered by bigger surfel            
             for (int k = 1; k <= itteration_level; ++k) {
@@ -398,8 +398,8 @@ subsample(surfel_mem_array &joined_input, real const avg_radius) const
                     real angle_offset = 2 * M_PI / num_new_surfels;
                     new_surfel.color() = vec3b(1.0, 1.0, 1.0);
                     new_surfel.pos() = copute_new_postion(current_surfel, radius_offset, angle);
-                    joined_input.mem_data()->push_back(new_surfel);
-                    //modified_mem_array.mem_data()->push_back(new_surfel);
+                    joined_input.surfel_mem_data()->push_back(new_surfel);
+                    //modified_mem_array.surfel_mem_data()->push_back(new_surfel);
                     angle += angle_offset;
                 }
             }
@@ -415,6 +415,9 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_k_clustering not supported for PROVENANCE");
+    }
 
     //create output array
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
@@ -475,7 +478,7 @@ create_lod(real &reduction_error,
              ++surfel_id) {
 
             //this surfel will be referenced in the cluster surfel
-            auto current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
+            auto current_surfel = input[node_id]->surfel_mem_data()->at(input[node_id]->offset() + surfel_id);
 
             // ignore outlier radii of any kind
             if (current_surfel.radius() == 0.0) {
@@ -533,10 +536,10 @@ create_lod(real &reduction_error,
     //write surfels for output
     for (auto const &final_cluster_surfel : cluster_surfel_output_array) {
 
-        mem_array.mem_data()->push_back(*(final_cluster_surfel->contained_surfel));
+        mem_array.surfel_mem_data()->push_back(*(final_cluster_surfel->contained_surfel));
     }
 
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
 
 
     return mem_array;

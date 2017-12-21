@@ -79,6 +79,7 @@ reset()
     array_abstract<surfel>::reset();
     surfel_mem_data_.reset();
     prov_mem_data_.reset();
+    has_provenance_ = false;
 }
 
 void surfel_mem_array::
@@ -91,6 +92,7 @@ reset(const std::shared_ptr<std::vector<surfel>> &surfel_mem_data,
     length_ = length;
     surfel_mem_data_ = surfel_mem_data;
     prov_mem_data_.reset();
+    has_provenance_ = false;
 }
 
 void surfel_mem_array::
@@ -104,7 +106,28 @@ reset(const std::shared_ptr<std::vector<surfel>> &surfel_mem_data,
     length_ = length;
     surfel_mem_data_ = surfel_mem_data;
     prov_mem_data_ = prov_mem_data;
+    has_provenance_ = true;
 }
+
+void surfel_mem_array::
+get(std::vector<surfel_ext>& data) {
+  data.clear();
+  for (uint64_t i = 0; i < length_; ++i) {
+    data.push_back(surfel_ext{surfel_mem_data_->at(offset_ + i), prov_mem_data_->at(offset_ + i)});
+  }
+
+}
+
+void surfel_mem_array::
+set(std::vector<surfel_ext>& data) {
+  for (uint64_t i = 0; i < length_; ++i) {
+    surfel_mem_data_->at(offset_ + i) = data[i].surfel_;
+    prov_mem_data_->at(offset_ + i) = data[i].prov_;
+  }
+  data.clear();
+}
+
+
 
 } // namespace pre
 } // namespace lamure

@@ -23,6 +23,10 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_random not supported for PROVENANCE");
+    }
+
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
     surfel_mem_array output_mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
@@ -44,18 +48,18 @@ create_lod(real &reduction_error,
              surfel_id < input[node_id]->offset() + input[node_id]->length();
              ++surfel_id) {
 
-            auto current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
+            auto current_surfel = input[node_id]->surfel_mem_data()->at(input[node_id]->offset() + surfel_id);
 
             // ignore outlier radii of any kind
             if (current_surfel.radius() == 0.0) {
                 continue;
             }
 
-            mem_array.mem_data()->push_back(current_surfel);
+            mem_array.surfel_mem_data()->push_back(current_surfel);
         }
     }
 
-    size_t total_num_surfels = mem_array.mem_data()->size();
+    size_t total_num_surfels = mem_array.surfel_mem_data()->size();
 
     //draw random number within interval 0 to total number of surfels
     for (size_t i = 0; i < surfels_per_node; ++i) {
@@ -93,11 +97,11 @@ create_lod(real &reduction_error,
     }
 
     for (auto point_id : random_id) {
-        auto surfel = mem_array.mem_data()->at(point_id);
-        output_mem_array.mem_data()->push_back(surfel);
+        auto surfel = mem_array.surfel_mem_data()->at(point_id);
+        output_mem_array.surfel_mem_data()->push_back(surfel);
     }
 
-    output_mem_array.set_length(output_mem_array.mem_data()->size());
+    output_mem_array.set_length(output_mem_array.surfel_mem_data()->size());
 
     reduction_error = 0.0;
 

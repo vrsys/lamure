@@ -27,13 +27,17 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_region_growing not supported for PROVENANCE");
+    }
+
     // Create a single surfel vector to sample from.
     std::vector<surfel *> surfels_to_sample;
     for (uint32_t child_mem_array_index = 0; child_mem_array_index < input.size(); ++child_mem_array_index) {
         surfel_mem_array *child_mem_array = input.at(child_mem_array_index);
 
         for (uint32_t surfel_index = 0; surfel_index < child_mem_array->length(); ++surfel_index) {
-            surfels_to_sample.push_back(&child_mem_array->mem_data()->at(surfel_index));
+            surfels_to_sample.push_back(&child_mem_array->surfel_mem_data()->at(surfel_index));
         }
     }
 
@@ -88,14 +92,14 @@ create_lod(real &reduction_error,
     for (uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index) {
         // Create surfel resulting from cluster and save it.
         surfel *sampled_surfel = sample_point_from_cluster(clusters.at(cluster_index));
-        resulting_mem_array.mem_data()->push_back(*sampled_surfel);
+        resulting_mem_array.surfel_mem_data()->push_back(*sampled_surfel);
     }
 
     std::cout << "sampled clusters: " << clusters.size() << std::endl;
 
     // Cutter for now: when too long, simply cut surfels.
     while (resulting_mem_array.length() > surfels_per_node) {
-        resulting_mem_array.mem_data()->pop_back();
+        resulting_mem_array.surfel_mem_data()->pop_back();
     }
 
     // Filler for now: pick random surfels.
@@ -103,11 +107,11 @@ create_lod(real &reduction_error,
         int random_index_memarray = rand() % input.size();
         int random_index_surfel = rand() % input.at(random_index_memarray)->length();
 
-        surfel *random_surfel = &input.at(random_index_memarray)->mem_data()->at(random_index_surfel);
-        resulting_mem_array.mem_data()->push_back(*random_surfel);
+        surfel *random_surfel = &input.at(random_index_memarray)->surfel_mem_data()->at(random_index_surfel);
+        resulting_mem_array.surfel_mem_data()->push_back(*random_surfel);
     }
 
-    resulting_mem_array.set_length(resulting_mem_array.mem_data()->size());
+    resulting_mem_array.set_length(resulting_mem_array.surfel_mem_data()->size());
     reduction_error = 0; // TODO
     return resulting_mem_array;
 }

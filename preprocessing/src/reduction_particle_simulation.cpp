@@ -61,6 +61,9 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_particle_simulation not supported for PROVENANCE");
+    }
 
     std::vector<surfel> original_surfels;
 
@@ -88,7 +91,7 @@ create_lod(real &reduction_error,
              ++surfel_id) {
 
             //this surfel will be referenced in the entropy surfel
-            auto current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
+            auto current_surfel = input[node_id]->surfel_mem_data()->at(input[node_id]->offset() + surfel_id);
 
             vec3r const &curr_surf_pos = current_surfel.pos();
             expand_local_bb(bb_min, bb_max, curr_surf_pos);
@@ -261,12 +264,12 @@ create_lod(real &reduction_error,
 
             interpolate_approx_natural_neighbours(part_rep_pair.first, original_surfels, tree);
 
-            mem_array.mem_data()->push_back(part_rep_pair.first);
+            mem_array.surfel_mem_data()->push_back(part_rep_pair.first);
         }
 
     }
 
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
     reduction_error = 0.0;
 
     return mem_array;

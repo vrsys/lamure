@@ -295,6 +295,10 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_constant not supported for PROVENANCE");
+    }
+
     // compute bounding box for actual surfels
     bounding_box bbox = basic_algorithms::compute_aabb(*input[0], true);
 
@@ -515,13 +519,13 @@ create_lod(real &reduction_error,
         cell_pq.pop();
 
         for (std::list<surfel>::iterator surfel = cluster->begin(); surfel != cluster->end(); ++surfel) {
-            mem_array.mem_data()->push_back(*surfel);
+            mem_array.surfel_mem_data()->push_back(*surfel);
         }
 
         delete cluster;
     }
 
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
 
     reduction_error = 0; // TODO
 

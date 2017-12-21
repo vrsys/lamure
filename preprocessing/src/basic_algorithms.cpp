@@ -32,8 +32,8 @@ compute_aabb(const surfel_mem_array& sa,
     vec3r min = sa.read_surfel_ref(0).pos();
     vec3r max = min;
 
-    const auto begin = sa.mem_data()->begin() + sa.offset();
-    const auto end = sa.mem_data()->begin() + sa.offset() + sa.length();
+    const auto begin = sa.surfel_mem_data()->begin() + sa.offset();
+    const auto end = sa.surfel_mem_data()->begin() + sa.offset() + sa.length();
 
     if (!parallelize) {
         for (auto s = begin; s != end; ++s) {
@@ -167,8 +167,8 @@ translate_surfels(surfel_mem_array& sa,
     assert(!sa.is_empty());
     assert(sa.length() > 0);
 
-    const auto begin = sa.mem_data()->begin() + sa.offset();
-    const auto end = sa.mem_data()->begin() + sa.offset() + sa.length();
+    const auto begin = sa.surfel_mem_data()->begin() + sa.offset();
+    const auto end = sa.surfel_mem_data()->begin() + sa.offset() + sa.length();
 
     for (auto s = begin; s != end; ++s) {
         s->pos() += translation;
@@ -212,26 +212,56 @@ sort_and_split(surfel_mem_array& sa,
     assert(!sa.is_empty());
     assert(sa.length() > 0);
 
+  if (sa.has_provenance()) {
+
+    std::vector<surfel_ext> array;
+    sa.get(array);
+
     if (parallelize) {
 #if WIN32
       // todo: find platform independent sort
-      Concurrency::parallel_sort(sa.mem_data()->begin() + sa.offset(),
-        sa.mem_data()->begin() + sa.offset() + sa.length(),
-        surfel::compare(split_axis));
+      Concurrency::parallel_sort(array.begin(),
+        array.begin() + sa.length(),
+        surfel_ext::compare(split_axis));
 #else
-      __gnu_parallel::sort(sa.mem_data()->begin() + sa.offset(),
-        sa.mem_data()->begin() + sa.offset() + sa.length(),
-        surfel::compare(split_axis));
+      __gnu_parallel::sort(array.begin(),
+        array.begin() + sa.length(),
+        surfel_ext::compare(split_axis));
 #endif
-    } else {
-      std::sort(sa.mem_data()->begin() + sa.offset(),
-        sa.mem_data()->begin() + sa.offset() + sa.length(),
-        surfel::compare(split_axis));
+    }
+    else {
+      std::sort(array.begin(),
+        array.begin() + sa.length(),
+        surfel_ext::compare(split_axis));
+      
     }
 
-    split_surfel_array<surfel_mem_array>(sa, out, box, split_axis, fan_factor);
+    sa.set(array);
+  }
+  else {
+    if (parallelize) {
+#if WIN32
+      // todo: find platform independent sort
+      Concurrency::parallel_sort(sa.surfel_mem_data()->begin() + sa.offset(),
+        sa.surfel_mem_data()->begin() + sa.offset() + sa.length(),
+        surfel::compare(split_axis));
+#else
+      __gnu_parallel::sort(sa.surfel_mem_data()->begin() + sa.offset(),
+        sa.surfel_mem_data()->begin() + sa.offset() + sa.length(),
+        surfel::compare(split_axis));
+#endif
+    }
+    else {
+      std::sort(sa.surfel_mem_data()->begin() + sa.offset(),
+        sa.surfel_mem_data()->begin() + sa.offset() + sa.length(),
+        surfel::compare(split_axis));
+    }
+  }
+
+  split_surfel_array<surfel_mem_array>(sa, out, box, split_axis, fan_factor);
 }
 
+/*
 void basic_algorithms::
 sort_and_split(surfel_disk_array& sa,
              splitted_array<surfel_disk_array>& out,
@@ -243,6 +273,7 @@ sort_and_split(surfel_disk_array& sa,
     external_sort::sort(sa, memory_limit, surfel::compare(split_axis));
     split_surfel_array<surfel_disk_array>(sa, out, box, split_axis, fan_factor);
 }
+*/
 
 template <class T>
 void basic_algorithms::

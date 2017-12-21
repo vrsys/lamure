@@ -23,6 +23,10 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_spatially_subdivided_random not supported for PROVENANCE");
+    }
+
     surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
     std::vector<surfel> already_picked_surfel;
@@ -84,7 +88,7 @@ create_lod(real &reduction_error,
              ++surfel_id) {
 
             //this surfel will be referenced in the entropy surfel
-            auto current_surfel = input[node_id]->mem_data()->at(input[node_id]->offset() + surfel_id);
+            auto current_surfel = input[node_id]->surfel_mem_data()->at(input[node_id]->offset() + surfel_id);
 
             // ignore outlier radii of any kind
             if (current_surfel.radius() == 0.0) {
@@ -162,10 +166,10 @@ create_lod(real &reduction_error,
 
         interpolate_approx_natural_neighbours(final_candidate, original_surfels, tree);
 
-        mem_array.mem_data()->push_back(final_candidate);
+        mem_array.surfel_mem_data()->push_back(final_candidate);
     }
 
-    mem_array.set_length(mem_array.mem_data()->size());
+    mem_array.set_length(mem_array.surfel_mem_data()->size());
 
     reduction_error = 0.0;
 

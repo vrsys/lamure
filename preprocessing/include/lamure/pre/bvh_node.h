@@ -67,66 +67,45 @@ public:
        node_invisible = 1
     };
 
-    const node_id_type node_id() const
-    { return node_id_; }
+    const node_id_type node_id() const { return node_id_; }
 
-    const bounding_box &get_bounding_box() const
-    { return bounding_box_; }
-    bounding_box &get_bounding_box()
-    { return bounding_box_; }
+    const bounding_box &get_bounding_box() const { return bounding_box_; }
+    bounding_box &get_bounding_box() { return bounding_box_; }
 
-    void set_bounding_box(const bounding_box &value)
-    { bounding_box_ = value; }
+    void set_bounding_box(const bounding_box &value) { bounding_box_ = value; }
 
-    const uint32_t depth() const
-    { return depth_; }
+    const uint32_t depth() const { return depth_; }
 
-    const real reduction_error() const
-    { return reduction_error_; }
-    void set_reduction_error(const real value)
-    { reduction_error_ = value; }
+    const real reduction_error() const { return reduction_error_; }
+    void set_reduction_error(const real value) { reduction_error_ = value; }
 
-    const real avg_surfel_radius() const
-    { return avg_surfel_radius_; }
-    void set_avg_surfel_radius(const real value)
-    { avg_surfel_radius_ = value; }
+    const real avg_surfel_radius() const { return avg_surfel_radius_; }
+    void set_avg_surfel_radius(const real value) { avg_surfel_radius_ = value; }
 
-    const vec3r centroid() const
-    { return centroid_; }
-    void set_centroid(const vec3r &value)
-    { centroid_ = value; }
+    const vec3r centroid() const { return centroid_; }
+    void set_centroid(const vec3r &value) { centroid_ = value; }
 
-    const node_visibility visibility() const
-    { return visibility_; }
-    void set_visibility(const node_visibility visibility)
-    { visibility_ = visibility; }
+    const node_visibility visibility() const { return visibility_; }
+    void set_visibility(const node_visibility visibility) { visibility_ = visibility; }
 
     const real          max_surfel_radius_deviation() const { return max_surfel_radius_deviation_; }
-    void                set_max_surfel_radius_deviation(const real value)
-                            { max_surfel_radius_deviation_ = value; }
+    void                set_max_surfel_radius_deviation(const real value) { max_surfel_radius_deviation_ = value; }
 
     void calculate_statistics();
 
-    node_statistics &node_stats()
-    { return node_stats_; }
+    node_statistics &node_stats() { return node_stats_; }
 
-    surfel_mem_array &mem_array()
-    { return mem_array_; }
-    const surfel_mem_array &
-    mem_array() const
-    { return mem_array_; }
+    surfel_mem_array &mem_array() { return mem_array_; }
+    const surfel_mem_array & mem_array() const { return mem_array_; }
 
-    surfel_disk_array &disk_array()
-    { return disk_array_; }
-    const surfel_disk_array &
-    disk_array() const
-    { return disk_array_; }
+    surfel_disk_array &disk_array() { return disk_array_; }
+    const surfel_disk_array & disk_array() const { return disk_array_; }
 
-    const bool is_in_core() const
-    { return !mem_array_.is_empty(); }
+    const bool is_in_core() const { return !mem_array_.is_empty(); }
 
-    const bool is_out_of_core() const
-    { return !disk_array_.is_empty(); }
+    const bool is_out_of_core() const { return !disk_array_.is_empty(); }
+
+    const bool has_provenance() const { return disk_array_.has_provenance() || mem_array_.has_provenance(); }
 
     /**
      * Unbinds any surfel data from the node.
@@ -173,6 +152,11 @@ public:
      * \param[in] dealloc_mem_array  If true, the mem_data_will be reset.
      */
     void flush_to_disk(const shared_surfel_file &file,
+                       const size_t offset_in_file,
+                       const bool dealloc_mem_array);
+
+    void flush_to_disk(const shared_surfel_file &surfel_file,
+                       const shared_prov_file &prov_file,
                        const size_t offset_in_file,
                        const bool dealloc_mem_array);
 

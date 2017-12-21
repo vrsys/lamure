@@ -28,13 +28,17 @@ create_lod(real &reduction_error,
            const bvh &tree,
            const size_t start_node_id) const
 {
+    if (input[0]->has_provenance()) {
+      throw std::runtime_error("reduction_hierarchical_clustering not supported for PROVENANCE");
+    }
+
     // Create a single surfel vector to sample from.
     std::vector<surfel *> surfels_to_sample;
     for (uint32_t child_mem_array_index = 0; child_mem_array_index < input.size(); ++child_mem_array_index) {
         surfel_mem_array *child_mem_array = input.at(child_mem_array_index);
 
         for (uint32_t surfel_index = 0; surfel_index < child_mem_array->length(); ++surfel_index) {
-            surfels_to_sample.push_back(&child_mem_array->mem_data()->at(surfel_index));
+            surfels_to_sample.push_back(&child_mem_array->surfel_mem_data()->at(surfel_index));
         }
     }
 
@@ -53,10 +57,10 @@ create_lod(real &reduction_error,
 
     for (uint32_t cluster_index = 0; cluster_index < clusters.size(); ++cluster_index) {
         surfel new_surfel = create_surfel_from_cluster(clusters.at(cluster_index));
-        surfels.mem_data()->push_back(new_surfel);
+        surfels.surfel_mem_data()->push_back(new_surfel);
     }
 
-    surfels.set_length(surfels.mem_data()->size());
+    surfels.set_length(surfels.surfel_mem_data()->size());
 
     reduction_error = 0;
 

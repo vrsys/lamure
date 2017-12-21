@@ -107,14 +107,14 @@ class PREPROCESSING_DLL bvh
     const node_id_type first_leaf() const { return first_leaf_; }
 
     // processing functions
-    void downsweep(bool adjust_translation, const std::string &surfels_input_file, const std::string &prov_input_file, bool bin_all_file_extension = false);
+    void downsweep(bool adjust_translation, const std::string &surfels_input_file, const std::string &prov_input_file);
 
     void compute_normals_and_radii(const uint16_t number_of_neighbours);
 
     void compute_normal_and_radius(const bvh_node *source_node, const normal_computation_strategy &normal_computation_strategy, const radius_computation_strategy &radius_computation_strategy);
 
     void upsweep(const reduction_strategy &reduction_strategy, const normal_computation_strategy &normal_comp_strategy, const radius_computation_strategy &radius_comp_strategy,
-                 bool recompute_leaf_level = true, bool resample = false);
+                 bool recompute_leaf_level = true, bool resample = false, bool provenance = false);
     void resample();
 
     surfel_vector remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
@@ -189,7 +189,8 @@ class PREPROCESSING_DLL bvh
 
     vec3r translation_ = vec3r(0.0); ///< translation of surfels
 
-    void downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, shared_surfel_file leaf_level_access);
+    void downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, 
+        shared_surfel_file leaf_level_access, shared_prov_file prov_leaf_level_access);
 
     void get_descendant_leaves(const node_id_type node, std::vector<node_id_type> &result, const node_id_type first_leaf, const std::unordered_set<size_t> &excluded_leaves) const;
     void get_descendant_nodes(const node_id_type node, std::vector<node_id_type> &result, const node_id_type desired_depth, const std::unordered_set<size_t> &excluded_nodes) const;
