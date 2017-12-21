@@ -406,7 +406,6 @@ void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_dest
         bvh_node &current_node = nodes_[nid];
         
         if (current_node.has_provenance()) {
-          LOGGER_TRACE("provenance found");
           current_node.flush_to_disk(leaf_level_access, prov_leaf_level_access, disk_leaf_destination, true);
         }
         else {
@@ -1067,10 +1066,13 @@ void bvh::thread_create_lod(const uint32_t start_marker, const uint32_t end_mark
             std::vector<surfel_mem_array *> input_mem_arrays;
 
             // simplified data will be stored here
-            surfel_mem_array reduction_result(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+            surfel_mem_array reduction_result = surfel_mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
 
             if(do_resample)
             {
+                if (current_node->has_provenance()) {
+                    throw std::runtime_error("resampling not supported for PROVENANCE");
+                }
                 for(uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
                 {
                     size_t child_id = this->get_child_id(current_node->node_id(), child_index);
@@ -1083,12 +1085,19 @@ void bvh::thread_create_lod(const uint32_t start_marker, const uint32_t end_mark
             }
             else
             {
+                bool child_has_provenance = false;
                 for(uint8_t child_index = 0; child_index < fan_factor_; ++child_index)
                 {
                     size_t child_id = this->get_child_id(current_node->node_id(), child_index);
                     bvh_node *child_node = &nodes_.at(child_id);
 
                     input_mem_arrays.push_back(&child_node->mem_array());
+                    child_has_provenance = child_node->has_provenance();
+                }                
+                if (child_has_provenance) {
+                    reduction_result = surfel_mem_array(
+                        std::make_shared<surfel_vector>(surfel_vector()),
+                        std::make_shared<prov_vector>(prov_vector()), 0, 0);
                 }
             }
 
@@ -1103,6 +1112,10 @@ void bvh::thread_create_lod(const uint32_t start_marker, const uint32_t end_mark
             }
             else
             {
+                if (reduction_result.has_provenance()) {
+                    std::cout << "ERROR: Only reduction_strategy_provenance supported for PROVENANCE" << std::endl;
+                    throw std::runtime_error("Only reduction_strategy_provenance supported for PROVENANCE");
+                }
                 reduction_result = reduction_strgy.create_lod(reduction_error, input_mem_arrays, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0));
             }
 
@@ -1386,8 +1399,23 @@ void bvh::thread_split_node_jobs(size_t &slice_left, size_t &slice_right, size_t
 }
 
 void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_computation_strategy &normal_strategy, const radius_computation_strategy &radius_strategy, bool recompute_leaf_level,
-                  bool resample, bool provenance)
+                  bool resample)
 {
+
+    
+    uint64_t num_nodes_with_provenance = 0;
+    for (const auto& node : nodes_) {
+      if (node.has_provenance()) {
+        ++num_nodes_with_provenance;
+      }
+    }
+    if (num_nodes_with_provenance > 0) {
+        LOGGER_TRACE("Upsweep: provenance disk arrays found");
+    }
+
+    std::cout << "num_nodes: " << nodes_.size() << std::endl;
+    std::cout << "num_nodes_with_provenance: " << num_nodes_with_provenance << std::endl;
+
     // Create level temp files
     std::vector<shared_surfel_file> level_temp_files;
     std::vector<shared_prov_file> prov_temp_files;
@@ -1397,7 +1425,7 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
         std::string ext = ".lv" + std::to_string(level);
         level_temp_files.back()->open(add_to_path(base_path_, ext).string(), level != depth_);
 
-        if (provenance) {
+        if (num_nodes_with_provenance > 0) {
             prov_temp_files.push_back(std::make_shared<prov_file>());
             std::string prov_ext = ".plv" + std::to_string(level);
             prov_temp_files.back()->open(add_to_path(base_path_, prov_ext).string(), level != depth_);
@@ -1405,9 +1433,6 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
         }
     }
 
-    if (nodes_.back().has_provenance()) {
-      LOGGER_TRACE("Upsweep: provenance disk arrays found");
-    }
 
     // Start at bottom level and move up towards root.
     for(int32_t level = depth_; level >= 0; --level)
@@ -1422,7 +1447,6 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
             bvh_node *current_node = &nodes_.at(node_index);
-
             // if necessary, load leaf-level nodes from disk
             if(level == int32_t(depth_) && current_node->is_out_of_core())
             {
@@ -1463,7 +1487,12 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
             nid = std::max(0, nid);
 
             // save computed node to disk
-            current_node->flush_to_disk(level_temp_files[level], size_t(nid) * max_surfels_per_node_, false);
+            if (current_node->has_provenance()) {
+                current_node->flush_to_disk(level_temp_files[level], prov_temp_files[level], size_t(nid) * max_surfels_per_node_, false);
+            }
+            else {
+                current_node->flush_to_disk(level_temp_files[level], size_t(nid) * max_surfels_per_node_, false);
+            }
         }
         mean_radius_sd = mean_radius_sd / counter;
         std::cout << "average radius deviation pro level: " << mean_radius_sd << "\n";

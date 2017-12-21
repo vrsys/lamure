@@ -367,6 +367,11 @@ int main(int argc, const char *argv[])
         //optional prov file
         desc.prov_file                    = vm["prov-file"].as<std::string>();
 
+        if (desc.prov_file != "") {
+            std::cout << "Provenance data found -> using --reduction-algo ndc_prov" << std::endl;
+            desc.reduction_algo           = lamure::pre::reduction_algorithm::ndc_prov;
+        }
+
 
         // preprocess
         lamure::pre::builder builder(desc);

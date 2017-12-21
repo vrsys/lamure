@@ -114,7 +114,7 @@ class PREPROCESSING_DLL bvh
     void compute_normal_and_radius(const bvh_node *source_node, const normal_computation_strategy &normal_computation_strategy, const radius_computation_strategy &radius_computation_strategy);
 
     void upsweep(const reduction_strategy &reduction_strategy, const normal_computation_strategy &normal_comp_strategy, const radius_computation_strategy &radius_comp_strategy,
-                 bool recompute_leaf_level = true, bool resample = false, bool provenance = false);
+                 bool recompute_leaf_level = true, bool resample = false);
     void resample();
 
     surfel_vector remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
