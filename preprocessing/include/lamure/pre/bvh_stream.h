@@ -501,15 +501,21 @@ protected:
         bvh_string working_directory_;
         bvh_string filename_;
         uint32_t num_disk_accesses_;
-        std::vector<bvh_string> disk_accesses_;
+        uint32_t provenance_;
+        uint32_t empty_;
+        std::vector<bvh_string> surfel_accesses_;
+        std::vector<bvh_string> prov_accesses_;
 
     protected:
         friend class bvh_stream;
         const size_t size() const
         {
             //this takes some effort to compute since strings have arbitray length
-            size_t size = 8;
-            for (const auto &text : disk_accesses_) {
+            size_t size = 8 + 8;
+            for (const auto &text : surfel_accesses_) {
+                size += 8 + text.length_ + (32 - ((8 + text.length_) % 32));
+            }
+            for (const auto &text : prov_accesses_) {
                 size += 8 + text.length_ + (32 - ((8 + text.length_) % 32));
             }
             size += 8 + working_directory_.length_ + (32 - ((8 + working_directory_.length_) % 32));
@@ -537,10 +543,18 @@ protected:
             serialize_string(file, working_directory_);
             serialize_string(file, filename_);
             file.write((char *) &num_disk_accesses_, 4);
+            file.write((char *) &provenance_, 4);
+            file.write((char *) &empty_, 4);
             for (unsigned int i = 0; i < num_disk_accesses_; ++i) {
-                const bvh_string &disk_access = disk_accesses_[i];
-                serialize_string(file, disk_access);
+                const bvh_string &surfel_access = surfel_accesses_[i];
+                serialize_string(file, surfel_access);
             }
+            if (provenance_) {
+                for (unsigned int i = 0; i < num_disk_accesses_; ++i) {
+                    const bvh_string &prov_access = prov_accesses_[i];
+                    serialize_string(file, prov_access);
+                }
+            } 
         }
         void deserialize(std::fstream &file)
         {
@@ -552,10 +566,19 @@ protected:
             deserialize_string(file, working_directory_);
             deserialize_string(file, filename_);
             file.read((char *) &num_disk_accesses_, 4);
+            file.read((char *) &provenance_, 4);
+            file.read((char *) &empty_, 4);
             for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
-                bvh_string disk_access;
-                deserialize_string(file, disk_access);
-                disk_accesses_.push_back(disk_access);
+                bvh_string surfel_access;
+                deserialize_string(file, surfel_access);
+                surfel_accesses_.push_back(surfel_access);
+            }
+            if (provenance_) {
+                for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
+                    bvh_string prov_access;
+                    deserialize_string(file, prov_access);
+                    prov_accesses_.push_back(prov_access);
+                }
             }
         }
 

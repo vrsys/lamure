@@ -30,8 +30,13 @@ public:
     explicit surfel_disk_array(const surfel_disk_array &other,
                                const size_t offset,
                                const size_t length)
-        : array_abstract<surfel>(), has_provenance_(other.has_provenance_) { 
-      reset(other.surfel_file_, other.prov_file_, offset, length); 
+        : array_abstract<surfel>(), has_provenance_(other.has_provenance_) {
+      if (has_provenance_) {
+        reset(other.surfel_file_, other.prov_file_, offset, length); 
+      }
+      else {
+        reset(other.surfel_file_, offset, length); 
+      }
     }
 
     //to be removed

@@ -276,6 +276,7 @@ read_bvh(const std::string &filename, bvh &bvh)
     }
 
     std::vector<shared_surfel_file> level_temp_files;
+    std::vector<shared_prov_file> prov_temp_files;
 
     bvh::state_type current_state = static_cast<bvh::state_type>(tree.state_);
 
@@ -296,7 +297,11 @@ read_bvh(const std::string &filename, bvh &bvh)
         //setup level temp files
         for (uint32_t i = 0; i < tree_ext.num_disk_accesses_; ++i) {
             level_temp_files.push_back(std::make_shared<surfel_file>());
-            level_temp_files.back()->open(tree_ext.disk_accesses_[i].string_, false);
+            level_temp_files.back()->open(tree_ext.surfel_accesses_[i].string_, false);
+            if (tree_ext.provenance_) {
+              prov_temp_files.push_back(std::make_shared<prov_file>());
+              prov_temp_files.back()->open(tree_ext.prov_accesses_[i].string_, false);
+            }
         }
     }
     else {
@@ -339,9 +344,14 @@ read_bvh(const std::string &filename, bvh &bvh)
            }
            else {
                const auto& disk_array = node_ext.disk_array_;
-               surfel_disk_array sdarray = surfel_disk_array(level_temp_files[disk_array.disk_access_ref_],
-                                                                   disk_array.offset_,
-                                                                   disk_array.length_);
+
+               surfel_disk_array sdarray;
+               if (tree_ext.provenance_) {
+                 sdarray = surfel_disk_array(level_temp_files[disk_array.disk_access_ref_], prov_temp_files[disk_array.disk_access_ref_], disk_array.offset_, disk_array.length_);
+               }
+               else {
+                 sdarray = surfel_disk_array(level_temp_files[disk_array.disk_access_ref_], disk_array.offset_, disk_array.length_);
+               }
                bvh_nodes[i] = bvh_node(node.node_id_, node.depth_, bounding_box(vec3r(box_min), vec3r(box_max)), sdarray);
            }
        }
@@ -384,7 +394,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
 
    bvh_file_seg seg;
    seg.major_version_ = 1;
-   seg.minor_version_ = 1;
+   seg.minor_version_ = 2;
    seg.reserved_ = 0;
 
    write(seg);
@@ -441,6 +451,8 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
        tree_ext.filename_.string_ = bvh.base_path().string();
        tree_ext.filename_.length_ = tree_ext.filename_.string_.length();
        tree_ext.num_disk_accesses_ = 0;
+       tree_ext.provenance_ = 0;
+       tree_ext.empty_ = 0;
 
        for (uint32_t i = 0; i < bvh_nodes.size(); ++i) {
            const auto& bvh_node = bvh_nodes[i];
@@ -460,23 +472,44 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
                node_ext.empty_ = 0;
 
                bool disk_access_found = false;
+               tree_ext.provenance_ = bvh_node.has_provenance();
+
                for (uint32_t k = 0; k < tree_ext.num_disk_accesses_; ++k) {
-                   if (tree_ext.disk_accesses_.size() < k) {
+                   if (tree_ext.surfel_accesses_.size() < k) {
                        throw std::runtime_error(
                            "PLOD: bvh_stream::Stream corrupt");
                    }
-                   if (tree_ext.disk_accesses_[k].string_ == bvh_node.disk_array().get_file()->file_name()) {
-                       node_ext.disk_array_.disk_access_ref_ = k;
-                       disk_access_found = true;
-                       break;
+                   if (tree_ext.surfel_accesses_[k].string_ == bvh_node.disk_array().get_file()->file_name()) {
+                      if (tree_ext.provenance_) {
+                        if (tree_ext.prov_accesses_[k].string_ == bvh_node.disk_array().get_prov_file()->file_name()) {
+                          node_ext.disk_array_.disk_access_ref_ = k;
+                          disk_access_found = true;
+                          break;
+                        }
+                      }
+                      else {
+                        node_ext.disk_array_.disk_access_ref_ = k;
+                        disk_access_found = true;
+                        break;
+                      }
                    }
                }
                
                if (!disk_access_found) {
-                  bvh_string disk_access;
-                  disk_access.string_ = bvh_node.disk_array().get_file()->file_name();
-                  disk_access.length_ = disk_access.string_.length();
-                  tree_ext.disk_accesses_.push_back(disk_access);
+                  bvh_string surfel_access;
+                  surfel_access.string_ = bvh_node.disk_array().get_file()->file_name();
+                  std::cout << "writing surfel access: " << surfel_access.string_ << std::endl;
+                  surfel_access.length_ = surfel_access.string_.length();
+                  tree_ext.surfel_accesses_.push_back(surfel_access);
+
+                  if (tree_ext.provenance_) {
+                    bvh_string prov_access;
+                    prov_access.string_ = bvh_node.disk_array().get_prov_file()->file_name();
+                    std::cout << "writing prov access: " << prov_access.string_ << std::endl;
+                    prov_access.length_ = prov_access.string_.length();
+                    tree_ext.prov_accesses_.push_back(prov_access);
+                  }
+
                   node_ext.disk_array_.disk_access_ref_ = tree_ext.num_disk_accesses_;
                   ++tree_ext.num_disk_accesses_;
                }
@@ -484,15 +517,23 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
                node_ext.disk_array_.offset_ = bvh_node.disk_array().offset();
                node_ext.disk_array_.length_ = bvh_node.disk_array().length();
                
+
+               
            }
 
            write(node_ext);
-       }
 
+       }
+      
        write(tree_ext);
+       if (tree_ext.provenance_) {
+         LOGGER_TRACE("BVHXTEXT tree extension contains provenance disk arrays");
+       }
    }
 
    close_stream(false);
+
+   std::cout << "BVH serialization successful" << std::endl;
 
 
 }

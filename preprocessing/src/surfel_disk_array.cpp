@@ -125,6 +125,7 @@ write_all(const std::shared_ptr<std::vector<surfel>> &surfel_data,
     }
 
     surfel_file_->write(surfel_data.get(), offset_in_vector, offset_, length_);
+    has_provenance_ = false;
 }
 
 void surfel_disk_array::
@@ -139,6 +140,9 @@ write_all(const std::shared_ptr<std::vector<surfel>> &surfel_data,
 
     surfel_file_->write(surfel_data.get(), offset_in_vector, offset_, length_);
     prov_file_->write(prov_data.get(), offset_in_vector, offset_, length_);
+
+    //std::cout << "write prov to : " << prov_file_->file_name() << std::endl;
+    has_provenance_ = true;
 }
 
 } // namespace pre

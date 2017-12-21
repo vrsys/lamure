@@ -214,6 +214,7 @@ void bvh::downsweep(
 
     // instantiate root surfel array
     surfel_disk_array input;
+    shared_prov_file prov_file_disk_access;
 
     // provenance extension
     shared_prov_file prov_leaf_level_access = std::make_shared<prov_file>();
@@ -221,7 +222,7 @@ void bvh::downsweep(
       input = surfel_disk_array(input_file_disk_access, 0, input_file_disk_access->get_size());
     }
     else {
-      shared_prov_file prov_file_disk_access = std::make_shared<prov_file>();
+      prov_file_disk_access = std::make_shared<prov_file>();
       prov_file_disk_access->open(prov_input_file);
       if (input_file_disk_access->get_size() != prov_file_disk_access->get_size()) {
         LOGGER_ERROR("Num provenance data and num surfels must match!");
@@ -367,10 +368,11 @@ void bvh::downsweep(
     // std::cout << std::endl << std::endl;
 
     input_file_disk_access->close();
-    if (prov_leaf_level_access->is_open()) {
-      prov_leaf_level_access->close();
+    if (prov_file_disk_access && prov_file_disk_access->is_open()) {
+        prov_file_disk_access->close();
     }
     state_ = state_type::after_downsweep;
+
 }
 
 void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_destination, uint32_t &processed_nodes, uint8_t &percent_processed, 
@@ -395,6 +397,8 @@ void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_dest
 
     spawn_compute_bounding_boxes_downsweep_jobs(slice_left, slice_right);
 
+    bool provenance = true;
+
     LOGGER_TRACE("Save leaves to disk");
     // save leaves to disk
     for(size_t nid = slice_left; nid <= slice_right; ++nid)
@@ -402,13 +406,18 @@ void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_dest
         bvh_node &current_node = nodes_[nid];
         
         if (current_node.has_provenance()) {
-          //LOGGER_TRACE("WITH PROVENANCE");
+          LOGGER_TRACE("provenance found");
           current_node.flush_to_disk(leaf_level_access, prov_leaf_level_access, disk_leaf_destination, true);
         }
         else {
           current_node.flush_to_disk(leaf_level_access, disk_leaf_destination, true);
+          provenance = false;
         }
         disk_leaf_destination += current_node.disk_array().length();
+    }
+
+    if (provenance) {
+        LOGGER_TRACE("All nodes contain provenance data");
     }
 }
 
@@ -1396,22 +1405,28 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
         }
     }
 
+    if (nodes_.back().has_provenance()) {
+      LOGGER_TRACE("Upsweep: provenance disk arrays found");
+    }
+
     // Start at bottom level and move up towards root.
     for(int32_t level = depth_; level >= 0; --level)
     {
-        std::cout << "Entering level: " << level << std::endl;
+        LOGGER_TRACE("Entering level: " << level);
 
         uint32_t first_node_of_level = get_first_node_id_of_depth(level);
         uint32_t last_node_of_level = get_first_node_id_of_depth(level) + get_length_of_depth(level);
+
 
         // Loading is not thread-safe, so load everything before starting parallel operations.
         for(uint32_t node_index = first_node_of_level; node_index < last_node_of_level; ++node_index)
         {
             bvh_node *current_node = &nodes_.at(node_index);
+
             // if necessary, load leaf-level nodes from disk
             if(level == int32_t(depth_) && current_node->is_out_of_core())
             {
-                current_node->load_from_disk();
+                current_node->load_from_disk();   
             }
         }
 

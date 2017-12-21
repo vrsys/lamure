@@ -83,7 +83,7 @@ void bvh_node::
 load_from_disk()
 {
     assert(is_out_of_core());
-    if (disk_array_.has_provenance()) {
+    if (has_provenance()) {
       mem_array_.reset(disk_array_.read_all(), disk_array_.read_all_prov(), 0, disk_array_.length());
     }
     else {
@@ -100,6 +100,7 @@ flush_to_disk(const shared_surfel_file &file,
 
     disk_array_.reset(file, offset_in_file, mem_array_.length());
     disk_array_.write_all(mem_array_.surfel_mem_data(), mem_array_.offset());
+
 
     if (dealloc_mem_array)
         mem_array_.reset();
@@ -128,6 +129,7 @@ flush_to_disk(const bool dealloc_mem_array)
 
     if (mem_array_.has_provenance()) {
       disk_array_.write_all(mem_array_.surfel_mem_data(), mem_array_.prov_mem_data(), mem_array_.offset());
+
     }
     else {
       disk_array_.write_all(mem_array_.surfel_mem_data(), mem_array_.offset());
