@@ -10,8 +10,11 @@ INCLUDE ../common/heatmapping/colormap.glsl
 
 uniform bool show_normals;
 uniform bool show_accuracy;
+uniform bool show_radius_deviation;
 uniform bool show_output_sensitivity;
 uniform float accuracy;
+
+uniform float average_radius;
 
 uniform int channel;
 uniform bool heatmap;
@@ -86,6 +89,10 @@ vec3 get_color(in vec3 position, in vec3 normal, in vec3 color, in float radius)
   }
   else if (show_output_sensitivity) {
     view_color = get_output_sensitivity_color(position, normal, radius);
+  }
+  else if (show_radius_deviation) {
+    float max_fac = 2.0;
+    view_color = vec3(min(max_fac, radius/average_radius) / max_fac);
   }
   else if (channel == 0) {
     view_color = color;

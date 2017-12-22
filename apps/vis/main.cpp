@@ -174,6 +174,7 @@ struct settings {
   int32_t vis_ {0};
   int32_t show_normals_ {0};
   int32_t show_accuracy_ {0};
+  int32_t show_radius_deviation_ {0};
   int32_t show_output_sensitivity_ {0};
   int32_t channel_ {0};
   float point_scale_ {1.0f};
@@ -325,6 +326,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "show_accuracy") {
             settings.show_accuracy_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "show_radius_deviation") {
+            settings.show_radius_deviation_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_output_sensitivity") {
             settings.show_output_sensitivity_ = std::max(atoi(value.c_str()), 0);
@@ -582,6 +586,9 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
           const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);
           shader->uniform("accuracy", accuracy);
         }
+        if (settings_.show_radius_deviation_) {
+          shader->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
+        }
 
         context_->apply();
 
@@ -597,6 +604,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
       break;
     }
   }
+
 
 }
 
@@ -614,6 +622,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
   shader->uniform("show_normals", (bool)settings_.show_normals_);
   shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
+  shader->uniform("show_radius_deviation", (bool)settings_.show_radius_deviation_);
   shader->uniform("show_output_sensitivity", (bool)settings_.show_output_sensitivity_);
 
   shader->uniform("channel", settings_.channel_);
@@ -1074,14 +1083,15 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
     case 'e':
       ++settings_.vis_;
-      if(settings_.vis_ > (3 + settings_.prov_/sizeof(float))) {
+      if(settings_.vis_ > (4 + settings_.prov_/sizeof(float))) {
         settings_.vis_ = 0;
       }
       settings_.show_normals_ = (settings_.vis_ == 1);
       settings_.show_accuracy_ = (settings_.vis_ == 2);
-      settings_.show_output_sensitivity_ = (settings_.vis_ == 3);
-      if (settings_.vis_ > 3) {
-        settings_.channel_ = (settings_.vis_-3);
+      settings_.show_radius_deviation_ = (settings_.vis_ == 3);
+      settings_.show_output_sensitivity_ = (settings_.vis_ == 4);
+      if (settings_.vis_ > 4) {
+        settings_.channel_ = (settings_.vis_-4);
       }
       else {
         settings_.channel_ = 0;
@@ -1091,13 +1101,14 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 'E':
       --settings_.vis_;
       if(settings_.vis_ < 0) {
-        settings_.vis_ = (3 + settings_.prov_/sizeof(float));
+        settings_.vis_ = (4 + settings_.prov_/sizeof(float));
       }
       settings_.show_normals_ = (settings_.vis_ == 1);
       settings_.show_accuracy_ = (settings_.vis_ == 2);
-      settings_.show_output_sensitivity_ = (settings_.vis_ == 3);
-      if (settings_.vis_ > 3) {
-        settings_.channel_ = (settings_.vis_-3);
+      settings_.show_radius_deviation_ = (settings_.vis_ == 3);
+      settings_.show_output_sensitivity_ = (settings_.vis_ == 4);
+      if (settings_.vis_ > 4) {
+        settings_.channel_ = (settings_.vis_-4);
       }
       else {
         settings_.channel_ = 0;
