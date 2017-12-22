@@ -32,6 +32,25 @@ read_surfel_ref(const size_t index) const
     return surfel_mem_data_->operator[](offset_ + index);
 }
 
+surfel_ext surfel_mem_array::
+read_surfel_ext(const size_t index) const
+{
+    assert(!is_empty_);
+    assert(index < length_);
+    assert(offset_ + index < surfel_mem_data_->size());
+    assert(offset_ + index < prov_mem_data_->size());
+
+    return surfel_ext{surfel_mem_data_->at(offset_ + index), prov_mem_data_->at(offset_ + index)};
+}
+
+
+void surfel_mem_array::
+write_surfel_ext(const surfel_ext& surfel) {
+    
+    surfel_mem_data_->push_back(surfel.surfel_);
+    prov_mem_data_->push_back(surfel.prov_);
+}
+
 void surfel_mem_array::
 write_surfel(const surfel &surfel, const size_t index) const
 {

@@ -515,11 +515,11 @@ protected:
             for (const auto &text : surfel_accesses_) {
                 size += 8 + text.length_ + (32 - ((8 + text.length_) % 32));
             }
+            size += 8 + working_directory_.length_ + (32 - ((8 + working_directory_.length_) % 32));
+            size += 8 + filename_.length_ + (32 - ((8 + filename_.length_) % 32));
             for (const auto &text : prov_accesses_) {
                 size += 8 + text.length_ + (32 - ((8 + text.length_) % 32));
             }
-            size += 8 + working_directory_.length_ + (32 - ((8 + working_directory_.length_) % 32));
-            size += 8 + filename_.length_ + (32 - ((8 + filename_.length_) % 32));
             return size;
         };
         void signature(char *signature)
@@ -545,16 +545,15 @@ protected:
             file.write((char *) &num_disk_accesses_, 4);
             file.write((char *) &provenance_, 4);
             file.write((char *) &empty_, 4);
-            for (unsigned int i = 0; i < num_disk_accesses_; ++i) {
+            for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
                 const bvh_string &surfel_access = surfel_accesses_[i];
                 serialize_string(file, surfel_access);
             }
-            if (provenance_) {
-                for (unsigned int i = 0; i < num_disk_accesses_; ++i) {
-                    const bvh_string &prov_access = prov_accesses_[i];
-                    serialize_string(file, prov_access);
-                }
-            } 
+            for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
+                const bvh_string &prov_access = prov_accesses_[i];
+                serialize_string(file, prov_access);
+            }
+             
         }
         void deserialize(std::fstream &file)
         {
@@ -573,13 +572,12 @@ protected:
                 deserialize_string(file, surfel_access);
                 surfel_accesses_.push_back(surfel_access);
             }
-            if (provenance_) {
-                for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
-                    bvh_string prov_access;
-                    deserialize_string(file, prov_access);
-                    prov_accesses_.push_back(prov_access);
-                }
+            for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
+                bvh_string prov_access;
+                deserialize_string(file, prov_access);
+                prov_accesses_.push_back(prov_access);
             }
+            
         }
 
     };

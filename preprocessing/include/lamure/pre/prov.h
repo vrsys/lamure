@@ -11,6 +11,7 @@
 #include <lamure/pre/platform.h>
 #include <lamure/types.h>
 
+#include <fstream>
 #include <memory>
 #include <vector>
 
@@ -21,14 +22,41 @@ namespace pre
 class PREPROCESSING_DLL prov
 {
   public:
-    prov() {};
+    prov() 
+    :
+    mean_absolute_deviation_(0.f),
+    standard_deviation_(0.f),
+    coefficient_of_variation_(0.f),
+    value_(0.f) {};
 
-    const float value() const { return value_; }
-    float &value() { return value_; }
-
-  private:
+  	float mean_absolute_deviation_;
+    float standard_deviation_;
+    float coefficient_of_variation_;
     float value_;
-    
+
+    static void write_json(std::string const& file_name) {
+    	std::ofstream out_stream;
+        out_stream.open(file_name, std::ios::out);
+        std::string filestr;
+        std::stringstream ss(filestr);
+
+        int32_t num_values = 4;
+
+        ss << "[";
+        for (int32_t i = 0; i < num_values; ++i) {
+          ss << "{\n";
+		  ss << "\t\"type\": \"float\",\n";
+		  ss << "\t\"visualization\": \"color\"\n";
+		  ss << "}";
+		  if (i != num_values-1) {
+            ss << ",";
+		  }
+        }
+        ss << "]";
+
+        out_stream << ss.rdbuf();
+        out_stream.close();
+    }
 
 };
 

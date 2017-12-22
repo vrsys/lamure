@@ -121,7 +121,7 @@ class PREPROCESSING_DLL bvh
 
     void serialize_tree_to_file(const std::string &output_file, bool write_intermediate_data);
 
-    void serialize_surfels_to_file(const std::string &output_file, const size_t buffer_size) const;
+    void serialize_surfels_to_file(const std::string &lod_output_file, const std::string &prov_output_file, const size_t buffer_size) const;
 
     /* resets all nodes and deletes temp files
      */

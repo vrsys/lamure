@@ -22,7 +22,7 @@ namespace lamure
 {
 namespace pre
 {
-surfel reduction_normal_deviation_clustering_provenance::create_representative(const std::vector<surfel> &input)
+surfel_ext reduction_normal_deviation_clustering_provenance::create_representative(const std::vector<surfel_ext> &input)
 {
     assert(input.size() > 0);
 
@@ -38,9 +38,9 @@ surfel reduction_normal_deviation_clustering_provenance::create_representative(c
         real weight = 1.0; // surfel.radius();
         weight_sum += weight;
 
-        pos += weight * surfel.pos();
-        nml += float(weight) * surfel.normal();
-        col += surfel.color();
+        pos += weight * surfel.surfel_.pos();
+        nml += float(weight) * surfel.surfel_.normal();
+        col += surfel.surfel_.color();
     }
 
     pos /= weight_sum;
@@ -53,12 +53,12 @@ surfel reduction_normal_deviation_clustering_provenance::create_representative(c
 
     for(const auto &surfel : input)
     {
-        real dist = scm::math::distance(pos, surfel.pos());
-        if(radius < dist + surfel.radius())
-            radius = dist + surfel.radius();
+        real dist = scm::math::distance(pos, surfel.surfel_.pos());
+        if(radius < dist + surfel.surfel_.radius())
+            radius = dist + surfel.surfel_.radius();
     }
 
-    return surfel(pos, vec3b((const uint8_t)col.x, (const uint8_t)col.y, (const uint8_t)col.z), radius, nml);
+    return surfel_ext{surfel(pos, vec3b((const uint8_t)col.x, (const uint8_t)col.y, (const uint8_t)col.z), radius, nml), prov()};
 }
 
 std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering_provenance::compute_grid_dimensions(const std::vector<surfel_mem_array *> &input, const bounding_box &bounding_box,
@@ -306,6 +306,8 @@ std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering_provenance::compu
 surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(real &reduction_error, const std::vector<surfel_mem_array *> &input, std::vector<LoDMetaData> &deviations,
                                                                    const uint32_t surfels_per_node, const bvh &tree, const size_t start_node_id) const
 {
+    bool provenance = input[0]->has_provenance();
+
     // compute bounding box for actual surfels
     bounding_box bbox = basic_algorithms::compute_aabb(*input[0], true);
 
@@ -323,8 +325,8 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
     vec3b locked_grid_dimensions = grid_data.second;
 
     // create grid
-    std::vector<std::vector<std::vector<std::list<surfel> *>>> grid(grid_dimensions[0],
-                                                                    std::vector<std::vector<std::list<surfel> *>>(grid_dimensions[1], std::vector<std::list<surfel> *>(grid_dimensions[2])));
+    std::vector<std::vector<std::vector<std::list<surfel_ext> *>>> grid(grid_dimensions[0],
+        std::vector<std::vector<std::list<surfel_ext> *>>(grid_dimensions[1], std::vector<std::list<surfel_ext> *>(grid_dimensions[2])));
 
     for(uint32_t i = 0; i < grid_dimensions[0]; ++i)
     {
@@ -332,7 +334,7 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
         {
             for(uint32_t k = 0; k < grid_dimensions[2]; ++k)
             {
-                grid[i][j][k] = new std::list<surfel>;
+                grid[i][j][k] = new std::list<surfel_ext>;
             }
         }
     }
@@ -390,7 +392,7 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
             if((index[2] != 0) && (index[2] == grid_dimensions[2]))
                 index[2] = grid_dimensions[2] - 1;
 
-            grid[index[0]][index[1]][index[2]]->push_back(input[i]->read_surfel_ref(j));
+            grid[index[0]][index[1]][index[2]]->push_back(input[i]->read_surfel_ext(j));
         }
     }
 
@@ -429,7 +431,7 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
             break;
         }
 
-        std::list<surfel> *input_cluster = cell_pq.top().cluster;
+        std::list<surfel_ext> *input_cluster = cell_pq.top().cluster;
         float merge_treshold = cell_pq.top().merge_treshold;
         cell_pq.pop();
 
@@ -442,40 +444,40 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
         surfel_count -= input_cluster_size;
         bool early_termination = false;
 
-        real min_radius = input_cluster->begin()->radius();
-        real max_radius = input_cluster->begin()->radius();
+        real min_radius = input_cluster->begin()->surfel_.radius();
+        real max_radius = input_cluster->begin()->surfel_.radius();
 
         auto start = input_cluster->begin();
         std::advance(start, 1);
 
         for(auto surfel = start; surfel != input_cluster->end(); ++surfel)
         {
-            if(surfel->radius() < min_radius)
-                min_radius = surfel->radius();
-            else if(surfel->radius() > max_radius)
-                max_radius = surfel->radius();
+            if(surfel->surfel_.radius() < min_radius)
+                min_radius = surfel->surfel_.radius();
+            else if(surfel->surfel_.radius() > max_radius)
+                max_radius = surfel->surfel_.radius();
         }
 
         // real radius_range = max_radius - min_radius;
 
-        std::list<surfel> *output_cluster = new std::list<surfel>;
+        std::list<surfel_ext> *output_cluster = new std::list<surfel_ext>;
 
         std::list<LoDMetaData> provenance_cluster = std::list<LoDMetaData>();
 
         while(input_cluster->size() != 0)
         {
-            std::vector<surfel> surfels_to_merge;
+            std::vector<surfel_ext> surfels_to_merge;
             surfels_to_merge.push_back(input_cluster->front());
 
             input_cluster->pop_front();
 
-            std::list<surfel>::iterator surfel_to_compare = input_cluster->begin();
+            std::list<surfel_ext>::iterator surfel_to_compare = input_cluster->begin();
 
             while(surfel_to_compare != input_cluster->end())
             {
                 // angle
-                vec3f normal1 = surfels_to_merge.front().normal();
-                vec3f normal2 = (*surfel_to_compare).normal();
+                vec3f normal1 = surfels_to_merge.front().surfel_.normal();
+                vec3f normal2 = (*surfel_to_compare).surfel_.normal();
 
                 bool flip_normal = false;
 
@@ -520,7 +522,7 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
                 {
                     if(flip_normal)
                     {
-                        surfel_to_compare->normal() = surfel_to_compare->normal() * (-1.0);
+                        surfel_to_compare->surfel_.normal() = surfel_to_compare->surfel_.normal() * (-1.0);
                     }
 
                     surfels_to_merge.push_back(*surfel_to_compare);
@@ -538,12 +540,9 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
                     std::advance(surfel_to_compare, 1);
                 }
             }
-            surfel repr = create_representative(surfels_to_merge);
+            surfel_ext repr = create_representative(surfels_to_merge);
 
             LoDMetaData data = calculate_deviations(repr, surfels_to_merge);
-            data._debug_red = float(repr.color().x);
-            data._debug_green = float(repr.color().y);
-            data._debug_blue = float(repr.color().z);
 
             output_cluster->push_back(repr);
 
@@ -556,7 +555,7 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
 
             if(early_termination)
             {
-                std::list<surfel>::iterator p_surfel = input_cluster->begin();
+                std::list<surfel_ext>::iterator p_surfel = input_cluster->begin();
 
                 while(p_surfel != input_cluster->end())
                 {
@@ -564,9 +563,9 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
                     empty._mean_absolute_deviation = -1;
                     empty._coefficient_of_variation = -1;
                     empty._standard_deviation = -1;
-                    empty._debug_red = float((*p_surfel).color().x);
-                    empty._debug_green = float((*p_surfel).color().y);
-                    empty._debug_blue = float((*p_surfel).color().z);
+                    empty._debug_red = float((*p_surfel).surfel_.color().x);
+                    empty._debug_green = float((*p_surfel).surfel_.color().y);
+                    empty._debug_blue = float((*p_surfel).surfel_.color().z);
 
                     provenance_cluster.push_back(empty);
                     std::advance(p_surfel, 1);
@@ -598,26 +597,24 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
         prov_pq.push({provenance_cluster});
     }
 
-    surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()), 0, 0);
+    surfel_mem_array mem_array(std::make_shared<surfel_vector>(surfel_vector()),
+                               std::make_shared<prov_vector>(prov_vector()), 0, 0);
 
     while(!cell_pq.empty())
     {
-        std::list<surfel> *cluster = cell_pq.top().cluster;
+        std::list<surfel_ext> *cluster = cell_pq.top().cluster;
         cell_pq.pop();
 
         std::list<LoDMetaData> prov_cluster = prov_pq.top().cluster;
         prov_pq.pop();
 
-        std::list<surfel>::iterator surfel = cluster->begin();
+        std::list<surfel_ext>::iterator surfel = cluster->begin();
         std::list<LoDMetaData>::iterator meta_data = prov_cluster.begin();
 
         for(; surfel != cluster->end() && meta_data != prov_cluster.end(); ++surfel, ++meta_data)
         {
-            mem_array.surfel_mem_data()->push_back(*surfel);
+            mem_array.write_surfel_ext(*surfel);
             deviations.push_back(*meta_data);
-
-//            printf("\ncell_red: %f ", (double)(*surfel).color().r);
-//            printf("\ndev_red: %f ", (*meta_data)._debug_red);
         }
 
         delete cluster;
@@ -627,15 +624,12 @@ surfel_mem_array reduction_normal_deviation_clustering_provenance::create_lod(re
 
     mem_array.set_length(mem_array.surfel_mem_data()->size());
 
-    //    printf("\nLENGTH: %lu ", mem_array.length());
-    //    printf("\nDEVIATIONS: %lu ", deviations.size());
-
     reduction_error = 0; // TODO
 
     return mem_array;
 }
 
-reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_deviation_clustering_provenance::calculate_deviations(surfel repr, const std::vector<surfel> &input) const
+reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_deviation_clustering_provenance::calculate_deviations(surfel_ext& repr, const std::vector<surfel_ext> &input) const
 {
     assert(input.size() > 0);
 
@@ -648,22 +642,35 @@ reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_d
     if(input.size() == 1)
         return data;
 
-    vec3f repr_normal = repr.normal();
+    vec3f repr_normal = repr.surfel_.normal();
+
+    float prov_value = 0.f;
 
     for(const auto &surfel : input)
     {
-        vec3f normal = surfel.normal();
+        vec3f normal = surfel.surfel_.normal();
 
         double absolute_deviation = scm::math::abs(acos(scm::math::dot(repr_normal, normal)) / (0.5 * M_PI));
         double sq_deviation = scm::math::sqr(absolute_deviation);
 
         data._mean_absolute_deviation += absolute_deviation;
         data._standard_deviation += sq_deviation;
+
+        prov_value += surfel.prov_.value_;
     }
 
     data._mean_absolute_deviation /= (float)input.size();
     data._standard_deviation = (float)scm::math::sqrt(data._standard_deviation / (double)input.size());
     data._coefficient_of_variation = (float)data._mean_absolute_deviation != 0 ? data._standard_deviation / data._mean_absolute_deviation : -1;
+
+    data._debug_red = float(repr.surfel_.color().x);
+    data._debug_green = float(repr.surfel_.color().y);
+    data._debug_blue = float(repr.surfel_.color().z);
+
+    repr.prov_.mean_absolute_deviation_ = data._mean_absolute_deviation;
+    repr.prov_.standard_deviation_ = data._standard_deviation;
+    repr.prov_.coefficient_of_variation_ = data._coefficient_of_variation;
+    repr.prov_.value_ = prov_value / (float)input.size();
 
     //    printf("\nMAD: %e ", data._mean_absolute_deviation);
     //    printf("\nSTD: %e ", data._standard_deviation);
@@ -672,19 +679,19 @@ reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_d
     return data;
 }
 
-std::list<reduction_strategy_provenance::LoDMetaData> reduction_normal_deviation_clustering_provenance::generate_provenance_empties(std::list<surfel> *&surfels) const
+std::list<reduction_strategy_provenance::LoDMetaData> reduction_normal_deviation_clustering_provenance::generate_provenance_empties(std::list<surfel_ext> *&surfels) const
 {
     std::list<reduction_strategy_provenance::LoDMetaData> empties = std::list<reduction_strategy_provenance::LoDMetaData>();
 
-    for(std::list<surfel>::iterator p_surfel = surfels->begin(); p_surfel != surfels->end(); ++p_surfel)
+    for(std::list<surfel_ext>::iterator p_surfel = surfels->begin(); p_surfel != surfels->end(); ++p_surfel)
     {
         reduction_strategy_provenance::LoDMetaData empty;
         empty._mean_absolute_deviation = -1;
         empty._coefficient_of_variation = -1;
         empty._standard_deviation = -1;
-        empty._debug_red = float((*p_surfel).color().x);
-        empty._debug_green = float((*p_surfel).color().y);
-        empty._debug_blue = float((*p_surfel).color().z);
+        empty._debug_red = float((*p_surfel).surfel_.color().x);
+        empty._debug_green = float((*p_surfel).surfel_.color().y);
+        empty._debug_blue = float((*p_surfel).surfel_.color().z);
         empties.push_back(empty);
     }
 

@@ -442,31 +442,42 @@ protected:
     };
 
 
-    class bvh_tree_extension_seg : public bvh_serializable {
+    class bvh_tree_extension_seg: public bvh_serializable
+    {
     public:
         bvh_tree_extension_seg()
-        : bvh_serializable() {};
-        ~bvh_tree_extension_seg() {};
+            : bvh_serializable()
+        {};
+        ~bvh_tree_extension_seg()
+        {};
 
         uint32_t segment_id_;
         bvh_string working_directory_;
         bvh_string filename_;
         uint32_t num_disk_accesses_;
-        std::vector<bvh_string> disk_accesses_;
+        uint32_t provenance_;
+        uint32_t empty_;
+        std::vector<bvh_string> surfel_accesses_;
+        std::vector<bvh_string> prov_accesses_;
 
     protected:
         friend class bvh_stream;
-        const size_t size() const {
+        const size_t size() const
+        {
             //this takes some effort to compute since strings have arbitray length
-            size_t size = 8;
-            for (const auto& text : disk_accesses_) {
+            size_t size = 8 + 8;
+            for (const auto &text : surfel_accesses_) {
                 size += 8 + text.length_ + (32 - ((8 + text.length_) % 32));
             }
             size += 8 + working_directory_.length_ + (32 - ((8 + working_directory_.length_) % 32));
             size += 8 + filename_.length_ + (32 - ((8 + filename_.length_) % 32));
+            for (const auto &text : prov_accesses_) {
+                size += 8 + text.length_ + (32 - ((8 + text.length_) % 32));
+            }
             return size;
         };
-        void signature(char* signature) {
+        void signature(char *signature)
+        {
             signature[0] = 'B';
             signature[1] = 'V';
             signature[2] = 'H';
@@ -476,37 +487,55 @@ protected:
             signature[6] = 'X';
             signature[7] = 'T';
         }
-        void serialize(std::fstream& file) {
+        void serialize(std::fstream &file)
+        {
             if (!file.is_open()) {
-               throw std::runtime_error(
-                   "PLOD: bvh_stream::Unable to serialize");
+                throw std::runtime_error(
+                    "PLOD: bvh_stream::Unable to serialize");
             }
-            file.write((char*)&segment_id_, 4);
+            file.write((char *) &segment_id_, 4);
             serialize_string(file, working_directory_);
             serialize_string(file, filename_);
-            file.write((char*)&num_disk_accesses_, 4);
-            for (unsigned int i = 0; i < num_disk_accesses_; ++i) {
-                const bvh_string& disk_access = disk_accesses_[i];
-                serialize_string(file, disk_access);
+            file.write((char *) &num_disk_accesses_, 4);
+            file.write((char *) &provenance_, 4);
+            file.write((char *) &empty_, 4);
+            for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
+                const bvh_string &surfel_access = surfel_accesses_[i];
+                serialize_string(file, surfel_access);
             }
+            for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
+                const bvh_string &prov_access = prov_accesses_[i];
+                serialize_string(file, prov_access);
+            }
+             
         }
-        void deserialize(std::fstream& file) {
+        void deserialize(std::fstream &file)
+        {
             if (!file.is_open()) {
-               throw std::runtime_error(
-                   "PLOD: bvh_stream::Unable to deserialize");
+                throw std::runtime_error(
+                    "PLOD: bvh_stream::Unable to deserialize");
             }
-            file.read((char*)&segment_id_, 4);
+            file.read((char *) &segment_id_, 4);
             deserialize_string(file, working_directory_);
             deserialize_string(file, filename_);
-            file.read((char*)&num_disk_accesses_, 4);
+            file.read((char *) &num_disk_accesses_, 4);
+            file.read((char *) &provenance_, 4);
+            file.read((char *) &empty_, 4);
             for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
-                 bvh_string disk_access;
-                 deserialize_string(file, disk_access);
-                 disk_accesses_.push_back(disk_access);
+                bvh_string surfel_access;
+                deserialize_string(file, surfel_access);
+                surfel_accesses_.push_back(surfel_access);
             }
+            for (uint32_t i = 0; i < num_disk_accesses_; ++i) {
+                bvh_string prov_access;
+                deserialize_string(file, prov_access);
+                prov_accesses_.push_back(prov_access);
+            }
+            
         }
-        
+
     };
+
     
     void open_stream(const std::string& bvh_filename,
                     const bvh_stream_type type);

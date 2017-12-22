@@ -509,6 +509,12 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
                     prov_access.length_ = prov_access.string_.length();
                     tree_ext.prov_accesses_.push_back(prov_access);
                   }
+                  else {
+                    bvh_string prov_access;
+                    prov_access.string_ = "";
+                    prov_access.length_ = prov_access.string_.length();
+                    tree_ext.prov_accesses_.push_back(prov_access);
+                  }
 
                   node_ext.disk_array_.disk_access_ref_ = tree_ext.num_disk_accesses_;
                   ++tree_ext.num_disk_accesses_;

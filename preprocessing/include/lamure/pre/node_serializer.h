@@ -41,6 +41,7 @@ public:
     const bool is_open() const;
 
     void serialize_nodes(const std::vector<bvh_node> &nodes);
+    void serialize_prov(const std::vector<bvh_node> &nodes);
 
     void read_node_immediate(surfel_vector &surfels,
                              const size_t offset);
@@ -50,14 +51,13 @@ public:
 private:
 
     void write_node_streamed(const bvh_node &node);
-    void flush_buffer();
+    void flush_surfel_buffer();
 
     mutable std::fstream stream_;
     std::string file_name_;
     size_t surfels_per_node_;
 
-    std::deque<surfel_vector *>
-        buffer_;
+    std::deque<surfel_vector *> surfel_buffer_;
     size_t max_nodes_in_buffer_;
 };
 

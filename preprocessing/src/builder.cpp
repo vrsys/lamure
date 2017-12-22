@@ -37,6 +37,7 @@
 #include <lamure/pre/reduction_hierarchical_clustering_mk5.h>
 #endif
 #include <cstdio>
+#include <fstream>
 
 
 #define CPU_TIMER auto_timer timer("CPU time: %ws wall, usr+sys = %ts CPU (%p%)\n")
@@ -164,12 +165,9 @@ boost::filesystem::path builder::convert_to_binary(std::string const& input_file
 
     conv.set_surfel_callback([](surfel &s, bool &keep)
                              { if (s.pos() == vec3r(0.0, 0.0, 0.0)) keep = false; });
-    //conv.set_scale_factor(1);
-    //conv.set_translation(vec3r(-605535.577, -5097551.573, -1468.071));
 
     CPU_TIMER;
     conv.convert(input_file.string(), binary_file.string());
-    // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     return binary_file;
 }
 
@@ -372,10 +370,17 @@ bool builder::reserialize(boost::filesystem::path const &input_file, uint16_t st
 
     CPU_TIMER;
     auto lod_file = add_to_path(base_path_, ".lod");
+    auto prov_file = add_to_path(base_path_, ".prov");
     auto kdn_file = add_to_path(base_path_, ".bvh");
+    auto json_file = add_to_path(base_path_, ".json");
+
+    if (bvh.nodes()[0].has_provenance()) {
+      std::cout << "write paradata json description: " << json_file << std::endl;
+      prov::write_json(json_file.string());
+    }
 
     std::cout << "serialize surfels to file" << std::endl;
-    bvh.serialize_surfels_to_file(lod_file.string(), desc_.buffer_size);
+    bvh.serialize_surfels_to_file(lod_file.string(), prov_file.string(), desc_.buffer_size);
 
     std::cout << "serialize bvh to file" << std::endl << std::endl;
     bvh.serialize_tree_to_file(kdn_file.string(), false);
@@ -383,6 +388,7 @@ bool builder::reserialize(boost::filesystem::path const &input_file, uint16_t st
     if ((!desc_.keep_intermediate_files) && (start_stage < 3)) {
         std::remove(input_file.string().c_str());
         bvh.reset_nodes();
+
     }
     // LOGGER_DEBUG("Used memory: " << GetProcessUsedMemory() / 1024 / 1024 << " MiB");
     return true;
@@ -493,6 +499,21 @@ construct()
         const std::string prov_file_type = prov_file.extension().string();
         desc_.prov_file = convert_to_binary(desc_.prov_file, prov_file_type).string();
         if (prov_file.empty()) return false;
+    }
+    else {
+        if (desc_.reduction_algo == lamure::pre::reduction_algorithm::ndc_prov) {
+            //create a dummy prov_file
+            std::ifstream surfel_bin_file(input_file.string().c_str(), std::ios::binary | std::ios::ate);
+            uint64_t num_surfels = surfel_bin_file.tellg() / sizeof(surfel);
+            surfel_bin_file.close();
+            desc_.prov_file = input_file.string() + ".bin_prov";
+            std::ofstream dummy_file(desc_.prov_file.c_str(), std::ios::out | std::ios::binary);
+            for (uint64_t i = 0; i < num_surfels*sizeof(prov); ++i) {
+                char zero = 0;
+                dummy_file.write(&zero, sizeof(char));
+            }
+            dummy_file.close();
+        }
     }
 
     // downsweep (create bvh)

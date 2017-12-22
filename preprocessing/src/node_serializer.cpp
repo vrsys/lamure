@@ -36,7 +36,7 @@ void node_serializer::
 open(const std::string &file_name, const bool read_write_mode)
 {
     file_name_ = file_name;
-    buffer_.clear();
+    surfel_buffer_.clear();
 
     if (read_write_mode)
         stream_.open(file_name, std::ios::in | std::ios::out | std::ios::binary);
@@ -55,8 +55,8 @@ void node_serializer::
 close()
 {
     if (is_open()) {
-        flush_buffer();
-        buffer_.clear();
+        flush_surfel_buffer();
+        surfel_buffer_.clear();
         stream_.close();
         if (stream_.fail()) {
             LOGGER_ERROR("Failed to close file: \"" << file_name_ <<
@@ -126,6 +126,36 @@ serialize_nodes(const std::vector<bvh_node> &nodes)
         write_node_streamed(n);
 }
 
+
+void node_serializer::
+serialize_prov(const std::vector<bvh_node> &nodes) {
+    for (const auto &node: nodes) {
+        assert(max_nodes_in_buffer_ != 0);
+        assert(is_open());
+        assert(node.is_out_of_core());
+
+        const size_t read_length = (node.disk_array().length() > surfels_per_node_) ?
+                                   surfels_per_node_ :
+                                   node.disk_array().length();
+
+        prov_vector *prov_buffer = new prov_vector(read_length);
+        node.disk_array().get_prov_file()->read(prov_buffer, 0,
+                                       node.disk_array().offset(),
+                                       read_length);
+
+        //LOGGER_INFO("Flush prov buffer to disk.");
+        
+        stream_.seekp(0, stream_.end);
+        stream_.write((char*)&prov_buffer[0], prov_buffer->size()*sizeof(prov));
+        if (stream_.fail() || stream_.bad()) {
+            LOGGER_ERROR("write failed. file: \"" << file_name_ <<
+                                              "\". " << strerror(errno));
+        }
+    
+    }
+    
+}
+
 void node_serializer::
 write_node_streamed(const bvh_node &node)
 {
@@ -141,34 +171,34 @@ write_node_streamed(const bvh_node &node)
     node.disk_array().get_file()->read(surfel_buffer, 0,
                                    node.disk_array().offset(),
                                    read_length);
-    buffer_.push_back(surfel_buffer);
+    surfel_buffer_.push_back(surfel_buffer);
 
-    if (buffer_.size() >= max_nodes_in_buffer_)
-        flush_buffer();
+    if (surfel_buffer_.size() >= max_nodes_in_buffer_)
+        flush_surfel_buffer();
 }
 
 void node_serializer::
-flush_buffer()
+flush_surfel_buffer()
 {
-    if (buffer_.size()) {
-        const size_t output_buffer_size = serialized_surfel::get_size() * surfels_per_node_ * buffer_.size();
+    if (surfel_buffer_.size()) {
+        const size_t output_buffer_size = serialized_surfel::get_size() * surfels_per_node_ * surfel_buffer_.size();
         char *output_buffer = new char[output_buffer_size];
 
-        LOGGER_ERROR("Flush buffer to disk. buffer size: " <<
-                                                           buffer_.size() << " nodes (" <<
+        LOGGER_INFO("Flush buffer to disk. buffer size: " <<
+                                                           surfel_buffer_.size() << " nodes (" <<
                                                            output_buffer_size / 1024 / 1024 << " MiB)");
 
 #pragma omp parallel for
-        for (size_t k = 0; k < buffer_.size(); ++k) {
+        for (size_t k = 0; k < surfel_buffer_.size(); ++k) {
             for (size_t i = 0; i < surfels_per_node_; ++i) {
                 char *buf = output_buffer + k * serialized_surfel::get_size() * surfels_per_node_ +
                     i * serialized_surfel::get_size();
-                if (i < buffer_[k]->size())
-                    serialized_surfel(buffer_[k]->at(i)).serialize(buf);
+                if (i < surfel_buffer_[k]->size())
+                    serialized_surfel(surfel_buffer_[k]->at(i)).serialize(buf);
                 else
                     serialized_surfel().serialize(buf);
             }
-            delete buffer_[k];
+            delete surfel_buffer_[k];
         }
 
         stream_.seekp(0, stream_.end);
@@ -177,11 +207,12 @@ flush_buffer()
             LOGGER_ERROR("write failed. file: \"" << file_name_ <<
                                                   "\". " << strerror(errno));
         }
-        buffer_.clear();
+        surfel_buffer_.clear();
         delete[] output_buffer;
         stream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     }
 }
+
 
 }
 } // namespace lamure

@@ -103,6 +103,9 @@ public:
     void get(std::vector<surfel_ext>& data);
     void set(std::vector<surfel_ext>& data);
 
+    surfel_ext read_surfel_ext(const size_t index) const;
+    void write_surfel_ext(const surfel_ext& surfel);
+
     void reset() override;
 
     //to be removed

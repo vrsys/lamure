@@ -263,7 +263,7 @@ void bvh::downsweep(
         LOGGER_ERROR("Compute root bounding box out-of-core NOT SUPPORTED");
         //input_bb = basic_algorithms::compute_aabb(nodes_[0].disk_array(), buffer_size_);
     }
-    LOGGER_DEBUG("Root AABB: " << input_bb.min() << " - " << input_bb.max());
+    LOGGER_TRACE("Root AABB: " << input_bb.min() << " - " << input_bb.max());
 
     // translate all surfels by the root AABB center
     if(adjust_translation)
@@ -1108,7 +1108,7 @@ void bvh::thread_create_lod(const uint32_t start_marker, const uint32_t end_mark
             {
                 std::vector<reduction_strategy_provenance::LoDMetaData> deviations;
                 reduction_result = cast->create_lod(reduction_error, input_mem_arrays, deviations, max_surfels_per_node_, (*this), get_child_id(current_node->node_id(), 0));
-                cast->output_lod(deviations, node_index);
+                //cast->output_lod(deviations, node_index);
             }
             else
             {
@@ -1293,6 +1293,11 @@ void bvh::thread_compute_bounding_boxes_upsweep(const uint32_t start_marker, con
 
         current_node->set_bounding_box(node_bounding_box);
         current_node->calculate_statistics();
+
+        if (node_index == 0) {
+            std::cout << "min: " << node_bounding_box.min() << std::endl;
+            std::cout << "max: " << node_bounding_box.max() << std::endl;
+        }
     }
 }
 
@@ -1499,6 +1504,7 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
     }
 
     // TODO: Inject a call to provenance method, collecting level data into one file
+    /*
     reduction_strategy *p_reduction_strgy = (reduction_strategy *)&reduction_strgy;
     if(reduction_strategy_provenance *cast = dynamic_cast<reduction_strategy_provenance *>(p_reduction_strgy))
     {
@@ -1542,6 +1548,7 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
             w_level++;
         }
     }
+    */
 
     state_ = state_type::after_upsweep;
 }
@@ -1709,12 +1716,18 @@ void bvh::serialize_tree_to_file(const std::string &output_file, bool write_inte
     bvh_strm.write_bvh(output_file, *this, write_intermediate_data);
 }
 
-void bvh::serialize_surfels_to_file(const std::string &output_file, const size_t buffer_size) const
+void bvh::serialize_surfels_to_file(const std::string &lod_output_file, const std::string &prov_output_file, const size_t buffer_size) const
 {
-    LOGGER_TRACE("Serialize surfels to file: \"" << output_file << "\"");
+    LOGGER_TRACE("Serialize surfels to file: \"" << lod_output_file << "\"");
     node_serializer serializer(max_surfels_per_node_, buffer_size);
-    serializer.open(output_file);
+    serializer.open(lod_output_file);
     serializer.serialize_nodes(nodes_);
+    serializer.close();
+    if (nodes_[0].has_provenance()) {
+      serializer.open(prov_output_file);
+      serializer.serialize_prov(nodes_);
+      serializer.close();
+    }
 }
 
 void bvh::reset_nodes()
@@ -1724,6 +1737,9 @@ void bvh::reset_nodes()
         if(n.is_out_of_core() && n.disk_array().get_file().use_count() == 1)
         {
             n.disk_array().get_file()->close(true);
+            if (n.has_provenance()) {
+                n.disk_array().get_prov_file()->close(true);
+            }
         }
         n.reset();
     }

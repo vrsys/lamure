@@ -33,7 +33,7 @@ class PREPROCESSING_DLL reduction_normal_deviation_clustering_provenance : publi
 
     struct surfel_cluster_with_error
     {
-        std::list<surfel> *cluster;
+        std::list<surfel_ext> *cluster;
         float merge_treshold;
     };
 
@@ -52,16 +52,16 @@ class PREPROCESSING_DLL reduction_normal_deviation_clustering_provenance : publi
         bool operator()(const provenance_cluster &left, const provenance_cluster &right) { return left.cluster.size() < right.cluster.size(); }
     };
 
-    static surfel create_representative(const std::vector<surfel> &input);
+    static surfel_ext create_representative(const std::vector<surfel_ext> &input);
 
     std::pair<vec3ui, vec3b> compute_grid_dimensions(const std::vector<surfel_mem_array *> &input, const bounding_box &bounding_box, const uint32_t surfels_per_node) const;
 
     static bool comp(const value_index_pair &l, const value_index_pair &r) { return l.first < r.first; }
 
-    static bool compare_radius(const surfel &left, const surfel &right) { return left.radius() < right.radius(); }
+    static bool compare_radius(const surfel_ext &left, const surfel_ext &right) { return left.surfel_.radius() < right.surfel_.radius(); }
 
-    reduction_strategy_provenance::LoDMetaData calculate_deviations(surfel repr, const std::vector<surfel> &input) const;
-    std::list<reduction_strategy_provenance::LoDMetaData> generate_provenance_empties(std::list<surfel> *& surfels) const;
+    reduction_strategy_provenance::LoDMetaData calculate_deviations(surfel_ext& repr, const std::vector<surfel_ext> &input) const;
+    std::list<reduction_strategy_provenance::LoDMetaData> generate_provenance_empties(std::list<surfel_ext> *& surfels) const;
 };
 
 } // namespace pre

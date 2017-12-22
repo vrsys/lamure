@@ -45,7 +45,7 @@ convert(const std::string& in_file, const std::string& out_file, bool xyz_rgb) {
       line >> color[2];
     }
     prov v;
-    line >> v.value();
+    line >> v.value_;
     data.push_back(v);
   }
 

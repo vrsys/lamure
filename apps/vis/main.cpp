@@ -1074,7 +1074,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
     case 'e':
       ++settings_.vis_;
-      if(settings_.vis_ > (3 + settings_.prov_/12)) {
+      if(settings_.vis_ > (3 + settings_.prov_/sizeof(float))) {
         settings_.vis_ = 0;
       }
       settings_.show_normals_ = (settings_.vis_ == 1);
@@ -1091,7 +1091,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 'E':
       --settings_.vis_;
       if(settings_.vis_ < 0) {
-        settings_.vis_ = (3 + settings_.prov_/12);
+        settings_.vis_ = (3 + settings_.prov_/sizeof(float));
       }
       settings_.show_normals_ = (settings_.vis_ == 1);
       settings_.show_accuracy_ = (settings_.vis_ == 2);
