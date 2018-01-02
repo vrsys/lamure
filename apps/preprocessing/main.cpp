@@ -280,7 +280,7 @@ int main(int argc, const char *argv[])
 
         if (reduction_algo == "ndc") {
             desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc;
-            std::cout << "INFO: using reduction algo ndc_prov" << std::endl;
+            std::cout << "INFO: using reduction algo ndc" << std::endl;
         }
         else if (reduction_algo == "ndc_prov") {
             desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc_prov;
