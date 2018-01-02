@@ -278,10 +278,13 @@ int main(int argc, const char *argv[])
         std::string radius_computation_algo = vm["radius-computation-algo"].as<std::string>();
         std::string rep_radius_algo = vm["rep-radius-algo"].as<std::string>();
 
-        if (reduction_algo == "ndc")
+        if (reduction_algo == "ndc") {
             desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc;
+            std::cout << "INFO: using reduction algo ndc_prov" << std::endl;
+        }
         else if (reduction_algo == "ndc_prov") {
             desc.reduction_algo        = lamure::pre::reduction_algorithm::ndc_prov;
+            std::cout << "INFO: using reduction algo ndc_prov" << std::endl;
         }
         else if (reduction_algo == "const") {
             std::cerr << "WARNING: simplification algorithm unstable" << std::endl;
