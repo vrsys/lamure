@@ -120,7 +120,7 @@ int main(int argc, const char *argv[])
          "  .xyz_prov for xyzrgb +p per line")
 
         ("reduction-algo",
-         po::value<std::string>()->default_value("ndc"),
+         po::value<std::string>()->default_value("ndc_prov"),
          "Reduction strategy for the LOD construction. Possible values:\n"
          "  ndc - normal deviation clustering (ndc)\n"
          "  ndc_prov - output provenance information alongside ndc\n"
