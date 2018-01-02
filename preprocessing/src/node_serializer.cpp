@@ -138,19 +138,22 @@ serialize_prov(const std::vector<bvh_node> &nodes) {
                                    surfels_per_node_ :
                                    node.disk_array().length();
 
-        prov_vector *prov_buffer = new prov_vector(read_length);
-        node.disk_array().get_prov_file()->read(prov_buffer, 0,
+        prov_vector prov_buffer(read_length);
+        node.disk_array().get_prov_file()->read(&prov_buffer, 0,
                                        node.disk_array().offset(),
                                        read_length);
+
 
         //LOGGER_INFO("Flush prov buffer to disk.");
         
         stream_.seekp(0, stream_.end);
-        stream_.write((char*)&prov_buffer[0], prov_buffer->size()*sizeof(prov));
+        stream_.write((char*)&(prov_buffer[0]), prov_buffer.size()*sizeof(prov));
         if (stream_.fail() || stream_.bad()) {
             LOGGER_ERROR("write failed. file: \"" << file_name_ <<
                                               "\". " << strerror(errno));
         }
+
+        prov_buffer.clear();
     
     }
     
