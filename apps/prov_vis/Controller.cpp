@@ -2,7 +2,7 @@
 
 Controller::Controller(Scene const &scene, char **argv, 
     int width_window, int height_window, 
-    std::string const& name_file_lod, std::string const& name_file_dense, 
+    std::string const& name_file_lod,
     std::string const& name_file_tree, std::string const& image_directory, 
     lamure::ren::Data_Provenance &data_provenance)
     : _scene(scene)
@@ -19,7 +19,7 @@ Controller::Controller(Scene const &scene, char **argv,
         _renderer.dense_points_only = true;
     }
 
-    _renderer.init(argv, _device, width_window, height_window, name_file_lod, name_file_dense, name_file_tree, data_provenance);
+    _renderer.init(argv, _device, width_window, height_window, name_file_lod, name_file_tree, data_provenance);
 }
 
 bool Controller::update()

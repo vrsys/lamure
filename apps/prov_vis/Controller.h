@@ -34,7 +34,7 @@ class Controller
 
   public:
     Controller(Scene const &scene, char **argv, int width_window, int height_window, 
-        std::string const& name_file_lod, std::string const& name_file_dense, 
+        std::string const& name_file_lod,
         std::string const& name_file_tree, std::string const& image_directory,
         lamure::ren::Data_Provenance& data_provenance);
 

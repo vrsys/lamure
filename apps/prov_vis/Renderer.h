@@ -67,7 +67,7 @@ class Renderer
     // Renderer();
     void init(char **argv, scm::shared_ptr<scm::gl::render_device> device, 
         int width_window, int height_window, 
-        std::string const& name_file_lod, std::string const& name_file_dense, std::string const& name_file_tree,
+        std::string const& name_file_lod, std::string const& name_file_tree,
         lamure::ren::Data_Provenance &data_provenance);
     bool render(Scene &scene);
 

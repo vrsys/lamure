@@ -156,7 +156,6 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
     }
 
     std::string name_file_lod = std::string(get_cmd_option(argv, argv + argc, "-lod"));
-    std::string name_file_dense = std::string(get_cmd_option(argv, argv + argc, "-dense"));
     std::string name_file_tree = std::string(get_cmd_option(argv, argv + argc, "-tree"));
     std::string image_directory = std::string(get_cmd_option(argv, argv + argc, "-fotos"));
 
@@ -173,7 +172,7 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
     }
     std::cout << data_provenance.get_size_in_bytes() << std::endl;
 
-    controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_dense, name_file_tree, image_directory, data_provenance);
+    controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_tree, image_directory, data_provenance);
     return controller;
 }
 
@@ -191,7 +190,7 @@ int main(int argc, char *argv[])
         std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
                   << "INFO: nvm_explorer " << std::endl
                   << "\t-lod: select .bvh file" << std::endl
-                  << "\t-dense: select dense.prov file" << std::endl
+                  //<< "\t-dense: select dense.prov file" << std::endl
                   << "\t-sparse: select sparse.prov file" << std::endl
                   << "\t-json: select provenance_data_structure.json file" << std::endl
                   << "\t-tree: select tree.prov file" << std::endl
