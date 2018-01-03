@@ -1202,6 +1202,16 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       if (++selection_.selected_model_ >= num_models_) selection_.selected_model_ = 0;
       break;
 
+    case 'm':
+      settings_.heatmap_max_ = std::min(settings_.heatmap_max_ + 0.1f, 1.0f);
+      std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
+      break;
+
+    case 'M':
+      settings_.heatmap_max_ = std::max(settings_.heatmap_max_ - 0.1f, 0.0f);
+      std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
+      break;
+
     default:
       break;
 
