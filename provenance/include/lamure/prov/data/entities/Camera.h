@@ -1,8 +1,8 @@
 #ifndef LAMURE_CAMERA_H
 #define LAMURE_CAMERA_H
 
-#include "MetaData.h"
-#include "lamure/pro/common.h"
+#include <lamure/prov/data/entities/MetaData.h>
+#include <lamure/prov/common.h>
 
 #include <memory>
 
@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 
+namespace lamure {
 namespace prov
 {
 class Camera
@@ -177,6 +178,7 @@ class Camera
     float _fp_resolution_x;
     float _fp_resolution_y;
 };
+}
 }
 
 #endif // LAMURE_CAMERA_H

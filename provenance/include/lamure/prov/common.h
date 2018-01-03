@@ -1,9 +1,9 @@
 #ifndef LAMURE_PROV_COMMON_H
 #define LAMURE_PROV_COMMON_H
 
-#include "3dparty/exif.h"
-#include "3dparty/pdqsort.h"
-#include "3dparty/tinyply.h"
+#include <lamure/prov/3dparty/exif.h>
+#include <lamure/prov/3dparty/pdqsort.h>
+#include <lamure/prov/3dparty/tinyply.h>
 #include <algorithm>
 #include <assert.h>
 #include <boost/archive/text_iarchive.hpp>
@@ -22,6 +22,7 @@
 #include <scm/core.h>
 #include <scm/core/math.h>
 
+namespace lamure {
 namespace prov
 {
 // bool DEBUG = false;
@@ -89,6 +90,7 @@ static inline std::string &rtrim(std::string &s)
 }
 
 static inline std::string &trim(std::string &s) { return ltrim(rtrim(s)); }
-}
 
+}
+}
 #endif // LAMURE_PROV_COMMON_H

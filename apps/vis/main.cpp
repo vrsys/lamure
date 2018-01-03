@@ -15,8 +15,8 @@
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
-#include <lamure/pro/data/SparseCache.h>
-#include <lamure/pro/partitioning/SparseOctree.h>
+#include <lamure/prov/data/SparseCache.h>
+#include <lamure/prov/partitioning/SparseOctree.h>
 
 
 //schism
@@ -1414,18 +1414,18 @@ int32_t main(int argc, char* argv[]) {
     std::cout << "sparse: " << settings_.sparse_ << std::endl;
     std::ifstream in_sparse(settings_.sparse_, std::ios::in | std::ios::binary);
     std::ifstream in_sparse_meta(settings_.sparse_ + ".meta", std::ios::in | std::ios::binary);
-    prov::SparseCache cache_sparse = prov::SparseCache(in_sparse, in_sparse_meta);
+    lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
     cache_sparse.cache();
     in_sparse.close();
     in_sparse_meta.close();
 
-    std::vector<prov::Camera> cameras = cache_sparse.get_cameras();
-    std::vector<prov::SparsePoint> feature_points = cache_sparse.get_points();
+    std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
+    std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
     std::cout << cameras.size() << " cameras, " << feature_points.size() << " feature points" << std::endl;
   }
   if (settings_.meta_octree_ != "") {
     std::cout << "meta_octree: " << settings_.meta_octree_ << std::endl;
-    auto meta_octree = prov::SparseOctree::load_tree(settings_.meta_octree_);
+    auto meta_octree = lamure::prov::SparseOctree::load_tree(settings_.meta_octree_);
   }
  
   glutInit(&argc, argv);

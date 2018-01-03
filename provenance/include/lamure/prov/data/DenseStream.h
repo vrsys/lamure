@@ -1,9 +1,10 @@
 #ifndef LAMURE_DENSESTREAM_H
 #define LAMURE_DENSESTREAM_H
 
-#include "lamure/pro/data/entities/DensePoint.h"
-#include "lamure/pro/data/interfaces/Streamable.h"
+#include <lamure/prov/data/entities/DensePoint.h>
+#include <lamure/prov/data/interfaces/Streamable.h>
 
+namespace lamure {
 namespace prov
 {
 class DenseStream : public Streamable<DensePoint>
@@ -56,6 +57,7 @@ class DenseStream : public Streamable<DensePoint>
         return range;
     }
 };
+}
 }
 
 #endif // LAMURE_DENSESTREAM_H

@@ -46,9 +46,9 @@
 #include <vector>
 
 // #include "Camera.h"
-#include <lamure/pro/data/SparseCache.h>
-#include <lamure/pro/data/entities/Camera.h>
-#include <lamure/pro/data/entities/SparsePoint.h>
+#include <lamure/prov/data/SparseCache.h>
+#include <lamure/prov/data/entities/Camera.h>
+#include <lamure/prov/data/entities/SparsePoint.h>
 
 #include "Camera_Custom.h"
 #include "Struct_Camera.h"
@@ -60,7 +60,7 @@ class Scene
 {
   public:
     Scene();
-    Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Camera> &vector_camera);
+    Scene(std::vector<lamure::prov::SparsePoint> &vector_point, std::vector<lamure::prov::Camera> &vector_camera);
 
     void init(scm::shared_ptr<scm::gl::render_device> device, std::string const& image_directory);
     scm::gl::vertex_array_ptr get_vertex_array_object_points();
@@ -69,7 +69,7 @@ class Scene
 
     // std::vector<Image> &get_vector_image();
     std::vector<Camera_Custom> &get_vector_camera();
-    std::vector<prov::SparsePoint> &get_vector_point();
+    std::vector<lamure::prov::SparsePoint> &get_vector_point();
     bool update(float time_delta);
     void update_scale_frustum(float offset);
 
@@ -83,7 +83,7 @@ class Scene
 
   private:
     std::vector<Camera_Custom> _vector_camera;
-    std::vector<prov::SparsePoint> _vector_point;
+    std::vector<lamure::prov::SparsePoint> _vector_point;
     // std::vector<Image> _vector_image;
 
     scm::gl::vertex_array_ptr _vertex_array_object_points;

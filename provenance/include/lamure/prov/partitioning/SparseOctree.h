@@ -1,10 +1,11 @@
 #ifndef LAMURE_SPARSEOCTREE_H
 #define LAMURE_SPARSEOCTREE_H
 
-#include <lamure/pro/data/DenseCache.h>
-#include <lamure/pro/partitioning/entities/OctreeNode.h>
-#include <lamure/pro/partitioning/interfaces/Partitionable.h>
+#include <lamure/prov/data/DenseCache.h>
+#include <lamure/prov/partitioning/entities/OctreeNode.h>
+#include <lamure/prov/partitioning/interfaces/Partitionable.h>
 
+namespace lamure {
 namespace prov
 {
 class SparseOctree : public OctreeNode
@@ -196,5 +197,6 @@ class SparseOctree : public OctreeNode
         return information_loss; // / 3;
     }
 };
-};
+}
+}
 #endif // LAMURE_SPARSEOCTREE_H

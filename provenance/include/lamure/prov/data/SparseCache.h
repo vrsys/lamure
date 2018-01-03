@@ -1,10 +1,11 @@
 #ifndef LAMURE_SPARSE_DATA_H
 #define LAMURE_SPARSE_DATA_H
 
-#include "lamure/pro/common.h"
-#include "lamure/pro/data/entities/SparsePoint.h"
-#include "lamure/pro/data/interfaces/Cacheable.h"
+#include <lamure/prov/common.h>
+#include <lamure/prov/data/entities/SparsePoint.h>
+#include <lamure/prov/data/interfaces/Cacheable.h>
 
+namespace lamure {
 namespace prov
 {
 class SparseCache : public Cacheable<SparsePoint, MetaData>
@@ -66,6 +67,7 @@ class SparseCache : public Cacheable<SparsePoint, MetaData>
     vec<Camera> _cameras;
     vec<MetaData> _cameras_metadata;
 };
+}
 }
 
 #endif // LAMURE_SPARSE_DATA_H

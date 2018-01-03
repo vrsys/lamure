@@ -4,7 +4,7 @@
 // Authored in 2015 by Dimitri Diakopoulos (http://www.dimitridiakopoulos.com)
 // https://github.com/ddiakopoulos/tinyply
 
-#include "lamure/pro/3dparty/tinyply.h"
+#include <lamure/prov/3dparty/tinyply.h>
 
 using namespace tinyply;
 using namespace std;

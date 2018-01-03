@@ -53,8 +53,8 @@
 #include <lamure/ren/cut_update_pool.h>
 #include <lamure/ren/ray.h>
 
-#include <lamure/pro/partitioning/SparseOctree.h>
-#include <lamure/pro/partitioning/entities/Partition.h>
+#include <lamure/prov/partitioning/SparseOctree.h>
+#include <lamure/prov/partitioning/entities/Partition.h>
 
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
@@ -87,7 +87,7 @@ class Renderer
     void handle_mouse_movement(float x, float y);
 
     void start_brushing(float x, float y, Scene &scene);
-    prov::DenseMetaData &search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
+    lamure::prov::DenseMetaData &search_tree(scm::math::vec3f const &surfel_brush, Scene &scene);
 
     bool dense_points_only = false;
     bool mode_draw_points_dense = false;
@@ -104,8 +104,7 @@ class Renderer
     int index_current_image_camera = 0;
 
     int _depth_octree = 0;
-    std::vector<prov::OctreeNode *> _vector_nodes;
-    // std::vector<std::shared_ptr<prov::OctreeNode>> _vector_nodes;
+    std::vector<lamure::prov::OctreeNode *> _vector_nodes;
     void update_vector_nodes();
 
     float _color_brush_surfels[3] = {1.0, 1.0, 0.0};
@@ -136,12 +135,10 @@ class Renderer
     scm::gl::program_ptr _program_surfels_brush;
     scm::gl::program_ptr _program_pixels_brush;
 
-    prov::SparseOctree _sparse_octree;
-    // scm::shared_ptr<prov::OctreeNode> _sparse_octree = nullptr;
+    lamure::prov::SparseOctree _sparse_octree;
 
     lamure::ren::Data_Provenance _data_provenance;
 
-    // scm::shared_ptr<scm::gl::quad_geometry> _quad_legend;
     scm::gl::buffer_ptr _vertex_buffer_object_lines;
     scm::gl::vertex_array_ptr _vertex_array_object_lines;
 

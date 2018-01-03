@@ -1,9 +1,10 @@
 #ifndef LAMURE_DENSE_POINT_H
 #define LAMURE_DENSE_POINT_H
 
-#include "Point.h"
-#include "lamure/pro/common.h"
+#include <lamure/prov/data/entities/Point.h>
+#include <lamure/prov/common.h>
 
+namespace lamure {
 namespace prov
 {
 class DensePoint : public Point
@@ -34,6 +35,7 @@ class DensePoint : public Point
   protected:
     vec3f _normal;
 };
+}
 }
 
 #endif // LAMURE_DENSE_POINT_H

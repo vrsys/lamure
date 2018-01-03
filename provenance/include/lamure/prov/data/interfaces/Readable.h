@@ -1,8 +1,9 @@
 #ifndef LAMURE_DATA_H
 #define LAMURE_DATA_H
 
-#include "lamure/pro/common.h"
+#include <lamure/prov/common.h>
 
+namespace lamure {
 namespace prov
 {
 class Readable
@@ -65,6 +66,7 @@ class Readable
         return true;
     }
 };
+}
 }
 
 #endif // LAMURE_DATA_H

@@ -1,6 +1,6 @@
 #include "Camera_Custom.h"
 
-Camera_Custom::Camera_Custom(prov::Camera camera) : prov::Camera(camera)
+Camera_Custom::Camera_Custom(lamure::prov::Camera camera) : lamure::prov::Camera(camera)
 {
     update_transformation();
     // std::cout << _fp_resolution_x << std::endl;
@@ -103,12 +103,12 @@ void Camera_Custom::add_pixel_brush(scm::math::vec3f position_surfel_brush, scm:
 //     _vertex_array_object_pixels = device->create_vertex_array(scm::gl::vertex_format(0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), boost::assign::list_of(_vertex_buffer_object_pixels));
 // }
 
-std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector<prov::SparsePoint> &vector_point)
+std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector<lamure::prov::SparsePoint> &vector_point)
 {
     std::vector<Struct_Line> vector_points;
-    for(prov::SparsePoint &point_sparse : vector_point)
+    for(lamure::prov::SparsePoint &point_sparse : vector_point)
     {
-        for(prov::SparsePoint::Measurement measurement : point_sparse.get_measurements())
+        for(lamure::prov::SparsePoint::Measurement measurement : point_sparse.get_measurements())
         {
             if(measurement.get_camera() == _index)
             {
@@ -131,27 +131,6 @@ std::vector<Struct_Line> Camera_Custom::convert_lines_to_struct_line(std::vector
         vector_struct_line.push_back(point);
     }
 
-    // for(prov::SparsePoint sparsePoint it = _vector_point.begin(); it != _vector_point.end(); ++it)
-    //     for(std::vector<prov::SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
-    //     {
-    //         prov::SparsePoint &point = (*it);
-    //         // std::vector<prov::SparsePoint::measurement> measurements = point.get_measurements();
-    //     }
-
-    // for(std::vector<prov::Camera>::iterator it = _vector_camera.begin(); it != _vector_camera.end(); ++it)
-    // {
-    //     Struct_Line line = {scm::math::vec3f((*it).get_translation())};
-    //     vector_struct_line.push_back(line);
-    //     // Struct_Line line1 = {scm::math::vec3f((*it).get_translation())+scm::math::vec3f(10.0, 10.0, 10.0)};
-    //     line = {scm::math::vec3f(0.0, 0.0, 0.0)};
-    //     vector_struct_line.push_back(line);
-    //     // vector_struct_line.push_back(line);
-    //     // vector_struct_line.push_back(line);
-    //     // vector_struct_line.push_back(line);
-    //     // vector_struct_line.push_back(line);
-    //     // std::cout << (*it).get_translation() << std::endl;
-    //     break;
-    // }
     return vector_struct_line;
 }
 
@@ -194,7 +173,7 @@ scm::math::mat4f &Camera_Custom::get_transformation_image_plane() { return _tran
 
 // const Image &Camera_Custom::get_still_image() const { return _still_image; }
 
-void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::vector<prov::SparsePoint> &vector_point, std::string const& image_directory)
+void Camera_Custom::init(scm::shared_ptr<scm::gl::render_device> device, std::vector<lamure::prov::SparsePoint> &vector_point, std::string const& image_directory)
 {
     // create buffer for the lines connecting the sparse points with the projection center
     std::vector<Struct_Line> vector_struct_line = convert_lines_to_struct_line(vector_point);

@@ -1,11 +1,12 @@
 #ifndef LAMURE_CACHEABLE_DATA_H
 #define LAMURE_CACHEABLE_DATA_H
 
-#include "Readable.h"
-#include "lamure/pro/common.h"
-#include "lamure/pro/data/entities/Point.h"
-#include "lamure/pro/data/interfaces/Cacheable.h"
+#include <lamure/prov/data/interfaces/Readable.h>
+#include <lamure/prov/common.h>
+#include <lamure/prov/data/entities/Point.h>
+#include <lamure/prov/data/interfaces/Cacheable.h>
 
+namespace lamure {
 namespace prov
 {
 template <class TPoint, class TMetaData>
@@ -66,6 +67,7 @@ class Cacheable : public Readable
     vec<TPoint> _points;
     vec<TMetaData> _points_metadata;
 };
+}
 }
 
 #endif // LAMURE_CACHEABLE_DATA_H

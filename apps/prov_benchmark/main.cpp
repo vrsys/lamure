@@ -1,9 +1,9 @@
 #include <chrono>
-#include <lamure/pro/common.h>
-#include <lamure/pro/data/DenseCache.h>
-#include <lamure/pro/data/DenseStream.h>
-#include <lamure/pro/data/SparseCache.h>
-#include <lamure/pro/partitioning/SparseOctree.h>
+#include <lamure/prov/common.h>
+#include <lamure/prov/data/DenseCache.h>
+#include <lamure/prov/data/DenseStream.h>
+#include <lamure/prov/data/SparseCache.h>
+#include <lamure/prov/partitioning/SparseOctree.h>
 
 using namespace std;
 
@@ -44,13 +44,13 @@ int main(int argc, char *argv[])
         throw std::runtime_error("File format is incompatible");
     }
 
-    prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
-    prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
-    prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
-    prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
+    std::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+    std::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+    std::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
+    std::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
 
-    prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
-    prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    lamure::prov::SparseCache cache_sparse(in_sparse, in_sparse_meta);
+    lamure::prov::DenseCache cache_dense(in_dense, in_dense_meta);
     
     if(in_sparse.is_open())
     {
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 
     in_dense.open(name_file_dense, std::ios::in | std::ios::binary);
 
-    prov::DenseStream stream_dense = prov::DenseStream(in_dense);
+    lamure::prov::DenseStream stream_dense = lamure::prov::DenseStream(in_dense);
 
     if(in_dense.is_open())
     {
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
         start = std::chrono::high_resolution_clock::now();
 
-        std::vector<prov::DensePoint> vector = stream_dense.access_at_implicit_range(0, (uint32_t)cache_dense.get_points().size());
+        std::vector<lamure::prov::DensePoint> vector = stream_dense.access_at_implicit_range(0, (uint32_t)cache_dense.get_points().size());
 
         end = std::chrono::high_resolution_clock::now();
         printf("Streaming dense data by range took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
@@ -96,24 +96,24 @@ int main(int argc, char *argv[])
     in_dense.close();
 
     auto start = std::chrono::high_resolution_clock::now();
-    prov::SparseOctree::Builder builder(cache_dense);
+    lamure::prov::SparseOctree::Builder builder(cache_dense);
 
-    builder.with_sort(prov::SparseOctree::PDQ_SORT);
+    builder.with_sort(lamure::prov::SparseOctree::PDQ_SORT);
     builder.with_max_depth(10);
     builder.with_min_per_node(8);
     builder.with_cubic_nodes(true);
 
-    prov::SparseOctree sparse_octree = builder.build();
+    lamure::prov::SparseOctree sparse_octree = builder.build();
     auto end = std::chrono::high_resolution_clock::now();
     printf("\nSparse octree creation took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 
     start = std::chrono::high_resolution_clock::now();
-    prov::SparseOctree::save_tree(sparse_octree, "tree.prov");
+    lamure::prov::SparseOctree::save_tree(sparse_octree, "tree.prov");
     end = std::chrono::high_resolution_clock::now();
     printf("\nSparse octree save took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 
     start = std::chrono::high_resolution_clock::now();
-    prov::SparseOctree recovered_sparse_octree = prov::SparseOctree::load_tree("tree.prov");
+    lamure::prov::SparseOctree recovered_sparse_octree = lamure::prov::SparseOctree::load_tree("tree.prov");
     end = std::chrono::high_resolution_clock::now();
     printf("\nSparse octree load took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 

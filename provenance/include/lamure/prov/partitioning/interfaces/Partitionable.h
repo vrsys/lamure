@@ -1,9 +1,10 @@
 #ifndef LAMURE_PARTITIONABLE_H
 #define LAMURE_PARTITIONABLE_H
 
-#include "lamure/pro/data/interfaces/Cacheable.h"
-#include "lamure/pro/partitioning/entities/Partition.h"
+#include <lamure/prov/data/interfaces/Cacheable.h>
+#include <lamure/prov/partitioning/entities/Partition.h>
 
+namespace lamure {
 namespace prov
 {
 template <class TPartition>
@@ -33,6 +34,7 @@ class Partitionable
     uint8_t _max_depth = 10;
     uint8_t _min_per_node = 1;
 };
-};
+}
+}
 
 #endif // LAMURE_PARTITIONABLE_H

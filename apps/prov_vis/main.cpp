@@ -14,10 +14,10 @@
 
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
-#include <lamure/pro/common.h>
-#include <lamure/pro/data/DenseCache.h>
-#include <lamure/pro/data/DenseStream.h>
-#include <lamure/pro/data/SparseCache.h>
+#include <lamure/prov/common.h>
+#include <lamure/prov/data/DenseCache.h>
+#include <lamure/prov/data/DenseStream.h>
+#include <lamure/prov/data/SparseCache.h>
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15
@@ -121,7 +121,7 @@ GLFWwindow *init_glfw_and_glew()
     width_window = mode->width;
     height_window = mode->height;
 
-    GLFWwindow *window = glfwCreateWindow(mode->width, mode->height, "ProVis", monitor, NULL);
+    GLFWwindow *window = glfwCreateWindow(mode->width, mode->height, "ProvVis", monitor, NULL);
 
     if(window == NULL)
     {
@@ -144,14 +144,14 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
     if(cmd_option_exists(argv, argv + argc, "-sparse"))
     {
         std::string name_file_sparse = std::string(get_cmd_option(argv, argv + argc, "-sparse"));
-        prov::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
-        prov::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
-        prov::SparseCache cache_sparse = prov::SparseCache(in_sparse, in_sparse_meta);
+        std::ifstream in_sparse(name_file_sparse, std::ios::in | std::ios::binary);
+        std::ifstream in_sparse_meta(name_file_sparse + ".meta", std::ios::in | std::ios::binary);
+        lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
         cache_sparse.cache();
         in_sparse.close();
 
-        std::vector<prov::Camera> vec_camera = cache_sparse.get_cameras();
-        std::vector<prov::SparsePoint> vec_point = cache_sparse.get_points();
+        std::vector<lamure::prov::Camera> vec_camera = cache_sparse.get_cameras();
+        std::vector<lamure::prov::SparsePoint> vec_point = cache_sparse.get_points();
         scene = Scene(vec_point, vec_camera);
     }
 
@@ -190,7 +190,6 @@ int main(int argc, char *argv[])
         std::cout << "Usage: " << argv[0] << " <flags>" << std::endl
                   << "INFO: nvm_explorer " << std::endl
                   << "\t-lod: select .bvh file" << std::endl
-                  //<< "\t-dense: select dense.prov file" << std::endl
                   << "\t-sparse: select sparse.prov file" << std::endl
                   << "\t-json: select provenance_data_structure.json file" << std::endl
                   << "\t-tree: select tree.prov file" << std::endl
@@ -238,51 +237,7 @@ int main(int argc, char *argv[])
     {
         controller->update();
 
-        // ImGui_ImplGlfwGL3_NewFrame();
 
-        // ImGui::Begin("Settings", &show_test_window);
-        // ImGui::Checkbox("Show dense points", &no_titlebar);
-        // std::cout << no_titlebar << std::endl;
-
-        // ImGui::End();
-
-        // 1. Show a simple window
-        // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
-        // {
-        //     static float f = 0.0f;
-        //     ImGui::Text("Hello, world!");
-        //     ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-        //     ImGui::ColorEdit3("clear color", (float *)&clear_color);
-        //     // ImGui::ColorEdit3("clear color", (float *)&clear_color);
-        //     if(ImGui::Button("Test Window"))
-        //         show_test_window ^= 1;
-        //     if(ImGui::Button("Another Window"))
-        //         show_another_window ^= 1;
-        //     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        // }
-
-        // // 2. Show another simple window, this time using an explicit Begin/End pair
-        // if(show_another_window)
-        // {
-        //     ImGui::Begin("Another Window", &show_another_window);
-        //     ImGui::Text("Hello from another window!");
-        //     ImGui::End();
-        // }
-
-        // 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
-        // if(show_test_window)
-        // {
-        //     ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
-        //     ImGui::ShowTestWindow(&show_test_window);
-        // }
-
-        // Rendering
-        // int display_w, display_h;
-        // glfwGetFramebufferSize(window, &display_w, &display_h);
-        // glViewport(0, 0, display_w, display_h);
-        // glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-        // glClear(GL_COLOR_BUFFER_BIT);
-        // ImGui::Render();
         glfwSwapBuffers(window);
         glfwPollEvents();
     }

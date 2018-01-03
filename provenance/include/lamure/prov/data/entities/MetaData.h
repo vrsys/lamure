@@ -1,8 +1,9 @@
 #ifndef LAMURE_META_CONTAINER_H
 #define LAMURE_META_CONTAINER_H
 
-#include <lamure/pro/common.h>
+#include <lamure/prov/common.h>
 
+namespace lamure {
 namespace prov
 {
 class MetaData
@@ -20,6 +21,7 @@ class MetaData
   protected:
     vec<char> _metadata;
 };
-};
+}
+}
 
 #endif // LAMURE_META_CONTAINER_H

@@ -3,19 +3,19 @@
 
 #include "Frustum.h"
 #include <FreeImagePlus.h>
-#include <lamure/pro/data/entities/Camera.h>
-#include <lamure/pro/data/entities/SparsePoint.h>
+#include <lamure/prov/data/entities/Camera.h>
+#include <lamure/prov/data/entities/SparsePoint.h>
 #include <scm/core/math.h>
 #include <scm/core/math/quat.h>
 #include <scm/core/math/vec3.h>
 
-class Camera_Custom : public prov::Camera
+class Camera_Custom : public lamure::prov::Camera
 {
   public:
-    Camera_Custom(prov::Camera camera);
+    Camera_Custom(lamure::prov::Camera camera);
 
     void init(scm::shared_ptr<scm::gl::render_device> device, 
-        std::vector<prov::SparsePoint> &vector_point, 
+        std::vector<lamure::prov::SparsePoint> &vector_point, 
         std::string const& image_directory);
     void update_scale_frustum(float offset);
     void bind_texture(scm::shared_ptr<scm::gl::render_context> context);
@@ -43,7 +43,7 @@ class Camera_Custom : public prov::Camera
     void add_pixel_brush(scm::math::vec3f position, scm::shared_ptr<scm::gl::render_device> device, bool seen);
 
   private:
-    std::vector<Struct_Line> convert_lines_to_struct_line(std::vector<prov::SparsePoint> &vector_point);
+    std::vector<Struct_Line> convert_lines_to_struct_line(std::vector<lamure::prov::SparsePoint> &vector_point);
     void update_transformation_image_plane();
     void update_pixels_brush();
 

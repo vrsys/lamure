@@ -1,15 +1,16 @@
 #ifndef LAMURE_NODE_H
 #define LAMURE_NODE_H
 
-#include "lamure/pro/data/entities/DenseMetaData.h"
-#include "lamure/pro/data/entities/DensePoint.h"
-#include "lamure/pro/partitioning/entities/Partition.h"
-#include "lamure/pro/partitioning/interfaces/Partitionable.h"
+#include <lamure/prov/data/entities/DenseMetaData.h>
+#include <lamure/prov/data/entities/DensePoint.h>
+#include <lamure/prov/partitioning/entities/Partition.h>
+#include <lamure/prov/partitioning/interfaces/Partitionable.h>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>
 #include <boost/thread/thread.hpp>
 
+namespace lamure {
 namespace prov
 {
 typedef pair<DensePoint, DenseMetaData> dense_pair;
@@ -357,5 +358,7 @@ class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partition
         int operator()(const s_ptr<dense_pair> &pair, const unsigned offset) const { return float_mem_cast<float, int>(pair->first.get_position().z) >> offset; }
     };
 };
-};
+}
+}
+
 #endif // LAMURE_NODE_H

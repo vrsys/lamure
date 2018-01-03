@@ -1,9 +1,10 @@
 #ifndef LAMURE_POINT_H
 #define LAMURE_POINT_H
 
-#include "MetaData.h"
-#include "lamure/pro/common.h"
+#include <lamure/prov/data/entities/MetaData.h>
+#include <lamure/prov/common.h>
 
+namespace lamure {
 namespace prov
 {
 class Point
@@ -47,6 +48,7 @@ class Point
     vec3f _position;
     vec3f _color;
 };
+}
 }
 
 #endif // LAMURE_POINT_H

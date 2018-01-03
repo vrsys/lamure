@@ -2,10 +2,10 @@
 
 Scene::Scene() {}
 
-Scene::Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Camera> &vector_camera) : _vector_point(vector_point)
+Scene::Scene(std::vector<lamure::prov::SparsePoint> &vector_point, std::vector<lamure::prov::Camera> &vector_camera) : _vector_point(vector_point)
 {
     int counter = 0;
-    for(prov::Camera const &camera : vector_camera)
+    for(lamure::prov::Camera const &camera : vector_camera)
     {
         if(counter++ == 10)
         {
@@ -17,19 +17,9 @@ Scene::Scene(std::vector<prov::SparsePoint> &vector_point, std::vector<prov::Cam
     }
 }
 
-// Scene::Scene(prov::SparseCache const &cache_sparse) : _cache_sparse(cache_sparse)
-// {
-// }
 bool Scene::update(float time_delta)
 {
-    // for(std::vector<prov::Camera>::iterator const it = _cache_sparse.get_cameras().begin(); it != _cache_sparse.get_cameras().end(); ++it)
-    // {
-    //     prov::Camera &camera = (*it);
-    //     scm::math::quat<double> old_orientation = camera.get_orientation();
-    //     scm::math::quat<double> new_orientation = scm::math::quat<double>::from_axis(0.1 * time_delta, scm::math::vec3d(0.0, 1.0, 0.0));
 
-    //     camera.set_orientation(old_orientation * new_orientation);
-    // }
 }
 
 void Scene::init(scm::shared_ptr<scm::gl::render_device> device, std::string const& image_directory)
@@ -62,7 +52,7 @@ std::vector<Struct_Point> Scene::convert_points_to_struct_point()
 {
     std::vector<Struct_Point> vector_struct_point;
 
-    for(std::vector<prov::SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
+    for(std::vector<lamure::prov::SparsePoint>::iterator it = _vector_point.begin(); it != _vector_point.end(); ++it)
     {
         scm::math::vec3f color_normalized = scm::math::vec3f((*it).get_color()) / 255.0;
         Struct_Point point = {scm::math::vec3f((*it).get_position()), color_normalized};
@@ -100,7 +90,7 @@ void Scene::update_scale_frustum(float offset)
 }
 
 std::vector<Camera_Custom> &Scene::get_vector_camera() { return _vector_camera; }
-std::vector<prov::SparsePoint> &Scene::get_vector_point() { return _vector_point; }
+std::vector<lamure::prov::SparsePoint> &Scene::get_vector_point() { return _vector_point; }
 
 int Scene::count_points() { return _vector_point.size(); }
 int Scene::count_cameras() { return _vector_camera.size(); }

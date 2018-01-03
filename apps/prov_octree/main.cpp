@@ -1,9 +1,9 @@
 #include <chrono>
-#include <lamure/pro/common.h>
-#include <lamure/pro/data/DenseCache.h>
-#include <lamure/pro/data/DenseStream.h>
-#include <lamure/pro/data/SparseCache.h>
-#include <lamure/pro/partitioning/SparseOctree.h>
+#include <lamure/prov/common.h>
+#include <lamure/prov/data/DenseCache.h>
+#include <lamure/prov/data/DenseStream.h>
+#include <lamure/prov/data/SparseCache.h>
+#include <lamure/prov/partitioning/SparseOctree.h>
 
 using namespace std;
 
@@ -42,10 +42,10 @@ int main(int argc, char *argv[])
         throw std::runtime_error("File format is incompatible");
     }
 
-    prov::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
-    prov::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
+    std::ifstream in_dense(name_file_dense, std::ios::in | std::ios::binary);
+    std::ifstream in_dense_meta(name_file_dense + ".meta", std::ios::in | std::ios::binary);
 
-    prov::DenseCache cache_dense(in_dense, in_dense_meta);
+    lamure::prov::DenseCache cache_dense(in_dense, in_dense_meta);
     
     if(in_dense.is_open())
     {
@@ -57,24 +57,24 @@ int main(int argc, char *argv[])
     }
 
     auto start = std::chrono::high_resolution_clock::now();
-    prov::SparseOctree::Builder builder(cache_dense);
+    lamure::prov::SparseOctree::Builder builder(cache_dense);
 
-    builder.with_sort(prov::SparseOctree::PDQ_SORT);
+    builder.with_sort(lamure::prov::SparseOctree::PDQ_SORT);
     builder.with_max_depth(10);
     builder.with_min_per_node(8);
     builder.with_cubic_nodes(true);
 
-    prov::SparseOctree sparse_octree = builder.build();
+    lamure::prov::SparseOctree sparse_octree = builder.build();
     auto end = std::chrono::high_resolution_clock::now();
     printf("\nSparse octree creation took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 
     start = std::chrono::high_resolution_clock::now();
-    prov::SparseOctree::save_tree(sparse_octree, "tree.prov");
+    lamure::prov::SparseOctree::save_tree(sparse_octree, "tree.prov");
     end = std::chrono::high_resolution_clock::now();
     printf("\nSparse octree save took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 
     start = std::chrono::high_resolution_clock::now();
-    prov::SparseOctree recovered_sparse_octree = prov::SparseOctree::load_tree("tree.prov");
+    lamure::prov::SparseOctree recovered_sparse_octree = lamure::prov::SparseOctree::load_tree("tree.prov");
     end = std::chrono::high_resolution_clock::now();
     printf("\nSparse octree load took: %f ms\n", std::chrono::duration<double, std::milli>(end - start));
 

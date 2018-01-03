@@ -1,9 +1,10 @@
 #ifndef LAMURE_PARTITION_H
 #define LAMURE_PARTITION_H
 
-#include "lamure/pro/data/entities/MetaData.h"
-#include "lamure/pro/data/entities/Point.h"
+#include <lamure/prov/data/entities/MetaData.h>
+#include <lamure/prov/data/entities/Point.h>
 
+namespace lamure {
 namespace prov
 {
 template <class TPair, class TMetaData>
@@ -26,5 +27,6 @@ class Partition
     vec<s_ptr<TPair>> _pair_ptrs;
     TMetaData _aggregate_metadata;
 };
-};
+}
+}
 #endif // LAMURE_PARTITION_H

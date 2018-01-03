@@ -1,9 +1,10 @@
 #ifndef LAMURE_LODMETADATA_H
 #define LAMURE_LODMETADATA_H
 
-#include "MetaData.h"
-#include "lamure/pro/common.h"
+#include <lamure/prov/data/entities/MetaData.h>
+#include <lamure/prov/common.h>
 
+namespace lamure {
 namespace prov
 {
 class DenseMetaData : public MetaData
@@ -89,6 +90,7 @@ class DenseMetaData : public MetaData
     vec<uint32_t> _images_seen;
     vec<uint32_t> _images_not_seen;
 };
-};
+}
+}
 
 #endif // LAMURE_LODMETADATA_H

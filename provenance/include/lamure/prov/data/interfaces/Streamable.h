@@ -1,10 +1,11 @@
 #ifndef LAMURE_STREAMABLE_H
 #define LAMURE_STREAMABLE_H
 
-#include "Readable.h"
-#include "lamure/pro/common.h"
-#include "lamure/pro/data/entities/Point.h"
+#include <lamure/prov/data/interfaces/Readable.h>
+#include <lamure/prov/common.h>
+#include <lamure/prov/data/entities/Point.h>
 
+namespace lamure {
 namespace prov
 {
 template <class Entity>
@@ -19,5 +20,6 @@ class Streamable : public Readable
   protected:
     ifstream &is;
 };
+}
 }
 #endif // LAMURE_STREAMABLE_H

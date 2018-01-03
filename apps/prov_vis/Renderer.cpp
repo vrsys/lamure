@@ -28,9 +28,7 @@ void Renderer::init(char **argv, scm::shared_ptr<scm::gl::render_device> device,
     lamure::ren::Data_Provenance &data_provenance)
 {
 
-    _sparse_octree = prov::SparseOctree::load_tree(name_file_tree);
-    // >>>>>>> 18079d42e0652b76c02ff4b771c776fced1d7b86
-    // _sparse_octree = scm::shared_ptr<prov::SparseOctree>(new prov::SparseOctree(cache_dense));
+    _sparse_octree = lamure::prov::SparseOctree::load_tree(name_file_tree);
 
     _data_provenance = data_provenance;
     _camera_view.update_window_size(width_window, height_window);
@@ -309,7 +307,7 @@ void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush c
     //    std::cout << "4" << std::endl;
 
     // add pixel
-    prov::DenseMetaData metadata = search_tree(position, scene);
+    lamure::prov::DenseMetaData metadata = search_tree(position, scene);
     // std::vector<uint32_t> vector_ids_cameras = std::vector<uint32_t>(search_tree(position, scene));
     // //    std::cout << "6" << std::endl;
 
@@ -328,9 +326,9 @@ void Renderer::add_surfel_brush(scm::math::vec3f position, Struct_Surfel_Brush c
     }
 }
 
-prov::DenseMetaData &Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
+lamure::prov::DenseMetaData &Renderer::search_tree(scm::math::vec3f const &surfel_brush, Scene &scene)
 {
-    prov::OctreeNode *node_ptr = _sparse_octree.lookup_node_at_position(scm::math::vec3f(surfel_brush));
+    lamure::prov::OctreeNode *node_ptr = _sparse_octree.lookup_node_at_position(scm::math::vec3f(surfel_brush));
     return node_ptr->get_aggregate_metadata();
 }
 
@@ -581,39 +579,24 @@ bool Renderer::draw_points_dense(Scene &scene)
 
 void Renderer::update_vector_nodes()
 {
-    std::queue<prov::OctreeNode *> queue_nodes;
-    // std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
-    // std::queue<std::shared_ptr<prov::OctreeNode>> queue_nodes;
-    // std::cout << 1 << std::endl;
+    std::queue<lamure::prov::OctreeNode *> queue_nodes;
     queue_nodes.push(&_sparse_octree);
-    // std::cout << 2 << std::endl;
     _vector_nodes.clear();
     _vector_nodes.reserve((unsigned long)std::pow(8, _depth_octree));
-    // std::cout << 3 << std::endl;
     while(!queue_nodes.empty())
     {
-        // std::cout << 4 << std::endl;
-        prov::OctreeNode *node = queue_nodes.front();
-        // std::cout << 5 << std::endl;
+        lamure::prov::OctreeNode *node = queue_nodes.front();
 
         if(node->get_depth() == _depth_octree)
         {
-            // std::cout << 6 << std::endl;
             _vector_nodes.push_back(node);
-            // std::cout << 7 << std::endl;
         }
         else
         {
-            // std::cout << 8 << std::endl;
-            // std::vector<prov::OctreeNode> vector_partitions = node->get_partitions();
-            // std::cout << 9 << std::endl;
-            for(prov::OctreeNode &partition : node->get_partitions())
+            for(lamure::prov::OctreeNode &partition : node->get_partitions())
             {
-                // std::cout << 10 << std::endl;
-                prov::OctreeNode *node_ptr = &partition;
+                lamure::prov::OctreeNode *node_ptr = &partition;
                 queue_nodes.push(node_ptr);
-                // queue_nodes.push(std::make_shared<prov::OctreeNode>(partition));
-                // std::cout << 11 << std::endl;
             }
         }
 
@@ -628,28 +611,17 @@ void Renderer::draw_sparse_octree()
     _program_frustra->uniform("matrix_view", _camera_view.get_matrix_view());
     _program_frustra->uniform("matrix_perspective", scm::math::mat4f(_camera_view.get_matrix_perspective()));
 
-    for(prov::OctreeNode *node : _vector_nodes)
+    for(lamure::prov::OctreeNode *node : _vector_nodes)
     {
         scm::math::vec3f vector_bounds = node->get_max() - node->get_min();
         scm::math::mat4f matrix_translation = scm::math::make_translation(scm::math::vec3f(node->get_center()));
         matrix_translation = matrix_translation * scm::math::make_scale(vector_bounds);
         _program_frustra->uniform("matrix_model", matrix_translation);
-        // for(std::vector<Camera_Custom>::iterator it = scene.get_vector_camera().begin(); it != scene.get_vector_camera().end(); ++it)
-        // {
-        //     Camera_Custom camera = (*it);
 
-        //     if(!is_camera_active || index_current_image_camera == camera.get_index())
-        //     {
-        //         _program_frustra->uniform("matrix_model", camera.get_transformation());
         _context->bind_vertex_array(_vertex_array_object_box);
         _context->apply();
 
-        // _context->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, 10);
         _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, 24);
-        // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_LOOP, 0, 10);
-        // _context->draw_arrays(scm::gl::PRIMITIVE_LINE_STRIP, 0, 10);
-        //     }
-        // }
     }
 }
 
