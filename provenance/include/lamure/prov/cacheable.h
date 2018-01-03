@@ -1,10 +1,10 @@
 #ifndef LAMURE_CACHEABLE_DATA_H
 #define LAMURE_CACHEABLE_DATA_H
 
-#include <lamure/prov/data/interfaces/Readable.h>
+#include <lamure/prov/readable.h>
 #include <lamure/prov/common.h>
-#include <lamure/prov/data/entities/Point.h>
-#include <lamure/prov/data/interfaces/Cacheable.h>
+#include <lamure/prov/point.h>
+#include <lamure/prov/cacheable.h>
 
 namespace lamure {
 namespace prov

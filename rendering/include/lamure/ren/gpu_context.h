@@ -8,7 +8,7 @@
 #ifndef LAMURE_REN_GPU_CONTEXT_H
 #define LAMURE_REN_GPU_CONTEXT_H
 
-#include <lamure/ren/Data_Provenance.h>
+#include <lamure/ren/data_provenance.h>
 #include <lamure/ren/bvh.h>
 #include <lamure/ren/cut_database_record.h>
 #include <lamure/ren/gpu_access.h>

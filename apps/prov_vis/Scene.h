@@ -45,10 +45,9 @@
 #include <lamure/ren/cut_update_pool.h>
 #include <vector>
 
-// #include "Camera.h"
-#include <lamure/prov/data/SparseCache.h>
-#include <lamure/prov/data/entities/Camera.h>
-#include <lamure/prov/data/entities/SparsePoint.h>
+#include <lamure/prov/sparse_cache.h>
+#include <lamure/prov/camera.h>
+#include <lamure/prov/sparse_point.h>
 
 #include "Camera_Custom.h"
 #include "Struct_Camera.h"

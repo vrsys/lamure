@@ -8,16 +8,16 @@
 #include <sstream>
 #include <vector>
 // #include "utils.h"
-#include <lamure/ren/Data_Provenance.h>
-#include <lamure/ren/Item_Provenance.h>
+#include <lamure/ren/data_provenance.h>
+#include <lamure/ren/item_provenance.h>
 #include <lamure/ren/policy.h>
 
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
 #include <lamure/prov/common.h>
-#include <lamure/prov/data/DenseCache.h>
-#include <lamure/prov/data/DenseStream.h>
-#include <lamure/prov/data/SparseCache.h>
+#include <lamure/prov/dense_cache.h>
+#include <lamure/prov/dense_stream.h>
+#include <lamure/prov/sparse_cache.h>
 
 #define VERBOSE
 #define DEFAULT_PRECISION 15

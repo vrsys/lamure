@@ -2,10 +2,10 @@
 #define LAMURE_DENSE_DATA_H
 
 #include <lamure/prov/common.h>
-#include <lamure/prov/data/entities/DensePoint.h>
-#include <lamure/prov/data/entities/DenseMetaData.h>
-#include <lamure/prov/data/interfaces/Cacheable.h>
-#include <lamure/prov/data/interfaces/Streamable.h>
+#include <lamure/prov/dense_point.h>
+#include <lamure/prov/dense_meta_data.h>
+#include <lamure/prov/cacheable.h>
+#include <lamure/prov/streamable.h>
 
 namespace lamure {
 namespace prov

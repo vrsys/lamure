@@ -1,8 +1,8 @@
 #ifndef LAMURE_DENSESTREAM_H
 #define LAMURE_DENSESTREAM_H
 
-#include <lamure/prov/data/entities/DensePoint.h>
-#include <lamure/prov/data/interfaces/Streamable.h>
+#include <lamure/prov/dense_point.h>
+#include <lamure/prov/streamable.h>
 
 namespace lamure {
 namespace prov

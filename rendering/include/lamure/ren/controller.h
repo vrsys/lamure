@@ -12,7 +12,7 @@
 #include <lamure/utils.h>
 #include <unordered_map>
 
-#include <lamure/ren/Data_Provenance.h>
+#include <lamure/ren/data_provenance.h>
 #include <lamure/ren/cut_update_pool.h>
 #include <lamure/ren/gpu_context.h>
 #include <lamure/ren/platform.h>

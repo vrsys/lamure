@@ -53,8 +53,8 @@
 #include <lamure/ren/cut_update_pool.h>
 #include <lamure/ren/ray.h>
 
-#include <lamure/prov/partitioning/SparseOctree.h>
-#include <lamure/prov/partitioning/entities/Partition.h>
+#include <lamure/prov/sparse_octree.h>
+#include <lamure/prov/partition.h>
 
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"

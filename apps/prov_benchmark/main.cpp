@@ -1,9 +1,9 @@
 #include <chrono>
 #include <lamure/prov/common.h>
-#include <lamure/prov/data/DenseCache.h>
-#include <lamure/prov/data/DenseStream.h>
-#include <lamure/prov/data/SparseCache.h>
-#include <lamure/prov/partitioning/SparseOctree.h>
+#include <lamure/prov/dense_cache.h>
+#include <lamure/prov/dense_stream.h>
+#include <lamure/prov/sparse_cache.h>
+#include <lamure/prov/sparse_octree.h>
 
 using namespace std;
 

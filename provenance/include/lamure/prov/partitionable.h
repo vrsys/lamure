@@ -1,8 +1,8 @@
 #ifndef LAMURE_PARTITIONABLE_H
 #define LAMURE_PARTITIONABLE_H
 
-#include <lamure/prov/data/interfaces/Cacheable.h>
-#include <lamure/prov/partitioning/entities/Partition.h>
+#include <lamure/prov/cacheable.h>
+#include <lamure/prov/partition.h>
 
 namespace lamure {
 namespace prov

@@ -1,9 +1,9 @@
 #ifndef LAMURE_PROV_COMMON_H
 #define LAMURE_PROV_COMMON_H
 
-#include <lamure/prov/3dparty/exif.h>
-#include <lamure/prov/3dparty/pdqsort.h>
-#include <lamure/prov/3dparty/tinyply.h>
+#include <lamure/prov/3rd_party/exif.h>
+#include <lamure/prov/3rd_party/pdqsort.h>
+#include <lamure/prov/3rd_party/tinyply.h>
 #include <algorithm>
 #include <assert.h>
 #include <boost/archive/text_iarchive.hpp>

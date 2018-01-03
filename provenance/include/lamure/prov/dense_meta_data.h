@@ -1,7 +1,7 @@
 #ifndef LAMURE_LODMETADATA_H
 #define LAMURE_LODMETADATA_H
 
-#include <lamure/prov/data/entities/MetaData.h>
+#include <lamure/prov/meta_data.h>
 #include <lamure/prov/common.h>
 
 namespace lamure {

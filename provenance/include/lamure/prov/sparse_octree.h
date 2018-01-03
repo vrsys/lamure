@@ -1,9 +1,9 @@
 #ifndef LAMURE_SPARSEOCTREE_H
 #define LAMURE_SPARSEOCTREE_H
 
-#include <lamure/prov/data/DenseCache.h>
-#include <lamure/prov/partitioning/entities/OctreeNode.h>
-#include <lamure/prov/partitioning/interfaces/Partitionable.h>
+#include <lamure/prov/dense_cache.h>
+#include <lamure/prov/octree_node.h>
+#include <lamure/prov/partitionable.h>
 
 namespace lamure {
 namespace prov

@@ -1,10 +1,10 @@
 #ifndef LAMURE_NODE_H
 #define LAMURE_NODE_H
 
-#include <lamure/prov/data/entities/DenseMetaData.h>
-#include <lamure/prov/data/entities/DensePoint.h>
-#include <lamure/prov/partitioning/entities/Partition.h>
-#include <lamure/prov/partitioning/interfaces/Partitionable.h>
+#include <lamure/prov/dense_meta_data.h>
+#include <lamure/prov/dense_point.h>
+#include <lamure/prov/partition.h>
+#include <lamure/prov/partitionable.h>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>

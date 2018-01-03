@@ -1,9 +1,9 @@
 #ifndef LAMURE_STREAMABLE_H
 #define LAMURE_STREAMABLE_H
 
-#include <lamure/prov/data/interfaces/Readable.h>
+#include <lamure/prov/readable.h>
 #include <lamure/prov/common.h>
-#include <lamure/prov/data/entities/Point.h>
+#include <lamure/prov/point.h>
 
 namespace lamure {
 namespace prov

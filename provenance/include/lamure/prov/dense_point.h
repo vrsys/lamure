@@ -1,7 +1,7 @@
 #ifndef LAMURE_DENSE_POINT_H
 #define LAMURE_DENSE_POINT_H
 
-#include <lamure/prov/data/entities/Point.h>
+#include <lamure/prov/point.h>
 #include <lamure/prov/common.h>
 
 namespace lamure {

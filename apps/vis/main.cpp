@@ -15,8 +15,8 @@
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
-#include <lamure/prov/data/SparseCache.h>
-#include <lamure/prov/partitioning/SparseOctree.h>
+#include <lamure/prov/sparse_cache.h>
+#include <lamure/prov/sparse_octree.h>
 
 
 //schism
@@ -1411,6 +1411,7 @@ int32_t main(int argc, char* argv[]) {
     pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
   }
   if (settings_.sparse_ != "") {
+    /*
     std::cout << "sparse: " << settings_.sparse_ << std::endl;
     std::ifstream in_sparse(settings_.sparse_, std::ios::in | std::ios::binary);
     std::ifstream in_sparse_meta(settings_.sparse_ + ".meta", std::ios::in | std::ios::binary);
@@ -1422,6 +1423,7 @@ int32_t main(int argc, char* argv[]) {
     std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
     std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
     std::cout << cameras.size() << " cameras, " << feature_points.size() << " feature points" << std::endl;
+    */
   }
   if (settings_.meta_octree_ != "") {
     std::cout << "meta_octree: " << settings_.meta_octree_ << std::endl;

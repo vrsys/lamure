@@ -2,8 +2,8 @@
 #define LAMURE_SPARSE_DATA_H
 
 #include <lamure/prov/common.h>
-#include <lamure/prov/data/entities/SparsePoint.h>
-#include <lamure/prov/data/interfaces/Cacheable.h>
+#include <lamure/prov/sparse_point.h>
+#include <lamure/prov/cacheable.h>
 
 namespace lamure {
 namespace prov

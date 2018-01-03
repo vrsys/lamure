@@ -1,9 +1,9 @@
 #ifndef LAMURE_SPARSE_POINT_H
 #define LAMURE_SPARSE_POINT_H
 
-#include <lamure/prov/data/entities/Camera.h>
-#include <lamure/prov/data/entities/MetaData.h>
-#include <lamure/prov/data/entities/Point.h>
+#include <lamure/prov/camera.h>
+#include <lamure/prov/meta_data.h>
+#include <lamure/prov/point.h>
 #include <lamure/prov/common.h>
 
 namespace lamure {

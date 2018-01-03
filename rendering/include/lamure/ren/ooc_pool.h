@@ -8,7 +8,7 @@
 #ifndef REN_OOC_POOL_H_
 #define REN_OOC_POOL_H_
 
-#include <lamure/ren/Data_Provenance.h>
+#include <lamure/ren/data_provenance.h>
 #include <lamure/ren/cache_index.h>
 #include <lamure/ren/cache_queue.h>
 #include <lamure/ren/config.h>

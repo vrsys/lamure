@@ -1,8 +1,8 @@
 #ifndef LAMURE_PARTITION_H
 #define LAMURE_PARTITION_H
 
-#include <lamure/prov/data/entities/MetaData.h>
-#include <lamure/prov/data/entities/Point.h>
+#include <lamure/prov/meta_data.h>
+#include <lamure/prov/point.h>
 
 namespace lamure {
 namespace prov

@@ -8,9 +8,9 @@
 #ifndef REN_PROVENANCE_H_
 #define REN_PROVENANCE_H_
 
-#include "json.h"
+#include <lamure/ren/3rd_party/json.h>
 #include <fstream>
-#include <lamure/ren/Item_Provenance.h>
+#include <lamure/ren/item_provenance.h>
 #include <lamure/ren/policy.h>
 #include <lamure/types.h>
 #include <lamure/utils.h>

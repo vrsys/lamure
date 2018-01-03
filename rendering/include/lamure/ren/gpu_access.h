@@ -13,7 +13,7 @@
 #include <lamure/types.h>
 
 #include <boost/assign/list_of.hpp>
-#include <lamure/ren/Data_Provenance.h>
+#include <lamure/ren/data_provenance.h>
 #include <memory>
 #include <scm/core.h>
 #include <scm/gl_core.h>

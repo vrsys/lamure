@@ -9,35 +9,12 @@ set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
-file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/*.h)
+file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/prov/*.h)
 
 # 3dparty
-file(GLOB 3DPARTY_SRC ${PROJECT_SOURCE_DIR}/3dparty/*.cpp)
-file(GLOB 3DPARTY_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/3dparty/*.h)
+file(GLOB 3DPARTY_SRC ${PROJECT_SOURCE_DIR}/3rd_party/*.cpp)
+file(GLOB 3DPARTY_INC ${PROJECT_INCLUDE_DIR}/lamure/prov/3rd_party/*.h)
 
-# data
-file(GLOB DATA_SRC ${PROJECT_SOURCE_DIR}/data/*.cpp)
-file(GLOB DATA_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/*.h)
-
-# entities
-file(GLOB DATA_ENTITIES_SRC ${PROJECT_SOURCE_DIR}/data/entities/*.cpp)
-file(GLOB DATA_ENTITIES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/entities/*.h)
-
-# interfaces
-file(GLOB DATA_INTERFACES_SRC ${PROJECT_SOURCE_DIR}/data/interfaces/*.cpp)
-file(GLOB DATA_INTERFACES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/data/interfaces/*.h)
-
-# partitioning
-file(GLOB PARTITIONING_SRC ${PROJECT_SOURCE_DIR}/partitioning/*.cpp)
-file(GLOB PARTITIONING_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/partitioning/*.h)
-
-# entities
-file(GLOB PARTITIONING_ENTITIES_SRC ${PROJECT_SOURCE_DIR}/partitioning/entities/*.cpp)
-file(GLOB PARTITIONING_ENTITIES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/partitioning/entities/*.h)
-
-# interfaces
-file(GLOB PARTITIONING_INTERFACES_SRC ${PROJECT_SOURCE_DIR}/partitioning/interfaces/*.cpp)
-file(GLOB PARTITIONING_INTERFACES_INC ${PROJECT_INCLUDE_DIR}/lamure/pro/partitioning/interfaces/*.h)
 
 SOURCE_GROUP("provenance" FILES ${MAIN_SRC})
 SOURCE_GROUP("provenance" FILES ${MAIN_INC})
@@ -45,14 +22,10 @@ SOURCE_GROUP("provenance" FILES ${MAIN_INC})
 SOURCE_GROUP("3dparty" FILES ${3DPARTY_SRC})
 SOURCE_GROUP("3dparty" FILES ${3DPARTY_INC})
 
-SOURCE_GROUP("data" FILES ${DATA_SRC})
-SOURCE_GROUP("data" FILES ${DATA_INC})
+set(PROJECT_SOURCES ${MAIN_SRC} ${3DPARTY_SRC})
+set(PROJECT_INCLUDES ${MAIN_INC} ${3DPARTY_INC})
 
-set(PROJECT_SOURCES ${MAIN_SRC} ${3DPARTY_SRC} ${DATA_SRC} ${ENTITIES_SRC} ${INTERFACES_SRC} ${PARTITIONING_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${3DPARTY_INC} ${DATA_INC} ${ENTITIES_INC} ${INTERFACES_INC} ${PARTITIONING_INC})
-
-include_directories(${PROJECT_INCLUDE_DIR} 
-                   # ${COMMON_INCLUDE_DIR}
+include_directories(${PROJECT_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR}
                     ${CGAL_INCLUDE_DIR}
                     ${GMP_INCLUDE_DIR} 
@@ -119,4 +92,4 @@ ELSEIF (UNIX)
 ENDIF (MSVC)
 
 # header files 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/pro DESTINATION include/lamure FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/prov DESTINATION include/lamure FILES_MATCHING PATTERN "*.h")

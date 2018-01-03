@@ -3,8 +3,8 @@
 
 #include "Frustum.h"
 #include <FreeImagePlus.h>
-#include <lamure/prov/data/entities/Camera.h>
-#include <lamure/prov/data/entities/SparsePoint.h>
+#include <lamure/prov/camera.h>
+#include <lamure/prov/sparse_point.h>
 #include <scm/core/math.h>
 #include <scm/core/math/quat.h>
 #include <scm/core/math/vec3.h>
