@@ -15,6 +15,8 @@
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
+#include <lamure/pro/data/SparseCache.h>
+#include <lamure/pro/partitioning/SparseOctree.h>
 
 
 //schism
@@ -192,6 +194,8 @@ struct settings {
   scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f};
   scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
   std::string json_ {""};
+  std::string sparse_ {""};
+  std::string meta_octree_ {""};
   std::string pvs_ {""};
   std::vector<std::string> models_ {std::vector<std::string>()};
   std::vector<scm::math::mat4d> transforms_ {std::vector<scm::math::mat4d>()};
@@ -428,6 +432,12 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "json") {
             settings.json_ = value;
+          }
+          else if (key == "sparse") {
+            settings.sparse_ = value;
+          }
+          else if (key == "meta_octree") {
+            settings.meta_octree_ = value;
           }
           else if (key == "pvs") {
             settings.pvs_ = value;
@@ -1378,6 +1388,7 @@ int32_t main(int argc, char* argv[]) {
   policy->set_size_of_provenance(settings_.prov_);
 
   if (policy->size_of_provenance() > 0) {
+    std::cout << "json: " << settings_.json_ << std::endl;
     data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
   }
 
@@ -1390,7 +1401,6 @@ int32_t main(int argc, char* argv[]) {
     ++num_models_;
   }
   
-  std::cout << settings_.pvs_ << std::endl;
   if(settings_.pvs_ != "") {
     std::cout << "pvs: " << settings_.pvs_ << std::endl;
     std::string pvs_grid_file_path = settings_.pvs_;
@@ -1399,6 +1409,23 @@ int32_t main(int argc, char* argv[]) {
 
     lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
     pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
+  }
+  if (settings_.sparse_ != "") {
+    std::cout << "sparse: " << settings_.sparse_ << std::endl;
+    std::ifstream in_sparse(settings_.sparse_, std::ios::in | std::ios::binary);
+    std::ifstream in_sparse_meta(settings_.sparse_ + ".meta", std::ios::in | std::ios::binary);
+    prov::SparseCache cache_sparse = prov::SparseCache(in_sparse, in_sparse_meta);
+    cache_sparse.cache();
+    in_sparse.close();
+    in_sparse_meta.close();
+
+    std::vector<prov::Camera> cameras = cache_sparse.get_cameras();
+    std::vector<prov::SparsePoint> feature_points = cache_sparse.get_points();
+    std::cout << cameras.size() << " cameras, " << feature_points.size() << " feature points" << std::endl;
+  }
+  if (settings_.meta_octree_ != "") {
+    std::cout << "meta_octree: " << settings_.meta_octree_ << std::endl;
+    auto meta_octree = prov::SparseOctree::load_tree(settings_.meta_octree_);
   }
  
   glutInit(&argc, argv);
