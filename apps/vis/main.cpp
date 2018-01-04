@@ -549,6 +549,12 @@ void draw_resources(scm::gl::program_ptr shader) {
 
     shader->uniform("point_size_factor", settings_.point_scale_);
     
+    shader->uniform("show_normals", false);
+    shader->uniform("show_accuracy", false);
+    shader->uniform("show_radius_deviation", false);
+    shader->uniform("show_output_sensitivity", false);
+    shader->uniform("channel", 0);
+
     if (sparse_resource_.num_primitives_ > 0) {
       shader->uniform("ellipsify", false);
       context_->bind_vertex_array(sparse_resource_.array_);
@@ -1382,15 +1388,26 @@ void create_sparse_resource() {
 
     std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
     std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
-    std::cout << cameras.size() << " cameras, " << feature_points.size() << " feature points" << std::endl;
+    std::cout << "sparse: " << cameras.size() << " cameras, " << feature_points.size() << " features" << std::endl;
+
 
     std::vector<xyz> ready_to_upload;
+
+    for (auto& camera : cameras) {
+      ready_to_upload.push_back(
+        xyz{camera.get_translation(),
+          (uint8_t)255, (uint8_t)240, (uint8_t)0, (uint8_t)255,
+          settings_.brush_size_,
+          scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
+      );
+    }
+
     for (const auto& p : feature_points) {
       ready_to_upload.push_back(
         xyz{p.get_position(),
           (uint8_t)p.get_color().x, (uint8_t)p.get_color().y, (uint8_t)p.get_color().z, (uint8_t)255,
           settings_.brush_size_, //placeholder
-          scm::math::vec3f(0.0, 0.0, 1.0)} //placeholder
+          scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
       );
     }
 
@@ -1399,7 +1416,7 @@ void create_sparse_resource() {
     sparse_resource_.array_.reset();
 
     sparse_resource_.buffer_ = device_->create_buffer(
-      scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * feature_points.size(), &ready_to_upload[0]);
+      scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * ready_to_upload.size(), &ready_to_upload[0]);
     sparse_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
       (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
       (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
