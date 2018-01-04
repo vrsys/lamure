@@ -30,6 +30,7 @@ uniform float near_plane;
 uniform float point_size_factor;
 uniform float model_radius_scale;
 
+
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
 layout(location = 2) in float in_g;
@@ -55,13 +56,15 @@ void main()
   }
   else {
 
+    vec4 pos = mvp_matrix * vec4(in_position, 1.0);
+    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
+    gl_Position = pos;
+
     float scaled_radius = model_radius_scale * in_radius * point_size_factor;
     vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
-    vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
 
-    float ps = 3.0f*(scaled_radius) * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
-    gl_Position = mvp_matrix * vec4(in_position, 1.0);
-      
+    float ps = 3.0*(scaled_radius) * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
+
     VertexOut.color = get_color(in_position, in_normal, vec3(in_r, in_g, in_b), in_radius);
     VertexOut.nor = normal;
     gl_PointSize = ps;
@@ -70,8 +73,9 @@ void main()
     VertexOut.rad = (scaled_radius);
 
     OPTIONAL_BEGIN
-        VertexOut.mv_vertex_position = pos_es.xyz;
+      VertexOut.mv_vertex_position = pos_es.xyz;
     OPTIONAL_END
+
   }
 
 

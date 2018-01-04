@@ -104,9 +104,14 @@ scm::gl::blend_state_ptr color_no_blending_state_;
 scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
 
-scm::gl::buffer_ptr brush_buffer_;
-scm::gl::vertex_array_ptr brush_array_;
-scm::gl::program_ptr brush_shader_;
+struct resource {
+  uint64_t num_primitives_;
+  scm::gl::buffer_ptr buffer_;
+  scm::gl::vertex_array_ptr array_;
+};
+
+resource brush_resource_;
+resource sparse_resource_;
 
 scm::gl::program_ptr quad_shader_;
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
@@ -139,17 +144,16 @@ gui gui_;
 
 struct xyz {
   scm::math::vec3f pos_;
-  char r_;
-  char g_;
-  char b_;
-  char a_;
+  uint8_t r_;
+  uint8_t g_;
+  uint8_t b_;
+  uint8_t a_;
   float rad_;
   scm::math::vec3f nml_;
 };
 
 struct selection {
   int32_t selected_model_ = -1;
-  int32_t num_strokes_ = 0;
   std::vector<xyz> brush_;
 };
 
@@ -173,6 +177,7 @@ struct settings {
   float travel_speed_ {20.5f};
   int32_t lod_update_ {1};
   int32_t pvs_cull_ {0};
+  float brush_size_ {0.5f};
   int32_t vis_ {0};
   int32_t show_normals_ {0};
   int32_t show_accuracy_ {0};
@@ -201,9 +206,6 @@ struct settings {
   std::vector<scm::math::mat4d> transforms_ {std::vector<scm::math::mat4d>()};
 
 };
-
-float brush_default_size_ = 0.002f;
-float brush_default_offset_ = brush_default_size_;
 
 settings settings_;
 
@@ -321,6 +323,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "pvs_cull") {
             settings.pvs_cull_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "brush_size") {
+            settings.brush_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
           }
           else if (key == "provenance") {
             settings.prov_ = std::max(atoi(value.c_str()), 0);
@@ -491,12 +496,46 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
 }
 
 
-void draw_brush(scm::gl::program_ptr shader) {
+void set_uniforms(scm::gl::program_ptr shader) {
+  shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
 
-  if (selection_.num_strokes_ > 0) {
+  shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
+  shader->uniform("near_plane", settings_.near_plane_);
+  shader->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
+  shader->uniform("point_size_factor", settings_.point_scale_);
 
-    //draw brush surfels
-    context_->bind_vertex_array(brush_array_);
+  shader->uniform("ellipsify", true);
+  shader->uniform("clamped_normal_mode", true);
+  shader->uniform("max_deform_ratio", 0.35f);
+
+  shader->uniform("show_normals", (bool)settings_.show_normals_);
+  shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
+  shader->uniform("show_radius_deviation", (bool)settings_.show_radius_deviation_);
+  shader->uniform("show_output_sensitivity", (bool)settings_.show_output_sensitivity_);
+
+  shader->uniform("channel", settings_.channel_);
+  shader->uniform("heatmap", (bool)settings_.heatmap_);
+
+  shader->uniform("heatmap_min", settings_.heatmap_min_);
+  shader->uniform("heatmap_max", settings_.heatmap_max_);
+  shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
+  shader->uniform("heatmap_max_color", settings_.heatmap_color_max_);
+}
+
+void set_lighting_uniforms(scm::gl::program_ptr shader) {
+
+  shader->uniform("use_material_color", settings_.use_material_color_);
+  shader->uniform("material_diffuse", settings_.material_diffuse_);
+  shader->uniform("material_specular", settings_.material_specular_);
+
+  shader->uniform("ambient_light_color", settings_.ambient_light_color_);
+  shader->uniform("point_light_color", settings_.point_light_color_);
+}
+
+
+void draw_resources(scm::gl::program_ptr shader) {
+
+  if (brush_resource_.num_primitives_ > 0 || sparse_resource_.num_primitives_ > 0) {
 
     scm::math::mat4d model_matrix = scm::math::mat4d::identity();
     scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
@@ -504,20 +543,26 @@ void draw_brush(scm::gl::program_ptr shader) {
     scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
     scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
 
-    //uniforms for brush
     shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 
     shader->uniform("point_size_factor", settings_.point_scale_);
-    shader->uniform("show_normals", false);
-    shader->uniform("show_accuracy", false);
-    shader->uniform("show_output_sensitivity", false);
-    shader->uniform("channel", 0);
+    
+    if (sparse_resource_.num_primitives_ > 0) {
+      shader->uniform("ellipsify", false);
+      context_->bind_vertex_array(sparse_resource_.array_);
+      context_->apply();
+      context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, sparse_resource_.num_primitives_);
+      
+    }
+    if (brush_resource_.num_primitives_ > 0) {
+      shader->uniform("ellipsify", true);
+      context_->bind_vertex_array(brush_resource_.array_);
+      context_->apply();
+      context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, brush_resource_.num_primitives_);
+    }
 
-    context_->apply();
-
-    context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, selection_.num_strokes_);
   }
 
 }
@@ -618,60 +663,103 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 
 }
 
-void set_uniforms(scm::gl::program_ptr shader) {
-  shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
 
-  shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
-  shader->uniform("near_plane", settings_.near_plane_);
-  shader->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
-  shader->uniform("point_size_factor", settings_.point_scale_);
 
-  shader->uniform("ellipsify", true);
-  shader->uniform("clamped_normal_mode", true);
-  shader->uniform("max_deform_ratio", 0.35f);
+//checks for prefix AND removes it (+ whitespace) if it is found; 
+//returns true, if prefix was found; else false
+bool parse_prefix(std::string& in_string, std::string const& prefix) {
 
-  shader->uniform("show_normals", (bool)settings_.show_normals_);
-  shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
-  shader->uniform("show_radius_deviation", (bool)settings_.show_radius_deviation_);
-  shader->uniform("show_output_sensitivity", (bool)settings_.show_output_sensitivity_);
+ uint32_t num_prefix_characters = prefix.size();
 
-  shader->uniform("channel", settings_.channel_);
-  shader->uniform("heatmap", (bool)settings_.heatmap_);
+ bool prefix_found 
+  = (!(in_string.size() < num_prefix_characters ) 
+     && strncmp(in_string.c_str(), prefix.c_str(), num_prefix_characters ) == 0); 
 
-  shader->uniform("heatmap_min", settings_.heatmap_min_);
-  shader->uniform("heatmap_max", settings_.heatmap_max_);
-  shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
-  shader->uniform("heatmap_max_color", settings_.heatmap_color_max_);
+  if( prefix_found ) {
+    in_string = in_string.substr(num_prefix_characters);
+    in_string = strip_whitespace(in_string);
+  }
+
+  return prefix_found;
 }
 
-void set_lighting_uniforms(scm::gl::program_ptr shader) {
+void resolve_relative_path(std::string& base_path, std::string& relative_path) {
 
-  shader->uniform("use_material_color", settings_.use_material_color_);
-  shader->uniform("material_diffuse", settings_.material_diffuse_);
-  shader->uniform("material_specular", settings_.material_specular_);
+    std::cout << "Starting parse prefix with relative path: " << relative_path << "\n";
 
-  shader->uniform("ambient_light_color", settings_.ambient_light_color_);
-  shader->uniform("point_light_color", settings_.point_light_color_);
+  while(parse_prefix(relative_path, "../")) {
+    std::cout << "Parse prefix true\n";
+      size_t slash_position = base_path.find_last_of("/", base_path.size()-2);
+
+      base_path = base_path.substr(0, slash_position);
+  }
 }
 
-void create_brush() {
+bool read_shader(std::string const& path_string, 
+                 std::string& shader_string, bool keep_optional_shader_code = false) {
+
+
+  if ( !boost::filesystem::exists( path_string ) ) {
+    std::cout << "WARNING: File " << path_string << "does not exist." <<  std::endl;
+    return false;
+  }
+
+  std::ifstream shader_source(path_string, std::ios::in);
+  std::string line_buffer;
+
+  std::string include_prefix("INCLUDE");
+
+  std::string optional_begin_prefix("OPTIONAL_BEGIN");
+  std::string optional_end_prefix("OPTIONAL_END");
+
+  std::size_t slash_position = path_string.find_last_of("/\\");
+  std::string const base_path =  path_string.substr(0,slash_position+1);
+
+  bool disregard_code = false;
+
+  while( std::getline(shader_source, line_buffer) ) {
+    line_buffer = strip_whitespace(line_buffer);
+    //std::cout << line_buffer << "\n";
+
+    if( parse_prefix(line_buffer, include_prefix) ) {
+      if(!disregard_code || keep_optional_shader_code) {
+        std::string filename_string = line_buffer;
+        read_shader(base_path+filename_string, shader_string);
+      }
+    } else if (parse_prefix(line_buffer, optional_begin_prefix)) {
+      disregard_code = true;
+    } else if (parse_prefix(line_buffer, optional_end_prefix)) {
+      disregard_code = false;
+    } 
+    else {
+      if( (!disregard_code) || keep_optional_shader_code ) {
+        shader_string += line_buffer+"\n";
+      }
+    }
+  }
+
+  return true;
+}
+
+
+void create_brush_resource() {
 
   if (selection_.brush_.empty()) {
-    selection_.num_strokes_ = 0;
+    brush_resource_.num_primitives_ = 0;
     return;
   }
-  if (selection_.num_strokes_ == selection_.brush_.size()) {
+  if (brush_resource_.num_primitives_ == selection_.brush_.size()) {
     return;
   }
 
-  selection_.num_strokes_ = selection_.brush_.size();
+  brush_resource_.num_primitives_ = selection_.brush_.size();
   
-  brush_buffer_.reset();
-  brush_array_.reset(); 
+  brush_resource_.buffer_.reset();
+  brush_resource_.array_.reset(); 
 
-  brush_buffer_ = device_->create_buffer(
-    scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * selection_.num_strokes_, &selection_.brush_[0]);
-  brush_array_ = device_->create_vertex_array(scm::gl::vertex_format
+  brush_resource_.buffer_ = device_->create_buffer(
+    scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * brush_resource_.num_primitives_, &selection_.brush_[0]);
+  brush_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
     (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
     (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
     (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
@@ -679,7 +767,7 @@ void create_brush() {
     (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
     (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
     (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
-    boost::assign::list_of(brush_buffer_));
+    boost::assign::list_of(brush_resource_.buffer_));
 
 }
 
@@ -768,7 +856,7 @@ void glut_display() {
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
  
   
-  create_brush();
+  create_brush_resource();
 
   if (settings_.splatting_) {
     //2 pass splatting
@@ -798,7 +886,7 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
 
-    draw_brush(vis_xyz_pass1_shader_);
+    draw_resources(vis_xyz_pass1_shader_);
 
     //PASS 2
 
@@ -834,7 +922,7 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, selected_pass2_shading_program);
 
-    draw_brush(selected_pass2_shading_program);
+    draw_resources(selected_pass2_shading_program);
 
     //PASS 3
 
@@ -903,7 +991,7 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, selected_single_pass_shading_program);
 
-    draw_brush(selected_single_pass_shading_program);
+    draw_resources(selected_single_pass_shading_program);
   }
 
 
@@ -1008,12 +1096,13 @@ void brush() {
   }
 
   if (hit) {
+    float brush_offset = settings_.brush_size_;
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
     selection_.brush_.push_back(
       xyz{
-        intersection.position_ + intersection.normal_ * brush_default_offset_,
-        (char)color.x, (char)color.y, (char)color.z, (char)255,
-        brush_default_size_,
+        intersection.position_ + intersection.normal_ * brush_offset,
+        (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
+        settings_.brush_size_,
         intersection.normal_});
   }
 
@@ -1277,81 +1366,56 @@ void glut_idle() {
   glutPostRedisplay();
 }
 
-//checks for prefix AND removes it (+ whitespace) if it is found; 
-//returns true, if prefix was found; else false
-bool parse_prefix(std::string& in_string, std::string const& prefix) {
 
- uint32_t num_prefix_characters = prefix.size();
-
- bool prefix_found 
-  = (!(in_string.size() < num_prefix_characters ) 
-     && strncmp(in_string.c_str(), prefix.c_str(), num_prefix_characters ) == 0); 
-
-  if( prefix_found ) {
-    in_string = in_string.substr(num_prefix_characters);
-    in_string = strip_whitespace(in_string);
-  }
-
-  return prefix_found;
-}
-
-void resolve_relative_path(std::string& base_path, std::string& relative_path) {
-
-    std::cout << "Starting parse prefix with relative path: " << relative_path << "\n";
-
-  while(parse_prefix(relative_path, "../")) {
-    std::cout << "Parse prefix true\n";
-      size_t slash_position = base_path.find_last_of("/", base_path.size()-2);
-
-      base_path = base_path.substr(0, slash_position);
-  }
-}
-
-bool read_shader(std::string const& path_string, 
-                 std::string& shader_string, bool keep_optional_shader_code = false) {
+void create_sparse_resource() {
 
 
-  if ( !boost::filesystem::exists( path_string ) ) {
-    std::cout << "WARNING: File " << path_string << "does not exist." <<  std::endl;
-    return false;
-  }
+  if (settings_.sparse_ != "") {
+    
+    std::cout << "sparse: " << settings_.sparse_ << std::endl;
+    std::ifstream in_sparse(settings_.sparse_, std::ios::in | std::ios::binary);
+    std::ifstream in_sparse_meta(settings_.sparse_ + ".meta", std::ios::in | std::ios::binary);
+    lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
+    cache_sparse.cache(false);
+    in_sparse.close();
+    in_sparse_meta.close();
 
-  std::ifstream shader_source(path_string, std::ios::in);
-  std::string line_buffer;
+    std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
+    std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
+    std::cout << cameras.size() << " cameras, " << feature_points.size() << " feature points" << std::endl;
 
-  std::string include_prefix("INCLUDE");
-
-  std::string optional_begin_prefix("OPTIONAL_BEGIN");
-  std::string optional_end_prefix("OPTIONAL_END");
-
-  std::size_t slash_position = path_string.find_last_of("/\\");
-  std::string const base_path =  path_string.substr(0,slash_position+1);
-
-  bool disregard_code = false;
-
-  while( std::getline(shader_source, line_buffer) ) {
-    line_buffer = strip_whitespace(line_buffer);
-    //std::cout << line_buffer << "\n";
-
-    if( parse_prefix(line_buffer, include_prefix) ) {
-      if(!disregard_code || keep_optional_shader_code) {
-        std::string filename_string = line_buffer;
-        read_shader(base_path+filename_string, shader_string);
-      }
-    } else if (parse_prefix(line_buffer, optional_begin_prefix)) {
-      disregard_code = true;
-    } else if (parse_prefix(line_buffer, optional_end_prefix)) {
-      disregard_code = false;
-    } 
-    else {
-      if( (!disregard_code) || keep_optional_shader_code ) {
-        shader_string += line_buffer+"\n";
-      }
+    std::vector<xyz> ready_to_upload;
+    for (const auto& p : feature_points) {
+      ready_to_upload.push_back(
+        xyz{p.get_position(),
+          (uint8_t)p.get_color().x, (uint8_t)p.get_color().y, (uint8_t)p.get_color().z, (uint8_t)255,
+          settings_.brush_size_, //placeholder
+          scm::math::vec3f(0.0, 0.0, 1.0)} //placeholder
+      );
     }
+
+    sparse_resource_.num_primitives_ = ready_to_upload.size();
+    sparse_resource_.buffer_.reset();
+    sparse_resource_.array_.reset();
+
+    sparse_resource_.buffer_ = device_->create_buffer(
+      scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * feature_points.size(), &ready_to_upload[0]);
+    sparse_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
+      (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
+      (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+      (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+      (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+      (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+      (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
+      (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
+      boost::assign::list_of(sparse_resource_.buffer_));
+
+    std::cout << "sparse resource created" << std::endl;
+
   }
 
-  return true;
 }
+
 
 
 int32_t main(int argc, char* argv[]) {
@@ -1387,11 +1451,6 @@ int32_t main(int argc, char* argv[]) {
   policy->set_window_height(settings_.height_);
   policy->set_size_of_provenance(settings_.prov_);
 
-  if (policy->size_of_provenance() > 0) {
-    std::cout << "json: " << settings_.json_ << std::endl;
-    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
-  }
-
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   
   num_models_ = 0;
@@ -1401,34 +1460,7 @@ int32_t main(int argc, char* argv[]) {
     ++num_models_;
   }
   
-  if(settings_.pvs_ != "") {
-    std::cout << "pvs: " << settings_.pvs_ << std::endl;
-    std::string pvs_grid_file_path = settings_.pvs_;
-    pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
-    pvs_grid_file_path = pvs_grid_file_path + "grid";
-
-    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-    pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
-  }
-  if (settings_.sparse_ != "") {
-    /*
-    std::cout << "sparse: " << settings_.sparse_ << std::endl;
-    std::ifstream in_sparse(settings_.sparse_, std::ios::in | std::ios::binary);
-    std::ifstream in_sparse_meta(settings_.sparse_ + ".meta", std::ios::in | std::ios::binary);
-    lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
-    cache_sparse.cache();
-    in_sparse.close();
-    in_sparse_meta.close();
-
-    std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
-    std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
-    std::cout << cameras.size() << " cameras, " << feature_points.size() << " feature points" << std::endl;
-    */
-  }
-  if (settings_.meta_octree_ != "") {
-    std::cout << "meta_octree: " << settings_.meta_octree_ << std::endl;
-    auto meta_octree = lamure::prov::SparseOctree::load_tree(settings_.meta_octree_);
-  }
+  
  
   glutInit(&argc, argv);
   glutInitContextVersion(4, 4);
@@ -1457,6 +1489,8 @@ int32_t main(int argc, char* argv[]) {
   {
     std::string quad_shader_fs_source;
     std::string quad_shader_vs_source;
+    std::string gl_points_fs_source;
+    std::string gl_points_vs_source;
     
     std::string vis_xyz_vs_source;
     std::string vis_xyz_fs_source;
@@ -1483,6 +1517,8 @@ int32_t main(int argc, char* argv[]) {
 
     if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_gl_points.glslv", gl_points_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_gl_points.glslf", gl_points_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
@@ -1609,6 +1645,28 @@ int32_t main(int argc, char* argv[]) {
   catch (std::exception& e)
   {
       std::cout << e.what() << std::endl;
+  }
+
+  if (policy->size_of_provenance() > 0) {
+    std::cout << "json: " << settings_.json_ << std::endl;
+    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
+  }
+
+  if (settings_.pvs_ != "") {
+    std::cout << "pvs: " << settings_.pvs_ << std::endl;
+    std::string pvs_grid_file_path = settings_.pvs_;
+    pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
+    pvs_grid_file_path = pvs_grid_file_path + "grid";
+
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+    pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
+  }
+
+  create_sparse_resource();
+  
+  if (settings_.meta_octree_ != "") {
+    std::cout << "meta_octree: " << settings_.meta_octree_ << std::endl;
+    auto meta_octree = lamure::prov::SparseOctree::load_tree(settings_.meta_octree_);
   }
 
 

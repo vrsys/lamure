@@ -24,11 +24,18 @@ class SparseCache : public Cacheable<SparsePoint, MetaData>
         _cameras_metadata = vec<MetaData>();
     };
 
-    void cache() override
-    {
+    void cache(bool cameras) {
+        Cacheable::cache();
+        if (cameras) {
+          cache_cameras();
+        }
+    }
+
+    void cache() override {
         Cacheable::cache();
         cache_cameras();
     }
+
 
     const vec<prov::Camera> get_cameras() const { return _cameras; }
     const vec<prov::MetaData> get_cameras_metadata() const { return _cameras_metadata; }
