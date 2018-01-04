@@ -111,7 +111,7 @@ struct resource {
 };
 
 resource brush_resource_;
-resource sparse_resource_;
+std::map<uint32_t, resource> sparse_resources_;
 
 scm::gl::program_ptr quad_shader_;
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
@@ -199,8 +199,8 @@ struct settings {
   scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f};
   scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
   std::string json_ {""};
-  std::string sparse_ {""};
-  std::string meta_octree_ {""};
+  std::map<uint32_t, std::string> sparse_;
+  std::map<uint32_t, std::string> meta_octree_;
   std::string pvs_ {""};
   std::vector<std::string> models_ {std::vector<std::string>()};
   std::vector<scm::math::mat4d> transforms_ {std::vector<scm::math::mat4d>()};
@@ -277,11 +277,33 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
         
           settings.models_.push_back(model);
           settings.transforms_.push_back(transform);
+          settings.sparse_[model_id] = "";
+          settings.meta_octree_[model_id] = "";
+          ++model_id;
 
         }
         else {
-          std::string key = strip_whitespace(line.substr(0, colon));
+
+          std::string key = line.substr(0, colon);
+
+          if (key[0] == '@') {
+            auto ws = line.find_first_of(' ');
+            uint32_t address = atoi(strip_whitespace(line.substr(1, ws-1)).c_str());
+            key = strip_whitespace(line.substr(ws+1, colon-(ws+1)));
+            std::string value = strip_whitespace(line.substr(colon+1));
+
+            if (key == "sparse") {
+              settings.sparse_[address] = value;
+            }
+            else if (key == "meta_octree") {
+              settings.meta_octree_[address] = value;
+            }
+            continue;
+          }
+
+          key = strip_whitespace(key);
           std::string value = strip_whitespace(line.substr(colon+1));
+
           if (key == "width") {
             settings.width_ = std::max(atoi(value.c_str()), 64);
           }
@@ -438,12 +460,6 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "json") {
             settings.json_ = value;
           }
-          else if (key == "sparse") {
-            settings.sparse_ = value;
-          }
-          else if (key == "meta_octree") {
-            settings.meta_octree_ = value;
-          }
           else if (key == "pvs") {
             settings.pvs_ = value;
           }
@@ -535,7 +551,7 @@ void set_lighting_uniforms(scm::gl::program_ptr shader) {
 
 void draw_resources(scm::gl::program_ptr shader) {
 
-  if (brush_resource_.num_primitives_ > 0 || sparse_resource_.num_primitives_ > 0) {
+  if (brush_resource_.num_primitives_ > 0 || sparse_resources_.size() > 0) {
 
     scm::math::mat4d model_matrix = scm::math::mat4d::identity();
     scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
@@ -555,13 +571,28 @@ void draw_resources(scm::gl::program_ptr shader) {
     shader->uniform("show_output_sensitivity", false);
     shader->uniform("channel", 0);
 
-    if (sparse_resource_.num_primitives_ > 0) {
-      shader->uniform("ellipsify", false);
-      context_->bind_vertex_array(sparse_resource_.array_);
-      context_->apply();
-      context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, sparse_resource_.num_primitives_);
+    if (sparse_resources_.size() > 0) {
       
+      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+        if (selection_.selected_model_ != -1) {
+          model_id = selection_.selected_model_;
+        }
+       
+        auto res = sparse_resources_.find(model_id);
+        if (res != sparse_resources_.end()) {
+          if (res->second.num_primitives_ > 0) {
+            shader->uniform("ellipsify", false);
+            context_->bind_vertex_array(res->second.array_);
+            context_->apply();
+            context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, res->second.num_primitives_);
+          }
+        }
+        if (selection_.selected_model_ != -1) {
+          break;
+        }
+      }
     }
+
     if (brush_resource_.num_primitives_ > 0) {
       shader->uniform("ellipsify", true);
       context_->bind_vertex_array(brush_resource_.array_);
@@ -1373,64 +1404,69 @@ void glut_idle() {
 }
 
 
-void create_sparse_resource() {
+void create_sparse_resources() {
 
 
-  if (settings_.sparse_ != "") {
-    
-    std::cout << "sparse: " << settings_.sparse_ << std::endl;
-    std::ifstream in_sparse(settings_.sparse_, std::ios::in | std::ios::binary);
-    std::ifstream in_sparse_meta(settings_.sparse_ + ".meta", std::ios::in | std::ios::binary);
-    lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
-    cache_sparse.cache(false);
-    in_sparse.close();
-    in_sparse_meta.close();
+  for (const auto& sparse : settings_.sparse_) {
+    if (sparse.second != "") {
+      
+      uint32_t model_id = sparse.first;
 
-    std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
-    std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
-    std::cout << "sparse: " << cameras.size() << " cameras, " << feature_points.size() << " features" << std::endl;
+      std::cout << "sparse: " << sparse.second << std::endl;
+      std::ifstream in_sparse(sparse.second, std::ios::in | std::ios::binary);
+      std::ifstream in_sparse_meta(sparse.second + ".meta", std::ios::in | std::ios::binary);
+      lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
+      cache_sparse.cache(false);
+      in_sparse.close();
+      in_sparse_meta.close();
+
+      std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
+      std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
+      std::cout << "sparse: " << cameras.size() << " cameras, " << feature_points.size() << " features" << std::endl;
 
 
-    std::vector<xyz> ready_to_upload;
+      std::vector<xyz> ready_to_upload;
 
-    for (auto& camera : cameras) {
-      ready_to_upload.push_back(
-        xyz{camera.get_translation(),
-          (uint8_t)255, (uint8_t)240, (uint8_t)0, (uint8_t)255,
-          settings_.brush_size_,
-          scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
-      );
+      for (auto& camera : cameras) {
+        ready_to_upload.push_back(
+          xyz{camera.get_translation(),
+            (uint8_t)255, (uint8_t)240, (uint8_t)0, (uint8_t)255,
+            settings_.brush_size_,
+            scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
+        );
+      }
+
+      for (const auto& p : feature_points) {
+        ready_to_upload.push_back(
+          xyz{p.get_position(),
+            (uint8_t)p.get_color().x, (uint8_t)p.get_color().y, (uint8_t)p.get_color().z, (uint8_t)255,
+            settings_.brush_size_, //placeholder
+            scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
+        );
+      }
+
+      resource res;
+      res.num_primitives_ = ready_to_upload.size();
+      res.buffer_.reset();
+      res.array_.reset();
+
+      res.buffer_ = device_->create_buffer(
+        scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * ready_to_upload.size(), &ready_to_upload[0]);
+      res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+        (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
+        (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+        (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+        (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+        (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+        (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
+        (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
+        boost::assign::list_of(res.buffer_));
+
+      sparse_resources_[model_id] = res;
+      std::cout << "sparse resource created" << std::endl;
+
     }
-
-    for (const auto& p : feature_points) {
-      ready_to_upload.push_back(
-        xyz{p.get_position(),
-          (uint8_t)p.get_color().x, (uint8_t)p.get_color().y, (uint8_t)p.get_color().z, (uint8_t)255,
-          settings_.brush_size_, //placeholder
-          scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
-      );
-    }
-
-    sparse_resource_.num_primitives_ = ready_to_upload.size();
-    sparse_resource_.buffer_.reset();
-    sparse_resource_.array_.reset();
-
-    sparse_resource_.buffer_ = device_->create_buffer(
-      scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * ready_to_upload.size(), &ready_to_upload[0]);
-    sparse_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
-      (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
-      (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-      (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-      (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-      (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-      (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
-      (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
-      boost::assign::list_of(sparse_resource_.buffer_));
-
-    std::cout << "sparse resource created" << std::endl;
-
   }
-
 }
 
 
@@ -1679,11 +1715,11 @@ int32_t main(int argc, char* argv[]) {
     pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
   }
 
-  create_sparse_resource();
+  create_sparse_resources();
   
-  if (settings_.meta_octree_ != "") {
-    std::cout << "meta_octree: " << settings_.meta_octree_ << std::endl;
-    auto meta_octree = lamure::prov::SparseOctree::load_tree(settings_.meta_octree_);
+  for (const auto& meta_octree : settings_.meta_octree_) {
+    std::cout << "loading meta_octree for model " << meta_octree.first << std::endl;
+    auto tree = lamure::prov::SparseOctree::load_tree(meta_octree.second);
   }
 
 
