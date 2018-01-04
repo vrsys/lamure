@@ -199,11 +199,11 @@ struct settings {
   scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f};
   scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
   std::string json_ {""};
+  std::string pvs_ {""};
+  std::vector<std::string> models_;
+  std::map<uint32_t, scm::math::mat4d> transforms_;
   std::map<uint32_t, std::string> sparse_;
   std::map<uint32_t, std::string> meta_octree_;
-  std::string pvs_ {""};
-  std::vector<std::string> models_ {std::vector<std::string>()};
-  std::vector<scm::math::mat4d> transforms_ {std::vector<scm::math::mat4d>()};
 
 };
 
@@ -258,25 +258,8 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           std::istringstream line_ss(line);
           line_ss >> model;
 
-          if (line_ss.rdbuf()->in_avail() != 0) {
-            std::string tf_file;
-            line_ss >> tf_file;
-            tf_file = strip_whitespace(tf_file);
-            if (tf_file.size() > 0) {
-              if (tf_file.substr(tf_file.size()-3) == ".tf") {
-                auto vis_filepath = boost::filesystem::canonical(vis_file_name);
-                auto tf_filepath = boost::filesystem::absolute(boost::filesystem::path(tf_file), vis_filepath.parent_path());
-                transform = load_matrix(tf_filepath.string());
-              }
-              else {
-                std::cout << "unsupported transformation file" << std::endl;
-
-              }
-            }
-          }
-        
           settings.models_.push_back(model);
-          settings.transforms_.push_back(transform);
+          settings.transforms_[model_id] = scm::math::mat4d::identity();
           settings.sparse_[model_id] = "";
           settings.meta_octree_[model_id] = "";
           ++model_id;
@@ -292,11 +275,21 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             key = strip_whitespace(line.substr(ws+1, colon-(ws+1)));
             std::string value = strip_whitespace(line.substr(colon+1));
 
-            if (key == "sparse") {
+            if (key == "tf") {
+              settings.transforms_[address] = load_matrix(value);
+              std::cout << "found transform for model id " << address << std::endl;
+            }
+            else if (key == "sparse") {
               settings.sparse_[address] = value;
+              std::cout << "found sparse data for model id " << address << std::endl;
             }
             else if (key == "meta_octree") {
               settings.meta_octree_[address] = value;
+              std::cout << "found meta octree for model id " << address << std::endl;
+            }
+            else {
+              std::cout << "unrecognized key: " << key << std::endl;
+              exit(-1);
             }
             continue;
           }
@@ -462,6 +455,10 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "pvs") {
             settings.pvs_ = value;
+          }
+          else {
+            std::cout << "unrecognized key: " << key << std::endl;
+            exit(-1);
           }
 
           //std::cout << key << " : " << value << std::endl;
@@ -1718,8 +1715,10 @@ int32_t main(int argc, char* argv[]) {
   create_sparse_resources();
   
   for (const auto& meta_octree : settings_.meta_octree_) {
-    std::cout << "loading meta_octree for model " << meta_octree.first << std::endl;
-    auto tree = lamure::prov::SparseOctree::load_tree(meta_octree.second);
+    if (meta_octree.second != "") {
+      std::cout << "loading meta_octree for model " << meta_octree.first << std::endl;
+      auto tree = lamure::prov::SparseOctree::load_tree(meta_octree.second);
+    }
   }
 
 
