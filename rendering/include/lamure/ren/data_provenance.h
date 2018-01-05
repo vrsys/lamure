@@ -29,7 +29,6 @@ class Data_Provenance
   public:
     Data_Provenance() {
       _size_in_bytes = policy::get_instance()->size_of_provenance();
-      //std::cout << "data provenance " << _size_in_bytes << std::endl;
     };
 
     static Data_Provenance parse_json(std::string path)
@@ -100,21 +99,23 @@ class Data_Provenance
             data_provenance.add_item(item_provenance);
         }
 
+        policy::get_instance()->set_size_of_provenance(data_provenance.get_size_in_bytes());
+
         return data_provenance;
     }
 
     std::vector<Item_Provenance> get_items() const { return _items_provenance; };
-    int get_size_in_bytes() const { return _size_in_bytes; };
+    int32_t get_size_in_bytes() const { return _size_in_bytes; };
 
   private:
     void add_item(Item_Provenance &item_provenance)
     {
         _items_provenance.push_back(item_provenance);
-        // _size_in_bytes += item_provenance.get_size_in_bytes();
+        _size_in_bytes += item_provenance.get_size_in_bytes();
     };
 
     std::vector<Item_Provenance> _items_provenance;
-    int _size_in_bytes = 24;
+    int32_t _size_in_bytes;
 };
 }
 } // namespace lamure

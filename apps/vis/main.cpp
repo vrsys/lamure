@@ -105,7 +105,7 @@ scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
 
 struct resource {
-  uint64_t num_primitives_;
+  uint64_t num_primitives_ {0};
   scm::gl::buffer_ptr buffer_;
   scm::gl::vertex_array_ptr array_;
 };
@@ -159,6 +159,12 @@ struct selection {
 
 selection selection_;
 
+struct provenance {
+  uint32_t num_views_ {0};
+};
+
+std::map<uint32_t, provenance> provenance_;
+
 struct settings {
   int32_t width_ {1920};
   int32_t height_ {1080};
@@ -166,7 +172,7 @@ struct settings {
   int32_t vram_ {2048};
   int32_t ram_ {4096};
   int32_t upload_ {32};
-  int32_t prov_ {0};
+  int32_t provenance_ {0};
   float near_plane_ {0.001f};
   float far_plane_ {1000.0f};
   float fov_ {30.0f};
@@ -177,15 +183,18 @@ struct settings {
   float travel_speed_ {20.5f};
   int32_t lod_update_ {1};
   int32_t pvs_cull_ {0};
-  float brush_size_ {0.5f};
+  float lod_point_scale_ {1.0f};
+  float aux_point_size_ {1.0f};
+  float aux_point_scale_ {1.0f};
   int32_t vis_ {0};
   int32_t show_normals_ {0};
   int32_t show_accuracy_ {0};
   int32_t show_radius_deviation_ {0};
   int32_t show_output_sensitivity_ {0};
+  int32_t show_sparse_ {0};
+  int32_t show_views_ {0};
   int32_t channel_ {0};
-  float point_scale_ {1.0f};
-  float error_threshold_ {LAMURE_DEFAULT_THRESHOLD};
+  float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
   int32_t enable_lighting_ {1};
   int32_t use_material_color_ {0};
   scm::math::vec3f material_diffuse_ {0.6f, 0.6f, 0.6f};
@@ -339,11 +348,17 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "pvs_cull") {
             settings.pvs_cull_ = std::max(atoi(value.c_str()), 0);
           }
-          else if (key == "brush_size") {
-            settings.brush_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
+          else if (key == "lod_point_scale") {
+            settings.lod_point_scale_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
+          }
+          else if (key == "aux_point_size") {
+            settings.aux_point_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
+          }
+          else if (key == "lod_error") {
+            settings.lod_error_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
           }
           else if (key == "provenance") {
-            settings.prov_ = std::max(atoi(value.c_str()), 0);
+            settings.provenance_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_normals") {
             settings.show_normals_ = std::max(atoi(value.c_str()), 0);
@@ -357,14 +372,14 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "show_output_sensitivity") {
             settings.show_output_sensitivity_ = std::max(atoi(value.c_str()), 0);
           }
+          else if (key == "show_sparse") {
+            settings.show_sparse_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "show_views") {
+            settings.show_views_ = std::max(atoi(value.c_str()), 0);
+          }
           else if (key == "channel") {
             settings.channel_ = std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "point_scale") {
-            settings.point_scale_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
-          }
-          else if (key == "error") {
-            settings.error_threshold_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
           }
           else if (key == "enable_lighting") {
             settings.enable_lighting_ = std::min(std::max(atoi(value.c_str()), 0), 1);
@@ -470,11 +485,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
   }
 
   //assertions
-  if (settings.prov_ != 0) {
-    if (settings.json_ == "") {
-      std::cout << "error: pls provide a provenance json description or set prov to 0" << std::endl;
-      exit(-1);
-    }
+  if (settings.provenance_ != 0) {
     if (settings.json_.size() > 0) {
       if (settings.json_.substr(settings.json_.size()-5) != ".json") {
         std::cout << "unsupported json file" << std::endl;
@@ -515,7 +526,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
   shader->uniform("near_plane", settings_.near_plane_);
   shader->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
-  shader->uniform("point_size_factor", settings_.point_scale_);
+  shader->uniform("point_size_factor", settings_.lod_point_scale_);
 
   shader->uniform("ellipsify", true);
   shader->uniform("clamped_normal_mode", true);
@@ -560,7 +571,7 @@ void draw_resources(scm::gl::program_ptr shader) {
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 
-    shader->uniform("point_size_factor", settings_.point_scale_);
+    shader->uniform("point_size_factor", settings_.aux_point_scale_);
     
     shader->uniform("show_normals", false);
     shader->uniform("show_accuracy", false);
@@ -568,24 +579,34 @@ void draw_resources(scm::gl::program_ptr shader) {
     shader->uniform("show_output_sensitivity", false);
     shader->uniform("channel", 0);
 
-    if (sparse_resources_.size() > 0) {
-      
-      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-        if (selection_.selected_model_ != -1) {
-          model_id = selection_.selected_model_;
-        }
-       
-        auto res = sparse_resources_.find(model_id);
-        if (res != sparse_resources_.end()) {
-          if (res->second.num_primitives_ > 0) {
-            shader->uniform("ellipsify", false);
-            context_->bind_vertex_array(res->second.array_);
-            context_->apply();
-            context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, res->second.num_primitives_);
+    if (settings_.provenance_) {  
+      if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
+        
+        for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+          if (selection_.selected_model_ != -1) {
+            model_id = selection_.selected_model_;
           }
-        }
-        if (selection_.selected_model_ != -1) {
-          break;
+         
+          auto res = sparse_resources_[model_id];
+          if (res.num_primitives_ > 0) {
+            shader->uniform("ellipsify", false);
+            context_->bind_vertex_array(res.array_);
+            context_->apply();
+
+            uint32_t num_views = provenance_[model_id].num_views_;
+
+            if (settings_.show_views_) {
+              context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, num_views);
+            }
+            if (settings_.show_sparse_) {
+              context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, num_views, 
+                res.num_primitives_-num_views);
+            }
+          
+          }
+          if (selection_.selected_model_ != -1) {
+            break;
+          }
         }
       }
     }
@@ -625,12 +646,17 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     if (selection_.selected_model_ != -1) {
       model_id = selection_.selected_model_;
     }
+    if (settings_.show_sparse_ && sparse_resources_[model_id].num_primitives_ > 0) {
+      if (selection_.selected_model_ != -1) break;
+      else continue; //don't show lod when sparse is already shown
+    }
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
     std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
     const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
     if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
-      continue;
+      if (selection_.selected_model_ != -1) break;
+      else continue;
     }
     
     //uniforms per model
@@ -823,8 +849,6 @@ void glut_display() {
     text_ss << "# nodes: " << std::to_string(rendered_nodes_) << "\n";
     text_ss << "\n";
     text_ss << "vis (e/E): " << settings_.vis_ << "\n";
-    text_ss << "lighting (l): " << settings_.enable_lighting_ << "\n";
-    text_ss << "use point color for lighting (c): " << !settings_.use_material_color_ << "\n";
 
     if (selection_.selected_model_ == -1) {
       text_ss << "datasets: " << num_models_ << "\n";
@@ -832,14 +856,27 @@ void glut_display() {
     else {
       text_ss << "dataset: " << selection_.selected_model_+1 << " / " << num_models_ << "\n";
     }
+
+    if (settings_.provenance_) {
+      text_ss << "sparse (r): " << settings_.show_sparse_ << "\n";
+      text_ss << "views (t): " << settings_.show_views_ << "\n";
+    }
+
     text_ss << "brush (b): " << input_.brush_mode_ << "\n";
-    text_ss << "\n";
-    text_ss << "lod_update (d): " << settings_.lod_update_ << "\n";
-    text_ss << "splatting (q): " << settings_.splatting_ << "\n";
-    text_ss << "pvs (p): " << pvs->is_activated() << "\n";
-    text_ss << "point_scale (u/j): " << std::setprecision(2) << settings_.point_scale_ << "\n";
-    text_ss << "error (i/k): " << std::setprecision(2) << settings_.error_threshold_ << "\n";
     text_ss << "speed (f/F): " << std::setprecision(3) << settings_.travel_speed_ << "\n";
+    text_ss << "\n";
+    text_ss << "splatting (q): " << settings_.splatting_ << "\n";
+    text_ss << "lighting (l): " << settings_.enable_lighting_ << "\n";
+    text_ss << "use point color for lighting (c): " << !settings_.use_material_color_ << "\n";
+
+    text_ss << "\n";
+    text_ss << "lod_point_scale (u/U): " << std::setprecision(2) << settings_.lod_point_scale_ << "\n";
+    if (settings_.provenance_) {
+      text_ss << "aux_point_scale (i/I): " << std::setprecision(2) << settings_.aux_point_scale_ << "\n";
+    }
+    text_ss << "lod_update (d): " << settings_.lod_update_ << "\n";
+    text_ss << "lod_error (o/O): " << std::setprecision(2) << settings_.lod_error_ << "\n";
+    text_ss << "pvs (p): " << pvs->is_activated() << "\n";
     text_ = text_ss.str();
   }
 
@@ -857,7 +894,7 @@ void glut_display() {
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
 
     cuts->send_transform(context_id, m_id, scm::math::mat4f(model_transformations_[m_id]));
-    cuts->send_threshold(context_id, m_id, settings_.error_threshold_);
+    cuts->send_threshold(context_id, m_id, settings_.lod_error_);
     cuts->send_rendered(context_id, m_id);
     
     database->get_model(m_id)->set_transform(scm::math::mat4f(model_transformations_[m_id]));
@@ -907,7 +944,7 @@ void glut_display() {
     context_->set_depth_stencil_state(depth_state_less_);
     
     vis_xyz_pass1_shader_->uniform("near_plane", settings_.near_plane_);
-    vis_xyz_pass1_shader_->uniform("point_size_factor", settings_.point_scale_);
+    vis_xyz_pass1_shader_->uniform("point_size_factor", settings_.lod_point_scale_);
     vis_xyz_pass1_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
     vis_xyz_pass1_shader_->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
 
@@ -1130,13 +1167,12 @@ void brush() {
   }
 
   if (hit) {
-    float brush_offset = settings_.brush_size_;
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
     selection_.brush_.push_back(
       xyz{
-        intersection.position_ + intersection.normal_ * brush_offset,
+        intersection.position_ + intersection.normal_ * settings_.aux_point_size_,
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
-        settings_.brush_size_,
+        settings_.aux_point_size_,
         intersection.normal_});
   }
 
@@ -1216,7 +1252,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
     case 'e':
       ++settings_.vis_;
-      if(settings_.vis_ > (4 + settings_.prov_/sizeof(float))) {
+      if(settings_.vis_ > (4 + data_provenance_.get_size_in_bytes()/sizeof(float))) {
         settings_.vis_ = 0;
       }
       settings_.show_normals_ = (settings_.vis_ == 1);
@@ -1234,7 +1270,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 'E':
       --settings_.vis_;
       if(settings_.vis_ < 0) {
-        settings_.vis_ = (4 + settings_.prov_/sizeof(float));
+        settings_.vis_ = (4 + data_provenance_.get_size_in_bytes()/sizeof(float));
       }
       settings_.show_normals_ = (settings_.vis_ == 1);
       settings_.show_accuracy_ = (settings_.vis_ == 2);
@@ -1246,6 +1282,15 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       else {
         settings_.channel_ = 0;
       }
+      break;
+
+    case 'r':
+      if (!settings_.provenance_) break;
+      settings_.show_sparse_ = !settings_.show_sparse_;
+      break;
+    case 't':
+      if (!settings_.provenance_) break;
+      settings_.show_views_ = !settings_.show_views_;
       break;
 
     case 'h':
@@ -1263,30 +1308,44 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
         break;
       }
 
+    case 'U':
+      if (settings_.lod_point_scale_ >= 0.2) {
+        settings_.lod_point_scale_ -= 0.1;
+      }
+      break;
+
     case 'u':
-      if (settings_.point_scale_ >= 0.2) {
-        settings_.point_scale_ -= 0.1;
+      if (settings_.lod_point_scale_ < 1.9) {
+        settings_.lod_point_scale_ += 0.1;
       }
       break;
 
-    case 'j':
-      if (settings_.point_scale_ < 1.9) {
-        settings_.point_scale_ += 0.1;
+    case 'I':
+      if (!settings_.provenance_) break;
+      if (settings_.aux_point_scale_ >= 0.2) {
+        settings_.aux_point_scale_ -= 0.1;
       }
       break;
-
 
     case 'i':
-      settings_.error_threshold_ -= 0.1f;
-      if (settings_.error_threshold_ < LAMURE_MIN_THRESHOLD)
-        settings_.error_threshold_ = LAMURE_MIN_THRESHOLD;
+      if (!settings_.provenance_) break;
+      if (settings_.aux_point_scale_ < 1.9) {
+        settings_.aux_point_scale_ += 0.1;
+      }
       break;
 
-    case 'k':
-      settings_.error_threshold_ += 0.1f;
-      if (settings_.error_threshold_ > LAMURE_MAX_THRESHOLD)
-        settings_.error_threshold_ = LAMURE_MAX_THRESHOLD;
+    case 'O':
+      settings_.lod_error_ -= 0.1f;
+      if (settings_.lod_error_ < LAMURE_MIN_THRESHOLD)
+        settings_.lod_error_ = LAMURE_MIN_THRESHOLD;
       break;
+
+    case 'o':
+      settings_.lod_error_ += 0.1f;
+      if (settings_.lod_error_ > LAMURE_MAX_THRESHOLD)
+        settings_.lod_error_ = LAMURE_MAX_THRESHOLD;
+      break;
+
 
     case 'l':
       settings_.enable_lighting_ = !settings_.enable_lighting_;
@@ -1344,6 +1403,8 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       settings_.heatmap_max_ = std::max(settings_.heatmap_max_ - 0.1f, 0.0f);
       std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
       break;
+
+
 
     default:
       break;
@@ -1403,6 +1464,9 @@ void glut_idle() {
 
 void create_sparse_resources() {
 
+  if (!settings_.provenance_) {
+    return;
+  }
 
   for (const auto& sparse : settings_.sparse_) {
     if (sparse.second != "") {
@@ -1419,8 +1483,9 @@ void create_sparse_resources() {
 
       std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
       std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
-      std::cout << "sparse: " << cameras.size() << " cameras, " << feature_points.size() << " features" << std::endl;
 
+      provenance_[model_id].num_views_ = cameras.size();
+      std::cout << "sparse: " << cameras.size() << " cameras, " << feature_points.size() << " features" << std::endl;
 
       std::vector<xyz> ready_to_upload;
 
@@ -1428,7 +1493,7 @@ void create_sparse_resources() {
         ready_to_upload.push_back(
           xyz{camera.get_translation(),
             (uint8_t)255, (uint8_t)240, (uint8_t)0, (uint8_t)255,
-            settings_.brush_size_,
+            settings_.aux_point_size_,
             scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
         );
       }
@@ -1437,7 +1502,7 @@ void create_sparse_resources() {
         ready_to_upload.push_back(
           xyz{p.get_position(),
             (uint8_t)p.get_color().x, (uint8_t)p.get_color().y, (uint8_t)p.get_color().z, (uint8_t)255,
-            settings_.brush_size_, //placeholder
+            settings_.aux_point_size_,
             scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
         );
       }
@@ -1460,10 +1525,23 @@ void create_sparse_resources() {
         boost::assign::list_of(res.buffer_));
 
       sparse_resources_[model_id] = res;
-      std::cout << "sparse resource created" << std::endl;
+      
+      //init line buffers
+      //std::map<uint32_t, resource> frusta_resources_;
+
+
+      
 
     }
   }
+
+  for (const auto& meta_octree : settings_.meta_octree_) {
+    if (meta_octree.second != "") {
+      std::cout << "loading meta_octree for model " << meta_octree.first << std::endl;
+      auto tree = lamure::prov::SparseOctree::load_tree(meta_octree.second);
+    }
+  }
+
 }
 
 
@@ -1490,6 +1568,11 @@ int32_t main(int argc, char* argv[]) {
     : settings_.channel_ > 0 ? 3+settings_.channel_
     : 0;
 
+  if (settings_.provenance_ && settings_.json_ != "") {
+    std::cout << "json: " << settings_.json_ << std::endl;
+    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
+    std::cout << "size of provenance: " << data_provenance_.get_size_in_bytes() << std::endl;
+  }
  
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_max_upload_budget_in_mb(settings_.upload_);
@@ -1499,7 +1582,6 @@ int32_t main(int argc, char* argv[]) {
   render_height_ = settings_.height_ / settings_.frame_div_;
   policy->set_window_width(settings_.width_);
   policy->set_window_height(settings_.height_);
-  policy->set_size_of_provenance(settings_.prov_);
 
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   
@@ -1539,8 +1621,6 @@ int32_t main(int argc, char* argv[]) {
   {
     std::string quad_shader_fs_source;
     std::string quad_shader_vs_source;
-    std::string gl_points_fs_source;
-    std::string gl_points_vs_source;
     
     std::string vis_xyz_vs_source;
     std::string vis_xyz_fs_source;
@@ -1567,8 +1647,6 @@ int32_t main(int argc, char* argv[]) {
 
     if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_gl_points.glslv", gl_points_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_gl_points.glslf", gl_points_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
@@ -1697,10 +1775,6 @@ int32_t main(int argc, char* argv[]) {
       std::cout << e.what() << std::endl;
   }
 
-  if (policy->size_of_provenance() > 0) {
-    std::cout << "json: " << settings_.json_ << std::endl;
-    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
-  }
 
   if (settings_.pvs_ != "") {
     std::cout << "pvs: " << settings_.pvs_ << std::endl;
@@ -1714,12 +1788,6 @@ int32_t main(int argc, char* argv[]) {
 
   create_sparse_resources();
   
-  for (const auto& meta_octree : settings_.meta_octree_) {
-    if (meta_octree.second != "") {
-      std::cout << "loading meta_octree for model " << meta_octree.first << std::endl;
-      auto tree = lamure::prov::SparseOctree::load_tree(meta_octree.second);
-    }
-  }
 
 
   glutShowWindow();

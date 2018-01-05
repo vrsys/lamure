@@ -147,6 +147,21 @@ GLFWwindow *init_glfw_and_glew()
 
 Controller *load_scene_depending_on_arguments(int argc, char *argv[])
 {
+
+
+    lamure::ren::policy *policy = lamure::ren::policy::get_instance();
+    policy->set_max_upload_budget_in_mb(64);
+
+    policy->set_render_budget_in_mb(1024*4);
+    // policy->set_render_budget_in_mb(1024 * 6);
+    // policy->set_render_budget_in_mb(1024 * 40);
+    // policy->set_render_budget_in_mb(256);
+
+    policy->set_out_of_core_budget_in_mb(1024*8);
+    // policy->set_out_of_core_budget_in_mb(1024 * 3);
+    // policy->set_out_of_core_budget_in_mb(1024 * 20);
+    // policy->set_out_of_core_budget_in_mb(256);
+
     Scene scene;
     if(cmd_option_exists(argv, argv + argc, "-sparse"))
     {
@@ -177,7 +192,7 @@ Controller *load_scene_depending_on_arguments(int argc, char *argv[])
         std::cout << item.get_type() << std::endl;
         std::cout << item.get_visualization() << std::endl;
     }
-    std::cout << data_provenance.get_size_in_bytes() << std::endl;
+    std::cout << "size of provenance: " << data_provenance.get_size_in_bytes() << std::endl;
 
     controller = new Controller(scene, argv, width_window, height_window, name_file_lod, name_file_tree, image_directory, data_provenance);
     return controller;
@@ -206,29 +221,9 @@ int main(int argc, char *argv[])
     }
 
     
-    lamure::ren::policy *policy = lamure::ren::policy::get_instance();
-    policy->set_max_upload_budget_in_mb(64);
-
-    policy->set_render_budget_in_mb(1024*4);
-    // policy->set_render_budget_in_mb(1024 * 6);
-    // policy->set_render_budget_in_mb(1024 * 40);
-    // policy->set_render_budget_in_mb(256);
-
-    policy->set_out_of_core_budget_in_mb(1024*8);
-    // policy->set_out_of_core_budget_in_mb(1024 * 3);
-    // policy->set_out_of_core_budget_in_mb(1024 * 20);
-    // policy->set_out_of_core_budget_in_mb(256);
-
-    //enable provenance in backend
-    policy->set_size_of_provenance(24);
-
-    std::cout << "SETTING POLICY" << std::endl;
-
     GLFWwindow *window = init_glfw_and_glew();
 
     load_scene_depending_on_arguments(argc, argv);
-
-    std::cout << "start rendering" << std::endl;
 
     ImGui_ImplGlfwGL3_Init(window, true);
 
