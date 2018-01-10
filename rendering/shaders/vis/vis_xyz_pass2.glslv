@@ -8,11 +8,15 @@
 #version 420 core
 
 uniform mat4 mvp_matrix;
+uniform mat4 model_matrix;
 uniform mat4 model_view_matrix;
 uniform mat4 inv_mv_matrix;
 uniform mat4 model_to_screen_matrix;
 
 uniform float near_plane;
+
+uniform bool face_eye;
+uniform vec3 eye;
 
 uniform float point_size_factor;
 uniform float model_radius_scale;
@@ -49,7 +53,17 @@ out VertexData {
 INCLUDE vis_color.glsl
 
 void main() {
-  vec3 ms_n = normalize(in_normal.xyz);
+  vec3 normal = in_normal;
+  if (face_eye) {
+    normal = normalize(eye-(model_matrix*vec4(in_position, 1.0)).xyz);
+  }
+ 
+  // precalculate tangent vectors to establish the surfel shape
+  vec3 tangent   = vec3(0.0);
+  vec3 bitangent = vec3(0.0);
+  compute_tangent_vectors(normal, in_radius, tangent, bitangent);
+
+  vec3 ms_n = normalize(normal.xyz);
   vec3 ms_u;
 
   //compute tangent vectors
@@ -65,8 +79,13 @@ void main() {
   VertexOut.pass_ms_u = normalize(ms_u) * point_size_factor * model_radius_scale * in_radius;
   VertexOut.pass_ms_v = normalize(cross(ms_n, ms_u)) * point_size_factor * model_radius_scale * in_radius;
 
-  VertexOut.pass_normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
-  VertexOut.pass_point_color = get_color(in_position, in_normal, vec3(in_r, in_g, in_b), in_radius);
+  if (!face_eye) {
+    normal = normalize((inv_mv_matrix * vec4(normal, 0.0)).xyz );
+  }
+
+  VertexOut.pass_normal = normal;
+
+  VertexOut.pass_point_color = get_color(in_position, normal, vec3(in_r, in_g, in_b), in_radius);
   gl_Position = vec4(in_position, 1.0);
 
   OPTIONAL_BEGIN

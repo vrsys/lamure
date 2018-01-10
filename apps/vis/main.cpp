@@ -535,6 +535,8 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("channel", settings_.channel_);
   shader->uniform("heatmap", (bool)settings_.heatmap_);
 
+  shader->uniform("face_eye", false);
+
   shader->uniform("heatmap_min", settings_.heatmap_min_);
   shader->uniform("heatmap_max", settings_.heatmap_max_);
   shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
@@ -556,6 +558,11 @@ void draw_resources(scm::gl::program_ptr shader) {
 
   if (brush_resource_.num_primitives_ > 0 || sparse_resources_.size() > 0) {
 
+    set_uniforms(shader);
+    if(settings_.enable_lighting_) {
+      set_lighting_uniforms(shader);
+    }
+
     scm::math::mat4d model_matrix = scm::math::mat4d::identity();
     scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
     scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
@@ -563,10 +570,17 @@ void draw_resources(scm::gl::program_ptr shader) {
     scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
 
     shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+    shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 
     shader->uniform("point_size_factor", settings_.aux_point_scale_);
+
+    scm::math::mat4f inv_view = scm::math::inverse(scm::math::mat4f(view_matrix));
+    scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
+
+    shader->uniform("eye", eye);
+    shader->uniform("face_eye", true);
     
     shader->uniform("show_normals", false);
     shader->uniform("show_accuracy", false);
@@ -576,12 +590,13 @@ void draw_resources(scm::gl::program_ptr shader) {
 
     if (settings_.provenance_) {  
       if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
-        
+
+
         for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
           if (selection_.selected_model_ != -1) {
             model_id = selection_.selected_model_;
           }
-         
+          
           auto res = sparse_resources_[model_id];
           if (res.num_primitives_ > 0) {
             //shader->uniform("ellipsify", false);
@@ -662,6 +677,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
 
     shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+    shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 

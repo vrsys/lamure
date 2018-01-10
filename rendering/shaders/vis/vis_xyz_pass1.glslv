@@ -15,11 +15,15 @@ out VertexData {
 } VertexOut;
 
 uniform mat4 mvp_matrix;
+uniform mat4 model_matrix;
 uniform mat4 model_view_matrix;
 uniform mat4 inv_mv_matrix;
 uniform mat4 model_to_screen_matrix;
 
 uniform float near_plane;
+
+uniform bool face_eye;
+uniform vec3 eye;
 
 uniform float point_size_factor;
 uniform float model_radius_scale;
@@ -37,12 +41,19 @@ layout(location = 6) in vec3 in_normal;
 INCLUDE ../common/compute_tangent_vectors.glsl
 
 void main() {
-  
-  vec3 tangent = vec3(0.0);
+  vec3 normal = in_normal;
+  if (face_eye) {
+    normal = normalize(eye-(model_matrix*vec4(in_position, 1.0)).xyz);
+  }
+ 
+  // precalculate tangent vectors to establish the surfel shape
+  vec3 tangent   = vec3(0.0);
   vec3 bitangent = vec3(0.0);
+  compute_tangent_vectors(normal, in_radius, tangent, bitangent);
 
-  compute_tangent_vectors(in_normal, in_radius, tangent, bitangent);
-  vec3 normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz);
+  if (!face_eye) {
+    normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
+  }
 
   VertexOut.pass_ms_u = tangent;
   VertexOut.pass_ms_v = bitangent;

@@ -76,12 +76,11 @@ vec3 get_output_sensitivity_color(in vec3 position, in vec3 normal, in float rad
 
 vec3 get_color(in vec3 position, in vec3 normal, in vec3 color, in float radius) {
 
-  vec4 view_normal = inv_mv_matrix * vec4(normal,0.0f);
   float prov_value = 0.0;
   vec3 view_color = vec3(0.0);
 
   if (show_normals) {
-    vec4 vis_normal = model_radius_scale * view_normal;
+    vec4 vis_normal = model_radius_scale * vec4(normal, 0.0);
     if( vis_normal.z < 0 ) {
       vis_normal = vis_normal * -1;
     }
