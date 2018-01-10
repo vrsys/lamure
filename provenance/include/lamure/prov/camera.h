@@ -48,6 +48,8 @@ class Camera
     quatf &get_orientation() { return _orientation; }
     string &get_file_name() { return _im_file_name; }
     vec3f &get_translation() { return _translation; }
+    float get_focal_length() { return _focal_length; }
+    
     friend ifstream &operator>>(ifstream &is, Camera &camera)
     {
         is.read(reinterpret_cast<char *>(&camera._index), 2);

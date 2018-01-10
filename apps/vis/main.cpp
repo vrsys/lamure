@@ -79,6 +79,9 @@ scm::gl::program_ptr vis_xyz_qz_shader_;
 scm::gl::program_ptr vis_xyz_qz_pass1_shader_;
 scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
 
+scm::gl::program_ptr vis_quad_shader_;
+scm::gl::program_ptr vis_line_shader_;
+
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
 scm::gl::texture_2d_ptr fbo_depth_buffer_;
@@ -95,7 +98,6 @@ scm::gl::depth_stencil_state_ptr depth_state_disable_;
 scm::gl::depth_stencil_state_ptr depth_state_less_;
 scm::gl::depth_stencil_state_ptr depth_state_without_writing_;
 scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
-scm::gl::rasterizer_state_ptr change_point_size_in_shader_state_;
 
 scm::gl::blend_state_ptr color_blending_state_;
 scm::gl::blend_state_ptr color_no_blending_state_;
@@ -111,8 +113,8 @@ struct resource {
 
 resource brush_resource_;
 std::map<uint32_t, resource> sparse_resources_;
+std::map<uint32_t, resource> frusta_resources_;
 
-scm::gl::program_ptr quad_shader_;
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 scm::gl::text_renderer_ptr text_renderer_;
 scm::gl::text_ptr renderable_text_;
@@ -541,9 +543,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("heatmap_max", settings_.heatmap_max_);
   shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
   shader->uniform("heatmap_max_color", settings_.heatmap_color_max_);
-}
 
-void set_lighting_uniforms(scm::gl::program_ptr shader) {
 
   shader->uniform("use_material_color", settings_.use_material_color_);
   shader->uniform("material_diffuse", settings_.material_diffuse_);
@@ -551,6 +551,7 @@ void set_lighting_uniforms(scm::gl::program_ptr shader) {
 
   shader->uniform("ambient_light_color", settings_.ambient_light_color_);
   shader->uniform("point_light_color", settings_.point_light_color_);
+
 }
 
 
@@ -558,49 +559,44 @@ void draw_resources(scm::gl::program_ptr shader) {
 
   if (brush_resource_.num_primitives_ > 0 || sparse_resources_.size() > 0) {
 
-    set_uniforms(shader);
-    if(settings_.enable_lighting_) {
-      set_lighting_uniforms(shader);
-    }
-
-    scm::math::mat4d model_matrix = scm::math::mat4d::identity();
-    scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
-    scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
-    scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
-    scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
-
-    shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
-    shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
-    shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
-    shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
-
-    shader->uniform("point_size_factor", settings_.aux_point_scale_);
-
-    scm::math::mat4f inv_view = scm::math::inverse(scm::math::mat4f(view_matrix));
-    scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
-
-    shader->uniform("eye", eye);
-    shader->uniform("face_eye", true);
-    
-    shader->uniform("show_normals", false);
-    shader->uniform("show_accuracy", false);
-    shader->uniform("show_radius_deviation", false);
-    shader->uniform("show_output_sensitivity", false);
-    shader->uniform("channel", 0);
-
     if (settings_.provenance_) {  
       if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
 
+        set_uniforms(shader);
+
+        scm::math::mat4d model_matrix = scm::math::mat4d::identity();
+        scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
+        scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
+        scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
+        scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
+
+        shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+        shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
+        shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+        shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+
+        shader->uniform("point_size_factor", settings_.aux_point_scale_);
+
+        scm::math::mat4f inv_view = scm::math::inverse(scm::math::mat4f(view_matrix));
+        scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
+
+        shader->uniform("eye", eye);
+        shader->uniform("face_eye", true);
+        
+        shader->uniform("show_normals", false);
+        shader->uniform("show_accuracy", false);
+        shader->uniform("show_radius_deviation", false);
+        shader->uniform("show_output_sensitivity", false);
+        shader->uniform("channel", 0);
 
         for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
           if (selection_.selected_model_ != -1) {
             model_id = selection_.selected_model_;
           }
           
-          auto res = sparse_resources_[model_id];
-          if (res.num_primitives_ > 0) {
-            //shader->uniform("ellipsify", false);
-            context_->bind_vertex_array(res.array_);
+          auto s_res = sparse_resources_[model_id];
+          if (s_res.num_primitives_ > 0) {
+            context_->bind_vertex_array(s_res.array_);
             context_->apply();
 
             uint32_t num_views = provenance_[model_id].num_views_;
@@ -610,20 +606,22 @@ void draw_resources(scm::gl::program_ptr shader) {
             }
             if (settings_.show_sparse_) {
               context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, num_views, 
-                res.num_primitives_-num_views);
+                s_res.num_primitives_-num_views);
             }
           
           }
+
           if (selection_.selected_model_ != -1) {
             break;
           }
         }
+
       }
     }
 
     if (brush_resource_.num_primitives_ > 0) {
-      //shader->uniform("ellipsify", true);
       context_->bind_vertex_array(brush_resource_.array_);
+      shader->uniform("face_eye", false);
       context_->apply();
       context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, brush_resource_.num_primitives_);
     }
@@ -656,9 +654,11 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     if (selection_.selected_model_ != -1) {
       model_id = selection_.selected_model_;
     }
+    bool draw = true;
     if (settings_.show_sparse_ && sparse_resources_[model_id].num_primitives_ > 0) {
       if (selection_.selected_model_ != -1) break;
-      else continue; //don't show lod when sparse is already shown
+      //else continue; //don't show lod when sparse is already shown
+      else draw = false;
     }
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
@@ -666,7 +666,8 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
     if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
       if (selection_.selected_model_ != -1) break;
-      else continue;
+      //else continue;
+      else draw = false;
     }
     
     //uniforms per model
@@ -718,11 +719,14 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 
         context_->apply();
 
-        context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
-          (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+        if (draw) {
+          context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
+            (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+          rendered_splats_ += surfels_per_node;
+          ++rendered_nodes_;
+        }
 
-        rendered_splats_ += surfels_per_node;
-        ++rendered_nodes_;
+        
       
       }
     }
@@ -940,6 +944,8 @@ void glut_display() {
   
   create_brush_resource();
 
+  context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+
   if (settings_.splatting_) {
     //2 pass splatting
     //PASS 1
@@ -948,11 +954,9 @@ void glut_display() {
     context_->clear_depth_stencil_buffer(pass1_fbo_);
     context_->set_frame_buffer(pass1_fbo_);
       
-    
     context_->bind_program(vis_xyz_pass1_shader_);
     context_->set_blend_state(color_no_blending_state_);
     context_->set_depth_stencil_state(depth_state_less_);
-    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
 
     set_uniforms(vis_xyz_pass1_shader_);
 
@@ -966,11 +970,9 @@ void glut_display() {
     //PASS 2
 
     context_->clear_color_buffer(pass2_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
-
-    if(settings_.enable_lighting_) {
-      context_->clear_color_buffer(pass2_fbo_ , 1, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
-      context_->clear_color_buffer(pass2_fbo_ , 2, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
-    }
+    context_->clear_color_buffer(pass2_fbo_ , 1, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
+    context_->clear_color_buffer(pass2_fbo_ , 2, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
+    
     context_->set_frame_buffer(pass2_fbo_);
 
     context_->set_blend_state(color_blending_state_);
@@ -1010,9 +1012,7 @@ void glut_display() {
 
     context_->bind_program(selected_pass3_shading_program);
 
-    if(settings_.enable_lighting_) {
-      set_lighting_uniforms(selected_pass3_shading_program);
-    }
+    set_uniforms(selected_pass3_shading_program);
 
     selected_pass3_shading_program->uniform("background_color", 
       scm::math::vec3f(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z));
@@ -1045,17 +1045,12 @@ void glut_display() {
       selected_single_pass_shading_program = vis_xyz_lighting_shader_;
     }
 
-
     context_->bind_program(selected_single_pass_shading_program);
-    context_->set_rasterizer_state(change_point_size_in_shader_state_);
     context_->set_blend_state(color_no_blending_state_);
     context_->set_depth_stencil_state(depth_state_less_);
     
     set_uniforms(selected_single_pass_shading_program);
 
-    if(settings_.enable_lighting_) {
-      set_lighting_uniforms(selected_single_pass_shading_program);
-    }
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
 
@@ -1070,11 +1065,12 @@ void glut_display() {
   context_->clear_default_depth_stencil_buffer();
   context_->clear_default_color_buffer();
   context_->set_default_frame_buffer();
+  context_->set_depth_stencil_state(depth_state_disable_);
   
-  context_->bind_program(quad_shader_);
+  context_->bind_program(vis_quad_shader_);
   
   context_->bind_texture(fbo_color_buffer_, filter_linear_, 0);
-  quad_shader_->uniform("gamma_correction", (bool)settings_.gamma_correction_);
+  vis_quad_shader_->uniform("gamma_correction", (bool)settings_.gamma_correction_);
 
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(settings_.width_, settings_.height_)));
   context_->apply();
@@ -1084,6 +1080,34 @@ void glut_display() {
   if (settings_.info_) {
     renderable_text_->text_string(text_);
     text_renderer_->draw_shadowed(context_, scm::math::vec2i(28, settings_.height_- 40), renderable_text_);
+  }
+
+  if (settings_.show_views_) {
+    context_->bind_program(vis_line_shader_);
+
+    scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
+    scm::math::mat4f view_matrix = camera_->get_view_matrix();   
+    vis_line_shader_->uniform("view_matrix", view_matrix);
+    vis_line_shader_->uniform("projection_matrix", projection_matrix);
+    
+    for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+      if (selection_.selected_model_ != -1) {
+        model_id = selection_.selected_model_;
+      }
+      
+      auto f_res = frusta_resources_[model_id];
+      if (f_res.num_primitives_ > 0) {
+        context_->bind_vertex_array(f_res.array_);
+        context_->apply();
+        context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
+        //std::cout << f_res.num_primitives_ << std::endl;
+
+      }
+
+      if (selection_.selected_model_ != -1) {
+        break;
+      }
+    }
   }
 
   rendering_ = false;
@@ -1287,10 +1311,12 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 'r':
       if (!settings_.provenance_) break;
       settings_.show_sparse_ = !settings_.show_sparse_;
+      if (settings_.show_sparse_) settings_.enable_lighting_ = false;
       break;
     case 't':
       if (!settings_.provenance_) break;
       settings_.show_views_ = !settings_.show_views_;
+      if (settings_.show_views_) settings_.enable_lighting_ = false;
       break;
 
     case 'h':
@@ -1507,14 +1533,14 @@ void create_sparse_resources() {
         );
       }
 
-      resource res;
-      res.num_primitives_ = ready_to_upload.size();
-      res.buffer_.reset();
-      res.array_.reset();
+      resource point_res;
+      point_res.num_primitives_ = ready_to_upload.size();
+      point_res.buffer_.reset();
+      point_res.array_.reset();
 
-      res.buffer_ = device_->create_buffer(
+      point_res.buffer_ = device_->create_buffer(
         scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * ready_to_upload.size(), &ready_to_upload[0]);
-      res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+      point_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
         (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
         (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
         (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
@@ -1522,15 +1548,68 @@ void create_sparse_resources() {
         (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
         (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
         (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
-        boost::assign::list_of(res.buffer_));
+        boost::assign::list_of(point_res.buffer_));
 
-      sparse_resources_[model_id] = res;
+      sparse_resources_[model_id] = point_res;
       
       //init line buffers
-      //std::map<uint32_t, resource> frusta_resources_;
+      resource line_res;
+      line_res.buffer_.reset();
+      line_res.array_.reset();
 
+   
+      auto root_bb = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
+      auto root_bb_min = scm::math::mat4f(model_transformations_[model_id]) * root_bb.min_vertex();
+      auto root_bb_max = scm::math::mat4f(model_transformations_[model_id]) * root_bb.max_vertex();
+      auto model_dim = scm::math::length(root_bb_max - root_bb_min);
 
-      
+      std::vector<scm::math::vec3f> lines_to_upload;
+      for (auto& camera : cameras) {
+
+        float frac = 30.f;
+        float img_w_half = (model_dim/frac)*0.5f;
+        float img_h_half = (model_dim/frac)*0.5f;
+        float focal_length = model_dim/frac;
+
+        auto translation = scm::math::make_translation(camera.get_translation());
+        auto rotation = scm::math::mat4f(camera.get_orientation().to_matrix());
+        auto transform = translation * rotation;
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
+        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
+        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
+
+        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
+
+      }
+
+      line_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
+        scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * lines_to_upload.size(), &lines_to_upload[0]);
+      line_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+        (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
+        boost::assign::list_of(line_res.buffer_));
+
+      line_res.num_primitives_ = lines_to_upload.size();
+
+      frusta_resources_[model_id] = line_res;
 
     }
   }
@@ -1620,8 +1699,10 @@ int32_t main(int argc, char* argv[]) {
   
   try
   {
-    std::string quad_shader_fs_source;
-    std::string quad_shader_vs_source;
+    std::string vis_quad_vs_source;
+    std::string vis_quad_fs_source;
+    std::string vis_line_vs_source;
+    std::string vis_line_fs_source;
     
     std::string vis_xyz_vs_source;
     std::string vis_xyz_gs_source;
@@ -1651,8 +1732,10 @@ int32_t main(int argc, char* argv[]) {
     std::string vis_xyz_pass3_vs_lighting_source;
     std::string vis_xyz_pass3_fs_lighting_source;
 
-    if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
+    if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", vis_quad_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", vis_quad_fs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_line.glslv", vis_line_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_line.glslf", vis_line_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslg", vis_xyz_gs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_source)
@@ -1681,12 +1764,21 @@ int32_t main(int argc, char* argv[]) {
       return 1;
     }
 
-    quad_shader_ = device_->create_program(
+    vis_quad_shader_ = device_->create_program(
       boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, quad_shader_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, quad_shader_fs_source)));
-    if (!quad_shader_) {
-      std::cout << "error creating shader quad_shader_ program" << std::endl;
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_quad_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_quad_fs_source)));
+    if (!vis_quad_shader_) {
+      std::cout << "error creating shader vis_quad_shader_ program" << std::endl;
+      return 1;
+    }
+
+    vis_line_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_line_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_line_fs_source)));
+    if (!vis_line_shader_) {
+      std::cout << "error creating shader vis_line_shader_ program" << std::endl;
       return 1;
     }
 
@@ -1822,7 +1914,6 @@ int32_t main(int argc, char* argv[]) {
   depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
   depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
 
-  change_point_size_in_shader_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
   no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
 
   filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);  
