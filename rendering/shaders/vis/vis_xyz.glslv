@@ -9,13 +9,14 @@
 
 
 out VertexData {
-    vec3 color;
-    vec4 nor;
-    float rad;
-    float pointSize;
-    float mv_vertex_depth;
+    //output to geometry shader
+    vec3 pass_ms_u;
+    vec3 pass_ms_v;
+
+    vec3 pass_point_color;
+    vec3 pass_normal;
     OPTIONAL_BEGIN
-        vec3 mv_vertex_position;
+      vec3 mv_vertex_position;
     OPTIONAL_END
 } VertexOut;
 
@@ -24,7 +25,6 @@ uniform mat4 model_view_matrix;
 uniform mat4 inv_mv_matrix;
 uniform mat4 model_to_screen_matrix;
 
-uniform float height_divided_by_top_minus_bottom;
 uniform float near_plane;
 
 uniform float point_size_factor;
@@ -46,37 +46,33 @@ layout(location = 10) in float prov4;
 layout(location = 11) in float prov5;
 layout(location = 12) in float prov6;
 
+
 INCLUDE vis_color.glsl
 
 void main()
 {
 
-  if (in_radius == 0.0f) {
-    gl_Position = vec4(2.0,2.0,2.0,1.0);
-  }
-  else {
 
-    vec4 pos = mvp_matrix * vec4(in_position, 1.0);
+  // precalculate tangent vectors to establish the surfel shape
+  vec3 tangent   = vec3(0.0);
+  vec3 bitangent = vec3(0.0);
+  compute_tangent_vectors(in_normal, in_radius, tangent, bitangent);
+
+  // finalize normal and tangents
+  vec3 normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
+
+  // finalize color with provenance overlay
+  vec3 in_out_color = get_color(in_position, in_normal, vec3(in_r, in_g, in_b), in_radius);
+
+  // passed attributes: vertex shader -> geometry shader
+  VertexOut.pass_ms_u = tangent;
+  VertexOut.pass_ms_v = bitangent;
+  VertexOut.pass_normal = normal;
+  gl_Position = vec4(in_position, 1.0);
+  VertexOut.pass_point_color = in_out_color;
+
+  OPTIONAL_BEGIN
     vec4 pos_es = model_view_matrix * vec4(in_position, 1.0f);
-    gl_Position = pos;
-
-    float scaled_radius = model_radius_scale * in_radius * point_size_factor;
-    vec4 normal = inv_mv_matrix * vec4(in_normal,0.0f);
-
-    float ps = 3.0*(scaled_radius) * (near_plane/-pos_es.z)* height_divided_by_top_minus_bottom;
-
-    VertexOut.color = get_color(in_position, in_normal, vec3(in_r, in_g, in_b), in_radius);
-    VertexOut.nor = normal;
-    gl_PointSize = ps;
-    VertexOut.pointSize = ps;
-    VertexOut.mv_vertex_depth = (pos_es).z;
-    VertexOut.rad = (scaled_radius);
-
-    OPTIONAL_BEGIN
-      VertexOut.mv_vertex_position = pos_es.xyz;
-    OPTIONAL_END
-
-  }
-
-
+    VertexOut.mv_vertex_position = pos_es.xyz;
+  OPTIONAL_END
 }

@@ -91,10 +91,9 @@ scm::gl::texture_2d_ptr pass2_normal_buffer_;
 scm::gl::texture_2d_ptr pass2_view_space_pos_buffer_;
 scm::gl::texture_2d_ptr pass2_depth_buffer_;
 
-scm::gl::texture_2d_ptr gaussian_texture_;
-
 scm::gl::depth_stencil_state_ptr depth_state_disable_;
 scm::gl::depth_stencil_state_ptr depth_state_less_;
+scm::gl::depth_stencil_state_ptr depth_state_without_writing_;
 scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
 scm::gl::rasterizer_state_ptr change_point_size_in_shader_state_;
 
@@ -525,12 +524,8 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
   shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
   shader->uniform("near_plane", settings_.near_plane_);
-  shader->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
+  shader->uniform("far_plane", settings_.far_plane_);
   shader->uniform("point_size_factor", settings_.lod_point_scale_);
-
-  shader->uniform("ellipsify", true);
-  shader->uniform("clamped_normal_mode", true);
-  shader->uniform("max_deform_ratio", 0.35f);
 
   shader->uniform("show_normals", (bool)settings_.show_normals_);
   shader->uniform("show_accuracy", (bool)settings_.show_accuracy_);
@@ -589,7 +584,7 @@ void draw_resources(scm::gl::program_ptr shader) {
          
           auto res = sparse_resources_[model_id];
           if (res.num_primitives_ > 0) {
-            shader->uniform("ellipsify", false);
+            //shader->uniform("ellipsify", false);
             context_->bind_vertex_array(res.array_);
             context_->apply();
 
@@ -612,7 +607,7 @@ void draw_resources(scm::gl::program_ptr shader) {
     }
 
     if (brush_resource_.num_primitives_ > 0) {
-      shader->uniform("ellipsify", true);
+      //shader->uniform("ellipsify", true);
       context_->bind_vertex_array(brush_resource_.array_);
       context_->apply();
       context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, brush_resource_.num_primitives_);
@@ -940,17 +935,10 @@ void glut_display() {
     
     context_->bind_program(vis_xyz_pass1_shader_);
     context_->set_blend_state(color_no_blending_state_);
-    context_->set_rasterizer_state(change_point_size_in_shader_state_);
     context_->set_depth_stencil_state(depth_state_less_);
-    
-    vis_xyz_pass1_shader_->uniform("near_plane", settings_.near_plane_);
-    vis_xyz_pass1_shader_->uniform("point_size_factor", settings_.lod_point_scale_);
-    vis_xyz_pass1_shader_->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
-    vis_xyz_pass1_shader_->uniform("far_minus_near_plane", settings_.far_plane_-settings_.near_plane_);
+    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
 
-    vis_xyz_pass1_shader_->uniform("ellipsify", true);
-    vis_xyz_pass1_shader_->uniform("clamped_normal_mode", true);
-    vis_xyz_pass1_shader_->uniform("max_deform_ratio", 0.35f);
+    set_uniforms(vis_xyz_pass1_shader_);
 
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
@@ -970,7 +958,8 @@ void glut_display() {
     context_->set_frame_buffer(pass2_fbo_);
 
     context_->set_blend_state(color_blending_state_);
-    context_->set_depth_stencil_state(depth_state_disable_);
+    context_->set_depth_stencil_state(depth_state_without_writing_);
+    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
 
     auto selected_pass2_shading_program = vis_xyz_pass2_shader_;
 
@@ -979,12 +968,6 @@ void glut_display() {
     }
 
     context_->bind_program(selected_pass2_shading_program);
-    
-    selected_pass2_shading_program->uniform("depth_texture_pass1", 0);
-    selected_pass2_shading_program->uniform("pointsprite_texture", 1);
-
-    context_->bind_texture(pass1_depth_buffer_, filter_nearest_, 0);
-    context_->bind_texture(gaussian_texture_, filter_nearest_, 1);
 
     set_uniforms(selected_pass2_shading_program);
 
@@ -1193,6 +1176,7 @@ void create_framebuffers() {
   pass2_fbo_ = device_->create_frame_buffer();
   pass2_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGBA_32F, 1, 1, 1);
   pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
+  pass2_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
 
   // begin: optional block
   pass2_normal_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGB_32F, 1, 1, 1);
@@ -1553,8 +1537,9 @@ int32_t main(int argc, char* argv[]) {
     vis_file = std::string(argv[1]);
   }
   else {
-    std::cout << "Usage: " << argv[0] << " <vis_file.vis>\n" << 
-      "\n";
+    std::cout << "Usage: " << argv[0] << " <vis_file.vis>" << std::endl;
+    std::cout << "\tHELP: to render a single model use:" << std::endl;
+    std::cout << "\techo <input_file.bvh> > default.vis && ./lamure_vis default.vis" << std::endl;
     return 0;
   }
 
@@ -1623,11 +1608,14 @@ int32_t main(int argc, char* argv[]) {
     std::string quad_shader_vs_source;
     
     std::string vis_xyz_vs_source;
+    std::string vis_xyz_gs_source;
     std::string vis_xyz_fs_source;
     
     std::string vis_xyz_pass1_vs_source;
+    std::string vis_xyz_pass1_gs_source;
     std::string vis_xyz_pass1_fs_source;
     std::string vis_xyz_pass2_vs_source;
+    std::string vis_xyz_pass2_gs_source;
     std::string vis_xyz_pass2_fs_source;
     std::string vis_xyz_pass3_vs_source;
     std::string vis_xyz_pass3_fs_source;
@@ -1639,8 +1627,10 @@ int32_t main(int argc, char* argv[]) {
 
     /* parsed with optional lighting code */
     std::string vis_xyz_vs_lighting_source;
+    std::string vis_xyz_gs_lighting_source;
     std::string vis_xyz_fs_lighting_source;
     std::string vis_xyz_pass2_vs_lighting_source;
+    std::string vis_xyz_pass2_gs_lighting_source;
     std::string vis_xyz_pass2_fs_lighting_source;
     std::string vis_xyz_pass3_vs_lighting_source;
     std::string vis_xyz_pass3_fs_lighting_source;
@@ -1648,10 +1638,13 @@ int32_t main(int argc, char* argv[]) {
     if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", quad_shader_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", quad_shader_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslg", vis_xyz_gs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
@@ -1660,8 +1653,10 @@ int32_t main(int argc, char* argv[]) {
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_qz_pass2.glslv", vis_xyz_qz_pass2_vs_source)
 
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_lighting_source, true)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslg", vis_xyz_gs_lighting_source, true)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_lighting_source, true)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_lighting_source, true)
+      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_lighting_source, true)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_lighting_source, true)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_lighting_source, true)
       || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_lighting_source, true)
@@ -1682,8 +1677,10 @@ int32_t main(int argc, char* argv[]) {
     vis_xyz_shader_ = device_->create_program(
       boost::assign::list_of
         (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_source))
+        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_source))
         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
     if (!vis_xyz_shader_) {
+      //scm::err() << scm::log::error << scm::log::end;
       std::cout << "error creating shader vis_xyz_shader_ program" << std::endl;
       return 1;
     }
@@ -1691,6 +1688,7 @@ int32_t main(int argc, char* argv[]) {
     vis_xyz_pass1_shader_ = device_->create_program(
       boost::assign::list_of
         (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass1_vs_source))
+        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass1_gs_source))
         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
     if (!vis_xyz_pass1_shader_) {
       std::cout << "error creating vis_xyz_pass1_shader_ program" << std::endl;
@@ -1700,6 +1698,7 @@ int32_t main(int argc, char* argv[]) {
     vis_xyz_pass2_shader_ = device_->create_program(
       boost::assign::list_of
         (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_source))
+        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_source))
         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
     if (!vis_xyz_pass2_shader_) {
       std::cout << "error creating vis_xyz_pass2_shader_ program" << std::endl;
@@ -1718,6 +1717,7 @@ int32_t main(int argc, char* argv[]) {
     vis_xyz_lighting_shader_ = device_->create_program(
       boost::assign::list_of
         (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_lighting_source))
+        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_lighting_source))
         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_lighting_source)));
     if (!vis_xyz_lighting_shader_) {
       std::cout << "error creating vis_xyz_lighting_shader_ program" << std::endl;
@@ -1727,6 +1727,7 @@ int32_t main(int argc, char* argv[]) {
     vis_xyz_pass2_lighting_shader_ = device_->create_program(
       boost::assign::list_of
         (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_lighting_source))
+        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_lighting_source))
         (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_lighting_source)));
     if (!vis_xyz_pass2_lighting_shader_) {
       std::cout << "error creating vis_xyz_pass2_lighting_shader_ program" << std::endl;
@@ -1742,6 +1743,7 @@ int32_t main(int argc, char* argv[]) {
       return 1;
     }
 
+/*
     vis_xyz_qz_shader_ = device_->create_program(
       boost::assign::list_of
         (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_vs_source))
@@ -1768,7 +1770,7 @@ int32_t main(int argc, char* argv[]) {
       std::cout << "error creating vis_xyz_qz_pass2_shader_ program" << std::endl;
       return 1;
     }
-
+*/
   }
   catch (std::exception& e)
   {
@@ -1802,20 +1804,13 @@ int32_t main(int argc, char* argv[]) {
   auto no_depth_test_descriptor = depth_state_less_->descriptor();
   no_depth_test_descriptor._depth_test = false;
   depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
+  depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
 
   change_point_size_in_shader_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false, scm::gl::point_raster_state(true));
   no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
 
   filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);  
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
-
-  float gaussian_buffer[32] = {255, 255, 252, 247, 244, 234, 228, 222, 208, 201,
-                              191, 176, 167, 158, 141, 131, 125, 117, 100,  91,
-                              87,  71,  65,  58,  48,  42,  39,  32,  28,  25,
-                              19, 16};
-  scm::gl::texture_region ur(scm::math::vec3ui(0u), scm::math::vec3ui(32, 1, 1));
-  gaussian_texture_ = device_->create_texture_2d(scm::math::vec2ui(32,1), scm::gl::FORMAT_R_32F, 1, 1, 1);
-  context_->update_sub_texture(gaussian_texture_, ur, 0u, scm::gl::FORMAT_R_32F, gaussian_buffer);
 
   auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
   auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();

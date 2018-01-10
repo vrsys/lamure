@@ -7,30 +7,25 @@
 
 #version 420 core
 
-  //optional 
+layout(early_fragment_tests) in;
+
+const float gaussian[32] = float[](
+  1.000000, 1.000000, 0.988235, 0.968627, 0.956862, 0.917647, 0.894117, 0.870588, 0.915686, 0.788235,
+  0.749020, 0.690196, 0.654902, 0.619608, 0.552941, 0.513725, 0.490196, 0.458824, 0.392157, 0.356863,
+  0.341176, 0.278431, 0.254902, 0.227451, 0.188235, 0.164706, 0.152941, 0.125490, 0.109804, 0.098039,
+  0.074510, 0.062745
+);
 
 in VertexData {
-	vec3 color;
-	vec4 nor;
-  	float rad;
-	float pointSize;
-	float mv_vertex_depth;
+  //output to fragment shader
+  vec3 pass_point_color;
+  vec3 pass_normal;
+  vec2 pass_uv_coords;
   OPTIONAL_BEGIN
     vec3 mv_vertex_position;
   OPTIONAL_END
 } VertexIn;
 
-layout(binding  = 0) uniform sampler2D depth_texture_pass1;
-layout(binding  = 1) uniform sampler2D pointsprite_texture;
-
-uniform vec2 win_size;
-uniform float max_deform_ratio;
-
-uniform bool ellipsify;
-uniform bool clamped_normal_mode;
-
-uniform float near_plane;
-uniform float far_minus_near_plane;
 
 layout(location = 0) out vec4 accumulated_colors;
 
@@ -39,97 +34,36 @@ OPTIONAL_BEGIN
   layout(location = 2) out vec3 accumulated_vs_positions;
 OPTIONAL_END
 
-#define NORMAL_Z_OFFSET 0.00000001f
+uniform vec2 win_size;
+
+void main() {
+  vec2 uv_coords = VertexIn.pass_uv_coords;
+
+  if ( dot(uv_coords, uv_coords) > 1 )
+    discard;
+
+  vec3 normal = VertexIn.pass_normal;
+
+  if( normal.z < 0 )
+    normal = normal * -1; 
+
+  normal = (normal + vec3(1.0, 1.0, 1.0)) / 2.0;
+  float weight = gaussian[int(round(length(uv_coords) * 31.0 ))];
+
+  accumulated_colors = vec4(VertexIn.pass_point_color * weight, weight);
 
 
-float calc_depth_offset(vec2 mappedPointCoord, vec3 adjustedNormal)
-{
-  float xzRatio = (adjustedNormal.x/adjustedNormal.z);
-  float yzRatio = (adjustedNormal.y/adjustedNormal.z);
-
-if(clamped_normal_mode)
-{
-	float zBound = max_deform_ratio;
-	float normalZ = adjustedNormal.z;
-
-	if(normalZ > 0.0)
-		normalZ = max(zBound, normalZ);
-	else
-		normalZ = -max(zBound, -normalZ);
-
-	xzRatio = (adjustedNormal.x/normalZ);
-	yzRatio = (adjustedNormal.y/normalZ);
-}
-
-
-	return -(xzRatio)* mappedPointCoord.x   - (yzRatio * mappedPointCoord.y);
-}
-
-
-float get_gaussianValue(float depth_offset, vec2 mappedPointCoord, vec3 newNormalVec)
-{
-    float radius;
-    if(ellipsify)
-    	radius = sqrt(mappedPointCoord.x*mappedPointCoord.x + mappedPointCoord.y*mappedPointCoord.y + depth_offset*depth_offset);
-    else
-    	radius = sqrt(mappedPointCoord.x*mappedPointCoord.x + mappedPointCoord.y*mappedPointCoord.y) ;
-
-    vec3 gauss = texture(pointsprite_texture, vec2(radius,1.0f)).rgb;
-
-
-    if(radius >= 1.0f )
-	discard;
-    else
-	return gauss.r;
-
-}
-
-
-void main()
-{
-
-   vec3 adjustedNormal = vec3(0.0,0.0,0.0);
-   if(VertexIn.nor.z < 0)
-   {
-	//discard;
-	   adjustedNormal = VertexIn.nor.xyz * -1;
-   }
-   else
-   {
-    adjustedNormal = VertexIn.nor.xyz;
-   }
-
-   vec2 mappedPointCoord = gl_PointCoord*2 + vec2(-1.0f, -1.0f);
-
-   float depth_offset = calc_depth_offset(mappedPointCoord, adjustedNormal);
-
-   float weight = get_gaussianValue(depth_offset, mappedPointCoord, adjustedNormal) / (VertexIn.rad*VertexIn.rad) ;
-
-
-   float depthValue =  texture2D(depth_texture_pass1, gl_FragCoord.xy/win_size.xy).r;
-
-
-   float depth_to_compare;
-
-
-if(ellipsify)
-   depth_to_compare = VertexIn.mv_vertex_depth + depth_offset*VertexIn.rad;
-else
-  depth_to_compare = VertexIn.mv_vertex_depth;
-  depthValue = (-depthValue * 1.0 * far_minus_near_plane) + near_plane;
-
-  if( depthValue  - (depth_to_compare)    < 0.00031  + 3.0*(VertexIn.rad) )
-  {
-
-	  accumulated_colors  = vec4(VertexIn.color * weight, weight);
-
-    OPTIONAL_BEGIN
-      accumulated_normals = vec3(adjustedNormal.xyz * weight);
-      accumulated_vs_positions = vec3(VertexIn.mv_vertex_position.xyz * weight);
-    OPTIONAL_END
-   }
-   else
-  	discard;
+  OPTIONAL_BEGIN
+    vec3 adjustedNormal = vec3(0.0,0.0,0.0);
+    if (VertexIn.pass_normal.z < 0) {
+      adjustedNormal = VertexIn.pass_normal.xyz * -1;
+    }
+    else {
+      adjustedNormal = VertexIn.pass_normal.xyz;
+    }
+    accumulated_normals = vec3(adjustedNormal.xyz * weight);
+    accumulated_vs_positions = vec3(VertexIn.mv_vertex_position.xyz * weight);
+  OPTIONAL_END
 
 
 
