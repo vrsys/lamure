@@ -26,6 +26,7 @@ set(PROJECT_SOURCES ${MAIN_SRC} ${3DPARTY_SRC})
 set(PROJECT_INCLUDES ${MAIN_INC} ${3DPARTY_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR}
+                    ${COMMON_INCLUDE_DIR}
                     ${LAMURE_CONFIG_DIR}
                     ${CGAL_INCLUDE_DIR}
                     ${GMP_INCLUDE_DIR} 

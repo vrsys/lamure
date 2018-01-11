@@ -524,7 +524,6 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
 void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
 
-  shader->uniform("height_divided_by_top_minus_bottom", height_divided_by_top_minus_bottom_);
   shader->uniform("near_plane", settings_.near_plane_);
   shader->uniform("far_plane", settings_.far_plane_);
   shader->uniform("point_size_factor", settings_.lod_point_scale_);
@@ -544,25 +543,65 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("heatmap_min_color", settings_.heatmap_color_min_);
   shader->uniform("heatmap_max_color", settings_.heatmap_color_max_);
 
+  if (settings_.enable_lighting_) {
+    shader->uniform("use_material_color", settings_.use_material_color_);
+    shader->uniform("material_diffuse", settings_.material_diffuse_);
+    shader->uniform("material_specular", settings_.material_specular_);
 
-  shader->uniform("use_material_color", settings_.use_material_color_);
-  shader->uniform("material_diffuse", settings_.material_diffuse_);
-  shader->uniform("material_specular", settings_.material_specular_);
-
-  shader->uniform("ambient_light_color", settings_.ambient_light_color_);
-  shader->uniform("point_light_color", settings_.point_light_color_);
-
+    shader->uniform("ambient_light_color", settings_.ambient_light_color_);
+    shader->uniform("point_light_color", settings_.point_light_color_);
+  }
 }
 
 
-void draw_resources(scm::gl::program_ptr shader) {
 
-  if (brush_resource_.num_primitives_ > 0 || sparse_resources_.size() > 0) {
+void draw_brush(scm::gl::program_ptr shader) {
+  if (brush_resource_.num_primitives_ > 0) {
 
+    set_uniforms(shader);
+
+    scm::math::mat4d model_matrix = scm::math::mat4d::identity();
+    scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
+    scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
+    scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
+    scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
+
+    shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+    shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
+    shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+    shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+
+    shader->uniform("point_size_factor", settings_.aux_point_scale_);
+
+    shader->uniform("model_to_screen_matrix", scm::math::mat4f::identity());
+    shader->uniform("model_radius_scale", 1.f);
+
+    shader->uniform("show_normals", false);
+    shader->uniform("show_accuracy", false);
+    shader->uniform("show_radius_deviation", false);
+    shader->uniform("show_output_sensitivity", false);
+    shader->uniform("channel", 0);
+
+    shader->uniform("face_eye", false);
+
+    context_->bind_vertex_array(brush_resource_.array_);
+    context_->apply();
+    context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, brush_resource_.num_primitives_);
+  }
+
+}
+
+void draw_resources() {
+
+  if (sparse_resources_.size() > 0) {
     if (settings_.provenance_) {  
       if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
 
-        set_uniforms(shader);
+        context_->bind_program(vis_xyz_shader_);
+        context_->set_blend_state(color_no_blending_state_);
+        context_->set_depth_stencil_state(depth_state_less_);
+
+        set_uniforms(vis_xyz_shader_);
 
         scm::math::mat4d model_matrix = scm::math::mat4d::identity();
         scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
@@ -570,24 +609,27 @@ void draw_resources(scm::gl::program_ptr shader) {
         scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
         scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
 
-        shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
-        shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
-        shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
-        shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+        vis_xyz_shader_->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+        vis_xyz_shader_->uniform("model_matrix", scm::math::mat4f(model_matrix));
+        vis_xyz_shader_->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+        vis_xyz_shader_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 
-        shader->uniform("point_size_factor", settings_.aux_point_scale_);
+        vis_xyz_shader_->uniform("point_size_factor", settings_.aux_point_scale_);
+
+        vis_xyz_shader_->uniform("model_to_screen_matrix", scm::math::mat4f::identity());
+        vis_xyz_shader_->uniform("model_radius_scale", 1.f);
 
         scm::math::mat4f inv_view = scm::math::inverse(scm::math::mat4f(view_matrix));
         scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
 
-        shader->uniform("eye", eye);
-        shader->uniform("face_eye", true);
+        vis_xyz_shader_->uniform("eye", eye);
+        vis_xyz_shader_->uniform("face_eye", true);
         
-        shader->uniform("show_normals", false);
-        shader->uniform("show_accuracy", false);
-        shader->uniform("show_radius_deviation", false);
-        shader->uniform("show_output_sensitivity", false);
-        shader->uniform("channel", 0);
+        vis_xyz_shader_->uniform("show_normals", false);
+        vis_xyz_shader_->uniform("show_accuracy", false);
+        vis_xyz_shader_->uniform("show_radius_deviation", false);
+        vis_xyz_shader_->uniform("show_output_sensitivity", false);
+        vis_xyz_shader_->uniform("channel", 0);
 
         for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
           if (selection_.selected_model_ != -1) {
@@ -617,15 +659,37 @@ void draw_resources(scm::gl::program_ptr shader) {
         }
 
       }
+
+      if (settings_.show_views_) {
+        context_->bind_program(vis_line_shader_);
+
+        scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
+        scm::math::mat4f view_matrix = camera_->get_view_matrix();   
+        vis_line_shader_->uniform("view_matrix", view_matrix);
+        vis_line_shader_->uniform("projection_matrix", projection_matrix);
+        
+        for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+          if (selection_.selected_model_ != -1) {
+            model_id = selection_.selected_model_;
+          }
+          
+          auto f_res = frusta_resources_[model_id];
+          if (f_res.num_primitives_ > 0) {
+            context_->bind_vertex_array(f_res.array_);
+            context_->apply();
+            context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
+
+          }
+
+          if (selection_.selected_model_ != -1) {
+            break;
+          }
+        }
+      }
+
     }
 
-    if (brush_resource_.num_primitives_ > 0) {
-      context_->bind_vertex_array(brush_resource_.array_);
-      shader->uniform("face_eye", false);
-      context_->apply();
-      context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, brush_resource_.num_primitives_);
-    }
-
+    
   }
 
 }
@@ -690,7 +754,6 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     scm::math::vec4d x_unit_vec = scm::math::vec4d(1.0,0.0,0.0,0.0);
     float model_radius_scale = scm::math::length(model_matrix * x_unit_vec);
     shader->uniform("model_radius_scale", model_radius_scale);
-
 
     size_t surfels_per_node = database->get_primitives_per_node();
     std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
@@ -965,7 +1028,7 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
 
-    draw_resources(vis_xyz_pass1_shader_);
+    draw_brush(vis_xyz_pass1_shader_);
 
     //PASS 2
 
@@ -994,7 +1057,7 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, selected_pass2_shading_program);
 
-    draw_resources(selected_pass2_shading_program);
+    draw_brush(selected_pass2_shading_program);
 
     //PASS 3
 
@@ -1056,7 +1119,11 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, selected_single_pass_shading_program);
 
-    draw_resources(selected_single_pass_shading_program);
+    context_->bind_program(vis_xyz_shader_);
+    draw_brush(vis_xyz_shader_);
+    draw_resources();
+
+
   }
 
 
@@ -1080,34 +1147,6 @@ void glut_display() {
   if (settings_.info_) {
     renderable_text_->text_string(text_);
     text_renderer_->draw_shadowed(context_, scm::math::vec2i(28, settings_.height_- 40), renderable_text_);
-  }
-
-  if (settings_.show_views_) {
-    context_->bind_program(vis_line_shader_);
-
-    scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-    scm::math::mat4f view_matrix = camera_->get_view_matrix();   
-    vis_line_shader_->uniform("view_matrix", view_matrix);
-    vis_line_shader_->uniform("projection_matrix", projection_matrix);
-    
-    for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-      if (selection_.selected_model_ != -1) {
-        model_id = selection_.selected_model_;
-      }
-      
-      auto f_res = frusta_resources_[model_id];
-      if (f_res.num_primitives_ > 0) {
-        context_->bind_vertex_array(f_res.array_);
-        context_->apply();
-        context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
-        //std::cout << f_res.num_primitives_ << std::endl;
-
-      }
-
-      if (selection_.selected_model_ != -1) {
-        break;
-      }
-    }
   }
 
   rendering_ = false;
@@ -1311,12 +1350,18 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 'r':
       if (!settings_.provenance_) break;
       settings_.show_sparse_ = !settings_.show_sparse_;
-      if (settings_.show_sparse_) settings_.enable_lighting_ = false;
+      if (settings_.show_sparse_) {
+        settings_.enable_lighting_ = false;
+        settings_.splatting_ = false;
+      }
       break;
     case 't':
       if (!settings_.provenance_) break;
       settings_.show_views_ = !settings_.show_views_;
-      if (settings_.show_views_) settings_.enable_lighting_ = false;
+      if (settings_.show_views_) {
+        settings_.enable_lighting_ = false;
+        settings_.splatting_ = false;
+      }
       break;
 
     case 'h':
