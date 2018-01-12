@@ -1548,7 +1548,7 @@ void create_sparse_resources() {
       std::ifstream in_sparse(sparse.second, std::ios::in | std::ios::binary);
       std::ifstream in_sparse_meta(sparse.second + ".meta", std::ios::in | std::ios::binary);
       lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
-      cache_sparse.cache(false);
+      cache_sparse.cache(false, "");
       in_sparse.close();
       in_sparse_meta.close();
 

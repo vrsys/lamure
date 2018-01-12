@@ -45,17 +45,17 @@ public:
 
 protected:
 
-    struct aux_vector_3 {
+    struct aux_vec {
       float x_;
       float y_;
       float z_;
     };
 
-    struct aux_vector_4 {
+    struct aux_quat {
+      float w_;
       float x_;
       float y_;
       float z_;
-      float w_;
     };
 
     struct aux_string {
@@ -364,10 +364,10 @@ protected:
         uint32_t segment_id_;
         uint32_t camera_id_;
 
-        aux_vector_3 position_;
+        aux_vec position_;
         uint32_t reserved_0_;
 
-        aux_vector_4 orientation_;
+        aux_quat orientation_;
         
         float focal_length_;
         float distortion_;

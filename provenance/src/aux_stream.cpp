@@ -239,7 +239,7 @@ read_aux(const std::string& filename, aux& aux) {
        v.position_ = scm::math::vec3f(view.position_.x_, view.position_.y_, view.position_.z_);
 
        auto translation = scm::math::make_translation(v.position_);
-       auto rotation = scm::math::quatf(view.orientation_.x_, view.orientation_.y_, view.orientation_.z_, view.orientation_.w_).to_matrix();
+       auto rotation = scm::math::quatf(view.orientation_.w_, view.orientation_.x_, view.orientation_.y_, view.orientation_.z_).to_matrix();
        v.transform_ = translation * rotation;
  
        v.focal_length_ = view.focal_length_;
@@ -337,10 +337,10 @@ write_aux(const std::string& filename, aux& aux) {
        v.reserved_0_ = 0;
        
        scm::math::quatf quat = scm::math::quatf::from_matrix(view.transform_);
+       v.orientation_.w_ = quat.w;
        v.orientation_.x_ = quat.x;
        v.orientation_.y_ = quat.y;
        v.orientation_.z_ = quat.z;
-       v.orientation_.w_ = quat.w;
 
        v.focal_length_ = view.focal_length_;
        v.distortion_ = view.distortion_;

@@ -29,14 +29,14 @@ class Camera
     Camera(uint16_t _index, const string &_im_file_name, const quatf &_orientation, const vec3f &_translation, const vec<uint8_t> &_metadata)
         : _index(_index), _im_file_name(_im_file_name), _orientation(_orientation), _translation(_translation)
     {
-        prepare();
+        prepare("");
     }
     ~Camera() {}
-    void prepare()
+    void prepare(const std::string& fotos_directory)
     {
         try
         {
-            read_image();
+            read_image(fotos_directory);
         }
         catch(const std::runtime_error e)
         {
@@ -49,6 +49,9 @@ class Camera
     string &get_file_name() { return _im_file_name; }
     vec3f &get_translation() { return _translation; }
     float get_focal_length() { return _focal_length; }
+    const std::string& get_image_file() const { return _im_file_name; }
+    uint32_t get_image_width() { return _im_width; }
+    uint32_t get_image_height() { return _im_height; }
     
     friend ifstream &operator>>(ifstream &is, Camera &camera)
     {
@@ -128,9 +131,11 @@ class Camera
         return m;
     }
 
-    void read_image()
+    void read_image(const std::string& fotos_directory)
     {
-        FILE *fp = fopen(_im_file_name.c_str(), "rb");
+        std::cout << "Reading image " << fotos_directory+_im_file_name << std::endl;
+
+        FILE *fp = fopen((fotos_directory+_im_file_name).c_str(), "rb");
         if(!fp)
         {
             std::stringstream sstr;

@@ -24,14 +24,14 @@ class SparseCache : public Cacheable<SparsePoint, MetaData>
         _cameras_metadata = vec<MetaData>();
     };
 
-    void cache(bool load_images) {
+    void cache(bool load_images, const std::string& fotos_directory) {
         Cacheable::cache();
-        cache_cameras(load_images);
+        cache_cameras(load_images, fotos_directory);
     }
 
     void cache() override {
         Cacheable::cache();
-        cache_cameras(true);
+        cache_cameras(true, "");
     }
 
 
@@ -39,7 +39,7 @@ class SparseCache : public Cacheable<SparsePoint, MetaData>
     const vec<prov::MetaData> get_cameras_metadata() const { return _cameras_metadata; }
 
   protected:
-    void cache_cameras(bool load_images)
+    void cache_cameras(bool load_images, const std::string& fotos_directory)
     {
         uint16_t cameras_length;
         (*is_prov).read(reinterpret_cast<char *>(&cameras_length), 2);
@@ -68,7 +68,7 @@ class SparseCache : public Cacheable<SparsePoint, MetaData>
             camera.MAX_LENGTH_FILE_PATH = max_len_fpath;
             (*is_prov) >> camera;
             if (load_images) {
-              camera.prepare();
+              camera.prepare(fotos_directory);
             }
             _cameras.push_back(camera);
 

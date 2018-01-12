@@ -55,7 +55,7 @@ public:
 
     const std::string   get_filename() const { return filename_; }
     const uint32_t      get_num_views() const { return views_.size(); }
-    const uint32_t      get_num_sparse_points() const { return sparse_points_.size(); }
+    const uint64_t      get_num_sparse_points() const { return sparse_points_.size(); }
 
     const view&         get_view(uint32_t id) const;
     const sparse_point& get_sparse_point(uint64_t id) const;
