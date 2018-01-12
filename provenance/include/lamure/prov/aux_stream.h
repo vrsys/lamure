@@ -400,6 +400,7 @@ protected:
             size_t size = 24*sizeof(uint32_t);
             size += 8 + camera_name_.length_ + (32 - ((8 + camera_name_.length_) % 32));
             size += 8 + image_file_.length_ + (32 - ((8 + image_file_.length_) % 32));
+            return size;
         };
         void signature(char* signature) {
             signature[0] = 'A';

@@ -131,9 +131,9 @@ int main(int argc, char *argv[]) {
     }
 
     //views
-    std::cout << "Converting views..." << std::endl;
-    
     std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
+    std::cout << "Converting " << cameras.size() << " views..." << std::endl;
+
     //std::vector<lamure::prov::MetaData> metadata = cache_sparse.get_cameras_metadata();
     for (uint64_t i = 0; i < cameras.size(); ++i) {
       auto& camera = cameras[i];
@@ -158,6 +158,8 @@ int main(int argc, char *argv[]) {
       v.tex_atlas_id_ = 0;
       v.camera_name_ = "";
       v.image_file_ = camera.get_image_file();
+
+      aux.add_view(v);
     }
 
     std::cout << "Writing aux file..." << std::endl;

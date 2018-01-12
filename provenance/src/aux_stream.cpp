@@ -251,6 +251,7 @@ read_aux(const std::string& filename, aux& aux) {
        v.image_file_ = view.image_file_.string_;
 
        aux.add_view(v);
+       std::cout << "view seg loaded " << std::endl;
 
    
     }
@@ -279,51 +280,7 @@ write_aux(const std::string& filename, aux& aux) {
    seg.reserved_ = 0;
 
    write(seg);
-   
-   aux_sparse_seg sparse;
 
-   sparse.segment_id_ = num_segments_++;
-   sparse.reserved_0_ = 0;
-   sparse.reserved_1_ = 0;
-   sparse.reserved_2_ = 0;
-   sparse.reserved_3_ = 0;
-   sparse.reserved_4_ = 0;
-   sparse.num_points_ = aux.get_num_sparse_points();
-
-   for (uint64_t i = 0; i < sparse.num_points_; ++i) {
-     
-     const auto& point = aux.get_sparse_point(i);
-     aux_sparse_point p;
-     p.x_ = point.pos_.x;
-     p.y_ = point.pos_.y;
-     p.z_ = point.pos_.z;
-     p.r_ = point.r_;
-     p.g_ = point.g_;
-     p.b_ = point.b_;
-     p.r_ = (uint8_t)255;
-     p.reserved_0_ = 0;
-     p.reserved_1_ = 0;
-     p.reserved_2_ = 0;
-     p.num_features_ = point.features_.size();
-     
-     for (uint32_t j = 0; j < p.num_features_; ++j) {
-       const auto& feature = point.features_[j];
-       aux_feature f;
-       f.camera_id_ = feature.camera_id_;
-       f.using_count_ = feature.using_count_;
-       f.img_x_ = feature.coords_.x;
-       f.img_y_ = feature.coords_.y;
-       f.reserved_0_ = 0;
-       f.reserved_1_ = 0;
-       f.reserved_2_ = 0;
-       f.reserved_3_ = 0;
-       p.features_.push_back(f);
-     }    
-
-     sparse.points_.push_back(p);
-   }
-
-   write(sparse);
 
    for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
        const auto& view = aux.get_view(i);
@@ -366,6 +323,53 @@ write_aux(const std::string& filename, aux& aux) {
       
        write(v);
    }
+
+
+   
+   aux_sparse_seg sparse;
+
+   sparse.segment_id_ = num_segments_++;
+   sparse.reserved_0_ = 0;
+   sparse.reserved_1_ = 0;
+   sparse.reserved_2_ = 0;
+   sparse.reserved_3_ = 0;
+   sparse.reserved_4_ = 0;
+   sparse.num_points_ = aux.get_num_sparse_points();
+
+   for (uint64_t i = 0; i < sparse.num_points_; ++i) {
+     
+     const auto& point = aux.get_sparse_point(i);
+     aux_sparse_point p;
+     p.x_ = point.pos_.x;
+     p.y_ = point.pos_.y;
+     p.z_ = point.pos_.z;
+     p.r_ = point.r_;
+     p.g_ = point.g_;
+     p.b_ = point.b_;
+     p.a_ = (uint8_t)255;
+     p.reserved_0_ = 0;
+     p.reserved_1_ = 0;
+     p.reserved_2_ = 0;
+     p.num_features_ = point.features_.size();
+     
+     for (uint32_t j = 0; j < p.num_features_; ++j) {
+       const auto& feature = point.features_[j];
+       aux_feature f;
+       f.camera_id_ = feature.camera_id_;
+       f.using_count_ = feature.using_count_;
+       f.img_x_ = feature.coords_.x;
+       f.img_y_ = feature.coords_.y;
+       f.reserved_0_ = 0;
+       f.reserved_1_ = 0;
+       f.reserved_2_ = 0;
+       f.reserved_3_ = 0;
+       p.features_.push_back(f);
+     }    
+
+     sparse.points_.push_back(p);
+   }
+
+   write(sparse);
 
    close_stream(false);
 

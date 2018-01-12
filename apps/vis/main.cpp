@@ -17,6 +17,7 @@
 #include <lamure/ren/ray.h>
 #include <lamure/prov/sparse_cache.h>
 #include <lamure/prov/sparse_octree.h>
+#include <lamure/prov/aux.h>
 
 
 //schism
@@ -212,7 +213,7 @@ struct settings {
   std::string pvs_ {""};
   std::vector<std::string> models_;
   std::map<uint32_t, scm::math::mat4d> transforms_;
-  std::map<uint32_t, std::string> sparse_;
+  std::map<uint32_t, std::string> aux_;
   std::map<uint32_t, std::string> meta_octree_;
 
 };
@@ -270,7 +271,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
 
           settings.models_.push_back(model);
           settings.transforms_[model_id] = scm::math::mat4d::identity();
-          settings.sparse_[model_id] = "";
+          settings.aux_[model_id] = "";
           settings.meta_octree_[model_id] = "";
           ++model_id;
 
@@ -289,9 +290,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
               settings.transforms_[address] = load_matrix(value);
               std::cout << "found transform for model id " << address << std::endl;
             }
-            else if (key == "sparse") {
-              settings.sparse_[address] = value;
-              std::cout << "found sparse data for model id " << address << std::endl;
+            else if (key == "aux") {
+              settings.aux_[address] = value;
+              std::cout << "found aux data for model id " << address << std::endl;
             }
             else if (key == "meta_octree") {
               settings.meta_octree_[address] = value;
@@ -1533,46 +1534,40 @@ void glut_idle() {
 }
 
 
-void create_sparse_resources() {
+void create_aux_resources() {
 
   if (!settings_.provenance_) {
     return;
   }
 
-  for (const auto& sparse : settings_.sparse_) {
-    if (sparse.second != "") {
+  for (const auto& aux_file : settings_.aux_) {
+    if (aux_file.second != "") {
       
-      uint32_t model_id = sparse.first;
+      uint32_t model_id = aux_file.first;
 
-      std::cout << "sparse: " << sparse.second << std::endl;
-      std::ifstream in_sparse(sparse.second, std::ios::in | std::ios::binary);
-      std::ifstream in_sparse_meta(sparse.second + ".meta", std::ios::in | std::ios::binary);
-      lamure::prov::SparseCache cache_sparse = lamure::prov::SparseCache(in_sparse, in_sparse_meta);
-      cache_sparse.cache(false, "");
-      in_sparse.close();
-      in_sparse_meta.close();
+      std::cout << "aux: " << aux_file.second << std::endl;
+      lamure::prov::aux aux(aux_file.second);
 
-      std::vector<lamure::prov::Camera> cameras = cache_sparse.get_cameras();
-      std::vector<lamure::prov::SparsePoint> feature_points = cache_sparse.get_points();
-
-      provenance_[model_id].num_views_ = cameras.size();
-      std::cout << "sparse: " << cameras.size() << " cameras, " << feature_points.size() << " features" << std::endl;
+      provenance_[model_id].num_views_ = aux.get_num_views();
+      std::cout << "sparse: " << aux.get_num_views() << " views, " << aux.get_num_sparse_points() << " points" << std::endl;
 
       std::vector<xyz> ready_to_upload;
 
-      for (auto& camera : cameras) {
+      for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
+        const auto& view = aux.get_view(i);
         ready_to_upload.push_back(
-          xyz{camera.get_translation(),
+          xyz{view.position_,
             (uint8_t)255, (uint8_t)240, (uint8_t)0, (uint8_t)255,
             settings_.aux_point_size_,
             scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
         );
       }
 
-      for (const auto& p : feature_points) {
+      for (uint32_t i = 0; i < aux.get_num_sparse_points(); ++i) {
+        const auto& point = aux.get_sparse_point(i);
         ready_to_upload.push_back(
-          xyz{p.get_position(),
-            (uint8_t)p.get_color().x, (uint8_t)p.get_color().y, (uint8_t)p.get_color().z, (uint8_t)255,
+          xyz{point.pos_,
+            point.r_, point.g_, point.b_, point.a_,
             settings_.aux_point_size_,
             scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
         );
@@ -1609,40 +1604,40 @@ void create_sparse_resources() {
       auto model_dim = scm::math::length(root_bb_max - root_bb_min);
 
       std::vector<scm::math::vec3f> lines_to_upload;
-      for (auto& camera : cameras) {
+      for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
+        const auto& view = aux.get_view(i);
 
+        float aspect_ratio = view.image_height_/(float)view.image_width_;
         float frac = 30.f;
         float img_w_half = (model_dim/frac)*0.5f;
-        float img_h_half = (model_dim/frac)*0.5f;
+        float img_h_half = img_w_half*aspect_ratio;
         float focal_length = model_dim/frac;
 
-        auto translation = scm::math::make_translation(camera.get_translation());
-        auto rotation = scm::math::mat4f(camera.get_orientation().to_matrix());
-        auto transform = translation * rotation;
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
-        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
-        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
-        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
-        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(transform * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
+        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
 
-        lines_to_upload.push_back(transform * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(transform * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
+        std::cout << "v: " << view.camera_id_ << " w " << view.image_width_ << " h " << view.image_height_ << std::endl;
 
       }
 
@@ -1941,7 +1936,7 @@ int32_t main(int argc, char* argv[]) {
     pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
   }
 
-  create_sparse_resources();
+  create_aux_resources();
   
 
 
