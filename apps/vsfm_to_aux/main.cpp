@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
 
     std::string line;
 
+    //nvm format: http://ccwu.me/vsfm/doc.html#nvm
 
     
     std::getline(nvm, line); //nvm

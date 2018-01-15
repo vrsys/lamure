@@ -594,100 +594,97 @@ void draw_brush(scm::gl::program_ptr shader) {
 
 void draw_resources() {
 
-  if (sparse_resources_.size() > 0) {
-    if (settings_.provenance_) {  
-      if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
+  if (sparse_resources_.size() > 0) { 
+    if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
 
-        context_->bind_program(vis_xyz_shader_);
-        context_->set_blend_state(color_no_blending_state_);
-        context_->set_depth_stencil_state(depth_state_less_);
+      context_->bind_program(vis_xyz_shader_);
+      context_->set_blend_state(color_no_blending_state_);
+      context_->set_depth_stencil_state(depth_state_less_);
 
-        set_uniforms(vis_xyz_shader_);
+      set_uniforms(vis_xyz_shader_);
 
-        scm::math::mat4d model_matrix = scm::math::mat4d::identity();
-        scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
-        scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
-        scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
-        scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
+      scm::math::mat4d model_matrix = scm::math::mat4d::identity();
+      scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
+      scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
+      scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
+      scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
 
-        vis_xyz_shader_->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
-        vis_xyz_shader_->uniform("model_matrix", scm::math::mat4f(model_matrix));
-        vis_xyz_shader_->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
-        vis_xyz_shader_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+      vis_xyz_shader_->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
+      vis_xyz_shader_->uniform("model_matrix", scm::math::mat4f(model_matrix));
+      vis_xyz_shader_->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
+      vis_xyz_shader_->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 
-        vis_xyz_shader_->uniform("point_size_factor", settings_.aux_point_scale_);
+      vis_xyz_shader_->uniform("point_size_factor", settings_.aux_point_scale_);
 
-        vis_xyz_shader_->uniform("model_to_screen_matrix", scm::math::mat4f::identity());
-        vis_xyz_shader_->uniform("model_radius_scale", 1.f);
+      vis_xyz_shader_->uniform("model_to_screen_matrix", scm::math::mat4f::identity());
+      vis_xyz_shader_->uniform("model_radius_scale", 1.f);
 
-        scm::math::mat4f inv_view = scm::math::inverse(scm::math::mat4f(view_matrix));
-        scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
+      scm::math::mat4f inv_view = scm::math::inverse(scm::math::mat4f(view_matrix));
+      scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
 
-        vis_xyz_shader_->uniform("eye", eye);
-        vis_xyz_shader_->uniform("face_eye", true);
+      vis_xyz_shader_->uniform("eye", eye);
+      vis_xyz_shader_->uniform("face_eye", true);
+      
+      vis_xyz_shader_->uniform("show_normals", false);
+      vis_xyz_shader_->uniform("show_accuracy", false);
+      vis_xyz_shader_->uniform("show_radius_deviation", false);
+      vis_xyz_shader_->uniform("show_output_sensitivity", false);
+      vis_xyz_shader_->uniform("channel", 0);
+
+      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+        if (selection_.selected_model_ != -1) {
+          model_id = selection_.selected_model_;
+        }
         
-        vis_xyz_shader_->uniform("show_normals", false);
-        vis_xyz_shader_->uniform("show_accuracy", false);
-        vis_xyz_shader_->uniform("show_radius_deviation", false);
-        vis_xyz_shader_->uniform("show_output_sensitivity", false);
-        vis_xyz_shader_->uniform("channel", 0);
+        auto s_res = sparse_resources_[model_id];
+        if (s_res.num_primitives_ > 0) {
+          context_->bind_vertex_array(s_res.array_);
+          context_->apply();
 
-        for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-          if (selection_.selected_model_ != -1) {
-            model_id = selection_.selected_model_;
+          uint32_t num_views = provenance_[model_id].num_views_;
+
+          if (settings_.show_views_) {
+            context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, num_views);
           }
-          
-          auto s_res = sparse_resources_[model_id];
-          if (s_res.num_primitives_ > 0) {
-            context_->bind_vertex_array(s_res.array_);
-            context_->apply();
-
-            uint32_t num_views = provenance_[model_id].num_views_;
-
-            if (settings_.show_views_) {
-              context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, num_views);
-            }
-            if (settings_.show_sparse_) {
-              context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, num_views, 
-                s_res.num_primitives_-num_views);
-            }
-          
+          if (settings_.show_sparse_) {
+            context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, num_views, 
+              s_res.num_primitives_-num_views);
           }
-
-          if (selection_.selected_model_ != -1) {
-            break;
-          }
+        
         }
 
-      }
-
-      if (settings_.show_views_) {
-        context_->bind_program(vis_line_shader_);
-
-        scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-        scm::math::mat4f view_matrix = camera_->get_view_matrix();   
-        vis_line_shader_->uniform("view_matrix", view_matrix);
-        vis_line_shader_->uniform("projection_matrix", projection_matrix);
-        
-        for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-          if (selection_.selected_model_ != -1) {
-            model_id = selection_.selected_model_;
-          }
-          
-          auto f_res = frusta_resources_[model_id];
-          if (f_res.num_primitives_ > 0) {
-            context_->bind_vertex_array(f_res.array_);
-            context_->apply();
-            context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
-
-          }
-
-          if (selection_.selected_model_ != -1) {
-            break;
-          }
+        if (selection_.selected_model_ != -1) {
+          break;
         }
       }
 
+    }
+
+    if (settings_.show_views_) {
+      context_->bind_program(vis_line_shader_);
+
+      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
+      scm::math::mat4f view_matrix = camera_->get_view_matrix();   
+      vis_line_shader_->uniform("view_matrix", view_matrix);
+      vis_line_shader_->uniform("projection_matrix", projection_matrix);
+      
+      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+        if (selection_.selected_model_ != -1) {
+          model_id = selection_.selected_model_;
+        }
+        
+        auto f_res = frusta_resources_[model_id];
+        if (f_res.num_primitives_ > 0) {
+          context_->bind_vertex_array(f_res.array_);
+          context_->apply();
+          context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
+
+        }
+
+        if (selection_.selected_model_ != -1) {
+          break;
+        }
+      }
     }
 
     
@@ -936,7 +933,7 @@ void glut_display() {
       text_ss << "dataset: " << selection_.selected_model_+1 << " / " << num_models_ << "\n";
     }
 
-    if (settings_.provenance_) {
+    if (sparse_resources_[0].num_primitives_ > 0) {
       text_ss << "sparse (r): " << settings_.show_sparse_ << "\n";
       text_ss << "views (t): " << settings_.show_views_ << "\n";
     }
@@ -950,7 +947,7 @@ void glut_display() {
 
     text_ss << "\n";
     text_ss << "lod_point_scale (u/U): " << std::setprecision(2) << settings_.lod_point_scale_ << "\n";
-    if (settings_.provenance_) {
+    if (sparse_resources_[0].num_primitives_ > 0) {
       text_ss << "aux_point_scale (i/I): " << std::setprecision(2) << settings_.aux_point_scale_ << "\n";
     }
     text_ss << "lod_update (d): " << settings_.lod_update_ << "\n";
@@ -1349,7 +1346,6 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       break;
 
     case 'r':
-      if (!settings_.provenance_) break;
       settings_.show_sparse_ = !settings_.show_sparse_;
       if (settings_.show_sparse_) {
         settings_.enable_lighting_ = false;
@@ -1357,7 +1353,6 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       }
       break;
     case 't':
-      if (!settings_.provenance_) break;
       settings_.show_views_ = !settings_.show_views_;
       if (settings_.show_views_) {
         settings_.enable_lighting_ = false;
@@ -1393,14 +1388,12 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       break;
 
     case 'I':
-      if (!settings_.provenance_) break;
       if (settings_.aux_point_scale_ >= 0.2) {
         settings_.aux_point_scale_ -= 0.1;
       }
       break;
 
     case 'i':
-      if (!settings_.provenance_) break;
       if (settings_.aux_point_scale_ < 1.9) {
         settings_.aux_point_scale_ += 0.1;
       }
@@ -1535,10 +1528,6 @@ void glut_idle() {
 
 
 void create_aux_resources() {
-
-  if (!settings_.provenance_) {
-    return;
-  }
 
   for (const auto& aux_file : settings_.aux_) {
     if (aux_file.second != "") {
@@ -1772,33 +1761,35 @@ int32_t main(int argc, char* argv[]) {
     std::string vis_xyz_pass3_vs_lighting_source;
     std::string vis_xyz_pass3_fs_lighting_source;
 
-    if (!read_shader("../share/lamure/shaders/vis/vis_quad.glslv", vis_quad_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_quad.glslf", vis_quad_fs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_line.glslv", vis_line_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_line.glslf", vis_line_fs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslg", vis_xyz_gs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_qz.glslv", vis_xyz_qz_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_qz_pass1.glslv", vis_xyz_qz_pass1_vs_source)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_qz_pass2.glslv", vis_xyz_qz_pass2_vs_source)
+    std::string shader_root_path = LAMURE_SHADERS_DIR;
 
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslv", vis_xyz_vs_lighting_source, true)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslg", vis_xyz_gs_lighting_source, true)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz.glslf", vis_xyz_fs_lighting_source, true)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_lighting_source, true)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_lighting_source, true)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_lighting_source, true)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_lighting_source, true)
-      || !read_shader("../share/lamure/shaders/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_lighting_source, true)
+    if (!read_shader(shader_root_path + "/vis/vis_quad.glslv", vis_quad_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_qz.glslv", vis_xyz_qz_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass1.glslv", vis_xyz_qz_pass1_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass2.glslv", vis_xyz_qz_pass2_vs_source)
+
+      || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_lighting_source, true)
       ) {
       std::cout << "error reading shader files" << std::endl;
       return 1;
