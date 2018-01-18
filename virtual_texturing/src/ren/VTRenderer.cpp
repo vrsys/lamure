@@ -84,6 +84,9 @@ void VTRenderer::render()
     _shader_program->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
     _shader_program->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
 
+    _shader_program->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
+    _shader_program->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
+
     _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.6f, .2f, .2f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
 

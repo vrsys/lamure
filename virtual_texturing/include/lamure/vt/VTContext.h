@@ -62,6 +62,7 @@ class VTContext
 
         // Texture management fields
         static constexpr const char *TILE_SIZE = "TILE_SIZE";
+        static constexpr const char *TILE_PADDING = "TILE_PADDING";
         static constexpr const char *PHYSICAL_SIZE_MB = "PHYSICAL_SIZE_MB";
         static constexpr const char *NAME_TEXTURE = "NAME_TEXTURE";
         static constexpr const char *NAME_MIPMAP = "NAME_MIPMAP";
@@ -205,6 +206,7 @@ class VTContext
             }
 
             _context._size_tile = (uint16_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF));
+            _context._size_padding = (uint16_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_PADDING, Config::UNDEF));
             _context._size_physical_texture = (uint32_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::PHYSICAL_SIZE_MB, Config::UNDEF));
             _context._name_texture = std::string(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF));
             _context._name_mipmap = std::string(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_MIPMAP, Config::UNDEF));
@@ -223,6 +225,7 @@ class VTContext
     uint16_t get_byte_stride() const;
 
     uint16_t get_size_tile() const;
+    uint16_t get_size_padding() const;
     const std::string &get_name_texture() const;
     const std::string &get_name_mipmap() const;
     bool is_opt_run_in_parallel() const;
@@ -262,6 +265,7 @@ class VTContext
     Debug _debug;
 
     uint16_t _size_tile;
+    uint16_t _size_padding;
     std::string _name_texture;
     std::string _name_mipmap;
     bool _opt_run_in_parallel;

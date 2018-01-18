@@ -185,6 +185,10 @@ VTContext::~VTContext() { delete _cut_update; }
 TileAtlas<priority_type> *VTContext::get_atlas() const { return _atlas; }
 CutUpdate *VTContext::get_cut_update() { return _cut_update; }
 VTContext::Debug *VTContext::get_debug() { return &_debug; }
+uint16_t VTContext::get_size_padding() const
+{
+    return _size_padding;
+}
 
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)
