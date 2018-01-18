@@ -17,15 +17,17 @@ VTRenderer::VTRenderer(vt::VTContext *context, uint32_t width, uint32_t height)
 
 void VTRenderer::init()
 {
+    _start = std::chrono::system_clock::now();
+
     _projection_matrix = scm::math::mat4f::identity();
 
     _scm_core.reset(new scm::core(0, nullptr));
 
-    std::string vs_source;
-    std::string fs_source;
+    std::string vs_source, fs_source, vs_post, fs_post;
 
     if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_source) ||
-       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_source))
+       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_source) || !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/postprocess.glslv", vs_post) ||
+       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/postprocess.glslf", fs_post))
     {
         scm::err() << "error reading shader files" << scm::log::end;
         throw std::runtime_error("Error reading shader files");
@@ -37,10 +39,12 @@ void VTRenderer::init()
     {
         using namespace scm::gl;
         using namespace boost::assign;
-        _shader_program = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_source))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_source)));
+
+        _shader_vt = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_source))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_source)));
+        _shader_postprocess = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_post))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_post)));
     }
 
-    if(!_shader_program)
+    if(!_shader_vt || !_shader_postprocess)
     {
         scm::err() << "error creating shader program" << scm::log::end;
         throw std::runtime_error("Error creating shader program");
@@ -49,7 +53,8 @@ void VTRenderer::init()
     _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
 
     // TODO: gua scenegraph to handle geometry eventually
-    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
+    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/sphere.obj"));
+    _quad.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
@@ -64,46 +69,67 @@ void VTRenderer::init()
     apply_cut_update();
 
     _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
+
+    _color_buffer = _device->create_texture_2d(scm::math::vec2ui(_width, _height) * 1, scm::gl::FORMAT_RGBA_8, 1, 1, 8);
+    _depth_buffer = _device->create_texture_2d(scm::math::vec2ui(_width, _height) * 1, scm::gl::FORMAT_D24, 1, 1, 8);
+    _framebuffer = _device->create_frame_buffer();
+    _framebuffer->attach_color_buffer(0, _color_buffer);
+    _framebuffer->attach_depth_stencil_buffer(_depth_buffer);
+
+    if(!_color_buffer || !_depth_buffer)
+    {
+        scm::err() << scm::log::error << "application_window::init_renderer(): "
+                   << "error creating multi sample texture." << scm::log::end;
+    }
+
+    if(!_framebuffer)
+    {
+        scm::err() << scm::log::error << "application_window::init_renderer(): "
+                   << "error creating multi sample frame buffer." << scm::log::end;
+    }
+
+    _blend_state = _device->create_blend_state(false, scm::gl::FUNC_ONE, scm::gl::FUNC_ZERO, scm::gl::FUNC_ONE, scm::gl::FUNC_ZERO);
+    _depth_no_z = _device->create_depth_stencil_state(false, false);
 }
 
 void VTRenderer::render()
 {
-    _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
-
     scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
     scm::math::mat4f model_matrix = scm::math::mat4f::identity();
 
     scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
 
-    _shader_program->uniform("projection_matrix", _projection_matrix);
-    _shader_program->uniform("model_view_matrix", model_view_matrix);
+    _shader_vt->uniform("projection_matrix", _projection_matrix);
+    _shader_vt->uniform("model_view_matrix", model_view_matrix);
 
     // upload necessary information to vertex shader
-    _shader_program->uniform("in_physical_texture_dim", _physical_texture_dimension);
-    _shader_program->uniform("in_index_texture_dim", _index_texture_dimension);
-    _shader_program->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
-    _shader_program->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
+    _shader_vt->uniform("in_physical_texture_dim", _physical_texture_dimension);
+    _shader_vt->uniform("in_index_texture_dim", _index_texture_dimension);
+    _shader_vt->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
+    _shader_vt->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
 
-    _shader_program->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
-    _shader_program->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
-
-    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.6f, .2f, .2f, 1.0f));
-    _render_context->clear_default_depth_stencil_buffer();
+    _shader_vt->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
+    _shader_vt->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
 
     _render_context->apply();
 
     {
-        // multi sample pass
         scm::gl::context_state_objects_guard csg(_render_context);
         scm::gl::context_texture_units_guard tug(_render_context);
         scm::gl::context_framebuffer_guard fbg(_render_context);
 
-        _render_context->set_depth_stencil_state(_dstate_less);
+        _render_context->clear_color_buffer(_framebuffer, 0, scm::math::vec4f(.5f, .1f, .1f, 1.0f));
+        _render_context->clear_depth_stencil_buffer(_framebuffer);
 
+        _render_context->set_frame_buffer(_framebuffer);
+        _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
+
+        _render_context->set_depth_stencil_state(_dstate_less);
+        _render_context->set_blend_state(_blend_state);
         // don't perform backface culling
         _render_context->set_rasterizer_state(_ms_no_cull);
 
-        _render_context->bind_program(_shader_program);
+        _render_context->bind_program(_shader_vt);
 
         apply_cut_update();
 
@@ -154,6 +180,38 @@ void VTRenderer::render()
         _vtcontext->get_debug()->set_feedback_string(stream_feedback.str());
 
         _cut_update->feedback(_copy_memory_new);
+    }
+
+    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.1f, .1f, .1f, 1.0f));
+    _render_context->clear_default_depth_stencil_buffer();
+
+    _render_context->apply();
+
+    {
+        scm::gl::context_state_objects_guard csg(_render_context);
+        scm::gl::context_texture_units_guard tug(_render_context);
+        scm::gl::context_framebuffer_guard fbg(_render_context);
+
+        scm::math::mat4f pass_mvp = scm::math::mat4f::identity();
+        ortho_matrix(pass_mvp, 0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
+
+        _shader_postprocess->uniform_sampler("in_texture", 0);
+        _shader_postprocess->uniform("mvp", pass_mvp);
+
+        std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
+        _shader_postprocess->uniform("time", (float)elapsed_seconds.count());
+        _shader_postprocess->uniform("resolution", scm::math::vec3ui(_width, _height, 0));
+
+        _render_context->set_default_frame_buffer();
+
+        _render_context->set_depth_stencil_state(_depth_no_z);
+        _render_context->set_blend_state(_blend_state);
+
+        _render_context->bind_program(_shader_postprocess);
+
+        _render_context->bind_texture(_color_buffer, _filter_nearest, 0);
+
+        _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
     }
 }
 
@@ -381,11 +439,17 @@ void VTRenderer::initialize_feedback()
 }
 VTRenderer::~VTRenderer()
 {
-    _shader_program.reset();
+    _shader_vt.reset();
     _index_buffer.reset();
     _vertex_array.reset();
 
     _obj.reset();
+
+    _framebuffer.reset();
+    _color_buffer.reset();
+    _depth_buffer.reset();
+
+    _quad.reset();
 
     _filter_nearest.reset();
     _filter_linear.reset();

@@ -20,6 +20,7 @@ class VTRenderer
     void render_debug_view();
 
   private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> _start;
 
     VTContext *_vtcontext;
 
@@ -31,17 +32,25 @@ class VTRenderer
     scm::gl::texture_2d_ptr _physical_texture;
     scm::gl::texture_2d_ptr _index_texture;
 
+    // framebuffer
+    scm::gl::texture_2d_ptr _color_buffer;
+    scm::gl::texture_2d_ptr _depth_buffer;
+    scm::gl::frame_buffer_ptr _framebuffer;
+    scm::gl::blend_state_ptr            _blend_state;
+    scm::gl::depth_stencil_state_ptr    _depth_no_z;
+
     // necessary for feedback
     scm::gl::buffer_ptr _atomic_feedback_storage_ssbo;
     uint32_t *_copy_memory_new;
     size_t _size_copy_buf;
 
     scm::shared_ptr<scm::gl::render_device> _device;
-    scm::gl::program_ptr _shader_program;
+    scm::gl::program_ptr _shader_vt, _shader_postprocess;
     scm::gl::buffer_ptr _index_buffer;
     scm::gl::vertex_array_ptr _vertex_array;
     scm::math::mat4f _projection_matrix;
     scm::shared_ptr<scm::gl::wavefront_obj_geometry> _obj;
+    scm::shared_ptr<scm::gl::wavefront_obj_geometry> _quad;
     scm::gl::depth_stencil_state_ptr _dstate_less;
     scm::gl::sampler_state_ptr _filter_nearest;
     scm::gl::sampler_state_ptr _filter_linear;
