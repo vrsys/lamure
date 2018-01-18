@@ -93,12 +93,12 @@ void CutUpdate::dispatch()
             sum_feedback += iter_self->second;
         }
 
-        if(texels_per_tile < (float)sum_feedback && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
+        if(texels_per_tile < (float)sum_feedback * 2.2f && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
         {
             // std::cout << "decision: split, " << (1.0f - (children_in_cut / 4.0f)) * texels_per_tile << " is under " << 2 * _feedback_buffer[i] << std::endl;
             queue_split.push(tile_id);
         }
-        else if(texels_per_tile > (float)sum_feedback && check_all_siblings_in_cut(tile_id) && tile_id > 0)
+        else if(texels_per_tile > (float)sum_feedback / 2.2f && /*check_all_siblings_in_cut(tile_id) &&*/ tile_id > 0)
         {
             // std::cout << "decision: collapse, " << (1.0f - (children_in_cut / 4.0f)) * texels_per_tile << " is over " << 0.5f * _feedback_buffer[i] << std::endl;
             queue_collapse.push(tile_id);

@@ -114,7 +114,13 @@ void VTRenderer::render()
 
         _render_context->apply();
 
+        scm::gl::timer_query_ptr timer_query = _device->create_timer_query();
+
+        _render_context->begin_query(timer_query);
+
         _obj->draw(_render_context, scm::gl::geometry::MODE_SOLID);
+
+        _render_context->end_query(timer_query);
 
         //////////////////////////////////////////////////////////////////////////////
         // FEEDBACK STUFF

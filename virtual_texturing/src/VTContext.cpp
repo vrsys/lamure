@@ -164,11 +164,11 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
      uint32_t tiles_per_dim_x = 8192 /  _size_tile;
      uint64_t tiles_per_dim_y = ceil((double)number_of_tiles / (double)tiles_per_dim_x);
      std::cout << "phy_tex_dim: " << tiles_per_dim_x << " , " << tiles_per_dim_y << std::endl;*/
-    uint32_t input_in_byte = _size_physical_texture * 1024 * 1024;
-    uint32_t tilesize = (uint32_t)_size_tile * _size_tile * get_byte_stride();
-    uint32_t total_amount_of_tiles = input_in_byte / tilesize;
+    uint64_t input_in_byte = (uint64_t)_size_physical_texture * 1024 * 1024;
+    uint32_t tilesize = _size_tile * _size_tile * get_byte_stride();
+    uint64_t total_amount_of_tiles = input_in_byte / tilesize;
     uint32_t tiles_per_dim_x = (uint32_t)floor(sqrt(total_amount_of_tiles));
-    uint32_t tiles_per_dim_y = total_amount_of_tiles / tiles_per_dim_x;
+    uint32_t tiles_per_dim_y = (uint32_t)total_amount_of_tiles / tiles_per_dim_x;
 
     std::cout << tiles_per_dim_x << " " << tiles_per_dim_y << std::endl;
     return scm::math::vec2ui(tiles_per_dim_x, tiles_per_dim_y);
