@@ -9,9 +9,7 @@ flat in uvec2 physical_texture_dim;
 flat in vec2 tile_size;
 flat in vec2 tile_padding;
 
-layout (std430, binding = 0) buffer out_feedback_ssbo{
-  uint[] out_feedback_values;
-};
+layout(std430, binding = 0) buffer out_feedback_ssbo { uint[] out_feedback_values; };
 
 layout(binding = 0) uniform sampler2D physical_texture;
 layout(binding = 1) uniform usampler2D index_texture;
@@ -61,7 +59,7 @@ void main()
 
         // Use only tile_size - 2*tile_padding pixels to render scene
         // Therefore, scale reduced tile size to full size and translate it
-        vec2 padding_scale  = 1 - 2*tile_padding / tile_size;
+        vec2 padding_scale = 1 - 2 * tile_padding / tile_size;
         vec2 padding_offset = tile_padding / tile_size;
 
         // adding the ratio for every texel to our base offset to get the right pixel in our tile
@@ -78,8 +76,11 @@ void main()
         reference_count = atomicAdd(out_feedback_values[one_d_feedback_ssbo_index], 1);
         // reference_count += 1;
 
-        //c = vec4( float(reference_count) / (10*375542.857 / float( (current_level+1) * (current_level+1) )), (float(reference_count) / (10*375542.857 / float(current_level+1) * (current_level+1) )) * 0.3, 0.0, 1.0 );
+        // c = vec4( float(reference_count) / (10*375542.857 / float( (current_level+1) * (current_level+1) )), (float(reference_count) / (10*375542.857 / float(current_level+1) * (current_level+1) ))
+        // * 0.3, 0.0, 1.0 );
     }
 
-    out_color = c;
+    main_image(out_color, c);
+
+    // out_color = c;
 }

@@ -158,6 +158,10 @@ void CutUpdate::dispatch()
         throw std::runtime_error("updated cut is empty");
     }
 
+    _cut.get_back_updated_nodes().clear();
+
+    std::set_difference(cut_new.begin(), cut_new.end(), _cut.get_back_cut().begin(), _cut.get_back_cut().end(), std::inserter(_cut.get_back_updated_nodes(), _cut.get_back_updated_nodes().begin()));
+
     _cut.get_back_cut().swap(cut_new);
 
     auto end = std::chrono::high_resolution_clock::now();

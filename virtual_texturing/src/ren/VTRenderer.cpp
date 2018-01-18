@@ -49,7 +49,7 @@ void VTRenderer::init()
     _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
 
     // TODO: gua scenegraph to handle geometry eventually
-    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
+    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
@@ -221,16 +221,25 @@ void VTRenderer::apply_cut_update()
 
     auto start = std::chrono::high_resolution_clock::now();
 
+    scm::gl::timer_query_ptr timer_query = _device->create_timer_query();
+
+    _render_context->begin_query(timer_query);
+
     update_index_texture(cut->get_front_index());
 
-    for(auto iter = cut->get_front_mem_cut().begin(); iter != cut->get_front_mem_cut().end(); iter++)
+    for(auto iter = cut->get_back_updated_nodes().begin(); iter != cut->get_back_updated_nodes().end(); iter++)
     {
-        auto mem_index = (*iter).first;
-        auto x = (uint8_t)(mem_index % cut->get_size_mem_x());
-        auto y = (uint8_t)(mem_index / cut->get_size_mem_x());
+        auto mem_iter = std::find(cut->get_front_mem_slots(), cut->get_front_mem_slots() + cut->get_size_feedback(), *iter);
+        auto mem_slot = (size_t)std::distance(cut->get_front_mem_slots(), mem_iter);
+        auto mem_cut_iter = cut->get_front_mem_cut().find(mem_slot);
 
-        update_physical_texture_blockwise((*iter).second, x, y);
+        auto x = (uint8_t)((*mem_cut_iter).first % cut->get_size_mem_x());
+        auto y = (uint8_t)((*mem_cut_iter).first / cut->get_size_mem_x());
+
+        update_physical_texture_blockwise((*mem_cut_iter).second, x, y);
     }
+
+    _render_context->end_query(timer_query);
 
     auto end = std::chrono::high_resolution_clock::now();
     _apply_time = std::chrono::duration<float, std::milli>(end - start).count();

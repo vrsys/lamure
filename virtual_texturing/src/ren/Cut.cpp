@@ -3,7 +3,7 @@
 
 namespace vt
 {
-Cut::Cut(VTContext *context) : _front_cut(), _front_mem_cut(), _front_mem_slots_free(), _back_cut(), _back_mem_cut(), _back_mem_slots_free(), _swap_time()
+Cut::Cut(VTContext *context) : _front_cut(), _front_mem_cut(), _front_mem_slots_free(), _back_cut(), _back_mem_cut(), _back_mem_slots_free(), _swap_time(), _front_updated_nodes(), _back_updated_nodes()
 {
     _size_index = context->get_size_index_texture() * context->get_size_index_texture() * 3;
     _size_mem_x = context->calculate_size_physical_texture().x;
@@ -50,6 +50,8 @@ void Cut::_swap()
     std::cout << std::endl;*/
 
     auto start = std::chrono::high_resolution_clock::now();
+
+    _front_updated_nodes = _back_updated_nodes;
 
     _front_cut = _back_cut;
     _front_mem_cut = _back_mem_cut;
@@ -122,4 +124,12 @@ id_type *Cut::get_back_mem_slots() { return _back_mem_slots; }
 std::set<size_t> &Cut::get_back_mem_slots_free() { return _back_mem_slots_free; }
 const mem_slots_free_type &Cut::get_front_mem_slots_free() const { return _front_mem_slots_free; }
 const float &Cut::get_swap_time() const { return _swap_time; }
+const cut_type &Cut::get_front_updated_nodes() const
+{
+    return _front_updated_nodes;
+}
+cut_type &Cut::get_back_updated_nodes()
+{
+    return _back_updated_nodes;
+}
 }
