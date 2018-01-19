@@ -159,19 +159,33 @@ uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2,
 
 scm::math::vec2ui VTContext::calculate_size_physical_texture()
 {
-    // TODO: define physical texture size, as huge as possible
-    /* uint32_t number_of_tiles =  _size_physical_texture * 1024 * 1024 / tilesize;
-     uint32_t tiles_per_dim_x = 8192 /  _size_tile;
-     uint64_t tiles_per_dim_y = ceil((double)number_of_tiles / (double)tiles_per_dim_x);
-     std::cout << "phy_tex_dim: " << tiles_per_dim_x << " , " << tiles_per_dim_y << std::endl;*/
-    uint64_t input_in_byte = (uint64_t)_size_physical_texture * 1024 * 1024;
-    uint32_t tilesize = _size_tile * _size_tile * get_byte_stride();
-    uint64_t total_amount_of_tiles = input_in_byte / tilesize;
-    uint32_t tiles_per_dim_x = (uint32_t)floor(sqrt(total_amount_of_tiles));
-    uint32_t tiles_per_dim_y = (uint32_t)total_amount_of_tiles / tiles_per_dim_x;
+    size_t max_tex_byte_size = _size_physical_texture * 1024 * 1024;
+    size_t tile_byte_size = _size_tile * _size_tile * get_byte_stride();
 
-    std::cout << tiles_per_dim_x << " " << tiles_per_dim_y << std::endl;
-    return scm::math::vec2ui(tiles_per_dim_x, tiles_per_dim_y);
+    GLint max_tex_layers;
+    glGetIntegerv( GL_MAX_ARRAY_TEXTURE_LAYERS, &max_tex_layers);
+
+    GLint max_tex_px_width_gl;
+    glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_tex_px_width_gl);
+
+    size_t max_tex_px_width_custom = (size_t)sqrt(max_tex_byte_size / get_byte_stride());
+
+    size_t max_tex_px_width = (max_tex_px_width_gl < max_tex_px_width_custom ?
+                               (size_t)max_tex_px_width_gl :
+                               (size_t)max_tex_px_width_custom);
+
+    size_t tex_tile_width = max_tex_px_width / _size_tile;
+    size_t tex_px_width = tex_tile_width * _size_tile;
+    size_t tex_byte_size = tex_px_width * tex_px_width * get_byte_stride();
+    size_t layers = max_tex_byte_size / tex_byte_size;
+
+    _phys_tex_px_width = tex_px_width;
+    _phys_tex_tile_width = tex_tile_width;
+    _phys_tex_layers = (layers < max_tex_layers ?
+                        layers :
+                        (size_t)max_tex_layers);
+
+    return scm::math::vec2ui(tex_tile_width, tex_tile_width);
 }
 
 bool VTContext::EventHandler::isToggle_phyiscal_texture_image_viewer() const { return toggle_phyiscal_texture_image_viewer; }
