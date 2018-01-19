@@ -41,10 +41,9 @@ void VTRenderer::init()
         using namespace boost::assign;
 
         _shader_vt = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_source))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_source)));
-        _shader_postprocess = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_post))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_post)));
     }
 
-    if(!_shader_vt || !_shader_postprocess)
+    if(!_shader_vt)
     {
         scm::err() << "error creating shader program" << scm::log::end;
         throw std::runtime_error("Error creating shader program");
@@ -54,7 +53,6 @@ void VTRenderer::init()
 
     // TODO: gua scenegraph to handle geometry eventually
     _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/sphere.obj"));
-    _quad.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
@@ -69,27 +67,6 @@ void VTRenderer::init()
     apply_cut_update();
 
     _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
-
-    _color_buffer = _device->create_texture_2d(scm::math::vec2ui(_width, _height) * 1, scm::gl::FORMAT_RGBA_8, 1, 1, 8);
-    _depth_buffer = _device->create_texture_2d(scm::math::vec2ui(_width, _height) * 1, scm::gl::FORMAT_D24, 1, 1, 8);
-    _framebuffer = _device->create_frame_buffer();
-    _framebuffer->attach_color_buffer(0, _color_buffer);
-    _framebuffer->attach_depth_stencil_buffer(_depth_buffer);
-
-    if(!_color_buffer || !_depth_buffer)
-    {
-        scm::err() << scm::log::error << "application_window::init_renderer(): "
-                   << "error creating multi sample texture." << scm::log::end;
-    }
-
-    if(!_framebuffer)
-    {
-        scm::err() << scm::log::error << "application_window::init_renderer(): "
-                   << "error creating multi sample frame buffer." << scm::log::end;
-    }
-
-    _blend_state = _device->create_blend_state(false, scm::gl::FUNC_ONE, scm::gl::FUNC_ZERO, scm::gl::FUNC_ONE, scm::gl::FUNC_ZERO);
-    _depth_no_z = _device->create_depth_stencil_state(false, false);
 }
 
 void VTRenderer::render()
@@ -111,6 +88,13 @@ void VTRenderer::render()
     _shader_vt->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
     _shader_vt->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
 
+    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
+    _shader_vt->uniform("time", (float)elapsed_seconds.count());
+    _shader_vt->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
+
+    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.1f, .1f, .1f, 1.0f));
+    _render_context->clear_default_depth_stencil_buffer();
+
     _render_context->apply();
 
     {
@@ -118,14 +102,9 @@ void VTRenderer::render()
         scm::gl::context_texture_units_guard tug(_render_context);
         scm::gl::context_framebuffer_guard fbg(_render_context);
 
-        _render_context->clear_color_buffer(_framebuffer, 0, scm::math::vec4f(.5f, .1f, .1f, 1.0f));
-        _render_context->clear_depth_stencil_buffer(_framebuffer);
-
-        _render_context->set_frame_buffer(_framebuffer);
         _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
 
         _render_context->set_depth_stencil_state(_dstate_less);
-        _render_context->set_blend_state(_blend_state);
         // don't perform backface culling
         _render_context->set_rasterizer_state(_ms_no_cull);
 
@@ -134,8 +113,7 @@ void VTRenderer::render()
         apply_cut_update();
 
         // bind our texture and tell the graphics card to filter the samples linearly
-        // TODO physical texture later with linear filter
-        _render_context->bind_texture(_physical_texture, _filter_nearest, 0);
+        _render_context->bind_texture(_physical_texture, _filter_linear, 0);
         _render_context->bind_texture(_index_texture, _filter_nearest, 1);
 
         // bind feedback
@@ -180,38 +158,6 @@ void VTRenderer::render()
         _vtcontext->get_debug()->set_feedback_string(stream_feedback.str());
 
         _cut_update->feedback(_copy_memory_new);
-    }
-
-    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.1f, .1f, .1f, 1.0f));
-    _render_context->clear_default_depth_stencil_buffer();
-
-    _render_context->apply();
-
-    {
-        scm::gl::context_state_objects_guard csg(_render_context);
-        scm::gl::context_texture_units_guard tug(_render_context);
-        scm::gl::context_framebuffer_guard fbg(_render_context);
-
-        scm::math::mat4f pass_mvp = scm::math::mat4f::identity();
-        ortho_matrix(pass_mvp, 0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
-
-        _shader_postprocess->uniform_sampler("in_texture", 0);
-        _shader_postprocess->uniform("mvp", pass_mvp);
-
-        std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
-        _shader_postprocess->uniform("time", (float)elapsed_seconds.count());
-        _shader_postprocess->uniform("resolution", scm::math::vec3ui(_width, _height, 0));
-
-        _render_context->set_default_frame_buffer();
-
-        _render_context->set_depth_stencil_state(_depth_no_z);
-        _render_context->set_blend_state(_blend_state);
-
-        _render_context->bind_program(_shader_postprocess);
-
-        _render_context->bind_texture(_color_buffer, _filter_nearest, 0);
-
-        _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
     }
 }
 
@@ -444,12 +390,6 @@ VTRenderer::~VTRenderer()
     _vertex_array.reset();
 
     _obj.reset();
-
-    _framebuffer.reset();
-    _color_buffer.reset();
-    _depth_buffer.reset();
-
-    _quad.reset();
 
     _filter_nearest.reset();
     _filter_linear.reset();
