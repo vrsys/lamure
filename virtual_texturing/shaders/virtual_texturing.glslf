@@ -80,7 +80,5 @@ void main()
         // * 0.3, 0.0, 1.0 );
     }
 
-    main_image(out_color, c);
-
-    // out_color = c;
+    out_color = c;
 }

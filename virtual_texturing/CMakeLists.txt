@@ -61,8 +61,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 
 link_directories(${SCHISM_LIBRARY_DIRS}
         #${GLFW_LIBRARIES}
-        ${GLEW_LIBRARY}
-        )
+        ${GLEW_LIBRARY})
 
 add_library(${PROJECT_NAME} SHARED
         ${PROJECT_INCLUDES}
