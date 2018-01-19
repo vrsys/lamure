@@ -243,8 +243,8 @@ void main()
         // * 0.3, 0.0, 1.0 );
     }
 
-    vec4 atmospheric_glow = vec4(1.,1.,1., 1.);
-    mainImage(atmospheric_glow, gl_FragCoord.xy);
+    vec4 atmospheric_glow = vec4(1., 1., 1., 1.);
+    mainImage(atmospheric_glow, ((vec2(0.5, 0.5) - gl_FragCoord.xy / resolution.xy) * 0.8 + vec2(0.5, 0.5))*resolution.xy);
 
     out_color = c * 0.5 + atmospheric_glow * 0.5;
 }

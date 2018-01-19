@@ -52,7 +52,7 @@ void VTRenderer::init()
     _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
 
     // TODO: gua scenegraph to handle geometry eventually
-    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/sphere.obj"));
+    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
@@ -92,7 +92,7 @@ void VTRenderer::render()
     _shader_vt->uniform("time", (float)elapsed_seconds.count());
     _shader_vt->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
 
-    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.1f, .1f, .1f, 1.0f));
+    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.11f, .16f, .216f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
 
     _render_context->apply();
