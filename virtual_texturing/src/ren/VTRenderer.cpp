@@ -49,13 +49,13 @@ void VTRenderer::init()
     _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
 
     // TODO: gua scenegraph to handle geometry eventually
-    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/sphere.obj"));
+    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 
     _index_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_index_texture(), _vtcontext->get_size_index_texture());
-    _physical_texture_dimension = _vtcontext->calculate_size_physical_texture();
+    _physical_texture_dimension = scm::math::vec2ui(_vtcontext->get_phys_tex_tile_width(), _vtcontext->get_phys_tex_tile_width());
 
     initialize_index_texture();
     initialize_physical_texture();
@@ -79,8 +79,7 @@ void VTRenderer::render()
     _shader_program->uniform("model_view_matrix", model_view_matrix);
 
     // upload necessary information to vertex shader
-    scm::math::vec2ui dimensions(_vtcontext->get_phys_tex_tile_width(), _vtcontext->get_phys_tex_tile_width());
-    _shader_program->uniform("in_physical_texture_dim", dimensions);
+    _shader_program->uniform("in_physical_texture_dim", _physical_texture_dimension);
     _shader_program->uniform("in_index_texture_dim", _index_texture_dimension);
     _shader_program->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
     _shader_program->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
