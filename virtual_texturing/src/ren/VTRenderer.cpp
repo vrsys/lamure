@@ -342,7 +342,7 @@ void VTRenderer::initialize_physical_texture()
 {
     scm::math::vec2ui dimensions(_vtcontext->get_phys_tex_px_width(), _vtcontext->get_phys_tex_px_width());
 
-    _physical_texture = _device->create_texture_2d(dimensions, get_tex_format(), 0, _vtcontext->get_phys_tex_layers());
+    _physical_texture = _device->create_texture_2d(dimensions, get_tex_format(), 0, _vtcontext->get_phys_tex_layers()+1);
 }
 
 scm::gl::data_format VTRenderer::get_tex_format()
