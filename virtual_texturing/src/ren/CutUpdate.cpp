@@ -93,7 +93,7 @@ void CutUpdate::dispatch()
             sum_feedback += iter_self->second;
         }
 
-        if(texels_per_tile < (float)sum_feedback * 2.2f && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
+        if(texels_per_tile < (float)sum_feedback * 2.2f && QuadTree::get_depth_of_node(tile_id) < 6) //_context->get_depth_quadtree())
         {
             // std::cout << "decision: split, " << (1.0f - (children_in_cut / 4.0f)) * texels_per_tile << " is under " << 2 * _feedback_buffer[i] << std::endl;
             queue_split.push(tile_id);

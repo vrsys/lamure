@@ -49,7 +49,7 @@ void VTRenderer::init()
     _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
 
     // TODO: gua scenegraph to handle geometry eventually
-    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
+    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
@@ -109,7 +109,7 @@ void VTRenderer::render()
 
         // bind our texture and tell the graphics card to filter the samples linearly
         // TODO physical texture later with linear filter
-        _render_context->bind_texture(_physical_texture, _filter_nearest, 0);
+        _render_context->bind_texture(_physical_texture, _filter_linear, 0);
         _render_context->bind_texture(_index_texture, _filter_nearest, 1);
 
         // bind feedback
@@ -304,9 +304,9 @@ void VTRenderer::extract_debug_data(Cut *cut)
     {
         for(size_t y = 0; y < _vtcontext->get_size_index_texture(); ++y)
         {
-            auto ptr = &cut->get_front_index()[y * _vtcontext->get_size_index_texture() * 3 + x * 3];
+            auto ptr = &cut->get_front_index()[y * _vtcontext->get_size_index_texture() * 4 + x * 4];
 
-            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << " ";
+            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << "." << (int)ptr[3] << " ";
         }
 
         stream_index_string << std::endl;
@@ -341,8 +341,7 @@ void VTRenderer::update_index_texture(const uint8_t *buf_cpu)
 void VTRenderer::initialize_physical_texture()
 {
     scm::math::vec2ui dimensions(_vtcontext->get_phys_tex_px_width(), _vtcontext->get_phys_tex_px_width());
-
-    _physical_texture = _device->create_texture_2d(dimensions, get_tex_format(), 1, _vtcontext->get_phys_tex_layers());
+    _physical_texture = _device->create_texture_2d(dimensions, get_tex_format(), 0, _vtcontext->get_phys_tex_layers() + 1);
 }
 
 scm::gl::data_format VTRenderer::get_tex_format()
