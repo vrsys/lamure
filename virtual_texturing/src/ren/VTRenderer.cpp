@@ -23,11 +23,10 @@ void VTRenderer::init()
 
     _scm_core.reset(new scm::core(0, nullptr));
 
-    std::string vs_source, fs_source, vs_post, fs_post;
+    std::string vs_source, fs_source;
 
     if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_source) ||
-       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_source) || !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/postprocess.glslv", vs_post) ||
-       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/postprocess.glslf", fs_post))
+       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_source))
     {
         scm::err() << "error reading shader files" << scm::log::end;
         throw std::runtime_error("Error reading shader files");
@@ -66,7 +65,7 @@ void VTRenderer::init()
 
     apply_cut_update();
 
-    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
+    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
 }
 
 void VTRenderer::render()
