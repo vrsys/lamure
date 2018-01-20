@@ -102,14 +102,14 @@ void CutUpdate::dispatch()
             std::cout << "decision: split " << tile_id << ", " << _feedback_buffer[mem_slot] * 2.0f << " is over " << texels_per_tile << std::endl;
             queue_split.push(tile_id);
         }
-        else if(texels_per_tile > (float)sum_feedback / 8.0f && check_all_siblings_in_cut(tile_id) && QuadTree::get_depth_of_node(tile_id) > 0)
+        else if(texels_per_tile > (float)sum_feedback / 8.0f && check_all_siblings_in_cut(tile_id) && QuadTree::get_depth_of_node(tile_id) > 1)
         {
             std::cout << "decision: collapse " << tile_id << ", " << (float)sum_feedback / 8.0f << " is under " << texels_per_tile << std::endl;
             queue_collapse.push(tile_id);
         }
         else
         {
-            // std::cout << "decision: keep, " << _feedback_buffer[i] << std::endl;
+            std::cout << "decision: keep " << tile_id << ", " << _feedback_buffer[mem_slot] << std::endl;
             queue_keep.push(tile_id);
         }
     }
