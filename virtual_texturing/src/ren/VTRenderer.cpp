@@ -91,7 +91,7 @@ void VTRenderer::render()
     _shader_vt->uniform("time", (float)elapsed_seconds.count());
     _shader_vt->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
 
-    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.11f, .16f, .216f, 1.0f));
+    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.01f, .06f, .116f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
 
     _render_context->apply();
