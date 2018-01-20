@@ -70,6 +70,7 @@ void main()
         c = texture(physical_texture_array, vec3(physical_texture_coordinates, 0.0));
 
         // feedback calculation based on accumulated use of each rendered tile
+        // TODO: maybe a bug here: take level of physical texture into account
         uint one_d_feedback_ssbo_index = base_xy_offset.x + base_xy_offset.y * physical_texture_dim.x;
         reference_count = atomicAdd(out_feedback_values[one_d_feedback_ssbo_index], 1);
         // reference_count += 1;
