@@ -219,6 +219,9 @@ void VTContext::EventHandler::on_window_key_press(GLFWwindow *_window, int _key,
     case GLFW_KEY_SPACE:
         vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer = !vtcontext->_event_handler->toggle_phyiscal_texture_image_viewer;
         break;
+    case GLFW_KEY_P:
+        vtcontext->_cut_update->set_freeze_dispatch(!vtcontext->_cut_update->get_freeze_dispatch());
+        break;
     }
 
     ImGui_ImplGlfwGL3_KeyCallback(_window, _key, _scancode, _action, _mods);
@@ -257,14 +260,14 @@ void VTContext::EventHandler::on_window_move_cursor(GLFWwindow *_window, double 
     {
     case MouseButtonState::LEFT:
     {
-        float x = ((float)_xpos / event_handler->_ref_width - 0.5f) * 10.0f;
+        float x = ((float)_xpos / event_handler->_ref_width - 0.5f) * 6.28f;
         event_handler->_trackball_manip.rotation(event_handler->_ref_rot_x, 0, x, 0);
         event_handler->_ref_rot_x = x;
     }
     break;
     case MouseButtonState::RIGHT:
     {
-        float y = ((float)_ypos / event_handler->_ref_height - 0.5f) * 10.0f;
+        float y = ((float)_ypos / event_handler->_ref_height - 0.5f) * 6.28f;
         event_handler->_trackball_manip.rotation(0, event_handler->_ref_rot_y, 0, y);
         event_handler->_ref_rot_y = y;
     }
@@ -277,7 +280,7 @@ void VTContext::EventHandler::on_window_scroll(GLFWwindow *_window, double _xoff
 
     EventHandler *event_handler = vtcontext->get_event_handler();
 
-    event_handler->_trackball_manip.dolly((float)_yoffset);
+    event_handler->_trackball_manip.dolly((float)_yoffset * 0.1f);
 
     ImGui_ImplGlfwGL3_ScrollCallback(_window, _xoffset, _yoffset);
 }

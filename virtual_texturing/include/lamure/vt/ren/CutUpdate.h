@@ -23,7 +23,10 @@ class CutUpdate
     void feedback(uint32_t *buf);
     const float &get_dispatch_time() const;
 
-  private:
+    void set_freeze_dispatch(bool _freeze_dispatch);
+    bool get_freeze_dispatch();
+
+private:
     std::thread _worker;
     std::mutex _dispatch_lock;
     std::condition_variable _cv;
@@ -39,6 +42,8 @@ class CutUpdate
     uint32_t *_feedback_buffer;
 
     std::atomic<bool> _should_stop;
+
+    bool _freeze_dispatch = false;
 
     void run();
     void dispatch();

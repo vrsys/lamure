@@ -17,12 +17,13 @@ VTRenderer::VTRenderer(vt::VTContext *context, uint32_t width, uint32_t height)
 
 void VTRenderer::init()
 {
+    _start = std::chrono::system_clock::now();
+
     _projection_matrix = scm::math::mat4f::identity();
 
     _scm_core.reset(new scm::core(0, nullptr));
 
-    std::string vs_source;
-    std::string fs_source;
+    std::string vs_source, fs_source;
 
     if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_source) ||
        !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_source))
@@ -37,10 +38,11 @@ void VTRenderer::init()
     {
         using namespace scm::gl;
         using namespace boost::assign;
-        _shader_program = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_source))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_source)));
+
+        _shader_vt = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_source))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_source)));
     }
 
-    if(!_shader_program)
+    if(!_shader_vt)
     {
         scm::err() << "error creating shader program" << scm::log::end;
         throw std::runtime_error("Error creating shader program");
@@ -63,53 +65,54 @@ void VTRenderer::init()
 
     apply_cut_update();
 
-    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
+    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
 }
 
 void VTRenderer::render()
 {
-    _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
-
     scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
     scm::math::mat4f model_matrix = scm::math::mat4f::identity();
 
     scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
 
-    _shader_program->uniform("projection_matrix", _projection_matrix);
-    _shader_program->uniform("model_view_matrix", model_view_matrix);
+    _shader_vt->uniform("projection_matrix", _projection_matrix);
+    _shader_vt->uniform("model_view_matrix", model_view_matrix);
 
     // upload necessary information to vertex shader
-    _shader_program->uniform("in_physical_texture_dim", _physical_texture_dimension);
-    _shader_program->uniform("in_index_texture_dim", _index_texture_dimension);
-    _shader_program->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
-    _shader_program->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
+    _shader_vt->uniform("in_physical_texture_dim", _physical_texture_dimension);
+    _shader_vt->uniform("in_index_texture_dim", _index_texture_dimension);
+    _shader_vt->uniform("in_max_level", ((uint32_t)_vtcontext->get_depth_quadtree()));
+    _shader_vt->uniform("in_toggle_view", _vtcontext->get_event_handler()->isToggle_phyiscal_texture_image_viewer());
 
-    _shader_program->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
-    _shader_program->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
+    _shader_vt->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
+    _shader_vt->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
 
-    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.6f, .2f, .2f, 1.0f));
+    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
+    _shader_vt->uniform("time", (float)elapsed_seconds.count());
+    _shader_vt->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
+
+    _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.01f, .06f, .116f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
 
     _render_context->apply();
 
     {
-        // multi sample pass
         scm::gl::context_state_objects_guard csg(_render_context);
         scm::gl::context_texture_units_guard tug(_render_context);
         scm::gl::context_framebuffer_guard fbg(_render_context);
 
-        _render_context->set_depth_stencil_state(_dstate_less);
+        _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
 
+        _render_context->set_depth_stencil_state(_dstate_less);
         // don't perform backface culling
         _render_context->set_rasterizer_state(_ms_no_cull);
 
-        _render_context->bind_program(_shader_program);
+        _render_context->bind_program(_shader_vt);
 
         apply_cut_update();
 
         // bind our texture and tell the graphics card to filter the samples linearly
-        // TODO physical texture later with linear filter
-        _render_context->bind_texture(_physical_texture, _filter_nearest, 0);
+        _render_context->bind_texture(_physical_texture, _filter_linear, 0);
         _render_context->bind_texture(_index_texture, _filter_nearest, 1);
 
         // bind feedback
@@ -381,7 +384,7 @@ void VTRenderer::initialize_feedback()
 }
 VTRenderer::~VTRenderer()
 {
-    _shader_program.reset();
+    _shader_vt.reset();
     _index_buffer.reset();
     _vertex_array.reset();
 

@@ -20,6 +20,7 @@ class VTRenderer
     void render_debug_view();
 
   private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> _start;
 
     VTContext *_vtcontext;
 
@@ -37,7 +38,7 @@ class VTRenderer
     size_t _size_copy_buf;
 
     scm::shared_ptr<scm::gl::render_device> _device;
-    scm::gl::program_ptr _shader_program;
+    scm::gl::program_ptr _shader_vt;
     scm::gl::buffer_ptr _index_buffer;
     scm::gl::vertex_array_ptr _vertex_array;
     scm::math::mat4f _projection_matrix;
