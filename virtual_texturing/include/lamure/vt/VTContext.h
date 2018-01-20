@@ -248,6 +248,18 @@ class VTContext
     void set_event_handler(EventHandler *_event_handler);
     void set_debug_view(bool show_debug_view);
 
+    size_t get_phys_tex_px_width() const {
+        return _phys_tex_px_width;
+    }
+
+    size_t get_phys_tex_tile_width() const {
+        return _phys_tex_tile_width;
+    }
+
+    size_t get_phys_tex_layers() const {
+        return _phys_tex_layers;
+    }
+
   private:
     explicit VTContext();
     uint16_t identify_depth();
@@ -278,6 +290,10 @@ class VTContext
     uint32_t _size_index_texture;
     uint32_t _size_physical_texture;
     bool _show_debug_view;
+
+    size_t _phys_tex_px_width;
+    size_t _phys_tex_tile_width;
+    size_t _phys_tex_layers;
 };
 }
 

@@ -97,7 +97,7 @@ void CutUpdate::dispatch()
             sum_feedback += iter_self->second;
         }
 
-        if(texels_per_tile < _feedback_buffer[mem_slot] * 2.0f && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
+        if(texels_per_tile < _feedback_buffer[mem_slot] * 2.0f && QuadTree::get_depth_of_node(tile_id) < 4) //_context->get_depth_quadtree())
         {
             std::cout << "decision: split " << tile_id << ", " << _feedback_buffer[mem_slot] * 2.0f << " is over " << texels_per_tile << std::endl;
             queue_split.push(tile_id);
@@ -204,14 +204,19 @@ bool CutUpdate::try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr)
     {
         for(size_t y = y_orig * tile_span; y < (y_orig + 1) * tile_span; y++)
         {
-            auto ptr = &buf_idx[y * _context->get_size_index_texture() * 3 + x * 3];
+            auto ptr = &buf_idx[(y * _context->get_size_index_texture() + x) * 4];
 
-            if(ptr[2] < (uint8_t)tile_depth)
-            {
-                ptr[0] = (uint8_t)(mem_slot % _cut.get_size_mem_x());
-                ptr[1] = (uint8_t)(mem_slot / _cut.get_size_mem_x());
-                ptr[2] = (uint8_t)tile_depth;
-            }
+            size_t phys_tex_tile_width = _context->get_phys_tex_tile_width();
+            size_t tiles_per_tex = phys_tex_tile_width * phys_tex_tile_width;
+            size_t level = mem_slot / tiles_per_tex;
+            size_t rel_pos = mem_slot - level * tiles_per_tex;
+            size_t x_tile = rel_pos % phys_tex_tile_width;
+            size_t y_tile = rel_pos / phys_tex_tile_width;
+
+            ptr[0] = (uint8_t)x_tile;
+            ptr[1] = (uint8_t)y_tile;
+            ptr[2] = (uint8_t)tile_depth;
+            ptr[3] = (uint8_t)level;
         }
     }
 

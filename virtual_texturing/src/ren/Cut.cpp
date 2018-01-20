@@ -5,9 +5,11 @@ namespace vt
 {
 Cut::Cut(VTContext *context) : _front_cut(), _front_mem_cut(), _front_mem_slots_free(), _back_cut(), _back_mem_cut(), _back_mem_slots_free(), _swap_time(), _front_updated_nodes(), _back_updated_nodes()
 {
-    _size_index = context->get_size_index_texture() * context->get_size_index_texture() * 3;
-    _size_mem_x = context->calculate_size_physical_texture().x;
-    _size_mem_y = context->calculate_size_physical_texture().y;
+    auto phys_tex_dimensions = context->calculate_size_physical_texture();
+
+    _size_index = context->get_size_index_texture() * context->get_size_index_texture() * 4;
+    _size_mem_x = phys_tex_dimensions.x;
+    _size_mem_y = phys_tex_dimensions.y;
     _size_feedback = _size_mem_x * _size_mem_y;
 
     _front_index = new uint8_t[_size_index];
@@ -30,6 +32,8 @@ Cut::Cut(VTContext *context) : _front_cut(), _front_mem_cut(), _front_mem_slots_
 
     _front_cut.insert(0);
     _back_cut.insert(0);
+    _front_updated_nodes.insert(0);
+    _back_updated_nodes.insert(0);
 
     _new_data = false;
 }

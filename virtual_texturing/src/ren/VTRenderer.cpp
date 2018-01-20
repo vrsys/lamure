@@ -51,13 +51,13 @@ void VTRenderer::init()
     _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
 
     // TODO: gua scenegraph to handle geometry eventually
-    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/sphere.obj"));
+    _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 
     _index_texture_dimension = scm::math::vec2ui(_vtcontext->get_size_index_texture(), _vtcontext->get_size_index_texture());
-    _physical_texture_dimension = _vtcontext->calculate_size_physical_texture();
+    _physical_texture_dimension = scm::math::vec2ui(_vtcontext->get_phys_tex_tile_width(), _vtcontext->get_phys_tex_tile_width());
 
     initialize_index_texture();
     initialize_physical_texture();
@@ -144,11 +144,13 @@ void VTRenderer::render()
         _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, nullptr);
 
         std::stringstream stream_feedback;
-        for(size_t x = 0; x < _physical_texture_dimension.x; ++x)
+        size_t phys_tex_tile_width = _vtcontext->get_phys_tex_tile_width();
+
+        for(size_t x = 0; x < phys_tex_tile_width; ++x)
         {
-            for(size_t y = 0; y < _physical_texture_dimension.y; ++y)
+            for(size_t y = 0; y < phys_tex_tile_width; ++y)
             {
-                stream_feedback << _copy_memory_new[x + y * _physical_texture_dimension.x] << " ";
+                stream_feedback << _copy_memory_new[x + y * phys_tex_tile_width] << " ";
             }
 
             stream_feedback << std::endl;
@@ -233,13 +235,25 @@ void VTRenderer::apply_cut_update()
     for(auto iter = cut->get_back_updated_nodes().begin(); iter != cut->get_back_updated_nodes().end(); iter++)
     {
         auto mem_iter = std::find(cut->get_front_mem_slots(), cut->get_front_mem_slots() + cut->get_size_feedback(), *iter);
+
+        if(mem_iter == cut->get_front_mem_slots() + cut->get_size_feedback())
+        {
+            throw std::runtime_error("Updated node not in memory slots");
+        }
+
         auto mem_slot = (size_t)std::distance(cut->get_front_mem_slots(), mem_iter);
         auto mem_cut_iter = cut->get_front_mem_cut().find(mem_slot);
 
-        auto x = (uint8_t)((*mem_cut_iter).first % cut->get_size_mem_x());
-        auto y = (uint8_t)((*mem_cut_iter).first / cut->get_size_mem_x());
+        if(mem_cut_iter == cut->get_front_mem_cut().end())
+        {
+            throw std::runtime_error("Updated node not in memory cut");
+        }
 
-        update_physical_texture_blockwise((*mem_cut_iter).second, x, y);
+        // auto x = (uint8_t)((*mem_cut_iter).first % cut->get_size_mem_x());
+        // auto y = (uint8_t)((*mem_cut_iter).first / cut->get_size_mem_x());
+        auto slot = (*mem_cut_iter).first;
+
+        update_physical_texture_blockwise((*mem_cut_iter).second, slot);
     }
 
     _render_context->end_query(timer_query);
@@ -293,9 +307,9 @@ void VTRenderer::extract_debug_data(Cut *cut)
     {
         for(size_t y = 0; y < _vtcontext->get_size_index_texture(); ++y)
         {
-            auto ptr = &cut->get_front_index()[y * _vtcontext->get_size_index_texture() * 3 + x * 3];
+            auto ptr = &cut->get_front_index()[y * _vtcontext->get_size_index_texture() * 4 + x * 4];
 
-            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << " ";
+            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << "." << (int)ptr[3] << " ";
         }
 
         stream_index_string << std::endl;
@@ -317,71 +331,77 @@ void VTRenderer::extract_debug_data(Cut *cut)
     _vtcontext->get_debug()->set_size_mem_cut(cut->get_front_mem_cut().size());
 }
 
-void VTRenderer::initialize_index_texture() { _index_texture = _device->create_texture_2d(_index_texture_dimension, scm::gl::FORMAT_RGB_8UI); }
+void VTRenderer::initialize_index_texture() { _index_texture = _device->create_texture_2d(_index_texture_dimension, scm::gl::FORMAT_RGBA_8UI); }
 
 void VTRenderer::update_index_texture(const uint8_t *buf_cpu)
 {
     scm::math::vec3ui origin = scm::math::vec3ui(0, 0, 0);
     scm::math::vec3ui dimensions = scm::math::vec3ui(_index_texture_dimension, 1);
 
-    _render_context->update_sub_texture(_index_texture, scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGB_8UI, buf_cpu);
+    _render_context->update_sub_texture(_index_texture, scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI, buf_cpu);
 }
 
 void VTRenderer::initialize_physical_texture()
 {
-    scm::gl::data_format format;
+    scm::math::vec2ui dimensions(_vtcontext->get_phys_tex_px_width(), _vtcontext->get_phys_tex_px_width());
+    _physical_texture = _device->create_texture_2d(dimensions, get_tex_format(), 0, _vtcontext->get_phys_tex_layers() + 1);
+}
+
+scm::gl::data_format VTRenderer::get_tex_format()
+{
     switch(_vtcontext->get_format_texture())
     {
     case VTContext::Config::R8:
-        format = scm::gl::FORMAT_R_8;
-        break;
+        return scm::gl::FORMAT_R_8;
     case VTContext::Config::RGB8:
-        format = scm::gl::FORMAT_RGB_8;
-        break;
+        return scm::gl::FORMAT_RGB_8;
     case VTContext::Config::RGBA8:
-        format = scm::gl::FORMAT_RGBA_8;
-        break;
+    default:
+        return scm::gl::FORMAT_RGBA_8;
     }
-    _physical_texture = _device->create_texture_2d(_physical_texture_dimension * _vtcontext->get_size_tile(), format);
+}
+
+void VTRenderer::update_physical_texture_blockwise(const uint8_t *buf_texel, size_t slot_id)
+{
+    size_t phys_tex_tile_width = _vtcontext->get_phys_tex_tile_width();
+    size_t tile_px_width = _vtcontext->get_size_tile();
+
+    size_t slots_per_texture = phys_tex_tile_width * phys_tex_tile_width;
+    size_t layer = slot_id / slots_per_texture;
+    size_t rel_slot_id = slot_id - layer * slots_per_texture;
+    size_t x_tile = rel_slot_id % phys_tex_tile_width;
+    size_t y_tile = rel_slot_id / phys_tex_tile_width;
+
+    scm::math::vec3ui origin = scm::math::vec3ui(x_tile * tile_px_width, y_tile * tile_px_width, 0);
+
+    scm::math::vec3ui dimensions = scm::math::vec3ui(tile_px_width, tile_px_width, 1);
+
+    _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(origin, dimensions), layer, get_tex_format(), buf_texel);
 }
 
 void VTRenderer::update_physical_texture_blockwise(const uint8_t *buf_texel, uint32_t x, uint32_t y)
 {
-    scm::gl::data_format format;
-    switch(_vtcontext->get_format_texture())
-    {
-    case VTContext::Config::R8:
-        format = scm::gl::FORMAT_R_8;
-        break;
-    case VTContext::Config::RGB8:
-        format = scm::gl::FORMAT_RGB_8;
-        break;
-    case VTContext::Config::RGBA8:
-        format = scm::gl::FORMAT_RGBA_8;
-        break;
-    }
-
     scm::math::vec3ui origin = scm::math::vec3ui(x * _vtcontext->get_size_tile(), y * _vtcontext->get_size_tile(), 0);
     scm::math::vec3ui dimensions = scm::math::vec3ui(_vtcontext->get_size_tile(), _vtcontext->get_size_tile(), 1);
 
-    _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(origin, dimensions), 0, format, buf_texel);
+    _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
 }
 
 void VTRenderer::initialize_feedback()
 {
-    _size_copy_buf = _physical_texture_dimension.x * _physical_texture_dimension.y * size_of_format(scm::gl::FORMAT_R_32UI);
+    size_t copy_buffer_len = _vtcontext->get_phys_tex_tile_width() * _vtcontext->get_phys_tex_tile_width() * _vtcontext->get_phys_tex_layers();
+    _size_copy_buf = copy_buffer_len * size_of_format(scm::gl::FORMAT_R_32UI);
 
     _atomic_feedback_storage_ssbo = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, _size_copy_buf);
 
-    size_t len = _size_copy_buf / sizeof(uint32_t);
+    _copy_memory_new = new uint32_t[copy_buffer_len];
 
-    _copy_memory_new = new uint32_t[len];
-
-    for(size_t i = 0; i < len; ++i)
+    for(size_t i = 0; i < copy_buffer_len; ++i)
     {
         _copy_memory_new[i] = 0;
     }
 }
+
 VTRenderer::~VTRenderer()
 {
     _shader_vt.reset();
