@@ -1,5 +1,4 @@
-#version 450 core
-#extension GL_EXT_texture_array : enable
+#version 440 core
 
 in vec2 texture_coord;
 flat in uint max_level;
@@ -193,7 +192,7 @@ void main()
     uint reference_count = 0;
     if(toggle_view == 0)
     { // Show the physical texture
-        c = texture2DArray(physical_texture_array, texture_coordinates);
+        c = texture(physical_texture_array, texture_coordinates);
         out_color = c;
     }
     else
@@ -231,7 +230,7 @@ void main()
         // c = vec4(physical_tile_ratio_xy, 0.0, 1.0);
 
         // outputting the calculated coordinate from our physical texture
-        c = texture2DArray(physical_texture_array, vec3(physical_texture_coordinates, texture_coordinates.z));
+        c = texture(physical_texture_array, vec3(physical_texture_coordinates, texture_coordinates.z));
 
         // feedback calculation based on accumulated use of each rendered tile
         // TODO: maybe a bug here: take level of physical texture into account

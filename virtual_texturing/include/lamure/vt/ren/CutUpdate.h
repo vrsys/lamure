@@ -8,6 +8,8 @@
 
 namespace vt
 {
+typedef std::set<id_type, QuadTree::more_than_by_depth> ordered_quadtree_set_type;
+
 class CutUpdate
 {
   public:
@@ -47,12 +49,15 @@ private:
 
     void run();
     void dispatch();
-    bool collapse_id(id_type tile_id, cut_type &cut_new);
-    bool split_id(id_type tile_id, cut_type &cut_new);
-    void keep_id(id_type tile_id, cut_type &cut_new);
+    bool collapse_to_id(id_type tile_id);
+    bool split_id(id_type tile_id);
+    bool keep_id(id_type tile_id);
     bool memory_available_for_split();
     bool try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr);
     void remove_from_indexed_memory(id_type tile_id);
+
+    void identify_effective_cut(cut_type &cut);
+    void identify_effective_update(cut_type &cut);
 
     uint8_t count_children_in_cut(id_type tile_id);
     bool check_all_siblings_in_cut(id_type tile_id);

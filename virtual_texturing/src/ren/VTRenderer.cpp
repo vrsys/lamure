@@ -70,10 +70,12 @@ void VTRenderer::init()
 
 void VTRenderer::render()
 {
+    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
+
     scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
     scm::math::mat4f model_matrix = scm::math::mat4f::identity();
 
-    scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
+    scm::math::mat4f model_view_matrix = view_matrix * model_matrix * scm::math::make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
 
     _shader_vt->uniform("projection_matrix", _projection_matrix);
     _shader_vt->uniform("model_view_matrix", model_view_matrix);
@@ -87,7 +89,6 @@ void VTRenderer::render()
     _shader_vt->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
     _shader_vt->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
 
-    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
     _shader_vt->uniform("time", (float)elapsed_seconds.count());
     _shader_vt->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
 
@@ -236,18 +237,8 @@ void VTRenderer::apply_cut_update()
     {
         auto mem_iter = std::find(cut->get_front_mem_slots(), cut->get_front_mem_slots() + cut->get_size_feedback(), *iter);
 
-        if(mem_iter == cut->get_front_mem_slots() + cut->get_size_feedback())
-        {
-            throw std::runtime_error("Updated node not in memory slots");
-        }
-
         auto mem_slot = (size_t)std::distance(cut->get_front_mem_slots(), mem_iter);
         auto mem_cut_iter = cut->get_front_mem_cut().find(mem_slot);
-
-        if(mem_cut_iter == cut->get_front_mem_cut().end())
-        {
-            throw std::runtime_error("Updated node not in memory cut");
-        }
 
         // auto x = (uint8_t)((*mem_cut_iter).first % cut->get_size_mem_x());
         // auto y = (uint8_t)((*mem_cut_iter).first / cut->get_size_mem_x());
