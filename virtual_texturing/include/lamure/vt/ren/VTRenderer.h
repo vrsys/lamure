@@ -38,15 +38,17 @@ class VTRenderer
     size_t _size_copy_buf;
 
     scm::shared_ptr<scm::gl::render_device> _device;
-    scm::gl::program_ptr _shader_vt;
+    scm::gl::program_ptr _shader_vt, _shader_atmosphere;
     scm::gl::buffer_ptr _index_buffer;
     scm::gl::vertex_array_ptr _vertex_array;
     scm::math::mat4f _projection_matrix;
     scm::shared_ptr<scm::gl::wavefront_obj_geometry> _obj;
+    scm::shared_ptr<scm::gl::quad_geometry> _quad;
     scm::gl::depth_stencil_state_ptr _dstate_less;
     scm::gl::sampler_state_ptr _filter_nearest;
     scm::gl::sampler_state_ptr _filter_linear;
     scm::gl::rasterizer_state_ptr _ms_no_cull;
+    scm::gl::blend_state_ptr _blend_state;
 
     uint32_t _width, _height;
 
@@ -61,7 +63,6 @@ class VTRenderer
     void initialize_feedback();
     void update_index_texture(const uint8_t *buf_cpu);
     void update_physical_texture_blockwise(const uint8_t *buf_texel, size_t slot_id);
-    void update_physical_texture_blockwise(const uint8_t *buf_texel, uint32_t x, uint32_t y);
     void apply_cut_update();
     void extract_debug_data(Cut *cut);
 
