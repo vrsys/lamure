@@ -11,6 +11,7 @@ flat in vec2 tile_padding;
 
 uniform float time;
 uniform uvec2 resolution;
+uniform float scale;
 
 layout(std430, binding = 0) buffer out_feedback_ssbo { uint[] out_feedback_values; };
 
@@ -246,8 +247,10 @@ void main()
         }*/
     }
 
-    vec4 atmospheric_glow = vec4(1., 1., 1., 1.);
-    mainImage(atmospheric_glow, ((vec2(0.5, 0.5) - gl_FragCoord.xy / resolution.xy) * 0.9 + vec2(0.5, 0.5))*resolution.xy);
+    out_color = c;
 
-    out_color = c * 0.5 + atmospheric_glow * 0.5;
+//    vec4 atmospheric_glow = vec4(1., 1., 1., 1.);
+//    mainImage(atmospheric_glow, ((vec2(0.5, 0.5) - gl_FragCoord.xy / resolution.xy) * (1.2 - scale) + vec2(0.5, 0.5))*resolution.xy);
+//
+//    out_color = c * 0.5 + atmospheric_glow * 0.5;
 }

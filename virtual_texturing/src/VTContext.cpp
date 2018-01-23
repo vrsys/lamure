@@ -163,16 +163,14 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
     size_t tile_byte_size = _size_tile * _size_tile * get_byte_stride();
 
     GLint max_tex_layers;
-    glGetIntegerv( GL_MAX_ARRAY_TEXTURE_LAYERS, &max_tex_layers);
+    glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &max_tex_layers);
 
     GLint max_tex_px_width_gl;
-    glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_tex_px_width_gl);
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_tex_px_width_gl);
 
     size_t max_tex_px_width_custom = (size_t)sqrt(max_tex_byte_size / get_byte_stride());
 
-    size_t max_tex_px_width = (max_tex_px_width_gl < max_tex_px_width_custom ?
-                               (size_t)max_tex_px_width_gl :
-                               (size_t)max_tex_px_width_custom);
+    size_t max_tex_px_width = (max_tex_px_width_gl < max_tex_px_width_custom ? (size_t)max_tex_px_width_gl : (size_t)max_tex_px_width_custom);
 
     size_t tex_tile_width = max_tex_px_width / _size_tile;
     size_t tex_px_width = tex_tile_width * _size_tile;
@@ -181,9 +179,7 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
 
     _phys_tex_px_width = tex_px_width;
     _phys_tex_tile_width = tex_tile_width;
-    _phys_tex_layers = (layers < max_tex_layers ?
-                        layers :
-                        (size_t)max_tex_layers);
+    _phys_tex_layers = (layers < max_tex_layers ? layers : (size_t)max_tex_layers);
 
     return scm::math::vec2ui(tex_tile_width, tex_tile_width);
 }
@@ -199,10 +195,7 @@ VTContext::~VTContext() { delete _cut_update; }
 TileAtlas<priority_type> *VTContext::get_atlas() const { return _atlas; }
 CutUpdate *VTContext::get_cut_update() { return _cut_update; }
 VTContext::Debug *VTContext::get_debug() { return &_debug; }
-uint16_t VTContext::get_size_padding() const
-{
-    return _size_padding;
-}
+uint16_t VTContext::get_size_padding() const { return _size_padding; }
 
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)
@@ -294,7 +287,7 @@ void VTContext::EventHandler::on_window_scroll(GLFWwindow *_window, double _xoff
 
     EventHandler *event_handler = vtcontext->get_event_handler();
 
-    event_handler->_trackball_manip.dolly((float)_yoffset * 0.1f);
+    event_handler->set_scale(event_handler->get_scale() + (float)_yoffset * 0.01f);
 
     ImGui_ImplGlfwGL3_ScrollCallback(_window, _xoffset, _yoffset);
 }
@@ -310,8 +303,10 @@ VTContext::EventHandler::EventHandler()
 {
     _mouse_button_state = MouseButtonState::IDLE;
 
-    _trackball_manip.dolly(2.5f);
+    _trackball_manip.dolly(10.5f);
 }
+float VTContext::EventHandler::get_scale() const { return _scale; }
+void VTContext::EventHandler::set_scale(float _scale) { EventHandler::_scale = _scale; }
 std::deque<float> &VTContext::Debug::get_fps() { return _fps; }
 float VTContext::Debug::get_mem_slots_busy() { return _mem_slots_busy; }
 void VTContext::Debug::set_mem_slots_busy(float _mem_slots_busy) { Debug::_mem_slots_busy = _mem_slots_busy; }

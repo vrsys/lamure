@@ -64,7 +64,7 @@ void CutUpdate::dispatch()
     ordered_quadtree_set_type split;
     ordered_quadtree_set_type keep;
 
-    std::map<id_type, float> map_children_in_cut;
+    std::map<id_type, double> map_children_in_cut;
 
     _cut.start_writing();
 
@@ -72,47 +72,49 @@ void CutUpdate::dispatch()
 
     cut_type cut_desired = cut_type(_cut.get_back_cut());
 
-    for(auto iter = cut_desired.crbegin(); iter != cut_desired.crend(); ++iter)
+    for(auto iter = cut_desired.crbegin(); iter != cut_desired.crend(); iter++)
     {
-        auto tile_id = *iter;
-        auto mem_slot = get_mem_slot_for_id(tile_id);
+        id_type tile_id = *iter;
+        size_t mem_slot = get_mem_slot_for_id(tile_id);
 
-        if(mem_slot == SIZE_MAX && !_atlas->alreadyRequested(tile_id))
+        if(mem_slot == SIZE_MAX || tile_id == SIZE_MAX)
         {
-            throw std::runtime_error("Memory limit is reached");
+            std::cerr << "Node " << std::to_string(tile_id) << " not found in memory slots" << std::endl;
+            continue;
         }
 
-        auto parent_id = QuadTree::get_parent_id(tile_id);
+        id_type parent_id = QuadTree::get_parent_id(tile_id);
         auto iter_parent = map_children_in_cut.find(parent_id);
 
         if(iter_parent == map_children_in_cut.end())
         {
-            map_children_in_cut.insert(std::pair<id_type, float>(parent_id, _feedback_buffer[mem_slot]));
+            map_children_in_cut.insert(std::pair<id_type, double>(parent_id, _feedback_buffer[mem_slot]));
         }
         else
         {
-            iter_parent->second += _feedback_buffer[mem_slot] / 4.0f;
+            iter_parent->second += _feedback_buffer[mem_slot] / 4.0;
         }
     }
 
     /* DECISION MAKING PASS */
 
-    for(auto iter = _cut.get_back_cut().crbegin(); iter != _cut.get_back_cut().crend(); ++iter)
+    for(auto iter = _cut.get_back_cut().crbegin(); iter != _cut.get_back_cut().crend(); iter++)
     {
-        auto tile_id = *iter;
-        auto mem_slot = get_mem_slot_for_id(tile_id);
+        id_type tile_id = *iter;
+        size_t mem_slot = get_mem_slot_for_id(tile_id);
 
-        if(mem_slot == SIZE_MAX)
+        if(mem_slot == SIZE_MAX || tile_id == SIZE_MAX)
         {
+            std::cerr << "Node " << std::to_string(tile_id) << " not found in memory slots" << std::endl;
             continue;
         }
 
-        auto parent_id = QuadTree::get_parent_id(tile_id);
+        id_type parent_id = QuadTree::get_parent_id(tile_id);
         auto iter_parent = map_children_in_cut.find(parent_id);
 
-        if(texels_per_tile < (_feedback_buffer[mem_slot] * 4.0f) && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
+        if(texels_per_tile < (_feedback_buffer[mem_slot] * 4.0) && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree())
         {
-            std::cout << "decision: split " << tile_id << ", " << _feedback_buffer[mem_slot] * 4.0f << " is over " << texels_per_tile << std::endl;
+            std::cout << "decision: split " << tile_id << ", " << _feedback_buffer[mem_slot] * 4.0 << " is over " << texels_per_tile << std::endl;
 
             cut_desired.erase(tile_id);
 
@@ -123,9 +125,9 @@ void CutUpdate::dispatch()
 
             split.insert(tile_id);
         }
-        else if(texels_per_tile > (iter_parent->second * 4.0f) && check_all_siblings_in_cut(tile_id) && QuadTree::get_depth_of_node(tile_id) > 0)
+        else if(texels_per_tile > (iter_parent->second * 4.0) && check_all_siblings_in_cut(tile_id) && QuadTree::get_depth_of_node(tile_id) > 0)
         {
-            std::cout << "decision: collapse to " << parent_id << ", " << iter_parent->second * 4.0f << " is under " << texels_per_tile << std::endl;
+            std::cout << "decision: collapse to " << parent_id << ", " << iter_parent->second * 4.0 << " is under " << texels_per_tile << std::endl;
 
             for(uint8_t i = 0; i < 4; i++)
             {
@@ -227,7 +229,7 @@ bool CutUpdate::try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr)
 
     _cut.get_back_mem_cut().insert(std::pair<size_t, uint8_t *>(mem_slot, tile_ptr));
 
-    size_t x_orig, y_orig;
+    uint32_t x_orig, y_orig;
     QuadTree::get_pos_by_id(tile_id, x_orig, y_orig);
     auto tile_depth = QuadTree::get_depth_of_node(tile_id);
     auto tile_span = _context->get_size_index_texture() >> tile_depth;

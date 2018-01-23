@@ -38,7 +38,7 @@ class VTRenderer
     size_t _size_copy_buf;
 
     scm::shared_ptr<scm::gl::render_device> _device;
-    scm::gl::program_ptr _shader_vt, _shader_atmosphere;
+    scm::gl::program_ptr _shader_vt, _shader_atmosphere, _shader_textured_quad;
     scm::gl::buffer_ptr _index_buffer;
     scm::gl::vertex_array_ptr _vertex_array;
     scm::math::mat4f _projection_matrix;
@@ -49,6 +49,16 @@ class VTRenderer
     scm::gl::sampler_state_ptr _filter_linear;
     scm::gl::rasterizer_state_ptr _ms_no_cull;
     scm::gl::blend_state_ptr _blend_state;
+
+
+    scm::gl::blend_state_ptr _blend_state_halo;
+    scm::gl::depth_stencil_state_ptr _dstate_disable;
+    int _halo_res = 2048;
+
+
+    scm::gl::frame_buffer_ptr                   _fbo_halo ;
+    scm::gl::texture_2d_ptr                     _color_halo ;
+    scm::gl::texture_2d_ptr                     _depth_halo ;
 
     uint32_t _width, _height;
 

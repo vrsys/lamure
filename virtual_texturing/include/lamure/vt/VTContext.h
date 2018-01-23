@@ -134,6 +134,9 @@ class VTContext
         MouseButtonState get_mouse_button_state() const;
         void set_mouse_button_state(MouseButtonState _mouse_button_state);
 
+        float get_scale() const;
+        void set_scale(float _scale);
+
         bool isToggle_phyiscal_texture_image_viewer() const;
 
       private:
@@ -146,6 +149,8 @@ class VTContext
         float _ref_height;
         float _ref_rot_x;
         float _ref_rot_y;
+
+        float _scale = 1.f;
 
         // mouse button state
         MouseButtonState _mouse_button_state;

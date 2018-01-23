@@ -54,7 +54,7 @@ void VTRenderer::init()
 
     // TODO: gua scenegraph to handle geometry eventually
     _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
-    _quad.reset(new scm::gl::quad_geometry(_device, scm::math::vec2f(-2.f *_width / _height, -2.f), scm::math::vec2f(2.f *_width / _height, 2.f)));
+    _quad.reset(new scm::gl::quad_geometry(_device, scm::math::vec2f(-2.f * _halo_res / _halo_res, -2.f), scm::math::vec2f(2.f * _halo_res / _halo_res, 2.f)));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
     _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
@@ -68,15 +68,89 @@ void VTRenderer::init()
 
     apply_cut_update();
 
-    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
+    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
+
+    _fbo_halo = _device->create_frame_buffer();
+
+    _depth_halo = _device->create_texture_2d(scm::math::vec2ui(_halo_res, _halo_res) * 1, scm::gl::FORMAT_D32F, 1, 1, 1);
+    _color_halo = _device->create_texture_2d(scm::math::vec2ui(_halo_res, _halo_res) * 1, scm::gl::FORMAT_RGBA_32F, 1, 1, 1);
+
+    _fbo_halo->attach_color_buffer(0, _color_halo);
+    _fbo_halo->attach_depth_stencil_buffer(_depth_halo);
+
+    _dstate_disable = _device->create_depth_stencil_state(false, true, scm::gl::COMPARISON_NEVER);
+
+    _blend_state_halo = _device->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
+
+    std::string v_pass = "\
+        #version 440\n\
+        \
+        uniform mat4 mvp;\
+        out vec2 tex_coord;\
+        layout(location = 0) in vec3 in_position;\
+        layout(location = 2) in vec2 in_texture_coord;\
+        void main()\
+        {\
+            gl_Position = mvp * vec4(in_position, 1.0);\
+            tex_coord = in_texture_coord;\
+        }\
+        ";
+    std::string f_pass = "\
+        #version 440\n\
+        \
+        in vec2 tex_coord;\
+        uniform sampler2D in_texture;\
+        uniform int halo_res;\
+        layout(location = 0) out vec4 out_color;\
+        void main()\
+        {\
+            out_color = texelFetch(in_texture, ivec2(tex_coord.xy*halo_res), 0).rgba;\
+        }\
+        ";
+
+    ////texture(in_texture, tex_coord);
+    _shader_textured_quad =
+        _device->create_program(boost::assign::list_of(_device->create_shader(scm::gl::STAGE_VERTEX_SHADER, v_pass))(_device->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, f_pass)));
 }
 
 void VTRenderer::render()
 {
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
 
+    // pass 1: draw halo
+
+    _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_halo_res, _halo_res)));
+
+    _render_context->set_depth_stencil_state(_dstate_less);
+    _render_context->set_blend_state(_blend_state);
+
+    _render_context->clear_color_buffer(_fbo_halo, 0, scm::math::vec4f(0.0, 0.0, 0.0, 1.0));
+    _render_context->clear_depth_stencil_buffer(_fbo_halo);
+
+    _render_context->set_frame_buffer(_fbo_halo);
+
+    _render_context->bind_program(_shader_atmosphere);
+
+    _shader_atmosphere->uniform("time", (float)elapsed_seconds.count());
+    _shader_atmosphere->uniform("resolution", 1 * scm::math::vec2ui(_halo_res, _halo_res));
+
+    auto ortho_proj = scm::math::make_ortho_matrix(-1.f, 1.f, -1.f, 1.f, -1000.f, 1000.f);
+    _shader_atmosphere->uniform("projection_matrix", ortho_proj);
+    _shader_atmosphere->uniform("model_view_matrix", scm::math::make_translation(0.f, 0.f, -10.f));
+
+    _render_context->apply();
+
+    _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
+
+    // pass 2: draw planet
+
+    _render_context->set_default_frame_buffer();
+
+    float scale = _vtcontext->get_event_handler()->get_scale();
+    //_vtcontext->get_event_handler()->get_trackball_manip().dolly(2.5f);
+
     scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
-    scm::math::mat4f model_matrix = scm::math::mat4f::identity() * scm::math::make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
+    scm::math::mat4f model_matrix = scm::math::mat4f::identity() * scm::math::make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f) * scm::math::make_scale(scale, scale, scale);
 
     scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
     _shader_vt->uniform("projection_matrix", _projection_matrix);
@@ -90,15 +164,9 @@ void VTRenderer::render()
 
     _shader_vt->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
     _shader_vt->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
-
     _shader_vt->uniform("time", -(float)elapsed_seconds.count());
     _shader_vt->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
-
-    _shader_atmosphere->uniform("projection_matrix", _projection_matrix);
-    _shader_atmosphere->uniform("model_view_matrix", model_view_matrix * scm::math::inverse(model_matrix));
-
-    _shader_atmosphere->uniform("time", (float)elapsed_seconds.count());
-    _shader_atmosphere->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
+    _shader_vt->uniform("scale", scale);
 
     _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.0f, .0f, .0f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
@@ -168,14 +236,35 @@ void VTRenderer::render()
 
         _vtcontext->get_debug()->set_feedback_string(stream_feedback.str());
 
-        _render_context->bind_program(_shader_atmosphere);
+        // pass 3: use pass 1 result as texture for plane
+
+        _render_context->bind_program(_shader_textured_quad);
+
+        // scm::math::mat4f quad_matrix = scm::math::mat4f::identity() * scm::math::make_scale(1.35f*scale, 1.35f*scale, 1.35f*scale);
+
+        scm::math::mat4f ivm = scm::math::inverse(view_matrix);
+        scm::math::vec3f cam_pos = scm::math::vec3f(ivm[12], ivm[13], ivm[14]);
+        scm::math::vec3f cam_fwd = -scm::math::normalize(scm::math::vec3f(ivm[8], ivm[9], ivm[10]));
+        scm::math::vec3f cam_right = scm::math::normalize(scm::math::vec3f(ivm[4], ivm[5], ivm[6]));
+        scm::math::vec3f cam_up = scm::math::normalize(scm::math::vec3f(ivm[0], ivm[1], ivm[2]));
+
+        auto look_at_matrix = scm::math::make_look_at_matrix(scm::math::vec3f(0.f), cam_pos, cam_right);
+
+        _shader_textured_quad->uniform("mvp", _projection_matrix * view_matrix * scm::math::inverse(look_at_matrix) * scm::math::make_scale(.86f * scale, .86f * scale, .86f * scale));
+        _shader_textured_quad->uniform("in_texture", 0);
+        _shader_textured_quad->uniform("halo_res", _halo_res);
+        _render_context->bind_texture(_color_halo, _filter_linear, 0);
+
+        _render_context->set_blend_state(_blend_state_halo);
+        _render_context->set_depth_stencil_state(_dstate_disable);
+
         _render_context->apply();
 
-        _render_context->begin_query(timer_query);
+        //_render_context->begin_query(timer_query);
 
         _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
 
-        _render_context->end_query(timer_query);
+        //_render_context->end_query(timer_query);
 
         _cut_update->feedback(_copy_memory_new);
     }
@@ -405,6 +494,10 @@ void VTRenderer::initialize_feedback()
 
 VTRenderer::~VTRenderer()
 {
+    _fbo_halo.reset();
+    _color_halo.reset();
+    _depth_halo.reset();
+
     _shader_vt.reset();
     _index_buffer.reset();
     _vertex_array.reset();
@@ -420,12 +513,14 @@ VTRenderer::~VTRenderer()
     _render_context.reset();
     _device.reset();
     _scm_core.reset();
+
+    _shader_textured_quad.reset();
 }
 void VTRenderer::resize(int _width, int _height)
 {
     this->_width = static_cast<uint32_t>(_width);
     this->_height = static_cast<uint32_t>(_height);
     _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(this->_width, this->_height)));
-    scm::math::perspective_matrix(_projection_matrix, 60.f, float(_width) / float(_height), 0.01f, 1000.0f);
+    scm::math::perspective_matrix(_projection_matrix, 20.f, float(_width) / float(_height), 0.01f, 1000.0f);
 }
 }

@@ -168,7 +168,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 void main()
 {
     vec4 atmospheric_glow = vec4(1., 1., 1., 1.);
-    mainImage(atmospheric_glow, gl_FragCoord.xy);
+    mainImage(atmospheric_glow, ((vec2(0.5, 0.5) - gl_FragCoord.xy / resolution.xy) * (1.25) + vec2(0.5, 0.5))*resolution.xy);
 
     out_color = atmospheric_glow;
 }
