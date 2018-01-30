@@ -1,7 +1,7 @@
 #include <algorithm>
 
 #include <lamure/vt/common.h>
-#include <lamure/vt/pre/Preprocessor.h>
+#include <lamure/vt/VTContext.h>
 
 using namespace vt;
 
@@ -32,9 +32,8 @@ int main(int argc, char *argv[])
         ->with_debug_view()
         ->build();
 
-    if(get_cmd_option(argv, argv + argc, "-m") != nullptr || get_cmd_option(argv, argv + argc, "-p") != nullptr)
+    /*if(get_cmd_option(argv, argv + argc, "-m") != nullptr || get_cmd_option(argv, argv + argc, "-p") != nullptr)
     {
-        Preprocessor preprocessor(context);
 
         if(get_cmd_option(argv, argv + argc, "-p") != nullptr && get_cmd_option(argv, argv + argc, "-c") != nullptr)
         {
@@ -46,9 +45,9 @@ int main(int argc, char *argv[])
         preprocessor.prepare_mipmap();
     }
     else
-    {
+    {*/
         context.start();
-    }
+    //}
 
     return EXIT_SUCCESS;
 }

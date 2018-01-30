@@ -1,693 +1,1028 @@
-#include <lamure/vt/VTContext.h>
-#include <lamure/vt/pre/Preprocessor.h>
+//
+// Created by sebastian on 14.12.17.
+//
 
-namespace vt
-{
-Preprocessor::Preprocessor(vt::VTContext &context)
-{
-    this->_context = new VTContext(context);
+#include "lamure/vt/pre/Preprocessor.h"
+#include "lamure/vt/pre/GenericIndex.h"
 
-    boost::filesystem::path path_texture;
-    switch(_context->get_format_texture())
-    {
-    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-        path_texture = boost::filesystem::path(_context->get_name_texture() + ".rgba");
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-        path_texture = boost::filesystem::path(_context->get_name_texture() + ".rgb");
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::R8:
-
-        path_texture = boost::filesystem::path(_context->get_name_texture() + ".gray");
-        break;
-    }
-    boost::filesystem::path dir_texture = path_texture.parent_path();
-    Magick::InitializeMagick(dir_texture.c_str());
-
-    if(_context->is_verbose())
-    {
-        std::cout << std::endl;
-        std::cout << "Preprocessor initialized" << std::endl;
-        std::cout << "Working directory: " << dir_texture.c_str() << std::endl;
-        std::cout << std::endl;
-    }
-}
-
-bool Preprocessor::prepare_raster(const char *name_raster)
-{
-    if(_context->is_verbose())
-    {
-        std::cout << std::endl;
-        std::cout << "Attempting to convert full image in-core..." << std::endl;
-    }
-
-    Magick::Image image;
-    try
-    {
-        image.read(name_raster);
-        Magick::Geometry geometry = image.size();
-        size_t side = (size_t)std::pow(2, std::floor(std::log(std::min(geometry.width(), geometry.height())) / std::log(2)));
-        geometry.aspect(false);
-        geometry.width(side);
-        geometry.height(side);
-        image.crop(geometry);
-
-        switch(_context->get_format_texture())
-        {
-        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-            image.type(Magick::TrueColorMatteType);
-            image.depth(8);
-            image.write(std::string(_context->get_name_texture() + ".rgba"));
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-            image.type(Magick::TrueColorType);
-            image.depth(8);
-            image.write(std::string(_context->get_name_texture() + ".rgb"));
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::R8:
-
-            image.type(Magick::GrayscaleType);
-            image.depth(8);
-            image.write(std::string(_context->get_name_texture() + ".gray"));
-            break;
+namespace vt {
+    namespace pre {
+        bool Preprocessor::_isPowerOfTwo(size_t val) {
+            return val != 0 && (val & (val - 1)) == 0;
         }
-    }
-    catch(Magick::Exception &error_)
-    {
-        std::cout << "Caught exception: " << error_.what() << std::endl;
-        return false;
-    };
 
-    if(_context->is_verbose())
-    {
-        std::cout << "Attempt successful" << std::endl;
-        std::cout << std::endl;
-    }
-
-    return true;
-}
-
-bool Preprocessor::prepare_mipmap()
-{
-    auto tile_size = _context->get_size_tile();
-    if((tile_size & (tile_size - 1)) != 0)
-    {
-        throw std::runtime_error("Tile size is not a power of 2");
-    }
-
-    uint32_t count_threads = 0;
-    count_threads = !_context->is_opt_run_in_parallel() ? 1 : thread::hardware_concurrency();
-
-    size_t dim_x = 0, dim_y = 0;
-
-    std::ifstream input;
-    switch(_context->get_format_texture())
-    {
-    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-        input.open(_context->get_name_texture() + ".rgba", std::ifstream::in | std::ifstream::binary);
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-        input.open(_context->get_name_texture() + ".rgb", std::ifstream::in | std::ifstream::binary);
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::R8:
-
-        input.open(_context->get_name_texture() + ".gray", std::ifstream::in | std::ifstream::binary);
-        break;
-    }
-    read_dimensions(input, dim_x, dim_y);
-    input.close();
-
-    uint32_t tree_depth = QuadTree::calculate_depth(dim_x, tile_size);
-
-    if(_context->is_verbose())
-    {
-        std::cout << std::endl;
-        std::cout << "Bitmap dimensions: " << dim_x << " x " << dim_y << std::endl;
-        std::cout << "Tile size: " << tile_size << " x " << tile_size << std::endl;
-        std::cout << "Tree depth: " << tree_depth << std::endl;
-        std::cout << std::endl;
-
-        std::cout << std::endl;
-        std::cout << "Creating " << QuadTree::get_length_of_depth(tree_depth) << " leaf level tiles in " << count_threads << " threads" << std::endl;
-    }
-
-    std::vector<std::thread> thread_pool;
-
-    for(uint32_t _thread_id = 0; _thread_id < count_threads; _thread_id++)
-    {
-        if(_context->is_opt_row_in_core())
-        {
-            thread_pool.emplace_back([=]() { extract_leaf_tile_rows(_thread_id); });
+        void memset_volatile(volatile uint8_t *s, uint8_t val, size_t n) {
+            for (size_t i = 0; i < n; ++i) {
+                s[i] = val;
+            }
         }
-        else
-        {
-            thread_pool.emplace_back([=]() { extract_leaf_tile_range(_thread_id); });
+
+        void Preprocessor::_deflate(size_t writeBufferSize) {
+            size_t writeBufferTileSize = writeBufferSize / _destTileByteSize;
+            writeBufferSize = writeBufferTileSize * _destTileByteSize;
+
+            uint64_t writeBufferOffset = 0;
+            uint64_t writeBufferFirstId = 0;
+            uint64_t writeBufferLastId = 0;
+            uint64_t offsetAfterLastTile = QuadTree::firstIdOfLevel(_treeDepth - 1) * _destTileByteSize;
+            uint64_t lastWriteOffset = offsetAfterLastTile;
+            uint64_t *idLookup = nullptr;
+
+            if (_destLayout == AtlasFile::LAYOUT::RAW) {
+                writeBufferOffset = offsetAfterLastTile -
+                                    (QuadTree::firstIdOfLevel(_treeDepth - 1) % writeBufferTileSize) *
+                                    _destTileByteSize;
+                writeBufferFirstId = writeBufferOffset / _destTileByteSize;
+            } else {
+                writeBufferOffset = _imageTileWidth * _imageTileHeight * _destTileByteSize;
+                idLookup = new uint64_t[writeBufferTileSize];
+                writeBufferFirstId = offsetAfterLastTile / _destTileByteSize - 1;
+                writeBufferLastId = writeBufferFirstId;
+
+                for (size_t i = 0; i < writeBufferTileSize; ++i) {
+                    idLookup[i] = writeBufferFirstId;
+                }
+            }
+
+            GenericIndex *index = nullptr;
+
+            size_t bufferSize = _destTileByteSize * 12;
+            auto buffer = new uint8_t[bufferSize];
+
+            auto writeBuffer = new uint8_t[writeBufferSize];
+
+            if (_destLayout != AtlasFile::LAYOUT::RAW) {
+                index = new GenericIndex(_imageWidth, _imageHeight, _tileWidth - _padding * 2,
+                                         _tileHeight - _padding * 2, _destTileByteSize);
+            }
+
+            Bitmap bufferBitmap0(_tileWidth, _tileHeight, _destPxFormat, buffer);
+            Bitmap bufferBitmap1(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize]);
+            Bitmap bufferBitmap2(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 2]);
+            Bitmap bufferBitmap3(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 3]);
+            Bitmap bufferBitmap4(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 4]);
+            Bitmap bufferBitmap5(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 5]);
+            Bitmap bufferBitmap6(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 6]);
+            Bitmap bufferBitmap7(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 7]);
+            Bitmap bufferBitmap8(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 8]);
+            Bitmap bufferBitmap9(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 9]);
+            Bitmap bufferBitmap10(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 10]);
+            Bitmap writeBitmap(_tileWidth, _tileHeight, _destPxFormat, &buffer[_destTileByteSize * 11]);
+
+            auto levelTileWidth = _imageTileWidth;
+            auto levelTileHeight = _imageTileHeight;
+            auto levelPixelWidth = _imageWidth;
+            auto levelPixelHeight = _imageHeight;
+
+            uint64_t currentOffset = 0;
+
+            if (_destLayout != AtlasFile::LAYOUT::RAW) {
+                auto firstId = QuadTree::firstIdOfLevel(_treeDepth - 1);
+                currentOffset = index->getOffset(firstId);
+                currentOffset += _destTileByteSize;
+            }
+
+            if (_treeDepth > 1) {
+                for (size_t iterationLevel = _treeDepth - 2; /* iterationLevel > 0 */; --iterationLevel) {
+                    levelPixelWidth = (levelPixelWidth + 1) >> 1;
+                    levelPixelHeight = (levelPixelHeight + 1) >> 1;
+                    auto iterationLevelTileWidth = (levelTileWidth + 1) >> 1;
+                    auto iterationLevelTileHeight = (levelTileHeight + 1) >> 1;
+                    auto iterLevelFullWidth = QuadTree::getWidthOfLevel(iterationLevel);
+                    auto tilesInIterationLevel = iterLevelFullWidth * iterLevelFullWidth;
+                    auto firstIdOfIterationLevel = QuadTree::firstIdOfLevel(iterationLevel);
+                    auto firstIdOfCurrentLevel = QuadTree::firstIdOfLevel(iterationLevel + 1);
+
+#ifdef PREPROCESSOR_LOG_PROGRESS
+                    auto start = std::chrono::high_resolution_clock::now();
+                    uint64_t tilesWritten = 0;
+                    uint8_t progress = 0;
+
+                    std::cout << "Deflating " << (levelTileWidth * levelTileHeight) << " Tiles in Level "
+                              << (iterationLevel + 1) << std::endl;
+                    std::cout << std::setw(3) << (int) progress << " %";
+                    std::cout.flush();
+#endif
+
+                    for (uint64_t relIterationId =
+                            tilesInIterationLevel - 1; /* relIterationId > 0 */; --relIterationId) {
+                        uint64_t x;
+                        uint64_t y;
+
+                        QuadTree::getCoordinatesInLevel(relIterationId, iterationLevel, x, y);
+
+                        if (x >= iterationLevelTileWidth || y >= iterationLevelTileHeight) {
+                            continue;
+                        }
+
+                        uint64_t absIterationId = firstIdOfIterationLevel + relIterationId;
+                        size_t bufferOffset = 0;
+
+                        for (uint8_t relQuadId = 3;; --relQuadId) {
+                            uint64_t relId = (relIterationId << 2) + relQuadId;
+                            uint64_t absId = firstIdOfCurrentLevel + relId;
+
+                            uint64_t len = 0;
+
+                            uint64_t childX;
+                            uint64_t childY;
+
+                            QuadTree::getCoordinatesInLevel(relId, iterationLevel + 1, childX, childY);
+
+                            if (childX < levelTileWidth && childY < levelTileHeight) {
+                                len = _getTileById(index, absId, writeBuffer, writeBufferFirstId, writeBufferLastId,
+                                                   idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                            }
+
+                            if (len == 0) {
+                                std::memset(&buffer[bufferOffset], 0, _destTileByteSize);
+                            }
+
+                            if (relQuadId == 0) {
+                                break;
+                            }
+
+                            bufferOffset += _destTileByteSize;
+                        }
+
+                        uint64_t relId = relIterationId << 2;
+
+                        uint64_t relId1 = QuadTree::getNeighbour(relId, QuadTree::NEIGHBOUR::LEFT);
+                        uint64_t relId2 = QuadTree::getNeighbour(relId1, QuadTree::NEIGHBOUR::BOTTOM);
+                        uint64_t relId0 = QuadTree::getNeighbour(relId1, QuadTree::NEIGHBOUR::TOP);
+
+                        uint64_t len = 0;
+
+                        bufferOffset += _destTileByteSize;
+                        if (relId1 != relId)
+                            len = _getTileById(index, firstIdOfCurrentLevel + relId2, writeBuffer, writeBufferFirstId,
+                                               writeBufferLastId, idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                        if (len == 0) memset_volatile(&buffer[bufferOffset], 0, _destTileByteSize);
+
+                        bufferOffset += _destTileByteSize;
+                        if (relId1 != relId)
+                            len = _getTileById(index, firstIdOfCurrentLevel + relId1, writeBuffer, writeBufferFirstId,
+                                               writeBufferLastId, idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                        if (len == 0) memset_volatile(&buffer[bufferOffset], 0, _destTileByteSize);
+
+                        len = 0;
+
+                        bufferOffset += _destTileByteSize;
+                        if (relId1 != relId && relId0 != relId1)
+                            len = _getTileById(index, firstIdOfCurrentLevel + relId0, writeBuffer, writeBufferFirstId,
+                                               writeBufferLastId, idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                        if (len == 0) memset_volatile(&buffer[bufferOffset], 0, _destTileByteSize);
+
+                        relId0 = QuadTree::getNeighbour(relId, QuadTree::NEIGHBOUR::TOP);
+                        relId1 = QuadTree::getNeighbour(relId0, QuadTree::NEIGHBOUR::RIGHT);
+
+                        len = 0;
+
+                        QuadTree::getCoordinatesInLevel(relId2, iterationLevel + 1, x, y);
+
+                        bufferOffset += _destTileByteSize;
+                        if (relId0 != relId)
+                            len = _getTileById(index, firstIdOfCurrentLevel + relId1, writeBuffer, writeBufferFirstId,
+                                               writeBufferLastId, idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                        if (len == 0) memset_volatile(&buffer[bufferOffset], 0, _destTileByteSize);
+
+                        bufferOffset += _destTileByteSize;
+                        if (relId0 != relId)
+                            len = _getTileById(index, firstIdOfCurrentLevel + relId0, writeBuffer, writeBufferFirstId,
+                                               writeBufferLastId, idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                        if (len == 0) memset_volatile(&buffer[bufferOffset], 0, _destTileByteSize);
+
+                        relId0 = relIterationId;
+                        relId1 = QuadTree::getNeighbour(relId0, QuadTree::NEIGHBOUR::RIGHT);
+                        relId2 = QuadTree::getNeighbour(relId0, QuadTree::NEIGHBOUR::BOTTOM);
+
+                        bufferOffset += _destTileByteSize;
+                        len = _getTileById(index, firstIdOfIterationLevel + relId2, writeBuffer, writeBufferFirstId,
+                                           writeBufferLastId, idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                        if (len == 0) memset_volatile(&buffer[bufferOffset], 0, _destTileByteSize);
+
+                        bufferOffset += _destTileByteSize;
+                        len = _getTileById(index, firstIdOfIterationLevel + relId1, writeBuffer, writeBufferFirstId,
+                                           writeBufferLastId, idLookup, writeBufferTileSize, &buffer[bufferOffset]);
+                        if (len == 0) memset_volatile(&buffer[bufferOffset], 0, _destTileByteSize);
+
+                        bufferOffset += _destTileByteSize;
+
+                        size_t halfTileWidthInner = _innerTileWidth >> 1;
+                        size_t halfTileHeightInner = _innerTileHeight >> 1;
+
+                        QuadTree::getCoordinatesInLevel(relIterationId, iterationLevel, x, y);
+
+                        std::memset((void *) &buffer[bufferOffset], 0, _destTileByteSize);
+
+                        writeBitmap.deflateRectFrom(bufferBitmap0,
+                                                    _padding, _padding,
+                                                    _padding + halfTileWidthInner, _padding + (_innerTileHeight >> 1),
+                                                    _innerTileWidth, _innerTileHeight);
+
+                        writeBitmap.deflateRectFrom(bufferBitmap1,
+                                                    _padding, _padding,
+                                                    _padding, _padding + halfTileHeightInner,
+                                                    _innerTileWidth, _innerTileHeight);
+
+                        writeBitmap.deflateRectFrom(bufferBitmap2,
+                                                    _padding, _padding,
+                                                    _padding + halfTileWidthInner, _padding,
+                                                    _innerTileWidth, _innerTileHeight);
+
+                        writeBitmap.deflateRectFrom(bufferBitmap3,
+                                                    _padding, _padding,
+                                                    _padding, _padding,
+                                                    _innerTileWidth, _innerTileHeight);
+
+                        if (x == 0) {
+                            writeBitmap.smearHorizontal(_padding, _padding,
+                                                        0, _padding,
+                                                        _padding, _innerTileHeight);
+                        } else {
+                            // pad lower left side
+                            writeBitmap.deflateRectFrom(bufferBitmap4,
+                                                        _padding + _innerTileWidth - (_padding << 1), _padding,
+                                                        0, _padding + halfTileHeightInner,
+                                                        _padding << 1, _innerTileHeight);
+
+                            // pad upper left side
+                            writeBitmap.deflateRectFrom(bufferBitmap5,
+                                                        _padding + _innerTileWidth - (_padding << 1), _padding,
+                                                        0, _padding,
+                                                        _padding << 1, _innerTileHeight);
+
+                            if (y > 0) {
+                                // pad upper left corner
+                                writeBitmap.deflateRectFrom(bufferBitmap6,
+                                                            _padding + _innerTileWidth - (_padding << 1),
+                                                            _padding + _innerTileHeight - (_padding << 1),
+                                                            0, 0,
+                                                            _padding << 1, _padding << 1);
+                            }
+                        }
+
+                        if (y == 0) {
+                            // pad top side
+                            writeBitmap.smearVertical(0, _padding,
+                                                      0, 0,
+                                                      _padding + _innerTileWidth, _padding);
+                        } else {
+                            // pad right top side
+                            writeBitmap.deflateRectFrom(bufferBitmap7,
+                                                        _padding, _padding + _innerTileHeight - (_padding << 1),
+                                                        _padding + halfTileWidthInner, 0,
+                                                        _innerTileWidth, _padding << 1);
+
+                            // pad left top side
+                            writeBitmap.deflateRectFrom(bufferBitmap8,
+                                                        _padding, _padding + _innerTileHeight - (_padding << 1),
+                                                        _padding, 0,
+                                                        _innerTileWidth, _padding << 1);
+
+                            if (x == 0) {
+                                // pad upper left corner
+                                writeBitmap.smearHorizontal(_padding, 0,
+                                                            0, 0,
+                                                            _padding, _padding);
+                            }
+                        }
+
+                        bool xIsLast = x == (iterationLevelTileWidth - 1);
+                        bool yIsLast = y == (iterationLevelTileHeight - 1);
+
+                        size_t padWidth = _padding;
+                        size_t padHeight = _padding;
+
+                        if (xIsLast) {
+                            padWidth += ((levelPixelWidth - 1) % _innerTileWidth) + 1;
+                        } else {
+                            padWidth += _innerTileWidth;
+                        }
+
+                        if (yIsLast) {
+                            padHeight += ((levelPixelHeight - 1) % _innerTileHeight) + 1;
+                        } else {
+                            padHeight += _innerTileHeight;
+                        }
+
+                        if (yIsLast) {
+                            // pad bottom side
+                            writeBitmap.smearVertical(0, padHeight - 1,
+                                                      0, padHeight,
+                                                      padWidth, _padding);
+
+                            uint8_t transPx[4] = {0x00, 0x00, 0x00, 0x00};
+
+                            writeBitmap.fillRect(transPx, Bitmap::PIXEL_FORMAT::RGBA8, 0, padHeight + _padding,
+                                                 padWidth + _padding, _tileHeight - padHeight - _padding);
+                        } else {
+                            // pad bottom side
+                            writeBitmap.copyRectFrom(bufferBitmap9,
+                                                     0, _padding,
+                                                     0, _padding + _innerTileHeight,
+                                                     padWidth + _padding, _padding);
+                        }
+
+                        if (xIsLast) {
+                            // pad right side
+                            writeBitmap.smearHorizontal(padWidth - 1, 0,
+                                                        padWidth, 0,
+                                                        _padding, padHeight + _padding);
+
+                            uint8_t transPx[4] = {0x00, 0x00, 0x00, 0x00};
+
+                            writeBitmap.fillRect(transPx, Bitmap::PIXEL_FORMAT::RGBA8, padWidth + _padding, 0,
+                                                 _tileWidth - padWidth - _padding, _tileHeight);
+                        } else {
+                            // pad right side
+                            writeBitmap.copyRectFrom(bufferBitmap10,
+                                                     _padding, 0,
+                                                     _padding + _innerTileWidth, 0,
+                                                     _padding, padHeight + _padding);
+                        }
+
+                        if (_destLayout == AtlasFile::LAYOUT::RAW) {
+                            currentOffset = absIterationId * _destTileByteSize;
+
+                            while (currentOffset < writeBufferOffset) {
+                                std::memset(writeBuffer, 0x00, lastWriteOffset - writeBufferOffset);
+
+                                _destPayloadFile.seekp(_destPayloadOffset + writeBufferOffset);
+                                _destPayloadFile.write((char *) writeBuffer, std::min(writeBufferSize,
+                                                                                      offsetAfterLastTile -
+                                                                                      writeBufferOffset));
+
+                                lastWriteOffset = writeBufferOffset;
+                                writeBufferOffset -= writeBufferSize;
+                                writeBufferFirstId -= writeBufferTileSize;
+                            }
+
+                            std::memset(&writeBuffer[currentOffset - writeBufferOffset + _destTileByteSize], 0x00,
+                                        lastWriteOffset - currentOffset - _destTileByteSize);
+                            std::memcpy(&writeBuffer[currentOffset - writeBufferOffset], (char *) &buffer[bufferOffset],
+                                        _destTileByteSize);
+                            lastWriteOffset = currentOffset;
+                        } else {
+                            if ((currentOffset + _destTileByteSize) > (writeBufferOffset + writeBufferSize)) {
+                                _destPayloadFile.seekp(_destPayloadOffset + writeBufferOffset);
+                                _destPayloadFile.write((char *) writeBuffer, writeBufferSize);
+
+                                writeBufferOffset += writeBufferSize;
+                            }
+
+                            std::memcpy(&writeBuffer[currentOffset - writeBufferOffset], (char *) &buffer[bufferOffset],
+                                        _destTileByteSize);
+                            writeBufferLastId = idLookup[((currentOffset - writeBufferOffset) / _destTileByteSize) + 1];
+                            writeBufferFirstId = absIterationId;
+                            idLookup[(currentOffset - writeBufferOffset) / _destTileByteSize] = absIterationId;
+                            currentOffset += _destTileByteSize;
+                        }
+
+#ifdef PREPROCESSOR_LOG_PROGRESS
+                        ++tilesWritten;
+                        auto currentProgress = (uint8_t) (tilesWritten * 100 / iterationLevelTileWidth /
+                                                          iterationLevelTileHeight);
+
+                        if (currentProgress != progress) {
+                            progress = currentProgress;
+                            std::cout << '\r' << std::setw(3) << (int) progress << " %";
+                            std::cout.flush();
+                        }
+#endif
+
+                        if (relIterationId == 0) {
+                            break;
+                        }
+                    }
+
+                    levelTileWidth = iterationLevelTileWidth;
+                    levelTileHeight = iterationLevelTileHeight;
+
+#ifdef PREPROCESSOR_LOG_PROGRESS
+                    std::cout << " (" << std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::high_resolution_clock::now() - start).count() << " ms)" << std::endl
+                              << std::endl;
+                    std::cout.flush();
+#endif
+
+                    if (iterationLevel == 0) {
+                        break;
+                    }
+                }
+            }
+
+            _destPayloadFile.seekp(_destPayloadOffset + writeBufferOffset);
+
+            if (_destLayout == AtlasFile::RAW) {
+                _destPayloadFile.write((char *) writeBuffer,
+                                       std::min(writeBufferSize, offsetAfterLastTile - writeBufferOffset));
+            } else if (_destLayout == AtlasFile::PACKED) {
+                _destPayloadFile.write((char *) writeBuffer, (currentOffset - writeBufferOffset));
+            }
+
+            _destPayloadFile.flush();
+
+            delete[] buffer;
+            delete[] writeBuffer;
+            delete[] idLookup;
+
+            if (_destLayout != AtlasFile::LAYOUT::RAW) {
+                delete index;
+            }
         }
-    }
-    for(auto &_thread : thread_pool)
-    {
-        _thread.join();
-    }
 
-    thread_pool.clear();
+        size_t Preprocessor::_getTileById(GenericIndex *const index, uint64_t id, const uint8_t *buffer,
+                                          uint64_t firstIdInBuffer, uint64_t lastIdInBuffer, const uint64_t *idLookup,
+                                          size_t bufferTileLen, uint8_t *out) {
+            size_t len = _getBufferedTileById(id, buffer, firstIdInBuffer, lastIdInBuffer, idLookup, bufferTileLen,
+                                              out);
 
-    if(_context->is_verbose())
-    {
-        std::cout << "Leaf level ready" << std::endl;
-        std::cout << std::endl;
-    }
+            if (len == 0) {
+                len = _loadTileById(index, id, out);
+            }
 
-    for(uint32_t _depth = tree_depth - 1; _depth != static_cast<unsigned>(-1); _depth--)
-    {
-        if(_context->is_verbose())
-        {
+            return len;
+        }
+
+        size_t Preprocessor::_loadTileById(GenericIndex *const index, uint64_t id, uint8_t *out) {
+            uint64_t offset;
+            uint64_t len = _destTileByteSize;
+
+            if (_destLayout == AtlasFile::LAYOUT::RAW) {
+                offset = id * len;
+            } else {
+                offset = index->getOffset(id);
+
+                if (offset == UINT64_MAX) {
+                    return 0;
+                }
+            }
+
+            _destPayloadFile.clear();
+            _destPayloadFile.seekg(_destPayloadOffset + offset, std::ios_base::beg);
+            _destPayloadFile.read((char *) out, len);
+
+            if (!_destPayloadFile.good()) {
+                throw std::runtime_error("Cannot read Tiles from File.");
+            }
+
+            return (size_t) len;
+        }
+
+        size_t Preprocessor::_getBufferedTileById(uint64_t id, const uint8_t *buffer, uint64_t firstIdInBuffer,
+                                                  uint64_t lastIdInBuffer, const uint64_t *idLookup,
+                                                  size_t bufferTileLen, uint8_t *out) {
+            size_t len = 0;
+
+            if (_destLayout == AtlasFile::LAYOUT::RAW) {
+                if (id >= firstIdInBuffer && id < firstIdInBuffer + bufferTileLen) {
+                    len = _destTileByteSize;
+                    std::memcpy(out, (char *) &buffer[(id - firstIdInBuffer) * _destTileByteSize], _destTileByteSize);
+                }
+            } else {
+                size_t offset = bufferTileLen;
+
+                if (id >= firstIdInBuffer && id <= lastIdInBuffer) {
+                    for (size_t i = 0; i < bufferTileLen; ++i) {
+                        if (idLookup[i] == id) {
+                            offset = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (offset != bufferTileLen) {
+                    len = _destTileByteSize;
+                    std::memcpy(out, (char *) &buffer[offset * _destTileByteSize], _destTileByteSize);
+                }
+            }
+
+            return len;
+        }
+
+        Preprocessor::Preprocessor(const std::string &srcFileName,
+                                   Bitmap::PIXEL_FORMAT srcPxFormat,
+                                   size_t imageWidth,
+                                   size_t imageHeight) {
+            _destHeaderFile = nullptr;
+            _destIndexFile = nullptr;
+            _destCombined = DEST_COMBINED::NONE;
+
+            _srcFileName = srcFileName;
+            _srcPxFormat = srcPxFormat;
+            _imageWidth = imageWidth;
+            _imageHeight = imageHeight;
+
+            //_srcFile.rdbuf()->pubsetbuf(nullptr, 0);
+            _srcFile.open(srcFileName, std::ios::in | std::ios::out | std::ios::binary | std::ios::ate);
+
+            if (!_srcFile.is_open()) {
+                throw std::runtime_error("Could not open File \"" + srcFileName + "\".");
+            }
+
+            size_t pxSize = Bitmap::pixelSize(srcPxFormat);
+            uint64_t expSrcFileSize = imageWidth * imageHeight * pxSize;
+            _srcFileSize = (uint64_t) _srcFile.tellg();
+
+            if (_srcFileSize != expSrcFileSize) {
+                throw std::runtime_error("File \"" + srcFileName + "\" expected to be of Size " +
+                                         std::to_string(expSrcFileSize) + " Bytes, actually has " +
+                                         std::to_string(_srcFileSize) + " Bytes.");
+            }
+        }
+
+        Preprocessor::~Preprocessor() {
+            _srcFile.close();
+            _destPayloadFile.close();
+
+            if (_destCombined == DEST_COMBINED::NOT_COMBINED) {
+                delete _destHeaderFile;
+                delete _destIndexFile;
+            }
+        }
+
+        void Preprocessor::_putLE(uint64_t num, uint8_t *out) {
+            out[0] = (uint8_t) (num & 0xff);
+            out[1] = (uint8_t) ((num >> 8) & 0xff);
+            out[2] = (uint8_t) ((num >> 16) & 0xff);
+            out[3] = (uint8_t) ((num >> 24) & 0xff);
+            out[4] = (uint8_t) ((num >> 32) & 0xff);
+            out[5] = (uint8_t) ((num >> 40) & 0xff);
+            out[6] = (uint8_t) ((num >> 48) & 0xff);
+            out[7] = (uint8_t) ((num >> 56) & 0xff);
+        }
+
+        void Preprocessor::_putPixelFormat(Bitmap::PIXEL_FORMAT pxFormat, uint8_t *out) {
+            switch (pxFormat) {
+                case Bitmap::PIXEL_FORMAT::R8:
+                    out[0] = 1;
+                    break;
+                case Bitmap::PIXEL_FORMAT::RGB8:
+                    out[0] = 2;
+                    break;
+                case Bitmap::PIXEL_FORMAT::RGBA8:
+                    out[0] = 3;
+                    break;
+                default:
+                    throw std::runtime_error("Trying to save unknown pixel format.");
+            }
+        }
+
+        void Preprocessor::_putFileFormat(AtlasFile::LAYOUT fileFormat, uint8_t *out) {
+            switch (fileFormat) {
+                case AtlasFile::LAYOUT::RAW:
+                    out[0] = 1;
+                    break;
+                case AtlasFile::LAYOUT::PACKED:
+                    out[0] = 2;
+                    break;
+                default:
+                    throw std::runtime_error("Trying to save unknown file format.");
+            }
+        }
+
+        void Preprocessor::_writeHeader() {
+            uint8_t data[_HEADER_SIZE];
+
+            data[0] = 'A';
+            data[1] = 'T';
+            data[2] = 'L';
+            data[3] = 'A';
+            data[4] = 'S';
+
+            _putLE(_imageWidth, &data[5]);
+            _putLE(_imageHeight, &data[13]);
+            _putLE(_tileWidth, &data[21]);
+            _putLE(_tileHeight, &data[29]);
+            _putLE(_padding, &data[37]);
+
+            _putPixelFormat(_destPxFormat, &data[45]);
+            _putFileFormat(_destLayout, &data[46]);
+
+            _destHeaderFile->seekp(_destHeaderOffset);
+            _destHeaderFile->write((char *) data, _HEADER_SIZE);
+            _destHeaderFile->flush();
+        }
+
+        void Preprocessor::setOutput(const std::string &destFileName,
+                                     Bitmap::PIXEL_FORMAT destPxFormat,
+                                     AtlasFile::LAYOUT format,
+                                     size_t tileWidth,
+                                     size_t tileHeight,
+                                     size_t padding,
+                                     bool combine) {
+            _destFileName = destFileName;
+            _destPxFormat = destPxFormat;
+            _destLayout = format;
+            _tileWidth = tileWidth;
+            _tileHeight = tileHeight;
+            _padding = padding;
+
+            if (!_isPowerOfTwo(tileWidth)) {
+                throw std::runtime_error("Tile Width needs to be a Power of 2.");
+            }
+
+            if (!_isPowerOfTwo(tileHeight)) {
+                throw std::runtime_error("Tile Height needs to be a Power of 2.");
+            }
+
+            size_t minTileSize = std::min(tileWidth, tileHeight);
+
+            if (padding >= (minTileSize >> 1)) {
+                throw std::runtime_error("Padding needs to be smaller than " + std::to_string(minTileSize >> 1) + ".");
+            }
+
+            _innerTileWidth = _tileWidth - (_padding << 1);
+            _innerTileHeight = _tileHeight - (_padding << 1);
+            _imageTileWidth = (_imageWidth + _innerTileWidth - 1) / _innerTileWidth;
+            _imageTileHeight = (_imageHeight + _innerTileHeight - 1) / _innerTileHeight;
+            _treeDepth = QuadTree::getDepth(_imageTileWidth, _imageTileHeight);
+
+            _destTileByteSize = _tileWidth * _tileHeight * Bitmap::pixelSize(_destPxFormat);
+
+            if (_destCombined != DEST_COMBINED::NONE) {
+                _destPayloadFile.close();
+                _destPayloadFile.clear();
+
+                if (_destCombined == DEST_COMBINED::NOT_COMBINED) {
+                    _destHeaderFile->close();
+                    delete _destHeaderFile;
+                    _destHeaderFile = nullptr;
+
+                    _destIndexFile->close();
+                    delete _destIndexFile;
+                    _destIndexFile = nullptr;
+                }
+            }
+
+            if (combine) {
+                _destCombined = DEST_COMBINED::COMBINED;
+                _destPayloadFile.open(destFileName + ".atlas", std::ios::in | std::ios::out | std::ios::binary |
+                                                               std::ios::trunc);
+                //_destPayloadFile.rdbuf()->pubsetbuf(nullptr, 0);
+
+                if (!_destPayloadFile.is_open()) {
+                    throw std::runtime_error("Could not open File \"" + destFileName + ".atlas\".");
+                }
+
+                _destHeaderFile = &_destPayloadFile;
+                _destIndexFile = &_destPayloadFile;
+
+                _destHeaderOffset = 0;
+                //_destIndexOffset = _destHeaderOffset + _HEADER_SIZE;
+                _destPayloadOffset = _destHeaderOffset + _HEADER_SIZE;
+            } else {
+                _destCombined = DEST_COMBINED::NOT_COMBINED;
+                //_destPayloadFile.rdbuf()->pubsetbuf(nullptr, 0);
+                _destPayloadFile.open(destFileName + ".atlas.data", std::ios::in | std::ios::out | std::ios::binary |
+                                                                    std::ios::trunc);
+
+                if (!_destPayloadFile.is_open()) {
+                    throw std::runtime_error("Could not open File \"" + destFileName + ".atlas.data\".");
+                }
+
+                _destHeaderFile = new std::fstream(destFileName + ".atlas.header", std::ios::in | std::ios::out |
+                                                                                   std::ios::binary | std::ios::trunc);
+                //_destHeaderFile->rdbuf()->pubsetbuf(nullptr, 0);
+
+                if (!_destHeaderFile->is_open()) {
+                    throw std::runtime_error("Could not open File \"" + destFileName + ".atlas.header\".");
+                }
+
+                _destIndexFile = new std::fstream(destFileName + ".atlas.index", std::ios::in | std::ios::out |
+                                                                                 std::ios::binary | std::ios::trunc);
+                //_destIndexFile->rdbuf()->pubsetbuf(nullptr, 0);
+
+                if (!_destIndexFile->is_open()) {
+                    throw std::runtime_error("Could not open File \"" + destFileName + ".atlas.index\".");
+                }
+
+                _destHeaderOffset = 0;
+                _destIndexOffset = 0;
+                _destPayloadOffset = 0;
+            }
+        }
+
+        void Preprocessor::_extract(size_t bufferTileWidth, size_t writeBufferSize) {
+            if (!_isPowerOfTwo(bufferTileWidth)) {
+                throw std::runtime_error("Cache Width needs to be a Power of 2.");
+            }
+
+#ifdef PREPROCESSOR_LOG_PROGRESS
+            auto start = std::chrono::high_resolution_clock::now();
+            uint64_t tilesWritten = 0;
+            uint8_t progress = 0;
+
+            std::cout << "Extracting " << (_imageTileWidth * _imageTileHeight) << " Tiles: " << std::endl;
+            std::cout << std::setw(3) << (int) progress << " %";
+            std::cout.flush();
+#endif
+
+            auto srcPxSize = Bitmap::pixelSize(_srcPxFormat);
+
+            if (bufferTileWidth > QuadTree::getWidthOfLevel(_treeDepth - 1)) {
+                bufferTileWidth = QuadTree::getWidthOfLevel(_treeDepth - 1);
+            }
+
+            auto bufferTileHeight = bufferTileWidth;
+
+            auto bufferPxWidthInner = bufferTileWidth * _innerTileWidth;
+            auto bufferPxHeightInner = bufferTileHeight * _innerTileHeight;
+            auto bufferPxWidth = bufferPxWidthInner + (_padding << 1);
+            auto bufferPxHeight = bufferPxHeightInner + (_padding << 1);
+
+            auto bufferSize = bufferPxWidth * bufferPxHeight * srcPxSize;
+            auto buffer = new uint8_t[bufferSize];
+
+            size_t writeBufferTileSize = writeBufferSize / _destTileByteSize;
+            writeBufferSize = writeBufferTileSize * _destTileByteSize;
+
+            auto outTile = new uint8_t[_destTileByteSize];
+            auto writeBuffer = new uint8_t[writeBufferSize];
+            uint64_t writeBufferOffset = 0;
+            uint64_t offsetAfterLastTile = QuadTree::firstIdOfLevel(_treeDepth) * _destTileByteSize;
+            uint64_t lastWriteOffset = offsetAfterLastTile;
+
+            if (_destLayout == AtlasFile::LAYOUT::RAW) {
+                uint64_t tilesInFinestLevel =
+                        QuadTree::getWidthOfLevel(_treeDepth - 1) * QuadTree::getWidthOfLevel(_treeDepth - 1);
+                writeBufferOffset =
+                        offsetAfterLastTile - (tilesInFinestLevel % writeBufferTileSize) * _destTileByteSize;
+            }
+
+            Bitmap bufferBitmap(bufferPxWidth, bufferPxHeight, _srcPxFormat, buffer);
+            Bitmap writeBitmap(_tileWidth, _tileHeight, _destPxFormat, outTile);
+
+            size_t finestLevel = _treeDepth - 1;
+            size_t bufferLevel = QuadTree::getDepth(bufferTileWidth, bufferTileHeight) - 1;
+            size_t iterationLevel = finestLevel - bufferLevel;
+
+            auto iterLevelWidth = QuadTree::getWidthOfLevel(iterationLevel);
+            uint64_t tilesToIterate = iterLevelWidth * iterLevelWidth;
+
+            size_t iterTileWidth = (_imageTileWidth + bufferTileWidth - 1) / bufferTileWidth;
+            size_t iterTileHeight = (_imageTileHeight + bufferTileHeight - 1) / bufferTileHeight;
+
+            auto bufLevelWidth = QuadTree::getWidthOfLevel(bufferLevel);
+            uint64_t tilesInBuffer = bufLevelWidth * bufLevelWidth;
+            uint64_t currentOffset = 0;
+
+            auto firstId = QuadTree::firstIdOfLevel(finestLevel);
+
+            for (uint64_t relIterationId = tilesToIterate - 1; /*relIterationId >= 0*/; --relIterationId) {
+                uint64_t x;
+                uint64_t y;
+
+                QuadTree::getCoordinatesInLevel(relIterationId, iterationLevel, x, y);
+
+                if (x >= iterTileWidth || y >= iterTileHeight) {
+                    if (_destLayout == AtlasFile::LAYOUT::RAW) {
+                        currentOffset = (firstId + relIterationId * tilesInBuffer) * _destTileByteSize;
+                        auto dataLen = (uint64_t) bufferTileWidth * bufferTileHeight * _destTileByteSize;
+                        auto data = new uint8_t[dataLen];
+
+                        std::memset(data, 0x00, dataLen);
+
+                        _destPayloadFile.seekp(_destPayloadOffset + currentOffset);
+                        _destPayloadFile.write((char *) data, dataLen);
+
+                        delete data;
+                    }
+
+                    continue;
+                }
+
+                size_t offsetX = (size_t) x * bufferPxWidthInner;
+                size_t offsetY = (size_t) y * bufferPxHeightInner;
+
+                size_t readWidth = bufferPxWidth;
+                size_t readHeight = bufferPxHeight;
+
+                size_t offsetBufferX = 0;
+                size_t offsetBufferY = 0;
+
+                if (offsetX < _padding) {
+                    offsetBufferX = _padding - offsetX;
+                    readWidth -= offsetBufferX;
+                    offsetX = 0;
+                } else {
+                    offsetX -= _padding;
+                }
+
+                if (offsetY < _padding) {
+                    offsetBufferY = _padding - offsetY;
+                    readHeight -= offsetBufferY;
+                    offsetY = 0;
+                } else {
+                    offsetY -= _padding;
+                }
+
+                if ((offsetX + readWidth) > _imageWidth) {
+                    readWidth = _imageWidth - offsetX;
+                }
+
+                if ((offsetY + readHeight) > _imageHeight) {
+                    readHeight = _imageHeight - offsetY;
+                }
+
+                auto cachePtr = &buffer[offsetBufferY * bufferPxWidth * srcPxSize + offsetBufferX * srcPxSize];
+                uint64_t fileOffset = offsetY * _imageWidth * srcPxSize + offsetX * srcPxSize;
+
+                for (size_t line = 0; line < readHeight; ++line) {
+                    _srcFile.seekg(fileOffset);
+                    _srcFile.read((char *) cachePtr, readWidth * srcPxSize);
+
+                    if (!_srcFile.good()) {
+                        throw std::runtime_error("Cannot read from File.");
+                    }
+
+                    fileOffset += _imageWidth * srcPxSize;
+                    cachePtr = &cachePtr[bufferPxWidth * srcPxSize];
+                }
+
+                // pad left side
+                bufferBitmap.smearHorizontal(offsetBufferX, offsetBufferY,
+                                             0, offsetBufferY,
+                                             offsetBufferX, readHeight);
+
+                // pad right side
+                bufferBitmap.smearHorizontal(offsetBufferX + readWidth - 1, offsetBufferY,
+                                             offsetBufferX + readWidth, offsetBufferY,
+                                             std::min<size_t>(_padding, bufferPxWidth - offsetBufferX - readWidth),
+                                             readHeight);
+
+                // pad top side
+                bufferBitmap.smearVertical(0, offsetBufferY,
+                                           0, 0,
+                                           bufferPxWidth, offsetBufferY);
+
+                // pad bottom side
+                bufferBitmap.smearVertical(0, offsetBufferY + readHeight - 1,
+                                           0, offsetBufferY + readHeight,
+                                           bufferPxWidth,
+                                           std::min<size_t>(_padding, bufferPxHeight - offsetBufferY - readHeight));
+
+                for (auto relBufferId = (size_t) (tilesInBuffer - 1); /*relBufferId >= tilesInBuffer*/; --relBufferId) {
+                    auto relId = relIterationId * tilesInBuffer + relBufferId;
+                    auto absId = firstId + relId;
+
+                    uint64_t bufferTileX;
+                    uint64_t bufferTileY;
+
+                    QuadTree::getCoordinatesInLevel(relBufferId, bufferLevel, bufferTileX, bufferTileY);
+
+                    auto absTileX = x * bufferTileWidth + bufferTileX;
+                    auto absTileY = y * bufferTileHeight + bufferTileY;
+
+                    if (absTileX >= _imageTileWidth || absTileY >= _imageTileHeight) {
+                        continue;
+                    }
+
+                    writeBitmap.copyRectFrom(bufferBitmap,
+                                             (size_t) bufferTileX * _innerTileWidth,
+                                             (size_t) bufferTileY * _innerTileHeight,
+                                             0, 0,
+                                             _tileWidth, _tileHeight);
+
+                    size_t padWidth = _tileWidth;
+
+                    if (absTileX == (_imageTileWidth - 1)) {
+                        padWidth = ((_imageWidth - 1) % _innerTileWidth) + 1 + (_padding << 1);
+                    }
+
+                    if (absTileY == (_imageTileHeight - 1)) {
+                        uint8_t transPx[] = {0x00, 0x00, 0x00, 0x00};
+
+                        writeBitmap.fillRect(transPx, Bitmap::PIXEL_FORMAT::RGBA8,
+                                             0, ((_imageHeight - 1) % _innerTileHeight) + 1 + (_padding << 1),
+                                             padWidth,
+                                             _tileHeight - ((_imageHeight - 1) % _innerTileHeight) - 1 -
+                                             (_padding << 1));
+                    }
+
+                    if (absTileX == (_imageTileWidth - 1)) {
+                        uint8_t transPx[] = {0x00, 0x00, 0x00, 0x00};
+
+                        writeBitmap.fillRect(transPx, Bitmap::PIXEL_FORMAT::RGBA8, padWidth, 0, _tileWidth - padWidth,
+                                             _tileHeight);
+                    }
+
+                    if (_destLayout == AtlasFile::LAYOUT::RAW) {
+                        currentOffset = _destTileByteSize * absId;
+
+                        while (currentOffset < writeBufferOffset) {
+                            std::memset(writeBuffer, 0x00, lastWriteOffset - writeBufferOffset);
+
+                            _destPayloadFile.seekp(_destPayloadOffset + writeBufferOffset);
+                            _destPayloadFile.write((char *) writeBuffer,
+                                                   std::min(writeBufferSize, offsetAfterLastTile - writeBufferOffset));
+
+                            lastWriteOffset = writeBufferOffset;
+                            writeBufferOffset -= writeBufferSize;
+                        }
+
+                        std::memset(&writeBuffer[currentOffset - writeBufferOffset + _destTileByteSize], 0x00,
+                                    lastWriteOffset - currentOffset - _destTileByteSize);
+                        std::memcpy(&writeBuffer[currentOffset - writeBufferOffset], outTile, _destTileByteSize);
+                        lastWriteOffset = currentOffset;
+                    } else {
+                        if ((currentOffset + _destTileByteSize) > (writeBufferOffset + writeBufferSize)) {
+                            _destPayloadFile.seekp(_destPayloadOffset + writeBufferOffset);
+                            _destPayloadFile.write((char *) writeBuffer, (currentOffset - writeBufferOffset));
+                            _destPayloadFile.flush();
+
+                            writeBufferOffset = currentOffset;
+                        }
+
+                        std::memcpy(&writeBuffer[currentOffset - writeBufferOffset], outTile, _destTileByteSize);
+                        currentOffset += _destTileByteSize;
+                    }
+
+#ifdef PREPROCESSOR_LOG_PROGRESS
+                    ++tilesWritten;
+                    auto currentProgress = (uint8_t) (tilesWritten * 100 / _imageTileWidth / _imageTileHeight);
+
+                    if (currentProgress != progress) {
+                        progress = currentProgress;
+                        std::cout << '\r' << std::setw(3) << (int) progress << " %";
+                        std::cout.flush();
+                    }
+#endif
+
+                    if (relBufferId == 0) {
+                        break;
+                    }
+                }
+
+                if (relIterationId == 0) {
+                    break;
+                }
+            }
+
+#ifdef PREPROCESSOR_LOG_PROGRESS
+            std::cout << " (" << std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::high_resolution_clock::now() - start).count() << " ms)" << std::endl << std::endl;
+#endif
+
+            _destPayloadFile.seekp(_destPayloadOffset + writeBufferOffset);
+
+            if (_destLayout == AtlasFile::RAW) {
+                _destPayloadFile.write((char *) writeBuffer,
+                                       std::min(writeBufferSize, offsetAfterLastTile - writeBufferOffset));
+            } else if (_destLayout == AtlasFile::PACKED) {
+                _destPayloadFile.write((char *) writeBuffer, (currentOffset - writeBufferOffset));
+            }
+
+            _destPayloadFile.flush();
+
+            delete[] buffer;
+            delete[] outTile;
+            delete[] writeBuffer;
+        }
+
+        void Preprocessor::run(size_t maxMemory) {
+#ifdef PREPROCESSOR_LOG_PROGRESS
+            auto start = std::chrono::high_resolution_clock::now();
+
+            std::cout << "Preprocessing \"" << _srcFileName << "\"" << std::endl;
+
+            if (_destCombined == DEST_COMBINED::COMBINED) {
+                std::cout << "--> \"" << _destFileName << ".atlas\"" << std::endl;
+            } else {
+                std::cout << "--> \"" << _destFileName << ".atlas.header\"" << std::endl;
+                std::cout << "--> \"" << _destFileName << ".atlas.index\"" << std::endl;
+                std::cout << "--> \"" << _destFileName << ".atlas.data\"" << std::endl;
+            }
+
             std::cout << std::endl;
-            std::cout << "Stitching " << QuadTree::get_length_of_depth(_depth) << " tiles of depth " << _depth << std::endl;
-        }
 
-        size_t first_node_depth = QuadTree::get_first_node_id_of_depth(_depth);
-        size_t last_node_depth = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
+            std::cout << "Writing Header ... ";
+#endif
+            _writeHeader();
 
-        size_t nodes_per_thread = (last_node_depth - first_node_depth + 1) / count_threads;
+#ifdef PREPROCESSOR_LOG_PROGRESS
+            std::cout << "Done" << std::endl << std::endl;
+#endif
 
-        if(nodes_per_thread > 0)
-        {
-            for(uint32_t _thread_id = 0; _thread_id < count_threads; _thread_id++)
-            {
-                size_t node_start = first_node_depth + _thread_id * nodes_per_thread;
-                size_t node_end = (_thread_id != count_threads - 1) ? first_node_depth + (_thread_id + 1) * nodes_per_thread : last_node_depth;
-                thread_pool.emplace_back([=]() { stitch_tile_range(_thread_id, node_start, node_end); });
-            }
-            for(auto &_thread : thread_pool)
-            {
-                _thread.join();
-            }
-            thread_pool.clear();
-        }
-        else
-        {
-            stitch_tile_range(0, first_node_depth, last_node_depth);
-        }
-    }
+            size_t srcTileSize = _tileWidth * _tileHeight * Bitmap::pixelSize(_srcPxFormat);
 
-    if(_context->is_verbose())
-    {
-        std::cout << "Hierarchy ready" << std::endl;
-        std::cout << std::endl;
+            auto bufferSideLen = (size_t) std::sqrt(maxMemory / srcTileSize);
+            bufferSideLen = (size_t) 1 << ((size_t) std::log2(bufferSideLen));
 
-        std::cout << std::endl;
-        std::cout << "Writing mipmap synchronously" << std::endl;
-    }
+#ifdef PREPROCESSOR_LOG_PROGRESS
+            std::cout << "Readbuffer Size: " << bufferSideLen << "x" << bufferSideLen << " Tiles\n";
+            std::cout << "Writebuffer Size: " << (maxMemory - bufferSideLen * bufferSideLen * srcTileSize) << " Bytes\n"
+                      << std::endl;
+#endif
 
-    std::ofstream output;
-    output.open(_context->get_name_mipmap() + ".data", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+            _extract(bufferSideLen, maxMemory - bufferSideLen * bufferSideLen * srcTileSize);
+            _deflate(maxMemory);
 
-    auto *buf_tile = new char[tile_size * tile_size * _context->get_byte_stride()];
-
-    for(uint32_t _depth = 0; _depth <= tree_depth; _depth++)
-    {
-        size_t first_node_depth = QuadTree::get_first_node_id_of_depth(_depth);
-        size_t last_node_depth = QuadTree::get_first_node_id_of_depth(_depth) + QuadTree::get_length_of_depth(_depth) - 1;
-
-        for(size_t _id = first_node_depth; _id <= last_node_depth; _id++)
-        {
-            std::ifstream input_tile;
-            switch(_context->get_format_texture())
-            {
-            case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-                input_tile.open("id_" + std::to_string(_id) + ".rgba", std::ifstream::in | std::ifstream::binary);
-                break;
-            case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-                input_tile.open("id_" + std::to_string(_id) + ".rgb", std::ifstream::in | std::ifstream::binary);
-                break;
-            case VTContext::Config::FORMAT_TEXTURE::R8:
-
-                input_tile.open("id_" + std::to_string(_id) + ".gray", std::ifstream::in | std::ifstream::binary);
-                break;
-            }
-
-            read_dimensions(input_tile, dim_x, dim_y);
-            input_tile.read(&buf_tile[0], tile_size * tile_size * _context->get_byte_stride());
-
-            input_tile.close();
-
-            output.write(&buf_tile[0], tile_size * tile_size * _context->get_byte_stride());
-
-            if(_context->is_keep_intermediate_data())
-            {
-                switch(_context->get_format_texture())
-                {
-                case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-                    std::remove(("id_" + std::to_string(_id) + ".rgba").c_str());
-                    break;
-                case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-                    std::remove(("id_" + std::to_string(_id) + ".rgb").c_str());
-                    break;
-                case VTContext::Config::FORMAT_TEXTURE::R8:
-
-                    std::remove(("id_" + std::to_string(_id) + ".gray").c_str());
-                    break;
-                }
-            }
+#ifdef  PREPROCESSOR_LOG_PROGRESS
+            std::cout << "Done in " << std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::high_resolution_clock::now() - start).count() << " ms." << std::endl << std::endl;
+#endif
         }
     }
-
-    output.close();
-
-    if(_context->is_verbose())
-    {
-        std::cout << "Mipmap done" << std::endl;
-        std::cout << std::endl;
-    }
-
-    return false;
-}
-
-void Preprocessor::extract_leaf_tile_range(uint32_t _thread_id)
-{
-    std::ifstream ifs;
-
-    switch(_context->get_format_texture())
-    {
-    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-        ifs.open(_context->get_name_texture() + ".rgba", std::ifstream::in | std::ifstream::binary);
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-        ifs.open(_context->get_name_texture() + ".rgb", std::ifstream::in | std::ifstream::binary);
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::R8:
-
-        ifs.open(_context->get_name_texture() + ".gray", std::ifstream::in | std::ifstream::binary);
-        break;
-    }
-
-    size_t dim_x = 0, dim_y = 0;
-
-    read_dimensions(ifs, dim_x, dim_y);
-
-    streamoff _offset_header = ifs.tellg();
-
-    auto _tile_size = _context->get_size_tile();
-    if((_tile_size & (_tile_size - 1)) != 0)
-    {
-        throw std::runtime_error("Tile size is not a power of 2");
-    }
-
-    uint32_t _tree_depth = QuadTree::calculate_depth(dim_x, _tile_size);
-
-    auto *buf_tile = new char[_tile_size * _tile_size * _context->get_byte_stride()];
-
-    size_t _node_first_leaf = QuadTree::get_first_node_id_of_depth(_tree_depth);
-    size_t _node_last_leaf = QuadTree::get_first_node_id_of_depth(_tree_depth) + QuadTree::get_length_of_depth(_tree_depth) - 1;
-    size_t _tiles_per_row = QuadTree::get_tiles_per_row(_tree_depth);
-
-    size_t _nodes_per_thread = (_node_last_leaf - _node_first_leaf + 1) / thread::hardware_concurrency();
-
-    size_t _node_start = _node_first_leaf + _thread_id * _nodes_per_thread;
-    size_t _node_end = (_thread_id != thread::hardware_concurrency() - 1) ? _node_first_leaf + (_thread_id + 1) * _nodes_per_thread : _node_last_leaf;
-
-    size_t _range = _node_end - _node_start;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    double average = 0.0;
-
-    for(size_t _id = _node_start; _id <= _node_end; _id++)
-    {
-        if(_context->is_verbose())
-        {
-            start = std::chrono::high_resolution_clock::now();
-        }
-
-        uint_fast64_t skip_cols, skip_rows;
-        morton2D_64_decode((uint_fast64_t)(_id - _node_first_leaf), skip_cols, skip_rows);
-
-        ifs.seekg(_offset_header);
-        ifs.ignore(skip_rows * _tiles_per_row * _tile_size * _tile_size * _context->get_byte_stride());
-
-        for(uint32_t _row = 0; _row < _tile_size; _row++)
-        {
-            ifs.ignore(skip_cols * _tile_size * _context->get_byte_stride());
-            ifs.read(&buf_tile[_row * _tile_size * _context->get_byte_stride()], _tile_size * _context->get_byte_stride());
-            ifs.ignore((_tiles_per_row - skip_cols - 1) * _tile_size * _context->get_byte_stride());
-        }
-
-        std::ofstream output;
-
-        switch(_context->get_format_texture())
-        {
-        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-            output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-            output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::R8:
-
-            output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-            break;
-        }
-
-        output.write(&buf_tile[0], _tile_size * _tile_size * _context->get_byte_stride());
-        output.close();
-
-        if(_context->is_verbose())
-        {
-            if(_id - _node_start != 0)
-            {
-                average += (std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count() - average) / (_id - _node_start);
-            }
-            else
-            {
-                average = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count();
-            }
-        }
-
-        if(_context->is_verbose())
-        {
-            if((_id - _node_start) % (_range / 10 + 1) == 0)
-            {
-                std::cout << "Thread #" << _thread_id << " progress: " << (_id - _node_start) * 100 / _range << " %" << std::endl;
-            }
-        }
-    }
-
-    ifs.close();
-
-    if(_context->is_verbose())
-    {
-        std::cout << "Thread #" << _thread_id << " done" << std::endl;
-        std::cout << "Average tile creation time: " << average << " msec" << std::endl;
-    }
-}
-
-void Preprocessor::extract_leaf_tile_rows(uint32_t _thread_id)
-{
-    std::ifstream ifs;
-
-    switch(_context->get_format_texture())
-    {
-    case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-        ifs.open(_context->get_name_texture() + ".rgba", std::ifstream::in | std::ifstream::binary);
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-        ifs.open(_context->get_name_texture() + ".rgb", std::ifstream::in | std::ifstream::binary);
-        break;
-    case VTContext::Config::FORMAT_TEXTURE::R8:
-
-        ifs.open(_context->get_name_texture() + ".gray", std::ifstream::in | std::ifstream::binary);
-        break;
-    }
-
-    size_t dim_x = 0, dim_y = 0;
-
-    read_dimensions(ifs, dim_x, dim_y);
-
-    const auto tile_size = _context->get_size_tile();
-    if((tile_size & (tile_size - 1)) != 0)
-    {
-        throw std::runtime_error("Tile size is not a power of 2");
-    }
-
-    const uint32_t tree_depth = QuadTree::calculate_depth(dim_x, tile_size);
-    const size_t tiles_per_row = QuadTree::get_tiles_per_row(tree_depth);
-
-    size_t rows_per_thread = tiles_per_row / thread::hardware_concurrency();
-
-    auto **buf_tiles = new char *[tiles_per_row];
-    for(size_t _tile_row = 0; _tile_row < tiles_per_row; _tile_row++)
-    {
-        buf_tiles[_tile_row] = new char[tile_size * tile_size * _context->get_byte_stride()];
-    }
-
-    size_t _tile_row = _thread_id * rows_per_thread;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    double average = 0.0;
-
-    if(_tile_row < tiles_per_row)
-    {
-        if(_context->is_verbose())
-        {
-            start = std::chrono::high_resolution_clock::now();
-        }
-
-        ifs.ignore(_tile_row * tiles_per_row * tile_size * tile_size * _context->get_byte_stride());
-
-        while(_tile_row < (_thread_id + 1) * rows_per_thread && _tile_row < tiles_per_row)
-        {
-            for(uint32_t _row = 0; _row < tile_size; _row++)
-            {
-                for(uint32_t _tile_col = 0; _tile_col < tiles_per_row; _tile_col++)
-                {
-                    ifs.read(&buf_tiles[_tile_col][_row * tile_size * _context->get_byte_stride()], tile_size * _context->get_byte_stride());
-                }
-            }
-
-            for(uint32_t _tile_col = 0; _tile_col < tiles_per_row; _tile_col++)
-            {
-                uint_fast64_t _id = morton2D_64_encode(_tile_col, _tile_row) + QuadTree::get_first_node_id_of_depth(tree_depth);
-
-                std::ofstream output;
-                switch(_context->get_format_texture())
-                {
-                case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-                    output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-                    break;
-                case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-                    output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-                    break;
-                case VTContext::Config::FORMAT_TEXTURE::R8:
-
-                    output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-                    break;
-                }
-                output.write(&buf_tiles[_tile_col][0], tile_size * tile_size * _context->get_byte_stride());
-                output.close();
-            }
-
-            if(_context->is_verbose())
-            {
-                if((_tile_row - _thread_id * rows_per_thread) % (rows_per_thread / 10 + 1) == 0)
-                {
-                    std::cout << "Thread #" << _thread_id << " progress: " << (_tile_row - _thread_id * rows_per_thread) * 100 / rows_per_thread << " %" << std::endl;
-                }
-            }
-
-            _tile_row += 1;
-        }
-
-        if(_context->is_verbose())
-        {
-            average = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count() / rows_per_thread / tiles_per_row;
-        }
-    }
-
-    ifs.close();
-
-    for(size_t __tile_row = 0; __tile_row < tiles_per_row; __tile_row++)
-        delete[] buf_tiles[__tile_row];
-    delete[] buf_tiles;
-
-    if(_context->is_verbose())
-    {
-        std::cout << "Thread #" << _thread_id << " done" << std::endl;
-        std::cout << "Average tile creation time: " << average << " msec" << std::endl;
-    }
-}
-
-void Preprocessor::stitch_tile_range(uint32_t _thread_id, size_t _node_start, size_t _node_end)
-{
-    auto tile_size = _context->get_size_tile();
-    if((tile_size & (tile_size - 1)) != 0)
-    {
-        throw std::runtime_error("Tile size is not a power of 2");
-    }
-
-    size_t _range = _node_end - _node_start + 1;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    double average = 0.0;
-
-    char *_buf_concat = new char[2 * tile_size * 2 * tile_size * _context->get_byte_stride()];
-    char *_buf_out = new char[tile_size * tile_size * _context->get_byte_stride()];
-
-    for(size_t _id = _node_start; _id <= _node_end; _id++)
-    {
-        if(_context->is_verbose())
-        {
-            start = std::chrono::high_resolution_clock::now();
-        }
-
-        std::ifstream _ifs_0;
-        std::ifstream _ifs_1;
-        std::ifstream _ifs_2;
-        std::ifstream _ifs_3;
-
-        switch(_context->get_format_texture())
-        {
-        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-            _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".rgba");
-            _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".rgba");
-            _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".rgba");
-            _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".rgba");
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-            _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".rgb");
-            _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".rgb");
-            _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".rgb");
-            _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".rgb");
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::R8:
-
-            _ifs_0.open("id_" + std::to_string(QuadTree::get_child_id(_id, 0)) + ".gray");
-            _ifs_1.open("id_" + std::to_string(QuadTree::get_child_id(_id, 1)) + ".gray");
-            _ifs_2.open("id_" + std::to_string(QuadTree::get_child_id(_id, 2)) + ".gray");
-            _ifs_3.open("id_" + std::to_string(QuadTree::get_child_id(_id, 3)) + ".gray");
-            break;
-        }
-
-        for(size_t _row = 0; _row < 2 * tile_size; _row++)
-        {
-            if(_row < tile_size)
-            {
-                _ifs_0.read(&_buf_concat[_row * 2 * tile_size * _context->get_byte_stride()], tile_size * _context->get_byte_stride());
-                _ifs_1.read(&_buf_concat[(_row * 2 + 1) * tile_size * _context->get_byte_stride()], tile_size * _context->get_byte_stride());
-            }
-            else
-            {
-                _ifs_2.read(&_buf_concat[_row * 2 * tile_size * _context->get_byte_stride()], tile_size * _context->get_byte_stride());
-                _ifs_3.read(&_buf_concat[(_row * 2 + 1) * tile_size * _context->get_byte_stride()], tile_size * _context->get_byte_stride());
-            }
-        }
-
-        _ifs_0.close();
-        _ifs_1.close();
-        _ifs_2.close();
-        _ifs_3.close();
-
-        for(size_t _row = 0; _row < 2 * tile_size; _row += 2)
-        {
-            for(size_t _col = 0; _col < 2 * tile_size; _col += 2)
-            {
-                // TODO: implement a better downscaling algo
-                switch(_context->get_format_texture())
-                {
-                case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-                {
-                    char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 0];
-                    char pixel_g = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 1];
-                    char pixel_b = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 2];
-                    char pixel_a = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 3];
-
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 0] = pixel_r;
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 1] = pixel_g;
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 2] = pixel_b;
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 3] = pixel_a;
-
-                    break;
-                }
-                case VTContext::Config::FORMAT_TEXTURE::RGB8:
-                {
-                    char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 0];
-                    char pixel_g = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 1];
-                    char pixel_b = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 2];
-
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 0] = pixel_r;
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 1] = pixel_g;
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 2] = pixel_b;
-
-                    break;
-                }
-                case VTContext::Config::FORMAT_TEXTURE::R8:
-                {
-                    char pixel_r = _buf_concat[(_row * 2 * tile_size + _col) * _context->get_byte_stride() + 0];
-
-                    _buf_out[(_row / 2 * tile_size + _col / 2) * _context->get_byte_stride() + 0] = pixel_r;
-
-                    break;
-                }
-                }
-            }
-        }
-
-        std::ofstream output;
-        switch(_context->get_format_texture())
-        {
-        case VTContext::Config::FORMAT_TEXTURE::RGBA8:
-
-            output.open("id_" + std::to_string(_id) + ".rgba", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::RGB8:
-
-            output.open("id_" + std::to_string(_id) + ".rgb", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-            break;
-        case VTContext::Config::FORMAT_TEXTURE::R8:
-
-            output.open("id_" + std::to_string(_id) + ".gray", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-            break;
-        }
-        output.write(&_buf_out[0], tile_size * tile_size * _context->get_byte_stride());
-        output.close();
-
-        if(_context->is_verbose())
-        {
-            if(_id - _node_start != 0)
-            {
-                average += (std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count() - average) / (_id - _node_start);
-            }
-            else
-            {
-                average = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - start).count();
-            }
-        }
-
-        if(_context->is_verbose())
-        {
-            if((_id - _node_start) % (_range / 10 + 1) == 0)
-            {
-                std::cout << "Thread #" << _thread_id << " progress: " << (_id - _node_start) * 100 / _range << " %" << std::endl;
-            }
-        }
-    }
-
-    delete[] _buf_concat;
-    delete[] _buf_out;
-
-    if(_context->is_verbose())
-    {
-        std::cout << "Thread #" << _thread_id << " done" << std::endl;
-        std::cout << "Average tile stitch time: " << average << " msec" << std::endl;
-    }
-}
-
-void Preprocessor::read_dimensions(std::ifstream &ifs, size_t &dim_x, size_t &dim_y)
-{
-    auto fsize = (size_t)ifs.tellg();
-    ifs.seekg(0, std::ios::end);
-    fsize = (size_t)(ifs.tellg()) - fsize;
-
-    dim_x = dim_y = (size_t)std::sqrt(fsize / _context->get_byte_stride());
-
-    ifs.seekg(0);
-}
 }
