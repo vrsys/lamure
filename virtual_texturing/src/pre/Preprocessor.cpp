@@ -373,9 +373,17 @@ namespace vt {
 
                             std::memcpy(&writeBuffer[currentOffset - writeBufferOffset], (char *) &buffer[bufferOffset],
                                         _destTileByteSize);
-                            writeBufferLastId = idLookup[((currentOffset - writeBufferOffset) / _destTileByteSize) + 1];
+
+                            auto tempLastId = idLookup[((currentOffset - writeBufferOffset) / _destTileByteSize)];
+
+                            if(tempLastId == writeBufferLastId){
+                                size_t nextIndex = (((currentOffset - writeBufferOffset) / _destTileByteSize) + 1) % writeBufferTileSize;
+                                writeBufferLastId = idLookup[nextIndex];
+                            }
+
                             writeBufferFirstId = absIterationId;
-                            idLookup[(currentOffset - writeBufferOffset) / _destTileByteSize] = absIterationId;
+                            idLookup[((currentOffset - writeBufferOffset) / _destTileByteSize)] = absIterationId;
+
                             currentOffset += _destTileByteSize;
                         }
 
@@ -658,8 +666,8 @@ namespace vt {
 
             if (combine) {
                 _destCombined = DEST_COMBINED::COMBINED;
-                _destPayloadFile.open(destFileName + ".atlas", std::ios::in | std::ios::out | std::ios::binary |
-                                                               std::ios::trunc);
+                _destPayloadFile.open(destFileName + ".atlas", std::ios::in | std::ios::out | std::ios::binary /*|
+                                                               std::ios::trunc*/);
                 //_destPayloadFile.rdbuf()->pubsetbuf(nullptr, 0);
 
                 if (!_destPayloadFile.is_open()) {
@@ -999,7 +1007,7 @@ namespace vt {
 
             std::cout << "Writing Header ... ";
 #endif
-            _writeHeader();
+            //_writeHeader();
 
 #ifdef PREPROCESSOR_LOG_PROGRESS
             std::cout << "Done" << std::endl << std::endl;
@@ -1016,7 +1024,7 @@ namespace vt {
                       << std::endl;
 #endif
 
-            _extract(bufferSideLen, maxMemory - bufferSideLen * bufferSideLen * srcTileSize);
+            //_extract(bufferSideLen, maxMemory - bufferSideLen * bufferSideLen * srcTileSize);
             _deflate(maxMemory);
 
 #ifdef  PREPROCESSOR_LOG_PROGRESS
