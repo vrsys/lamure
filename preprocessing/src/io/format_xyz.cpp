@@ -12,8 +12,6 @@
 #include <sstream>
 #include <iostream>
 
-#define DEFAULT_PRECISION 15
-
 namespace lamure
 {
 namespace pre
@@ -50,9 +48,9 @@ read(const std::string &filename, surfel_callback_funtion callback)
 
         sstream << line;
 
-        sstream >> pos[0];
-        sstream >> pos[1];
-        sstream >> pos[2];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[0];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[1];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[2];
         sstream >> color[0];
         sstream >> color[1];
         sstream >> color[2];
@@ -82,8 +80,13 @@ write(const std::string &filename, buffer_callback_function callback)
             break;
 
         for (const auto s: buffer) {
-            xyz_file_stream << std::setprecision(DEFAULT_PRECISION) << s.pos().x << " " << s.pos().y << " " << s.pos().z << " "
-                            << int(s.color().r) << " " << int(s.color().g) << " " << int(s.color().b) << "\r\n";
+            xyz_file_stream << std::setprecision(LAMURE_STREAM_PRECISION) 
+              << s.pos().x << " " 
+              << s.pos().y << " " 
+              << s.pos().z << " "
+              << int(s.color().r) << " " 
+              << int(s.color().g) << " " 
+              << int(s.color().b) << "\r\n";
         }
 
         count += buffer.size();

@@ -226,6 +226,9 @@ read_aux(const std::string& filename, aux& aux) {
         f.coords_ = scm::math::vec2f(
           sparse.points_[i].features_[j].img_x_, 
           sparse.points_[i].features_[j].img_y_);
+        f.error_ = scm::math::vec2f(
+          sparse.points_[i].features_[j].error_x_, 
+          sparse.points_[i].features_[j].error_y_);
         p.features_.push_back(f);
       }
 
@@ -247,11 +250,9 @@ read_aux(const std::string& filename, aux& aux) {
        v.image_width_ = view.image_width_;
        v.image_height_ = view.image_height_;
        v.tex_atlas_id_ = view.tex_atlas_id_;
-       v.camera_name_ = view.camera_name_.string_;
        v.image_file_ = view.image_file_.string_;
 
        aux.add_view(v);
-       std::cout << "view seg loaded " << std::endl;
 
    
     }
@@ -310,11 +311,6 @@ write_aux(const std::string& filename, aux& aux) {
        v.image_width_ = view.image_width_;
        v.image_height_ = view.image_height_;
        v.tex_atlas_id_ = view.tex_atlas_id_;
-
-       aux_string camera_name;
-       camera_name.string_ = view.camera_name_;
-       camera_name.length_ = view.camera_name_.length();
-       v.camera_name_ = camera_name;
       
        aux_string image_file;
        image_file.string_ = view.image_file_;
@@ -359,10 +355,10 @@ write_aux(const std::string& filename, aux& aux) {
        f.using_count_ = feature.using_count_;
        f.img_x_ = feature.coords_.x;
        f.img_y_ = feature.coords_.y;
+       f.error_x_ = feature.error_.x;
+       f.error_y_ = feature.error_.y;
        f.reserved_0_ = 0;
        f.reserved_1_ = 0;
-       f.reserved_2_ = 0;
-       f.reserved_3_ = 0;
        p.features_.push_back(f);
      }    
 

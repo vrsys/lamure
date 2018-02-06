@@ -50,16 +50,16 @@ read(const std::string &filename, surfel_callback_funtion callback)
 
         sstream << line;
 
-        sstream >> pos[0];
-        sstream >> pos[1];
-        sstream >> pos[2];
-        sstream >> norm[0];
-        sstream >> norm[1];
-        sstream >> norm[2];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[0];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[1];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[2];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> norm[0];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> norm[1];
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> norm[2];
         sstream >> color[0];
         sstream >> color[1];
         sstream >> color[2];
-        sstream >> radius;
+        sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> radius;
 
         callback(surfel(vec3r(pos[0], pos[1], pos[2]),
                         vec3b(color[0], color[1], color[2]),
@@ -73,7 +73,38 @@ read(const std::string &filename, surfel_callback_funtion callback)
 void format_xyzall::
 write(const std::string &filename, buffer_callback_function callback)
 {
-    throw std::runtime_error("Not implemented yet!");
+    std::ofstream xyz_file_stream(filename);
+
+    if (!xyz_file_stream.is_open())
+        throw std::runtime_error("Unable to open file: " +
+            filename);
+
+    surfel_vector buffer;
+    size_t count = 0;
+
+    while (true) {
+        bool ret = callback(buffer);
+        if (!ret)
+            break;
+
+        for (const auto s: buffer) {
+            xyz_file_stream << std::setprecision(LAMURE_STREAM_PRECISION) 
+              << s.pos().x << " " 
+              << s.pos().y << " " 
+              << s.pos().z << " "
+              << s.normal().x << " "
+              << s.normal().y << " "
+              << s.normal().z << " "
+              << int(s.color().r) << " " 
+              << int(s.color().g) << " " 
+              << int(s.color().b) << " "
+              << s.radius() << "\r\n";
+        }
+
+        count += buffer.size();
+    }
+    xyz_file_stream.close();
+    LOGGER_TRACE("Output surfels: " << count);
 }
 
 } // namespace pre

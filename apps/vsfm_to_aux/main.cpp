@@ -168,7 +168,6 @@ int main(int argc, char *argv[]) {
       v.image_width_ = result.ImageWidth;
       //v.focal_length_ = result.FocalLength * 0.001;
  
-      v.camera_name_ = "";
       v.tex_atlas_id_ = 0;
 
       aux.add_view(v);
@@ -211,6 +210,7 @@ int main(int argc, char *argv[]) {
         line_ss >> feature_index;
         line_ss >> f.coords_.x;
         line_ss >> f.coords_.y;
+        f.error_ = scm::math::vec2f(0.f, 0.f);
 
         p.features_.push_back(f);
       }

@@ -15,6 +15,9 @@ namespace lamure {
 // default type for storing coordinates
 using real = double; //< for surfel position and radius
 
+// default precision for ascii in/out
+#define LAMURE_STREAM_PRECISION 15
+
 // tree node index types
 using node_id_type = uint32_t;
 

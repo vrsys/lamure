@@ -37,15 +37,18 @@ convert(const std::string& in_file, const std::string& out_file, bool xyz_rgb) {
       real pos[3];
       uint32_t color[3];
 
-      line >> pos[0];
-      line >> pos[1];
-      line >> pos[2];
+      line >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[0];
+      line >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[1];
+      line >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[2];
       line >> color[0];
       line >> color[1];
       line >> color[2];
     }
     prov v;
-    line >> v.value_;
+    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_3_;
+    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_4_;
+    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_5_;
+    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_6_;
     data.push_back(v);
   }
 

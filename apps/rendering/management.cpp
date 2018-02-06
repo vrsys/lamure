@@ -802,16 +802,16 @@ void management::dispatchKeyboardInput(unsigned char key)
                 }
 
 #elif 1 /*SINGLE PICK SPLAT-BASED*/
-// lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
-// for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
-// {
-//     scm::math::mat4f model_transform = database->get_model(model_id)->transform();
-//     lamure::ren::ray::Intersection temp;
-//     if(intersection_ray.intersect_model(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp))
-//     {
-//         intersectn = temp;
-//     }
-// }
+ lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
+ for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)
+ {
+     scm::math::mat4f model_transform = database->get_model(model_id)->transform();
+     lamure::ren::ray::intersection temp;
+     if(ray_brush.intersect_model(model_id, model_transform, 1.0f, max_depth, surfel_skip, true, temp))
+     {
+         intersectn = temp;
+     }
+ }
 
 #elif 0 /*SINGLE PICK BVH-BASED*/
 

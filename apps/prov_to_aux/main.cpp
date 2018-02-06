@@ -121,6 +121,7 @@ int main(int argc, char *argv[]) {
         f.camera_id_ = measurement.get_camera();
         f.using_count_ = 1;
         f.coords_ = measurement.get_occurence();
+        f.error_ = scm::math::vec2f(0.f, 0.f);
 
         p.features_.push_back(f);
 
@@ -156,7 +157,6 @@ int main(int argc, char *argv[]) {
       v.image_width_ = camera.get_image_width();
       v.image_height_ = camera.get_image_height();
       v.tex_atlas_id_ = 0;
-      v.camera_name_ = "";
       v.image_file_ = camera.get_image_file();
 
       aux.add_view(v);

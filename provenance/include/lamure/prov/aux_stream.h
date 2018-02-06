@@ -68,10 +68,10 @@ protected:
       uint32_t using_count_;
       float img_x_;
       float img_y_;
+      float error_x_;
+      float error_y_;
       uint32_t reserved_0_;
       uint32_t reserved_1_;
-      uint32_t reserved_2_;
-      uint32_t reserved_3_;
     };
 
     struct aux_sparse_point { //sparse world point
@@ -295,10 +295,10 @@ protected:
                 file.write((char*)&points_[i].features_[j].using_count_, 4);
                 file.write((char*)&points_[i].features_[j].img_x_, 4);
                 file.write((char*)&points_[i].features_[j].img_y_, 4);
+                file.write((char*)&points_[i].features_[j].error_x_, 4);
+                file.write((char*)&points_[i].features_[j].error_y_, 4);
                 file.write((char*)&points_[i].features_[j].reserved_0_, 4);
                 file.write((char*)&points_[i].features_[j].reserved_1_, 4);
-                file.write((char*)&points_[i].features_[j].reserved_2_, 4);
-                file.write((char*)&points_[i].features_[j].reserved_3_, 4);
                 
               }
 
@@ -338,10 +338,10 @@ protected:
                 file.read((char*)&f.using_count_, 4);
                 file.read((char*)&f.img_x_, 4);
                 file.read((char*)&f.img_y_, 4);
+                file.read((char*)&f.error_x_, 4);
+                file.read((char*)&f.error_y_, 4);
                 file.read((char*)&f.reserved_0_, 4);
                 file.read((char*)&f.reserved_1_, 4);
-                file.read((char*)&f.reserved_2_, 4);
-                file.read((char*)&f.reserved_3_, 4);
                 p.features_.push_back(f);
               }
 

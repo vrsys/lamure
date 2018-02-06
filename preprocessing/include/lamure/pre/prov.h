@@ -27,12 +27,19 @@ class PREPROCESSING_DLL prov
     mean_absolute_deviation_(0.f),
     standard_deviation_(0.f),
     coefficient_of_variation_(0.f),
-    value_(0.f) {};
+    value_3_(0.f),
+    value_4_(0.f),
+    value_5_(0.f),
+    value_6_(0.f) {};
+
 
   	float mean_absolute_deviation_;
     float standard_deviation_;
     float coefficient_of_variation_;
-    float value_;
+    float value_3_;
+    float value_4_;
+    float value_5_;
+    float value_6_;
 
     static void write_json(std::string const& file_name) {
     	std::ofstream out_stream;
@@ -40,7 +47,7 @@ class PREPROCESSING_DLL prov
         std::string filestr;
         std::stringstream ss(filestr);
 
-        int32_t num_values = 4;
+        int32_t num_values = 7;
 
         ss << "[";
         for (int32_t i = 0; i < num_values; ++i) {

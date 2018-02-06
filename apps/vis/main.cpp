@@ -1626,7 +1626,7 @@ void create_aux_resources() {
         lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
         lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
 
-        std::cout << "v: " << view.camera_id_ << " w " << view.image_width_ << " h " << view.image_height_ << std::endl;
+        //std::cout << "v: " << view.camera_id_ << " w " << view.image_width_ << " h " << view.image_height_ << std::endl;
 
       }
 

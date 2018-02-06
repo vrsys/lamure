@@ -26,6 +26,7 @@ public:
       uint32_t camera_id_;
       uint32_t using_count_;
       scm::math::vec2f coords_;
+      scm::math::vec2f error_;
     };
 
     struct sparse_point {
@@ -46,7 +47,6 @@ public:
       uint32_t image_width_;
       uint32_t image_height_;
       uint32_t tex_atlas_id_;
-      std::string camera_name_;
       std::string image_file_;
     };
                         aux();
