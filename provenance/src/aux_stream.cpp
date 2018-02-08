@@ -284,43 +284,42 @@ write_aux(const std::string& filename, aux& aux) {
 
 
    for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
-       const auto& view = aux.get_view(i);
-       aux_view_seg v;
+     const auto& view = aux.get_view(i);
+     aux_view_seg v;
 
-       v.segment_id_ = num_segments_++;
-       v.camera_id_ = view.camera_id_;
-       v.position_.x_ = view.position_.x;
-       v.position_.y_ = view.position_.y;
-       v.position_.z_ = view.position_.z;
-       v.reserved_0_ = 0;
-       
-       scm::math::quatf quat = scm::math::quatf::from_matrix(view.transform_);
-       v.orientation_.w_ = quat.w;
-       v.orientation_.x_ = quat.x;
-       v.orientation_.y_ = quat.y;
-       v.orientation_.z_ = quat.z;
+     v.segment_id_ = num_segments_++;
+     v.camera_id_ = view.camera_id_;
+     v.position_.x_ = view.position_.x;
+     v.position_.y_ = view.position_.y;
+     v.position_.z_ = view.position_.z;
+     v.reserved_0_ = 0;
+     
+     scm::math::quatf quat = scm::math::quatf::from_matrix(view.transform_);
+     v.orientation_.w_ = quat.w;
+     v.orientation_.x_ = quat.x;
+     v.orientation_.y_ = quat.y;
+     v.orientation_.z_ = quat.z;
 
-       v.focal_length_ = view.focal_length_;
-       v.distortion_ = view.distortion_;
-       v.reserved_1_ = 0;
-       v.reserved_2_ = 0;
-       v.reserved_3_ = 0;
-       v.reserved_4_ = 0;
-       v.reserved_5_ = 0;
-       v.reserved_6_ = 0;
-       v.image_width_ = view.image_width_;
-       v.image_height_ = view.image_height_;
-       v.tex_atlas_id_ = view.tex_atlas_id_;
-      
-       aux_string image_file;
-       image_file.string_ = view.image_file_;
-       image_file.length_ = view.image_file_.length();
-       v.image_file_ = image_file;
-      
-       write(v);
+     v.focal_length_ = view.focal_length_;
+     v.distortion_ = view.distortion_;
+     v.reserved_1_ = 0;
+     v.reserved_2_ = 0;
+     v.reserved_3_ = 0;
+     v.reserved_4_ = 0;
+     v.reserved_5_ = 0;
+     v.reserved_6_ = 0;
+     v.image_width_ = view.image_width_;
+     v.image_height_ = view.image_height_;
+     v.tex_atlas_id_ = view.tex_atlas_id_;
+    
+     aux_string image_file;
+     image_file.string_ = view.image_file_;
+     image_file.length_ = view.image_file_.length();
+     v.image_file_ = image_file;
+   
+     write(v);
+
    }
-
-
    
    aux_sparse_seg sparse;
 

@@ -46,46 +46,46 @@ public:
 protected:
 
     struct aux_vec {
-      float x_;
-      float y_;
-      float z_;
+      float x_ = 0.f;
+      float y_ = 0.f;
+      float z_ = 0.f;
     };
 
     struct aux_quat {
-      float w_;
-      float x_;
-      float y_;
-      float z_;
+      float w_ = 1.f;
+      float x_ = 0.f;
+      float y_ = 0.f;
+      float z_ = 0.f;
     };
 
     struct aux_string {
-      uint64_t length_;
-      std::string string_;
+      uint64_t length_ = 0;
+      std::string string_ = "";
     };
 
     struct aux_feature { //feature in image
-      uint32_t camera_id_;
-      uint32_t using_count_;
-      float img_x_;
-      float img_y_;
-      float error_x_;
-      float error_y_;
-      uint32_t reserved_0_;
-      uint32_t reserved_1_;
+      uint32_t camera_id_ = 0;
+      uint32_t using_count_ = 0;
+      float img_x_ = 0.f;
+      float img_y_ = 0.f;
+      float error_x_ = 0.f;
+      float error_y_ = 0.f;
+      uint32_t reserved_0_ = 0;
+      uint32_t reserved_1_ = 0;
     };
 
     struct aux_sparse_point { //sparse world point
-      float x_;
-      float y_;
-      float z_;
-      uint8_t r_;
-      uint8_t g_;
-      uint8_t b_;
-      uint8_t a_;
-      float reserved_0_;
-      float reserved_1_;
-      float reserved_2_;
-      float num_features_;
+      float x_ = 0.f;
+      float y_ = 0.f;
+      float z_ = 0.f;
+      uint8_t r_ = (uint8_t)0;
+      uint8_t g_ = (uint8_t)0;
+      uint8_t b_ = (uint8_t)0;
+      uint8_t a_ = (uint8_t)255;
+      float reserved_0_ = 0;
+      float reserved_1_ = 0;
+      float reserved_2_ = 0;
+      float num_features_ = 0;
       std::vector<aux_feature> features_;
     };
   
@@ -249,10 +249,11 @@ protected:
     protected:
         friend class aux_stream;
         const size_t size() const {
-            size_t size = 8*sizeof(uint32_t);
+            size_t seg_size = 8*sizeof(uint32_t);
             for (uint64_t i = 0; i < num_points_; ++i) {
-              size += 8*sizeof(uint32_t) + points_[i].num_features_*sizeof(aux_feature);
+              seg_size += 8*sizeof(uint32_t) + points_[i].num_features_*sizeof(aux_feature);
             }
+            return seg_size;
         }
         void signature(char* signature) {
             signature[0] = 'A';
@@ -397,10 +398,10 @@ protected:
     protected:
         friend class aux_stream;
         const size_t size() const {
-            size_t size = 24*sizeof(uint32_t);
-            size += 8 + camera_name_.length_ + (32 - ((8 + camera_name_.length_) % 32));
-            size += 8 + image_file_.length_ + (32 - ((8 + image_file_.length_) % 32));
-            return size;
+            size_t seg_size = 24*sizeof(uint32_t);
+            seg_size += 8 + camera_name_.length_ + (32 - ((8 + camera_name_.length_) % 32));
+            seg_size += 8 + image_file_.length_ + (32 - ((8 + image_file_.length_) % 32));
+            return seg_size;
         };
         void signature(char* signature) {
             signature[0] = 'A';
