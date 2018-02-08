@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <string>
+#include <map>
 
 using namespace std;
 
@@ -48,6 +49,65 @@ struct worldPoint {
   float worldPointZ_;
 };
 
+struct cameraIntrinsic {
+  int32_t cameraId_;
+  float focalValueH_;
+  float reserved_0_;
+  float reserved_1_;
+  float reserved_2_;
+  float focalValueV_;
+  float reserved_3_;
+  float centerX_;
+  float centerY_;
+  float reserved_4_;
+  int32_t imageWidth_;
+  int32_t imageHeight_;
+};
+
+struct cameraDistortion {
+  int32_t cameraId_;
+  float radial1_;
+  float radial2_;
+  float radial3_;
+  float tangential1_;
+  float tangential2_;
+};
+
+struct cameraPose {
+  int32_t cameraId_;
+  float positionX_;
+  float positionY_;
+  float positionZ_;
+  float rot11_;
+  float rot12_;
+  float rot13_;
+  float rot21_;
+  float rot22_;
+  float rot23_;
+  float rot31_;
+  float rot32_;
+  float rot33_;
+};
+
+struct worldPointDetectionError {
+  int32_t worldPointId_;
+  int32_t cameraId_;
+  int32_t featureId_;
+  float projectErrorX_;
+  float projectErrorY_;
+  float projectErrorLen_;
+};
+
+struct feature {
+  int32_t cameraId_;
+  int32_t featureId_;
+  int32_t usingCount_;
+  float featureX_;
+  float featureY_;
+  float featureSize_;
+  float featureAngle_;
+};
+
 
 
 int main(int argc, char *argv[]) {
@@ -73,7 +133,7 @@ int main(int argc, char *argv[]) {
     }
 
     //parse cameraNames.txt
-    std::vector<cameraName> cameraNames;
+    std::map<int32_t, cameraName> cameraNames;
     std::string cameraNames_filepath = input_folder + "cameraNames.txt";
     
     std::ifstream cameraNames_file(cameraNames_filepath, std::ios::in);
@@ -95,15 +155,135 @@ int main(int argc, char *argv[]) {
         std::istringstream line_ss(line);
         line_ss >> cN.cameraId_;
         line_ss >> cN.cameraName_;
-        cameraNames.push_back(cN);
+        cameraNames[cN.cameraId_] = cN;
       }
     }
     cameraNames_file.close();
 
-    std::cout << "cameraNames.txt " << cameraNames.size() << " cameras found" << std::endl; 
+    uint64_t num_views = cameraNames.size();
+    std::cout << "cameraNames.txt " << num_views << " cameras found" << std::endl; 
+
+
+    //parse cameraIntrinsics.txt
+    std::map<int32_t, cameraIntrinsic> cameraIntrinsics;
+    std::string cameraIntrinsics_filepath = input_folder + "cameraIntrinsics.txt";
+    
+    std::ifstream cameraIntrinsics_file(cameraIntrinsics_filepath, std::ios::in);
+    if(cameraIntrinsics_file.is_open()) {
+      std::cout << cameraIntrinsics_filepath << std::endl;
+    }
+    else {
+      std::cout << "File not found: " << cameraIntrinsics_filepath << std::endl;
+      exit(0);
+    }
+
+    while (std::getline(cameraIntrinsics_file, line)) {
+      if (line.length() > 1) {
+        if (line[0] == '/' && line[1] == '/') {
+          continue;
+        }
+        cameraIntrinsic cI;
+        std::istringstream line_ss(line);
+        line_ss >> cI.cameraId_;
+        line_ss >> cI.focalValueH_;
+        line_ss >> cI.reserved_0_;
+        line_ss >> cI.reserved_1_;
+        line_ss >> cI.reserved_2_;
+        line_ss >> cI.focalValueV_;
+        line_ss >> cI.reserved_3_;
+        line_ss >> cI.centerX_;
+        line_ss >> cI.centerY_;
+        line_ss >> cI.reserved_4_;
+        line_ss >> cI.imageWidth_;
+        line_ss >> cI.imageHeight_;
+        cameraIntrinsics[cI.cameraId_] = cI;
+      }
+    }
+    cameraIntrinsics_file.close();
+
+    std::cout << "cameraIntrinsics.txt " << cameraIntrinsics.size() << " cameras found" << std::endl; 
+
+
+
+    //parse cameraDistortions.txt
+    std::map<int32_t, cameraDistortion> cameraDistortions;
+    std::string cameraDistortions_filepath = input_folder + "cameraDistortions.txt";
+    
+    std::ifstream cameraDistortions_file(cameraDistortions_filepath, std::ios::in);
+    if(cameraDistortions_file.is_open()) {
+      std::cout << cameraDistortions_filepath << std::endl;
+    }
+    else {
+      std::cout << "File not found: " << cameraDistortions_filepath << std::endl;
+      exit(0);
+    }
+
+    while (std::getline(cameraDistortions_file, line)) {
+      if (line.length() > 1) {
+        if (line[0] == '/' && line[1] == '/') {
+          continue;
+        }
+        cameraDistortion cD;
+        std::istringstream line_ss(line);
+        line_ss >> cD.cameraId_;
+        line_ss >> cD.radial1_;
+        line_ss >> cD.radial2_;
+        line_ss >> cD.radial3_;
+        line_ss >> cD.tangential1_;
+        line_ss >> cD.tangential2_;
+        cameraDistortions[cD.cameraId_] = cD;
+      }
+    }
+    cameraDistortions_file.close();
+
+    std::cout << "cameraDistortions.txt " << cameraDistortions.size() << " cameras found" << std::endl; 
+
+
+
+    //parse cameraPoses.txt
+    std::map<int32_t, cameraPose> cameraPoses;
+    std::string cameraPoses_filepath = input_folder + "cameraPoses.txt";
+    
+    std::ifstream cameraPoses_file(cameraPoses_filepath, std::ios::in);
+    if(cameraPoses_file.is_open()) {
+      std::cout << cameraPoses_filepath << std::endl;
+    }
+    else {
+      std::cout << "File not found: " << cameraPoses_filepath << std::endl;
+      exit(0);
+    }
+
+    while (std::getline(cameraPoses_file, line)) {
+      if (line.length() > 1) {
+        if (line[0] == '/' && line[1] == '/') {
+          continue;
+        }
+        cameraPose cP;
+        std::istringstream line_ss(line);
+        line_ss >> cP.cameraId_;
+        line_ss >> cP.positionX_;
+        line_ss >> cP.positionY_;
+        line_ss >> cP.positionZ_;
+        line_ss >> cP.rot11_;
+        line_ss >> cP.rot12_;
+        line_ss >> cP.rot13_;
+        line_ss >> cP.rot21_;
+        line_ss >> cP.rot22_;
+        line_ss >> cP.rot23_;
+        line_ss >> cP.rot31_;
+        line_ss >> cP.rot32_;
+        line_ss >> cP.rot33_;
+        cameraPoses[cP.cameraId_] = cP;
+      }
+    }
+    cameraPoses_file.close();
+
+    std::cout << "cameraPoses.txt " << cameraPoses.size() << " cameras found" << std::endl; 
+
+
 
     //parse worldPoints.txt
-    std::vector<worldPoint> worldPoints;
+    std::map<int32_t, worldPoint> worldPoints;
     std::string worldPoints_filepath = input_folder + "worldPoints.txt";
     
     std::ifstream worldPoints_file(worldPoints_filepath, std::ios::in);
@@ -126,20 +306,97 @@ int main(int argc, char *argv[]) {
         line_ss >> wP.worldPointX_;
         line_ss >> wP.worldPointY_;
         line_ss >> wP.worldPointZ_;
-        worldPoints.push_back(wP);
+        worldPoints[wP.worldPointId_] = wP;
       }
     }
     worldPoints_file.close();
 
-    std::cout << "worldPoints.txt " << worldPoints.size() << " points found" << std::endl; 
+    uint64_t num_points = worldPoints.size();
+    std::cout << "worldPoints.txt " << num_points << " points found" << std::endl; 
+
+
+
+    //parse worldPointDetectionError.txt
+    std::map<int32_t, std::map<int32_t, std::map<int32_t, worldPointDetectionError>>> worldPointDetectionErrors;
+    std::string worldPointDetectionError_filepath = input_folder + "worldPointDetectionError.txt";
+    
+    std::ifstream worldPointDetectionError_file(worldPointDetectionError_filepath, std::ios::in);
+    if(worldPointDetectionError_file.is_open()) {
+      std::cout << worldPointDetectionError_filepath << std::endl;
+    }
+    else {
+      std::cout << "File not found: " << worldPointDetectionError_filepath << std::endl;
+      exit(0);
+    }
+
+    while (std::getline(worldPointDetectionError_file, line)) {
+      if (line.length() > 1) {
+        if (line[0] == '/' && line[1] == '/') {
+          continue;
+        }
+        worldPointDetectionError wPDE;
+        std::istringstream line_ss(line);
+        line_ss >> wPDE.worldPointId_;
+        line_ss >> wPDE.cameraId_;
+        line_ss >> wPDE.featureId_;
+        line_ss >> wPDE.projectErrorX_;
+        line_ss >> wPDE.projectErrorY_;
+        line_ss >> wPDE.projectErrorLen_;
+        worldPointDetectionErrors[wPDE.worldPointId_][wPDE.cameraId_][wPDE.featureId_] = wPDE;
+      }
+    }
+    worldPointDetectionError_file.close();
+
+    std::cout << "worldPointDetectionError.txt " << worldPointDetectionErrors.size() << " entries found" << std::endl; 
+
+
+
+    //parse features.txt
+    std::map<int32_t, std::map<int32_t, feature>> features;
+    std::string features_filepath = input_folder + "features.txt";
+    
+    std::ifstream features_file(features_filepath, std::ios::in);
+    if(features_file.is_open()) {
+      std::cout << features_filepath << std::endl;
+    }
+    else {
+      std::cout << "File not found: " << features_filepath << std::endl;
+      exit(0);
+    }
+
+    while (std::getline(features_file, line)) {
+      if (line.length() > 1) {
+        if (line[0] == '/' && line[1] == '/') {
+          continue;
+        }
+        feature f;
+        std::istringstream line_ss(line);
+        line_ss >> f.cameraId_;
+        line_ss >> f.featureId_;
+        line_ss >> f.usingCount_;
+        line_ss >> f.featureX_;
+        line_ss >> f.featureY_;
+        line_ss >> f.featureSize_;
+        line_ss >> f.featureAngle_;
+        features[f.cameraId_][f.featureId_] = f;
+      }
+    }
+    features_file.close();
+
+    std::cout << "features.txt " << features.size() << " entries found" << std::endl; 
 
 
 
     //write aux object
     lamure::prov::aux aux;
 
-    for (uint64_t i = 0; i < cameraNames.size(); ++i) {
-      auto& cN = cameraNames[i];
+    for (auto it : cameraNames) {
+      auto& cN = it.second;
+
+      int32_t id = cN.cameraId_;
+      auto& cI = cameraIntrinsics.find(id)->second;
+      auto& cD = cameraDistortions.find(id)->second;
+      auto& cP = cameraPoses.find(id)->second;
 
       lamure::prov::aux::view v;
       v.camera_id_ = cN.cameraId_;
@@ -149,21 +406,28 @@ int main(int argc, char *argv[]) {
       }
       v.image_file_ += ".jpg";
      
-      v.position_ = scm::math::vec3f(0.f);
-      v.transform_ = scm::math::mat4f::identity();
+      v.position_ = scm::math::vec3f(cP.positionX_, cP.positionY_, cP.positionZ_);
+      scm::math::mat4f m = scm::math::mat4f::identity();
+      m.m00 = cP.rot11_; m.m01 = cP.rot12_; m.m02 = cP.rot13_;
+      m.m04 = cP.rot21_; m.m05 = cP.rot22_; m.m06 = cP.rot23_;
+      m.m08 = cP.rot31_; m.m09 = cP.rot32_; m.m10 = cP.rot33_;
+      v.transform_ = scm::math::make_translation(v.position_) * m;
+
       v.focal_length_ = 0.f;
       v.distortion_ = 0.f;
-      v.image_width_ = 0;
-      v.image_height_ = 0;
+      v.image_width_ = cI.imageWidth_;
+      v.image_height_ = cI.imageHeight_;
       v.tex_atlas_id_ = 0;    
       
       aux.add_view(v);
     }
 
+    for (auto it : worldPoints) {
+      auto& wP = it.second;
 
-    for (uint64_t i = 0; i < worldPoints.size(); ++i) {
-      auto& wP = worldPoints[i];
-
+      int32_t id = wP.worldPointId_;
+      auto& wPDE_maps = worldPointDetectionErrors.find(id)->second;
+      
       lamure::prov::aux::sparse_point p;
 
       p.pos_ = scm::math::vec3f(wP.worldPointX_, wP.worldPointY_, wP.worldPointZ_);
@@ -171,12 +435,27 @@ int main(int argc, char *argv[]) {
       p.g_ = (uint8_t)255;
       p.b_ = (uint8_t)255;
       p.a_ = (uint8_t)255;
-      p.features_ = std::vector<lamure::prov::aux::feature>();
+      
+      auto aux_features = std::vector<lamure::prov::aux::feature>();
+      for (const auto& wPDE_map : wPDE_maps) {
+        for (const auto& wPDE : wPDE_map.second) {
+          auto& feature = features[wPDE.second.cameraId_][wPDE.second.featureId_];
+          
+          lamure::prov::aux::feature f;
+          f.camera_id_ = wPDE.second.cameraId_;
+          f.using_count_ = feature.usingCount_;
+          f.coords_ = scm::math::vec2f(feature.featureX_, feature.featureY_);
+          f.error_ = scm::math::vec2f(wPDE.second.projectErrorX_, wPDE.second.projectErrorY_);
+
+          aux_features.push_back(f);
+        }
+      }
+      
+      p.features_ = aux_features;
 
       aux.add_sparse_point(p);
       
     }
-
 
     std::cout << "Write aux to file..." << std::endl;
     aux.write_aux_file(aux_file);
