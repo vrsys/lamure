@@ -43,7 +43,7 @@ void VTContext::start()
         std::runtime_error("Mipmap file not found: " + _name_mipmap);
     }
 
-    _atlas = new vt::TileAtlas<priority_type>(fileName, _size_tile * _size_tile * get_byte_stride());
+    _atlas = new TileAtlas<priority_type>(fileName, _size_tile * _size_tile * get_byte_stride());
 
     _depth_quadtree = identify_depth();
     _size_index_texture = identify_size_index_texture();
@@ -85,6 +85,8 @@ void VTContext::start()
     glfwSetCursorEnterCallback(_window, &VTContext::EventHandler::on_window_enter);
 
     glfwSetInputMode(_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    calculate_size_physical_texture();
 
     _cut_update = new CutUpdate(this);
     _cut_update->start();
@@ -160,7 +162,6 @@ uint32_t VTContext::identify_size_index_texture() { return (uint32_t)std::pow(2,
 scm::math::vec2ui VTContext::calculate_size_physical_texture()
 {
     size_t max_tex_byte_size = (size_t)_size_physical_texture * 1024 * 1024;
-    size_t tile_byte_size = _size_tile * _size_tile * get_byte_stride();
 
     GLint max_tex_layers;
     glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &max_tex_layers);
@@ -168,8 +169,7 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
     GLint max_tex_px_width_gl;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_tex_px_width_gl);
 
-    size_t max_tex_px_width_custom = (size_t)sqrt(max_tex_byte_size / get_byte_stride());
-
+    size_t max_tex_px_width_custom = (size_t)std::pow(2, (size_t)std::log2(sqrt(max_tex_byte_size / get_byte_stride())));
     size_t max_tex_px_width = (max_tex_px_width_gl < max_tex_px_width_custom ? (size_t)max_tex_px_width_gl : (size_t)max_tex_px_width_custom);
 
     size_t tex_tile_width = max_tex_px_width / _size_tile;
@@ -177,11 +177,11 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
     size_t tex_byte_size = tex_px_width * tex_px_width * get_byte_stride();
     size_t layers = max_tex_byte_size / tex_byte_size;
 
-    _phys_tex_px_width = tex_px_width;
-    _phys_tex_tile_width = tex_tile_width;
-    _phys_tex_layers = (layers < max_tex_layers ? layers : (size_t)max_tex_layers);
+    _phys_tex_px_width = static_cast<uint32_t>(tex_px_width);
+    _phys_tex_tile_width = static_cast<uint32_t>(tex_tile_width);
+    _phys_tex_layers = static_cast<uint16_t>(layers < max_tex_layers ? layers : (size_t)max_tex_layers);
 
-    return scm::math::vec2ui(tex_tile_width, tex_tile_width);
+    return scm::math::vec2ui(_phys_tex_tile_width, _phys_tex_tile_width);
 }
 
 bool VTContext::EventHandler::isToggle_phyiscal_texture_image_viewer() const { return toggle_phyiscal_texture_image_viewer; }
@@ -196,6 +196,10 @@ TileAtlas<priority_type> *VTContext::get_atlas() const { return _atlas; }
 CutUpdate *VTContext::get_cut_update() { return _cut_update; }
 VTContext::Debug *VTContext::get_debug() { return &_debug; }
 uint16_t VTContext::get_size_padding() const { return _size_padding; }
+bool VTContext::is_show_debug_view() const { return _show_debug_view; }
+uint32_t VTContext::get_phys_tex_px_width() const { return _phys_tex_px_width; }
+uint32_t VTContext::get_phys_tex_tile_width() const { return _phys_tex_tile_width; }
+uint16_t VTContext::get_phys_tex_layers() const { return _phys_tex_layers; }
 
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)
@@ -303,7 +307,7 @@ VTContext::EventHandler::EventHandler()
 {
     _mouse_button_state = MouseButtonState::IDLE;
 
-    _trackball_manip.dolly(10.5f);
+    _trackball_manip.dolly(2.5f);
 }
 float VTContext::EventHandler::get_scale() const { return _scale; }
 void VTContext::EventHandler::set_scale(float _scale) { EventHandler::_scale = _scale; }

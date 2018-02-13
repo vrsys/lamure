@@ -21,7 +21,7 @@ class VTContext
         static const int DISP_S = 60;
         static const int APPLY_S = 60;
 
-        Debug() : _fps(FPS_S, 0.0f), _times_cut_swap(SWAP_S, 0.0f), _times_cut_dispatch(DISP_S, 0.0f), _times_apply(APPLY_S, 0.0f),_string_cut() { _mem_slots_busy = 0.0f; }
+        Debug() : _fps(FPS_S, 0.0f), _times_cut_swap(SWAP_S, 0.0f), _times_cut_dispatch(DISP_S, 0.0f), _times_apply(APPLY_S, 0.0f), _string_cut() { _mem_slots_busy = 0.0f; }
         ~Debug() {}
 
         std::deque<float> &get_fps();
@@ -41,7 +41,7 @@ class VTContext
         size_t get_size_mem_cut() const;
         void set_size_mem_cut(size_t _size_mem_cut);
 
-    private:
+      private:
         std::string _string_cut;
         std::string _string_mem_slots;
         std::string _string_index;
@@ -228,9 +228,12 @@ class VTContext
     void start();
 
     uint16_t get_byte_stride() const;
-
     uint16_t get_size_tile() const;
     uint16_t get_size_padding() const;
+    uint32_t get_phys_tex_px_width() const;
+    uint32_t get_phys_tex_tile_width() const;
+    uint16_t get_phys_tex_layers() const;
+
     const std::string &get_name_texture() const;
     const std::string &get_name_mipmap() const;
     bool is_opt_run_in_parallel() const;
@@ -253,17 +256,7 @@ class VTContext
     void set_event_handler(EventHandler *_event_handler);
     void set_debug_view(bool show_debug_view);
 
-    size_t get_phys_tex_px_width() const {
-        return _phys_tex_px_width;
-    }
-
-    size_t get_phys_tex_tile_width() const {
-        return _phys_tex_tile_width;
-    }
-
-    size_t get_phys_tex_layers() const {
-        return _phys_tex_layers;
-    }
+    bool is_show_debug_view() const;
 
   private:
     explicit VTContext();
@@ -294,11 +287,11 @@ class VTContext
     uint16_t _depth_quadtree;
     uint32_t _size_index_texture;
     uint32_t _size_physical_texture;
-    bool _show_debug_view;
+    bool _show_debug_view = false;
 
-    size_t _phys_tex_px_width;
-    size_t _phys_tex_tile_width;
-    size_t _phys_tex_layers;
+    uint32_t _phys_tex_px_width;
+    uint32_t _phys_tex_tile_width;
+    uint16_t _phys_tex_layers;
 };
 }
 

@@ -24,10 +24,10 @@
 
 #include <cstdlib>
 
-#include <lamure/vt/ext/imgui.h>
-#include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <lamure/vt/ext/imgui.h>
+#include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
 
 #include <boost/assign/list_of.hpp>
 #include <cstdint>
@@ -51,13 +51,26 @@
 #include <scm/gl_util/primitives/quad.h>
 #include <scm/gl_util/primitives/wavefront_obj.h>
 
+#include <cstddef>
+#include <list>
+#include <stdexcept>
+#include <unordered_map>
+
 namespace vt
 {
 typedef uint64_t id_type;
 typedef uint32_t priority_type;
 typedef std::set<id_type> cut_type;
-typedef std::map<size_t, uint8_t *> mem_cut_type;
-typedef std::set<size_t> mem_slots_free_type;
+
+struct mem_slot_type
+{
+    size_t position = SIZE_MAX;
+    id_type tile_id = UINT64_MAX;
+    uint8_t *pointer = nullptr;
+    bool locked = false;
+};
+
+typedef std::vector<mem_slot_type> mem_slots_type;
 }
 
 #endif // VT_COMMON_H

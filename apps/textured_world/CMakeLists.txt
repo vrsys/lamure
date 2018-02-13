@@ -25,7 +25,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR})
 
 
-InitApp(${CMAKE_PROJECT_NAME}_texture_fsquad)
+InitApp(${CMAKE_PROJECT_NAME}_textured_world)
 
 ############################################################
 # Libraries
