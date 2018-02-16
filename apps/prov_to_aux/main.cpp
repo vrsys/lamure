@@ -11,6 +11,7 @@
 #include <lamure/prov/dense_stream.h>
 #include <lamure/prov/sparse_cache.h>
 #include <lamure/prov/sparse_octree.h>
+#include <lamure/prov/octree.h>
 
 #include <lamure/prov/aux.h>
 
@@ -161,6 +162,14 @@ int main(int argc, char *argv[]) {
 
       aux.add_view(v);
     }
+
+
+    std::cout << "create octree " << std::endl;
+
+    //create octree
+    auto octree = std::make_shared<lamure::prov::octree>();
+    octree->create(aux.get_sparse_points());
+    aux.set_octree(octree);
 
     std::cout << "Writing aux file..." << std::endl;
 

@@ -13,7 +13,7 @@
 #include <fcntl.h>
 
 #include <lamure/prov/aux_stream.h>
-
+#include <lamure/prov/octree.h>
 
 namespace lamure {
 namespace prov {
@@ -94,6 +94,17 @@ add_sparse_point(const aux::sparse_point& point) {
 void aux::
 add_atlas_tile(const aux::atlas_tile& tile) {
     atlas_tiles_.push_back(tile);
+}
+
+
+void aux::set_octree(const std::shared_ptr<octree> _octree) {
+  octree_ = _octree;
+}
+
+
+const std::shared_ptr<octree> aux::
+get_octree() const {
+  return octree_;
 }
 
 } } // namespace lamure

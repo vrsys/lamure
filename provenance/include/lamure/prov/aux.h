@@ -8,16 +8,19 @@
 #ifndef PROV_AUX_H_
 #define PROV_AUX_H_
 
+#include <lamure/types.h>
+
 #include <string>
 #include <fstream>
 #include <cmath>
 #include <iostream>
 #include <vector>
-
-#include <lamure/types.h>
+#include <memory>
 
 namespace lamure {
 namespace prov {
+
+class octree;
 
 class aux {
 public:
@@ -73,7 +76,12 @@ public:
     void                add_sparse_point(const sparse_point& point);
     void                add_atlas_tile(const atlas_tile& tile);
 
+    void                set_octree(const std::shared_ptr<octree> _octree);
+    const std::shared_ptr<octree> get_octree() const;
+
     void                write_aux_file(const std::string& filename);
+
+    std::vector<sparse_point>& get_sparse_points() { return sparse_points_; };
 
 protected:
 
@@ -84,6 +92,7 @@ private:
     std::vector<view> views_;
     std::vector<sparse_point> sparse_points_;
     std::vector<atlas_tile> atlas_tiles_;
+    std::shared_ptr<octree> octree_;
     std::string filename_;
 
 };

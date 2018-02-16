@@ -7,6 +7,7 @@
 
 #include <lamure/types.h>
 #include <lamure/prov/aux.h>
+#include <lamure/prov/octree.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/math.h>
@@ -457,6 +458,14 @@ int main(int argc, char *argv[]) {
       aux.add_sparse_point(p);
       
     }
+
+
+    std::cout << "create octree " << std::endl;
+
+    //create octree
+    auto octree = std::make_shared<lamure::prov::octree>();
+    octree->create(aux.get_sparse_points());
+    aux.set_octree(octree);
 
     std::cout << "Write aux to file..." << std::endl;
     aux.write_aux_file(aux_file);

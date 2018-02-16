@@ -102,7 +102,7 @@ create(std::vector<aux::sparse_point>& _points) {
         return _l.pos_.x < _r.pos_.x; 
       }
     );
-    uint64_t mid_id_x = 0;
+    uint64_t mid_id_x = node.begin_;
     for (uint64_t i = node.begin_; i < node.end_; ++i) {
       if (_points[i].pos_.x >= mid.x) { mid_id_x = i; break; }
     }
@@ -113,7 +113,7 @@ create(std::vector<aux::sparse_point>& _points) {
         return _l.pos_.y < _r.pos_.y; 
       }
     );
-    uint64_t mid_id_y0 = 0;
+    uint64_t mid_id_y0 = node.begin_;
     for (uint64_t i = node.begin_; i < mid_id_x; ++i) {
       if (_points[i].pos_.y >= mid.y) { mid_id_y0 = i; break; }
     }
@@ -123,7 +123,7 @@ create(std::vector<aux::sparse_point>& _points) {
         return _l.pos_.y < _r.pos_.y; 
       }
     );
-    uint64_t mid_id_y1 = 0;
+    uint64_t mid_id_y1 = mid_id_x;
     for (uint64_t i = mid_id_x; i < node.end_; ++i) {
       if (_points[i].pos_.y >= mid.y) { mid_id_y1 = i; break; }
     }
@@ -134,7 +134,7 @@ create(std::vector<aux::sparse_point>& _points) {
         return _l.pos_.z < _r.pos_.z; 
       }
     );
-    uint64_t mid_id_z0 = 0;
+    uint64_t mid_id_z0 = node.begin_;
     for (uint64_t i = node.begin_; i < mid_id_y0; ++i) {
       if (_points[i].pos_.z >= mid.z) { mid_id_z0 = i; break; }
     }
@@ -144,7 +144,7 @@ create(std::vector<aux::sparse_point>& _points) {
         return _l.pos_.z < _r.pos_.z; 
       }
     );
-    uint64_t mid_id_z1 = 0;
+    uint64_t mid_id_z1 = mid_id_y0;
     for (uint64_t i = mid_id_y0; i < mid_id_x; ++i) {
       if (_points[i].pos_.z >= mid.z) { mid_id_z1 = i; break; }
     }
@@ -154,7 +154,7 @@ create(std::vector<aux::sparse_point>& _points) {
         return _l.pos_.z < _r.pos_.z; 
       }
     );
-    uint64_t mid_id_z2 = 0;
+    uint64_t mid_id_z2 = mid_id_x;
     for (uint64_t i = mid_id_x; i < mid_id_y1; ++i) {
       if (_points[i].pos_.z >= mid.z) { mid_id_z2 = i; break; }
     }
@@ -164,11 +164,10 @@ create(std::vector<aux::sparse_point>& _points) {
         return _l.pos_.z < _r.pos_.z; 
       }
     );
-    uint64_t mid_id_z3 = 0;
+    uint64_t mid_id_z3 = mid_id_y1;
     for (uint64_t i = mid_id_y1; i < node.end_; ++i) {
       if (_points[i].pos_.z >= mid.z) { mid_id_z3 = i; break; }
     }
-
 
     std::vector<auxiliary_node> children;
     children.push_back(
