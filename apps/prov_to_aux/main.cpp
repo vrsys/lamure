@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
       v.distortion_ = 0.f;
       v.image_width_ = camera.get_image_width();
       v.image_height_ = camera.get_image_height();
-      v.tex_atlas_id_ = 0;
+      v.atlas_tile_id_ = 0;
       v.image_file_ = camera.get_image_file();
 
       aux.add_view(v);

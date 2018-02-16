@@ -138,8 +138,10 @@ read_aux(const std::string& filename, aux& aux) {
 
     aux_sparse_seg sparse;
     std::vector<aux_view_seg> views;
+    std::vector<aux_atlas_tile_seg> tiles;
     uint32_t sparse_id = 0;
     uint32_t camera_id = 0;
+    uint32_t tile_id = 0;
 
     //go through entire stream and fetch the segments
     while (true) {
@@ -186,6 +188,17 @@ read_aux(const std::string& filename, aux& aux) {
                     "lamure: aux_stream::Stream corrupt -- Invalid view order");
                 }
                 ++camera_id;
+                break;
+            }
+            case 'T': { //"AUXXTILE"
+                aux_atlas_tile_seg tile;
+                tile.deserialize(file_);
+                tiles.push_back(tile);
+                if (tile_id != tile.atlas_tile_id_) {
+                  throw std::runtime_error(
+                    "lamure: aux_stream::Stream corrupt -- Invalid tile order");
+                }
+                ++tile_id;
                 break;
             }
             default: {
@@ -249,12 +262,21 @@ read_aux(const std::string& filename, aux& aux) {
        v.distortion_ = view.distortion_;
        v.image_width_ = view.image_width_;
        v.image_height_ = view.image_height_;
-       v.tex_atlas_id_ = view.tex_atlas_id_;
+       v.atlas_tile_id_ = view.atlas_tile_id_;
        v.image_file_ = view.image_file_.string_;
 
        aux.add_view(v);
 
    
+    }
+
+    for (const auto& tile : tiles) {
+      aux::atlas_tile t;
+      t.atlas_tile_id_ = tile.atlas_tile_id_;
+      t.uv_ = scm::math::vec2f(tile.uv_.x_, tile.uv_.y_);
+      t.wh_ = scm::math::vec2f(tile.wh_.x_, tile.wh_.y_);
+      
+      aux.add_atlas_tile(t);
     }
 
 }
@@ -310,7 +332,7 @@ write_aux(const std::string& filename, aux& aux) {
      v.reserved_6_ = 0;
      v.image_width_ = view.image_width_;
      v.image_height_ = view.image_height_;
-     v.tex_atlas_id_ = view.tex_atlas_id_;
+     v.atlas_tile_id_ = view.atlas_tile_id_;
     
      aux_string image_file;
      image_file.string_ = view.image_file_;
@@ -318,6 +340,21 @@ write_aux(const std::string& filename, aux& aux) {
      v.image_file_ = image_file;
    
      write(v);
+
+   }
+
+   for (uint32_t i = 0; i < aux.get_num_atlas_tiles(); ++i) {
+     const auto& tile = aux.get_atlas_tile(i);
+     aux_atlas_tile_seg t;
+
+     t.segment_id_ = num_segments_++;
+     t.atlas_tile_id_ = tile.atlas_tile_id_;
+     t.uv_.x_ = tile.uv_.x;
+     t.uv_.y_ = tile.uv_.y;
+     t.wh_.x_ = tile.wh_.x;
+     t.wh_.y_ = tile.wh_.y;
+
+     write(t);
 
    }
    

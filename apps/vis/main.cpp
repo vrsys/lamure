@@ -188,6 +188,7 @@ struct settings {
   float lod_point_scale_ {1.0f};
   float aux_point_size_ {1.0f};
   float aux_point_scale_ {1.0f};
+  float aux_focal_length_ {1.0f};
   int32_t vis_ {0};
   int32_t show_normals_ {0};
   int32_t show_accuracy_ {0};
@@ -355,6 +356,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "aux_point_size") {
             settings.aux_point_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
+          }
+          else if (key == "aux_focal_length") {
+            settings.aux_focal_length_ = std::min(std::max(atof(value.c_str()), 0.001), 10.0);
           }
           else if (key == "lod_error") {
             settings.lod_error_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
@@ -1597,10 +1601,9 @@ void create_aux_resources() {
         const auto& view = aux.get_view(i);
 
         float aspect_ratio = view.image_height_/(float)view.image_width_;
-        float frac = 30.f;
-        float img_w_half = (model_dim/frac)*0.5f;
+        float img_w_half = (settings_.aux_focal_length_)*0.5f;
         float img_h_half = img_w_half*aspect_ratio;
-        float focal_length = model_dim/frac;
+        float focal_length = settings_.aux_focal_length_;
 
         lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
         lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length));

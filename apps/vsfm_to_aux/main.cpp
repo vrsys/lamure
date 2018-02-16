@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
       v.image_width_ = result.ImageWidth;
       //v.focal_length_ = result.FocalLength * 0.001;
  
-      v.tex_atlas_id_ = 0;
+      v.atlas_tile_id_ = 0;
 
       aux.add_view(v);
 

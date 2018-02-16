@@ -75,15 +75,25 @@ get_sparse_point(const uint64_t point_id) const {
     return sparse_points_[point_id];
 }
 
+const aux::atlas_tile& aux::
+get_atlas_tile(const uint32_t tile_id) const {
+    assert(tile_id >= 0 && tile_id < atlas_tiles_.size());
+    return atlas_tiles_[tile_id];
+}
+
 void aux::
 add_view(const aux::view& view) {
     views_.push_back(view);
 }
 
-
 void aux::
 add_sparse_point(const aux::sparse_point& point) {
     sparse_points_.push_back(point);
+}
+
+void aux::
+add_atlas_tile(const aux::atlas_tile& tile) {
+    atlas_tiles_.push_back(tile);
 }
 
 } } // namespace lamure

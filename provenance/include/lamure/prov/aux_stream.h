@@ -45,7 +45,12 @@ public:
 
 protected:
 
-    struct aux_vec {
+    struct aux_vec2 {
+      float x_ = 0.f;
+      float y_ = 0.f;
+    };
+
+    struct aux_vec3 {
       float x_ = 0.f;
       float y_ = 0.f;
       float z_ = 0.f;
@@ -365,7 +370,7 @@ protected:
         uint32_t segment_id_;
         uint32_t camera_id_;
 
-        aux_vec position_;
+        aux_vec3 position_;
         uint32_t reserved_0_;
 
         aux_quat orientation_;
@@ -385,7 +390,7 @@ protected:
         uint32_t image_width_;
         uint32_t image_height_;
 
-        uint32_t tex_atlas_id_;
+        uint32_t atlas_tile_id_;
         uint32_t reserved_7_;
 
         uint32_t reserved_8_;
@@ -438,7 +443,7 @@ protected:
             file.write((char*)&reserved_6_, 4);
             file.write((char*)&image_width_, 4);
             file.write((char*)&image_height_, 4);
-            file.write((char*)&tex_atlas_id_, 4);
+            file.write((char*)&atlas_tile_id_, 4);
             file.write((char*)&reserved_7_, 4);
             file.write((char*)&reserved_8_, 4);
             file.write((char*)&reserved_9_, 4);
@@ -473,13 +478,71 @@ protected:
             file.read((char*)&reserved_6_, 4);
             file.read((char*)&image_width_, 4);
             file.read((char*)&image_height_, 4);
-            file.read((char*)&tex_atlas_id_, 4);
+            file.read((char*)&atlas_tile_id_, 4);
             file.read((char*)&reserved_7_, 4);
             file.read((char*)&reserved_8_, 4);
             file.read((char*)&reserved_9_, 4);
 
             deserialize_string(file, camera_name_);
             deserialize_string(file, image_file_);
+
+        }
+
+    };
+
+
+    class aux_atlas_tile_seg : public aux_serializable { // 1 per camera
+    public:
+        aux_atlas_tile_seg()
+        : aux_serializable() {};
+        ~aux_atlas_tile_seg() {};
+        
+        uint32_t segment_id_;
+        uint32_t atlas_tile_id_;
+
+        aux_vec2 uv_;
+        aux_vec3 wh_;
+        
+    protected:
+        friend class aux_stream;
+        const size_t size() const {
+            return 6*sizeof(uint32_t);
+        };
+        void signature(char* signature) {
+            signature[0] = 'A';
+            signature[1] = 'U';
+            signature[2] = 'X';
+            signature[3] = 'X';
+            signature[4] = 'T';
+            signature[5] = 'I';
+            signature[6] = 'L';
+            signature[7] = 'E';
+        }
+        void serialize(std::fstream& file) {
+            if (!file.is_open()) {
+                throw std::runtime_error(
+                    "PROV: aux_stream::Unable to serialize");
+            }
+            file.write((char*)&segment_id_, 4);
+            file.write((char*)&atlas_tile_id_, 4);
+            file.write((char*)&uv_.x_, 4);
+            file.write((char*)&uv_.y_, 4);
+            file.write((char*)&wh_.x_, 4);
+            file.write((char*)&wh_.y_, 4);
+            
+        }
+        void deserialize(std::fstream& file) {
+            if (!file.is_open()) {
+                throw std::runtime_error(
+                    "PROV: aux_stream::Unable to deserialize");
+            }
+
+            file.read((char*)&segment_id_, 4);
+            file.read((char*)&atlas_tile_id_, 4);
+            file.read((char*)&uv_.x_, 4);
+            file.read((char*)&uv_.y_, 4);
+            file.read((char*)&wh_.x_, 4);
+            file.read((char*)&wh_.y_, 4);
 
         }
 

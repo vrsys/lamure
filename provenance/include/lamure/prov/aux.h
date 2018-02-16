@@ -46,9 +46,16 @@ public:
       float distortion_;
       uint32_t image_width_;
       uint32_t image_height_;
-      uint32_t tex_atlas_id_;
+      uint32_t atlas_tile_id_;
       std::string image_file_;
     };
+
+    struct atlas_tile {
+      uint32_t atlas_tile_id_;
+      scm::math::vec2f uv_;
+      scm::math::vec2f wh_;
+    };
+
                         aux();
                         aux(const std::string& filename);
     virtual             ~aux() {}
@@ -56,12 +63,15 @@ public:
     const std::string   get_filename() const { return filename_; }
     const uint32_t      get_num_views() const { return views_.size(); }
     const uint64_t      get_num_sparse_points() const { return sparse_points_.size(); }
+    const uint32_t      get_num_atlas_tiles() const { return atlas_tiles_.size(); }
 
     const view&         get_view(uint32_t id) const;
     const sparse_point& get_sparse_point(uint64_t id) const;
+    const atlas_tile&   get_atlas_tile(uint32_t id) const;
     
     void                add_view(const view& view);
     void                add_sparse_point(const sparse_point& point);
+    void                add_atlas_tile(const atlas_tile& tile);
 
     void                write_aux_file(const std::string& filename);
 
@@ -72,8 +82,9 @@ protected:
 private:
 
     std::vector<view> views_;
-    std::vector<sparse_point>  sparse_points_;
-    std::string         filename_;
+    std::vector<sparse_point> sparse_points_;
+    std::vector<atlas_tile> atlas_tiles_;
+    std::string filename_;
 
 };
 

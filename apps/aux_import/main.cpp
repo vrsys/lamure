@@ -411,13 +411,14 @@ int main(int argc, char *argv[]) {
       m.m00 = cP.rot11_; m.m01 = cP.rot12_; m.m02 = cP.rot13_;
       m.m04 = cP.rot21_; m.m05 = cP.rot22_; m.m06 = cP.rot23_;
       m.m08 = cP.rot31_; m.m09 = cP.rot32_; m.m10 = cP.rot33_;
-      v.transform_ = scm::math::make_translation(v.position_) * m;
+      v.transform_ = scm::math::make_translation(v.position_)
+        * scm::math::transpose(m) * scm::math::make_rotation(180.f, scm::math::vec3f(0, 1, 0));
 
       v.focal_length_ = 0.f;
       v.distortion_ = 0.f;
       v.image_width_ = cI.imageWidth_;
       v.image_height_ = cI.imageHeight_;
-      v.tex_atlas_id_ = 0;    
+      v.atlas_tile_id_ = 0;    
       
       aux.add_view(v);
     }
