@@ -11,7 +11,7 @@
 #include <cstring>
 #include <lamure/vt/pre/Bitmap.h>
 #include <lamure/vt/pre/QuadTree.h>
-#include <lamure/vt/pre/GenericIndex.h>
+#include <lamure/vt/pre/CielabIndex.h>
 
 namespace vt{
     namespace pre{
@@ -22,9 +22,10 @@ namespace vt{
                 PACKED
             };
 
-            static constexpr size_t HEADER_SIZE = 47;
+            static constexpr size_t HEADER_SIZE = 71;
 
-        private:
+        protected:
+            const char *_fileName;
             std::ifstream _file;
 
             uint64_t _imageWidth;
@@ -48,11 +49,18 @@ namespace vt{
             uint64_t _filledTileCount;
             uint64_t _totalTileCount;
 
-            GenericIndex *_index;
+            vt::pre::OffsetIndex *_offsetIndex;
+            vt::pre::CielabIndex *_cielabIndex;
+
+            uint64_t _offsetIndexOffset;
+            uint64_t _cielabIndexOffset;
+            uint64_t _payloadOffset;
 
             uint64_t _getLE(uint8_t *data);
             Bitmap::PIXEL_FORMAT _getPixelFormat(uint8_t *data);
             LAYOUT _getFormat(uint8_t *data);
+
+            uint64_t _getOffset(uint64_t id);
 
         public:
             AtlasFile(const char *fileName);
@@ -69,13 +77,15 @@ namespace vt{
             uint64_t getInnerTileHeight();
             uint64_t getTileByteSize();
             uint64_t getPadding();
+            uint64_t getOffsetIndexOffset();
+            uint64_t getCielabIndexOffset();
+            uint64_t getPayloadOffset();
             Bitmap::PIXEL_FORMAT getPixelFormat();
             LAYOUT getFormat();
 
             bool getTile(uint64_t id, uint8_t *out);
+            float getCielabValue(uint64_t id);
             void extractLevel(uint32_t level, const char *fileName);
-
-            uint64_t _getOffset(uint64_t id);
         };
     }
 }

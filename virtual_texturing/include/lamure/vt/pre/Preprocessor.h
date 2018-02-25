@@ -21,21 +21,22 @@
 
 #include <lamure/vt/pre/QuadTree.h>
 #include <lamure/vt/pre/Bitmap.h>
-#include <lamure/vt/pre/GenericIndex.h>
 #include <lamure/vt/pre/AtlasFile.h>
+#include <lamure/vt/pre/OffsetIndex.h>
+#include <lamure/vt/pre/CielabIndex.h>
 
 namespace vt{
     namespace pre {
-        class Preprocessor {
+        class Preprocessor{
         public:
-            enum DEST_COMBINED {
+            enum DEST_COMBINED{
                 NONE = 1,
                 COMBINED,
                 NOT_COMBINED
             };
 
         protected:
-            static constexpr size_t _HEADER_SIZE = 47;
+            static constexpr size_t _HEADER_SIZE = 71;
 
             std::string _srcFileName;
             Bitmap::PIXEL_FORMAT _srcPxFormat;
@@ -66,33 +67,31 @@ namespace vt{
             uint64_t _destHeaderOffset;
 
             std::fstream *_destIndexFile;
-            uint64_t _destIndexOffset;
+
+            vt::pre::OffsetIndex *_offsetIndex;
+            uint64_t _destOffsetIndexOffset;
+
+            vt::pre::CielabIndex *_cielabIndex;
+            uint64_t _destCielabIndexOffset;
 
             std::fstream _destPayloadFile;
             uint64_t _destPayloadOffset;
 
             bool _isPowerOfTwo(size_t val);
 
-            size_t _loadTileById(GenericIndex *const index, uint64_t id, uint8_t *out);
-
-            size_t _getTileById(GenericIndex *const index, uint64_t id, const uint8_t *buffer, uint64_t firstIdInBuffer,
-                                uint64_t lastIdInBuffer, const uint64_t *idLookup, size_t bufferTileLen, uint8_t *out);
-
-            size_t
-            _getBufferedTileById(uint64_t id, const uint8_t *buffer, uint64_t firstIdInBuffer, uint64_t lastIdInBuffer,
-                                 const uint64_t *idLookup, size_t bufferTileLen, uint8_t *out);
+            size_t _loadTileById(uint64_t id, uint8_t *out);
+            size_t _getTileById(uint64_t id, const uint8_t *buffer, uint64_t firstIdInBuffer, uint64_t lastIdInBuffer, const uint64_t *idLookup, size_t bufferTileLen, uint8_t *out);
+            size_t _getBufferedTileById(uint64_t id, const uint8_t *buffer, uint64_t firstIdInBuffer, uint64_t lastIdInBuffer, const uint64_t *idLookup, size_t bufferTileLen, uint8_t *out);
 
             void _writeHeader();
-
             void _extract(size_t bufferTileWidth, size_t writeBufferTileSize);
-
             void _deflate(size_t tilesInWriteBuffer);
 
             void _putLE(uint64_t num, uint8_t *out);
-
             void _putPixelFormat(Bitmap::PIXEL_FORMAT pxFormat, uint8_t *out);
-
             void _putFileFormat(AtlasFile::LAYOUT fileFormat, uint8_t *out);
+
+            void _loadToSeqBuffer(uint8_t *buffer, uint64_t id, size_t count);
 
         public:
             Preprocessor(const std::string &srcFileName,

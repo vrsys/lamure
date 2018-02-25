@@ -8,6 +8,7 @@
 #include <cstring>
 #include <lamure/vt/pre/Preprocessor.h>
 #include <lamure/vt/pre/AtlasFile.h>
+#include <lamure/vt/pre/DeltaECalculator.h>
 
 using namespace vt::pre;
 
@@ -185,13 +186,16 @@ int info(const int argc, const char **argv){
     }
 
     std::cout << "Information for file \"" << argv[0] << "\":" << std::endl;
-    std::cout << "\torig. dim.: " << atlas->getImageWidth() << " px x " << atlas->getImageHeight() << " px" << std::endl;
-    std::cout << "\ttile. dim.: " << atlas->getTileWidth() << " px x " << atlas->getTileHeight() << " px" << std::endl;
-    std::cout << "\tpadding   : " << atlas->getPadding() << " px" << std::endl;
-    std::cout << "\tlayout    : " << printLayout(atlas->getFormat()) << std::endl;
-    std::cout << "\tpx format : " << printPxFormat(atlas->getPixelFormat()) << std::endl;
-    std::cout << "\tlevels    : " << atlas->getDepth() << std::endl;
-    std::cout << "\ttiles     : " << atlas->getFilledTiles() << " / " << atlas->getTotalTiles() << std::endl;
+    std::cout << "\torig. dim. : " << atlas->getImageWidth() << " px x " << atlas->getImageHeight() << " px" << std::endl;
+    std::cout << "\ttile. dim. : " << atlas->getTileWidth() << " px x " << atlas->getTileHeight() << " px" << std::endl;
+    std::cout << "\tpadding    : " << atlas->getPadding() << " px" << std::endl;
+    std::cout << "\tlayout     : " << printLayout(atlas->getFormat()) << std::endl;
+    std::cout << "\tpx format  : " << printPxFormat(atlas->getPixelFormat()) << std::endl;
+    std::cout << "\tlevels     : " << atlas->getDepth() << std::endl;
+    std::cout << "\ttiles      : " << atlas->getFilledTiles() << " / " << atlas->getTotalTiles() << std::endl << std::endl;
+    std::cout << "\toffset index at " << atlas->getOffsetIndexOffset() << std::endl;
+    std::cout << "\tcielab index at " << atlas->getCielabIndexOffset() << std::endl;
+    std::cout << "\tpayload at " << atlas->getPayloadOffset() << std::endl;
     std::cout << std::endl;
 
     delete atlas;
@@ -243,10 +247,49 @@ int extract(const int argc, const char **argv){
     return 0;
 }
 
+int delta(const int argc, const char **argv){
+    if(argc != 2){
+        std::cout << "Wrong count of parameters." << std::endl;
+        std::cout << "Expected parameters:" << std::endl;
+        std::cout << "\t<processed image>" << std::endl;
+        std::cout << "\t<max memory usage>" << std::endl;
+
+        return 1;
+    }
+
+    DeltaECalculator *calculator;
+
+    try {
+        calculator = new DeltaECalculator(argv[0]);
+    }catch(std::runtime_error &error){
+        std::cout << "Could not open file \"" << argv[0] << "\"." << std::endl;
+
+        return 1;
+    }
+
+    std::stringstream stream;
+    size_t maxMemory;
+    stream.write(argv[1], std::strlen(argv[1]));
+
+    if (!(stream >> maxMemory)) {
+        std::cerr << "Invalid maximum memory size \"" << argv[1] << "\"." << std::endl;
+
+        return 1;
+    }
+
+    calculator->calculate(maxMemory);
+
+    delete calculator;
+
+    return 0;
+}
+
 int main(const int argc, const char **argv){
     if(argc >= 2){
         if(std::strcmp(argv[1], "process") == 0){
             return process(argc - 2, (const char**)((size_t)argv + 2 * sizeof(char*)));
+        }else if(std::strcmp(argv[1], "delta") == 0){
+            return delta(argc - 2, (const char**)((size_t)argv + 2 * sizeof(char*)));
         }else if(std::strcmp(argv[1], "info") == 0){
             return info(argc - 2, (const char**)((size_t)argv + 2 * sizeof(char*)));
         }else if(std::strcmp(argv[1], "extract") == 0){
@@ -257,6 +300,7 @@ int main(const int argc, const char **argv){
     std::cout << "Expected instruction." << std::endl;
     std::cout << "Available:" << std::endl;
     std::cout << "\tprocess - to preprocess an image" << std::endl;
+    std::cout << "\tdelta - to calculate delta e values on image" << std::endl;
     std::cout << "\tinfo - to read meta information of preprocessed image" << std::endl;
     std::cout << "\textract - to extract a certain level of detail from preprocessed image" << std::endl;
     std::cout << std::endl;

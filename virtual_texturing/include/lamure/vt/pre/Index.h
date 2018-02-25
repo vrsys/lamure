@@ -52,13 +52,13 @@ namespace vt {
                 bool isBE = _isBE();
 
                 if(isBE){
-                    _switchEndian(_data, _size);
+                    _switchEndian((uint8_t*)_data, _size);
                 }
 
                 file.write((char*)_data, _size * sizeof(val_type));
 
                 if(isBE){
-                    _switchEndian(_data, _size);
+                    _switchEndian((uint8_t*)_data, _size);
                 }
             }
 
@@ -66,12 +66,23 @@ namespace vt {
                 file.read((char*)_data, _size * sizeof(val_type));
 
                 if(_isBE()){
-                    _switchEndian(_data, _size);
+                    _switchEndian((uint8_t*)_data, _size);
                 }
+            }
+
+            void readFromFile(std::ifstream &file){
+                file.read((char*)_data, _size * sizeof(val_type));
+
+                if(_isBE()){
+                    _switchEndian((uint8_t*)_data, _size);
+                }
+            }
+
+            size_t getByteSize(){
+                return sizeof(val_type) * _size;
             }
         };
     }
 }
-
 
 #endif //LAMURE_INDEX_H

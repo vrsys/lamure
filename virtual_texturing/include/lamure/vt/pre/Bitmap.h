@@ -11,15 +11,23 @@
 
 namespace vt{
     namespace pre{
-        #define BITMAP_ENABLE_SAFETY_CHECKS
+        //#define BITMAP_ENABLE_SAFETY_CHECKS
 
         class Bitmap {
         public:
             enum PIXEL_FORMAT{
                 R8 = 1,
                 RGB8,
-                RGBA8
+                RGBA8,
+                LAB
             };
+
+            static constexpr double CIELAB_E = 0.008856; // 216 / 24389
+            static constexpr double CIELAB_K = 903.3; // 24389 / 27
+
+            static constexpr double CIELAB_REF_X = 94.811;
+            static constexpr double CIELAB_REF_Y = 100.0;
+            static constexpr double CIELAB_REF_Z = 107.304;
 
         protected:
             size_t _width;
@@ -39,6 +47,7 @@ namespace vt{
             Bitmap(size_t width, size_t height, PIXEL_FORMAT pixelFormat, uint8_t *data = nullptr);
             ~Bitmap();
 
+            uint8_t *getData() const;
             size_t getWidth() const;
             size_t getHeight() const;
             size_t getByteSize() const;
@@ -49,6 +58,8 @@ namespace vt{
             void smearHorizontal(size_t srcX, size_t srcY, size_t destX, size_t destY, size_t width, size_t height);
             void smearVertical(size_t srcX, size_t srcY, size_t destX, size_t destY, size_t width, size_t height);
             void fillRect(const uint8_t * const px, PIXEL_FORMAT format, size_t x, size_t y, size_t width, size_t height);
+
+            void setData(uint8_t *data);
 
             static size_t pixelSize(PIXEL_FORMAT pixelFormat);
 
