@@ -15,8 +15,6 @@
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
-#include <lamure/prov/sparse_cache.h>
-#include <lamure/prov/sparse_octree.h>
 #include <lamure/prov/aux.h>
 
 
@@ -214,8 +212,8 @@ struct settings {
   std::string pvs_ {""};
   std::vector<std::string> models_;
   std::map<uint32_t, scm::math::mat4d> transforms_;
+  std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
   std::map<uint32_t, std::string> aux_;
-  std::map<uint32_t, std::string> meta_octree_;
 
 };
 
@@ -273,7 +271,6 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           settings.models_.push_back(model);
           settings.transforms_[model_id] = scm::math::mat4d::identity();
           settings.aux_[model_id] = "";
-          settings.meta_octree_[model_id] = "";
           ++model_id;
 
         }
@@ -294,10 +291,6 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             else if (key == "aux") {
               settings.aux_[address] = value;
               std::cout << "found aux data for model id " << address << std::endl;
-            }
-            else if (key == "meta_octree") {
-              settings.meta_octree_[address] = value;
-              std::cout << "found meta octree for model id " << address << std::endl;
             }
             else {
               std::cout << "unrecognized key: " << key << std::endl;
@@ -1584,6 +1577,9 @@ void create_aux_resources() {
         boost::assign::list_of(point_res.buffer_));
 
       sparse_resources_[model_id] = point_res;
+
+      //init octree
+      settings_.octrees_[model_id] = aux.get_octree();
       
       //init line buffers
       resource line_res;
@@ -1643,13 +1639,6 @@ void create_aux_resources() {
 
       frusta_resources_[model_id] = line_res;
 
-    }
-  }
-
-  for (const auto& meta_octree : settings_.meta_octree_) {
-    if (meta_octree.second != "") {
-      std::cout << "loading meta_octree for model " << meta_octree.first << std::endl;
-      auto tree = lamure::prov::SparseOctree::load_tree(meta_octree.second);
     }
   }
 

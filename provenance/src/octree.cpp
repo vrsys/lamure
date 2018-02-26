@@ -59,7 +59,6 @@ create(std::vector<aux::sparse_point>& _points) {
   auto tree_dim = tree_max - tree_min;
   float longest_axis = std::max(tree_dim.x, std::max(tree_dim.y, tree_dim.z));
   tree_max = tree_min + scm::math::vec3f(longest_axis);
-
   
   struct auxiliary_node {
     uint32_t idx_;
@@ -77,6 +76,7 @@ create(std::vector<aux::sparse_point>& _points) {
       num_nodes++, 0, 0, num_points, tree_min, tree_max
     });
 
+
   std::map<uint64_t, octree_node> node_idx_map;
 
   while (!nodes_todo.empty()) {
@@ -87,8 +87,14 @@ create(std::vector<aux::sparse_point>& _points) {
 
     //some termination criterion
     if (node.depth_ > 19 || node.end_-node.begin_ <= min_num_points_per_node_) {
-      uint32_t child_mask = 0;
-      node_idx_map[node.idx_] = octree_node(node.idx_, child_mask, 0, node.min_, node.max_);
+      std::set<uint32_t> fotos;
+      for (uint64_t i = node.begin_; i < node.end_; ++i) {
+        const auto& sp = _points[i];
+        for (const auto& f : sp.features_) {
+          fotos.insert(f.camera_id_);
+        }
+      }
+      node_idx_map[node.idx_] = octree_node(node.idx_, 0, 0, node.min_, node.max_, fotos);
       continue;
     }
 
@@ -245,16 +251,84 @@ create(std::vector<aux::sparse_point>& _points) {
         ++num_nodes;
       }
     }
-    
-    node_idx_map[node.idx_] = octree_node(node.idx_, child_mask, child_idx, node.min_, node.max_);
+
+    std::set<uint32_t> fotos;
+    for (uint64_t i = node.begin_; i < node.end_; ++i) {
+      const auto& sp = _points[i];
+      for (const auto& f : sp.features_) {
+        fotos.insert(f.camera_id_);
+      }
+    }
+    node_idx_map[node.idx_] = octree_node(node.idx_, child_mask, child_idx, node.min_, node.max_, fotos);
 
   }
 
   std::cout << "octree complete " << "depth: " << depth_ << " num nodes: " << num_nodes << std::endl;
 
+  
 
 }
 
+uint64_t octree::
+get_num_nodes() const {
+  return nodes_.size();
+}
+
+
+const octree_node& octree::
+get_node(uint64_t _node_id) {
+  return nodes_[_node_id];
+}
+
+
+void octree::
+add_node(const octree_node& _node) {
+  return nodes_.push_back(_node);
+}
+
+
+uint32_t octree::
+get_depth() const {
+  return depth_;
+}
+
+void octree::
+set_depth(uint32_t _depth) {
+  depth_ = _depth;
+}
+
+
+uint64_t octree::
+get_child_id(uint64_t _node_id, uint32_t _child_index) {
+  uint32_t child_id = nodes_[_node_id].get_child_idx();
+  for (uint32_t i = 0; i < _child_index; ++i) {
+    if (((nodes_[_node_id].get_child_mask() & (1 << i)) & 0xff) > 0) {
+      ++child_id;
+    }
+  }
+  return child_id;
+      
+}
+
+
+uint64_t octree::
+get_parent_id(uint64_t _child_id) {
+  if (_child_id == 0 || _child_id > nodes_.size()) {
+    return 0;
+  }
+  for (uint64_t node_id = 0; node_id < _child_id; ++node_id) {
+    if ((nodes_[node_id].get_child_mask() & 0xff) > 0) {
+      for (uint32_t i = 0; i < 8; ++i) {
+        if (((nodes_[node_id].get_child_mask() & (1 << i)) & 0xff) > 0) {
+          if (get_child_id(node_id, i) == _child_id) {
+            return node_id;
+          }
+        }
+      }
+    }
+  }
+
+}
 
 } } // namespace lamure
 

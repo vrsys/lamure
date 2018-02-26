@@ -7,6 +7,8 @@
 
 #include <lamure/prov/aux_stream.h>
 
+#include <lamure/prov/octree.h>
+
 namespace lamure {
 namespace prov {
 
@@ -139,6 +141,7 @@ read_aux(const std::string& filename, aux& aux) {
     aux_sparse_seg sparse;
     std::vector<aux_view_seg> views;
     std::vector<aux_atlas_tile_seg> tiles;
+    aux_tree_seg tree;
     uint32_t sparse_id = 0;
     uint32_t camera_id = 0;
     uint32_t tile_id = 0;
@@ -190,15 +193,29 @@ read_aux(const std::string& filename, aux& aux) {
                 ++camera_id;
                 break;
             }
-            case 'T': { //"AUXXTILE"
-                aux_atlas_tile_seg tile;
-                tile.deserialize(file_);
-                tiles.push_back(tile);
-                if (tile_id != tile.atlas_tile_id_) {
-                  throw std::runtime_error(
-                    "lamure: aux_stream::Stream corrupt -- Invalid tile order");
+            case 'T': { 
+                switch (sig.signature_[5]) {
+                    case 'I': { //"AUXXTILE"
+                        aux_atlas_tile_seg tile;
+                        tile.deserialize(file_);
+                        tiles.push_back(tile);
+                        if (tile_id != tile.atlas_tile_id_) {
+                          throw std::runtime_error(
+                            "lamure: aux_stream::Stream corrupt -- Invalid tile order");
+                        }
+                        ++tile_id;
+                        break;
+                    }
+                    case 'R': {  //"AUXXTREE"
+                        tree.deserialize(file_);
+                        break;
+                    }
+                    default: {
+                        throw std::runtime_error(
+                            "lamure: aux_stream::Stream corrupt -- Invalid segment encountered");
+                        break;
+                    }
                 }
-                ++tile_id;
                 break;
             }
             default: {
@@ -278,6 +295,18 @@ read_aux(const std::string& filename, aux& aux) {
       
       aux.add_atlas_tile(t);
     }
+
+    std::shared_ptr<octree> ot = std::make_shared<octree>();
+    ot->set_depth(tree.depth_);
+    for (const auto& node : tree.nodes_) {
+      octree_node n{node.idx_, node.child_mask_, node.child_idx_, 
+        scm::math::vec3f(node.min_.x_, node.min_.y_, node.min_.z_),
+        scm::math::vec3f(node.max_.x_, node.max_.y_, node.max_.z_),
+        node.fotos_};
+      ot->add_node(n);
+    }
+    aux.set_octree(ot);
+
 
 }
 
@@ -402,6 +431,31 @@ write_aux(const std::string& filename, aux& aux) {
    }
 
    write(sparse);
+
+   aux_tree_seg tree;
+   tree.segment_id_ = num_segments_++;
+   tree.reserved_0_ = 0;
+   tree.num_nodes_ = aux.get_octree()->get_num_nodes();
+   tree.depth_ = aux.get_octree()->get_depth();
+   tree.reserved_1_ = 0;
+   for (uint64_t i = 0; i < tree.num_nodes_; ++i) {
+     const auto& node = aux.get_octree()->get_node(i);
+     aux_tree_node n;
+     n.child_mask_ = node.get_child_mask();
+     n.child_idx_ = node.get_child_idx();
+     n.min_.x_ = node.get_min().x;
+     n.min_.y_ = node.get_min().y;
+     n.min_.z_ = node.get_min().z;
+     n.max_.x_ = node.get_max().x;
+     n.max_.y_ = node.get_max().y;
+     n.max_.z_ = node.get_max().z;
+     n.idx_ = node.get_idx();
+     n.num_fotos_ = node.get_fotos().size();
+     n.fotos_ = node.get_fotos();
+    
+   }
+
+   write(tree);
 
    close_stream(false);
 

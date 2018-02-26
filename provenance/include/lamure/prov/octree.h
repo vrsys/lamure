@@ -18,6 +18,8 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include <set>
+#include <map>
 
 
 namespace lamure {
@@ -29,8 +31,8 @@ public:
   octree_node()
     : idx_(0), child_mask_(0), child_idx_(0), min_(std::numeric_limits<float>::max()), max_(std::numeric_limits<float>::lowest()) {};
   octree_node(uint64_t _idx, uint32_t _child_mask, uint32_t _child_idx,
-    const scm::math::vec3f& _min, const scm::math::vec3f& _max)
-    : idx_(_idx), child_mask_(_child_mask), child_idx_(_child_idx), min_(_min), max_(_max) {};
+    const scm::math::vec3f& _min, const scm::math::vec3f& _max, const std::set<uint32_t>& _fotos)
+    : idx_(_idx), child_mask_(_child_mask), child_idx_(_child_idx), min_(_min), max_(_max), fotos_(_fotos) {};
   ~octree_node() {};
 
   void set_idx(uint64_t _idx) { idx_ = _idx; };
@@ -45,13 +47,17 @@ public:
   void set_max(const scm::math::vec3f& _max) { max_ = _max; };
   const scm::math::vec3f& get_max() const { return max_; };
 
+  void set_fotos(const std::set<uint32_t>& _fotos) { fotos_ = _fotos; };
+  const std::set<uint32_t>& get_fotos() const { return fotos_; };
+
 
 protected:
   uint64_t idx_;
   uint32_t child_mask_; //char r_, g_, b_, child_mask_
   uint32_t child_idx_; //idx of first child
   scm::math::vec3f min_;
-  scm::math::vec3f max_; 
+  scm::math::vec3f max_;
+  std::set<uint32_t> fotos_;
 };
 
 class octree {
@@ -60,6 +66,16 @@ public:
   virtual             ~octree();
 
   void                create(std::vector<aux::sparse_point>& _points);
+
+
+  uint64_t            get_child_id(uint64_t node_id, uint32_t child_index);
+  uint64_t            get_parent_id(uint64_t node_id);
+  uint64_t            get_num_nodes() const;
+  const octree_node&  get_node(uint64_t _node_id);
+  void                add_node(const octree_node& _node);
+  
+  uint32_t            get_depth() const;
+  void                set_depth(uint32_t _depth);
 
 protected:
 

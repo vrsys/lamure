@@ -8,17 +8,19 @@
 #ifndef PROV_AUX_STREAM_H_
 #define PROV_AUX_STREAM_H_
 
-#include <string>
-#include <fstream>
-#include <iostream>
-#include <vector>
-#include <cstring>
 
 #include <lamure/types.h>
 #include <lamure/prov/aux.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/math.h>
+
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <cstring>
+#include <set>
 
 namespace lamure {
 namespace prov {
@@ -543,6 +545,115 @@ protected:
             file.read((char*)&uv_.y_, 4);
             file.read((char*)&wh_.x_, 4);
             file.read((char*)&wh_.y_, 4);
+
+        }
+
+    };
+
+
+    struct aux_tree_node {
+      uint32_t child_mask_;
+      uint32_t child_idx_;
+      aux_vec3 min_;
+      aux_vec3 max_;
+      uint32_t idx_;
+      uint32_t num_fotos_;
+      std::set<uint32_t> fotos_;
+    };
+
+    
+    class aux_tree_seg : public aux_serializable { // 1 per camera
+    public:
+        aux_tree_seg()
+        : aux_serializable() {};
+        ~aux_tree_seg() {};
+        
+        uint32_t segment_id_;
+        uint32_t reserved_0_;
+
+        uint64_t num_nodes_;
+        uint32_t depth_;
+        uint32_t reserved_1_;
+
+        std::vector<aux_tree_node> nodes_;
+        
+    protected:
+        friend class aux_stream;
+        const size_t size() const {
+            uint64_t size = 6*sizeof(uint32_t);
+            for (const auto& node : nodes_) {
+                size += 10*sizeof(uint32_t);
+                size += node.fotos_.size()* sizeof(uint32_t);
+            }
+            return size;
+        };
+        void signature(char* signature) {
+            signature[0] = 'A';
+            signature[1] = 'U';
+            signature[2] = 'X';
+            signature[3] = 'X';
+            signature[4] = 'T';
+            signature[5] = 'R';
+            signature[6] = 'E';
+            signature[7] = 'E';
+        }
+        void serialize(std::fstream& file) {
+            if (!file.is_open()) {
+                throw std::runtime_error(
+                    "PROV: aux_stream::Unable to serialize");
+            }
+            file.write((char*)&segment_id_, 4);
+            file.write((char*)&reserved_0_, 4);
+            file.write((char*)&num_nodes_, 8);
+            file.write((char*)&depth_, 4);
+            file.write((char*)&reserved_1_, 4);
+            for (const auto& node : nodes_) {
+                file.write((char*)&node.child_mask_, 4);
+                file.write((char*)&node.child_idx_, 4);
+                file.write((char*)&node.min_.x_, 4);
+                file.write((char*)&node.min_.y_, 4);
+                file.write((char*)&node.min_.z_, 4);
+                file.write((char*)&node.max_.x_, 4);
+                file.write((char*)&node.max_.y_, 4);
+                file.write((char*)&node.max_.z_, 4);
+                file.write((char*)&node.idx_, 4);
+                file.write((char*)&node.num_fotos_, 4);
+                for (auto foto : node.fotos_) {
+                    file.write((char*)&foto, 4);
+                }
+            }
+            
+        }
+        void deserialize(std::fstream& file) {
+            if (!file.is_open()) {
+                throw std::runtime_error(
+                    "PROV: aux_stream::Unable to deserialize");
+            }
+
+            file.read((char*)&segment_id_, 4);
+            file.read((char*)&reserved_0_, 4);
+            file.read((char*)&num_nodes_, 8);
+            file.read((char*)&depth_, 4);
+            file.read((char*)&reserved_1_, 4);
+            for (uint64_t i = 0; i < num_nodes_; ++i) {
+                aux_tree_node node;
+                file.read((char*)&node.child_mask_, 4);
+                file.read((char*)&node.child_idx_, 4);
+                file.read((char*)&node.min_.x_, 4);
+                file.read((char*)&node.min_.y_, 4);
+                file.read((char*)&node.min_.z_, 4);
+                file.read((char*)&node.max_.x_, 4);
+                file.read((char*)&node.max_.y_, 4);
+                file.read((char*)&node.max_.z_, 4);
+                file.read((char*)&node.idx_, 4);
+                file.read((char*)&node.num_fotos_, 4);
+                for (uint32_t j = 0; j < node.num_fotos_; ++j) {
+                    uint32_t foto;
+                    file.read((char*)&foto, 4);
+                    node.fotos_.insert(foto);
+                }
+                nodes_.push_back(node);
+            }
 
         }
 
