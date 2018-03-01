@@ -16,7 +16,7 @@
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
 #include <lamure/prov/aux.h>
-
+#include <lamure/prov/octree.h>
 
 //schism
 #include <scm/core.h>
@@ -113,6 +113,7 @@ struct resource {
 resource brush_resource_;
 std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
+std::map<uint32_t, resource> octree_resources_;
 
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 scm::gl::text_renderer_ptr text_renderer_;
@@ -155,6 +156,7 @@ struct xyz {
 struct selection {
   int32_t selected_model_ = -1;
   std::vector<xyz> brush_;
+  std::set<uint32_t> selected_views_;
 };
 
 selection selection_;
@@ -194,6 +196,7 @@ struct settings {
   int32_t show_output_sensitivity_ {0};
   int32_t show_sparse_ {0};
   int32_t show_views_ {0};
+  int32_t show_octrees_ {0};
   int32_t channel_ {0};
   float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
   int32_t enable_lighting_ {1};
@@ -376,6 +379,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "show_views") {
             settings.show_views_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "show_octrees") {
+            settings.show_octrees_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "channel") {
             settings.channel_ = std::max(atoi(value.c_str()), 0);
@@ -641,7 +647,14 @@ void draw_resources() {
           uint32_t num_views = provenance_[model_id].num_views_;
 
           if (settings_.show_views_) {
-            context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, num_views);
+            if (selection_.selected_views_.empty()) {
+              context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, num_views);
+            }
+            else {
+              for (const auto view : selection_.selected_views_) {
+                context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, view, 1);
+              }
+            }
           }
           if (settings_.show_sparse_) {
             context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, num_views, 
@@ -657,7 +670,7 @@ void draw_resources() {
 
     }
 
-    if (settings_.show_views_) {
+    if (settings_.show_views_ || settings_.show_octrees_) {
       context_->bind_program(vis_line_shader_);
 
       scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
@@ -670,12 +683,30 @@ void draw_resources() {
           model_id = selection_.selected_model_;
         }
         
-        auto f_res = frusta_resources_[model_id];
-        if (f_res.num_primitives_ > 0) {
-          context_->bind_vertex_array(f_res.array_);
-          context_->apply();
-          context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
+        if (settings_.show_views_) {
+          uint32_t num_views = provenance_[model_id].num_views_;
+          auto f_res = frusta_resources_[model_id];
+          if (f_res.num_primitives_ > 0) {
+            context_->bind_vertex_array(f_res.array_);
+            context_->apply();
+            if (selection_.selected_views_.empty()) {
+              context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
+            }
+            else {
+              for (const auto view : selection_.selected_views_) {
+                context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, view*16, 16);
+              }
+            }
+          }
+        }
 
+        if (settings_.show_octrees_) {
+          auto o_res = octree_resources_[model_id];
+          if (o_res.num_primitives_ > 0) {
+            context_->bind_vertex_array(o_res.array_);
+            context_->apply();
+            context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, o_res.num_primitives_);
+          }
         }
 
         if (selection_.selected_model_ != -1) {
@@ -933,6 +964,7 @@ void glut_display() {
     if (sparse_resources_[0].num_primitives_ > 0) {
       text_ss << "sparse (r): " << settings_.show_sparse_ << "\n";
       text_ss << "views (t): " << settings_.show_views_ << "\n";
+      text_ss << "octrees (y): " << settings_.show_octrees_ << "\n";
     }
 
     text_ss << "brush (b): " << input_.brush_mode_ << "\n";
@@ -1180,6 +1212,7 @@ void brush() {
 
   if (input_.mouse_state_.rb_down_) {
     selection_.brush_.clear();
+    selection_.selected_views_.clear();
     return;
   }
 
@@ -1231,6 +1264,20 @@ void brush() {
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
         settings_.aux_point_size_,
         intersection.normal_});
+
+    if (selection_.selected_model_ != -1) {
+      if (settings_.octrees_[selection_.selected_model_]) {
+        uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
+        if (selected_node_id > 0) {
+          const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
+          std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
+          //std::cout << "selected_node_id " << selected_node_id << std::endl;
+          selection_.selected_views_.insert(imgs.begin(), imgs.end());
+        }
+      }
+    }
+
+
   }
 
 }
@@ -1352,6 +1399,13 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 't':
       settings_.show_views_ = !settings_.show_views_;
       if (settings_.show_views_) {
+        settings_.enable_lighting_ = false;
+        settings_.splatting_ = false;
+      }
+      break;
+    case 'y':
+      settings_.show_octrees_ = !settings_.show_octrees_;
+      if (settings_.show_octrees_) {
         settings_.enable_lighting_ = false;
         settings_.splatting_ = false;
       }
@@ -1580,7 +1634,69 @@ void create_aux_resources() {
 
       //init octree
       settings_.octrees_[model_id] = aux.get_octree();
+      std::cout << "Octree loaded (" << settings_.octrees_[model_id]->get_num_nodes() << " nodes)" << std::endl;
       
+      //init octree buffers
+      resource octree_res;
+      octree_res.buffer_.reset();
+      octree_res.array_.reset();
+
+      std::vector<scm::math::vec3f> octree_lines_to_upload;
+      for (uint64_t i = 0; i < settings_.octrees_[model_id]->get_num_nodes(); ++i) {
+        const auto& node = settings_.octrees_[model_id]->get_node(i);
+
+        const auto min_vertex = scm::math::vec3d(node.get_min().x, node.get_min().y, node.get_min().z);
+        const auto max_vertex = scm::math::vec3d(node.get_max().x, node.get_max().y, node.get_max().z);
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
+
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
+
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
+
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
+        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
+      }
+
+      octree_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
+        scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * octree_lines_to_upload.size(), &octree_lines_to_upload[0]);
+      octree_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+        (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
+        boost::assign::list_of(octree_res.buffer_));
+
+      octree_res.num_primitives_ = octree_lines_to_upload.size();
+      octree_resources_[model_id] = octree_res;
+
+
       //init line buffers
       resource line_res;
       line_res.buffer_.reset();

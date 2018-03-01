@@ -66,7 +66,7 @@ public:
   virtual             ~octree();
 
   void                create(std::vector<aux::sparse_point>& _points);
-
+  uint64_t            query(const scm::math::vec3f& _pos);
 
   uint64_t            get_child_id(uint64_t node_id, uint32_t child_index);
   uint64_t            get_parent_id(uint64_t node_id);

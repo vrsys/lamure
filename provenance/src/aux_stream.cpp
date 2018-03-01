@@ -452,10 +452,12 @@ write_aux(const std::string& filename, aux& aux) {
      n.idx_ = node.get_idx();
      n.num_fotos_ = node.get_fotos().size();
      n.fotos_ = node.get_fotos();
-    
+     tree.nodes_.push_back(n); 
    }
 
    write(tree);
+
+   std::cout << "Serialized " << tree.nodes_.size() << " octree nodes" << std::endl;
 
    close_stream(false);
 
