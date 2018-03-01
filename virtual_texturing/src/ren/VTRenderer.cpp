@@ -312,9 +312,9 @@ void VTRenderer::apply_cut_update()
 
     update_index_texture(cut->get_front_index());
 
-    for(mem_slot_type updated_mem_slot : cut->get_front_mem_slots())
+    for(mem_slot_type front_mem_slot : cut->get_front_mem_slots())
     {
-        if(!updated_mem_slot.locked)
+        if(!(front_mem_slot.locked && front_mem_slot.updated))
         {
             continue;
         }
@@ -323,7 +323,7 @@ void VTRenderer::apply_cut_update()
         // auto y = (uint8_t)((*mem_cut_iter).first / cut->get_size_mem_x());
         // size_t slot = (*mem_cut_iter).first;
 
-        update_physical_texture_blockwise(updated_mem_slot.pointer, updated_mem_slot.position);
+        update_physical_texture_blockwise(front_mem_slot.pointer, front_mem_slot.position);
     }
 
     if(_vtcontext->is_show_debug_view())

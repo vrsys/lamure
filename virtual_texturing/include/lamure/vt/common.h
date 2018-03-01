@@ -68,6 +68,7 @@ struct mem_slot_type
     id_type tile_id = UINT64_MAX;
     uint8_t *pointer = nullptr;
     bool locked = false;
+    bool updated = false;
 };
 
 typedef std::vector<mem_slot_type> mem_slots_type;

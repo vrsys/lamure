@@ -52,11 +52,9 @@ private:
     bool collapse_to_id(id_type tile_id);
     bool split_id(id_type tile_id);
     bool keep_id(id_type tile_id);
-    bool memory_available_for_split(uint32_t split_budget);
-    bool free_memory_for_split(uint32_t split_budget);
-    bool try_add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr);
-
-    void identify_effective_cut(cut_type &cut);
+    bool memory_available_for_split_budget(size_t split_budget);
+    bool free_memory_for_split_budget(size_t split_budget);
+    bool add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr);
 
     uint8_t count_children_in_cut(id_type tile_id);
     bool check_all_siblings_in_cut(id_type tile_id);

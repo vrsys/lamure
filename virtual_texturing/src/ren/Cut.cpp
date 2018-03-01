@@ -28,7 +28,6 @@ Cut::Cut(VTContext *context) : _front_cut(), _front_mem_slots(), _back_cut(), _b
     _new_data = false;
 }
 Cut::~Cut()
-
 {
     delete[] _front_index;
     delete[] _back_index;
@@ -40,8 +39,7 @@ void Cut::deliver()
     _front_cut.clear();
     _front_cut.insert(_back_cut.begin(), _back_cut.end());
 
-    _front_mem_slots.clear();
-    _front_mem_slots.insert(_front_mem_slots.begin(), _back_mem_slots.begin(), _back_mem_slots.end());
+    _front_mem_slots.assign(_back_mem_slots.begin(), _back_mem_slots.end());
 
     std::copy(_back_index, _back_index + _size_index, _front_index);
 

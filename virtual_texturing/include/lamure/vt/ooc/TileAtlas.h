@@ -44,7 +44,7 @@ class TileAtlas : public Observer
     chrono::high_resolution_clock::time_point _createdAt;
 
   public:
-    explicit TileAtlas(string &fileName, size_t tileSize) : _buffer(tileSize, 4096), _cache(tileSize, 4096), _fileStream(fileName)
+    explicit TileAtlas(string &fileName, size_t tileSize) : _buffer(tileSize, 1024), _cache(tileSize, 1024), _fileStream(fileName)
     {
         _tileSize = tileSize;
         _loader.setFileStream(&_fileStream);

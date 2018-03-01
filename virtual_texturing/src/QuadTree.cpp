@@ -39,13 +39,13 @@ const uint16_t QuadTree::calculate_depth(size_t dim, size_t tile_size)
 
 const size_t QuadTree::get_tiles_per_row(uint32_t _depth) { return (size_t)pow(2, _depth); }
 
-void QuadTree::get_pos_by_id(id_type node_id, uint32_t &x, uint32_t &y)
+void QuadTree::get_pos_by_id(id_type node_id, uint_fast32_t &x, uint_fast32_t&y)
 {
-    auto depth = QuadTree::get_depth_of_node(node_id);
+    uint16_t depth = QuadTree::get_depth_of_node(node_id);
     id_type first_id = QuadTree::get_first_node_id_of_depth(depth);
 
     const uint_fast64_t id_in_depth = node_id - first_id;
 
-    morton2D_64_decode(id_in_depth, reinterpret_cast<uint_fast32_t &>(x), reinterpret_cast<uint_fast32_t &>(y));
+    morton2D_64_decode(id_in_depth, x, y);
 }
 }
