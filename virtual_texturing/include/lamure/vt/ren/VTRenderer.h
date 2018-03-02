@@ -53,7 +53,7 @@ class VTRenderer
 
     scm::gl::blend_state_ptr _blend_state_halo;
     scm::gl::depth_stencil_state_ptr _dstate_disable;
-    uint32_t _halo_res = 4096;
+    uint32_t _halo_res = 2048;
 
 
     scm::gl::frame_buffer_ptr                   _fbo_halo ;

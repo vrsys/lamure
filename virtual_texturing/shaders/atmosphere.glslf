@@ -79,8 +79,8 @@ float phase_mie(float g, float c, float cc)
     float a = (1.0 - gg) * (1.0 + cc);
 
     float b = 1.0 + gg - 2.0 * g * c;
-    b *= sqrt(b);
-    b *= 2.0 + gg;
+    b = b * sqrt(b);
+    b = b * (2.0 + gg);
 
     return 1.5 * a / b;
 }
@@ -100,10 +100,10 @@ float optic(vec3 p, vec3 q)
     float sum = 0.0;
     for(int i = 0; i < NUM_OUT_SCATTER; i++)
     {
-        sum += density(v);
-        v += step;
+        sum = sum + density(v);
+        v = v + step;
     }
-    sum *= length(step) * SCALE_L;
+    sum = sum * (length(step) * SCALE_L);
 
     return sum;
 }
@@ -123,11 +123,11 @@ vec3 in_scatter(vec3 o, vec3 dir, vec2 e, vec3 l)
 
         float n = (optic(p, v) + optic(v, u)) * (PI * 4.0);
 
-        sum += density(v) * exp(-n * (K_R * C_R + K_M));
+        sum = sum + density(v) * exp(-n * (K_R * C_R + K_M));
 
-        v += step;
+        v = v + step;
     }
-    sum *= len * SCALE_L;
+    sum = sum * len * SCALE_L;
 
     float c = dot(dir, -l);
     float cc = c * c;
@@ -168,7 +168,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 void main()
 {
     vec4 atmospheric_glow = vec4(1., 1., 1., 1.);
-    mainImage(atmospheric_glow, ((vec2(0.5, 0.5) - gl_FragCoord.xy / resolution.xy) * (1.25) + vec2(0.5, 0.5))*resolution.xy);
+    mainImage(atmospheric_glow, ((vec2(0.5, 0.5) - gl_FragCoord.xy / resolution.xy) * (1.25) + vec2(0.5, 0.5)) * resolution.xy);
 
     out_color = atmospheric_glow;
 }

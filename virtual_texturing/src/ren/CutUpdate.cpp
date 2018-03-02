@@ -56,18 +56,18 @@ void CutUpdate::dispatch()
         return;
     }
 
-    std::cout << "\ndispatch() BEGIN" << std::endl;
+    // std::cout << "\ndispatch() BEGIN" << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    const uint16_t COLLAPSE_BUDGET = 16;
-    const uint16_t SPLIT_BUDGET = 16;
+    const uint16_t COLLAPSE_BUDGET = 256;
+    const uint16_t SPLIT_BUDGET = 256;
 
     uint32_t texels_per_tile = _context->get_size_tile() * _context->get_size_tile();
 
-    ordered_quadtree_set_type collapse_to;
-    ordered_quadtree_set_type split;
-    ordered_quadtree_set_type keep;
+    id_set_type collapse_to;
+    id_set_type split;
+    id_set_type keep;
 
     std::map<id_type, double> map_feedback_prop;
 
@@ -124,7 +124,7 @@ void CutUpdate::dispatch()
         {
             split_counter++;
 
-            std::cout << "decision: split " << tile_id << ", " << _feedback_buffer[mem_slot->position] * 2.5 << " is over " << texels_per_tile << std::endl;
+            // std::cout << "decision: split " << tile_id << ", " << _feedback_buffer[mem_slot->position] * 2.5 << " is over " << texels_per_tile << std::endl;
 
             cut_desired.erase(tile_id);
 
@@ -135,11 +135,12 @@ void CutUpdate::dispatch()
 
             split.insert(tile_id);
         }
-        else if(texels_per_tile > (iter_parent->second * 4 * 2.5) && check_all_siblings_in_cut(tile_id) && QuadTree::get_depth_of_node(tile_id) > 0 && collapse_counter < COLLAPSE_BUDGET)
+        else if(texels_per_tile > (iter_parent->second * 2.5) && check_all_siblings_in_cut(tile_id, _cut.get_back_cut()) && QuadTree::get_depth_of_node(tile_id) > 0 &&
+                collapse_counter < COLLAPSE_BUDGET)
         {
             collapse_counter++;
 
-            std::cout << "decision: collapse to " << parent_id << ", " << iter_parent->second * 4 * 2.5 << " is under " << texels_per_tile << std::endl;
+            // std::cout << "decision: collapse to " << parent_id << ", " << iter_parent->second * 2.5 << " is under " << texels_per_tile << std::endl;
 
             for(uint8_t i = 0; i < 4; i++)
             {
@@ -152,79 +153,86 @@ void CutUpdate::dispatch()
         }
         else
         {
-            std::cout << "decision: keep " << tile_id << ", " << _feedback_buffer[mem_slot->position] << std::endl;
+            // std::cout << "decision: keep " << tile_id << ", " << std::round((*map_feedback_prop.find(tile_id)).second) + _feedback_buffer[mem_slot->position] << std::endl;
 
             keep.insert(tile_id);
         }
     }
 
+//    /* DEBUG QUADTREE CONSISTENCY PASS */
+//
+//    for(auto iter = _cut.get_back_cut().crbegin(); iter != _cut.get_back_cut().crend(); iter++)
+//    {
+//        id_type tile_id = *iter;
+//        id_type parent_id = QuadTree::get_parent_id(tile_id);
+//        if(tile_id != 0 && _cut.get_back_cut().find(parent_id) != _cut.get_back_cut().end())
+//        {
+//            std::cerr << "Tile id: " << tile_id << std::endl;
+//            std::cerr << "Parent id: " << parent_id << std::endl;
+//
+//            throw std::runtime_error("Quadtree corruption");
+//        }
+//    }
+
     _cut.get_back_cut().swap(cut_desired);
+
+    // std::cout << "collapsing to " << collapse_to.size() << " nodes" << std::endl;
+    // std::cout << "splitting " << split.size() << " nodes" << std::endl;
+    // std::cout << "keeping " << keep.size() << " nodes" << std::endl;
 
     if(!memory_available_for_split_budget(split.size()))
     {
-        free_memory_for_split_budget(split.size());
+        throw std::runtime_error("Not enough free memory available");
     }
 
     /* MEMORY INDEXING PASS */
 
     for(id_type tile_id : collapse_to)
     {
-        std::cout << "action: collapse to " << tile_id << std::endl;
+        // std::cout << "action: collapse to " << tile_id << std::endl;
         if(!collapse_to_id(tile_id))
         {
             _cut.get_back_cut().erase(tile_id);
 
             for(uint8_t i = 0; i < 4; i++)
             {
-                keep.insert(QuadTree::get_child_id(tile_id, i));
+                id_type child_id = QuadTree::get_child_id(tile_id, i);
+
+                _cut.get_back_cut().insert(child_id);
+                keep.insert(child_id);
             }
         }
     }
 
     for(id_type tile_id : split)
     {
-        //        if(memory_available_for_split_budget(1))
-        //        {
-        std::cout << "action: split " << tile_id << std::endl;
+        // std::cout << "action: split " << tile_id << std::endl;
         if(!split_id(tile_id))
         {
             for(uint8_t i = 0; i < 4; i++)
             {
-                _cut.get_back_cut().erase(QuadTree::get_child_id(tile_id, i));
+                id_type child_id = QuadTree::get_child_id(tile_id, i);
+
+                _cut.get_back_cut().erase(child_id);
             }
 
+            _cut.get_back_cut().insert(tile_id);
             keep.insert(tile_id);
         }
-        //        }
-        //        else
-        //        {
-        //            if(free_memory_for_split_budget(1))
-        //            {
-        //                // std::cout << "action: split " << tile_id << std::endl;
-        //                if(!split_id(tile_id))
-        //                {
-        //                    keep.insert(tile_id);
-        //                }
-        //            }
-        //            else
-        //            {
-        //                keep.insert(tile_id);
-        //            }
-        //        }
     }
-
-    // TODO: what to do with keep? keep locked?
 
     for(id_type tile_id : keep)
     {
-        std::cout << "action: keep " << tile_id << std::endl;
+        // std::cout << "action: keep " << tile_id << std::endl;
         keep_id(tile_id);
     }
+
+    // std::cout << "updating " << _cut.get_back_mem_slots_updated().size() << " nodes" << std::endl;
 
     auto end = std::chrono::high_resolution_clock::now();
     _dispatch_time = std::chrono::duration<float, std::milli>(end - start).count();
 
-    std::cout << "dispatch() END" << std::endl;
+    // std::cout << "dispatch() END" << std::endl;
 
     _cut.stop_writing();
 }
@@ -250,6 +258,8 @@ bool CutUpdate::add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr)
 
     mem_slot->locked = true;
     mem_slot->updated = false;
+
+    _cut.get_back_mem_slots_locked()[tile_id] = mem_slot->position;
 
     uint_fast32_t x_orig, y_orig;
     QuadTree::get_pos_by_id(tile_id, x_orig, y_orig);
@@ -283,6 +293,15 @@ bool CutUpdate::add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr)
 
     _cut.get_back_cut().insert(tile_id);
 
+    if(mem_slot->updated)
+    {
+        _cut.get_back_mem_slots_updated()[tile_id] = mem_slot->position;
+    }
+    else
+    {
+        _cut.get_back_mem_slots_updated().erase(tile_id);
+    };
+
     return true;
 }
 
@@ -293,6 +312,20 @@ bool CutUpdate::collapse_to_id(id_type tile_id)
     if(tile_ptr == nullptr)
     {
         return false;
+    }
+
+    for(uint8_t i = 0; i < 4; i++)
+    {
+        mem_slot_type *mem_slot = get_mem_slot_for_id(QuadTree::get_child_id(tile_id, i));
+
+        if(mem_slot != nullptr)
+        {
+            mem_slot->locked = false;
+            mem_slot->updated = false;
+
+            _cut.get_back_mem_slots_updated().erase(mem_slot->tile_id);
+            _cut.get_back_mem_slots_locked().erase(mem_slot->tile_id);
+        }
     }
 
     return add_to_indexed_memory(tile_id, tile_ptr);
@@ -346,43 +379,7 @@ bool CutUpdate::keep_id(id_type tile_id)
 
     return add_to_indexed_memory(tile_id, tile_ptr);
 }
-bool CutUpdate::memory_available_for_split_budget(size_t split_budget)
-{
-    size_t count = 0;
-
-    for(auto &mem_iter : _cut.get_back_mem_slots())
-    {
-        if(!mem_iter.locked)
-        {
-            count++;
-            if(count >= 4 * split_budget)
-            {
-                break;
-            }
-        }
-    }
-    return count >= 4 * split_budget;
-}
-bool CutUpdate::free_memory_for_split_budget(size_t split_budget)
-{
-    size_t count = 0;
-
-    for(auto mem_iter = _cut.get_back_mem_slots().begin(); mem_iter != _cut.get_back_mem_slots().end(); mem_iter++)
-    {
-        if(mem_iter->locked && _cut.get_back_cut().find(mem_iter->tile_id) == _cut.get_back_cut().end())
-        {
-            mem_iter->locked = false;
-            _atlas->unget(mem_iter->tile_id);
-
-            count++;
-            if(count >= 4 * split_budget)
-            {
-                break;
-            }
-        }
-    }
-    return count >= 4 * split_budget;
-}
+bool CutUpdate::memory_available_for_split_budget(size_t split_budget) { return _cut.get_back_mem_slots().size() - _cut.get_back_mem_slots_locked().size() > split_budget * 4; }
 mem_slot_type *CutUpdate::get_free_mem_slot()
 {
     for(auto mem_iter = _cut.get_back_mem_slots().begin(); mem_iter != _cut.get_back_mem_slots().end(); mem_iter++)
@@ -397,27 +394,14 @@ mem_slot_type *CutUpdate::get_free_mem_slot()
 }
 mem_slot_type *CutUpdate::get_mem_slot_for_id(id_type tile_id)
 {
-    for(auto mem_iter = _cut.get_back_mem_slots().begin(); mem_iter != _cut.get_back_mem_slots().end(); mem_iter++)
+    auto mem_slot_iter = _cut.get_back_mem_slots_locked().find(tile_id);
+
+    if(mem_slot_iter == _cut.get_back_mem_slots_locked().end())
     {
-        if((*mem_iter).tile_id == tile_id)
-        {
-            return &(*mem_iter);
-        }
+        return nullptr;
     }
 
-    return nullptr;
-}
-mem_slot_type *CutUpdate::get_mem_slot_for_position(size_t position)
-{
-    for(auto mem_iter = _cut.get_back_mem_slots().begin(); mem_iter != _cut.get_back_mem_slots().end(); mem_iter++)
-    {
-        if((*mem_iter).position == position)
-        {
-            return &(*mem_iter);
-        }
-    }
-
-    return nullptr;
+    return &_cut.get_back_mem_slots().at((*mem_slot_iter).second);
 }
 void CutUpdate::feedback(uint32_t *buf)
 {
@@ -433,20 +417,20 @@ void CutUpdate::stop()
     _should_stop.store(true);
     _worker.join();
 }
-uint8_t CutUpdate::count_children_in_cut(id_type tile_id)
+uint8_t CutUpdate::count_children_in_cut(id_type tile_id, cut_type &cut)
 {
     uint8_t count = 0;
     for(uint8_t i = 0; i < 4; i++)
     {
         id_type child_id = QuadTree::get_child_id(tile_id, i);
-        count += _cut.get_back_cut().count(child_id);
+        count += cut.count(child_id);
     }
     return count;
 }
-bool CutUpdate::check_all_siblings_in_cut(id_type tile_id)
+bool CutUpdate::check_all_siblings_in_cut(id_type tile_id, cut_type &cut)
 {
     id_type parent_id = QuadTree::get_parent_id(tile_id);
-    return count_children_in_cut(parent_id) == 4;
+    return count_children_in_cut(parent_id, cut) == 4;
 }
 Cut *CutUpdate::start_reading_cut()
 {

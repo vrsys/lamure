@@ -15,10 +15,6 @@ namespace vt
 class QuadTree
 {
   public:
-    struct more_than_by_depth
-    {
-        bool operator()(const id_type &lhs, const id_type &rhs) const { return QuadTree::get_depth_of_node(lhs) > QuadTree::get_depth_of_node(rhs); }
-    };
 
     static const id_type get_child_id(id_type node_id, id_type child_index);
 

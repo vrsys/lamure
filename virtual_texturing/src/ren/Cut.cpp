@@ -3,7 +3,8 @@
 
 namespace vt
 {
-Cut::Cut(VTContext *context) : _front_cut(), _front_mem_slots(), _back_cut(), _back_mem_slots(), _deliver_time()
+Cut::Cut(VTContext *context)
+    : _front_cut(), _front_mem_slots(), _front_mem_slots_locked(), _front_mem_slots_updated(), _back_cut(), _back_mem_slots(), _back_mem_slots_locked(), _back_mem_slots_updated(), _deliver_time()
 {
     _size_index = context->get_size_index_texture() * context->get_size_index_texture() * 4;
     _size_mem_x = context->get_phys_tex_tile_width();
@@ -18,8 +19,8 @@ Cut::Cut(VTContext *context) : _front_cut(), _front_mem_slots(), _back_cut(), _b
 
     for(size_t i = 0; i < _size_feedback; i++)
     {
-        _front_mem_slots.emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false});
-        _back_mem_slots.emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false});
+        _front_mem_slots.emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
+        _back_mem_slots.emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
     }
 
     _front_cut.insert(0);
@@ -40,6 +41,9 @@ void Cut::deliver()
     _front_cut.insert(_back_cut.begin(), _back_cut.end());
 
     _front_mem_slots.assign(_back_mem_slots.begin(), _back_mem_slots.end());
+
+    _front_mem_slots_locked = mem_slots_index_type(_back_mem_slots_locked);
+    _front_mem_slots_updated = mem_slots_index_type(_back_mem_slots_updated);
 
     std::copy(_back_index, _back_index + _size_index, _front_index);
 
@@ -94,4 +98,8 @@ cut_type &Cut::get_back_cut() { return _back_cut; }
 uint8_t *Cut::get_back_index() { return _back_index; }
 mem_slots_type &Cut::get_back_mem_slots() { return _back_mem_slots; }
 float Cut::get_deliver_time() const { return _deliver_time; }
+const mem_slots_index_type &Cut::get_front_mem_slots_updated() const { return _front_mem_slots_updated; }
+const mem_slots_index_type &Cut::get_front_mem_slots_locked() const { return _front_mem_slots_locked; }
+mem_slots_index_type &Cut::get_back_mem_slots_updated() { return _back_mem_slots_updated; }
+mem_slots_index_type &Cut::get_back_mem_slots_locked() { return _back_mem_slots_locked; }
 }

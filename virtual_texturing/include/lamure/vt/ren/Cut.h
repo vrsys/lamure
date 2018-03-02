@@ -30,14 +30,19 @@ class Cut
     const cut_type &get_front_cut() const;
     uint8_t *get_front_index() const;
     const mem_slots_type &get_front_mem_slots() const;
+    const mem_slots_index_type &get_front_mem_slots_updated() const;
+    const mem_slots_index_type &get_front_mem_slots_locked() const;
+
     std::mutex &get_back_lock();
     cut_type &get_back_cut();
     uint8_t *get_back_index();
     mem_slots_type &get_back_mem_slots();
+    mem_slots_index_type &get_back_mem_slots_updated();
+    mem_slots_index_type &get_back_mem_slots_locked();
 
     float get_deliver_time() const;
 
-private:
+  private:
     size_t _size_index;
     size_t _size_mem_x;
     size_t _size_mem_y;
@@ -47,11 +52,15 @@ private:
     cut_type _front_cut;
     uint8_t *_front_index;
     mem_slots_type _front_mem_slots;
+    mem_slots_index_type _front_mem_slots_updated;
+    mem_slots_index_type _front_mem_slots_locked;
 
     std::mutex _back_lock;
     cut_type _back_cut;
     uint8_t *_back_index;
     mem_slots_type _back_mem_slots;
+    mem_slots_index_type _back_mem_slots_updated;
+    mem_slots_index_type _back_mem_slots_locked;
 
     float _deliver_time;
     bool _new_data;

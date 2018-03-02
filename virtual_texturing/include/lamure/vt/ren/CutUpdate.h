@@ -8,7 +8,7 @@
 
 namespace vt
 {
-typedef std::set<id_type, QuadTree::more_than_by_depth> ordered_quadtree_set_type;
+typedef std::set<id_type> id_set_type;
 
 class CutUpdate
 {
@@ -28,7 +28,7 @@ class CutUpdate
     void set_freeze_dispatch(bool _freeze_dispatch);
     bool get_freeze_dispatch();
 
-private:
+  private:
     std::thread _worker;
     std::mutex _dispatch_lock;
     std::condition_variable _cv;
@@ -53,14 +53,12 @@ private:
     bool split_id(id_type tile_id);
     bool keep_id(id_type tile_id);
     bool memory_available_for_split_budget(size_t split_budget);
-    bool free_memory_for_split_budget(size_t split_budget);
     bool add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr);
 
-    uint8_t count_children_in_cut(id_type tile_id);
-    bool check_all_siblings_in_cut(id_type tile_id);
+    uint8_t count_children_in_cut(id_type tile_id, cut_type &cut);
+    bool check_all_siblings_in_cut(id_type tile_id, cut_type &cut);
     mem_slot_type *get_free_mem_slot();
-    mem_slot_type * get_mem_slot_for_id(id_type tile_id);
-    mem_slot_type *get_mem_slot_for_position(size_t position);
+    mem_slot_type *get_mem_slot_for_id(id_type tile_id);
 };
 }
 

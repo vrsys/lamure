@@ -72,6 +72,7 @@ struct mem_slot_type
 };
 
 typedef std::vector<mem_slot_type> mem_slots_type;
+typedef std::map<id_type, size_t> mem_slots_index_type;
 }
 
 #endif // VT_COMMON_H

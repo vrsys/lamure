@@ -312,18 +312,34 @@ void VTRenderer::apply_cut_update()
 
     update_index_texture(cut->get_front_index());
 
-    for(mem_slot_type front_mem_slot : cut->get_front_mem_slots())
+    for(auto position_slot_updated : cut->get_front_mem_slots_updated())
     {
-        if(!(front_mem_slot.locked && front_mem_slot.updated))
+        const mem_slot_type *mem_slot_updated = &cut->get_front_mem_slots().at(position_slot_updated.second);
+
+        if(mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
         {
-            continue;
+            if(mem_slot_updated == nullptr)
+            {
+                std::cerr << "Mem slot at " << position_slot_updated.second << " is null" << std::endl;
+            }
+            else
+            {
+                std::cerr << "Mem slot at " << position_slot_updated.second << std::endl;
+                std::cerr << "Mem slot #" << mem_slot_updated->position << std::endl;
+                std::cerr << "Tile id: " << mem_slot_updated->tile_id << std::endl;
+                std::cerr << "Locked: " << mem_slot_updated->locked << std::endl;
+                std::cerr << "Updated: " << mem_slot_updated->updated << std::endl;
+                std::cerr << "Pointer valid: " << (mem_slot_updated->pointer != nullptr) << std::endl;
+            }
+
+            throw std::runtime_error("updated mem slot inconsistency");
         }
 
         // auto x = (uint8_t)((*mem_cut_iter).first % cut->get_size_mem_x());
         // auto y = (uint8_t)((*mem_cut_iter).first / cut->get_size_mem_x());
         // size_t slot = (*mem_cut_iter).first;
 
-        update_physical_texture_blockwise(front_mem_slot.pointer, front_mem_slot.position);
+        update_physical_texture_blockwise(mem_slot_updated->pointer, mem_slot_updated->position);
     }
 
     if(_vtcontext->is_show_debug_view())
