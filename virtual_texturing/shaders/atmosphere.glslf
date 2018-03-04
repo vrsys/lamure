@@ -149,7 +149,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     eye = rot * eye;
 
     // sun light dir
-    vec3 l = vec3(0, 0, 1);
+    vec3 l = vec3(0., 0., 1.);
 
     vec2 e = ray_vs_sphere(eye, dir, R);
     if(e.x > e.y)

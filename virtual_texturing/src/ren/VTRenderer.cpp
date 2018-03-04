@@ -92,8 +92,6 @@ void VTRenderer::init()
     initialize_physical_texture();
     initialize_feedback();
 
-    apply_cut_update();
-
     _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
     _ms_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
 
@@ -108,6 +106,8 @@ void VTRenderer::init()
     _dstate_disable = _device->create_depth_stencil_state(false, true, scm::gl::COMPARISON_NEVER);
 
     _blend_state_halo = _device->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
+
+    apply_cut_update();
 }
 
 void VTRenderer::render()
@@ -160,90 +160,85 @@ void VTRenderer::render()
 
     _shader_vt->uniform("in_tile_size", (uint32_t)_vtcontext->get_size_tile());
     _shader_vt->uniform("in_tile_padding", (uint32_t)_vtcontext->get_size_padding());
-    _shader_vt->uniform("time", -(float)elapsed_seconds.count());
-    _shader_vt->uniform("resolution", 1 * scm::math::vec2ui(_width, _height));
-    _shader_vt->uniform("scale", scale);
 
     _render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.0f, .0f, .0f, 1.0f));
     _render_context->clear_default_depth_stencil_buffer();
 
     _render_context->apply();
 
+    scm::gl::context_state_objects_guard csg(_render_context);
+    scm::gl::context_texture_units_guard tug(_render_context);
+    scm::gl::context_framebuffer_guard fbg(_render_context);
+
+    _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
+
+    _render_context->set_depth_stencil_state(_dstate_less);
+    _render_context->set_rasterizer_state(_ms_cull);
+    _render_context->set_blend_state(_blend_state);
+
+    _render_context->bind_program(_shader_vt);
+
+    _render_context->sync();
+
+    apply_cut_update();
+
+    // bind our texture and tell the graphics card to filter the samples linearly
+    _render_context->bind_texture(_physical_texture, _filter_linear, 0);
+    _render_context->bind_texture(_index_texture, _filter_nearest, 1);
+
+    // bind feedback
+    _render_context->bind_storage_buffer(_atomic_feedback_storage_ssbo, 0);
+
+    _render_context->apply();
+
+    _obj->draw(_render_context, scm::gl::geometry::MODE_SOLID);
+
+    //////////////////////////////////////////////////////////////////////////////
+    // FEEDBACK STUFF
+    //////////////////////////////////////////////////////////////////////////////
+
+    auto data = _render_context->map_buffer(_atomic_feedback_storage_ssbo, scm::gl::ACCESS_READ_ONLY);
+
+    if(data)
     {
-        scm::gl::context_state_objects_guard csg(_render_context);
-        scm::gl::context_texture_units_guard tug(_render_context);
-        scm::gl::context_framebuffer_guard fbg(_render_context);
-
-        _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_width, _height)));
-
-        _render_context->set_depth_stencil_state(_dstate_less);
-        _render_context->set_rasterizer_state(_ms_cull);
-        _render_context->set_blend_state(_blend_state);
-
-        _render_context->bind_program(_shader_vt);
-
-        _render_context->sync();
-
-        apply_cut_update();
-
-        // bind our texture and tell the graphics card to filter the samples linearly
-        _render_context->bind_texture(_physical_texture, _filter_linear, 0);
-        _render_context->bind_texture(_index_texture, _filter_nearest, 1);
-
-        // bind feedback
-        _render_context->bind_storage_buffer(_atomic_feedback_storage_ssbo, 0);
-
-        _render_context->apply();
-
-        _obj->draw(_render_context, scm::gl::geometry::MODE_SOLID);
-
-        //////////////////////////////////////////////////////////////////////////////
-        // FEEDBACK STUFF
-        //////////////////////////////////////////////////////////////////////////////
-
-        auto data = _render_context->map_buffer(_atomic_feedback_storage_ssbo, scm::gl::ACCESS_READ_ONLY);
-
-        if(data)
-        {
-            memcpy(_copy_memory_new, data, _size_copy_buf);
-        }
-
-        _render_context->unmap_buffer(_atomic_feedback_storage_ssbo);
-
-        _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, nullptr);
-
-        if(_vtcontext->is_show_debug_view())
-        {
-            extract_debug_feedback();
-        }
-
-        // pass 3: use pass 1 result as texture for plane
-
-        _render_context->bind_program(_shader_textured_quad);
-
-        scm::math::mat4f ivm = scm::math::inverse(view_matrix);
-        scm::math::vec3f cam_pos = scm::math::vec3f(ivm[12], ivm[13], ivm[14]);
-        scm::math::vec3f cam_right = scm::math::normalize(scm::math::vec3f(ivm[4], ivm[5], ivm[6]));
-
-        auto look_at_matrix = scm::math::make_look_at_matrix(scm::math::vec3f(0.f), cam_pos, cam_right);
-
-        _shader_textured_quad->uniform("mvp", _projection_matrix * view_matrix * scm::math::inverse(look_at_matrix) * scm::math::make_scale(0.924f, 0.924f, 0.924f));
-        _shader_textured_quad->uniform("in_texture", 0);
-        _shader_textured_quad->uniform("halo_res", _halo_res);
-        _render_context->bind_texture(_color_halo, _filter_linear, 0);
-
-        _render_context->set_rasterizer_state(_ms_no_cull);
-        _render_context->set_blend_state(_blend_state_halo);
-        _render_context->set_depth_stencil_state(_dstate_disable);
-
-        _render_context->apply();
-
-        _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
-
-        _render_context->sync();
-
-        _cut_update->feedback(_copy_memory_new);
+        memcpy(_copy_memory_new, data, _size_copy_buf);
     }
+
+    _render_context->unmap_buffer(_atomic_feedback_storage_ssbo);
+
+    _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, nullptr);
+
+    if(_vtcontext->is_show_debug_view())
+    {
+        extract_debug_feedback();
+    }
+
+    // pass 3: use pass 1 result as texture for plane
+
+    _render_context->bind_program(_shader_textured_quad);
+
+    scm::math::mat4f ivm = scm::math::inverse(view_matrix);
+    scm::math::vec3f cam_pos = scm::math::vec3f(ivm[12], ivm[13], ivm[14]);
+    scm::math::vec3f cam_right = scm::math::normalize(scm::math::vec3f(ivm[4], ivm[5], ivm[6]));
+
+    auto look_at_matrix = scm::math::make_look_at_matrix(scm::math::vec3f(0.f), cam_pos, cam_right);
+
+    _shader_textured_quad->uniform("mvp", _projection_matrix * view_matrix * scm::math::inverse(look_at_matrix) * scm::math::make_scale(0.924f, 0.924f, 0.924f));
+    _shader_textured_quad->uniform("in_texture", 0);
+    _shader_textured_quad->uniform("halo_res", _halo_res);
+    _render_context->bind_texture(_color_halo, _filter_linear, 0);
+
+    _render_context->set_rasterizer_state(_ms_no_cull);
+    _render_context->set_blend_state(_blend_state_halo);
+    _render_context->set_depth_stencil_state(_dstate_disable);
+
+    _render_context->apply();
+
+    _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
+
+    _render_context->sync();
+
+    _cut_update->feedback(_copy_memory_new);
 }
 
 void VTRenderer::render_debug_view()
