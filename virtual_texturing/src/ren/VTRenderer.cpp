@@ -80,6 +80,7 @@ void VTRenderer::init()
 
     // TODO: gua scenegraph to handle geometry eventually
     _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth.obj"));
+    // _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
     _quad.reset(new scm::gl::quad_geometry(_device, scm::math::vec2f(-2.f * _halo_res / _halo_res, -2.f), scm::math::vec2f(2.f * _halo_res / _halo_res, 2.f)));
 
     _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
