@@ -15,6 +15,8 @@
 
 namespace vt{
     namespace pre{
+        class OffsetIndex;
+
         class AtlasFile {
         public:
             enum LAYOUT{
@@ -49,8 +51,8 @@ namespace vt{
             uint64_t _filledTileCount;
             uint64_t _totalTileCount;
 
-            vt::pre::OffsetIndex *_offsetIndex;
-            vt::pre::CielabIndex *_cielabIndex;
+            OffsetIndex *_offsetIndex;
+            CielabIndex *_cielabIndex;
 
             uint64_t _offsetIndexOffset;
             uint64_t _cielabIndexOffset;

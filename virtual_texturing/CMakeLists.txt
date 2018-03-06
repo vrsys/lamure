@@ -44,7 +44,7 @@ SOURCE_GROUP("ren" FILES ${REN_SRC})
 SOURCE_GROUP("ren" FILES ${REN_INC})
 
 set(PROJECT_SOURCES ${MAIN_SRC} ${EXT_SRC} ${PRE_SRC} ${REN_SRC} ${OOC_SRC})
-set(PROJECT_INCLUDES ${MAIN_INC} ${EXT_INC} ${PRE_INC} ${REN_INC} ${OOC_INC} src/pre/Index.cpp include/lamure/vt/pre/Index.h include/lamure/vt/pre/OffsetIndex.cpp include/lamure/vt/pre/OffsetIndex.h)
+set(PROJECT_INCLUDES ${MAIN_INC} ${EXT_INC} ${PRE_INC} ${REN_INC} ${OOC_INC})
 
 include_directories(${PROJECT_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}

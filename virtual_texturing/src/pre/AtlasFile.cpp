@@ -112,7 +112,7 @@ namespace vt{
                 imageTileHeight = (imageTileHeight + 1) >> 1;
             }
 
-            if(_format == LAYOUT::RAW){
+            if(false && _format == LAYOUT::RAW){
                 if(fileLen != HEADER_SIZE + _totalTileCount * _tileByteSize){
                     throw std::runtime_error("Atlas-File does not have the expected Size.");
                 }
@@ -123,13 +123,13 @@ namespace vt{
                     throw std::runtime_error("Atlas-File does not have the expected Size.");
                 }
 
-                _offsetIndex = new vt::pre::OffsetIndex(_totalTileCount, _format);
+                _offsetIndex = new OffsetIndex(_totalTileCount, _format);
                 _file.seekg(_offsetIndexOffset);
                 _offsetIndex->readFromFile(_file);
 
             }
 
-            _cielabIndex = new vt::pre::CielabIndex(_totalTileCount);
+            _cielabIndex = new CielabIndex(_totalTileCount);
             _file.seekg(_cielabIndexOffset);
             _cielabIndex->readFromFile(_file);
         }

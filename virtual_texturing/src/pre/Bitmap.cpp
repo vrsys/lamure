@@ -3,6 +3,7 @@
 //
 
 #include <lamure/vt/pre/Bitmap.h>
+#include <cmath>
 
 //
 // Created by sebal_000 on 20.12.2017.

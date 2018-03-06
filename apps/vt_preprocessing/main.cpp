@@ -247,6 +247,47 @@ int extract(const int argc, const char **argv){
     return 0;
 }
 
+int extract_raw(const int argc, const char **argv){
+    if(argc != 2){
+        std::cout << "Wrong count of parameters." << std::endl;
+        std::cout << "Expected parameters:" << std::endl;
+        std::cout << "\t<processed image>" << std::endl;
+        std::cout << "\t<level>" << std::endl;
+        std::cout << "\t<out file>" << std::endl;
+
+        return 1;
+    }
+
+    AtlasFile *atlas = nullptr;
+    uint8_t *buffer = nullptr;
+
+    try {
+        atlas = new AtlasFile(argv[0]);
+        std::ofstream dataFile(argv[1], std::ios_base::binary);
+
+        auto totalTiles = atlas->getTotalTiles();
+
+        std::cout << totalTiles << std::endl;
+
+        buffer = new uint8_t[totalTiles * atlas->getTileByteSize()];
+
+        for(size_t i = 0; i < totalTiles; ++i){
+            atlas->getTile(i, &buffer[i * atlas->getTileByteSize()]);
+        }
+
+        dataFile.write((char*)buffer, totalTiles * atlas->getTileByteSize());
+    }catch(std::runtime_error &error){
+        std::cout << "Could not open file \"" << argv[0] << "\"." << std::endl;
+
+        return 1;
+    }
+
+    delete atlas;
+    delete buffer;
+
+    return 0;
+}
+
 int delta(const int argc, const char **argv){
     if(argc != 2){
         std::cout << "Wrong count of parameters." << std::endl;
@@ -294,6 +335,8 @@ int main(const int argc, const char **argv){
             return info(argc - 2, (const char**)((size_t)argv + 2 * sizeof(char*)));
         }else if(std::strcmp(argv[1], "extract") == 0){
             return extract(argc - 2, (const char**)((size_t)argv + 2 * sizeof(char*)));
+        }else if(std::strcmp(argv[1], "extract_raw") == 0){
+            return extract_raw(argc - 2, (const char**)((size_t)argv + 2 * sizeof(char*)));
         }
     }
 
