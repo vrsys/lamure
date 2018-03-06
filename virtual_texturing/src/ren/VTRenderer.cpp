@@ -121,8 +121,9 @@ void VTRenderer::render()
 
     _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_halo_res, _halo_res)));
 
-    _render_context->set_depth_stencil_state(_dstate_less);
+    _render_context->set_rasterizer_state(_ms_no_cull);
     _render_context->set_blend_state(_blend_state);
+    _render_context->set_depth_stencil_state(_dstate_less);
 
     _render_context->clear_color_buffer(_fbo_halo, 0, scm::math::vec4f(0.0, 0.0, 0.0, 1.0));
     _render_context->clear_depth_stencil_buffer(_fbo_halo);
@@ -261,7 +262,7 @@ void VTRenderer::render_debug_view()
         ImGui::PlotHistogram("FPS", &_vtcontext->get_debug()->get_fps()[0], VTContext::Debug::FPS_S, 0, stream_average.str().c_str(), min_fps, max_fps, plot_dims);
 
         std::stringstream stream_usage;
-        stream_usage << "Physical texture slots usage: " << _vtcontext->get_debug()->get_mem_slots_busy() << "%";
+        stream_usage << "Physical texture slots usage: " << _vtcontext->get_debug()->get_mem_slots_busy() * 100 << "%";
 
         ImGui::ProgressBar(_vtcontext->get_debug()->get_mem_slots_busy(), ImVec2(0, 80), stream_usage.str().c_str());
     }
@@ -369,21 +370,25 @@ void VTRenderer::extract_debug_cut(Cut *cut)
     size_t free_slots = 0;
 
     std::stringstream stream_mem_slots;
-    for(size_t x = 0; x < cut->get_size_mem_x(); ++x)
+    for(size_t layer = 0; layer < _vtcontext->get_phys_tex_layers(); layer++)
     {
-        for(size_t y = 0; y < cut->get_size_mem_y(); ++y)
+        for(size_t x = 0; x < cut->get_size_mem_x(); ++x)
         {
-            if(!cut->get_front_mem_slots().at(x + y * cut->get_size_mem_x()).locked)
+            for(size_t y = 0; y < cut->get_size_mem_y(); ++y)
             {
-                stream_mem_slots << "F ";
-                free_slots++;
+                if(!cut->get_front_mem_slots().at(x + y * cut->get_size_mem_x() + layer * cut->get_size_mem_x() * cut->get_size_mem_y()).locked)
+                {
+                    stream_mem_slots << "F ";
+                    free_slots++;
+                }
+                else
+                {
+                    stream_mem_slots << cut->get_front_mem_slots().at(x + y * cut->get_size_mem_x() + layer * cut->get_size_mem_x() * cut->get_size_mem_y()).tile_id << " ";
+                }
             }
-            else
-            {
-                stream_mem_slots << cut->get_front_mem_slots().at(x + y * cut->get_size_mem_x()).tile_id << " ";
-            }
-        }
 
+            stream_mem_slots << std::endl;
+        }
         stream_mem_slots << std::endl;
     }
     _vtcontext->get_debug()->set_mem_slots_string(stream_mem_slots.str());
@@ -424,13 +429,17 @@ void VTRenderer::extract_debug_feedback()
     std::stringstream stream_feedback;
     size_t phys_tex_tile_width = _vtcontext->get_phys_tex_tile_width();
 
-    for(size_t x = 0; x < phys_tex_tile_width; ++x)
+    for(size_t layer = 0; layer < _vtcontext->get_phys_tex_layers(); layer++)
     {
-        for(size_t y = 0; y < phys_tex_tile_width; ++y)
+        for(size_t x = 0; x < phys_tex_tile_width; ++x)
         {
-            stream_feedback << _copy_memory_new[x + y * phys_tex_tile_width] << " ";
-        }
+            for(size_t y = 0; y < phys_tex_tile_width; ++y)
+            {
+                stream_feedback << _copy_memory_new[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
+            }
 
+            stream_feedback << std::endl;
+        }
         stream_feedback << std::endl;
     }
 
@@ -467,21 +476,27 @@ scm::gl::data_format VTRenderer::get_tex_format()
     }
 }
 
-void VTRenderer::update_physical_texture_blockwise(const uint8_t *buf_texel, size_t slot_id)
+void VTRenderer::update_physical_texture_blockwise(const uint8_t *buf_texel, size_t slot_position)
 {
-    size_t phys_tex_tile_width = _vtcontext->get_phys_tex_tile_width();
-    size_t tile_px_width = _vtcontext->get_size_tile();
+    size_t slots_per_texture = _vtcontext->get_phys_tex_tile_width() * _vtcontext->get_phys_tex_tile_width();
+    size_t layer = slot_position / slots_per_texture;
+    size_t rel_slot_position = slot_position - layer * slots_per_texture;
+    size_t x_tile = rel_slot_position % _vtcontext->get_phys_tex_tile_width();
+    size_t y_tile = rel_slot_position / _vtcontext->get_phys_tex_tile_width();
 
-    size_t slots_per_texture = phys_tex_tile_width * phys_tex_tile_width;
-    size_t layer = slot_id / slots_per_texture;
-    size_t rel_slot_id = slot_id - layer * slots_per_texture;
-    size_t x_tile = rel_slot_id % phys_tex_tile_width;
-    size_t y_tile = rel_slot_id / phys_tex_tile_width;
+//    std::cout << std::endl;
+//    std::cout << "Slots / texture: " << slots_per_texture << std::endl;
+//    std::cout << "Layer: " << layer << std::endl;
+//    std::cout << "Slot position: " << slot_position << std::endl;
+//    std::cout << "Relative slot position: " << rel_slot_position << std::endl;
+//    std::cout << "x_tile: " << x_tile << std::endl;
+//    std::cout << "y_tile: " << y_tile << std::endl;
+//    std::cout << std::endl;
 
-    scm::math::vec3ui origin = scm::math::vec3ui(static_cast<uint32_t>(x_tile * tile_px_width), static_cast<uint32_t>(y_tile * tile_px_width), 0);
-    scm::math::vec3ui dimensions = scm::math::vec3ui(static_cast<uint32_t>(tile_px_width), static_cast<uint32_t>(tile_px_width), 1);
+    scm::math::vec3ui origin = scm::math::vec3ui((uint32_t)x_tile * _vtcontext->get_size_tile(), (uint32_t)y_tile * _vtcontext->get_size_tile(), (uint32_t)layer);
+    scm::math::vec3ui dimensions = scm::math::vec3ui(_vtcontext->get_size_tile(), _vtcontext->get_size_tile(), 1);
 
-    _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(origin, dimensions), static_cast<uint16_t>(layer), get_tex_format(), buf_texel);
+    _render_context->update_sub_texture(_physical_texture, scm::gl::texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
 }
 
 void VTRenderer::initialize_feedback()

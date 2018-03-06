@@ -4,6 +4,31 @@
 #include <lamure/vt/ren/VTRenderer.h>
 namespace vt
 {
+void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *param)
+{
+    switch(severity)
+    {
+    case GL_DEBUG_SEVERITY_HIGH:
+    {
+        fprintf(stderr, "GL_DEBUG_SEVERITY_HIGH: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
+    }
+    break;
+    case GL_DEBUG_SEVERITY_MEDIUM:
+    {
+        fprintf(stderr, "GL_DEBUG_SEVERITY_MEDIUM: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
+    }
+    break;
+    case GL_DEBUG_SEVERITY_LOW:
+    {
+        fprintf(stderr, "GL_DEBUG_SEVERITY_LOW: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
+    }
+    break;
+    default:
+        // ignore
+        break;
+    }
+}
+
 VTContext::VTContext() : _debug() { _config = new CSimpleIniA(true, false, false); }
 
 uint16_t VTContext::get_size_tile() const { return _size_tile; }
@@ -100,6 +125,9 @@ void VTContext::start()
     if(_show_debug_view)
     {
         ImGui_ImplGlfwGL3_Init(_window, false);
+
+        glEnable(GL_DEBUG_OUTPUT);
+        glDebugMessageCallback((GLDEBUGPROC)debug_callback, 0);
     }
 
     while(!glfwWindowShouldClose(_window))
@@ -177,9 +205,9 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
     size_t tex_byte_size = tex_px_width * tex_px_width * get_byte_stride();
     size_t layers = max_tex_byte_size / tex_byte_size;
 
-    _phys_tex_px_width = static_cast<uint32_t>(tex_px_width);
-    _phys_tex_tile_width = static_cast<uint32_t>(tex_tile_width);
-    _phys_tex_layers = static_cast<uint16_t>(layers < max_tex_layers ? layers : (size_t)max_tex_layers);
+    _phys_tex_px_width = (uint32_t)tex_px_width;
+    _phys_tex_tile_width = (uint32_t)tex_tile_width;
+    _phys_tex_layers = layers < max_tex_layers ? (uint16_t)layers : (uint16_t)max_tex_layers;
 
     return scm::math::vec2ui(_phys_tex_tile_width, _phys_tex_tile_width);
 }
@@ -200,6 +228,7 @@ bool VTContext::is_show_debug_view() const { return _show_debug_view; }
 uint32_t VTContext::get_phys_tex_px_width() const { return _phys_tex_px_width; }
 uint32_t VTContext::get_phys_tex_tile_width() const { return _phys_tex_tile_width; }
 uint16_t VTContext::get_phys_tex_layers() const { return _phys_tex_layers; }
+uint32_t VTContext::get_size_physical_update_throughput() const { return _size_physical_update_throughput; }
 
 void VTContext::EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
 void VTContext::EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)

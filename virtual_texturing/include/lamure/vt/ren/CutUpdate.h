@@ -52,7 +52,7 @@ class CutUpdate
     bool collapse_to_id(id_type tile_id);
     bool split_id(id_type tile_id);
     bool keep_id(id_type tile_id);
-    bool memory_available_for_split_budget(size_t split_budget);
+    size_t get_available_memory();
     bool add_to_indexed_memory(id_type tile_id, uint8_t *tile_ptr);
 
     uint8_t count_children_in_cut(id_type tile_id, cut_type &cut);

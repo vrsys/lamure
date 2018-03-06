@@ -64,11 +64,9 @@ class VTContext
         static constexpr const char *TILE_SIZE = "TILE_SIZE";
         static constexpr const char *TILE_PADDING = "TILE_PADDING";
         static constexpr const char *PHYSICAL_SIZE_MB = "PHYSICAL_SIZE_MB";
+        static constexpr const char *PHYSICAL_UPDATE_THROUGHPUT_MB = "PHYSICAL_UPDATE_THROUGHPUT_MB";
         static constexpr const char *NAME_TEXTURE = "NAME_TEXTURE";
         static constexpr const char *NAME_MIPMAP = "NAME_MIPMAP";
-
-        static constexpr const char *OPT_RUN_IN_PARALLEL = "OPT_RUN_IN_PARALLEL";
-        static constexpr const char *OPT_TILE_ROW_IN_CORE = "OPT_TILE_ROW_IN_CORE";
 
         static constexpr const char *TEXTURE_FORMAT = "TEXTURE_FORMAT";
         static constexpr const char *TEXTURE_FORMAT_RGBA8 = "RGBA8";
@@ -76,7 +74,6 @@ class VTContext
         static constexpr const char *TEXTURE_FORMAT_R8 = "R8";
 
         // Debug fields
-        static constexpr const char *KEEP_INTERMEDIATE_DATA = "KEEP_INTERMEDIATE_DATA";
         static constexpr const char *VERBOSE = "VERBOSE";
 
         static constexpr const char *UNDEF = "UNDEF";
@@ -213,12 +210,10 @@ class VTContext
             _context._size_tile = (uint16_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_SIZE, Config::UNDEF));
             _context._size_padding = (uint16_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TILE_PADDING, Config::UNDEF));
             _context._size_physical_texture = (uint32_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::PHYSICAL_SIZE_MB, Config::UNDEF));
+            _context._size_physical_update_throughput = (uint32_t)atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::PHYSICAL_SIZE_MB, Config::UNDEF));
             _context._name_texture = std::string(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_TEXTURE, Config::UNDEF));
             _context._name_mipmap = std::string(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::NAME_MIPMAP, Config::UNDEF));
-            _context._opt_run_in_parallel = atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::OPT_RUN_IN_PARALLEL, Config::UNDEF)) == 1;
-            _context._opt_row_in_core = atoi(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::OPT_TILE_ROW_IN_CORE, Config::UNDEF)) == 1;
             _context._format_texture = Config::which_texture_format(_context._config->GetValue(Config::TEXTURE_MANAGEMENT, Config::TEXTURE_FORMAT, Config::UNDEF));
-            _context._keep_intermediate_data = atoi(_context._config->GetValue(Config::DEBUG, Config::KEEP_INTERMEDIATE_DATA, Config::UNDEF)) == 1;
             _context._verbose = atoi(_context._config->GetValue(Config::DEBUG, Config::VERBOSE, Config::UNDEF)) == 1;
         }
     };
@@ -233,6 +228,7 @@ class VTContext
     uint32_t get_phys_tex_px_width() const;
     uint32_t get_phys_tex_tile_width() const;
     uint16_t get_phys_tex_layers() const;
+    uint32_t get_size_physical_update_throughput() const;
 
     const std::string &get_name_texture() const;
     const std::string &get_name_mipmap() const;
@@ -287,6 +283,7 @@ class VTContext
     uint16_t _depth_quadtree;
     uint32_t _size_index_texture;
     uint32_t _size_physical_texture;
+    uint32_t _size_physical_update_throughput;
     bool _show_debug_view = false;
 
     uint32_t _phys_tex_px_width;

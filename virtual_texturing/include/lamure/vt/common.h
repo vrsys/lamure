@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <algorithm>
 #include <lamure/config.h>
 #include <lamure/vt/ext/SimpleIni.h>
 

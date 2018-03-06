@@ -60,9 +60,6 @@ void CutUpdate::dispatch()
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    const uint16_t COLLAPSE_BUDGET = 256;
-    const uint16_t SPLIT_BUDGET = 256;
-
     uint32_t texels_per_tile = _context->get_size_tile() * _context->get_size_tile();
 
     id_set_type collapse_to;
@@ -101,7 +98,13 @@ void CutUpdate::dispatch()
         }
     }
 
-    uint16_t collapse_counter = 0;
+    uint32_t throughput = _context->get_size_physical_update_throughput();
+    uint32_t split_budget_throughput = throughput * 1024 * 1024 / texels_per_tile / _context->get_byte_stride() / 4;
+    uint32_t split_budget_available = (uint32_t)get_available_memory() / 4;
+    uint32_t split_budget = std::min(split_budget_throughput, split_budget_available);
+
+    // std::cout << "split budget: " << split_budget << std::endl;
+
     uint16_t split_counter = 0;
 
     /* DECISION MAKING PASS */
@@ -120,7 +123,7 @@ void CutUpdate::dispatch()
         id_type parent_id = QuadTree::get_parent_id(tile_id);
         auto iter_parent = map_feedback_prop.find(parent_id);
 
-        if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree() && split_counter < SPLIT_BUDGET)
+        if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree() && split_counter < split_budget)
         {
             split_counter++;
 
@@ -135,11 +138,8 @@ void CutUpdate::dispatch()
 
             split.insert(tile_id);
         }
-        else if(texels_per_tile > (iter_parent->second * 2.5) && check_all_siblings_in_cut(tile_id, _cut.get_back_cut()) && QuadTree::get_depth_of_node(tile_id) > 0 &&
-                collapse_counter < COLLAPSE_BUDGET)
+        else if(texels_per_tile > (iter_parent->second * 2.5) && check_all_siblings_in_cut(tile_id, _cut.get_back_cut()) && QuadTree::get_depth_of_node(tile_id) > 0)
         {
-            collapse_counter++;
-
             // std::cout << "decision: collapse to " << parent_id << ", " << iter_parent->second * 2.5 << " is under " << texels_per_tile << std::endl;
 
             for(uint8_t i = 0; i < 4; i++)
@@ -159,31 +159,26 @@ void CutUpdate::dispatch()
         }
     }
 
-//    /* DEBUG QUADTREE CONSISTENCY PASS */
-//
-//    for(auto iter = _cut.get_back_cut().crbegin(); iter != _cut.get_back_cut().crend(); iter++)
-//    {
-//        id_type tile_id = *iter;
-//        id_type parent_id = QuadTree::get_parent_id(tile_id);
-//        if(tile_id != 0 && _cut.get_back_cut().find(parent_id) != _cut.get_back_cut().end())
-//        {
-//            std::cerr << "Tile id: " << tile_id << std::endl;
-//            std::cerr << "Parent id: " << parent_id << std::endl;
-//
-//            throw std::runtime_error("Quadtree corruption");
-//        }
-//    }
+    //    /* DEBUG QUADTREE CONSISTENCY PASS */
+    //
+    //    for(auto iter = _cut.get_back_cut().crbegin(); iter != _cut.get_back_cut().crend(); iter++)
+    //    {
+    //        id_type tile_id = *iter;
+    //        id_type parent_id = QuadTree::get_parent_id(tile_id);
+    //        if(tile_id != 0 && _cut.get_back_cut().find(parent_id) != _cut.get_back_cut().end())
+    //        {
+    //            std::cerr << "Tile id: " << tile_id << std::endl;
+    //            std::cerr << "Parent id: " << parent_id << std::endl;
+    //
+    //            throw std::runtime_error("Quadtree corruption");
+    //        }
+    //    }
 
     _cut.get_back_cut().swap(cut_desired);
 
     // std::cout << "collapsing to " << collapse_to.size() << " nodes" << std::endl;
     // std::cout << "splitting " << split.size() << " nodes" << std::endl;
     // std::cout << "keeping " << keep.size() << " nodes" << std::endl;
-
-    if(!memory_available_for_split_budget(split.size()))
-    {
-        throw std::runtime_error("Not enough free memory available");
-    }
 
     /* MEMORY INDEXING PASS */
 
@@ -379,7 +374,7 @@ bool CutUpdate::keep_id(id_type tile_id)
 
     return add_to_indexed_memory(tile_id, tile_ptr);
 }
-bool CutUpdate::memory_available_for_split_budget(size_t split_budget) { return _cut.get_back_mem_slots().size() - _cut.get_back_mem_slots_locked().size() > split_budget * 4; }
+size_t CutUpdate::get_available_memory() { return _cut.get_back_mem_slots().size() - _cut.get_back_mem_slots_locked().size(); }
 mem_slot_type *CutUpdate::get_free_mem_slot()
 {
     for(auto mem_iter = _cut.get_back_mem_slots().begin(); mem_iter != _cut.get_back_mem_slots().end(); mem_iter++)
