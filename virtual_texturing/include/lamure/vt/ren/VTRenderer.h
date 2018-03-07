@@ -74,8 +74,7 @@ class VTRenderer
     void update_index_texture(const uint8_t *buf_cpu);
     void update_physical_texture_blockwise(const uint8_t *buf_texel, size_t slot_position);
     void apply_cut_update();
-    void extract_debug_cut(Cut *cut);
-    void extract_debug_feedback();
+    void extract_debug_metrics();
 
     scm::gl::data_format get_tex_format();
 };

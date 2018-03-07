@@ -74,6 +74,9 @@ struct mem_slot_type
 
 typedef std::vector<mem_slot_type> mem_slots_type;
 typedef std::map<id_type, size_t> mem_slots_index_type;
+class Cut;
+typedef std::map<uint64_t, Cut*> cut_map_type;
+typedef std::pair<uint64_t, Cut*> cut_map_entry_type;
 }
 
 #endif // VT_COMMON_H

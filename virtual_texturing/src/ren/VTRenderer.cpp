@@ -2,6 +2,7 @@
 #include <lamure/vt/ext/imgui.h>
 #include <lamure/vt/ext/imgui_impl_glfw_gl3.h>
 #include <lamure/vt/ren/CutUpdate.h>
+#include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/VTRenderer.h>
 
 namespace vt
@@ -117,34 +118,6 @@ void VTRenderer::render()
     scm::math::perspective_matrix(_projection_matrix, 10.f + scale * 100.f, float(_width) / float(_height), 0.01f, 1000.0f);
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _start;
 
-    // pass 1: draw halo
-
-    _render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_halo_res, _halo_res)));
-
-    _render_context->set_rasterizer_state(_ms_no_cull);
-    _render_context->set_blend_state(_blend_state);
-    _render_context->set_depth_stencil_state(_dstate_less);
-
-    _render_context->clear_color_buffer(_fbo_halo, 0, scm::math::vec4f(0.0, 0.0, 0.0, 1.0));
-    _render_context->clear_depth_stencil_buffer(_fbo_halo);
-
-    _render_context->set_frame_buffer(_fbo_halo);
-
-    _render_context->bind_program(_shader_atmosphere);
-
-    _shader_atmosphere->uniform("time", (float)elapsed_seconds.count());
-    _shader_atmosphere->uniform("resolution", 1 * scm::math::vec2ui(_halo_res, _halo_res));
-
-    auto ortho_proj = scm::math::make_ortho_matrix(-1.f, 1.f, -1.f, 1.f, -1000.f, 1000.f);
-    _shader_atmosphere->uniform("projection_matrix", ortho_proj);
-    _shader_atmosphere->uniform("model_view_matrix", scm::math::make_translation(0.f, 0.f, -10.f));
-
-    _render_context->apply();
-
-    _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
-
-    // pass 2: draw planet
-
     _render_context->set_default_frame_buffer();
 
     scm::math::mat4f view_matrix = _vtcontext->get_event_handler()->get_trackball_manip().transform_matrix();
@@ -195,10 +168,6 @@ void VTRenderer::render()
 
     _obj->draw(_render_context, scm::gl::geometry::MODE_SOLID);
 
-    //////////////////////////////////////////////////////////////////////////////
-    // FEEDBACK STUFF
-    //////////////////////////////////////////////////////////////////////////////
-
     auto data = _render_context->map_buffer(_atomic_feedback_storage_ssbo, scm::gl::ACCESS_READ_ONLY);
 
     if(data)
@@ -209,34 +178,6 @@ void VTRenderer::render()
     _render_context->unmap_buffer(_atomic_feedback_storage_ssbo);
 
     _render_context->clear_buffer_data(_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, nullptr);
-
-    if(_vtcontext->is_show_debug_view())
-    {
-        extract_debug_feedback();
-    }
-
-    // pass 3: use pass 1 result as texture for plane
-
-    _render_context->bind_program(_shader_textured_quad);
-
-    scm::math::mat4f ivm = scm::math::inverse(view_matrix);
-    scm::math::vec3f cam_pos = scm::math::vec3f(ivm[12], ivm[13], ivm[14]);
-    scm::math::vec3f cam_right = scm::math::normalize(scm::math::vec3f(ivm[4], ivm[5], ivm[6]));
-
-    auto look_at_matrix = scm::math::make_look_at_matrix(scm::math::vec3f(0.f), cam_pos, cam_right);
-
-    _shader_textured_quad->uniform("mvp", _projection_matrix * view_matrix * scm::math::inverse(look_at_matrix) * scm::math::make_scale(0.924f, 0.924f, 0.924f));
-    _shader_textured_quad->uniform("in_texture", 0);
-    _shader_textured_quad->uniform("halo_res", _halo_res);
-    _render_context->bind_texture(_color_halo, _filter_linear, 0);
-
-    _render_context->set_rasterizer_state(_ms_no_cull);
-    _render_context->set_blend_state(_blend_state_halo);
-    _render_context->set_depth_stencil_state(_dstate_disable);
-
-    _render_context->apply();
-
-    _quad->draw(_render_context, scm::gl::geometry::MODE_SOLID);
 
     _render_context->sync();
 
@@ -271,23 +212,13 @@ void VTRenderer::render_debug_view()
 
     if(ImGui::CollapsingHeader("Cut update metrics"))
     {
-        auto max_swap = *std::max_element(_vtcontext->get_debug()->get_cut_swap_times().begin(), _vtcontext->get_debug()->get_cut_swap_times().end());
         auto max_disp = *std::max_element(_vtcontext->get_debug()->get_cut_dispatch_times().begin(), _vtcontext->get_debug()->get_cut_dispatch_times().end());
         auto max_apply = *std::max_element(_vtcontext->get_debug()->get_apply_times().begin(), _vtcontext->get_debug()->get_apply_times().end());
 
-        auto min_swap = *std::min_element(_vtcontext->get_debug()->get_cut_swap_times().begin(), _vtcontext->get_debug()->get_cut_swap_times().end());
         auto min_disp = *std::min_element(_vtcontext->get_debug()->get_cut_dispatch_times().begin(), _vtcontext->get_debug()->get_cut_dispatch_times().end());
         auto min_apply = *std::min_element(_vtcontext->get_debug()->get_apply_times().begin(), _vtcontext->get_debug()->get_apply_times().end());
 
-        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0), _vtcontext->get_debug()->get_cut_string().c_str());
-        ImGui::Text(_vtcontext->get_debug()->get_mem_slots_string().c_str());
         ImGui::Text(_vtcontext->get_debug()->get_feedback_string().c_str());
-        ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0), _vtcontext->get_debug()->get_index_string().c_str());
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0), ("RAM pointer count: " + std::to_string(_vtcontext->get_debug()->get_size_mem_cut())).c_str());
-
-        std::stringstream stream_swap_max;
-        stream_swap_max << "Max: " << max_swap << " microsec";
-        ImGui::PlotLines("Swap time, microsec", &_vtcontext->get_debug()->get_cut_swap_times()[0], VTContext::Debug::SWAP_S, 0, stream_swap_max.str().c_str(), min_swap, max_swap, plot_dims);
 
         std::stringstream stream_dispatch_max;
         stream_dispatch_max << "Max: " << max_disp << " msec";
@@ -303,147 +234,70 @@ void VTRenderer::render_debug_view()
 
 void VTRenderer::apply_cut_update()
 {
-    Cut *cut = _vtcontext->get_cut_update()->start_reading_cut();
-
     auto start = std::chrono::high_resolution_clock::now();
 
-    update_index_texture(cut->get_front_index());
+    CutDatabase *cut_db = _vtcontext->get_cut_update()->get_cut_db();
 
-    for(auto position_slot_updated : cut->get_front_mem_slots_updated())
+    cut_db->start_reading();
+
+    for(cut_map_entry_type cut_entry : (*cut_db->get_cut_map()))
     {
-        const mem_slot_type *mem_slot_updated = &cut->get_front_mem_slots().at(position_slot_updated.second);
+        Cut *cut = cut_db->start_reading_cut(cut_entry.first);
 
-        if(mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
+        update_index_texture(cut->get_front().get_index());
+
+        for (auto position_slot_updated : cut->get_front().get_mem_slots_updated())
         {
-            if(mem_slot_updated == nullptr)
+            const mem_slot_type *mem_slot_updated = &cut_db->get_front().at(position_slot_updated.second);
+
+            if (mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
             {
-                std::cerr << "Mem slot at " << position_slot_updated.second << " is null" << std::endl;
-            }
-            else
-            {
-                std::cerr << "Mem slot at " << position_slot_updated.second << std::endl;
-                std::cerr << "Mem slot #" << mem_slot_updated->position << std::endl;
-                std::cerr << "Tile id: " << mem_slot_updated->tile_id << std::endl;
-                std::cerr << "Locked: " << mem_slot_updated->locked << std::endl;
-                std::cerr << "Updated: " << mem_slot_updated->updated << std::endl;
-                std::cerr << "Pointer valid: " << (mem_slot_updated->pointer != nullptr) << std::endl;
+                if (mem_slot_updated == nullptr)
+                {
+                    std::cerr << "Mem slot at " << position_slot_updated.second << " is null" << std::endl;
+                }
+                else
+                {
+                    std::cerr << "Mem slot at " << position_slot_updated.second << std::endl;
+                    std::cerr << "Mem slot #" << mem_slot_updated->position << std::endl;
+                    std::cerr << "Tile id: " << mem_slot_updated->tile_id << std::endl;
+                    std::cerr << "Locked: " << mem_slot_updated->locked << std::endl;
+                    std::cerr << "Updated: " << mem_slot_updated->updated << std::endl;
+                    std::cerr << "Pointer valid: " << (mem_slot_updated->pointer != nullptr) << std::endl;
+                }
+
+                throw std::runtime_error("updated mem slot inconsistency");
             }
 
-            throw std::runtime_error("updated mem slot inconsistency");
+            update_physical_texture_blockwise(mem_slot_updated->pointer, mem_slot_updated->position);
         }
 
-        // auto x = (uint8_t)((*mem_cut_iter).first % cut->get_size_mem_x());
-        // auto y = (uint8_t)((*mem_cut_iter).first / cut->get_size_mem_x());
-        // size_t slot = (*mem_cut_iter).first;
-
-        update_physical_texture_blockwise(mem_slot_updated->pointer, mem_slot_updated->position);
+        cut_db->stop_reading_cut(cut_entry.first);
     }
 
-    if(_vtcontext->is_show_debug_view())
-    {
-        extract_debug_cut(cut);
-    }
-
-    _vtcontext->get_cut_update()->stop_reading_cut();
+    cut_db->stop_reading();
 
     _render_context->sync();
 
     auto end = std::chrono::high_resolution_clock::now();
     _apply_time = std::chrono::duration<float, std::milli>(end - start).count();
+
+    if (_vtcontext->is_show_debug_view())
+    {
+        extract_debug_metrics();
+    }
 }
 
-void VTRenderer::extract_debug_cut(Cut *cut)
+void VTRenderer::extract_debug_metrics()
 {
     _vtcontext->get_debug()->get_fps().push_back(ImGui::GetIO().Framerate);
     _vtcontext->get_debug()->get_fps().pop_front();
 
-    std::stringstream stream_cut;
-    stream_cut << "Cut { ";
-    for(id_type iter : cut->get_front_cut())
-    {
-        stream_cut << iter << " ";
-    }
-    stream_cut << "}" << std::endl;
-
-    _vtcontext->get_debug()->set_cut_string(stream_cut.str());
-
-    size_t free_slots = 0;
-
-    std::stringstream stream_mem_slots;
-    for(size_t layer = 0; layer < _vtcontext->get_phys_tex_layers(); layer++)
-    {
-        for(size_t x = 0; x < cut->get_size_mem_x(); ++x)
-        {
-            for(size_t y = 0; y < cut->get_size_mem_y(); ++y)
-            {
-                if(!cut->get_front_mem_slots().at(x + y * cut->get_size_mem_x() + layer * cut->get_size_mem_x() * cut->get_size_mem_y()).locked)
-                {
-                    stream_mem_slots << "F ";
-                    free_slots++;
-                }
-                else
-                {
-                    stream_mem_slots << cut->get_front_mem_slots().at(x + y * cut->get_size_mem_x() + layer * cut->get_size_mem_x() * cut->get_size_mem_y()).tile_id << " ";
-                }
-            }
-
-            stream_mem_slots << std::endl;
-        }
-        stream_mem_slots << std::endl;
-    }
-    _vtcontext->get_debug()->set_mem_slots_string(stream_mem_slots.str());
-
-    _vtcontext->get_debug()->set_mem_slots_busy((cut->get_size_feedback() - free_slots) / (float)cut->get_size_feedback());
-
-    std::stringstream stream_index_string;
-    for(size_t x = 0; x < _vtcontext->get_size_index_texture(); ++x)
-    {
-        for(size_t y = 0; y < _vtcontext->get_size_index_texture(); ++y)
-        {
-            auto ptr = &cut->get_front_index()[y * _vtcontext->get_size_index_texture() * 4 + x * 4];
-
-            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << "." << (int)ptr[3] << " ";
-        }
-
-        stream_index_string << std::endl;
-    }
-
-    _vtcontext->get_debug()->set_mem_slots_string(stream_mem_slots.str());
-
-    _vtcontext->get_debug()->set_index_string(stream_index_string.str());
-
     _vtcontext->get_debug()->get_cut_dispatch_times().push_back(_cut_update->get_dispatch_time());
     _vtcontext->get_debug()->get_cut_dispatch_times().pop_front();
 
-    _vtcontext->get_debug()->get_cut_swap_times().push_back(cut->get_deliver_time());
-    _vtcontext->get_debug()->get_cut_swap_times().pop_front();
-
     _vtcontext->get_debug()->get_apply_times().push_back(_apply_time);
     _vtcontext->get_debug()->get_apply_times().pop_front();
-
-    _vtcontext->get_debug()->set_size_mem_cut(cut->get_size_feedback() - free_slots);
-}
-
-void VTRenderer::extract_debug_feedback()
-{
-    std::stringstream stream_feedback;
-    size_t phys_tex_tile_width = _vtcontext->get_phys_tex_tile_width();
-
-    for(size_t layer = 0; layer < _vtcontext->get_phys_tex_layers(); layer++)
-    {
-        for(size_t x = 0; x < phys_tex_tile_width; ++x)
-        {
-            for(size_t y = 0; y < phys_tex_tile_width; ++y)
-            {
-                stream_feedback << _copy_memory_new[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
-            }
-
-            stream_feedback << std::endl;
-        }
-        stream_feedback << std::endl;
-    }
-
-    _vtcontext->get_debug()->set_feedback_string(stream_feedback.str());
 }
 
 void VTRenderer::initialize_index_texture() { _index_texture = _device->create_texture_2d(_index_texture_dimension, scm::gl::FORMAT_RGBA_8UI); }
@@ -483,15 +337,6 @@ void VTRenderer::update_physical_texture_blockwise(const uint8_t *buf_texel, siz
     size_t rel_slot_position = slot_position - layer * slots_per_texture;
     size_t x_tile = rel_slot_position % _vtcontext->get_phys_tex_tile_width();
     size_t y_tile = rel_slot_position / _vtcontext->get_phys_tex_tile_width();
-
-//    std::cout << std::endl;
-//    std::cout << "Slots / texture: " << slots_per_texture << std::endl;
-//    std::cout << "Layer: " << layer << std::endl;
-//    std::cout << "Slot position: " << slot_position << std::endl;
-//    std::cout << "Relative slot position: " << rel_slot_position << std::endl;
-//    std::cout << "x_tile: " << x_tile << std::endl;
-//    std::cout << "y_tile: " << y_tile << std::endl;
-//    std::cout << std::endl;
 
     scm::math::vec3ui origin = scm::math::vec3ui((uint32_t)x_tile * _vtcontext->get_size_tile(), (uint32_t)y_tile * _vtcontext->get_size_tile(), (uint32_t)layer);
     scm::math::vec3ui dimensions = scm::math::vec3ui(_vtcontext->get_size_tile(), _vtcontext->get_size_tile(), 1);

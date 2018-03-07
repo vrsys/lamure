@@ -6,66 +6,42 @@
 #define LAMURE_CUT_H
 
 #include <lamure/vt/common.h>
+#include <lamure/vt/ren/DoubleBuffer.h>
 namespace vt
 {
-class VTContext;
-class Cut
+class CutDatabase;
+class CutState
 {
   public:
-    explicit Cut(VTContext *context);
-    ~Cut();
+    explicit CutState(CutDatabase *cut_db);
+    ~CutState();
 
-    void start_writing();
-    void stop_writing();
-
-    void start_reading();
-    void stop_reading();
-
-    const size_t get_size_index() const;
-    const size_t get_size_mem_x() const;
-    const size_t get_size_mem_y() const;
-    const size_t get_size_feedback() const;
-
-    const std::mutex &get_front_lock() const;
-    const cut_type &get_front_cut() const;
-    uint8_t *get_front_index() const;
-    const mem_slots_type &get_front_mem_slots() const;
-    const mem_slots_index_type &get_front_mem_slots_updated() const;
-    const mem_slots_index_type &get_front_mem_slots_locked() const;
-
-    std::mutex &get_back_lock();
-    cut_type &get_back_cut();
-    uint8_t *get_back_index();
-    mem_slots_type &get_back_mem_slots();
-    mem_slots_index_type &get_back_mem_slots_updated();
-    mem_slots_index_type &get_back_mem_slots_locked();
-
-    float get_deliver_time() const;
+    cut_type &get_cut();
+    uint8_t *get_index();
+    mem_slots_index_type &get_mem_slots_updated();
+    mem_slots_index_type &get_mem_slots_locked();
+    void accept(CutState &cut_state);
 
   private:
-    size_t _size_index;
-    size_t _size_mem_x;
-    size_t _size_mem_y;
-    size_t _size_feedback;
+    const CutDatabase *_cut_db;
 
-    std::mutex _front_lock;
-    cut_type _front_cut;
-    uint8_t *_front_index;
-    mem_slots_type _front_mem_slots;
-    mem_slots_index_type _front_mem_slots_updated;
-    mem_slots_index_type _front_mem_slots_locked;
+    cut_type _cut;
+    uint8_t *_index;
+    mem_slots_index_type _mem_slots_updated;
+    mem_slots_index_type _mem_slots_locked;
+};
 
-    std::mutex _back_lock;
-    cut_type _back_cut;
-    uint8_t *_back_index;
-    mem_slots_type _back_mem_slots;
-    mem_slots_index_type _back_mem_slots_updated;
-    mem_slots_index_type _back_mem_slots_locked;
+class Cut : public DoubleBuffer<CutState>
+{
+  public:
+    explicit Cut(CutDatabase *cut_db, CutState& front, CutState& back);
+    ~Cut(){};
 
-    float _deliver_time;
-    bool _new_data;
+  protected:
+    void deliver() override;
 
-    void deliver();
+  private:
+    const CutDatabase *_cut_db;
 };
 }
 

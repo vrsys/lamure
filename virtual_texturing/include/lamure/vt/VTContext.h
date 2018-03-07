@@ -21,37 +21,20 @@ class VTContext
         static const int DISP_S = 60;
         static const int APPLY_S = 60;
 
-        Debug() : _fps(FPS_S, 0.0f), _times_cut_swap(SWAP_S, 0.0f), _times_cut_dispatch(DISP_S, 0.0f), _times_apply(APPLY_S, 0.0f), _string_cut() { _mem_slots_busy = 0.0f; }
-        ~Debug() {}
+        Debug() : _fps(FPS_S, 0.0f), _times_cut_dispatch(DISP_S, 0.0f), _times_apply(APPLY_S, 0.0f) {}
+        ~Debug() = default;
 
         std::deque<float> &get_fps();
         float get_mem_slots_busy();
-        void set_mem_slots_busy(float mem_slots_busy);
-        const std::string &get_cut_string() const;
-        void set_cut_string(const std::string &cut_string);
-        const std::string &get_mem_slots_string() const;
-        void set_mem_slots_string(const std::string &mem_slots_string);
-        const std::string &get_index_string() const;
-        void set_index_string(const std::string &index_string);
         const std::string &get_feedback_string() const;
         void set_feedback_string(const std::string &feedback_string);
-        std::deque<float> &get_cut_swap_times();
         std::deque<float> &get_cut_dispatch_times();
         std::deque<float> &get_apply_times();
-        size_t get_size_mem_cut() const;
-        void set_size_mem_cut(size_t _size_mem_cut);
 
       private:
-        std::string _string_cut;
-        std::string _string_mem_slots;
-        std::string _string_index;
-        std::string _string_feedback;
         std::deque<float> _fps;
-        std::deque<float> _times_cut_swap;
         std::deque<float> _times_cut_dispatch;
         std::deque<float> _times_apply;
-        float _mem_slots_busy;
-        size_t _size_mem_cut;
     };
     class Config
     {

@@ -170,13 +170,13 @@ uint16_t VTContext::identify_depth()
         throw std::runtime_error("Mipmap could not be read");
     }
 
-    fsize = static_cast<size_t>(file.tellg());
+    fsize = (size_t)file.tellg();
     file.seekg(0, std::ios::end);
-    fsize = static_cast<size_t>(file.tellg()) - fsize;
+    fsize = (size_t)file.tellg() - fsize;
 
     file.close();
 
-    auto texel_count = static_cast<uint32_t>((size_t)fsize / get_byte_stride());
+    auto texel_count = (uint32_t)(size_t)fsize / get_byte_stride();
 
     size_t count_tiled = texel_count / _size_tile / _size_tile;
 
@@ -341,19 +341,6 @@ VTContext::EventHandler::EventHandler()
 float VTContext::EventHandler::get_scale() const { return _scale; }
 void VTContext::EventHandler::set_scale(float _scale) { EventHandler::_scale = _scale; }
 std::deque<float> &VTContext::Debug::get_fps() { return _fps; }
-float VTContext::Debug::get_mem_slots_busy() { return _mem_slots_busy; }
-void VTContext::Debug::set_mem_slots_busy(float _mem_slots_busy) { Debug::_mem_slots_busy = _mem_slots_busy; }
-const std::string &VTContext::Debug::get_cut_string() const { return _string_cut; }
-void VTContext::Debug::set_cut_string(const string &_cut_string) { Debug::_string_cut = _cut_string; }
-const std::string &VTContext::Debug::get_mem_slots_string() const { return _string_mem_slots; }
-void VTContext::Debug::set_mem_slots_string(const std::string &_mem_slots_string) { Debug::_string_mem_slots = _mem_slots_string; }
-const std::string &VTContext::Debug::get_index_string() const { return _string_index; }
-void VTContext::Debug::set_index_string(const std::string &_index_string) { Debug::_string_index = _index_string; }
-std::deque<float> &VTContext::Debug::get_cut_swap_times() { return _times_cut_swap; }
 std::deque<float> &VTContext::Debug::get_cut_dispatch_times() { return _times_cut_dispatch; }
 std::deque<float> &VTContext::Debug::get_apply_times() { return _times_apply; }
-size_t VTContext::Debug::get_size_mem_cut() const { return _size_mem_cut; }
-void VTContext::Debug::set_size_mem_cut(size_t _size_mem_cut) { Debug::_size_mem_cut = _size_mem_cut; }
-const std::string &VTContext::Debug::get_feedback_string() const { return _string_feedback; }
-void VTContext::Debug::set_feedback_string(const std::string &feedback_string) { Debug::_string_feedback = feedback_string; }
 }
