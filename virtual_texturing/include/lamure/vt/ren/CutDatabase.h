@@ -9,7 +9,7 @@ class VTContext;
 class CutDatabase : public DoubleBuffer<mem_slots_type>
 {
   public:
-    explicit CutDatabase(VTContext *context, mem_slots_type &front, mem_slots_type &back);
+    explicit CutDatabase(VTContext *context, mem_slots_type *front, mem_slots_type *back);
     ~CutDatabase();
 
     size_t get_available_memory();

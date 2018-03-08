@@ -12,7 +12,7 @@ template <typename T>
 class DoubleBuffer
 {
   public:
-    explicit DoubleBuffer(T& front, T& back)
+    explicit DoubleBuffer(T *front, T *back)
     {
         _front = front;
         _back = back;
@@ -20,8 +20,8 @@ class DoubleBuffer
     }
     ~DoubleBuffer() {}
 
-    T &get_front() { return _front; }
-    T &get_back() { return _back; }
+    T *get_front() { return _front; }
+    T *get_back() { return _back; }
 
     void start_writing() { _back_lock.lock(); }
     void stop_writing()
@@ -58,9 +58,9 @@ class DoubleBuffer
     void stop_reading() { _front_lock.unlock(); }
 
   protected:
-    T _front, _back;
+    T *_front, *_back;
 
-    virtual void deliver();
+    virtual void deliver() = 0;
 
   private:
     std::mutex _front_lock, _back_lock;

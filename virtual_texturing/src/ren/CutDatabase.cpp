@@ -2,7 +2,7 @@
 #include <lamure/vt/ren/CutDatabase.h>
 namespace vt
 {
-CutDatabase::CutDatabase(VTContext *context, mem_slots_type &front, mem_slots_type &back) : DoubleBuffer<mem_slots_type>(front, back)
+CutDatabase::CutDatabase(VTContext *context, mem_slots_type *front, mem_slots_type *back) : DoubleBuffer<mem_slots_type>(front, back)
 {
     _size_index = context->get_size_index_texture() * context->get_size_index_texture() * 4;
     _size_mem_x = context->get_phys_tex_tile_width();
@@ -11,32 +11,32 @@ CutDatabase::CutDatabase(VTContext *context, mem_slots_type &front, mem_slots_ty
 
     for(size_t i = 0; i < _size_feedback; i++)
     {
-        _front.emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
-        _back.emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
+        _front->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
+        _back->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
     }
 
     // TODO
-    CutState front_state(this);
-    CutState back_state(this);
+    CutState *front_state = new CutState(this);
+    CutState *back_state = new CutState(this);
 
-    Cut cut(this, front_state, back_state);
+    Cut *cut = new Cut(this, front_state, back_state);
 
     _cut_map = cut_map_type();
-    _cut_map[0] = &cut;
+    _cut_map[0] = cut;
 }
 size_t CutDatabase::get_available_memory()
 {
-    size_t available_memory = _back.size();
+    size_t available_memory = _back->size();
     for(cut_map_entry_type cut_entry : _cut_map)
     {
-        available_memory -= cut_entry.second->get_back().get_mem_slots_locked().size();
+        available_memory -= cut_entry.second->get_back()->get_mem_slots_locked().size();
     }
 
     return available_memory;
 }
 mem_slot_type *CutDatabase::get_free_mem_slot()
 {
-    for(auto mem_iter = _back.begin(); mem_iter != _back.end(); mem_iter++)
+    for(auto mem_iter = _back->begin(); mem_iter != _back->end(); mem_iter++)
     {
         if(!(*mem_iter).locked)
         {
@@ -46,7 +46,7 @@ mem_slot_type *CutDatabase::get_free_mem_slot()
 
     throw std::runtime_error("out of mem slots");
 }
-void CutDatabase::deliver() { _front = mem_slots_type(_back); }
+void CutDatabase::deliver() { _front = new mem_slots_type((*_back)); }
 Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 {
     Cut *requested_cut = _cut_map[cut_id];

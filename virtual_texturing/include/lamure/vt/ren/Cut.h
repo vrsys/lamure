@@ -16,8 +16,8 @@ class CutState
     explicit CutState(CutDatabase *cut_db);
     ~CutState();
 
-    cut_type &get_cut();
     uint8_t *get_index();
+    cut_type &get_cut();
     mem_slots_index_type &get_mem_slots_updated();
     mem_slots_index_type &get_mem_slots_locked();
     void accept(CutState &cut_state);
@@ -25,8 +25,8 @@ class CutState
   private:
     const CutDatabase *_cut_db;
 
-    cut_type _cut;
     uint8_t *_index;
+    cut_type _cut;
     mem_slots_index_type _mem_slots_updated;
     mem_slots_index_type _mem_slots_locked;
 };
@@ -34,7 +34,7 @@ class CutState
 class Cut : public DoubleBuffer<CutState>
 {
   public:
-    explicit Cut(CutDatabase *cut_db, CutState& front, CutState& back);
+    explicit Cut(CutDatabase *cut_db, CutState *front, CutState *back);
     ~Cut(){};
 
   protected:

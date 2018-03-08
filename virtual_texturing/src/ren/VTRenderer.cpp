@@ -201,11 +201,6 @@ void VTRenderer::render_debug_view()
         stream_average << "Application average " << 1000.0f / ImGui::GetIO().Framerate << " ms/frame (" << ImGui::GetIO().Framerate << " FPS)\"";
 
         ImGui::PlotHistogram("FPS", &_vtcontext->get_debug()->get_fps()[0], VTContext::Debug::FPS_S, 0, stream_average.str().c_str(), min_fps, max_fps, plot_dims);
-
-        std::stringstream stream_usage;
-        stream_usage << "Physical texture slots usage: " << _vtcontext->get_debug()->get_mem_slots_busy() * 100 << "%";
-
-        ImGui::ProgressBar(_vtcontext->get_debug()->get_mem_slots_busy(), ImVec2(0, 80), stream_usage.str().c_str());
     }
 
     ImGui::SetNextTreeNodeOpen(true);
@@ -217,8 +212,6 @@ void VTRenderer::render_debug_view()
 
         auto min_disp = *std::min_element(_vtcontext->get_debug()->get_cut_dispatch_times().begin(), _vtcontext->get_debug()->get_cut_dispatch_times().end());
         auto min_apply = *std::min_element(_vtcontext->get_debug()->get_apply_times().begin(), _vtcontext->get_debug()->get_apply_times().end());
-
-        ImGui::Text(_vtcontext->get_debug()->get_feedback_string().c_str());
 
         std::stringstream stream_dispatch_max;
         stream_dispatch_max << "Max: " << max_disp << " msec";
@@ -244,11 +237,11 @@ void VTRenderer::apply_cut_update()
     {
         Cut *cut = cut_db->start_reading_cut(cut_entry.first);
 
-        update_index_texture(cut->get_front().get_index());
+        update_index_texture(cut->get_front()->get_index());
 
-        for (auto position_slot_updated : cut->get_front().get_mem_slots_updated())
+        for (auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
         {
-            const mem_slot_type *mem_slot_updated = &cut_db->get_front().at(position_slot_updated.second);
+            const mem_slot_type *mem_slot_updated = &cut_db->get_front()->at(position_slot_updated.second);
 
             if (mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
             {

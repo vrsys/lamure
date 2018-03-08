@@ -198,7 +198,7 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_tex_px_width_gl);
 
     size_t max_tex_px_width_custom = (size_t)std::pow(2, (size_t)std::log2(sqrt(max_tex_byte_size / get_byte_stride())));
-    size_t max_tex_px_width = (max_tex_px_width_gl < max_tex_px_width_custom ? (size_t)max_tex_px_width_gl : (size_t)max_tex_px_width_custom);
+    size_t max_tex_px_width = ((size_t)max_tex_px_width_gl < max_tex_px_width_custom ? (size_t)max_tex_px_width_gl : (size_t)max_tex_px_width_custom);
 
     size_t tex_tile_width = max_tex_px_width / _size_tile;
     size_t tex_px_width = tex_tile_width * _size_tile;
@@ -207,7 +207,7 @@ scm::math::vec2ui VTContext::calculate_size_physical_texture()
 
     _phys_tex_px_width = (uint32_t)tex_px_width;
     _phys_tex_tile_width = (uint32_t)tex_tile_width;
-    _phys_tex_layers = layers < max_tex_layers ? (uint16_t)layers : (uint16_t)max_tex_layers;
+    _phys_tex_layers = (uint16_t)layers < (uint16_t)max_tex_layers ? (uint16_t)layers : (uint16_t)max_tex_layers;
 
     return scm::math::vec2ui(_phys_tex_tile_width, _phys_tex_tile_width);
 }

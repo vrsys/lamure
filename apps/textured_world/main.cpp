@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 
     VTContext context = VTContext::Builder().with_path_config((file_config.c_str()))
         ->with_event_handler(new VTContext::EventHandler())
-        // ->with_debug_view()
+        ->with_debug_view()
         ->build();
 
     if(get_cmd_option(argv, argv + argc, "-m") != nullptr || get_cmd_option(argv, argv + argc, "-p") != nullptr)

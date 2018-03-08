@@ -25,9 +25,6 @@ class VTContext
         ~Debug() = default;
 
         std::deque<float> &get_fps();
-        float get_mem_slots_busy();
-        const std::string &get_feedback_string() const;
-        void set_feedback_string(const std::string &feedback_string);
         std::deque<float> &get_cut_dispatch_times();
         std::deque<float> &get_apply_times();
 
