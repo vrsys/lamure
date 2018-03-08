@@ -1,13 +1,14 @@
-#include <lamure/vt/VTContext.h>
 #include <lamure/vt/ren/CutDatabase.h>
 namespace vt
 {
-CutDatabase::CutDatabase(VTContext *context, mem_slots_type *front, mem_slots_type *back) : DoubleBuffer<mem_slots_type>(front, back)
+CutDatabase::CutDatabase(mem_slots_type *front, mem_slots_type *back) : DoubleBuffer<mem_slots_type>(front, back)
 {
-    _size_index = context->get_size_index_texture() * context->get_size_index_texture() * 4;
-    _size_mem_x = context->get_phys_tex_tile_width();
-    _size_mem_y = context->get_phys_tex_tile_width();
-    _size_feedback = _size_mem_x * _size_mem_y * context->get_phys_tex_layers();
+    VTConfig * config = &VTConfig::get_instance();
+
+    _size_index = config->get_size_index_texture() * config->get_size_index_texture() * 4;
+    _size_mem_x = config->get_phys_tex_tile_width();
+    _size_mem_y = config->get_phys_tex_tile_width();
+    _size_feedback = _size_mem_x * _size_mem_y * config->get_phys_tex_layers();
 
     for(size_t i = 0; i < _size_feedback; i++)
     {

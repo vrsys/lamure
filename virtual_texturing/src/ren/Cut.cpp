@@ -1,4 +1,3 @@
-#include <lamure/vt/VTContext.h>
 #include <lamure/vt/ren/CutDatabase.h>
 
 namespace vt

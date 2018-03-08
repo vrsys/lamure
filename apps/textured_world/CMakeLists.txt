@@ -13,7 +13,6 @@ include_directories(${REND_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${FREEIMAGE_INCLUDE_DIR}
         ${GLFW_INCLUDE_DIRS}
-        ${GLEW_INCLUDE_DIRS}
         ${OpenGL_INCLUDE_DIRS}
         ${VT_INCLUDE_DIR}
         ${ImageMagick_INCLUDE_DIRS}
@@ -35,7 +34,6 @@ target_link_libraries(${PROJECT_NAME}
         ${VT_LIBRARY}
         ${OpenGL_LIBRARY}
         ${GLFW_LIBRARIES}
-        ${GLEW_LIBRARY}
         ${OPENGL_LIBRARY}
         optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
         optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}

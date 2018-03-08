@@ -3,14 +3,27 @@
 
 #include <lamure/vt/common.h>
 #include <lamure/vt/ren/Cut.h>
+#include <lamure/vt/VTConfig.h>
 namespace vt
 {
 class VTContext;
 class CutDatabase : public DoubleBuffer<mem_slots_type>
 {
+public:
+    static CutDatabase &get_instance()
+    {
+        // TODO
+        mem_slots_type *front = new mem_slots_type();
+        mem_slots_type *back = new mem_slots_type();
+
+        static CutDatabase instance(front, back);
+        return instance;
+    }
+    CutDatabase(CutDatabase const &) = delete;
+    void operator=(CutDatabase const &) = delete;
+
   public:
-    explicit CutDatabase(VTContext *context, mem_slots_type *front, mem_slots_type *back);
-    ~CutDatabase();
+    ~CutDatabase() override {}
 
     size_t get_available_memory();
     mem_slot_type *get_free_mem_slot();
@@ -29,6 +42,8 @@ class CutDatabase : public DoubleBuffer<mem_slots_type>
     cut_map_type *get_cut_map();
 
   protected:
+    explicit CutDatabase(mem_slots_type *front, mem_slots_type *back);
+
     void deliver() override;
 
   private:

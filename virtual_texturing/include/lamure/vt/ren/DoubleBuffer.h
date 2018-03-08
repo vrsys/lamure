@@ -1,11 +1,9 @@
-//
-// Created by tihi6213 on 3/7/18.
-//
-
 #ifndef LAMURE_DOUBLEBUFFER_H
 #define LAMURE_DOUBLEBUFFER_H
 
 #include <lamure/vt/common.h>
+#include <mutex>
+
 namespace vt
 {
 template <typename T>
@@ -18,7 +16,7 @@ class DoubleBuffer
         _back = back;
         _new_data = false;
     }
-    ~DoubleBuffer() {}
+    virtual ~DoubleBuffer(){};
 
     T *get_front() { return _front; }
     T *get_back() { return _back; }

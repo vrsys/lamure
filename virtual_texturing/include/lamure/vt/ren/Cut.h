@@ -35,7 +35,7 @@ class Cut : public DoubleBuffer<CutState>
 {
   public:
     explicit Cut(CutDatabase *cut_db, CutState *front, CutState *back);
-    ~Cut(){};
+    ~Cut() override{};
 
   protected:
     void deliver() override;

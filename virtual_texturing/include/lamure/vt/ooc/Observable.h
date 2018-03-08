@@ -5,7 +5,8 @@
 #ifndef TILE_PROVIDER_OBSERVABLE_H
 #define TILE_PROVIDER_OBSERVABLE_H
 
-#include <lamure/vt/common.h>
+#include <set>
+#include <map>
 #include <lamure/vt/ooc/Observer.h>
 
 using namespace std;

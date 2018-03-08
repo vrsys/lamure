@@ -5,6 +5,7 @@
 #ifndef TILE_PROVIDER_PRIORITYQUEUE_H
 #define TILE_PROVIDER_PRIORITYQUEUE_H
 
+#include <iostream>
 #include <lamure/vt/ooc/AbstractQueue.h>
 #include <lamure/vt/ooc/TileRequest.h>
 

@@ -51,23 +51,17 @@ include_directories(${PROJECT_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${CGAL_INCLUDE_DIR}
         ${GMP_INCLUDE_DIR}
-        #${GLFW_INCLUDE_DIR}
-        ${GLEW_INCLUDE_DIR}
         ${ImageMagick_INCLUDE_DIRS}
         ${MPFR_INCLUDE_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR})
 
-link_directories(${SCHISM_LIBRARY_DIRS}
-        #${GLFW_LIBRARIES}
-        ${GLEW_LIBRARY})
+link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED
         ${PROJECT_INCLUDES}
-        ${PROJECT_SOURCES}
-        #${GLFW_LIBRARIES}
-        ${GLEW_LIBRARY})
+        ${PROJECT_SOURCES})
 
 add_dependencies(${PROJECT_NAME} lamure_common)
 

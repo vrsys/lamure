@@ -1,22 +1,17 @@
-#include <lamure/vt/VTContext.h>
 #include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
 
 namespace vt
 {
-CutUpdate::CutUpdate(VTContext *context) : _dispatch_lock(), _dispatch_time()
+CutUpdate::CutUpdate(TileAtlas<priority_type> *atlas) : _dispatch_lock(), _dispatch_time()
 {
     _should_stop.store(false);
     _new_feedback.store(false);
     _feedback_buffer = nullptr;
-    _atlas = context->get_atlas();
-    _context = context;
+    _atlas = atlas;
 
-    mem_slots_type *front = new mem_slots_type();
-    mem_slots_type *back = new mem_slots_type();
-
-    // TODO: pull apart?
-    _cut_db = new CutDatabase(context, front, back);
+    _config = &VTConfig::get_instance();
+    _cut_db = &CutDatabase::get_instance();
 }
 
 CutUpdate::~CutUpdate() {}
@@ -67,9 +62,9 @@ void CutUpdate::dispatch()
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    uint32_t texels_per_tile = _context->get_size_tile() * _context->get_size_tile();
-    uint32_t throughput = _context->get_size_physical_update_throughput();
-    uint32_t split_budget_throughput = throughput * 1024 * 1024 / texels_per_tile / _context->get_byte_stride() / 4;
+    uint32_t texels_per_tile = _config->get_size_tile() * _config->get_size_tile();
+    uint32_t throughput = _config->get_size_physical_update_throughput();
+    uint32_t split_budget_throughput = throughput * 1024 * 1024 / texels_per_tile / _config->get_byte_stride() / 4;
     uint32_t split_budget_available = (uint32_t)_cut_db->get_available_memory() / 4;
     uint32_t split_budget = std::min(split_budget_throughput, split_budget_available);
 
@@ -133,7 +128,7 @@ void CutUpdate::dispatch()
             id_type parent_id = QuadTree::get_parent_id(tile_id);
             auto iter_parent = map_feedback_prop.find(parent_id);
 
-            if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < _context->get_depth_quadtree() && split_counter < split_budget)
+            if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < _config->get_depth_quadtree() && split_counter < split_budget)
             {
                 split_counter++;
 
@@ -272,16 +267,16 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
     uint_fast32_t x_orig, y_orig;
     QuadTree::get_pos_by_id(tile_id, x_orig, y_orig);
     uint16_t tile_depth = QuadTree::get_depth_of_node(tile_id);
-    uint32_t tile_span = _context->get_size_index_texture() >> tile_depth;
+    uint32_t tile_span = _config->get_size_index_texture() >> tile_depth;
 
-    size_t phys_tex_tile_width = _context->get_phys_tex_tile_width();
+    size_t phys_tex_tile_width = _config->get_phys_tex_tile_width();
     size_t tiles_per_tex = phys_tex_tile_width * phys_tex_tile_width;
 
     for(size_t x = x_orig * tile_span; x < (x_orig + 1) * tile_span; x++)
     {
         for(size_t y = y_orig * tile_span; y < (y_orig + 1) * tile_span; y++)
         {
-            uint8_t *ptr = &cut->get_back()->get_index()[(y * _context->get_size_index_texture() + x) * 4];
+            uint8_t *ptr = &cut->get_back()->get_index()[(y * _config->get_size_index_texture() + x) * 4];
 
             size_t level = mem_slot->position / tiles_per_tex;
             size_t rel_pos = mem_slot->position - level * tiles_per_tex;

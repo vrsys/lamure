@@ -3,6 +3,7 @@
 
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
+#include <lamure/vt/VTConfig.h>
 #include <lamure/vt/ooc/TileAtlas.h>
 #include <lamure/vt/ren/Cut.h>
 
@@ -13,7 +14,7 @@ typedef std::set<id_type> id_set_type;
 class CutUpdate
 {
   public:
-    explicit CutUpdate(VTContext *context);
+    explicit CutUpdate(TileAtlas<priority_type> *atlas);
     ~CutUpdate();
 
     void start();
@@ -33,7 +34,7 @@ private:
     std::atomic<bool> _new_feedback;
 
     TileAtlas<priority_type> *_atlas;
-    VTContext *_context;
+    VTConfig *_config;
     CutDatabase *_cut_db;
 
     float _dispatch_time;
