@@ -17,9 +17,6 @@ namespace vt {
     namespace ooc {
         class HeapProcessor {
         protected:
-            mutex _newRequestLock;
-            condition_variable _newRequest;
-
             PriorityHeap<uint32_t> _requests;
 
             atomic<bool> _running;

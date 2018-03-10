@@ -87,5 +87,9 @@ namespace vt{
         void TileProvider::print(){
             _cache->print();
         }
+
+        bool TileProvider::wait(std::chrono::milliseconds maxTime){
+            return _requests.waitUntilEmpty(maxTime);
+        }
     }
 }

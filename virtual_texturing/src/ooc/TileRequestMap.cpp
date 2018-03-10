@@ -42,10 +42,30 @@ namespace vt{
         }
 
         void TileRequestMap::inform(seb::event_type event, seb::Observable *observable){
-            std::lock_guard<mutex> lock(_lock);
+            std::unique_lock<mutex> lock(_lock);
             auto req = (TileRequest*)observable;
             _map.erase(std::make_pair(req->getResource(), req->getId()));
             delete req;
+
+            auto empty = _map.empty();
+
+            lock.unlock();
+
+            if(empty){
+                _allRequestsProcessed.notify_all();
+            }
+        }
+
+        bool TileRequestMap::waitUntilEmpty(std::chrono::milliseconds maxTime){
+            std::unique_lock<std::mutex> lock(_lock);
+
+            if(_map.empty()){
+                return;
+            }
+
+            _allRequestsProcessed.wait_for(lock, maxTime, [this]{
+                return _map.empty();
+            });
         }
     }
 }

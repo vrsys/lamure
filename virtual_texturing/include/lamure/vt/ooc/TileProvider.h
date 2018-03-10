@@ -42,6 +42,8 @@ namespace vt{
             void stop();
 
             void print();
+
+            bool wait(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
         };
     }
 }

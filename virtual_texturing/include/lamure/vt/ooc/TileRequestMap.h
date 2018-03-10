@@ -17,6 +17,9 @@ namespace vt{
         protected:
             std::map<std::pair<AtlasFile*, uint64_t>, TileRequest*> _map;
             std::mutex _lock;
+
+            std::condition_variable _allRequestsProcessed;
+
         public:
             TileRequestMap();
 
@@ -27,6 +30,8 @@ namespace vt{
             bool insertRequest(TileRequest *req);
 
             void inform(seb::event_type event, seb::Observable *observable);
+
+            bool waitUntilEmpty(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
         };
     }
 }

@@ -26,7 +26,6 @@ namespace vt {
 
         void HeapProcessor::run(){
             beforeStart();
-            unique_lock<mutex> lock(_newRequestLock);
 
             while(_running){
                 PriorityHeapContent<uint32_t> *content;
@@ -36,10 +35,6 @@ namespace vt {
                 }
 
                 auto req = (TileRequest*)content;
-
-                if(lock.owns_lock()){
-                    lock.unlock();
-                }
 
                 ++_currentlyProcessing;
                 process(req);
