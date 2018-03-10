@@ -40,3 +40,20 @@ target_link_libraries(${PROJECT_NAME}
         optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
         ${ImageMagick_LIBRARIES}
         )
+
+# shader resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION share/lamure
+        FILES_MATCHING
+        PATTERN "*.glslv"
+        PATTERN "*.glslf")
+
+# material and geometry resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/primitives DESTINATION share/lamure
+        FILES_MATCHING
+        PATTERN "*.mtl"
+        PATTERN "*.obj")
+
+# material and geometry resources
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/fonts DESTINATION share/lamure
+        FILES_MATCHING
+        PATTERN "*.ttf")

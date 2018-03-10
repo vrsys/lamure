@@ -6,6 +6,7 @@
 #define LAMURE_CUT_H
 
 #include <lamure/vt/common.h>
+#include <lamure/vt/ooc/TileAtlas.h>
 #include <lamure/vt/ren/DoubleBuffer.h>
 namespace vt
 {
@@ -13,7 +14,7 @@ class CutDatabase;
 class CutState
 {
   public:
-    explicit CutState(CutDatabase *cut_db);
+    CutState(uint32_t _size_index_buffer);
     ~CutState();
 
     uint8_t *get_index();
@@ -23,7 +24,7 @@ class CutState
     void accept(CutState &cut_state);
 
   private:
-    const CutDatabase *_cut_db;
+    uint32_t _size_index_buffer;
 
     uint8_t *_index;
     cut_type _cut;
@@ -34,14 +35,34 @@ class CutState
 class Cut : public DoubleBuffer<CutState>
 {
   public:
-    explicit Cut(CutDatabase *cut_db, CutState *front, CutState *back);
+    static Cut& init_cut(const std::string &file_name);
     ~Cut() override{};
+
+    TileAtlas<priority_type> *get_atlas() const;
+    uint16_t get_max_depth() const;
+    uint32_t get_size_index_texture() const;
+
+    bool is_drawn() const;
+    void set_drawn(bool _drawn);
+
+    static uint32_t get_dataset_id(uint64_t cut_id);
+    static uint16_t get_view_id(uint64_t cut_id);
+    static uint16_t get_context_id(uint64_t cut_id);
 
   protected:
     void deliver() override;
 
   private:
-    const CutDatabase *_cut_db;
+    Cut(TileAtlas<priority_type> *atlas, uint16_t max_depth, uint32_t size_index_texture, CutState *front, CutState *back);
+
+    static uint16_t identify_max_depth(const std::string &file_name);
+    static uint32_t identify_size_index_texture(uint64_t max_depth) { return (uint32_t)std::pow(2, max_depth); }
+
+    TileAtlas<priority_type> *_atlas;
+    uint16_t _max_depth;
+    uint32_t _size_index_texture;
+
+    bool _drawn;
 };
 }
 

@@ -14,7 +14,7 @@ typedef std::set<id_type> id_set_type;
 class CutUpdate
 {
   public:
-    explicit CutUpdate(TileAtlas<priority_type> *atlas);
+    explicit CutUpdate();
     ~CutUpdate();
 
     void start();
@@ -26,14 +26,12 @@ class CutUpdate
     void set_freeze_dispatch(bool _freeze_dispatch);
     bool get_freeze_dispatch();
 
-    CutDatabase *get_cut_db();
 private:
     std::thread _worker;
     std::mutex _dispatch_lock;
     std::condition_variable _cv;
     std::atomic<bool> _new_feedback;
 
-    TileAtlas<priority_type> *_atlas;
     VTConfig *_config;
     CutDatabase *_cut_db;
 

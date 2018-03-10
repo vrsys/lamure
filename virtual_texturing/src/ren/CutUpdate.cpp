@@ -3,12 +3,11 @@
 
 namespace vt
 {
-CutUpdate::CutUpdate(TileAtlas<priority_type> *atlas) : _dispatch_lock(), _dispatch_time()
+CutUpdate::CutUpdate() : _dispatch_lock(), _dispatch_time()
 {
     _should_stop.store(false);
     _new_feedback.store(false);
     _feedback_buffer = nullptr;
-    _atlas = atlas;
 
     _config = &VTConfig::get_instance();
     _cut_db = &CutDatabase::get_instance();
@@ -16,19 +15,7 @@ CutUpdate::CutUpdate(TileAtlas<priority_type> *atlas) : _dispatch_lock(), _dispa
 
 CutUpdate::~CutUpdate() {}
 
-void CutUpdate::start()
-{
-    _atlas->get(0, 100);
-    _atlas->wait();
-    auto *root_tile = _atlas->get(0, 100);
-
-    // TODO: id assignment
-    Cut *cut = _cut_db->start_writing_cut(0);
-    add_to_indexed_memory(cut, 0, root_tile);
-    _cut_db->stop_writing_cut(0);
-
-    _worker = std::thread(&CutUpdate::run, this);
-}
+void CutUpdate::start() { _worker = std::thread(&CutUpdate::run, this); }
 
 void CutUpdate::run()
 {
@@ -84,6 +71,18 @@ void CutUpdate::dispatch()
 
         Cut *cut = _cut_db->start_writing_cut(cut_entry.first);
 
+        if(!cut->is_drawn())
+        {
+            cut->get_atlas()->get(0, 100);
+            cut->get_atlas()->wait();
+            auto *root_tile = cut->get_atlas()->get(0, 100);
+
+            add_to_indexed_memory(cut, 0, root_tile);
+            _cut_db->stop_writing_cut(cut_entry.first);
+
+            cut->set_drawn(true);
+        }
+
         /* FEEDBACK PROPAGATION PASS */
 
         cut_type cut_desired = cut_type(cut->get_back()->get_cut());
@@ -128,7 +127,7 @@ void CutUpdate::dispatch()
             id_type parent_id = QuadTree::get_parent_id(tile_id);
             auto iter_parent = map_feedback_prop.find(parent_id);
 
-            if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < _config->get_depth_quadtree() && split_counter < split_budget)
+            if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < cut->get_max_depth() && split_counter < split_budget)
             {
                 split_counter++;
 
@@ -267,7 +266,7 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
     uint_fast32_t x_orig, y_orig;
     QuadTree::get_pos_by_id(tile_id, x_orig, y_orig);
     uint16_t tile_depth = QuadTree::get_depth_of_node(tile_id);
-    uint32_t tile_span = _config->get_size_index_texture() >> tile_depth;
+    uint32_t tile_span = cut->get_size_index_texture() >> tile_depth;
 
     size_t phys_tex_tile_width = _config->get_phys_tex_tile_width();
     size_t tiles_per_tex = phys_tex_tile_width * phys_tex_tile_width;
@@ -276,7 +275,7 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
     {
         for(size_t y = y_orig * tile_span; y < (y_orig + 1) * tile_span; y++)
         {
-            uint8_t *ptr = &cut->get_back()->get_index()[(y * _config->get_size_index_texture() + x) * 4];
+            uint8_t *ptr = &cut->get_back()->get_index()[(y * cut->get_size_index_texture() + x) * 4];
 
             size_t level = mem_slot->position / tiles_per_tex;
             size_t rel_pos = mem_slot->position - level * tiles_per_tex;
@@ -310,7 +309,7 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
 
 bool CutUpdate::collapse_to_id(Cut *cut, id_type tile_id)
 {
-    uint8_t *tile_ptr = _atlas->get(tile_id, 100);
+    uint8_t *tile_ptr = cut->get_atlas()->get(tile_id, 100);
 
     if(tile_ptr == nullptr)
     {
@@ -340,7 +339,7 @@ bool CutUpdate::split_id(Cut *cut, id_type tile_id)
     for(size_t n = 0; n < 4; n++)
     {
         auto child_id = QuadTree::get_child_id(tile_id, n);
-        auto tile_ptr = _atlas->get(child_id, 100);
+        auto tile_ptr = cut->get_atlas()->get(child_id, 100);
 
         if(tile_ptr == nullptr)
         {
@@ -356,7 +355,7 @@ bool CutUpdate::split_id(Cut *cut, id_type tile_id)
         for(size_t n = 0; n < 4; n++)
         {
             auto child_id = QuadTree::get_child_id(tile_id, n);
-            auto tile_ptr = _atlas->get(child_id, 100);
+            auto tile_ptr = cut->get_atlas()->get(child_id, 100);
 
             if(tile_ptr == nullptr)
             {
@@ -374,7 +373,7 @@ bool CutUpdate::split_id(Cut *cut, id_type tile_id)
 }
 bool CutUpdate::keep_id(Cut *cut, id_type tile_id)
 {
-    auto tile_ptr = _atlas->get(tile_id, 100);
+    auto tile_ptr = cut->get_atlas()->get(tile_id, 100);
     if(tile_ptr == nullptr)
     {
         throw std::runtime_error("kept tile #" + std::to_string(tile_id) + "not found in RAM");
@@ -425,5 +424,4 @@ bool CutUpdate::check_all_siblings_in_cut(id_type tile_id, const cut_type &cut)
 const float &CutUpdate::get_dispatch_time() const { return _dispatch_time; }
 void CutUpdate::set_freeze_dispatch(bool _freeze_dispatch) { CutUpdate::_freeze_dispatch = _freeze_dispatch; }
 bool CutUpdate::get_freeze_dispatch() { return _freeze_dispatch; }
-CutDatabase *CutUpdate::get_cut_db() { return _cut_db; }
 }

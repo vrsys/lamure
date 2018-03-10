@@ -1,3 +1,4 @@
+#include "VTRenderer.h"
 #include <GLFW/glfw3.h>
 #include <atomic>
 #include <boost/assign/list_of.hpp>
@@ -7,8 +8,8 @@
 #include <iostream>
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/ooc/TileAtlas.h>
+#include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
-#include <lamure/vt/ren/VTRenderer.h>
 #include <queue>
 #include <unordered_map>
 
@@ -139,28 +140,26 @@ bool should_close()
 
 int main(int argc, char *argv[])
 {
-    if(argc == 1 || !cmd_option_exists(argv, argv + argc, "-c"))
+    if(argc == 1 || !cmd_option_exists(argv, argv + argc, "-c") || !cmd_option_exists(argv, argv + argc, "-f"))
     {
-        std::cout << "Preprocessing in-core: " << argv[0] << " <flags> -p <raster> -c <config>" << std::endl;
-        std::cout << "Preprocessing out-of-core: " << argv[0] << " <flags> -m -c <config>" << std::endl;
-        std::cout << "Texturing context: " << argv[0] << " <flags> -c <config>" << std::endl;
+        std::cout << "Texturing context: " << argv[0] << " <flags> -c <config> -f <*.atlas.data>" << std::endl;
         return -1;
     }
 
     std::string file_config = std::string(get_cmd_option(argv, argv + argc, "-c"));
+    std::string file_atlas = std::string(get_cmd_option(argv, argv + argc, "-f"));
 
     vt::VTConfig::CONFIG_PATH = file_config;
+    vt::VTConfig::get_instance().define_size_physical_texture(16, 256000);
 
-    std::string file_atlas = vt::VTConfig::get_instance().get_name_mipmap() + ".data";
+    uint32_t data_id = vt::CutDatabase::get_instance().register_dataset(file_atlas);
+    uint16_t view_id = vt::CutDatabase::get_instance().register_view();
+    uint16_t primary_context_id = vt::CutDatabase::get_instance().register_context();
 
-    if(access((file_atlas).c_str(), F_OK) != -1)
-    {
-        std::runtime_error("Mipmap file not found: " + vt::VTConfig::get_instance().get_name_mipmap());
-    }
+    uint64_t cut_id = vt::CutDatabase::get_instance().register_cut(data_id, view_id, primary_context_id);
 
-    uint32_t size_tile = vt::VTConfig::get_instance().get_size_tile();
-
-    auto *atlas = new vt::TileAtlas<vt::priority_type>(file_atlas, size_tile * size_tile * vt::VTConfig::get_instance().get_byte_stride());
+    auto *cut_update = new vt::CutUpdate();
+    cut_update->start();
 
     glfwSetErrorCallback(EventHandler::on_error);
 
@@ -176,27 +175,27 @@ int main(int argc, char *argv[])
 
     glfwSwapInterval(1);
 
-    auto *cut_update = new vt::CutUpdate(atlas);
-    cut_update->start();
+    auto *vtrenderer = new vt::VTRenderer(cut_update);
 
-    // TODO: remove clutch
-    auto *vtrenderer = new vt::VTRenderer(cut_update, 600, 600);
+    vtrenderer->add_data(cut_id, data_id, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth.obj");
+    vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, 0.5f);
+    vtrenderer->add_context(primary_context_id);
+
+    scm::gl::trackball_manipulator trackball_manipulator;
+    trackball_manipulator.dolly(2.5f);
 
     while(!should_close())
     {
-        // TODO: prepare draw
-
         glfwPollEvents();
 
         for(const auto &window : _windows)
         {
             make_context_current(window);
 
-            // TODO: draw window specific
-
             if(window == primary_window)
             {
-                vtrenderer->render();
+                vtrenderer->update_view(view_id, window->_width, window->_height, 0.5f, trackball_manipulator.transform_matrix());
+                vtrenderer->render(data_id, view_id, primary_context_id);
             }
             else
             {
