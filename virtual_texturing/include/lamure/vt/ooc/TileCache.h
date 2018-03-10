@@ -1,240 +1,119 @@
 //
-// Created by sebastian on 21.11.17.
+// Created by sebastian on 06.03.18.
 //
 
-#ifndef TILE_PROVIDER_TILECACHE_H
-#define TILE_PROVIDER_TILECACHE_H
+#ifndef VT_OOC_TILECACHE_H
+#define VT_OOC_TILECACHE_H
 
-#include <iomanip>
+#include <cstddef>
+#include <cstdint>
+#include <mutex>
 #include <iostream>
-#include <lamure/vt/ooc/AbstractBuffer.h>
-#include <lamure/vt/ooc/TileRequest.h>
-#include <map>
+#include <lamure/vt/ProrityHeap.h>
+#include <lamure/vt/pre/AtlasFile.h>
 
-using namespace std;
+namespace vt {
+    namespace ooc {
+        class TileCache;
 
-namespace vt
-{
-typedef uint64_t id_type;
-typedef uint64_t time_type;
+        class TileCacheSlot : public PriorityHeapContent<uint64_t> {
+        public:
+            enum STATE{
+                FREE = 1,
+                WRITING,
+                READING,
+                OCCUPIED
+            };
 
-class TileCacheContent : public PriorityQueueContent<time_type>
-{
-  protected:
-    id_type _id;
-    AbstractBufferSlot<TileCacheContent *> *_slot;
-    bool _empty;
+        protected:
+            STATE _state;
+            uint8_t *_buffer;
+            size_t _size;
+            size_t _id;
+            //assoc_data_type _assocData;
 
-  public:
-    TileCacheContent() : PriorityQueueContent<time_type>()
-    {
-        _id = 0;
-        _slot = nullptr;
-        _empty = true;
+            AtlasFile *_resource;
+            uint64_t _tileId;
+
+            TileCache *_cache;
+
+
+        public:
+            TileCacheSlot();
+
+            ~TileCacheSlot();
+
+            bool hasState(STATE state);
+
+            void setTileId(uint64_t tileId);
+
+            uint64_t getTileId();
+
+            void setCache(TileCache *cache);
+
+            void setState(STATE state);
+
+            void setId(size_t id);
+
+            size_t getId();
+
+            void setBuffer(uint8_t *buffer);
+
+            uint8_t *getBuffer();
+
+            void setSize(size_t size);
+
+            size_t getSize();
+
+            void updateLastUsed();
+
+            uint64_t getLastUsed();
+
+            /*void setAssocData(assoc_data_type assocData);
+
+            assoc_data_type getAssocData();*/
+
+            void removeFromLRU();
+
+            void setResource(AtlasFile* res);
+
+            AtlasFile *getResource();
+
+            void removeFromIDS();
+        };
+
+        class TileCache {
+        protected:
+            typedef TileCacheSlot slot_type;
+
+            size_t _tileByteSize;
+            size_t _slotCount;
+            uint8_t *_buffer;
+            slot_type *_slots;
+            std::mutex *_locks;
+
+            PriorityHeap<uint64_t> _leastRecentlyUsed;
+
+            std::mutex _idsLock;
+            std::map<std::pair<AtlasFile *, uint64_t>, slot_type *> _ids;
+
+        public:
+            TileCache(size_t tileByteSize, size_t slotCount);
+
+            slot_type *readSlotById(AtlasFile *resource, uint64_t id);
+
+            slot_type *writeSlot(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
+
+            void setSlotReady(slot_type *slot);
+
+            void unregisterId(AtlasFile *resource, uint64_t id);
+
+            ~TileCache();
+
+            void print();
+        };
     }
-
-    void setId(id_type id) { _id = id; }
-
-    id_type getId() { return _id; }
-
-    void setSlot(AbstractBufferSlot<TileCacheContent *> *slot) { _slot = slot; }
-
-    AbstractBufferSlot<TileCacheContent *> *getSlot() { return _slot; }
-
-    void setEmpty(bool empty = true) { _empty = empty; }
-
-    bool isEmpty() { return _empty; }
-
-    static TileCacheContent *empty() { return new TileCacheContent(); }
-};
-
-class TileCache : public AbstractBuffer<TileCacheContent *>
-{
-  protected:
-    typedef time_type priority_type;
-    typedef AbstractBufferSlot<TileCacheContent *> slot_type;
-
-    alignas(CACHELINE_SIZE) PriorityQueue<priority_type> _free;
-
-    alignas(CACHELINE_SIZE) mutex _newTileLock;
-    alignas(CACHELINE_SIZE) condition_variable _newTile;
-
-    alignas(CACHELINE_SIZE) mutex _idsLock;
-    alignas(CACHELINE_SIZE) map<id_type, slot_type *> _ids;
-
-  public:
-    explicit TileCache(size_t slotSize, size_t slotCount) : AbstractBuffer<TileCacheContent *>(slotSize, slotCount)
-    {
-        for(size_t i = 0; i < this->_slotCount; ++i)
-        {
-            auto slot = &this->_slots[i];
-            auto content = TileCacheContent::empty();
-            content->setSlot(slot);
-            slot->setAssocData(content);
-
-            auto temp = (PriorityQueueContent<priority_type> *)content;
-
-            _free.push(temp);
-        }
-    }
-
-    virtual void slotStateChange(slot_type *slot, typename slot_type::STATE oldState, typename slot_type::STATE newState) {}
-
-    slot_type *getFreeSlot(chrono::milliseconds maxTime = chrono::milliseconds::zero())
-    {
-        PriorityQueueContent<priority_type> *tile;
-
-        if(!_free.popLeast(tile, maxTime))
-        {
-            return nullptr;
-        }
-
-        auto slot = ((TileCacheContent *)tile)->getSlot();
-
-        if(!((TileCacheContent *)tile)->isEmpty())
-        {
-            removeTileId(slot->getAssocData()->getId(), slot);
-        }
-
-        slot->_setState(slot_type::STATE::WRITING);
-        ((TileCacheContent *)tile)->setEmpty();
-
-        return slot;
-    }
-
-    virtual slot_type *getReadySlot(chrono::milliseconds maxTime)
-    {
-        /*PriorityQueueContent<priority_type> *req;
-
-        if(!_ready.pop(req, maxTime)){
-            return nullptr;
-        }
-
-        return ((TileRequest<priority_type>*)req)->getSlot();*/
-
-        return nullptr;
-    }
-
-    virtual void insertTileId(id_type id, slot_type *slot)
-    {
-        lock_guard<mutex> lock(_idsLock);
-        _ids.insert(pair<id_type, slot_type *>(id, slot));
-    }
-
-    virtual void removeTileId(id_type id, slot_type *slot)
-    {
-        lock_guard<mutex> lock(_idsLock);
-        typename map<id_type, slot_type *>::iterator iter = _ids.find(id);
-
-        if(iter == _ids.end())
-        {
-            return;
-        }
-
-        if(iter->second == slot)
-        {
-            _ids.erase(iter);
-        }
-    }
-
-    virtual slot_type *getSlotByTileId(id_type id)
-    {
-        lock_guard<mutex> lock(_idsLock);
-        typename map<id_type, slot_type *>::iterator iter = _ids.find(id);
-
-        if(iter == _ids.end())
-        {
-            return nullptr;
-        }
-
-        slot_type *slot = iter->second;
-        auto req = slot->getAssocData();
-
-        if(slot->_setState(slot_type::STATE::READING))
-        {
-            req->remove();
-            return slot;
-        }
-
-        return nullptr;
-    }
-
-    virtual bool slotReady(slot_type *slot)
-    {
-        if(AbstractBuffer<TileCacheContent *>::slotFree(slot))
-        {
-            auto tile = slot->getAssocData();
-            auto content = (PriorityQueueContent<priority_type> *)tile;
-
-            tile->setPriority(chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count());
-
-            // cout << tile->getId() << endl;
-
-            insertTileId(tile->getId(), slot);
-            _free.push(content);
-            _newTile.notify_all();
-
-            return true;
-        }
-
-        return false;
-    }
-
-    virtual bool slotFree(slot_type *slot)
-    {
-        if(AbstractBuffer<TileCacheContent *>::slotFree(slot))
-        {
-            PriorityQueueContent<priority_type> *tile = slot->getAssocData();
-            _free.push(tile);
-            return true;
-        }
-
-        return false;
-    }
-
-    uint8_t *get(id_type id)
-    {
-        auto slot = getSlotByTileId(id);
-
-        if(slot == nullptr)
-        {
-            return nullptr;
-        }
-
-        return slot->getPointer();
-    }
-
-    void unget(id_type id)
-    {
-        lock_guard<mutex> lock(_idsLock);
-        map<id_type, AbstractBufferSlot<TileCacheContent *> *>::iterator iter = _ids.find(id);
-
-        if(iter == _ids.end())
-        {
-            return;
-        }
-
-        auto slot = iter->second;
-        slotFree(slot);
-    }
-
-    void print()
-    {
-        cout << "TileCache" << endl;
-        ios::fmtflags f(cout.flags());
-        for(size_t i = 0; i < this->_slotCount; ++i)
-        {
-            auto slot = &this->_slots[i];
-            cout << "[" << setw(sizeof(id_type) * 2) << slot->getAssocData()->getId() << "|" << (_free.contains(slot->getAssocData()) ? " " : "X") << "] ";
-
-            if(i % 4 == 3)
-            {
-                cout << endl;
-            }
-        }
-        cout.flags(f);
-    }
-};
 }
 
-#endif // TILE_PROVIDER_TILECACHE_H
+
+#endif //TILE_PROVIDER_TILECACHE_H
