@@ -60,7 +60,7 @@ namespace vt{
             std::unique_lock<std::mutex> lock(_lock);
 
             if(_map.empty()){
-                return;
+                return true;
             }
 
             _allRequestsProcessed.wait_for(lock, maxTime, [this]{
