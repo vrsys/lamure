@@ -81,11 +81,11 @@ namespace vt {
             PriorityHeapContent<uint64_t>::remove();
         }
 
-        void TileCacheSlot::setResource(AtlasFile* res){
+        void TileCacheSlot::setResource(pre::AtlasFile* res){
             _resource = res;
         }
 
-        AtlasFile *TileCacheSlot::getResource(){
+        pre::AtlasFile *TileCacheSlot::getResource(){
             return _resource;
         }
 
@@ -116,7 +116,7 @@ namespace vt {
             }
         }
 
-        slot_type *TileCache::readSlotById(AtlasFile *resource, uint64_t id){
+        slot_type *TileCache::readSlotById(pre::AtlasFile *resource, uint64_t id){
             std::lock_guard<std::mutex> lock(_idsLock);
 
             auto iter = _ids.find(std::make_pair(resource, id));
@@ -165,7 +165,7 @@ namespace vt {
             _leastRecentlyUsed.push(slot->getPriority(), slot);
         }
 
-        void TileCache::unregisterId(AtlasFile *resource, uint64_t id){
+        void TileCache::unregisterId(pre::AtlasFile *resource, uint64_t id){
             _ids.erase(std::make_pair(resource, id));
         }
 

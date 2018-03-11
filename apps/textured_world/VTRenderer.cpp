@@ -53,7 +53,7 @@ void VTRenderer::init()
 
 void VTRenderer::add_data(uint64_t cut_id, uint32_t dataset_id, const string &file_geometry)
 {
-    uint32_t size_index_texture = (*CutDatabase::get_instance().get_cut_map())[cut_id]->get_size_index_texture();
+    uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row((*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth() -1);
 
     dataset_resource *resource = new dataset_resource();
 
@@ -108,7 +108,7 @@ void VTRenderer::update_view(uint16_t view_id, uint32_t width, uint32_t height, 
 void VTRenderer::render(uint32_t data_id, uint16_t view_id, uint16_t context_id)
 {
     uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)view_id);
-    uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[cut_id]->get_max_depth();
+    uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth();
 
     scm::math::mat4f projection_matrix = scm::math::mat4f::identity();
     scm::math::perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);

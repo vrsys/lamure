@@ -6,6 +6,7 @@
 #define VT_PRIORITYHEAP_H
 
 #include <atomic>
+#include <mutex>
 #include <lamure/vt/FibonacciHeap.h>
 
 namespace vt {
@@ -50,7 +51,7 @@ namespace vt {
         }
 
         void reinsert(key_type key){
-            lock_guard<mutex> lock(this->_lock);
+            std::lock_guard<std::mutex> lock(this->_lock);
 
             auto root = (PriorityHeap<priority_type>*)this->_getRoot();
             this->_cut();
@@ -142,7 +143,7 @@ namespace vt {
     void PriorityHeap<priority_type>::push(priority_type key, PriorityHeapContent<priority_type> *value){
         auto heap = new PriorityHeap<priority_type>(key, value);
 
-        unique_lock<mutex> lock(this->_lock);
+        std::unique_lock<std::mutex> lock(this->_lock);
 
         bool newEntry = (this->_size == 0);
 

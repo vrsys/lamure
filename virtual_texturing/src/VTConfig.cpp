@@ -18,6 +18,7 @@ void VTConfig::read_config(const char *path_config)
     _size_padding = (uint16_t)atoi(ini_config->GetValue(VTConfig::TEXTURE_MANAGEMENT, VTConfig::TILE_PADDING, VTConfig::UNDEF));
     _size_physical_texture = (uint32_t)atoi(ini_config->GetValue(VTConfig::TEXTURE_MANAGEMENT, VTConfig::PHYSICAL_SIZE_MB, VTConfig::UNDEF));
     _size_physical_update_throughput = (uint32_t)atoi(ini_config->GetValue(VTConfig::TEXTURE_MANAGEMENT, VTConfig::PHYSICAL_UPDATE_THROUGHPUT_MB, VTConfig::UNDEF));
+    _size_ram_cache = (uint32_t)atoi(ini_config->GetValue(VTConfig::TEXTURE_MANAGEMENT, VTConfig::RAM_CACHE_SIZE_MB, VTConfig::UNDEF));
     _format_texture = VTConfig::which_texture_format(ini_config->GetValue(VTConfig::TEXTURE_MANAGEMENT, VTConfig::TEXTURE_FORMAT, VTConfig::UNDEF));
     _verbose = atoi(ini_config->GetValue(VTConfig::DEBUG, VTConfig::VERBOSE, VTConfig::UNDEF)) == 1;
 }
@@ -79,4 +80,8 @@ const VTConfig::FORMAT_TEXTURE VTConfig::which_texture_format(const char *_textu
     }
     throw std::runtime_error("Unknown texture format");
 }
+
+    uint32_t VTConfig::get_size_ram_cache() const {
+        return _size_ram_cache;
+    }
 }

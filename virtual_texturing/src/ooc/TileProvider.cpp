@@ -31,8 +31,8 @@ namespace vt{
             _loader.start();
         }
 
-        AtlasFile *TileProvider::addResource(const char *fileName){
-            auto atlas = new AtlasFile(fileName);
+        pre::AtlasFile *TileProvider::addResource(const char *fileName){
+            auto atlas = new pre::AtlasFile(fileName);
             auto tileByteSize = atlas->getTileByteSize();
 
             if(tileByteSize > _tileByteSize){
@@ -44,7 +44,7 @@ namespace vt{
             return atlas;
         }
 
-        TileCacheSlot *TileProvider::getTile(AtlasFile *resource, id_type id, priority_type priority){
+        TileCacheSlot *TileProvider::getTile(pre::AtlasFile *resource, id_type id, priority_type priority){
             if(_cache == nullptr){
                 throw std::runtime_error("Trying to retrieve Tile before starting TileProvider.");
             }

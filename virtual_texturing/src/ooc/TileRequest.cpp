@@ -2,15 +2,15 @@
 
 namespace vt{
     namespace ooc{
-        TileRequest::TileRequest() : PriorityHeapContent<uint32_t>(), seb::Observable() {
+        TileRequest::TileRequest() : PriorityHeapContent<uint32_t>(), Observable() {
             _resource = nullptr;
         }
 
-        void TileRequest::setResource(AtlasFile *resource){
+        void TileRequest::setResource(pre::AtlasFile *resource){
             _resource = resource;
         }
 
-        AtlasFile *TileRequest::getResource(){
+        pre::AtlasFile *TileRequest::getResource(){
             return _resource;
         }
 

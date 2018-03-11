@@ -6,7 +6,7 @@ namespace vt {
         auto eventIter = _events.find(event);
 
         if (eventIter == _events.end()) {
-            eventIter = _events.insert(pair<event_type, set<Observer*>>(event, set<Observer*>())).first;
+            eventIter = _events.insert(std::pair<event_type, std::set<Observer*>>(event, std::set<Observer*>())).first;
         }
 
         auto observerSet = eventIter->second;

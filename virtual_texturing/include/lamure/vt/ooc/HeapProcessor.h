@@ -19,9 +19,9 @@ namespace vt {
         protected:
             PriorityHeap<uint32_t> _requests;
 
-            atomic<bool> _running;
-            atomic<size_t> _currentlyProcessing;
-            thread *_thread;
+            std::atomic<bool> _running;
+            std::atomic<size_t> _currentlyProcessing;
+            std::thread *_thread;
 
             TileCache *_cache;
         public:

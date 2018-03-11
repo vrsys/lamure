@@ -2,7 +2,7 @@
 
 namespace vt{
     namespace ooc{
-        TileRequestMap::TileRequestMap() : seb::Observer() {
+        TileRequestMap::TileRequestMap() : Observer() {
 
         }
 
@@ -12,8 +12,8 @@ namespace vt{
             }
         }
 
-        TileRequest *TileRequestMap::getRequest(AtlasFile *resource, uint64_t id){
-            std::lock_guard<mutex> lock(_lock);
+        TileRequest *TileRequestMap::getRequest(pre::AtlasFile *resource, uint64_t id){
+            std::lock_guard<std::mutex> lock(_lock);
 
             auto iter = _map.find(std::make_pair(resource, id));
 
@@ -25,7 +25,7 @@ namespace vt{
         }
 
         bool TileRequestMap::insertRequest(TileRequest *req){
-            std::lock_guard<mutex> lock(_lock);
+            std::lock_guard<std::mutex> lock(_lock);
 
             auto resource = req->getResource();
             auto id = req->getId();
@@ -41,8 +41,8 @@ namespace vt{
             return false;
         }
 
-        void TileRequestMap::inform(seb::event_type event, seb::Observable *observable){
-            std::unique_lock<mutex> lock(_lock);
+        void TileRequestMap::inform(event_type event, Observable *observable){
+            std::unique_lock<std::mutex> lock(_lock);
             auto req = (TileRequest*)observable;
             _map.erase(std::make_pair(req->getResource(), req->getId()));
             delete req;

@@ -20,7 +20,7 @@ namespace vt{
 
         class TileProvider {
         protected:
-            std::set<AtlasFile*> _resources;
+            std::set<pre::AtlasFile*> _resources;
             TileRequestMap _requests;
             TileLoader _loader;
             TileCache *_cache;
@@ -33,9 +33,9 @@ namespace vt{
 
             void start(size_t maxMemSize);
 
-            AtlasFile *addResource(const char *fileName);
+            pre::AtlasFile *addResource(const char *fileName);
 
-            TileCacheSlot *getTile(AtlasFile *resource, id_type id, priority_type priority);
+            TileCacheSlot *getTile(pre::AtlasFile *resource, id_type id, priority_type priority);
 
             void ungetTile(TileCacheSlot *slot);
 

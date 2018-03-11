@@ -282,5 +282,17 @@ namespace vt{
         uint64_t AtlasFile::getPayloadOffset(){
             return _payloadOffset;
         }
+
+        uint64_t AtlasFile::getImageTiledWidth() {
+            return _imageTileWidth;
+        }
+
+        uint64_t AtlasFile::getImageTiledHeight() {
+            return _imageTileHeight;
+        }
+
+        const char *AtlasFile::getFileName() {
+            return _fileName;
+        }
     }
 }

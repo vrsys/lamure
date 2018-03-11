@@ -1,13 +1,9 @@
 #include "VTRenderer.h"
 #include <GLFW/glfw3.h>
 #include <atomic>
-#include <boost/assign/list_of.hpp>
 #include <condition_variable>
-#include <cstring>
 #include <fstream>
-#include <iostream>
 #include <lamure/vt/VTConfig.h>
-#include <lamure/vt/ooc/TileAtlas.h>
 #include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
 #include <queue>
@@ -158,6 +154,7 @@ int main(int argc, char *argv[])
 
     uint64_t cut_id = vt::CutDatabase::get_instance().register_cut(data_id, view_id, primary_context_id);
 
+    // Registration of resources has to happen before cut update start
     auto *cut_update = new vt::CutUpdate();
     cut_update->start();
 

@@ -16,6 +16,7 @@ CutDatabase::CutDatabase(mem_slots_type *front, mem_slots_type *back) : DoubleBu
     }
 
     _cut_map = cut_map_type();
+    _tile_provider = new ooc::TileProvider();
 }
 size_t CutDatabase::get_available_memory()
 {
@@ -99,7 +100,7 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
         throw std::runtime_error("Requested context id not registered");
     }
 
-    Cut *cut = &Cut::init_cut(_dataset_map[dataset_id]);
+    Cut *cut = &Cut::init_cut(_tile_provider->addResource(_dataset_map[dataset_id].c_str()));
 
     uint64_t id = (((uint64_t)dataset_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)view_id);
 
@@ -107,4 +108,6 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
 
     return id;
 }
+
+ooc::TileProvider *CutDatabase::get_tile_provider() const { return _tile_provider; }
 }

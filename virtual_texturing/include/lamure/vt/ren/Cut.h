@@ -6,7 +6,7 @@
 #define LAMURE_CUT_H
 
 #include <lamure/vt/common.h>
-#include <lamure/vt/ooc/TileAtlas.h>
+#include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/ren/DoubleBuffer.h>
 namespace vt
 {
@@ -35,12 +35,10 @@ class CutState
 class Cut : public DoubleBuffer<CutState>
 {
   public:
-    static Cut& init_cut(const std::string &file_name);
+    static Cut& init_cut(pre::AtlasFile * atlas);
     ~Cut() override{};
 
-    TileAtlas<priority_type> *get_atlas() const;
-    uint16_t get_max_depth() const;
-    uint32_t get_size_index_texture() const;
+    pre::AtlasFile *get_atlas() const;
 
     bool is_drawn() const;
     void set_drawn(bool _drawn);
@@ -53,15 +51,9 @@ class Cut : public DoubleBuffer<CutState>
     void deliver() override;
 
   private:
-    Cut(TileAtlas<priority_type> *atlas, uint16_t max_depth, uint32_t size_index_texture, CutState *front, CutState *back);
+    Cut(pre::AtlasFile *atlas, CutState *front, CutState *back);
 
-    static uint16_t identify_max_depth(const std::string &file_name);
-    static uint32_t identify_size_index_texture(uint64_t max_depth) { return (uint32_t)std::pow(2, max_depth); }
-
-    TileAtlas<priority_type> *_atlas;
-    uint16_t _max_depth;
-    uint32_t _size_index_texture;
-
+    pre::AtlasFile *_atlas;
     bool _drawn;
 };
 }

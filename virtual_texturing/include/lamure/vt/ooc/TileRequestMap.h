@@ -15,7 +15,7 @@ namespace vt{
     namespace ooc{
         class TileRequestMap : public Observer {
         protected:
-            std::map<std::pair<AtlasFile*, uint64_t>, TileRequest*> _map;
+            std::map<std::pair<pre::AtlasFile*, uint64_t>, TileRequest*> _map;
             std::mutex _lock;
 
             std::condition_variable _allRequestsProcessed;
@@ -25,11 +25,11 @@ namespace vt{
 
             ~TileRequestMap();
 
-            TileRequest *getRequest(AtlasFile *resource, uint64_t id);
+            TileRequest *getRequest(pre::AtlasFile *resource, uint64_t id);
 
             bool insertRequest(TileRequest *req);
 
-            void inform(seb::event_type event, seb::Observable *observable);
+            void inform(event_type event, Observable *observable);
 
             bool waitUntilEmpty(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
         };

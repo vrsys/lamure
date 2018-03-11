@@ -11,7 +11,7 @@ namespace vt {
 
     class Observable {
     protected:
-        map<event_type, set<Observer*>> _events;
+        std::map<event_type, std::set<Observer*>> _events;
     public:
         Observable() = default;
 

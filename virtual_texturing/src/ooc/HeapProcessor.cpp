@@ -21,7 +21,7 @@ namespace vt {
             }
 
             _running = true;
-            _thread = new thread(&HeapProcessor::run, this);
+            _thread = new std::thread(&HeapProcessor::run, this);
         }
 
         void HeapProcessor::run(){

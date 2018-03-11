@@ -4,7 +4,6 @@
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/common.h>
 #include <lamure/vt/VTConfig.h>
-#include <lamure/vt/ooc/TileAtlas.h>
 #include <lamure/vt/ren/Cut.h>
 
 namespace vt

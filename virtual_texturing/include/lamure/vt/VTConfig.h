@@ -65,6 +65,8 @@ class VTConfig
     uint16_t get_size_padding() const;
     uint32_t get_size_physical_update_throughput() const;
 
+    uint32_t get_size_ram_cache() const;
+
     FORMAT_TEXTURE get_format_texture() const;
     bool is_verbose() const;
 
@@ -84,6 +86,7 @@ class VTConfig
     static constexpr const char *TILE_PADDING = "TILE_PADDING";
     static constexpr const char *PHYSICAL_SIZE_MB = "PHYSICAL_SIZE_MB";
     static constexpr const char *PHYSICAL_UPDATE_THROUGHPUT_MB = "PHYSICAL_UPDATE_THROUGHPUT_MB";
+    static constexpr const char *RAM_CACHE_SIZE_MB = "RAM_CACHE_SIZE_MB";
 
     static constexpr const char *TEXTURE_FORMAT = "TEXTURE_FORMAT";
     static constexpr const char *TEXTURE_FORMAT_RGBA8 = "RGBA8";
@@ -102,6 +105,7 @@ class VTConfig
     uint16_t _size_padding;
     uint32_t _size_physical_texture;
     uint32_t _size_physical_update_throughput;
+    uint32_t _size_ram_cache;
 
     VTConfig::FORMAT_TEXTURE _format_texture;
     bool _verbose;

@@ -32,7 +32,7 @@ namespace vt {
             size_t _id;
             //assoc_data_type _assocData;
 
-            AtlasFile *_resource;
+            pre::AtlasFile *_resource;
             uint64_t _tileId;
 
             TileCache *_cache;
@@ -75,9 +75,9 @@ namespace vt {
 
             void removeFromLRU();
 
-            void setResource(AtlasFile* res);
+            void setResource(pre::AtlasFile* res);
 
-            AtlasFile *getResource();
+            pre::AtlasFile *getResource();
 
             void removeFromIDS();
         };
@@ -95,18 +95,18 @@ namespace vt {
             PriorityHeap<uint64_t> _leastRecentlyUsed;
 
             std::mutex _idsLock;
-            std::map<std::pair<AtlasFile *, uint64_t>, slot_type *> _ids;
+            std::map<std::pair<pre::AtlasFile *, uint64_t>, slot_type *> _ids;
 
         public:
             TileCache(size_t tileByteSize, size_t slotCount);
 
-            slot_type *readSlotById(AtlasFile *resource, uint64_t id);
+            slot_type *readSlotById(pre::AtlasFile *resource, uint64_t id);
 
             slot_type *writeSlot(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
 
             void setSlotReady(slot_type *slot);
 
-            void unregisterId(AtlasFile *resource, uint64_t id);
+            void unregisterId(pre::AtlasFile *resource, uint64_t id);
 
             ~TileCache();
 

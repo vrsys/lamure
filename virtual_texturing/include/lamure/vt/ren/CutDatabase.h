@@ -5,7 +5,7 @@
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/common.h>
 #include <lamure/vt/ren/Cut.h>
-#include <lamure/vt/ooc/TileAtlas.h>
+#include <lamure/vt/ooc/TileProvider.h>
 namespace vt
 {
 class VTContext;
@@ -46,7 +46,9 @@ class CutDatabase : public DoubleBuffer<mem_slots_type>
 
     cut_map_type *get_cut_map();
 
-  protected:
+    ooc::TileProvider *get_tile_provider() const;
+
+protected:
     explicit CutDatabase(mem_slots_type *front, mem_slots_type *back);
 
     void deliver() override;
@@ -60,6 +62,8 @@ class CutDatabase : public DoubleBuffer<mem_slots_type>
     view_set_type _view_set;
     context_set_type _context_set;
     cut_map_type _cut_map;
+
+    ooc::TileProvider * _tile_provider;
 };
 }
 

@@ -14,15 +14,15 @@ namespace vt{
     namespace ooc{
         class TileRequest : public PriorityHeapContent<uint32_t>, public Observable {
         protected:
-            AtlasFile *_resource;
+            pre::AtlasFile *_resource;
             uint64_t _id;
 
         public:
             explicit TileRequest();
 
-            void setResource(AtlasFile *resource);
+            void setResource(pre::AtlasFile *resource);
 
-            AtlasFile *getResource();
+            pre::AtlasFile *getResource();
 
             void setId(uint64_t id);
 

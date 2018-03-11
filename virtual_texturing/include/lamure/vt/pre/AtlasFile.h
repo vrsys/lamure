@@ -73,6 +73,8 @@ namespace vt{
             uint32_t getDepth();
             uint64_t getImageWidth();
             uint64_t getImageHeight();
+            uint64_t getImageTiledWidth();
+            uint64_t getImageTiledHeight();
             uint64_t getTileWidth();
             uint64_t getTileHeight();
             uint64_t getInnerTileWidth();
@@ -84,6 +86,8 @@ namespace vt{
             uint64_t getPayloadOffset();
             Bitmap::PIXEL_FORMAT getPixelFormat();
             LAYOUT getFormat();
+
+            const char * getFileName();
 
             bool getTile(uint64_t id, uint8_t *out);
             float getCielabValue(uint64_t id);
