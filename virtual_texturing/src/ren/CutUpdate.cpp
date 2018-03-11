@@ -78,19 +78,20 @@ void CutUpdate::dispatch()
         if(!cut->is_drawn())
         {
             _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
-            /*if(!_cut_db->get_tile_provider()->wait(std::chrono::milliseconds(10000)))
+
+            if(!_cut_db->get_tile_provider()->wait(std::chrono::milliseconds(1000)))
             {
                 throw std::runtime_error("Root tile not loaded for atlas: " + std::string(cut->get_atlas()->getFileName()));
-            }*/
-
-            ooc::TileCacheSlot *slot = nullptr;
-
-            while(slot == nullptr){
-                slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
-            //ooc::TileCacheSlot *slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
+            //ooc::TileCacheSlot *slot = nullptr;
+
+            /*while(slot == nullptr){
+                slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }*/
+
+            ooc::TileCacheSlot *slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
 
             if(slot == nullptr)
             {

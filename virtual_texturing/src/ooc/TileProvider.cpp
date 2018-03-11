@@ -46,7 +46,7 @@ namespace vt{
 
         TileCacheSlot *TileProvider::getTile(pre::AtlasFile *resource, id_type id, priority_type priority){
             if(_cache == nullptr){
-                throw std::runtime_error("Trying to retrieve Tile before starting TileProvider.");
+                throw std::runtime_error("Trying to get Tile before starting TileProvider.");
             }
 
             auto slot = _cache->readSlotById(resource, id);
@@ -90,6 +90,22 @@ namespace vt{
 
         bool TileProvider::wait(std::chrono::milliseconds maxTime){
             return _requests.waitUntilEmpty(maxTime);
+        }
+
+        bool TileProvider::ungetTile(AtlasFile *resource, id_type id) {
+            if(_cache == nullptr){
+                throw std::runtime_error("Trying to unget Tile before starting TileProvider.");
+            }
+
+            auto slot = _cache->readSlotById(resource, id);
+
+            if(slot == nullptr){
+                return false;
+            }
+
+            ungetTile(slot);
+
+            return true;
         }
     }
 }
