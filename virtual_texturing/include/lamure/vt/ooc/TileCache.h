@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <mutex>
 #include <iostream>
-#include <lamure/vt/ProrityHeap.h>
+#include <lamure/vt/PriorityHeap.h>
 #include <lamure/vt/pre/AtlasFile.h>
 
 namespace vt {

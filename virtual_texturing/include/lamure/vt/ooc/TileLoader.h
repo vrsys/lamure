@@ -2,8 +2,8 @@
 // Created by sebastian on 10.03.18.
 //
 
-#ifndef VT_OOC_TILELOADER_H
-#define VT_OOC_TILELOADER_H
+#ifndef VT_OOC_HEAPPROCESSOR_H
+#define VT_OOC_HEAPPROCESSOR_H
 
 #include <lamure/vt/ooc/HeapProcessor.h>
 
