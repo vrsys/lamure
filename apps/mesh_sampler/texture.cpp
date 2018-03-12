@@ -76,7 +76,7 @@ get_pixel(const int x, const int y) const
 
   RGBQUAD pixel;
   _image->getPixelColor(x, y, &pixel);
-  outpixel = { pixel.rgbRed, pixel.rgbGreen, pixel.rgbBlue };
+  outpixel = { pixel.rgbRed, pixel.rgbGreen, pixel.rgbBlue, pixel.rgbReserved };
 
   return outpixel;
 }
@@ -110,6 +110,10 @@ get_pixel(const double x, const double y) const
   a = double(c00.b) * (1.0 - tx) + double(c10.b) * tx;
   b = double(c01.b) * (1.0 - tx) + double(c11.b) * tx;
   outpixel.b = a * (1.0 - ty) + b * ty;
+
+  a = double(c00.a) * (1.0 - tx) + double(c10.a) * tx;
+  b = double(c01.a) * (1.0 - tx) + double(c11.a) * tx;
+  outpixel.a = a * (1.0 - ty) + b * ty;
 
   return outpixel;
 }

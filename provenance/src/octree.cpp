@@ -38,7 +38,7 @@ create(std::vector<aux::sparse_point>& _points) {
   nodes_.clear(); 
   depth_ = 0;
   min_num_points_per_node_ = 16;
-  uint32_t max_depth = 8;
+  uint32_t max_depth = 12;
 
   std::vector<aux::sparse_point> points = _points;
 

@@ -438,7 +438,9 @@ sample_face(face_pointer facePtr,
 
             //fetch color from texture
             texture::pixel texel = tex.get_pixel(x, y);
-            out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, rad});
+            if (texel.a == (unsigned char)255) {
+              out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, rad});
+            }
         }
     }
     return true;
