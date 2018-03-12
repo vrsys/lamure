@@ -34,8 +34,10 @@ Cut::Cut(pre::AtlasFile * atlas, CutState *front, CutState *back) : DoubleBuffer
 void Cut::deliver() { _front->accept((*_back)); }
 Cut &Cut::init_cut(pre::AtlasFile * atlas)
 {
-    CutState *front_state = new CutState((uint32_t)QuadTree::get_length_of_depth(atlas->getDepth() - 1) * 4);
-    CutState *back_state = new CutState((uint32_t)QuadTree::get_length_of_depth(atlas->getDepth() - 1) * 4);
+    uint32_t length_of_depth = (uint32_t)QuadTree::get_length_of_depth(atlas->getDepth() - 1) * 4;
+
+    CutState *front_state = new CutState(length_of_depth);
+    CutState *back_state = new CutState(length_of_depth);
 
     Cut * cut = new Cut(atlas, front_state, back_state);
     return *cut;
@@ -43,7 +45,7 @@ Cut &Cut::init_cut(pre::AtlasFile * atlas)
 pre::AtlasFile *Cut::get_atlas() const { return _atlas; }
 bool Cut::is_drawn() const { return _drawn; }
 void Cut::set_drawn(bool _drawn) { Cut::_drawn = _drawn; }
-uint32_t Cut::get_dataset_id(uint64_t cut_id) { return (uint32_t)cut_id >> 32; }
-uint16_t Cut::get_view_id(uint64_t cut_id) { return (uint16_t)cut_id >> 16; }
+uint32_t Cut::get_dataset_id(uint64_t cut_id) { return (uint32_t)(cut_id >> 32); }
+uint16_t Cut::get_view_id(uint64_t cut_id) { return (uint16_t)(cut_id >> 16); }
 uint16_t Cut::get_context_id(uint64_t cut_id) { return (uint16_t)cut_id; }
 }

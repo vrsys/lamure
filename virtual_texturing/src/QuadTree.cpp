@@ -37,7 +37,7 @@ const uint16_t QuadTree::calculate_depth(size_t dim, size_t tile_size)
     return (uint16_t)(log(dim_tiled * dim_tiled) / log(4));
 }
 
-const size_t QuadTree::get_tiles_per_row(uint32_t _depth) { return (size_t)pow(2, _depth); }
+const size_t QuadTree::get_tiles_per_row(uint32_t depth) { return (size_t)pow(2, depth); }
 
 void QuadTree::get_pos_by_id(id_type node_id, uint_fast32_t &x, uint_fast32_t&y)
 {

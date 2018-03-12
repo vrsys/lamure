@@ -1,4 +1,6 @@
 #include "VTRenderer.h"
+#include "imgui_impl_glfw_gl3.h"
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <atomic>
 #include <condition_variable>
@@ -19,9 +21,26 @@ char *get_cmd_option(char **begin, char **end, const std::string &option)
 
 bool cmd_option_exists(char **begin, char **end, const std::string &option) { return std::find(begin, end, option) != end; }
 
-class EventHandler
+struct Window
 {
-  public:
+    Window()
+    {
+        _mouse_button_state = MouseButtonState::IDLE;
+        _trackball_manipulator.dolly(2.5f);
+    }
+
+    unsigned int _width;
+    unsigned int _height;
+
+    GLFWwindow *_glfw_window;
+
+    scm::gl::trackball_manipulator _trackball_manipulator;
+
+    float _ref_rot_x;
+    float _ref_rot_y;
+
+    float _scale = 1.f;
+
     enum MouseButtonState
     {
         LEFT = 0,
@@ -30,30 +49,108 @@ class EventHandler
         IDLE = 3
     };
 
-    static void on_error(int _err_code, const char *_err_msg);
-    static void on_window_resize(GLFWwindow *_window, int _width, int _height);
-};
-
-void EventHandler::on_error(int _err_code, const char *_err_msg) { throw std::runtime_error(_err_msg); }
-void EventHandler::on_window_resize(GLFWwindow *_window, int _width, int _height)
-{
-    // TODO
-    //    vtcontext->_event_handler->_ref_width = _width;
-    //    vtcontext->_event_handler->_ref_height = _height;
-
-    //    vtcontext->get_vtrenderer()->resize(_width, _height);
-}
-
-struct Window
-{
-    unsigned int _width;
-    unsigned int _height;
-
-    GLFWwindow *_glfw_window;
+    MouseButtonState _mouse_button_state;
 };
 
 std::list<Window *> _windows;
 Window *_current_context = nullptr;
+
+class EventHandler
+{
+  public:
+    static void on_error(int _err_code, const char *err_msg) { throw std::runtime_error(err_msg); }
+    static void on_window_resize(GLFWwindow *glfw_window, int width, int height)
+    {
+        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        window->_height = (uint32_t)height;
+        window->_width = (uint32_t)width;
+    }
+    static void on_window_key_press(GLFWwindow *glfw_window, int key, int scancode, int action, int mods)
+    {
+        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        switch(key)
+        {
+        case GLFW_KEY_ESCAPE:
+            std::cout << "should close" << std::endl;
+            glfwSetWindowShouldClose(glfw_window, GL_TRUE);
+            break;
+        case GLFW_KEY_P:
+            // TODO
+            // vtcontext->_cut_update->set_freeze_dispatch(!vtcontext->_cut_update->get_freeze_dispatch());
+            break;
+        }
+
+#ifndef NDEBUG
+        ImGui_ImplGlfwGL3_KeyCallback(glfw_window, key, scancode, action, mods);
+#endif
+    }
+    static void on_window_char(GLFWwindow *glfw_window, unsigned int codepoint)
+    {
+        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+#ifndef NDEBUG
+        ImGui_ImplGlfwGL3_CharCallback(glfw_window, codepoint);
+#endif
+    }
+    static void on_window_button_press(GLFWwindow *glfw_window, int button, int action, int mods)
+    {
+        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+        {
+            window->_mouse_button_state = Window::MouseButtonState::LEFT;
+        }
+        else if(button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
+        {
+            window->_mouse_button_state = Window::MouseButtonState::WHEEL;
+        }
+        else if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+        {
+            window->_mouse_button_state = Window::MouseButtonState::RIGHT;
+        }
+        else
+        {
+            window->_mouse_button_state = Window::MouseButtonState::IDLE;
+        }
+
+#ifndef NDEBUG
+        ImGui_ImplGlfwGL3_MouseButtonCallback(glfw_window, button, action, mods);
+#endif
+    }
+    static void on_window_move_cursor(GLFWwindow *glfw_window, double xpos, double ypos)
+    {
+        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        switch(window->_mouse_button_state)
+        {
+        case Window::MouseButtonState::LEFT:
+        {
+            float x = ((float)xpos / window->_width - 0.5f) * 6.28f;
+            window->_trackball_manipulator.rotation(window->_ref_rot_x, 0, x, 0);
+            window->_ref_rot_x = x;
+        }
+        break;
+        case Window::MouseButtonState::RIGHT:
+        {
+            float y = ((float)ypos / window->_height - 0.5f) * 6.28f;
+            window->_trackball_manipulator.rotation(0, window->_ref_rot_y, 0, y);
+            window->_ref_rot_y = y;
+        }
+        break;
+        }
+    }
+    static void on_window_scroll(GLFWwindow *glfw_window, double xoffset, double yoffset)
+    {
+        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        window->_scale = window->_scale + (float)yoffset * 0.01f;
+
+#ifndef NDEBUG
+        ImGui_ImplGlfwGL3_ScrollCallback(glfw_window, xoffset, yoffset);
+#endif
+    }
+    static void on_window_enter(GLFWwindow *glfw_window, int entered)
+    {
+        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        // TODO
+    }
+};
 
 void make_context_current(Window *_window)
 {
@@ -95,8 +192,14 @@ Window *create_window(unsigned int width, unsigned int height, const std::string
 
     make_context_current(new_window);
 
-    glfwSetWindowSizeCallback(new_window->_glfw_window, EventHandler::on_window_resize);
-    glfwSetInputMode(new_window->_glfw_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetKeyCallback(new_window->_glfw_window, &EventHandler::on_window_key_press);
+    glfwSetCharCallback(new_window->_glfw_window, &EventHandler::on_window_char);
+    glfwSetMouseButtonCallback(new_window->_glfw_window, &EventHandler::on_window_button_press);
+    glfwSetCursorPosCallback(new_window->_glfw_window, &EventHandler::on_window_move_cursor);
+    glfwSetScrollCallback(new_window->_glfw_window, &EventHandler::on_window_scroll);
+    glfwSetCursorEnterCallback(new_window->_glfw_window, &EventHandler::on_window_enter);
+
+    glfwSetWindowUserPointer(new_window->_glfw_window, new_window);
 
     _windows.push_back(new_window);
 
@@ -123,6 +226,8 @@ bool should_close()
     {
         for(auto &window : to_delete)
         {
+            ImGui_ImplGlfwGL3_Shutdown();
+
             glfwDestroyWindow(window->_glfw_window);
 
             delete window;
@@ -134,25 +239,44 @@ bool should_close()
     return _windows.empty();
 }
 
+void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *param)
+{
+    switch(severity)
+    {
+    case GL_DEBUG_SEVERITY_HIGH:
+    {
+        fprintf(stderr, "GL_DEBUG_SEVERITY_HIGH: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
+    }
+    break;
+    case GL_DEBUG_SEVERITY_MEDIUM:
+    {
+        fprintf(stderr, "GL_DEBUG_SEVERITY_MEDIUM: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
+    }
+    break;
+    case GL_DEBUG_SEVERITY_LOW:
+    {
+        fprintf(stderr, "GL_DEBUG_SEVERITY_LOW: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
+    }
+    break;
+    default:
+        // ignore
+        break;
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    if(argc == 1 || !cmd_option_exists(argv, argv + argc, "-c") || !cmd_option_exists(argv, argv + argc, "-f"))
-    {
-        std::cout << "Texturing context: " << argv[0] << " <flags> -c <config> -f <*.atlas.data>" << std::endl;
-        return -1;
-    }
+    vt::VTConfig::CONFIG_PATH = "configuration_template.ini";
+    vt::VTConfig::get_instance().define_size_physical_texture(64, 8192);
 
-    std::string file_config = std::string(get_cmd_option(argv, argv + argc, "-c"));
-    std::string file_atlas = std::string(get_cmd_option(argv, argv + argc, "-f"));
+    uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset("earth_stitch_86400x43200_256x256_p1_rgb_packed.atlas");
+    uint32_t data_world_elevation_id = vt::CutDatabase::get_instance().register_dataset("gebco_256x256_p1_rgb_packed.atlas");
 
-    vt::VTConfig::CONFIG_PATH = file_config;
-    vt::VTConfig::get_instance().define_size_physical_texture(16, 256000);
-
-    uint32_t data_id = vt::CutDatabase::get_instance().register_dataset(file_atlas);
     uint16_t view_id = vt::CutDatabase::get_instance().register_view();
     uint16_t primary_context_id = vt::CutDatabase::get_instance().register_context();
 
-    uint64_t cut_id = vt::CutDatabase::get_instance().register_cut(data_id, view_id, primary_context_id);
+    uint64_t cut_map_id = vt::CutDatabase::get_instance().register_cut(data_world_map_id, view_id, primary_context_id);
+    uint64_t cut_elevation_id = vt::CutDatabase::get_instance().register_cut(data_world_elevation_id, view_id, primary_context_id);
 
     // Registration of resources has to happen before cut update start
     auto *cut_update = new vt::CutUpdate();
@@ -165,8 +289,9 @@ int main(int argc, char *argv[])
         std::runtime_error("GLFW initialisation failed");
     }
 
-    Window *primary_window = create_window(600, 600, "First", nullptr, nullptr);
-    create_window(600, 600, "Second", nullptr, primary_window);
+    Window *primary_window = create_window(3840, 2160, "First", nullptr, nullptr);
+    // TODO
+    // create_window(600, 600, "Second", nullptr, primary_window);
 
     make_context_current(primary_window);
 
@@ -174,12 +299,21 @@ int main(int argc, char *argv[])
 
     auto *vtrenderer = new vt::VTRenderer(cut_update);
 
-    vtrenderer->add_data(cut_id, data_id, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth.obj");
-    vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, 0.5f);
+    vtrenderer->add_data(cut_map_id, data_world_map_id);
+    vtrenderer->add_data(cut_elevation_id, data_world_elevation_id);
+    vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
 
-    scm::gl::trackball_manipulator trackball_manipulator;
-    trackball_manipulator.dolly(2.5f);
+#ifndef NDEBUG
+    glewExperimental = GL_TRUE;
+
+    glewInit();
+
+    ImGui_ImplGlfwGL3_Init(primary_window->_glfw_window, false);
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback((GLDEBUGPROC)debug_callback, nullptr);
+#endif
 
     while(!should_close())
     {
@@ -191,8 +325,26 @@ int main(int argc, char *argv[])
 
             if(window == primary_window)
             {
-                vtrenderer->update_view(view_id, window->_width, window->_height, 0.5f, trackball_manipulator.transform_matrix());
-                vtrenderer->render(data_id, view_id, primary_context_id);
+                vtrenderer->update_view(view_id, window->_width, window->_height, window->_scale, window->_trackball_manipulator.transform_matrix());
+
+                vtrenderer->clear_buffers(primary_context_id);
+
+                vtrenderer->render(data_world_map_id, data_world_elevation_id, view_id, primary_context_id);
+
+                vtrenderer->collect_feedback(primary_context_id);
+#ifndef NDEBUG
+                vtrenderer->extract_debug_cut(data_world_map_id, view_id, primary_context_id);
+                vtrenderer->extract_debug_cut(data_world_elevation_id, view_id, primary_context_id);
+                vtrenderer->extract_debug_context(primary_context_id);
+
+                ImGui_ImplGlfwGL3_NewFrame();
+
+                vtrenderer->render_debug_cut(data_world_map_id, view_id, primary_context_id);
+                vtrenderer->render_debug_cut(data_world_elevation_id, view_id, primary_context_id);
+                vtrenderer->render_debug_context(primary_context_id);
+
+                ImGui::Render();
+#endif
             }
             else
             {

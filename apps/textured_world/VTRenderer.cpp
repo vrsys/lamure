@@ -3,12 +3,14 @@
 #include <unordered_map>
 
 #include "VTRenderer.h"
+#include "imgui.h"
+#include "imgui_impl_glfw_gl3.h"
 #include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
 
 namespace vt
 {
-VTRenderer::VTRenderer(CutUpdate *cut_update) : _dataset_resources(), _context_resources(), _view_resources()
+VTRenderer::VTRenderer(CutUpdate *cut_update) : _data_resources(), _ctxt_resources(), _view_resources()
 {
     this->_cut_update = cut_update;
     this->init();
@@ -17,22 +19,46 @@ VTRenderer::VTRenderer(CutUpdate *cut_update) : _dataset_resources(), _context_r
 void VTRenderer::init()
 {
     _scm_core.reset(new scm::core(0, nullptr));
-
-    std::string vs_vt, fs_vt;
-
-    if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_vt) || !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_vt))
-    {
-        scm::err() << "error reading shader files" << scm::log::end;
-        throw std::runtime_error("Error reading shader files");
-    }
-
     _device.reset(new scm::gl::render_device());
+
+    std::string fs_vt_color, vx_vt_elevation, fs_vt_color_debug;
 
     {
         using namespace scm::gl;
         using namespace boost::assign;
 
-        _shader_vt = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_vt))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_vt)));
+#ifndef NDEBUG
+        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_elevation.glslv", vx_vt_elevation) ||
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_debug.glslf", fs_vt_color_debug))
+        {
+            scm::err() << "error reading shader files" << scm::log::end;
+            throw std::runtime_error("Error reading shader files");
+        }
+#else
+        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_elevation.glslv", vx_vt_elevation) ||
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_vt_color))
+        {
+            scm::err() << "error reading shader files" << scm::log::end;
+            throw std::runtime_error("Error reading shader files");
+        }
+#endif
+
+#ifndef NDEBUG
+        _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth.obj"));
+#else
+        _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
+#endif
+    }
+
+    {
+        using namespace scm::gl;
+        using namespace boost::assign;
+
+#ifndef NDEBUG
+        _shader_vt = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vx_vt_elevation))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_vt_color_debug)));
+#else
+        _shader_vt = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vx_vt_elevation))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_vt_color)));
+#endif
     }
 
     if(!_shader_vt)
@@ -51,18 +77,16 @@ void VTRenderer::init()
     _ms_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
 }
 
-void VTRenderer::add_data(uint64_t cut_id, uint32_t dataset_id, const string &file_geometry)
+void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
 {
-    uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row((*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth() -1);
+    uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row((*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth() - 1);
 
-    dataset_resource *resource = new dataset_resource();
+    data_resource *resource = new data_resource();
 
-    resource->_obj = scm::shared_ptr<scm::gl::wavefront_obj_geometry>(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth.obj"));
-    // resource->_obj = scm::shared_ptr(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
     resource->_index_texture_dimension = scm::math::vec2ui(size_index_texture, size_index_texture);
     resource->_index_texture = _device->create_texture_2d(resource->_index_texture_dimension, scm::gl::FORMAT_RGBA_8UI);
 
-    _dataset_resources[dataset_id] = resource;
+    _data_resources[data_id] = resource;
 }
 void VTRenderer::add_view(uint16_t view_id, uint32_t width, uint32_t height, float scale)
 {
@@ -77,110 +101,130 @@ void VTRenderer::add_view(uint16_t view_id, uint32_t width, uint32_t height, flo
 }
 void VTRenderer::add_context(uint16_t context_id)
 {
-    context_resource *resource = new context_resource();
+    ctxt_resource *resource = new ctxt_resource();
 
     // TODO: create auxiliary contexts
     resource->_render_context = _device->main_context();
     resource->_physical_texture_dimension = scm::math::vec2ui(VTConfig::get_instance().get_phys_tex_tile_width(), VTConfig::get_instance().get_phys_tex_tile_width());
-    resource->_physical_texture = _device->create_texture_2d(resource->_physical_texture_dimension, get_tex_format(), 0, VTConfig::get_instance().get_phys_tex_layers() + 1);
 
-    size_t copy_buffer_len = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
+    scm::math::vec2ui physical_texture_size = scm::math::vec2ui(VTConfig::get_instance().get_phys_tex_px_width(), VTConfig::get_instance().get_phys_tex_px_width());
+    resource->_physical_texture = _device->create_texture_2d(physical_texture_size, get_tex_format(), 0, VTConfig::get_instance().get_phys_tex_layers() + 1);
 
-    resource->_size_copy_buf = copy_buffer_len * size_of_format(scm::gl::FORMAT_R_32UI);
-    resource->_atomic_feedback_storage_ssbo = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, resource->_size_copy_buf);
-    resource->_copy_memory_new = new uint32_t[copy_buffer_len];
+    resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
 
-    for(size_t i = 0; i < copy_buffer_len; ++i)
+    resource->_feedback_storage = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_DYNAMIC_READ, resource->_size_feedback);
+
+    resource->_feedback_cpu_buffer = new uint32_t[resource->_size_feedback];
+
+    for(size_t i = 0; i < resource->_size_feedback; ++i)
     {
-        resource->_copy_memory_new[i] = 0;
+        resource->_feedback_cpu_buffer[i] = 0;
     }
 
-    _context_resources[context_id] = resource;
+    _ctxt_resources[context_id] = resource;
 }
-void VTRenderer::update_view(uint16_t view_id, uint32_t width, uint32_t height, float scale, const scm::math::mat4f& view_matrix)
+void VTRenderer::update_view(uint16_t view_id, uint32_t width, uint32_t height, float scale, const scm::math::mat4f &view_matrix)
 {
     _view_resources[view_id]->_width = width;
     _view_resources[view_id]->_height = height;
     _view_resources[view_id]->_scale = scale;
     _view_resources[view_id]->_view_matrix = view_matrix;
 }
-
-void VTRenderer::render(uint32_t data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::clear_buffers(uint16_t context_id)
 {
-    uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)view_id);
-    uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth();
+    using namespace scm::math;
+    using namespace scm::gl;
 
-    scm::math::mat4f projection_matrix = scm::math::mat4f::identity();
-    scm::math::perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
+    _ctxt_resources[context_id]->_render_context->set_default_frame_buffer();
+
+    _ctxt_resources[context_id]->_render_context->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(.2f, .2f, .2f, 1.0f));
+    _ctxt_resources[context_id]->_render_context->clear_default_depth_stencil_buffer();
+
+    _ctxt_resources[context_id]->_render_context->apply();
+}
+void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint16_t view_id, uint16_t context_id)
+{
+    using namespace scm::math;
+    using namespace scm::gl;
+
+    uint64_t color_cut_id = (((uint64_t)color_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+    uint64_t elevation_cut_id = (((uint64_t)elevation_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+
+    uint32_t max_depth_level_color = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
+    uint32_t max_depth_level_elevation = (*CutDatabase::get_instance().get_cut_map())[elevation_cut_id]->get_atlas()->getDepth() - 1;
+
+    mat4f projection_matrix = mat4f::identity();
+    perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
 
-    _context_resources[context_id]->_render_context->set_default_frame_buffer();
+    mat4f model_matrix = mat4f::identity() * make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
 
-    scm::math::mat4f model_matrix = scm::math::mat4f::identity() * scm::math::make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
-
-    scm::math::mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
+    mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
     _shader_vt->uniform("projection_matrix", projection_matrix);
     _shader_vt->uniform("model_view_matrix", model_view_matrix);
 
-    // upload necessary information to vertex shader
-    _shader_vt->uniform("in_physical_texture_dim", _context_resources[context_id]->_physical_texture_dimension);
-    _shader_vt->uniform("in_index_texture_dim", _dataset_resources[data_id]->_index_texture_dimension);
-    _shader_vt->uniform("in_max_level", max_depth_level);
-    _shader_vt->uniform("in_toggle_view", false);
+    _shader_vt->uniform("in_index_dim_color", _data_resources[color_data_id]->_index_texture_dimension);
+    _shader_vt->uniform("in_max_level_color", max_depth_level_color);
 
+    _shader_vt->uniform("in_index_dim_elevation", _data_resources[elevation_data_id]->_index_texture_dimension);
+    _shader_vt->uniform("in_max_level_elevation", max_depth_level_elevation);
+
+    _shader_vt->uniform("in_toggle_view", true);
+    _shader_vt->uniform("in_physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
     _shader_vt->uniform("in_tile_size", (uint32_t)VTConfig::get_instance().get_size_tile());
     _shader_vt->uniform("in_tile_padding", (uint32_t)VTConfig::get_instance().get_size_padding());
 
-    _context_resources[context_id]->_render_context->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.2f, .0f, .0f, 1.0f));
-    _context_resources[context_id]->_render_context->clear_default_depth_stencil_buffer();
+    context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
+    context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
+    context_framebuffer_guard fbg(_ctxt_resources[context_id]->_render_context);
 
-    _context_resources[context_id]->_render_context->apply();
+    _ctxt_resources[context_id]->_render_context->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(_view_resources[view_id]->_width, _view_resources[view_id]->_height)));
 
-    scm::gl::context_state_objects_guard csg(_context_resources[context_id]->_render_context);
-    scm::gl::context_texture_units_guard tug(_context_resources[context_id]->_render_context);
-    scm::gl::context_framebuffer_guard fbg(_context_resources[context_id]->_render_context);
+    _ctxt_resources[context_id]->_render_context->set_depth_stencil_state(_dstate_less);
+    _ctxt_resources[context_id]->_render_context->set_rasterizer_state(_ms_cull);
+    _ctxt_resources[context_id]->_render_context->set_blend_state(_blend_state);
 
-    _context_resources[context_id]->_render_context->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(_view_resources[view_id]->_width, _view_resources[view_id]->_height)));
+    _ctxt_resources[context_id]->_render_context->bind_program(_shader_vt);
 
-    _context_resources[context_id]->_render_context->set_depth_stencil_state(_dstate_less);
-    _context_resources[context_id]->_render_context->set_rasterizer_state(_ms_cull);
-    _context_resources[context_id]->_render_context->set_blend_state(_blend_state);
-
-    _context_resources[context_id]->_render_context->bind_program(_shader_vt);
-
-    _context_resources[context_id]->_render_context->sync();
+    _ctxt_resources[context_id]->_render_context->sync();
 
     apply_cut_update(context_id);
 
-    // bind our texture and tell the graphics card to filter the samples linearly
-    _context_resources[context_id]->_render_context->bind_texture(_context_resources[context_id]->_physical_texture, _filter_linear, 0);
-    _context_resources[context_id]->_render_context->bind_texture(_dataset_resources[data_id]->_index_texture, _filter_nearest, 1);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 0);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 1);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[elevation_data_id]->_index_texture, _filter_nearest, 2);
 
-    // bind feedback
-    _context_resources[context_id]->_render_context->bind_storage_buffer(_context_resources[context_id]->_atomic_feedback_storage_ssbo, 0);
+    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_storage, 0);
 
-    _context_resources[context_id]->_render_context->apply();
+    _ctxt_resources[context_id]->_render_context->apply();
 
-    _dataset_resources[data_id]->_obj->draw(_context_resources[context_id]->_render_context, scm::gl::geometry::MODE_SOLID);
+    _obj->draw(_ctxt_resources[context_id]->_render_context, geometry::MODE_SOLID);
+}
 
-    auto data =_context_resources[context_id]->_render_context->map_buffer(_context_resources[context_id]->_atomic_feedback_storage_ssbo, scm::gl::ACCESS_READ_ONLY);
+void VTRenderer::collect_feedback(uint16_t context_id)
+{
+    using namespace scm::math;
+    using namespace scm::gl;
 
-    if(data)
+    uint32_t *feedback = (uint32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_storage, ACCESS_READ_ONLY);
+
+    for(size_t i = 0; i < _ctxt_resources[context_id]->_size_feedback; i++)
     {
-        memcpy(_context_resources[context_id]->_copy_memory_new, data, _context_resources[context_id]->_size_copy_buf);
+        _ctxt_resources[context_id]->_feedback_cpu_buffer[i] = feedback[i];
     }
 
-    _context_resources[context_id]->_render_context->unmap_buffer(_context_resources[context_id]->_atomic_feedback_storage_ssbo);
+    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
+    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32UI, nullptr);
 
-    _context_resources[context_id]->_render_context->clear_buffer_data(_context_resources[context_id]->_atomic_feedback_storage_ssbo, scm::gl::FORMAT_R_32UI, nullptr);
+    _ctxt_resources[context_id]->_render_context->sync();
 
-    _context_resources[context_id]->_render_context->sync();
-
-    _cut_update->feedback(_context_resources[context_id]->_copy_memory_new);
+    _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
 }
 
 void VTRenderer::apply_cut_update(uint16_t context_id)
 {
+    auto start = std::chrono::high_resolution_clock::now();
+
     CutDatabase *cut_db = &CutDatabase::get_instance();
 
     cut_db->start_reading();
@@ -228,15 +272,18 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
     cut_db->stop_reading();
 
-    _context_resources[context_id]->_render_context->sync();
+    _ctxt_resources[context_id]->_render_context->sync();
+
+    auto end = std::chrono::high_resolution_clock::now();
+    _apply_time = std::chrono::duration<float, std::milli>(end - start).count();
 }
 
-void VTRenderer::update_index_texture(uint32_t dataset_id, uint16_t context_id, const uint8_t *buf_cpu)
+void VTRenderer::update_index_texture(uint32_t data_id, uint16_t context_id, const uint8_t *buf_cpu)
 {
     scm::math::vec3ui origin = scm::math::vec3ui(0, 0, 0);
-    scm::math::vec3ui dimensions = scm::math::vec3ui(_dataset_resources[dataset_id]->_index_texture_dimension, 1);
+    scm::math::vec3ui dimensions = scm::math::vec3ui(_data_resources[data_id]->_index_texture_dimension, 1);
 
-    _context_resources[context_id]->_render_context->update_sub_texture(_dataset_resources[dataset_id]->_index_texture, scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI, buf_cpu);
+    _ctxt_resources[context_id]->_render_context->update_sub_texture(_data_resources[data_id]->_index_texture, scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI, buf_cpu);
 }
 
 scm::gl::data_format VTRenderer::get_tex_format()
@@ -264,7 +311,7 @@ void VTRenderer::update_physical_texture_blockwise(uint16_t context_id, const ui
     scm::math::vec3ui origin = scm::math::vec3ui((uint32_t)x_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)y_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)layer);
     scm::math::vec3ui dimensions = scm::math::vec3ui(VTConfig::get_instance().get_size_tile(), VTConfig::get_instance().get_size_tile(), 1);
 
-    _context_resources[context_id]->_render_context->update_sub_texture(_context_resources[context_id]->_physical_texture, scm::gl::texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
+    _ctxt_resources[context_id]->_render_context->update_sub_texture(_ctxt_resources[context_id]->_physical_texture, scm::gl::texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
 }
 
 VTRenderer::~VTRenderer()
@@ -278,5 +325,198 @@ VTRenderer::~VTRenderer()
 
     _device.reset();
     _scm_core.reset();
+}
+void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
+{
+    CutDatabase *cut_db = &CutDatabase::get_instance();
+
+    uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+
+    cut_db->start_reading();
+    cut_db->start_reading_cut(cut_id);
+
+    if(_cut_debug_outputs[cut_id] == nullptr)
+    {
+        _cut_debug_outputs[cut_id] = new debug_cut();
+    }
+
+    std::stringstream stream_cut;
+    stream_cut << "Cut { ";
+    for(id_type iter : (*cut_db->get_cut_map())[cut_id]->get_front()->get_cut())
+    {
+        stream_cut << iter << " ";
+    }
+    stream_cut << "}" << std::endl;
+
+    _cut_debug_outputs[cut_id]->_string_cut = stream_cut.str();
+
+    std::stringstream stream_index_string;
+
+    size_t size_index_texture = QuadTree::get_tiles_per_row((*cut_db->get_cut_map())[cut_id]->get_atlas()->getDepth() - 1);
+
+    for(size_t x = 0; x < size_index_texture; ++x)
+    {
+        for(size_t y = 0; y < size_index_texture; ++y)
+        {
+            auto ptr = &(*cut_db->get_cut_map())[cut_id]->get_front()->get_index()[y * size_index_texture * 4 + x * 4];
+
+            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << "." << (int)ptr[3] << " ";
+        }
+
+        stream_index_string << std::endl;
+    }
+
+    stream_index_string << std::endl;
+
+    _cut_debug_outputs[cut_id]->_string_index = stream_index_string.str();
+
+    cut_db->stop_reading_cut(cut_id);
+    cut_db->stop_reading();
+}
+void VTRenderer::extract_debug_context(uint16_t context_id)
+{
+    CutDatabase *cut_db = &CutDatabase::get_instance();
+
+    cut_db->start_reading();
+
+    if(_ctxt_debug_outputs[context_id] == nullptr)
+    {
+        _ctxt_debug_outputs[context_id] = new debug_context();
+    }
+
+    _ctxt_debug_outputs[context_id]->_fps.push_back(ImGui::GetIO().Framerate);
+    _ctxt_debug_outputs[context_id]->_fps.pop_front();
+
+    size_t free_slots = 0;
+
+    std::stringstream stream_mem_slots;
+    for(size_t layer = 0; layer < VTConfig::get_instance().get_phys_tex_layers(); layer++)
+    {
+        for(size_t x = 0; x < cut_db->get_size_mem_x(); ++x)
+        {
+            for(size_t y = 0; y < cut_db->get_size_mem_y(); ++y)
+            {
+                if(!(*cut_db->get_front()).at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y()).locked)
+                {
+                    stream_mem_slots << "F ";
+                    free_slots++;
+                }
+                else
+                {
+                    stream_mem_slots << (*cut_db->get_front()).at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y()).tile_id << " ";
+                }
+            }
+
+            stream_mem_slots << std::endl;
+        }
+        stream_mem_slots << std::endl;
+    }
+    _ctxt_debug_outputs[context_id]->_string_mem_slots = stream_mem_slots.str();
+    _ctxt_debug_outputs[context_id]->_mem_slots_busy = ((float)cut_db->get_size_feedback() - cut_db->get_available_memory()) / (float)cut_db->get_size_feedback();
+
+    std::stringstream stream_feedback;
+    size_t phys_tex_tile_width = VTConfig::get_instance().get_phys_tex_tile_width();
+
+    for(size_t layer = 0; layer < VTConfig::get_instance().get_phys_tex_layers(); layer++)
+    {
+        for(size_t x = 0; x < phys_tex_tile_width; ++x)
+        {
+            for(size_t y = 0; y < phys_tex_tile_width; ++y)
+            {
+                stream_feedback << _ctxt_resources[context_id]->_feedback_cpu_buffer[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
+            }
+
+            stream_feedback << std::endl;
+        }
+        stream_feedback << std::endl;
+    }
+
+    _ctxt_debug_outputs[context_id]->_string_feedback = stream_feedback.str();
+
+    _ctxt_debug_outputs[context_id]->_string_mem_slots = stream_mem_slots.str();
+
+    _ctxt_debug_outputs[context_id]->_times_cut_dispatch.push_back(_cut_update->get_dispatch_time());
+    _ctxt_debug_outputs[context_id]->_times_cut_dispatch.pop_front();
+
+    _ctxt_debug_outputs[context_id]->_times_apply.push_back(_apply_time);
+    _ctxt_debug_outputs[context_id]->_times_apply.pop_front();
+
+    cut_db->stop_reading();
+}
+void VTRenderer::render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
+{
+    uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+
+    ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
+
+    if(!ImGui::Begin(("Dataset: " + std::to_string(data_id) + ", view: " + std::to_string(view_id) + ", context: " + std::to_string(context_id)).c_str()))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImGui::SetNextTreeNodeOpen(true);
+
+    if(ImGui::CollapsingHeader("Cut state"))
+    {
+        ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0), _cut_debug_outputs[cut_id]->_string_cut.c_str());
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0), _cut_debug_outputs[cut_id]->_string_index.c_str());
+    }
+
+    ImGui::End();
+}
+void VTRenderer::render_debug_context(uint16_t context_id)
+{
+    ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
+
+    if(!ImGui::Begin(("Context")))
+    {
+        ImGui::End();
+        return;
+    }
+
+    ImVec2 plot_dims(0, 160);
+
+    ImGui::SetNextTreeNodeOpen(true);
+
+    if(ImGui::CollapsingHeader("Performance metrics"))
+    {
+        auto max_fps = *std::max_element(_ctxt_debug_outputs[context_id]->_fps.begin(), _ctxt_debug_outputs[context_id]->_fps.end());
+        auto min_fps = *std::min_element(_ctxt_debug_outputs[context_id]->_fps.begin(), _ctxt_debug_outputs[context_id]->_fps.end());
+
+        std::stringstream stream_average;
+        stream_average << "Application average " << 1000.0f / ImGui::GetIO().Framerate << " ms/frame (" << ImGui::GetIO().Framerate << " FPS)\"";
+
+        ImGui::PlotHistogram("FPS", &_ctxt_debug_outputs[context_id]->_fps[0], debug_context::FPS_S, 0, stream_average.str().c_str(), min_fps, max_fps, plot_dims);
+
+        std::stringstream stream_usage;
+        stream_usage << "Physical texture slots usage: " << _ctxt_debug_outputs[context_id]->_mem_slots_busy * 100 << "%";
+
+        ImGui::ProgressBar(_ctxt_debug_outputs[context_id]->_mem_slots_busy, ImVec2(0, 80), stream_usage.str().c_str());
+    }
+
+    ImGui::SetNextTreeNodeOpen(true);
+
+    if(ImGui::CollapsingHeader("Cut update metrics"))
+    {
+        auto max_disp = *std::max_element(_ctxt_debug_outputs[context_id]->_times_cut_dispatch.begin(), _ctxt_debug_outputs[context_id]->_times_cut_dispatch.end());
+        auto max_apply = *std::max_element(_ctxt_debug_outputs[context_id]->_times_apply.begin(), _ctxt_debug_outputs[context_id]->_times_apply.end());
+
+        auto min_disp = *std::min_element(_ctxt_debug_outputs[context_id]->_times_cut_dispatch.begin(), _ctxt_debug_outputs[context_id]->_times_cut_dispatch.end());
+        auto min_apply = *std::min_element(_ctxt_debug_outputs[context_id]->_times_apply.begin(), _ctxt_debug_outputs[context_id]->_times_apply.end());
+
+        ImGui::Text(_ctxt_debug_outputs[context_id]->_string_mem_slots.c_str());
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 1.0f, 1.0), _ctxt_debug_outputs[context_id]->_string_feedback.c_str());
+
+        std::stringstream stream_dispatch_max;
+        stream_dispatch_max << "Max: " << max_disp << " msec";
+        ImGui::PlotLines("Dispatch time, msec", &_ctxt_debug_outputs[context_id]->_times_cut_dispatch[0], debug_context::DISP_S, 0, stream_dispatch_max.str().c_str(), min_disp, max_disp, plot_dims);
+
+        std::stringstream stream_apply_max;
+        stream_apply_max << "Max: " << max_apply << " msec";
+        ImGui::PlotLines("Apply time, msec", &_ctxt_debug_outputs[context_id]->_times_apply[0], debug_context::APPLY_S, 0, stream_apply_max.str().c_str(), min_apply, max_apply, plot_dims);
+    }
+
+    ImGui::End();
 }
 }

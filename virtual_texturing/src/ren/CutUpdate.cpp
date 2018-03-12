@@ -149,7 +149,7 @@ void CutUpdate::dispatch()
             id_type parent_id = QuadTree::get_parent_id(tile_id);
             auto iter_parent = map_feedback_prop.find(parent_id);
 
-            if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < cut->get_atlas()->getDepth() && split_counter < split_budget)
+            if(texels_per_tile < (_feedback_buffer[mem_slot->position] * 2.5) && QuadTree::get_depth_of_node(tile_id) < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
             {
                 split_counter++;
 
@@ -252,8 +252,6 @@ void CutUpdate::dispatch()
     }
 
     _cut_db->stop_writing();
-
-    // std::cout << "updating " << _cut.get_back_mem_slots_updated().size() << " nodes" << std::endl;
 
     auto end = std::chrono::high_resolution_clock::now();
     _dispatch_time = std::chrono::duration<float, std::milli>(end - start).count();
@@ -371,9 +369,8 @@ bool CutUpdate::split_id(Cut *cut, id_type tile_id)
     for(size_t n = 0; n < 4; n++)
     {
         id_type child_id = QuadTree::get_child_id(tile_id, n);
-        uint8_t *tile_ptr = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), child_id, 100)->getBuffer();
 
-        if(tile_ptr == nullptr)
+        if(_cut_db->get_tile_provider()->getTile(cut->get_atlas(), child_id, 100) == nullptr)
         {
             all_children_available = false;
             continue;

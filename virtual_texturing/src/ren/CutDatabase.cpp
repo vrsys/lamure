@@ -102,7 +102,7 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
 
     Cut *cut = &Cut::init_cut(_tile_provider->addResource(_dataset_map[dataset_id].c_str()));
 
-    uint64_t id = (((uint64_t)dataset_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)view_id);
+    uint64_t id = ((uint64_t) dataset_id) << 32 | ((uint64_t) view_id << 16) | ((uint64_t)context_id);
 
     _cut_map.insert(cut_map_entry_type(id, cut));
 
