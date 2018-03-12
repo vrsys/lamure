@@ -63,7 +63,7 @@ namespace vt{
                 return true;
             }
 
-            _allRequestsProcessed.wait_for(lock, maxTime, [this]{
+            return _allRequestsProcessed.wait_until(lock, std::chrono::system_clock::now() + maxTime, [this]{
                 return _map.empty();
             });
         }

@@ -44,6 +44,8 @@ namespace vt{
             void print();
 
             bool wait(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
+
+            bool ungetTile(AtlasFile *resource, id_type id);
         };
     }
 }
