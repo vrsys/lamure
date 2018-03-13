@@ -24,6 +24,8 @@ namespace vt{
             TileRequestMap _requests;
             TileLoader _loader;
             TileCache *_cache;
+
+            pre::Bitmap::PIXEL_FORMAT _pxFormat;
             size_t _tileByteSize;
 
         public:

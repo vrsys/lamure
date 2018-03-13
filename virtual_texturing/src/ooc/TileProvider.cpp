@@ -35,8 +35,12 @@ namespace vt{
             auto atlas = new pre::AtlasFile(fileName);
             auto tileByteSize = atlas->getTileByteSize();
 
-            if(tileByteSize > _tileByteSize){
+            if(_tileByteSize == 0){
                 _tileByteSize = tileByteSize;
+            }
+
+            if(atlas->get){
+
             }
 
             _resources.insert(atlas);
