@@ -32,15 +32,22 @@ namespace vt{
         }
 
         pre::AtlasFile *TileProvider::addResource(const char *fileName){
+            std::lock_guard<std::mutex> lock(_resourcesLock);
+
             auto atlas = new pre::AtlasFile(fileName);
-            auto tileByteSize = atlas->getTileByteSize();
 
             if(_tileByteSize == 0){
-                _tileByteSize = tileByteSize;
+                _pxFormat = atlas->getPixelFormat();
+                _tilePxWidth = atlas->getTileWidth();
+                _tilePxHeight = atlas->getTileHeight();
+                _tileByteSize = atlas->getTileByteSize();
             }
 
-            if(atlas->get){
-
+            if(_pxFormat != atlas->getPixelFormat() ||
+                    _tilePxWidth != atlas->getTileWidth() ||
+                    _tilePxHeight != atlas->getTileHeight() ||
+                    _tileByteSize != atlas->getTileByteSize()){
+                throw std::runtime_error("Trying to add resource with conflicting format.");
             }
 
             _resources.insert(atlas);
@@ -96,7 +103,7 @@ namespace vt{
             return _requests.waitUntilEmpty(maxTime);
         }
 
-        bool TileProvider::ungetTile(AtlasFile *resource, id_type id) {
+        bool TileProvider::ungetTile(pre::AtlasFile *resource, id_type id) {
             if(_cache == nullptr){
                 throw std::runtime_error("Trying to unget Tile before starting TileProvider.");
             }

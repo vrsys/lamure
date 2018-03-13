@@ -20,12 +20,15 @@ namespace vt{
 
         class TileProvider {
         protected:
+            std::mutex _resourcesLock;
             std::set<pre::AtlasFile*> _resources;
             TileRequestMap _requests;
             TileLoader _loader;
             TileCache *_cache;
 
             pre::Bitmap::PIXEL_FORMAT _pxFormat;
+            size_t _tilePxWidth;
+            size_t _tilePxHeight;
             size_t _tileByteSize;
 
         public:
