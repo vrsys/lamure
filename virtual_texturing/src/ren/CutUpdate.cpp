@@ -422,7 +422,7 @@ mem_slot_type *CutUpdate::get_mem_slot_for_id(Cut *cut, id_type tile_id)
 
     return &_cut_db->get_back()->at((*mem_slot_iter).second);
 }
-void CutUpdate::feedback(uint32_t *buf)
+void CutUpdate::feedback(int32_t *buf)
 {
     std::unique_lock<std::mutex> lk(_dispatch_lock);
     _feedback_buffer = buf;

@@ -90,8 +90,11 @@ private:
 
     struct data_resource
     {
+        // TODO: change to std::map<uint_64_t, std::vector<scm::gl::texture_2d_ptr>> ; get rid of dimensions (dynamic)
         scm::gl::texture_2d_ptr _index_texture;
         scm::math::vec2ui _index_texture_dimension;
+
+        std::vector<scm::gl::texture_2d_ptr> _index_hierarchy;
     };
 
     struct ctxt_resource
@@ -101,7 +104,7 @@ private:
         scm::math::vec2ui _physical_texture_dimension;
 
         size_t _size_feedback;
-        uint32_t *_feedback_cpu_buffer;
+        int32_t *_feedback_cpu_buffer;
         scm::gl::buffer_ptr _feedback_storage;
     };
 

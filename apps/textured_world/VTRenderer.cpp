@@ -29,7 +29,7 @@ void VTRenderer::init()
 
 #ifndef NDEBUG
         if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_elevation.glslv", vx_vt_elevation) ||
-           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_debug.glslf", fs_vt_color_debug))
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical_debug.glslf", fs_vt_color_debug))
         {
             scm::err() << "error reading shader files" << scm::log::end;
             throw std::runtime_error("Error reading shader files");
@@ -112,9 +112,9 @@ void VTRenderer::add_context(uint16_t context_id)
 
     resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
 
-    resource->_feedback_storage = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_DYNAMIC_READ, resource->_size_feedback);
+    resource->_feedback_storage = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_DYNAMIC_READ, resource->_size_feedback * scm::gl::size_of_format(scm::gl::FORMAT_R_32I));
 
-    resource->_feedback_cpu_buffer = new uint32_t[resource->_size_feedback];
+    resource->_feedback_cpu_buffer = new int32_t[resource->_size_feedback];
 
     for(size_t i = 0; i < resource->_size_feedback; ++i)
     {
@@ -163,9 +163,11 @@ void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint
     _shader_vt->uniform("projection_matrix", projection_matrix);
     _shader_vt->uniform("model_view_matrix", model_view_matrix);
 
+    // TODO: dimensions are dynamic
     _shader_vt->uniform("in_index_dim_color", _data_resources[color_data_id]->_index_texture_dimension);
     _shader_vt->uniform("in_max_level_color", max_depth_level_color);
 
+    // TODO: dimensions are dynamic
     _shader_vt->uniform("in_index_dim_elevation", _data_resources[elevation_data_id]->_index_texture_dimension);
     _shader_vt->uniform("in_max_level_elevation", max_depth_level_elevation);
 
@@ -191,8 +193,15 @@ void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint
     apply_cut_update(context_id);
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 0);
+
     _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 1);
     _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[elevation_data_id]->_index_texture, _filter_nearest, 2);
+
+    // TODO: bind all hierarchical idx textures -- done
+    for (int i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i) {
+        _ctxt_resources[context_id]->_render_context->
+                bind_texture(_data_resources[color_data_id]->_index_hierarchy[i], _filter_nearest, i+3);
+    }
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_storage, 0);
 
@@ -206,7 +215,7 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     using namespace scm::math;
     using namespace scm::gl;
 
-    uint32_t *feedback = (uint32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_storage, ACCESS_READ_ONLY);
+    int32_t *feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_storage, ACCESS_READ_ONLY);
 
     for(size_t i = 0; i < _ctxt_resources[context_id]->_size_feedback; i++)
     {
@@ -214,7 +223,7 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     }
 
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
-    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32UI, nullptr);
+    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32I, nullptr);
 
     _ctxt_resources[context_id]->_render_context->sync();
 
@@ -239,6 +248,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
             continue;
         }
 
+        // TODO: Call this method for each hierarchical idx texture
         update_index_texture(Cut::get_dataset_id(cut_entry.first), context_id, cut->get_front()->get_index());
 
         for(auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
