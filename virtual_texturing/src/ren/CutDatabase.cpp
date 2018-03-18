@@ -40,7 +40,7 @@ mem_slot_type *CutDatabase::get_free_mem_slot()
 
     throw std::runtime_error("out of mem slots");
 }
-void CutDatabase::deliver() { _front = new mem_slots_type((*_back)); }
+void CutDatabase::deliver() { _front->assign(_back->begin(), _back->end()); }
 Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 {
     Cut *requested_cut = _cut_map[cut_id];
@@ -102,7 +102,7 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
 
     Cut *cut = &Cut::init_cut(_tile_provider->addResource(_dataset_map[dataset_id].c_str()));
 
-    uint64_t id = ((uint64_t) dataset_id) << 32 | ((uint64_t) view_id << 16) | ((uint64_t)context_id);
+    uint64_t id = ((uint64_t)dataset_id) << 32 | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
 
     _cut_map.insert(cut_map_entry_type(id, cut));
 

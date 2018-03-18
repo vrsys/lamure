@@ -14,7 +14,6 @@
 namespace vt
 {
 typedef uint64_t id_type;
-typedef uint32_t priority_type;
 typedef std::set<id_type> cut_type;
 
 struct mem_slot_type

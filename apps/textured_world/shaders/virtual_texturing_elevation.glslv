@@ -63,7 +63,7 @@ void main()
     vec2 physical_texture_coordinates = (base_xy_offset.xy + physical_tile_ratio_xy * padding_scale + padding_offset) / physical_texture_dim;
     c = texture(physical_texture_array, vec3(physical_texture_coordinates, texture_coordinates.z));
     uint one_d_feedback_ssbo_index = base_xy_offset.x + base_xy_offset.y * physical_texture_dim.x + index_quadruple.w * physical_texture_dim.x * physical_texture_dim.y;
-    atomicAdd(out_feedback_values[one_d_feedback_ssbo_index], 10);
+    atomicAdd(out_feedback_values[one_d_feedback_ssbo_index], 1);
 
     gl_Position = projection_matrix * model_view_matrix * (vec4(in_position, 1.0) + 0.05 * vec4(in_normal, 0.0) * (c.r + c.g + c.b) / 3.0);
 }

@@ -21,7 +21,7 @@ void VTRenderer::init()
     _scm_core.reset(new scm::core(0, nullptr));
     _device.reset(new scm::gl::render_device());
 
-    std::string fs_vt_color, vx_vt_elevation, fs_vt_color_debug;
+    std::string fs_vt_color, vx_vt_elevation, fs_vt_color_debug, tc_vt_elevation, te_vt_elevation;
 
     {
         using namespace scm::gl;
@@ -44,7 +44,7 @@ void VTRenderer::init()
 #endif
 
 #ifndef NDEBUG
-        _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth.obj"));
+        _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
 #else
         _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
 #endif
@@ -101,18 +101,21 @@ void VTRenderer::add_view(uint16_t view_id, uint32_t width, uint32_t height, flo
 }
 void VTRenderer::add_context(uint16_t context_id)
 {
+    using namespace scm::math;
+    using namespace scm::gl;
+
     ctxt_resource *resource = new ctxt_resource();
 
     // TODO: create auxiliary contexts
     resource->_render_context = _device->main_context();
-    resource->_physical_texture_dimension = scm::math::vec2ui(VTConfig::get_instance().get_phys_tex_tile_width(), VTConfig::get_instance().get_phys_tex_tile_width());
+    resource->_physical_texture_dimension = vec2ui(VTConfig::get_instance().get_phys_tex_tile_width(), VTConfig::get_instance().get_phys_tex_tile_width());
 
-    scm::math::vec2ui physical_texture_size = scm::math::vec2ui(VTConfig::get_instance().get_phys_tex_px_width(), VTConfig::get_instance().get_phys_tex_px_width());
+    vec2ui physical_texture_size = vec2ui(VTConfig::get_instance().get_phys_tex_px_width(), VTConfig::get_instance().get_phys_tex_px_width());
     resource->_physical_texture = _device->create_texture_2d(physical_texture_size, get_tex_format(), 0, VTConfig::get_instance().get_phys_tex_layers() + 1);
 
     resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
 
-    resource->_feedback_storage = _device->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_DYNAMIC_READ, resource->_size_feedback);
+    resource->_feedback_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_READ, resource->_size_feedback * size_of_format(FORMAT_R_32UI));
 
     resource->_feedback_cpu_buffer = new uint32_t[resource->_size_feedback];
 
@@ -199,6 +202,8 @@ void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint
     _ctxt_resources[context_id]->_render_context->apply();
 
     _obj->draw(_ctxt_resources[context_id]->_render_context, geometry::MODE_SOLID);
+
+    _ctxt_resources[context_id]->_render_context->sync();
 }
 
 void VTRenderer::collect_feedback(uint16_t context_id)
@@ -208,17 +213,14 @@ void VTRenderer::collect_feedback(uint16_t context_id)
 
     uint32_t *feedback = (uint32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_storage, ACCESS_READ_ONLY);
 
-    for(size_t i = 0; i < _ctxt_resources[context_id]->_size_feedback; i++)
-    {
-        _ctxt_resources[context_id]->_feedback_cpu_buffer[i] = feedback[i];
-    }
-
-    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
-    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32UI, nullptr);
+    memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
 
     _ctxt_resources[context_id]->_render_context->sync();
 
     _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
+
+    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
+    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32UI, nullptr);
 }
 
 void VTRenderer::apply_cut_update(uint16_t context_id)

@@ -67,7 +67,7 @@ void main()
         // outputting the calculated coordinate from our physical texture
         c = texture(physical_texture_array, vec3(physical_texture_coordinates, texture_coordinates.z));
 
-        // c = (c + vec4(0.0, 1.0 * (float(current_level) / max_level_color), float(texture_coordinates.z) / 2, 1.0)) * 0.5;
+        c = (c + vec4(0.0, 1.0 * (float(current_level) / max_level_color), float(texture_coordinates.z) / 2, 1.0)) * 0.5;
 
         // feedback calculation based on accumulated use of each rendered tile
         uint one_d_feedback_ssbo_index = base_xy_offset.x + base_xy_offset.y * physical_texture_dim.x + index_quadruple.w * physical_texture_dim.x * physical_texture_dim.y;

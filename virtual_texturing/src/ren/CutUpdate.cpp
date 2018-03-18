@@ -7,10 +7,11 @@ CutUpdate::CutUpdate() : _dispatch_lock(), _dispatch_time()
 {
     _should_stop.store(false);
     _new_feedback.store(false);
-    _feedback_buffer = nullptr;
 
     _config = &VTConfig::get_instance();
     _cut_db = &CutDatabase::get_instance();
+
+    _feedback_buffer = new uint32_t[_cut_db->get_size_feedback()];
 }
 
 CutUpdate::~CutUpdate() {}
@@ -75,6 +76,10 @@ void CutUpdate::dispatch()
 
         Cut *cut = _cut_db->start_writing_cut(cut_entry.first);
 
+        // std::cout << std::endl;
+        // std::cout << "writing cut: " << cut_entry.first << std::endl;
+        // std::cout << std::endl;
+
         if(!cut->is_drawn())
         {
             _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
@@ -83,13 +88,6 @@ void CutUpdate::dispatch()
             {
                 throw std::runtime_error("Root tile not loaded for atlas: " + std::string(cut->get_atlas()->getFileName()));
             }
-
-            //ooc::TileCacheSlot *slot = nullptr;
-
-            /*while(slot == nullptr){
-                slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }*/
 
             ooc::TileCacheSlot *slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
 
@@ -186,20 +184,20 @@ void CutUpdate::dispatch()
             }
         }
 
-        //    /* DEBUG QUADTREE CONSISTENCY PASS */
-        //
-        //    for(auto iter = _cut.get_back_cut().crbegin(); iter != _cut.get_back_cut().crend(); iter++)
-        //    {
-        //        id_type tile_id = *iter;
-        //        id_type parent_id = QuadTree::get_parent_id(tile_id);
-        //        if(tile_id != 0 && _cut.get_back_cut().find(parent_id) != _cut.get_back_cut().end())
-        //        {
-        //            std::cerr << "Tile id: " << tile_id << std::endl;
-        //            std::cerr << "Parent id: " << parent_id << std::endl;
-        //
-        //            throw std::runtime_error("Quadtree corruption");
-        //        }
-        //    }
+        /* DEBUG QUADTREE CONSISTENCY PASS */
+
+//        for(auto iter = cut->get_back()->get_cut().crbegin(); iter != cut->get_back()->get_cut().crend(); iter++)
+//        {
+//            id_type tile_id = *iter;
+//            id_type parent_id = QuadTree::get_parent_id(tile_id);
+//            if(tile_id != 0 && cut->get_back()->get_cut().find(parent_id) != cut->get_back()->get_cut().end())
+//            {
+//                std::cerr << "Tile id: " << tile_id << std::endl;
+//                std::cerr << "Parent id: " << parent_id << std::endl;
+//
+//                throw std::runtime_error("Quadtree corruption");
+//            }
+//        }
 
         cut->get_back()->get_cut().swap(cut_desired);
 
@@ -330,12 +328,14 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
 
 bool CutUpdate::collapse_to_id(Cut *cut, id_type tile_id)
 {
-    uint8_t *tile_ptr = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), tile_id, 100)->getBuffer();
+    ooc::TileCacheSlot * slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), tile_id, 100);
 
-    if(tile_ptr == nullptr)
+    if(slot == nullptr)
     {
         return false;
     }
+
+    uint8_t *tile_ptr = slot->getBuffer();
 
     for(uint8_t i = 0; i < 4; i++)
     {
@@ -343,21 +343,18 @@ bool CutUpdate::collapse_to_id(Cut *cut, id_type tile_id)
 
         if(mem_slot != nullptr)
         {
-            mem_slot->locked = false;
-            mem_slot->updated = false;
-
             cut->get_back()->get_mem_slots_updated().erase(mem_slot->tile_id);
             cut->get_back()->get_mem_slots_locked().erase(mem_slot->tile_id);
 
-            ooc::TileCacheSlot *slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), QuadTree::get_child_id(tile_id, i), 100);
+            _cut_db->get_tile_provider()->ungetTile(cut->get_atlas(), mem_slot->tile_id);
 
-            if(slot == nullptr)
-            {
-                throw std::runtime_error("Collapsed node not in OOC cache");
-                return false;
-            }
-
-            _cut_db->get_tile_provider()->ungetTile(slot);
+            mem_slot->locked = false;
+            mem_slot->updated = false;
+            mem_slot->tile_id = UINT64_MAX;
+        }
+        else
+        {
+            throw std::runtime_error("Collapsed child not in memory slots");
         }
     }
 
@@ -403,7 +400,15 @@ bool CutUpdate::split_id(Cut *cut, id_type tile_id)
 }
 bool CutUpdate::keep_id(Cut *cut, id_type tile_id)
 {
-    uint8_t *tile_ptr = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), tile_id, 100)->getBuffer();
+    ooc::TileCacheSlot * slot = _cut_db->get_tile_provider()->getTile(cut->get_atlas(), tile_id, 100);
+
+    if(slot == nullptr)
+    {
+        throw std::runtime_error("kept tile #" + std::to_string(tile_id) + "not found in RAM");
+    }
+
+    uint8_t *tile_ptr = slot->getBuffer();
+
     if(tile_ptr == nullptr)
     {
         throw std::runtime_error("kept tile #" + std::to_string(tile_id) + "not found in RAM");
@@ -424,11 +429,13 @@ mem_slot_type *CutUpdate::get_mem_slot_for_id(Cut *cut, id_type tile_id)
 }
 void CutUpdate::feedback(uint32_t *buf)
 {
-    std::unique_lock<std::mutex> lk(_dispatch_lock);
-    _feedback_buffer = buf;
-    _new_feedback.store(true);
-    lk.unlock();
-    _cv.notify_one();
+    if(_dispatch_lock.try_lock())
+    {
+        std::copy(buf, buf + _cut_db->get_size_feedback(), _feedback_buffer);
+        _new_feedback.store(true);
+        _dispatch_lock.unlock();
+        _cv.notify_one();
+    }
 }
 
 void CutUpdate::stop()
