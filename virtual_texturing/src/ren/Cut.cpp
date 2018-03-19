@@ -16,8 +16,11 @@ void CutState::accept(CutState &cut_state)
     _cut.clear();
     _cut.insert(cut_state._cut.begin(), cut_state._cut.end());
 
-    _mem_slots_locked = mem_slots_index_type(cut_state._mem_slots_locked);
-    _mem_slots_updated = mem_slots_index_type(cut_state._mem_slots_updated);
+    _mem_slots_locked.clear();
+    _mem_slots_locked.insert(cut_state._mem_slots_locked.begin(), cut_state._mem_slots_locked.end());
+
+    _mem_slots_updated.clear();
+    _mem_slots_updated.insert(cut_state._mem_slots_updated.begin(), cut_state._mem_slots_updated.end());
 
     std::copy(cut_state._index, cut_state._index + _size_index_buffer, _index);
 }

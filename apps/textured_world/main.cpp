@@ -171,10 +171,15 @@ Window *create_window(unsigned int width, unsigned int height, const std::string
     new_window->_width = width;
     new_window->_height = height;
 
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifndef NDEBUG
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+#else
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, false);
+#endif
 
     if(share != nullptr)
     {
@@ -289,7 +294,7 @@ int main(int argc, char *argv[])
         std::runtime_error("GLFW initialisation failed");
     }
 
-    Window *primary_window = create_window(3840, 2160, "First", nullptr, nullptr);
+    Window *primary_window = create_window(1920, 1080, "First", nullptr, nullptr);
     // TODO
     // create_window(600, 600, "Second", nullptr, primary_window);
 
@@ -303,6 +308,11 @@ int main(int argc, char *argv[])
     vtrenderer->add_data(cut_elevation_id, data_world_elevation_id);
     vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
+
+    // TODO: get rid of this
+    // dirty hack, fixes OOC SIGSEGV
+    vtrenderer->collect_feedback(primary_context_id);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
 #ifndef NDEBUG
     glewExperimental = GL_TRUE;
@@ -344,6 +354,9 @@ int main(int argc, char *argv[])
                 vtrenderer->render_debug_context(primary_context_id);
 
                 ImGui::Render();
+#else
+                // TODO: get rid of this
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #endif
             }
             else
@@ -354,6 +367,8 @@ int main(int argc, char *argv[])
             glfwSwapBuffers(window->_glfw_window);
         }
     }
+
+    cut_update->stop();
 
     return EXIT_SUCCESS;
 }
