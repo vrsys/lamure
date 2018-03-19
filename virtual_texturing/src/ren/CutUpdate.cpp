@@ -310,6 +310,10 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
                 ptr[1] = (uint8_t)y_tile;
                 ptr[2] = (uint8_t)tile_depth;
                 ptr[3] = (uint8_t)level;
+
+                // TODO: change the settings for idx-tex-hierarchy; we don't need the tile_depth anymore (implicit given)
+                ptr[2] = (uint8_t)level;
+                ptr[3] = (uint8_t)1;
             }
         }
     }

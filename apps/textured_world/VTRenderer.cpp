@@ -197,11 +197,21 @@ void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint
     _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 1);
     _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[elevation_data_id]->_index_texture, _filter_nearest, 2);
 
-    // TODO: bind all hierarchical idx textures -- done
-    for (int i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i) {
-        _ctxt_resources[context_id]->_render_context->
-                bind_texture(_data_resources[color_data_id]->_index_hierarchy[i], _filter_nearest, i+3);
-    }
+//    // TODO: bind all hierarchical idx textures -- done
+//    for (int i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i) {
+//        _ctxt_resources[context_id]->_render_context->
+//                bind_texture(_data_resources[color_data_id]->_index_hierarchy[i], _filter_nearest, i+3);
+//    }
+
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 3);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 4);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 5);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 6);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 7);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 8);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 9);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 10);
+
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_storage, 0);
 
