@@ -2,17 +2,14 @@
 
 in vec2 texture_coord;
 
-flat in uint max_level;
-flat in uvec2 physical_texture_dim;
+uniform uint max_level;
+uniform uvec2 physical_texture_dim;
 
-flat in uint toggle_view;
-flat in vec2 tile_size;
-flat in vec2 tile_padding;
+uniform vec2 tile_size;
+uniform vec2 tile_padding;
 
 layout(binding = 0) uniform usampler2D hierarchical_idx_textures[16];
 layout(binding = 17) uniform sampler2DArray physical_texture_array;
-
-
 
 layout(std430, binding = 0) buffer out_feedback { int out_feedback_values[]; };
 

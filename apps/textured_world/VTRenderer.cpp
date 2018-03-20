@@ -175,11 +175,10 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
     _shader_vt->uniform("projection_matrix", projection_matrix);
     _shader_vt->uniform("model_view_matrix", model_view_matrix);
 
-    _shader_vt->uniform("in_toggle_view", true);
-    _shader_vt->uniform("in_physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
-    _shader_vt->uniform("in_max_level_color", max_depth_level_color);
-    _shader_vt->uniform("in_tile_size", (uint32_t)VTConfig::get_instance().get_size_tile());
-    _shader_vt->uniform("in_tile_padding", (uint32_t)VTConfig::get_instance().get_size_padding());
+    _shader_vt->uniform("physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
+    _shader_vt->uniform("max_level", max_depth_level_color);
+    _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
+    _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
 
     for(uint32_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
     {
@@ -231,11 +230,6 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
     _ctxt_resources[context_id]->_render_context->sync();
 
-    std::cout << "First feedback values: ";
-    for(int i = 0; i < 10; ++i) {
-        std::cout << _ctxt_resources[context_id]->_feedback_cpu_buffer[i] << ", ";
-    }
-    std::cout << "\n";
     _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
     _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32I, nullptr);
