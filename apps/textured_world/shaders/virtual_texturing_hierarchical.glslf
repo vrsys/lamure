@@ -214,11 +214,7 @@ vec4 get_physical_texture_color(uvec4 index_quadruple, vec2 texture_sampling_coo
     vec2 physical_texture_coordinates = (base_xy_offset.xy + physical_tile_ratio_xy * padding_scale + padding_offset) / physical_texture_dim;
 
     // outputting the calculated coordinate from our physical texture
-    vec4 c = texture(physical_texture_array, vec3(physical_texture_coordinates, index_quadruple.z));
-
-    c = (c + vec4(0.0, 1.0 * (float(current_level) / max_level), float(index_quadruple.z) / 2, 1.0)) * 0.5;
-
-    return c;
+    return texture(physical_texture_array, vec3(physical_texture_coordinates, index_quadruple.z));
 }
 
 void update_feedback(int feedback_value, uvec4 base_offset)

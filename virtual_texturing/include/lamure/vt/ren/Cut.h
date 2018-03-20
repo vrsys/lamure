@@ -14,22 +14,22 @@ class CutDatabase;
 class CutState
 {
   public:
-    CutState(uint32_t _size_index_buffer);
+    CutState(uint16_t depth);
     ~CutState();
 
-    uint8_t *get_index();
+    uint8_t *get_index(uint16_t level);
     cut_type &get_cut();
     mem_slots_index_type &get_mem_slots_updated();
     mem_slots_index_type &get_mem_slots_locked();
     void accept(CutState &cut_state);
 
   private:
-    uint32_t _size_index_buffer;
-
-    uint8_t *_index;
+    std::vector<uint32_t> _index_buffer_sizes;
+    std::vector<uint8_t *> _index_buffers;
     cut_type _cut;
     mem_slots_index_type _mem_slots_updated;
     mem_slots_index_type _mem_slots_locked;
+    uint16_t get_size_levels();
 };
 
 class Cut : public DoubleBuffer<CutState>

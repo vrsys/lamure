@@ -2,14 +2,23 @@
 
 namespace vt
 {
-CutState::CutState(uint32_t _size_index_buffer) : _cut(), _mem_slots_updated(), _mem_slots_locked()
+CutState::CutState(uint16_t depth) : _cut(), _mem_slots_updated(), _mem_slots_locked()
 {
-    this->_size_index_buffer = _size_index_buffer;
+    uint16_t level = 0;
 
-    _index = new uint8_t[_size_index_buffer];
-    std::fill(_index, _index + _size_index_buffer, 0);
+    while(level < depth)
+    {
+        uint32_t length_of_depth = (uint32_t)QuadTree::get_length_of_depth(level) * 4;
 
-    _cut.insert(0);
+        _index_buffer_sizes.emplace_back(length_of_depth);
+
+        uint8_t *index_buffer = new uint8_t[length_of_depth];
+        std::fill(index_buffer, index_buffer + length_of_depth, 0);
+
+        _index_buffers.emplace_back(index_buffer);
+
+        level++;
+    }
 }
 void CutState::accept(CutState &cut_state)
 {
@@ -22,32 +31,40 @@ void CutState::accept(CutState &cut_state)
     _mem_slots_updated.clear();
     _mem_slots_updated.insert(cut_state._mem_slots_updated.begin(), cut_state._mem_slots_updated.end());
 
-    std::copy(cut_state._index, cut_state._index + _size_index_buffer, _index);
+    for (int i = 0; i < _index_buffers.size(); ++i) {
+        std::copy(cut_state._index_buffers[i], cut_state._index_buffers[i] + cut_state._index_buffer_sizes[i], _index_buffers[i]);
+    }
 }
-CutState::~CutState() { delete _index; }
+CutState::~CutState() {
+    for (auto &_index_buffer : _index_buffers)
+    {
+        delete _index_buffer;
+    }
+}
 cut_type &CutState::get_cut() { return _cut; }
-uint8_t *CutState::get_index() { return _index; }
+uint16_t CutState::get_size_levels(){
+    return (uint16_t)_index_buffers.size();
+}
+uint8_t *CutState::get_index(uint16_t level) { return _index_buffers.at(level); }
 mem_slots_index_type &CutState::get_mem_slots_updated() { return _mem_slots_updated; }
 mem_slots_index_type &CutState::get_mem_slots_locked() { return _mem_slots_locked; }
-Cut::Cut(pre::AtlasFile * atlas, CutState *front, CutState *back) : DoubleBuffer<CutState>(front, back)
+Cut::Cut(pre::AtlasFile *atlas, CutState *front, CutState *back) : DoubleBuffer<CutState>(front, back)
 {
     _atlas = atlas;
     _drawn = false;
 }
 void Cut::deliver() { _front->accept((*_back)); }
-Cut &Cut::init_cut(pre::AtlasFile * atlas)
+Cut &Cut::init_cut(pre::AtlasFile *atlas)
 {
-    uint32_t length_of_depth = (uint32_t)QuadTree::get_length_of_depth(atlas->getDepth() - 1) * 4;
+    CutState *front_state = new CutState((uint16_t)atlas->getDepth());
+    CutState *back_state = new CutState((uint16_t)atlas->getDepth());
 
-    CutState *front_state = new CutState(length_of_depth);
-    CutState *back_state = new CutState(length_of_depth);
-
-    Cut * cut = new Cut(atlas, front_state, back_state);
+    Cut *cut = new Cut(atlas, front_state, back_state);
     return *cut;
 }
 pre::AtlasFile *Cut::get_atlas() const { return _atlas; }
 bool Cut::is_drawn() const { return _drawn; }
-void Cut::set_drawn(bool _drawn) { Cut::_drawn = _drawn; }
+void Cut::set_drawn(bool drawn) { _drawn = drawn; }
 uint32_t Cut::get_dataset_id(uint64_t cut_id) { return (uint32_t)(cut_id >> 32); }
 uint16_t Cut::get_view_id(uint64_t cut_id) { return (uint16_t)(cut_id >> 16); }
 uint16_t Cut::get_context_id(uint64_t cut_id) { return (uint16_t)cut_id; }

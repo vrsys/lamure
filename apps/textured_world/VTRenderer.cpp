@@ -21,7 +21,7 @@ void VTRenderer::init()
     _scm_core.reset(new scm::core(0, nullptr));
     _device.reset(new scm::gl::render_device());
 
-    std::string fs_vt_color, vx_vt_elevation, fs_vt_color_debug, tc_vt_elevation, te_vt_elevation;
+    std::string fs_vt_color, vx_vt_elevation, fs_vt_color_debug;
 
     {
         using namespace scm::gl;
@@ -36,7 +36,7 @@ void VTRenderer::init()
         }
 #else
         if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_elevation.glslv", vx_vt_elevation) ||
-           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslf", fs_vt_color))
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical.glslf", fs_vt_color))
         {
             scm::err() << "error reading shader files" << scm::log::end;
             throw std::runtime_error("Error reading shader files");
@@ -79,12 +79,20 @@ void VTRenderer::init()
 
 void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
 {
-    uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row((*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth() - 1);
+    using namespace scm::math;
+    using namespace scm::gl;
 
     data_resource *resource = new data_resource();
 
-    resource->_index_texture_dimension = scm::math::vec2ui(size_index_texture, size_index_texture);
-    resource->_index_texture = _device->create_texture_2d(resource->_index_texture_dimension, scm::gl::FORMAT_RGBA_8UI);
+    uint16_t depth = (uint16_t)((*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth());
+    uint16_t level = 0;
+    while(level < depth)
+    {
+        uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row(level);
+        resource->_index_hierarchy.emplace_back(_device->create_texture_2d(vec2ui(size_index_texture, size_index_texture), FORMAT_RGBA_8UI));
+
+        level++;
+    }
 
     _data_resources[data_id] = resource;
 }
@@ -114,7 +122,7 @@ void VTRenderer::add_context(uint16_t context_id)
     resource->_physical_texture = _device->create_texture_2d(physical_texture_size, get_tex_format(), 0, VTConfig::get_instance().get_phys_tex_layers() + 1);
 
     resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
-    resource->_feedback_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_READ, resource->_size_feedback * size_of_format(FORMAT_R_32UI));
+    resource->_feedback_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_READ, resource->_size_feedback * size_of_format(FORMAT_R_32I));
 
     resource->_feedback_cpu_buffer = new int32_t[resource->_size_feedback];
 
@@ -144,16 +152,13 @@ void VTRenderer::clear_buffers(uint16_t context_id)
 
     _ctxt_resources[context_id]->_render_context->apply();
 }
-void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t context_id)
 {
     using namespace scm::math;
     using namespace scm::gl;
 
     uint64_t color_cut_id = (((uint64_t)color_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
-    uint64_t elevation_cut_id = (((uint64_t)elevation_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
-
     uint32_t max_depth_level_color = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
-    uint32_t max_depth_level_elevation = (*CutDatabase::get_instance().get_cut_map())[elevation_cut_id]->get_atlas()->getDepth() - 1;
 
     mat4f projection_matrix = mat4f::identity();
     perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
@@ -165,16 +170,9 @@ void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint
     _shader_vt->uniform("projection_matrix", projection_matrix);
     _shader_vt->uniform("model_view_matrix", model_view_matrix);
 
-    // TODO: dimensions are dynamic
-    _shader_vt->uniform("in_index_dim_color", _data_resources[color_data_id]->_index_texture_dimension);
-    _shader_vt->uniform("in_max_level_color", max_depth_level_color);
-
-    // TODO: dimensions are dynamic
-    _shader_vt->uniform("in_index_dim_elevation", _data_resources[elevation_data_id]->_index_texture_dimension);
-    _shader_vt->uniform("in_max_level_elevation", max_depth_level_elevation);
-
     _shader_vt->uniform("in_toggle_view", true);
     _shader_vt->uniform("in_physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
+    _shader_vt->uniform("in_max_level_color", max_depth_level_color);
     _shader_vt->uniform("in_tile_size", (uint32_t)VTConfig::get_instance().get_size_tile());
     _shader_vt->uniform("in_tile_padding", (uint32_t)VTConfig::get_instance().get_size_padding());
 
@@ -196,24 +194,10 @@ void VTRenderer::render(uint32_t color_data_id, uint32_t elevation_data_id, uint
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 0);
 
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 1);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[elevation_data_id]->_index_texture, _filter_nearest, 2);
-
-//    // TODO: bind all hierarchical idx textures -- done
-//    for (int i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i) {
-//        _ctxt_resources[context_id]->_render_context->
-//                bind_texture(_data_resources[color_data_id]->_index_hierarchy[i], _filter_nearest, i+3);
-//    }
-
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 3);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 4);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 5);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 6);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 7);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 8);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 9);
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_texture, _filter_nearest, 10);
-
+    for(uint16_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
+    {
+        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_hierarchy.at(i), _filter_nearest, i + 1);
+    }
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_storage, 0);
 
@@ -231,14 +215,14 @@ void VTRenderer::collect_feedback(uint16_t context_id)
 
     int32_t *feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_storage, ACCESS_READ_ONLY);
 
-    memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
+    memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
 
     _ctxt_resources[context_id]->_render_context->sync();
 
     _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
 
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
-    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32UI, nullptr);
+    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32I, nullptr);
 }
 
 void VTRenderer::apply_cut_update(uint16_t context_id)
@@ -259,8 +243,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
             continue;
         }
 
-        // TODO: Call this method for each hierarchical idx texture
-        update_index_texture(Cut::get_dataset_id(cut_entry.first), context_id, cut->get_front()->get_index());
+        std::set<uint16_t> updated_levels;
 
         for(auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
         {
@@ -285,7 +268,14 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
                 throw std::runtime_error("updated mem slot inconsistency");
             }
 
+            updated_levels.insert(QuadTree::get_depth_of_node(mem_slot_updated->tile_id));
             update_physical_texture_blockwise(context_id, mem_slot_updated->pointer, mem_slot_updated->position);
+        }
+
+        for(uint16_t updated_level : updated_levels)
+        {
+            // std::cout << "Updated level:  "+std::to_string(updated_level) << std::endl;
+            update_index_texture(Cut::get_dataset_id(cut_entry.first), context_id, updated_level, cut->get_front()->get_index(updated_level));
         }
 
         cut_db->stop_reading_cut(cut_entry.first);
@@ -299,12 +289,17 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
     _apply_time = std::chrono::duration<float, std::milli>(end - start).count();
 }
 
-void VTRenderer::update_index_texture(uint32_t data_id, uint16_t context_id, const uint8_t *buf_cpu)
+void VTRenderer::update_index_texture(uint32_t data_id, uint16_t context_id, uint16_t level, const uint8_t *buf_cpu)
 {
-    scm::math::vec3ui origin = scm::math::vec3ui(0, 0, 0);
-    scm::math::vec3ui dimensions = scm::math::vec3ui(_data_resources[data_id]->_index_texture_dimension, 1);
+    using namespace scm::math;
+    using namespace scm::gl;
 
-    _ctxt_resources[context_id]->_render_context->update_sub_texture(_data_resources[data_id]->_index_texture, scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI, buf_cpu);
+    uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row(level);
+
+    vec3ui origin = vec3ui(0, 0, 0);
+    vec3ui dimensions = vec3ui(size_index_texture, size_index_texture, 1);
+
+    _ctxt_resources[context_id]->_render_context->update_sub_texture(_data_resources[data_id]->_index_hierarchy.at(level), texture_region(origin, dimensions), 0, FORMAT_RGBA_8UI, buf_cpu);
 }
 
 scm::gl::data_format VTRenderer::get_tex_format()
@@ -323,16 +318,19 @@ scm::gl::data_format VTRenderer::get_tex_format()
 
 void VTRenderer::update_physical_texture_blockwise(uint16_t context_id, const uint8_t *buf_texel, size_t slot_position)
 {
+    using namespace scm::math;
+    using namespace scm::gl;
+
     size_t slots_per_texture = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width();
     size_t layer = slot_position / slots_per_texture;
     size_t rel_slot_position = slot_position - layer * slots_per_texture;
     size_t x_tile = rel_slot_position % VTConfig::get_instance().get_phys_tex_tile_width();
     size_t y_tile = rel_slot_position / VTConfig::get_instance().get_phys_tex_tile_width();
 
-    scm::math::vec3ui origin = scm::math::vec3ui((uint32_t)x_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)y_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)layer);
-    scm::math::vec3ui dimensions = scm::math::vec3ui(VTConfig::get_instance().get_size_tile(), VTConfig::get_instance().get_size_tile(), 1);
+    vec3ui origin = vec3ui((uint32_t)x_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)y_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)layer);
+    vec3ui dimensions = vec3ui(VTConfig::get_instance().get_size_tile(), VTConfig::get_instance().get_size_tile(), 1);
 
-    _ctxt_resources[context_id]->_render_context->update_sub_texture(_ctxt_resources[context_id]->_physical_texture, scm::gl::texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
+    _ctxt_resources[context_id]->_render_context->update_sub_texture(_ctxt_resources[context_id]->_physical_texture, texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
 }
 
 VTRenderer::~VTRenderer()
@@ -373,21 +371,30 @@ void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t 
 
     std::stringstream stream_index_string;
 
-    size_t size_index_texture = QuadTree::get_tiles_per_row((*cut_db->get_cut_map())[cut_id]->get_atlas()->getDepth() - 1);
+    uint16_t depth = (uint16_t)(*cut_db->get_cut_map())[cut_id]->get_atlas()->getDepth();
 
-    for(size_t x = 0; x < size_index_texture; ++x)
+    uint16_t level = 0;
+
+    while(level < depth - 7)
     {
+        size_t size_index_texture = QuadTree::get_tiles_per_row(level);
+
         for(size_t y = 0; y < size_index_texture; ++y)
         {
-            auto ptr = &(*cut_db->get_cut_map())[cut_id]->get_front()->get_index()[y * size_index_texture * 4 + x * 4];
+            for(size_t x = 0; x < size_index_texture; ++x)
+            {
+                auto ptr = &(*cut_db->get_cut_map())[cut_id]->get_front()->get_index(level)[y * size_index_texture * 4 + x * 4];
 
-            stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << "." << (int)ptr[3] << " ";
+                stream_index_string << (int)ptr[0] << "." << (int)ptr[1] << "." << (int)ptr[2] << "." << (int)ptr[3] << " ";
+            }
+
+            stream_index_string << std::endl;
         }
 
         stream_index_string << std::endl;
-    }
 
-    stream_index_string << std::endl;
+        level++;
+    }
 
     _cut_debug_outputs[cut_id]->_string_index = stream_index_string.str();
 
@@ -413,9 +420,9 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
     std::stringstream stream_mem_slots;
     for(size_t layer = 0; layer < VTConfig::get_instance().get_phys_tex_layers(); layer++)
     {
-        for(size_t x = 0; x < cut_db->get_size_mem_x(); ++x)
+        for(size_t y = 0; y < cut_db->get_size_mem_y(); ++y)
         {
-            for(size_t y = 0; y < cut_db->get_size_mem_y(); ++y)
+            for(size_t x = 0; x < cut_db->get_size_mem_x(); ++x)
             {
                 if(!(*cut_db->get_front()).at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y()).locked)
                 {
@@ -427,7 +434,6 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
                     stream_mem_slots << (*cut_db->get_front()).at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y()).tile_id << " ";
                 }
             }
-
             stream_mem_slots << std::endl;
         }
         stream_mem_slots << std::endl;
@@ -440,9 +446,9 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
 
     for(size_t layer = 0; layer < VTConfig::get_instance().get_phys_tex_layers(); layer++)
     {
-        for(size_t x = 0; x < phys_tex_tile_width; ++x)
+        for(size_t y = 0; y < phys_tex_tile_width; ++y)
         {
-            for(size_t y = 0; y < phys_tex_tile_width; ++y)
+            for(size_t x = 0; x < phys_tex_tile_width; ++x)
             {
                 stream_feedback << _ctxt_resources[context_id]->_feedback_cpu_buffer[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
             }

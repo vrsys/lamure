@@ -54,6 +54,7 @@ private:
 
     uint8_t count_children_in_cut(id_type tile_id, const cut_type &cut);
     bool check_all_siblings_in_cut(id_type tile_id, const cut_type &cut);
+    void remove_from_indexed_memory(Cut *cut, id_type tile_id);
 };
 }
 
