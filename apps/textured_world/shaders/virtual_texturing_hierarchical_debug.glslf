@@ -9,18 +9,10 @@ flat in uint toggle_view;
 flat in vec2 tile_size;
 flat in vec2 tile_padding;
 
-layout(binding = 0) uniform sampler2DArray physical_texture_array;
+layout(binding = 0) uniform usampler2D hierarchical_idx_textures[16];
+layout(binding = 17) uniform sampler2DArray physical_texture_array;
 
-layout(binding = 1) uniform usampler2D idx_texture_0;
-layout(binding = 2) uniform usampler2D idx_texture_1;
-layout(binding = 3) uniform usampler2D idx_texture_2;
-layout(binding = 4) uniform usampler2D idx_texture_3;
-layout(binding = 5) uniform usampler2D idx_texture_4;
-layout(binding = 6) uniform usampler2D idx_texture_5;
-layout(binding = 7) uniform usampler2D idx_texture_6;
-layout(binding = 8) uniform usampler2D idx_texture_7;
-layout(binding = 9) uniform usampler2D idx_texture_8;
-layout(binding = 10) uniform usampler2D idx_texture_9;
+
 
 layout(std430, binding = 0) buffer out_feedback { int out_feedback_values[]; };
 
@@ -48,14 +40,14 @@ float dxdy()
 
 idx_tex_positions choice_0(vec2 texture_coordinates)
 {
-    uvec4 idx_pos = texture(idx_texture_0, texture_coordinates).rgba;
+    uvec4 idx_pos = texture(hierarchical_idx_textures[0], texture_coordinates).rgba;
     return idx_tex_positions(0, idx_pos, 0, idx_pos);
 }
 
 idx_tex_positions choice_1(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_1, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_0, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[1], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[0], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 1
@@ -69,8 +61,8 @@ idx_tex_positions choice_1(vec2 texture_coordinates)
 
 idx_tex_positions choice_2(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_2, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_1, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[2], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[1], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 2
@@ -84,8 +76,8 @@ idx_tex_positions choice_2(vec2 texture_coordinates)
 
 idx_tex_positions choice_3(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_3, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_2, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[3], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[2], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 3
@@ -99,8 +91,8 @@ idx_tex_positions choice_3(vec2 texture_coordinates)
 
 idx_tex_positions choice_4(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_4, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_3, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[4], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[3], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 4
@@ -114,8 +106,8 @@ idx_tex_positions choice_4(vec2 texture_coordinates)
 
 idx_tex_positions choice_5(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_5, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_4, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[5], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[4], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 5
@@ -129,8 +121,8 @@ idx_tex_positions choice_5(vec2 texture_coordinates)
 
 idx_tex_positions choice_6(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_6, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_5, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[6], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[5], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 6
@@ -144,8 +136,8 @@ idx_tex_positions choice_6(vec2 texture_coordinates)
 
 idx_tex_positions choice_7(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_7, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_6, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[7], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[6], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 7
@@ -159,8 +151,8 @@ idx_tex_positions choice_7(vec2 texture_coordinates)
 
 idx_tex_positions choice_8(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_8, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_7, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[8], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[7], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 8
@@ -174,8 +166,8 @@ idx_tex_positions choice_8(vec2 texture_coordinates)
 
 idx_tex_positions choice_9(vec2 texture_coordinates)
 {
-    uvec4 idx_child_pos = texture(idx_texture_9, texture_coordinates).rgba;
-    uvec4 idx_parent_pos = texture(idx_texture_8, texture_coordinates).rgba;
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[9], texture_coordinates).rgba;
+    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[8], texture_coordinates).rgba;
 
     if(idx_child_pos.w != 0)
     { // tile is available at level 9
@@ -216,7 +208,7 @@ vec4 get_physical_texture_color(uvec4 index_quadruple, vec2 texture_sampling_coo
     // outputting the calculated coordinate from our physical texture
     vec4 c = texture(physical_texture_array, vec3(physical_texture_coordinates, index_quadruple.z));
 
-    c = (c + vec4(0.0, 1.0 * (float(current_level) / max_level), float(index_quadruple.z) / 2, 1.0)) * 0.5;
+    //c = (c + vec4(0.0, 1.0 * (float(current_level) / max_level), float(index_quadruple.z) / 2, 1.0)) * 0.5;
 
     return c;
 }
@@ -236,6 +228,7 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
     int desired_level = int(ceil(lambda));
 
     if(desired_level <= 0)
+    //if(true)
     {
         positions = choice_0(texture_coordinates);
     }

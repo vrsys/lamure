@@ -89,7 +89,12 @@ void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
     while(level < depth)
     {
         uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row(level);
-        resource->_index_hierarchy.emplace_back(_device->create_texture_2d(vec2ui(size_index_texture, size_index_texture), FORMAT_RGBA_8UI));
+
+        auto index_texture_level_ptr = _device->create_texture_2d(vec2ui(size_index_texture, size_index_texture), FORMAT_RGBA_8UI);
+
+        _device->main_context()->clear_image_data(index_texture_level_ptr, 0, FORMAT_RGBA_8UI, 0);
+        resource->_index_hierarchy.emplace_back(index_texture_level_ptr);
+
 
         level++;
     }
@@ -119,10 +124,10 @@ void VTRenderer::add_context(uint16_t context_id)
     resource->_physical_texture_dimension = vec2ui(VTConfig::get_instance().get_phys_tex_tile_width(), VTConfig::get_instance().get_phys_tex_tile_width());
 
     vec2ui physical_texture_size = vec2ui(VTConfig::get_instance().get_phys_tex_px_width(), VTConfig::get_instance().get_phys_tex_px_width());
-    resource->_physical_texture = _device->create_texture_2d(physical_texture_size, get_tex_format(), 0, VTConfig::get_instance().get_phys_tex_layers() + 1);
+    resource->_physical_texture = _device->create_texture_2d(physical_texture_size, get_tex_format(), 1, VTConfig::get_instance().get_phys_tex_layers() + 1);
 
     resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
-    resource->_feedback_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_READ, resource->_size_feedback * size_of_format(FORMAT_R_32I));
+    resource->_feedback_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32I));
 
     resource->_feedback_cpu_buffer = new int32_t[resource->_size_feedback];
 
@@ -176,6 +181,14 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
     _shader_vt->uniform("in_tile_size", (uint32_t)VTConfig::get_instance().get_size_tile());
     _shader_vt->uniform("in_tile_padding", (uint32_t)VTConfig::get_instance().get_size_padding());
 
+    for(uint32_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
+    {
+        std::string texture_string = "hierarchical_idx_textures";
+        _shader_vt->uniform(texture_string, i, int((i)) );
+    }
+
+    _shader_vt->uniform("physical_texture_array", 17);
+
     context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
     context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
     context_framebuffer_guard fbg(_ctxt_resources[context_id]->_render_context);
@@ -192,11 +205,11 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
 
     apply_cut_update(context_id);
 
-    _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 0);
+    _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
 
     for(uint16_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
     {
-        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_hierarchy.at(i), _filter_nearest, i + 1);
+        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
     }
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_storage, 0);
@@ -216,11 +229,14 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     int32_t *feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_storage, ACCESS_READ_ONLY);
 
     memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
-
     _ctxt_resources[context_id]->_render_context->sync();
 
+    std::cout << "First feedback values: ";
+    for(int i = 0; i < 10; ++i) {
+        std::cout << _ctxt_resources[context_id]->_feedback_cpu_buffer[i] << ", ";
+    }
+    std::cout << "\n";
     _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
-
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
     _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32I, nullptr);
 }
