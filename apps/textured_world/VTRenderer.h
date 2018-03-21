@@ -100,7 +100,8 @@ private:
 
         size_t _size_feedback;
         int32_t *_feedback_cpu_buffer;
-        scm::gl::buffer_ptr _feedback_storage;
+        scm::gl::buffer_ptr _feedback_lod_storage;
+        scm::gl::buffer_ptr _feedback_count_storage;
     };
 
     struct view_resource

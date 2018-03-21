@@ -127,7 +127,8 @@ void VTRenderer::add_context(uint16_t context_id)
     resource->_physical_texture = _device->create_texture_2d(physical_texture_size, get_tex_format(), 1, VTConfig::get_instance().get_phys_tex_layers() + 1);
 
     resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
-    resource->_feedback_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32I));
+    resource->_feedback_lod_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32I));
+    resource->_feedback_count_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32I));
 
     resource->_feedback_cpu_buffer = new int32_t[resource->_size_feedback];
 
@@ -211,7 +212,8 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
         _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
     }
 
-    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_storage, 0);
+    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
+    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
 
     _ctxt_resources[context_id]->_render_context->apply();
 
@@ -225,14 +227,25 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     using namespace scm::math;
     using namespace scm::gl;
 
-    int32_t *feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_storage, ACCESS_READ_ONLY);
+    // lod feedback
+    int32_t *feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, ACCESS_READ_ONLY);
 
     memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
     _ctxt_resources[context_id]->_render_context->sync();
 
     _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
-    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_storage);
-    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_storage, FORMAT_R_32I, nullptr);
+    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_lod_storage);
+    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_lod_storage, FORMAT_R_32I, nullptr);
+
+    // counter feedback
+    feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_count_storage, ACCESS_READ_ONLY);
+    memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
+    _ctxt_resources[context_id]->_render_context->sync();
+
+    // TODO: apply this second feedback to the cut update later
+//    _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
+    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_count_storage);
+    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_count_storage, FORMAT_R_32I, nullptr);
 }
 
 void VTRenderer::apply_cut_update(uint16_t context_id)

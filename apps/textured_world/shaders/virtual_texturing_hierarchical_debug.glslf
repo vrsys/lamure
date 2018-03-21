@@ -11,7 +11,8 @@ uniform vec2 tile_padding;
 layout(binding = 0) uniform usampler2D hierarchical_idx_textures[16];
 layout(binding = 17) uniform sampler2DArray physical_texture_array;
 
-layout(std430, binding = 0) buffer out_feedback { int out_feedback_values[]; };
+layout(std430, binding = 0) buffer out_lod_feedback { int out_lod_feedback_values[]; };
+layout(std430, binding = 1) buffer out_count_feedback { int out_count_feedback_values[]; };
 
 layout(location = 0) out vec4 out_color;
 
@@ -83,7 +84,8 @@ void update_feedback(int feedback_value, uvec4 base_offset)
 {
     uint one_d_feedback_ssbo_index = base_offset.x + base_offset.y * physical_texture_dim.x + base_offset.z * physical_texture_dim.x * physical_texture_dim.y;
 
-    atomicMax(out_feedback_values[one_d_feedback_ssbo_index], feedback_value);
+    atomicMax(out_lod_feedback_values[one_d_feedback_ssbo_index], feedback_value);
+    atomicAdd(out_count_feedback_values[one_d_feedback_ssbo_index], 1);
 }
 
 /*
