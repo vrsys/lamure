@@ -128,13 +128,15 @@ void VTRenderer::add_context(uint16_t context_id)
 
     resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
     resource->_feedback_lod_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32I));
-    resource->_feedback_count_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32I));
+    resource->_feedback_count_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32UI));
 
-    resource->_feedback_cpu_buffer = new int32_t[resource->_size_feedback];
+    resource->_feedback_lod_cpu_buffer = new int32_t[resource->_size_feedback];
+    resource->_feedback_count_cpu_buffer = new uint32_t[resource->_size_feedback];
 
     for(size_t i = 0; i < resource->_size_feedback; ++i)
     {
-        resource->_feedback_cpu_buffer[i] = 0;
+        resource->_feedback_lod_cpu_buffer[i] = 0;
+        resource->_feedback_count_cpu_buffer[i] = 0;
     }
 
     _ctxt_resources[context_id] = resource;
@@ -227,25 +229,21 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     using namespace scm::math;
     using namespace scm::gl;
 
-    // lod feedback
-    int32_t *feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, ACCESS_READ_ONLY);
-
-    memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
+    int32_t *feedback_lod = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, ACCESS_READ_ONLY);
+    memcpy(_ctxt_resources[context_id]->_feedback_lod_cpu_buffer, feedback_lod, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
     _ctxt_resources[context_id]->_render_context->sync();
 
-    _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_lod_storage);
     _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_lod_storage, FORMAT_R_32I, nullptr);
 
-    // counter feedback
-    feedback = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_count_storage, ACCESS_READ_ONLY);
-    memcpy(_ctxt_resources[context_id]->_feedback_cpu_buffer, feedback, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
+    uint32_t * feedback_count = (uint32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_count_storage, ACCESS_READ_ONLY);
+    memcpy(_ctxt_resources[context_id]->_feedback_count_cpu_buffer, feedback_count, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
     _ctxt_resources[context_id]->_render_context->sync();
 
-    // TODO: apply this second feedback to the cut update later
-//    _cut_update->feedback(_ctxt_resources[context_id]->_feedback_cpu_buffer);
+    _cut_update->feedback(_ctxt_resources[context_id]->_feedback_lod_cpu_buffer, _ctxt_resources[context_id]->_feedback_count_cpu_buffer);
+
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_count_storage);
-    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_count_storage, FORMAT_R_32I, nullptr);
+    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_count_storage, FORMAT_R_32UI, nullptr);
 }
 
 void VTRenderer::apply_cut_update(uint16_t context_id)
@@ -473,7 +471,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
         {
             for(size_t x = 0; x < phys_tex_tile_width; ++x)
             {
-                stream_feedback << _ctxt_resources[context_id]->_feedback_cpu_buffer[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
+                stream_feedback << _ctxt_resources[context_id]->_feedback_lod_cpu_buffer[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
             }
 
             stream_feedback << std::endl;

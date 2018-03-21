@@ -11,7 +11,8 @@ CutUpdate::CutUpdate() : _dispatch_lock(), _dispatch_time()
     _config = &VTConfig::get_instance();
     _cut_db = &CutDatabase::get_instance();
 
-    _feedback_buffer = new int32_t[_cut_db->get_size_feedback()];
+    _feedback_lod_buffer = new int32_t[_cut_db->get_size_feedback()];
+    _feedback_count_buffer = new uint32_t[_cut_db->get_size_feedback()];
 }
 
 CutUpdate::~CutUpdate() {}
@@ -123,7 +124,7 @@ void CutUpdate::dispatch()
                 continue;
             }
 
-            if(_feedback_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
+            if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
             {
                 split_counter++;
 
@@ -138,7 +139,7 @@ void CutUpdate::dispatch()
 
                 split.insert(tile_id);
             }
-            else if(_feedback_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) && tile_depth > 0)
+            else if(_feedback_lod_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) && tile_depth > 0)
             {
                 // std::cout << "decision: collapse to " << parent_id << ", " << _feedback_buffer[mem_slot->position] << std::endl;
 
@@ -379,11 +380,12 @@ mem_slot_type *CutUpdate::get_mem_slot_for_id(Cut *cut, id_type tile_id)
 
     return &_cut_db->get_back()->at((*mem_slot_iter).second);
 }
-void CutUpdate::feedback(int32_t *buf)
+void CutUpdate::feedback(int32_t *buf_lod, uint32_t*buf_count)
 {
     if(_dispatch_lock.try_lock())
     {
-        std::copy(buf, buf + _cut_db->get_size_feedback(), _feedback_buffer);
+        std::copy(buf_lod, buf_lod + _cut_db->get_size_feedback(), _feedback_lod_buffer);
+        std::copy(buf_count, buf_count + _cut_db->get_size_feedback(), _feedback_count_buffer);
         _new_feedback.store(true);
         _dispatch_lock.unlock();
         _cv.notify_one();

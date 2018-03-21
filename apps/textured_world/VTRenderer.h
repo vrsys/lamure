@@ -99,7 +99,8 @@ private:
         scm::math::vec2ui _physical_texture_dimension;
 
         size_t _size_feedback;
-        int32_t *_feedback_cpu_buffer;
+        int32_t *_feedback_lod_cpu_buffer;
+        uint32_t *_feedback_count_cpu_buffer;
         scm::gl::buffer_ptr _feedback_lod_storage;
         scm::gl::buffer_ptr _feedback_count_storage;
     };

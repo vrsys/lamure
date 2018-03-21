@@ -12,7 +12,7 @@ layout(binding = 0) uniform usampler2D hierarchical_idx_textures[16];
 layout(binding = 17) uniform sampler2DArray physical_texture_array;
 
 layout(std430, binding = 0) buffer out_lod_feedback { int out_lod_feedback_values[]; };
-layout(std430, binding = 1) buffer out_count_feedback { int out_count_feedback_values[]; };
+layout(std430, binding = 1) buffer out_count_feedback { uint out_count_feedback_values[]; };
 
 layout(location = 0) out vec4 out_color;
 
