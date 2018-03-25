@@ -18,7 +18,7 @@ CutUpdate::~CutUpdate() {}
 
 void CutUpdate::start()
 {
-    _cut_db->get_tile_provider()->start(VTConfig::get_instance().get_size_ram_cache() * 1024 * 1024);
+    _cut_db->get_tile_provider()->start((size_t)VTConfig::get_instance().get_size_ram_cache() * 1024 * 1024);
     _worker = std::thread(&CutUpdate::run, this);
 }
 
@@ -138,7 +138,7 @@ void CutUpdate::dispatch()
 
                 split.insert(tile_id);
             }
-            else if(_feedback_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) && tile_depth > 0)
+            else if(_feedback_buffer[mem_slot->position]!=0 && _feedback_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) && tile_depth > 0)
             {
                 // std::cout << "decision: collapse to " << parent_id << ", " << _feedback_buffer[mem_slot->position] << std::endl;
 

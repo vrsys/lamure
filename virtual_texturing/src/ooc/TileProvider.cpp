@@ -114,7 +114,7 @@ namespace vt{
                 return false;
             }
 
-            ungetTile(slot);
+            _cache->setSlotReady(slot);
 
             return true;
         }

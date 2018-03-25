@@ -9,6 +9,7 @@
 #include <map>
 #include <mutex>
 #include <condition_variable>
+#include <iostream>
 
 namespace vt {
 
@@ -43,6 +44,9 @@ namespace vt {
         static void _insertBefore(FibonacciHeap<key_type, value_type> *first,
                                   FibonacciHeap<key_type, value_type> *last,
                                   FibonacciHeap<key_type, value_type> *ref){
+            if(ref == nullptr){
+                return;
+            }
             first->_prev = ref->_prev;
             last->_next = ref;
             ref->_prev->_next = first;
@@ -107,7 +111,13 @@ namespace vt {
                     while(current->_key < heap->_key){
                         current = current->_next;
 
-                        if(current == _min){
+                        if(current == _min || current == nullptr){
+                            if(current == nullptr)
+                            {
+                                current = _min;
+                                std:: cout << _min->_prev << std::endl;
+                                std::cerr << "Heap problem" << std::endl;
+                            }
                             break;
                         }
                     }

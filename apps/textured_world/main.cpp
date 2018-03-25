@@ -309,8 +309,6 @@ int main(int argc, char *argv[])
     vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
 #ifndef NDEBUG
     glewExperimental = GL_TRUE;
 

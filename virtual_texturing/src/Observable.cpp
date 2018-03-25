@@ -55,7 +55,7 @@ namespace vt {
 
             size_t i = 0;
 
-            for(auto ptr : iter->second){
+            for(Observer *ptr : iter->second){
                 observers[i++] = ptr;
             }
         }
@@ -63,6 +63,8 @@ namespace vt {
         for (size_t i = 0; i < len; ++i) {
             observers[i]->inform(event, this);
         }
+
+        delete observers;
     }
 
 }

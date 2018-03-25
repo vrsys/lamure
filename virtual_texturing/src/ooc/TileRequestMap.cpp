@@ -33,7 +33,8 @@ namespace vt{
 
             if(iter == _map.end()){
                 req->observe(0, this);
-                _map.insert(std::make_pair(std::make_pair(resource, id), req));
+                auto pair = std::make_pair(resource, id);
+                _map[pair] = req;
 
                 return true;
             }

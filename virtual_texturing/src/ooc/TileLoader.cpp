@@ -10,6 +10,10 @@ namespace vt {
         }
 
         void TileLoader::process(TileRequest *req){
+            if(req == nullptr){
+                return;
+            }
+
             auto res = req->getResource();
             auto slot = _cache->writeSlot(std::chrono::milliseconds(10));
 
