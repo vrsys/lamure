@@ -118,28 +118,33 @@ class EventHandler
     static void on_window_move_cursor(GLFWwindow *glfw_window, double xpos, double ypos)
     {
         Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+
+        float x = ((float)xpos / window->_width - 0.5f) * 6.28f;
+        float y = ((float)ypos / window->_height - 0.5f) * 6.28f;
+
         switch(window->_mouse_button_state)
         {
         case Window::MouseButtonState::LEFT:
         {
-            float x = ((float)xpos / window->_width - 0.5f) * 6.28f;
             window->_trackball_manipulator.rotation(window->_ref_rot_x, 0, x, 0);
-            window->_ref_rot_x = x;
         }
         break;
         case Window::MouseButtonState::RIGHT:
         {
-            float y = ((float)ypos / window->_height - 0.5f) * 6.28f;
             window->_trackball_manipulator.rotation(0, window->_ref_rot_y, 0, y);
-            window->_ref_rot_y = y;
         }
         break;
+        default:
+            break;
         }
+
+        window->_ref_rot_x = x;
+        window->_ref_rot_y = y;
     }
     static void on_window_scroll(GLFWwindow *glfw_window, double xoffset, double yoffset)
     {
         Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        window->_scale = window->_scale + (float)yoffset * 0.01f;
+        window->_scale = std::max(window->_scale + (float)yoffset * 0.01f, -0.07f);
 
 #ifndef NDEBUG
         ImGui_ImplGlfwGL3_ScrollCallback(glfw_window, xoffset, yoffset);
@@ -175,6 +180,8 @@ Window *create_window(unsigned int width, unsigned int height, const std::string
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, 1);
+    glfwWindowHint(GLFW_FOCUSED, 1);
 #ifndef NDEBUG
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #else
@@ -275,16 +282,16 @@ int main(int argc, char *argv[])
     vt::VTConfig::get_instance().define_size_physical_texture(64, 8192);
 
     uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset("earth_stitch_86400x43200_256x256_p1_rgb_packed.atlas");
-    //uint32_t data_world_elevation_id = vt::CutDatabase::get_instance().register_dataset("gebco_256x256_p1_rgb_packed.atlas");
+    // uint32_t data_world_elevation_id = vt::CutDatabase::get_instance().register_dataset("gebco_256x256_p1_rgb_packed.atlas");
 
     uint16_t view_id = vt::CutDatabase::get_instance().register_view();
     uint16_t primary_context_id = vt::CutDatabase::get_instance().register_context();
 
     uint64_t cut_map_id = vt::CutDatabase::get_instance().register_cut(data_world_map_id, view_id, primary_context_id);
-    //uint64_t cut_elevation_id = vt::CutDatabase::get_instance().register_cut(data_world_elevation_id, view_id, primary_context_id);
+    // uint64_t cut_elevation_id = vt::CutDatabase::get_instance().register_cut(data_world_elevation_id, view_id, primary_context_id);
 
     // Registration of resources has to happen before cut update start
-    _cut_update = new vt::CutUpdate();
+    _cut_update = &vt::CutUpdate::get_instance();
     _cut_update->start();
 
     glfwSetErrorCallback(EventHandler::on_error);
@@ -305,7 +312,7 @@ int main(int argc, char *argv[])
     auto *vtrenderer = new vt::VTRenderer(_cut_update);
 
     vtrenderer->add_data(cut_map_id, data_world_map_id);
-    //vtrenderer->add_data(cut_elevation_id, data_world_elevation_id);
+    // vtrenderer->add_data(cut_elevation_id, data_world_elevation_id);
     vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
 

@@ -4,12 +4,12 @@
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/common.h>
-#include <lamure/vt/ren/Cut.h>
 #include <lamure/vt/ooc/TileProvider.h>
+#include <lamure/vt/ren/Cut.h>
 namespace vt
 {
 class VTContext;
-class CutDatabase : public DoubleBuffer<mem_slots_type>
+class CutDatabase : DoubleBuffer<mem_slots_type>
 {
   public:
     static CutDatabase &get_instance()
@@ -28,12 +28,14 @@ class CutDatabase : public DoubleBuffer<mem_slots_type>
 
     size_t get_available_memory();
     mem_slot_type *get_free_mem_slot();
+    mem_slot_type *write_mem_slot_at(size_t position);
+    mem_slot_type *read_mem_slot_at(size_t position);
 
     size_t get_size_mem_x() const { return _size_mem_x; }
     size_t get_size_mem_y() const { return _size_mem_y; }
-    size_t get_size_feedback() const { return _size_feedback; }
+    size_t get_size_mem_interleaved() const { return _size_mem_interleaved; }
 
-    uint32_t register_dataset(const std::string& file_name);
+    uint32_t register_dataset(const std::string &file_name);
     uint16_t register_view();
     uint16_t register_context();
     uint64_t register_cut(uint32_t dataset_id, uint16_t view_id, uint16_t context_id);
@@ -48,22 +50,32 @@ class CutDatabase : public DoubleBuffer<mem_slots_type>
 
     ooc::TileProvider *get_tile_provider() const;
 
-protected:
-    explicit CutDatabase(mem_slots_type *front, mem_slots_type *back);
+  protected:
+    CutDatabase(mem_slots_type *front, mem_slots_type *back);
 
     void deliver() override;
 
   private:
+    void start_writing() override;
+    void stop_writing() override;
+    void start_reading() override;
+    void stop_reading() override;
+
     size_t _size_mem_x;
     size_t _size_mem_y;
-    size_t _size_feedback;
+    size_t _size_mem_interleaved;
 
     dataset_map_type _dataset_map;
     view_set_type _view_set;
     context_set_type _context_set;
     cut_map_type _cut_map;
 
-    ooc::TileProvider * _tile_provider;
+    ooc::TileProvider *_tile_provider;
+
+    std::atomic<bool> _is_written, _is_read;
+
+    std::mutex _read_lock, _write_lock;
+    std::condition_variable _read_cv, _write_cv;
 };
 }
 

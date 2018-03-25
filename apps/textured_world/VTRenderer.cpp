@@ -95,7 +95,6 @@ void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
         _device->main_context()->clear_image_data(index_texture_level_ptr, 0, FORMAT_RGBA_8UI, 0);
         resource->_index_hierarchy.emplace_back(index_texture_level_ptr);
 
-
         level++;
     }
 
@@ -186,7 +185,7 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
     for(uint32_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
     {
         std::string texture_string = "hierarchical_idx_textures";
-        _shader_vt->uniform(texture_string, i, int((i)) );
+        _shader_vt->uniform(texture_string, i, int((i)));
     }
 
     _shader_vt->uniform("physical_texture_array", 17);
@@ -207,12 +206,12 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
 
     apply_cut_update(context_id);
 
-    _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
-
     for(uint16_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
     {
         _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
     }
+
+    _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
@@ -236,7 +235,7 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_lod_storage);
     _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_lod_storage, FORMAT_R_32I, nullptr);
 
-    uint32_t * feedback_count = (uint32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_count_storage, ACCESS_READ_ONLY);
+    uint32_t *feedback_count = (uint32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_count_storage, ACCESS_READ_ONLY);
     memcpy(_ctxt_resources[context_id]->_feedback_count_cpu_buffer, feedback_count, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
     _ctxt_resources[context_id]->_render_context->sync();
 
@@ -252,8 +251,6 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
     CutDatabase *cut_db = &CutDatabase::get_instance();
 
-    cut_db->start_reading();
-
     for(cut_map_entry_type cut_entry : (*cut_db->get_cut_map()))
     {
         Cut *cut = cut_db->start_reading_cut(cut_entry.first);
@@ -268,7 +265,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         for(auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
         {
-            const mem_slot_type *mem_slot_updated = &cut_db->get_front()->at(position_slot_updated.second);
+            const mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second);
 
             if(mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
             {
@@ -301,8 +298,6 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         cut_db->stop_reading_cut(cut_entry.first);
     }
-
-    cut_db->stop_reading();
 
     _ctxt_resources[context_id]->_render_context->sync();
 
@@ -372,7 +367,6 @@ void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t 
 
     uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
 
-    cut_db->start_reading();
     cut_db->start_reading_cut(cut_id);
 
     if(_cut_debug_outputs[cut_id] == nullptr)
@@ -420,13 +414,12 @@ void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t 
     _cut_debug_outputs[cut_id]->_string_index = stream_index_string.str();
 
     cut_db->stop_reading_cut(cut_id);
-    cut_db->stop_reading();
 }
 void VTRenderer::extract_debug_context(uint16_t context_id)
 {
     CutDatabase *cut_db = &CutDatabase::get_instance();
 
-    cut_db->start_reading();
+    cut_db->start_reading_cut(0);
 
     if(_ctxt_debug_outputs[context_id] == nullptr)
     {
@@ -445,14 +438,16 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
         {
             for(size_t x = 0; x < cut_db->get_size_mem_x(); ++x)
             {
-                if(!(*cut_db->get_front()).at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y()).locked)
+                mem_slot_type *mem_slot = cut_db->read_mem_slot_at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y());
+
+                if(!(*mem_slot).locked)
                 {
                     stream_mem_slots << "F ";
                     free_slots++;
                 }
                 else
                 {
-                    stream_mem_slots << (*cut_db->get_front()).at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y()).tile_id << " ";
+                    stream_mem_slots << (*mem_slot).tile_id << " ";
                 }
             }
             stream_mem_slots << std::endl;
@@ -460,7 +455,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
         stream_mem_slots << std::endl;
     }
     _ctxt_debug_outputs[context_id]->_string_mem_slots = stream_mem_slots.str();
-    _ctxt_debug_outputs[context_id]->_mem_slots_busy = ((float)cut_db->get_size_feedback() - cut_db->get_available_memory()) / (float)cut_db->get_size_feedback();
+    _ctxt_debug_outputs[context_id]->_mem_slots_busy = ((float)cut_db->get_size_mem_interleaved() - cut_db->get_available_memory()) / (float)cut_db->get_size_mem_interleaved();
 
     std::stringstream stream_feedback;
     size_t phys_tex_tile_width = VTConfig::get_instance().get_phys_tex_tile_width();
@@ -489,7 +484,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
     _ctxt_debug_outputs[context_id]->_times_apply.push_back(_apply_time);
     _ctxt_debug_outputs[context_id]->_times_apply.pop_front();
 
-    cut_db->stop_reading();
+    cut_db->stop_reading_cut(0);
 }
 void VTRenderer::render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
 {

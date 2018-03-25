@@ -11,8 +11,8 @@ CutUpdate::CutUpdate() : _dispatch_lock(), _dispatch_time()
     _config = &VTConfig::get_instance();
     _cut_db = &CutDatabase::get_instance();
 
-    _feedback_lod_buffer = new int32_t[_cut_db->get_size_feedback()];
-    _feedback_count_buffer = new uint32_t[_cut_db->get_size_feedback()];
+    _feedback_lod_buffer = new int32_t[_cut_db->get_size_mem_interleaved()];
+    _feedback_count_buffer = new uint32_t[_cut_db->get_size_mem_interleaved()];
 }
 
 CutUpdate::~CutUpdate() {}
@@ -65,14 +65,13 @@ void CutUpdate::dispatch()
 
     uint16_t split_counter = 0;
 
-    _cut_db->start_writing();
     for(cut_map_entry_type cut_entry : (*_cut_db->get_cut_map()))
     {
         id_set_type collapse_to;
         id_set_type split;
         id_set_type keep;
 
-        Cut *cut = _cut_db->start_writing_cut(cut_entry.first);
+        Cut *cut = _cut_db->start_reading_cut(cut_entry.first);
 
         // std::cout << std::endl;
         // std::cout << "writing cut: " << cut_entry.first << std::endl;
@@ -80,6 +79,10 @@ void CutUpdate::dispatch()
 
         if(!cut->is_drawn())
         {
+            _cut_db->stop_reading_cut(cut_entry.first);
+
+            cut = _cut_db->start_writing_cut(cut_entry.first);
+
             _cut_db->get_tile_provider()->getTile(cut->get_atlas(), 0, 100);
 
             if(!_cut_db->get_tile_provider()->wait(std::chrono::milliseconds(1000)))
@@ -101,20 +104,19 @@ void CutUpdate::dispatch()
             cut->set_drawn(true);
 
             _cut_db->stop_writing_cut(cut_entry.first);
-            _cut_db->stop_writing();
 
             continue;
         }
 
-        cut_type cut_desired = cut_type(cut->get_back()->get_cut());
+        cut_type cut_desired = cut_type(cut->get_front()->get_cut());
 
         /* DECISION MAKING PASS */
 
-        for(auto iter = cut->get_back()->get_cut().crbegin(); iter != cut->get_back()->get_cut().crend(); iter++)
+        for(auto iter = cut->get_front()->get_cut().crbegin(); iter != cut->get_front()->get_cut().crend(); iter++)
         {
             id_type tile_id = *iter;
             id_type parent_id = QuadTree::get_parent_id(tile_id);
-            mem_slot_type *mem_slot = get_mem_slot_for_id(cut, tile_id);
+            mem_slot_type *mem_slot = read_mem_slot_for_id(cut, tile_id);
 
             uint16_t tile_depth = QuadTree::get_depth_of_node(tile_id);
 
@@ -139,7 +141,7 @@ void CutUpdate::dispatch()
 
                 split.insert(tile_id);
             }
-            else if(_feedback_buffer[mem_slot->position]!=0 && _feedback_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) && tile_depth > 0)
+            else if(_feedback_lod_buffer[mem_slot->position]!=0 && _feedback_lod_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) && tile_depth > 0)
             {
                 // std::cout << "decision: collapse to " << parent_id << ", " << _feedback_buffer[mem_slot->position] << std::endl;
 
@@ -160,20 +162,9 @@ void CutUpdate::dispatch()
             }
         }
 
-        /* DEBUG QUADTREE CONSISTENCY PASS */
+        _cut_db->stop_reading_cut(cut_entry.first);
 
-        //        for(auto iter = cut->get_back()->get_cut().crbegin(); iter != cut->get_back()->get_cut().crend(); iter++)
-        //        {
-        //            id_type tile_id = *iter;
-        //            id_type parent_id = QuadTree::get_parent_id(tile_id);
-        //            if(tile_id != 0 && cut->get_back()->get_cut().find(parent_id) != cut->get_back()->get_cut().end())
-        //            {
-        //                std::cerr << "Tile id: " << tile_id << std::endl;
-        //                std::cerr << "Parent id: " << parent_id << std::endl;
-        //
-        //                throw std::runtime_error("Quadtree corruption");
-        //            }
-        //        }
+        cut = _cut_db->start_writing_cut(cut_entry.first);
 
         cut->get_back()->get_cut().swap(cut_desired);
 
@@ -226,8 +217,6 @@ void CutUpdate::dispatch()
         _cut_db->stop_writing_cut(cut_entry.first);
     }
 
-    _cut_db->stop_writing();
-
     auto end = std::chrono::high_resolution_clock::now();
     _dispatch_time = std::chrono::duration<float, std::milli>(end - start).count();
 
@@ -236,7 +225,7 @@ void CutUpdate::dispatch()
 
 bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_ptr)
 {
-    mem_slot_type *mem_slot = get_mem_slot_for_id(cut, tile_id);
+    mem_slot_type *mem_slot = write_mem_slot_for_id(cut, tile_id);
 
     if(mem_slot == nullptr)
     {
@@ -369,7 +358,18 @@ bool CutUpdate::keep_id(Cut *cut, id_type tile_id)
 
     return add_to_indexed_memory(cut, tile_id, tile_ptr);
 }
-mem_slot_type *CutUpdate::get_mem_slot_for_id(Cut *cut, id_type tile_id)
+mem_slot_type *CutUpdate::read_mem_slot_for_id(Cut *cut, id_type tile_id)
+{
+    auto mem_slot_iter = cut->get_front()->get_mem_slots_locked().find(tile_id);
+
+    if(mem_slot_iter == cut->get_front()->get_mem_slots_locked().end())
+    {
+        return nullptr;
+    }
+
+    return _cut_db->read_mem_slot_at((*mem_slot_iter).second);
+}
+mem_slot_type *CutUpdate::write_mem_slot_for_id(Cut *cut, id_type tile_id)
 {
     auto mem_slot_iter = cut->get_back()->get_mem_slots_locked().find(tile_id);
 
@@ -378,14 +378,14 @@ mem_slot_type *CutUpdate::get_mem_slot_for_id(Cut *cut, id_type tile_id)
         return nullptr;
     }
 
-    return &_cut_db->get_back()->at((*mem_slot_iter).second);
+    return _cut_db->write_mem_slot_at((*mem_slot_iter).second);
 }
 void CutUpdate::feedback(int32_t *buf_lod, uint32_t*buf_count)
 {
     if(_dispatch_lock.try_lock())
     {
-        std::copy(buf_lod, buf_lod + _cut_db->get_size_feedback(), _feedback_lod_buffer);
-        std::copy(buf_count, buf_count + _cut_db->get_size_feedback(), _feedback_count_buffer);
+        std::copy(buf_lod, buf_lod + _cut_db->get_size_mem_interleaved(), _feedback_lod_buffer);
+        std::copy(buf_count, buf_count + _cut_db->get_size_mem_interleaved(), _feedback_count_buffer);
         _new_feedback.store(true);
         _dispatch_lock.unlock();
         _cv.notify_one();
@@ -417,7 +417,7 @@ void CutUpdate::set_freeze_dispatch(bool _freeze_dispatch) { CutUpdate::_freeze_
 bool CutUpdate::get_freeze_dispatch() { return _freeze_dispatch; }
 void CutUpdate::remove_from_indexed_memory(Cut *cut, id_type tile_id)
 {
-    mem_slot_type *mem_slot = get_mem_slot_for_id(cut, tile_id);
+    mem_slot_type *mem_slot = write_mem_slot_for_id(cut, tile_id);
 
     if(mem_slot != nullptr)
     {

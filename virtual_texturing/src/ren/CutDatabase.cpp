@@ -1,15 +1,15 @@
 #include <lamure/vt/ren/CutDatabase.h>
 namespace vt
 {
-CutDatabase::CutDatabase(mem_slots_type *front, mem_slots_type *back) : DoubleBuffer<mem_slots_type>(front, back)
+CutDatabase::CutDatabase(mem_slots_type *front, mem_slots_type *back) : DoubleBuffer<mem_slots_type>(front, back), _read_lock(), _write_lock()
 {
     VTConfig *config = &VTConfig::get_instance();
 
     _size_mem_x = config->get_phys_tex_tile_width();
     _size_mem_y = config->get_phys_tex_tile_width();
-    _size_feedback = _size_mem_x * _size_mem_y * config->get_phys_tex_layers();
+    _size_mem_interleaved = _size_mem_x * _size_mem_y * config->get_phys_tex_layers();
 
-    for(size_t i = 0; i < _size_feedback; i++)
+    for(size_t i = 0; i < _size_mem_interleaved; i++)
     {
         _front->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
         _back->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
@@ -40,21 +40,103 @@ mem_slot_type *CutDatabase::get_free_mem_slot()
 
     throw std::runtime_error("out of mem slots");
 }
+mem_slot_type *CutDatabase::write_mem_slot_at(size_t position)
+{
+    if(position >= _size_mem_interleaved)
+    {
+        throw std::runtime_error("Write request to interleaved memory position: " + std::to_string(position) + ", interleaved memory size is: " + std::to_string(_size_mem_interleaved));
+    }
+
+    if(!_is_written.load())
+    {
+        throw std::runtime_error("Unsanctioned write request to interleaved memory position: " + std::to_string(position));
+    }
+
+    return &get_back()->at(position);
+}
+mem_slot_type *CutDatabase::read_mem_slot_at(size_t position)
+{
+    std::cout << "read_mem_slot_at" << std::endl;
+
+    if(position >= _size_mem_interleaved)
+    {
+        throw std::runtime_error("Read request to position: " + std::to_string(position) + ", interleaved memory size is: " + std::to_string(_size_mem_interleaved));
+    }
+
+    if(!_is_read.load())
+    {
+        throw std::runtime_error("Unsanctioned read request to interleaved memory position: " + std::to_string(position));
+    }
+
+    return &get_front()->at(position);
+}
 void CutDatabase::deliver() { _front->assign(_back->begin(), _back->end()); }
 Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 {
+    std::unique_lock<std::mutex> lk(_write_lock);
+    if(_is_written.load())
+    {
+        _write_cv.wait_for(lk, std::chrono::milliseconds(10), [this] { return !_is_written.load(); });
+    }
+    _is_written.store(true);
+
+    start_writing();
     Cut *requested_cut = _cut_map[cut_id];
     requested_cut->start_writing();
     return requested_cut;
 }
-void CutDatabase::stop_writing_cut(uint64_t cut_id) { _cut_map[cut_id]->stop_writing(); }
+void CutDatabase::stop_writing_cut(uint64_t cut_id)
+{
+    std::unique_lock<std::mutex> lk(_write_lock);
+
+    _cut_map[cut_id]->stop_writing();
+    stop_writing();
+
+    if(!_is_written.load())
+    {
+        throw std::runtime_error("Memory write access corruption");
+    }
+    _is_written.store(false);
+    _write_lock.unlock();
+    _write_cv.notify_one();
+}
 Cut *CutDatabase::start_reading_cut(uint64_t cut_id)
 {
+    std::cout << "start_reading_cut" << std::endl;
+
+    std::unique_lock<std::mutex> lk(_read_lock);
+    if(_is_read.load())
+    {
+        _read_cv.wait_for(lk, std::chrono::milliseconds(10), [this] { return !_is_read.load(); });
+    }
+    _is_read.store(true);
+
+    std::cout << "start_reading_cut: is being read" << std::endl;
+
+    start_reading();
     Cut *requested_cut = _cut_map[cut_id];
     requested_cut->start_reading();
     return requested_cut;
 }
-void CutDatabase::stop_reading_cut(uint64_t cut_id) { _cut_map[cut_id]->stop_reading(); }
+void CutDatabase::stop_reading_cut(uint64_t cut_id)
+{
+    std::cout << "stop_reading_cut" << std::endl;
+
+    std::unique_lock<std::mutex> lk(_read_lock);
+
+    stop_reading();
+    _cut_map[cut_id]->stop_reading();
+
+    if(!_is_read.load())
+    {
+        throw std::runtime_error("Memory read access corruption");
+    }
+    _is_read.store(false);
+    _read_lock.unlock();
+    _read_cv.notify_one();
+
+    std::cout << "stop_reading_cut: is not being read any longer" << std::endl;
+}
 cut_map_type *CutDatabase::get_cut_map() { return &_cut_map; }
 uint32_t CutDatabase::register_dataset(const std::string &file_name)
 {
@@ -110,4 +192,20 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
 }
 
 ooc::TileProvider *CutDatabase::get_tile_provider() const { return _tile_provider; }
+void CutDatabase::start_writing()
+{
+    DoubleBuffer::start_writing();
+}
+void CutDatabase::stop_writing()
+{
+    DoubleBuffer::stop_writing();
+}
+void CutDatabase::start_reading()
+{
+    DoubleBuffer::start_reading();
+}
+void CutDatabase::stop_reading()
+{
+    DoubleBuffer::stop_reading();
+}
 }

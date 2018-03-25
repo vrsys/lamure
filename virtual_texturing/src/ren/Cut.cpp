@@ -31,7 +31,7 @@ void CutState::accept(CutState &cut_state)
     _mem_slots_updated.clear();
     _mem_slots_updated.insert(cut_state._mem_slots_updated.begin(), cut_state._mem_slots_updated.end());
 
-    for (int i = 0; i < _index_buffers.size(); ++i) {
+    for (size_t i = 0; i < _index_buffers.size(); ++i) {
         std::copy(cut_state._index_buffers[i], cut_state._index_buffers[i] + cut_state._index_buffer_sizes[i], _index_buffers[i]);
     }
 }

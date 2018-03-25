@@ -21,8 +21,8 @@ class DoubleBuffer
     T *get_front() { return _front; }
     T *get_back() { return _back; }
 
-    void start_writing() { _back_lock.lock(); }
-    void stop_writing()
+    virtual void start_writing() { _back_lock.lock(); }
+    virtual void stop_writing()
     {
         if(_front_lock.try_lock())
         {
@@ -38,7 +38,7 @@ class DoubleBuffer
 
         _back_lock.unlock();
     }
-    void start_reading()
+    virtual void start_reading()
     {
         _front_lock.lock();
 
@@ -53,7 +53,7 @@ class DoubleBuffer
             _back_lock.unlock();
         }
     }
-    void stop_reading() { _front_lock.unlock(); }
+    virtual void stop_reading() { _front_lock.unlock(); }
 
   protected:
     T *_front, *_back;

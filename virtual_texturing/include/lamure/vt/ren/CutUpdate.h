@@ -13,7 +13,14 @@ typedef std::set<id_type> id_set_type;
 class CutUpdate
 {
   public:
-    explicit CutUpdate();
+    static CutUpdate &get_instance()
+    {
+        static CutUpdate instance;
+        return instance;
+    }
+    CutUpdate(CutUpdate const &) = delete;
+    void operator=(CutUpdate const &) = delete;
+
     ~CutUpdate();
 
     void start();
@@ -26,6 +33,8 @@ class CutUpdate
     bool get_freeze_dispatch();
 
 private:
+    CutUpdate();
+
     std::thread _worker;
     std::mutex _dispatch_lock;
     std::condition_variable _cv;
@@ -51,7 +60,8 @@ private:
     bool keep_id(Cut *cut, id_type tile_id);
 
     bool add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_ptr);
-    mem_slot_type *get_mem_slot_for_id(Cut *cut, id_type tile_id);
+    mem_slot_type *read_mem_slot_for_id(Cut *cut, id_type tile_id);
+    mem_slot_type *write_mem_slot_for_id(Cut *cut, id_type tile_id);
 
     uint8_t count_children_in_cut(id_type tile_id, const cut_type &cut);
     bool check_all_siblings_in_cut(id_type tile_id, const cut_type &cut);

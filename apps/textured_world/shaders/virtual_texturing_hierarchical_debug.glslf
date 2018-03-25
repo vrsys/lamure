@@ -71,7 +71,7 @@ vec4 get_physical_texture_color(uvec4 index_quadruple, vec2 texture_sampling_coo
     // outputting the calculated coordinate from our physical texture
     vec4 c = texture(physical_texture_array, vec3(physical_texture_coordinates, index_quadruple.z));
 
-    //c = (c + vec4(0.0, 1.0 * (float(current_level) / max_level), float(index_quadruple.z) / 2, 1.0)) * 0.5;
+    c = (c + vec4(0.0, 1.0 * (float(current_level) / max_level), float(index_quadruple.z) / 2, 1.0)) * 0.5;
 
     return c;
 }
