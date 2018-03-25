@@ -19,7 +19,7 @@ class CutUpdate
     void start();
     void stop();
 
-    void feedback(int32_t *buf);
+    void feedback(int32_t *buf_lod, uint32_t *buf_count);
     const float &get_dispatch_time() const;
 
     void set_freeze_dispatch(bool _freeze_dispatch);
@@ -36,7 +36,8 @@ private:
 
     float _dispatch_time;
 
-    int32_t *_feedback_buffer;
+    int32_t *_feedback_lod_buffer;
+    uint32_t *_feedback_count_buffer;
 
     std::atomic<bool> _should_stop;
 
