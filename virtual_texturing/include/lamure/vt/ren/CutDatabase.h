@@ -74,8 +74,9 @@ class CutDatabase : DoubleBuffer<mem_slots_type>
 
     std::atomic<bool> _is_written, _is_read;
 
-    std::mutex _read_lock, _write_lock;
-    std::condition_variable _read_cv, _write_cv;
+    std::mutex _read_lock, _write_lock, _read_write_lock;
+
+    std::condition_variable _read_write_cv;
 };
 }
 
