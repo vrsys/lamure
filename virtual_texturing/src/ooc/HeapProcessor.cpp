@@ -2,13 +2,19 @@
 
 namespace vt {
     namespace ooc {
-        HeapProcessor::HeapProcessor() : _requests(0, nullptr){
+        HeapProcessor::HeapProcessor() {
             _thread = nullptr;
             _cache = nullptr;
         }
 
+        HeapProcessor::~HeapProcessor(){
+            if(_thread != nullptr){
+                delete _thread;
+            }
+        }
+
         void HeapProcessor::request(TileRequest *request){
-            _requests.push(request->getPriority(), request);
+            _requests.push(request);
         }
 
         void HeapProcessor::start(){
@@ -21,24 +27,22 @@ namespace vt {
             }
 
             _running = true;
-            _thread = new std::thread(&HeapProcessor::run, this);
+            _thread = new thread(&HeapProcessor::run, this);
         }
 
         void HeapProcessor::run(){
             beforeStart();
 
-            while(_running){
-                PriorityHeapContent<uint32_t> *content;
+            while(_running.load()){
+                TileRequest *req;
 
-                if(!_requests.pop(content, std::chrono::milliseconds(200))){
+                if(!_requests.pop(req, std::chrono::milliseconds(200))) {
                     continue;
                 }
 
-                auto req = (TileRequest*)content;
-
-                ++_currentlyProcessing;
+                _currentlyProcessing.store(_currentlyProcessing.load() + 1);
                 process(req);
-                --_currentlyProcessing;
+                _currentlyProcessing.store(_currentlyProcessing.load() - 1);
             }
 
             beforeStop();
@@ -54,7 +58,7 @@ namespace vt {
         }
 
         size_t HeapProcessor::pendingCount(){
-            return _requests.size();
+            return _requests.getSize();
         }
 
         bool HeapProcessor::currentlyProcessing(){

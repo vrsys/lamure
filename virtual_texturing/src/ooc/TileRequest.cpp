@@ -25,5 +25,13 @@ namespace vt{
         void TileRequest::erase(){
             this->inform(0);
         }
+
+        void TileRequest::abort(){
+            _aborted = true;
+        }
+
+        bool TileRequest::isAborted(){
+            return _aborted;
+        }
     }
 }

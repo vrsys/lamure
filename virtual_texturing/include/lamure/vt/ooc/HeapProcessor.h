@@ -10,22 +10,23 @@
 #include <atomic>
 #include <condition_variable>
 #include <lamure/vt/ooc/TileCache.h>
-#include <lamure/vt/PriorityHeap.h>
+#include <lamure/vt/TileRequestPriorityQueue.h>
 #include <lamure/vt/ooc/TileRequest.h>
 
 namespace vt {
     namespace ooc {
         class HeapProcessor {
         protected:
-            PriorityHeap<uint32_t> _requests;
+            TileRequestPriorityQueue<uint32_t> _requests;
 
-            std::atomic<bool> _running;
-            std::atomic<size_t> _currentlyProcessing;
-            std::thread *_thread;
+            atomic<bool> _running;
+            atomic<size_t> _currentlyProcessing;
+            thread *_thread;
 
             TileCache *_cache;
         public:
             HeapProcessor();
+            ~HeapProcessor();
 
             void request(TileRequest *request);
 

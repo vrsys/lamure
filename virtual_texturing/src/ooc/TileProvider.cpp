@@ -69,6 +69,7 @@ namespace vt{
             auto req = _requests.getRequest(resource, id);
 
             if(req != nullptr){
+                // if one wants to rensert according to priority, this should happen here
                 req->setPriority(priority);
 
                 return nullptr;
