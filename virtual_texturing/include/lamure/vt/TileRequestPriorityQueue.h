@@ -79,7 +79,7 @@ namespace vt{
 
         }
 
-        virtual bool pop(ooc::TileRequest *&content, const chrono::milliseconds maxTime){
+        virtual bool pop(ooc::TileRequest *&content, const std::chrono::milliseconds maxTime){
             std::unique_lock<std::mutex> lock(this->_lock);
 
             if(!this->_newEntry.wait_for(lock, maxTime, [this]{
@@ -102,7 +102,7 @@ namespace vt{
             return true;
         }
 
-        virtual bool popLeast(ooc::TileRequest *&content, const chrono::milliseconds maxTime){
+        virtual bool popLeast(ooc::TileRequest *&content, const std::chrono::milliseconds maxTime){
             std::unique_lock<std::mutex> lock(this->_lock);
 
             if(!this->_newEntry.wait_for(lock, maxTime, [this]{

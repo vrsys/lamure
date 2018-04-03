@@ -6,6 +6,8 @@
 #define VT_OOC_TILEREQUESTMAP_H
 
 
+#include <mutex>
+#include <condition_variable>
 #include <cstdint>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/ooc/TileRequest.h>

@@ -31,7 +31,7 @@ namespace vt {
 
             // erase request, because it is processed
             req->erase();
-            delete req;
+            //delete req;
         }
 
         void TileLoader::beforeStop(){

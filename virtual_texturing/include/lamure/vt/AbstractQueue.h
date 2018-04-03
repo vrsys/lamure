@@ -64,9 +64,9 @@ namespace vt {
     template<typename content_type>
     class AbstractQueue {
     protected:
-        alignas(CACHELINE_SIZE) std::condition_variable _newEntry;
+        alignas(64) std::condition_variable _newEntry;
 
-        alignas(CACHELINE_SIZE) std::mutex _lock;
+        alignas(64) std::mutex _lock;
         std::atomic<size_t> _size;
         std::atomic<AbstractQueueEntry<content_type> *> _first;
         std::atomic<AbstractQueueEntry<content_type> *> _last;
@@ -132,7 +132,7 @@ namespace vt {
 
         virtual void push(content_type &content) = 0;
 
-        virtual bool pop(content_type &content, const chrono::milliseconds maxTime) = 0;
+        virtual bool pop(content_type &content, const std::chrono::milliseconds maxTime) = 0;
 
         size_t getSize() {
             return _size.load();
