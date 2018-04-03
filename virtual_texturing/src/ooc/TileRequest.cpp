@@ -2,8 +2,9 @@
 
 namespace vt{
     namespace ooc{
-        TileRequest::TileRequest() : PriorityHeapContent<uint32_t>(), Observable() {
+        TileRequest::TileRequest() : /*PriorityHeapContent<uint32_t>(),*/ Observable() {
             _resource = nullptr;
+            _aborted = false;
         }
 
         void TileRequest::setResource(pre::AtlasFile *resource){

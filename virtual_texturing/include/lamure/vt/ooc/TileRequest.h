@@ -17,6 +17,7 @@ namespace vt{
             pre::AtlasFile *_resource;
             uint64_t _id;
             uint32_t _priority;
+            bool _aborted;
 
         public:
             explicit TileRequest();
