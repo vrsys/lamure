@@ -56,6 +56,8 @@ std::list<Window *> _windows;
 Window *_current_context = nullptr;
 vt::CutUpdate *_cut_update = nullptr;
 
+bool draw_elevation = true;
+
 class EventHandler
 {
   public:
@@ -77,6 +79,12 @@ class EventHandler
             break;
         case GLFW_KEY_P:
             _cut_update->set_freeze_dispatch(!_cut_update->get_freeze_dispatch());
+            break;
+        case GLFW_KEY_E:
+            draw_elevation = true;
+            break;
+        case GLFW_KEY_C:
+            draw_elevation = false;
             break;
         }
 
@@ -282,13 +290,17 @@ int main(int argc, char *argv[])
     vt::VTConfig::get_instance().define_size_physical_texture(64, 8192);
 
     uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset("earth_stitch_86400x43200_256x256_p1_rgb_packed.atlas");
-    // uint32_t data_world_elevation_id = vt::CutDatabase::get_instance().register_dataset("gebco_256x256_p1_rgb_packed.atlas");
+    uint32_t data_world_elevation_map_id = vt::CutDatabase::get_instance().register_dataset("gebco_256x256_p1_rgb_packed.atlas");
+    uint32_t data_moon_map_id = vt::CutDatabase::get_instance().register_dataset("lunar_map_256x256_p1_rgb_packed.atlas");
+    uint32_t data_moon_elevation_map_id = vt::CutDatabase::get_instance().register_dataset("lunar_elevation_256x256_p1_rgb_packed.atlas");
 
     uint16_t view_id = vt::CutDatabase::get_instance().register_view();
     uint16_t primary_context_id = vt::CutDatabase::get_instance().register_context();
 
     uint64_t cut_map_id = vt::CutDatabase::get_instance().register_cut(data_world_map_id, view_id, primary_context_id);
-    // uint64_t cut_elevation_id = vt::CutDatabase::get_instance().register_cut(data_world_elevation_id, view_id, primary_context_id);
+    uint64_t cut_map_elevation_id = vt::CutDatabase::get_instance().register_cut(data_world_elevation_map_id, view_id, primary_context_id);
+    uint64_t cut_moon_id = vt::CutDatabase::get_instance().register_cut(data_moon_map_id, view_id, primary_context_id);
+    uint64_t cut_moon_elevation_id = vt::CutDatabase::get_instance().register_cut(data_moon_elevation_map_id, view_id, primary_context_id);
 
     // Registration of resources has to happen before cut update start
     _cut_update = &vt::CutUpdate::get_instance();
@@ -307,12 +319,16 @@ int main(int argc, char *argv[])
 
     make_context_current(primary_window);
 
-    glfwSwapInterval(1);
+    // VSYNC
+    // glfwSwapInterval(1);
 
     auto *vtrenderer = new vt::VTRenderer(_cut_update);
 
     vtrenderer->add_data(cut_map_id, data_world_map_id);
-    // vtrenderer->add_data(cut_elevation_id, data_world_elevation_id);
+    vtrenderer->add_data(cut_map_elevation_id, data_world_elevation_map_id);
+    vtrenderer->add_data(cut_moon_id, data_moon_map_id);
+    vtrenderer->add_data(cut_moon_elevation_id, data_moon_elevation_map_id);
+
     vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
 
@@ -341,18 +357,19 @@ int main(int argc, char *argv[])
 
                 vtrenderer->clear_buffers(primary_context_id);
 
-                vtrenderer->render(data_world_map_id, /*data_world_elevation_id,*/ view_id, primary_context_id);
+                vtrenderer->render_earth(draw_elevation ? data_world_elevation_map_id : data_world_map_id, data_world_elevation_map_id, view_id, primary_context_id);
+                vtrenderer->render_moon(draw_elevation ? data_moon_elevation_map_id : data_moon_map_id, data_moon_elevation_map_id, view_id, primary_context_id);
 
                 vtrenderer->collect_feedback(primary_context_id);
 #ifndef NDEBUG
                 vtrenderer->extract_debug_cut(data_world_map_id, view_id, primary_context_id);
-                //vtrenderer->extract_debug_cut(data_world_elevation_id, view_id, primary_context_id);
+                vtrenderer->extract_debug_cut(data_moon_map_id, view_id, primary_context_id);
                 vtrenderer->extract_debug_context(primary_context_id);
 
                 ImGui_ImplGlfwGL3_NewFrame();
 
                 vtrenderer->render_debug_cut(data_world_map_id, view_id, primary_context_id);
-                //vtrenderer->render_debug_cut(data_world_elevation_id, view_id, primary_context_id);
+                vtrenderer->render_debug_cut(data_moon_map_id, view_id, primary_context_id);
                 vtrenderer->render_debug_context(primary_context_id);
 
                 ImGui::Render();

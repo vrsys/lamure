@@ -137,7 +137,7 @@ void CutUpdate::dispatch()
 
                 split.insert(tile_id);
             }
-            else if(_feedback_lod_buffer[mem_slot->position] != 0 && _feedback_lod_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) &&
+            else if(_feedback_lod_buffer[mem_slot->position] < tile_depth && check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) &&
                     tile_depth > 0)
             {
                 // std::cout << "decision: collapse to " << parent_id << ", " << _feedback_buffer[mem_slot->position] << std::endl;

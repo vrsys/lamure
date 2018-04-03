@@ -44,9 +44,11 @@ void VTRenderer::init()
 #endif
 
 #ifndef NDEBUG
-        _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
+        _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
 #else
-        _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
+        _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
 #endif
     }
 
@@ -159,36 +161,37 @@ void VTRenderer::clear_buffers(uint16_t context_id)
 
     _ctxt_resources[context_id]->_render_context->apply();
 }
-void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::render_earth(uint32_t earth_data_id, uint32_t earth_data_elevation_id, uint16_t view_id, uint16_t context_id)
 {
     using namespace scm::math;
     using namespace scm::gl;
 
-    uint64_t color_cut_id = (((uint64_t)color_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
-    uint32_t max_depth_level_color = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
+    uint64_t color_cut_id = (((uint64_t)earth_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+    uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
 
     mat4f projection_matrix = mat4f::identity();
     perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
 
-    mat4f model_matrix = mat4f::identity() * make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
+    mat4f model_matrix = mat4f::identity() * make_translation(0.5f, 0.0f, 0.0f) * make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
 
     mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
     _shader_vt->uniform("projection_matrix", projection_matrix);
     _shader_vt->uniform("model_view_matrix", model_view_matrix);
 
     _shader_vt->uniform("physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
-    _shader_vt->uniform("max_level", max_depth_level_color);
+    _shader_vt->uniform("max_level", max_depth_level);
     _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
     _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
 
-    for(uint32_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
+    for(uint32_t i = 0; i < _data_resources[earth_data_id]->_index_hierarchy.size(); ++i)
     {
         std::string texture_string = "hierarchical_idx_textures";
         _shader_vt->uniform(texture_string, i, int((i)));
     }
 
     _shader_vt->uniform("physical_texture_array", 17);
+    _shader_vt->uniform("elevation_idx_texture", 18);
 
     context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
     context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
@@ -206,19 +209,88 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
 
     apply_cut_update(context_id);
 
-    for(uint16_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
+    for(uint16_t i = 0; i < _data_resources[earth_data_id]->_index_hierarchy.size(); ++i)
     {
-        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
+        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[earth_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
     }
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
+
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[earth_data_elevation_id]->_index_hierarchy.at(3), _filter_nearest, 18);
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
 
     _ctxt_resources[context_id]->_render_context->apply();
 
-    _obj->draw(_ctxt_resources[context_id]->_render_context, geometry::MODE_SOLID);
+    _obj_earth->draw(_ctxt_resources[context_id]->_render_context, geometry::MODE_SOLID);
+
+    _ctxt_resources[context_id]->_render_context->sync();
+}
+
+void VTRenderer::render_moon(uint32_t moon_data_id, uint32_t moon_elevation_data_id, uint16_t view_id, uint16_t context_id)
+{
+    using namespace scm::math;
+    using namespace scm::gl;
+
+    uint64_t color_cut_id = (((uint64_t)moon_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+    uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
+
+    mat4f projection_matrix = mat4f::identity();
+    perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
+    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
+
+    mat4f model_matrix = mat4f::identity() * make_translation(-1.0f, 0.0f, 0.0f) * make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f) * make_scale(0.27f, 0.27f, 0.27f);
+
+    mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
+    _shader_vt->uniform("projection_matrix", projection_matrix);
+    _shader_vt->uniform("model_view_matrix", model_view_matrix);
+
+    _shader_vt->uniform("physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
+    _shader_vt->uniform("max_level", max_depth_level);
+    _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
+    _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
+
+    for(uint32_t i = 0; i < _data_resources[moon_data_id]->_index_hierarchy.size(); ++i)
+    {
+        std::string texture_string = "hierarchical_idx_textures";
+        _shader_vt->uniform(texture_string, i, int((i)));
+    }
+
+    _shader_vt->uniform("physical_texture_array", 17);
+    _shader_vt->uniform("elevation_idx_texture", 18);
+
+    context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
+    context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
+    context_framebuffer_guard fbg(_ctxt_resources[context_id]->_render_context);
+
+    _ctxt_resources[context_id]->_render_context->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(_view_resources[view_id]->_width, _view_resources[view_id]->_height)));
+
+    _ctxt_resources[context_id]->_render_context->set_depth_stencil_state(_dstate_less);
+    _ctxt_resources[context_id]->_render_context->set_rasterizer_state(_ms_cull);
+    _ctxt_resources[context_id]->_render_context->set_blend_state(_blend_state);
+
+    _ctxt_resources[context_id]->_render_context->bind_program(_shader_vt);
+
+    _ctxt_resources[context_id]->_render_context->sync();
+
+    apply_cut_update(context_id);
+
+    for(uint16_t i = 0; i < _data_resources[moon_data_id]->_index_hierarchy.size(); ++i)
+    {
+        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[moon_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
+    }
+
+    _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
+
+    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[moon_elevation_data_id]->_index_hierarchy.at(3), _filter_nearest, 18);
+
+    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
+    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
+
+    _ctxt_resources[context_id]->_render_context->apply();
+
+    _obj_moon->draw(_ctxt_resources[context_id]->_render_context, geometry::MODE_SOLID);
 
     _ctxt_resources[context_id]->_render_context->sync();
 }
