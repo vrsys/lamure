@@ -34,6 +34,7 @@
 #include <scm/gl_util/font/text_renderer.h>
 #include <scm/core/time/accum_timer.h>
 #include <scm/core/time/high_res_timer.h>
+#include <scm/gl_util/data/imaging/texture_loader.h>
 
 #include <GL/freeglut.h>
 
@@ -103,6 +104,8 @@ scm::gl::blend_state_ptr color_no_blending_state_;
 
 scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
+
+scm::gl::texture_2d_ptr bg_texture_;
 
 struct resource {
   uint64_t num_primitives_ {0};
@@ -213,6 +216,9 @@ struct settings {
   scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
   std::string json_ {""};
   std::string pvs_ {""};
+  std::string background_image_ {""};
+  int32_t use_view_tf_ {0};
+  scm::math::mat4d view_tf_ {scm::math::mat4d::identity()};
   std::vector<std::string> models_;
   std::map<uint32_t, scm::math::mat4d> transforms_;
   std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
@@ -475,6 +481,15 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "pvs") {
             settings.pvs_ = value;
+          }
+          else if (key == "background_image") {
+            settings.background_image_ = value;
+          }
+          else if (key == "use_view_tf") {
+            settings.use_view_tf_ = std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "view_tf") {
+            settings.view_tf_ = load_matrix(value);
           }
           else {
             std::cout << "unrecognized key: " << key << std::endl;
@@ -1125,7 +1140,7 @@ void glut_display() {
     //single pass
 
     context_->clear_color_buffer(fbo_, 0,
-      scm::math::vec4f(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z, 1.0f));   
+      scm::math::vec4f(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z, 1.0f));
     context_->clear_depth_stencil_buffer(fbo_);
     context_->set_frame_buffer(fbo_);
 
@@ -1140,6 +1155,10 @@ void glut_display() {
     context_->set_depth_stencil_state(depth_state_less_);
     
     set_uniforms(selected_single_pass_shading_program);
+    /*if (settings_.background_image_ != "") {
+      context_->bind_texture(bg_texture_, filter_linear_, 0);
+      selected_single_pass_shading_program->uniform("background_image", true);
+    }*/
 
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
@@ -1518,6 +1537,16 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case 'M':
       settings_.heatmap_max_ = std::max(settings_.heatmap_max_ - 0.1f, 0.0f);
       std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
+      break;
+
+    case 'z':
+      //dump camera transform
+      std::cout << "view_tf: " << std::endl;
+      std::cout << camera_->get_high_precision_view_matrix() << std::endl;
+      break;
+
+    case ' ':
+      settings_.info_ = !settings_.info_;
       break;
 
 
@@ -2038,7 +2067,6 @@ int32_t main(int argc, char* argv[]) {
   create_aux_resources();
   
 
-
   glutShowWindow();
   
   create_framebuffers();
@@ -2058,16 +2086,25 @@ int32_t main(int argc, char* argv[]) {
   filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);  
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 
-  auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
-  auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
-  auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
-  scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
+  if (settings_.use_view_tf_) {
+    camera_ = new lamure::ren::camera();
+    camera_->set_view_matrix(settings_.view_tf_);
+    std::cout << "view_tf:" << std::endl;
+    std::cout << camera_->get_high_precision_view_matrix() << std::endl;
+    camera_->set_dolly_sens_(settings_.travel_speed_);
+  }
+  else {
+    auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
+    auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
+    auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
+    scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
 
-  camera_ = new lamure::ren::camera(0, 
-    scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)), 
-    scm::math::length(root_bb_max-root_bb_min), false, false);
+    camera_ = new lamure::ren::camera(0, 
+      scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)), 
+      scm::math::length(root_bb_max-root_bb_min), false, false);
+    camera_->set_dolly_sens_(settings_.travel_speed_);
+  }
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
-  camera_->set_dolly_sens_(settings_.travel_speed_);
 
   screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
   
@@ -2086,8 +2123,16 @@ int32_t main(int argc, char* argv[]) {
     renderable_text_->text_kerning(true);
   }
   catch(const std::exception& e) {
-      throw std::runtime_error(e.what());
+    throw std::runtime_error(e.what());
   }
+
+
+  if (settings_.background_image_ != "") {
+    std::cout << "background image: " << settings_.background_image_ << std::endl;
+    scm::gl::texture_loader tl;
+    bg_texture_ = tl.load_texture_2d(*device_, settings_.background_image_, true, false);
+  }
+
 
   glutMainLoop();
 
