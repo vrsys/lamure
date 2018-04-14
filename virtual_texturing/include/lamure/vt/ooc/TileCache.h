@@ -9,14 +9,16 @@
 #include <cstdint>
 #include <mutex>
 #include <iostream>
-#include <lamure/vt/PriorityHeap.h>
 #include <lamure/vt/pre/AtlasFile.h>
+#include <queue>
+#include <map>
+#include <condition_variable>
 
 namespace vt {
     namespace ooc {
         class TileCache;
 
-        class TileCacheSlot : public PriorityHeapContent<uint64_t> {
+        class TileCacheSlot {
         public:
             enum STATE{
                 FREE = 1,
@@ -30,6 +32,7 @@ namespace vt {
             uint8_t *_buffer;
             size_t _size;
             size_t _id;
+            std::mutex _lock;
             //assoc_data_type _assocData;
 
             pre::AtlasFile *_resource;
@@ -65,16 +68,6 @@ namespace vt {
 
             size_t getSize();
 
-            void updateLastUsed();
-
-            uint64_t getLastUsed();
-
-            /*void setAssocData(assoc_data_type assocData);
-
-            assoc_data_type getAssocData();*/
-
-            void removeFromLRU();
-
             void setResource(pre::AtlasFile* res);
 
             pre::AtlasFile *getResource();
@@ -92,7 +85,9 @@ namespace vt {
             slot_type *_slots;
             std::mutex *_locks;
 
-            PriorityHeap<uint64_t> _leastRecentlyUsed;
+            std::mutex _lruLock;
+            std::condition_variable _lruCondVar;
+            std::queue<TileCacheSlot*> _lru;
 
             std::mutex _idsLock;
             std::map<std::pair<pre::AtlasFile *, uint64_t>, slot_type *> _ids;

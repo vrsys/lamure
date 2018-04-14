@@ -63,7 +63,7 @@ int process(const int argc, const char **argv){
         std::cout << "\t<image file> <image pixel format (r, rgb, rgba)>" << std::endl;
         std::cout << "\t<image width> <image height>" << std::endl;
         std::cout << "\t<tile width> <tile height> <padding>" << std::endl;
-        std::cout << "\t<out file (without extension)> <out file format (raw, packed)> <out pixel format (r, rgb, rgba)>" << std::endl;
+        std::cout << "\t<out file (without extension)> <out pixel format (r, rgb, rgba)>" << std::endl;
         std::cout << "\t<max memory usage>" << std::endl;
 
         return 1;
@@ -71,7 +71,7 @@ int process(const int argc, const char **argv){
 
     Bitmap::PIXEL_FORMAT inPixelFormat;
     Bitmap::PIXEL_FORMAT outPixelFormat;
-    AtlasFile::LAYOUT outFileFormat;
+    //AtlasFile::LAYOUT outFileFormat;
 
     try {
         inPixelFormat = parsePixelFormat(argv[1]);
@@ -82,20 +82,20 @@ int process(const int argc, const char **argv){
     }
 
     try {
-        outPixelFormat = parsePixelFormat(argv[9]);
+        outPixelFormat = parsePixelFormat(argv[8]);
     }catch(std::runtime_error &error){
-        std::cout << "Invalid output pixel format given: \"" << argv[9] << "\"." << std::endl;
+        std::cout << "Invalid output pixel format given: \"" << argv[8] << "\"." << std::endl;
 
         return 1;
     }
 
-    try {
+    /*try {
         outFileFormat = parseFileFormat(argv[8]);
     }catch(std::runtime_error &error){
         std::cout << "Invalid output file format given: \"" << argv[8] << "\"." << std::endl;
 
         return 1;
-    }
+    }*/
 
     std::stringstream stream;
 
@@ -152,17 +152,17 @@ int process(const int argc, const char **argv){
     }
 
     stream.clear();
-    stream.write(argv[10], std::strlen(argv[10]));
+    stream.write(argv[9], std::strlen(argv[9]));
 
     if (!(stream >> maxMemory)) {
-        std::cerr << "Invalid maximum memory size \"" << argv[10] << "\"." << std::endl;
+        std::cerr << "Invalid maximum memory size \"" << argv[9] << "\"." << std::endl;
 
         return 1;
     }
 
     Preprocessor pre(argv[0], inPixelFormat, imageWidth, imageHeight);
 
-    pre.setOutput(argv[7], outPixelFormat, outFileFormat, tileWidth, tileHeight, padding);
+    pre.setOutput(argv[7], outPixelFormat, AtlasFile::LAYOUT::PACKED, tileWidth, tileHeight, padding);
     pre.run(maxMemory);
 
     return 0;

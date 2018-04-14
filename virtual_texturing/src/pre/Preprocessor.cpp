@@ -625,6 +625,10 @@ namespace vt{
             _tileHeight = tileHeight;
             _padding = padding;
 
+            if(_destLayout != AtlasFile::LAYOUT::PACKED){
+                throw std::runtime_error("All formats but packed are deprecated.");
+            }
+
             if (!_isPowerOfTwo(tileWidth)) {
                 throw std::runtime_error("Tile Width needs to be a Power of 2.");
             }

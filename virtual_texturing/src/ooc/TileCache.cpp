@@ -60,27 +60,6 @@ namespace vt {
             return _size;
         }
 
-        void TileCacheSlot::updateLastUsed(){
-            uint64_t micro = std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::system_clock::now()).time_since_epoch().count();
-            this->setPriority(UINT64_MAX - micro);
-        }
-
-        uint64_t TileCacheSlot::getLastUsed(){
-            return UINT64_MAX - this->getPriority();
-        }
-
-        /*void TileCacheSlot::setAssocData(assoc_data_type assocData){
-            _assocData = assocData;
-        }
-
-        assoc_data_type TileCacheSlot::getAssocData(){
-            return _assocData;
-        }*/
-
-        void TileCacheSlot::removeFromLRU(){
-            PriorityHeapContent<uint64_t>::remove();
-        }
-
         void TileCacheSlot::setResource(pre::AtlasFile* res){
             _resource = res;
         }
@@ -90,14 +69,14 @@ namespace vt {
         }
 
         void TileCacheSlot::removeFromIDS(){
-            std::lock_guard<std::mutex> lock(this->_lock);
+            std::lock_guard<std::mutex> lock(_lock);
 
             if(_cache != nullptr){
                 _cache->unregisterId(_resource, _tileId);
             }
         }
 
-        TileCache::TileCache(size_t tileByteSize, size_t slotCount) : _leastRecentlyUsed(0, nullptr) {
+        TileCache::TileCache(size_t tileByteSize, size_t slotCount) {
             _tileByteSize = tileByteSize;
             _slotCount = slotCount;
             _buffer = new uint8_t[tileByteSize * slotCount];
@@ -110,9 +89,8 @@ namespace vt {
                 _slots[i].setId(i);
                 _slots[i].setBuffer(&_buffer[tileByteSize * i]);
                 _slots[i].setCache(this);
-                _slots[i].updateLastUsed();
 
-                _leastRecentlyUsed.push(_slots[i].getPriority(), &_slots[i]);
+                _lru.push(&_slots[i]);
             }
         }
 
@@ -127,22 +105,42 @@ namespace vt {
 
             auto slot = iter->second;
 
-            slot->removeFromLRU();
             slot->setState(slot_type::STATE::READING);
 
             return slot;
         }
 
         slot_type *TileCache::writeSlot(std::chrono::milliseconds maxTime){
-            PriorityHeapContent<uint64_t> *content;
+            std::unique_lock<std::mutex> lock(_lruLock);
 
-            if(!_leastRecentlyUsed.pop(content, maxTime)){
+            if(_lru.empty()){
+                auto destTime = std::chrono::system_clock::now() + maxTime;
+
+                if(!_lruCondVar.wait_until(lock, destTime, [this]{
+                    return !_lru.empty();
+                })){
+                    return nullptr;
+                }
+            }
+
+            TileCacheSlot *slot = nullptr;
+
+            do{
+                slot = _lru.front();
+                _lru.pop();
+
+                if(slot->hasState(TileCacheSlot::STATE::FREE) || slot->hasState(TileCacheSlot::STATE::OCCUPIED)){
+                    break;
+                }
+            }while(!_lru.empty());
+
+            lock.unlock();
+
+            if(slot->hasState(TileCacheSlot::STATE::READING) || slot->hasState(TileCacheSlot::STATE::WRITING)) {
                 return nullptr;
             }
 
-            auto slot = (slot_type*)content;
-
-            if(!slot->hasState(slot_type::STATE::FREE)) {
+            if(!slot->hasState(TileCacheSlot::STATE::FREE)) {
                 slot->removeFromIDS();
             }
 
@@ -152,7 +150,7 @@ namespace vt {
         }
 
         void TileCache::setSlotReady(slot_type *slot){
-            std::lock_guard<std::mutex> lockSlot(_locks[slot->getId()]);
+            std::unique_lock<std::mutex> lockSlot(_locks[slot->getId()]);
 
             if(slot->hasState(slot_type::STATE::WRITING)){
                 std::lock_guard<std::mutex> lock(_idsLock);
@@ -160,9 +158,17 @@ namespace vt {
             }
 
             slot->setState(slot_type::STATE::OCCUPIED);
-            slot->updateLastUsed();
 
-            _leastRecentlyUsed.push(slot->getPriority(), slot);
+            lockSlot.unlock();
+
+            std::unique_lock<std::mutex> lock(_lruLock);
+            bool wasEmpty = _lru.empty();
+            _lru.push(slot);
+            lock.unlock();
+
+            if(wasEmpty){
+                _lruCondVar.notify_all();
+            }
         }
 
         void TileCache::unregisterId(pre::AtlasFile *resource, uint64_t id){
