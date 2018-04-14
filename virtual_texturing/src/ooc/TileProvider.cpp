@@ -12,7 +12,7 @@ namespace vt{
                 delete resource;
             }
 
-            delete _cache;
+            //delete _cache;
         }
 
         void TileProvider::start(size_t maxMemSize){
