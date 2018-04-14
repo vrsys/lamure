@@ -57,7 +57,7 @@ const char *printPxFormat(Bitmap::PIXEL_FORMAT pxFormat){
 }
 
 int process(const int argc, const char **argv){
-    if(argc != 11){
+    if(argc != 10){
         std::cout << "Wrong count of parameters." << std::endl;
         std::cout << "Expected parameters:" << std::endl;
         std::cout << "\t<image file> <image pixel format (r, rgb, rgba)>" << std::endl;
