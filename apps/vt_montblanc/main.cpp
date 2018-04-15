@@ -173,7 +173,10 @@ class EventHandler
     {
         Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
 
+        std::cout << window->_scale << std::endl;
+
         window->_scale = std::max(window->_scale + (float)yoffset * calculate_factor(window->_scale), -0.1f);
+        window->_scale = std::min(window->_scale, 1.7f);
 
 #ifndef NDEBUG
         ImGui_ImplGlfwGL3_ScrollCallback(glfw_window, xoffset, yoffset);
