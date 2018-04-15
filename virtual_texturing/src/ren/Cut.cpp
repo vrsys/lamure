@@ -36,15 +36,12 @@ void CutState::accept(CutState &cut_state)
     }
 }
 CutState::~CutState() {
-    for (auto &_index_buffer : _index_buffers)
+    for (auto &index_buffer : _index_buffers)
     {
-        delete _index_buffer;
+        delete index_buffer;
     }
 }
 cut_type &CutState::get_cut() { return _cut; }
-uint16_t CutState::get_size_levels(){
-    return (uint16_t)_index_buffers.size();
-}
 uint8_t *CutState::get_index(uint16_t level) { return _index_buffers.at(level); }
 mem_slots_index_type &CutState::get_mem_slots_updated() { return _mem_slots_updated; }
 mem_slots_index_type &CutState::get_mem_slots_locked() { return _mem_slots_locked; }

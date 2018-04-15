@@ -29,7 +29,6 @@ class CutState
     cut_type _cut;
     mem_slots_index_type _mem_slots_updated;
     mem_slots_index_type _mem_slots_locked;
-    uint16_t get_size_levels();
 };
 
 class Cut : public DoubleBuffer<CutState>

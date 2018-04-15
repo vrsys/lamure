@@ -42,7 +42,7 @@ mem_slot_type *CutDatabase::get_free_mem_slot()
 }
 mem_slot_type *CutDatabase::write_mem_slot_at(size_t position)
 {
-    std::unique_lock<std::mutex> lk(_write_lock, std::adopt_lock);
+    std::unique_lock<std::mutex> lk(_write_lock);
 
     if(position >= _size_mem_interleaved)
     {
@@ -60,7 +60,7 @@ mem_slot_type *CutDatabase::read_mem_slot_at(size_t position)
 {
     // std::cout << "read_mem_slot_at" << std::endl;
 
-    std::unique_lock<std::mutex> lk(_read_lock, std::adopt_lock);
+    std::unique_lock<std::mutex> lk(_read_lock);
 
     if(position >= _size_mem_interleaved)
     {
@@ -77,6 +77,8 @@ mem_slot_type *CutDatabase::read_mem_slot_at(size_t position)
 void CutDatabase::deliver() { _front->assign(_back->begin(), _back->end()); }
 Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 {
+    //std::cout << "start_writing_cut" << std::endl;
+
     std::unique_lock<std::mutex> lk(_write_lock);
 
     if(_is_written.load())
@@ -93,6 +95,8 @@ Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 }
 void CutDatabase::stop_writing_cut(uint64_t cut_id)
 {
+    //std::cout << "stop_writing_cut" << std::endl;
+
     std::unique_lock<std::mutex> lk(_write_lock);
 
     _cut_map[cut_id]->stop_writing();
@@ -108,7 +112,7 @@ void CutDatabase::stop_writing_cut(uint64_t cut_id)
 }
 Cut *CutDatabase::start_reading_cut(uint64_t cut_id)
 {
-    // std::cout << "start_reading_cut" << std::endl;
+    //std::cout << "start_reading_cut" << std::endl;
 
     std::unique_lock<std::mutex> lk(_read_lock);
 
@@ -132,7 +136,7 @@ Cut *CutDatabase::start_reading_cut(uint64_t cut_id)
 }
 void CutDatabase::stop_reading_cut(uint64_t cut_id)
 {
-    // std::cout << "stop_reading_cut" << std::endl;
+    //std::cout << "stop_reading_cut" << std::endl;
 
     std::unique_lock<std::mutex> lk(_read_lock);
 

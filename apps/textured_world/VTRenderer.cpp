@@ -10,9 +10,9 @@
 
 namespace vt
 {
-VTRenderer::VTRenderer(CutUpdate *cut_update) : _data_resources(), _ctxt_resources(), _view_resources()
+VTRenderer::VTRenderer() : _data_resources(), _ctxt_resources(), _view_resources()
 {
-    this->_cut_update = cut_update;
+    this->_cut_update = &CutUpdate::get_instance();
     this->init();
 }
 
@@ -44,11 +44,11 @@ void VTRenderer::init()
 #endif
 
 #ifndef NDEBUG
-        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
-        _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth.obj"));
+        _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, "moon.obj"));
 #else
-        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
-        _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/world_smooth_finer.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth.obj"));
+        _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, "moon.obj"));
 #endif
     }
 

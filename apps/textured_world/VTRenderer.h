@@ -29,7 +29,7 @@ class CutUpdate;
 class VTRenderer
 {
   public:
-    explicit VTRenderer(CutUpdate *cut_update);
+    VTRenderer();
     ~VTRenderer();
 
     void render_earth(uint32_t earth_data_id, uint16_t view_id, uint16_t context_id);

@@ -76,7 +76,8 @@ class EventHandler
             glfwSetWindowShouldClose(glfw_window, GL_TRUE);
             break;
         case GLFW_KEY_P:
-            _cut_update->set_freeze_dispatch(!_cut_update->get_freeze_dispatch());
+            std::cout << "toggle cut freeze" << std::endl;
+            _cut_update->toggle_freeze_dispatch();
             break;
         }
 
@@ -281,7 +282,7 @@ int main(int argc, char *argv[])
     vt::VTConfig::CONFIG_PATH = "configuration_template.ini";
     vt::VTConfig::get_instance().define_size_physical_texture(64, 8192);
 
-    uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset("earth_stitch_86400x43200_256x256_p1_rgb_packed.atlas");
+    uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset("earth_colour_86400x43200_256x256_1_rgb.atlas");
     //uint32_t data_world_elevation_map_id = vt::CutDatabase::get_instance().register_dataset("gebco_256x256_p1_rgb_packed.atlas");
     //uint32_t data_moon_map_id = vt::CutDatabase::get_instance().register_dataset("lunar_map_256x256_p1_rgb_packed.atlas");
     //uint32_t data_moon_elevation_map_id = vt::CutDatabase::get_instance().register_dataset("lunar_elevation_256x256_p1_rgb_packed.atlas");
@@ -314,7 +315,7 @@ int main(int argc, char *argv[])
     // VSYNC
     // glfwSwapInterval(1);
 
-    auto *vtrenderer = new vt::VTRenderer(_cut_update);
+    auto *vtrenderer = new vt::VTRenderer();
 
     vtrenderer->add_data(cut_map_id, data_world_map_id);
     //vtrenderer->add_data(cut_map_elevation_id, data_world_elevation_map_id);

@@ -29,8 +29,7 @@ class CutUpdate
     void feedback(int32_t *buf_lod, uint32_t *buf_count);
     const float &get_dispatch_time() const;
 
-    void set_freeze_dispatch(bool _freeze_dispatch);
-    bool get_freeze_dispatch();
+    void toggle_freeze_dispatch();
 
 private:
     CutUpdate();
@@ -49,8 +48,7 @@ private:
     uint32_t *_feedback_count_buffer;
 
     std::atomic<bool> _should_stop;
-
-    bool _freeze_dispatch = false;
+    std::atomic<bool> _freeze_dispatch;
 
     void run();
     void dispatch();
@@ -60,10 +58,8 @@ private:
     bool keep_id(Cut *cut, id_type tile_id);
 
     bool add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_ptr);
-    mem_slot_type *read_mem_slot_for_id(Cut *cut, id_type tile_id);
     mem_slot_type *write_mem_slot_for_id(Cut *cut, id_type tile_id);
 
-    uint8_t count_children_in_cut(id_type tile_id, const cut_type &cut);
     bool check_all_siblings_in_cut(id_type tile_id, const cut_type &cut);
     void remove_from_indexed_memory(Cut *cut, id_type tile_id);
 };
