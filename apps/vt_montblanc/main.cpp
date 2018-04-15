@@ -50,6 +50,9 @@ struct Window
     };
 
     MouseButtonState _mouse_button_state;
+
+    bool _toggle_level_illustration = false;
+    bool _enable_hierarchy = true;
 };
 
 std::list<Window *> _windows;
@@ -80,6 +83,7 @@ class EventHandler
             case GLFW_KEY_ESCAPE:
                 std::cout << "should close" << std::endl;
                 glfwSetWindowShouldClose(glfw_window, GL_TRUE);
+                exit(0);
                 break;
             case GLFW_KEY_P:
                 if (action == GLFW_PRESS) {
@@ -104,6 +108,16 @@ class EventHandler
             case GLFW_KEY_DOWN:
                 if (action != GLFW_RELEASE) {
                     window->_trackball_manipulator.translation(0.0f, calculate_factor(window->_scale));
+                }
+                break;
+            case GLFW_KEY_SPACE:
+                if (action == GLFW_PRESS) {
+                    window->_toggle_level_illustration = !window->_toggle_level_illustration;
+                }
+                break;
+            case GLFW_KEY_H:
+                if (action == GLFW_PRESS) {
+                    window->_enable_hierarchy = !window->_enable_hierarchy;
                 }
                 break;
         }
@@ -172,8 +186,6 @@ class EventHandler
     static void on_window_scroll(GLFWwindow *glfw_window, double xoffset, double yoffset)
     {
         Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-
-        std::cout << window->_scale << std::endl;
 
         window->_scale = std::max(window->_scale + (float)yoffset * calculate_factor(window->_scale), -0.1f);
         window->_scale = std::min(window->_scale, 1.7f);
@@ -367,6 +379,10 @@ int main(int argc, char *argv[])
 
             if(window == primary_window)
             {
+                //TODO
+                // vtrenderer->toggle_level_illustration(window->_toggle_level_illustration);
+                // vtrenderer->enable_hierarchy(window->_enable_hierarchy);
+
                 vtrenderer->update_view(view_id,
                                         window->_width, window->_height,
                                         window->_scale,

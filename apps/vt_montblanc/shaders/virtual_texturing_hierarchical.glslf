@@ -153,6 +153,67 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
     return c;
 }
 
+vec4 illustrate_level(float lambda) {
+    float mix_ratio = fract(lambda);
+    int desired_level = int(ceil(lambda));
+
+    vec4 child_color = vec4(0,0,0,1);
+    vec4 parent_color = vec4(0,0,0,1);
+
+    vec4 c0 = vec4(0,0,0,1);
+    vec4 c1 = vec4(0,0,1,1);
+    vec4 c2 = vec4(0,1,0,1);
+    vec4 c3 = vec4(0,1,1,1);
+    vec4 c4 = vec4(1,0,0,1);
+    vec4 c5 = vec4(1,0,1,1);
+    vec4 c6 = vec4(1,1,0,1);
+    vec4 c7 = vec4(1,1,1,1);
+
+    switch(desired_level) {
+        case 0:
+            parent_color = c0;
+            child_color = c0;
+            break;
+        case 1:
+            parent_color = c0;
+            child_color = c1;
+            break;
+        case 2:
+            parent_color = c1;
+            child_color = c2;
+            break;
+        case 3:
+            parent_color = c2;
+            child_color = c3;
+            break;
+        case 4:
+            parent_color = c3;
+            child_color = c4;
+            break;
+        case 5:
+            parent_color = c4;
+            child_color = c5;
+            break;
+        case 6:
+            parent_color = c5;
+            child_color = c6;
+            break;
+        case 7:
+            parent_color = c6;
+            child_color = c7;
+            break;
+        default:
+            parent_color = c7;
+            child_color = c7;
+    }
+
+#if 1
+    return mix(parent_color, child_color, mix_ratio);
+#else
+    return parent_color;
+#endif
+}
+
 void main()
 {
     // swap y axis
@@ -161,7 +222,11 @@ void main()
     vec4 c;
 
     float lambda = -dxdy();
-    c = traverse_idx_hierarchy(lambda, texture_coordinates);
 
+#if 1
+    c = traverse_idx_hierarchy(lambda, texture_coordinates);
+#else
+    c = illustrate_level(lambda);
+#endif
     out_color = c;
 }
