@@ -28,14 +28,14 @@ void VTRenderer::init()
         using namespace boost::assign;
 
 #ifndef NDEBUG
-        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_elevation.glslv", vx_vt_elevation) ||
+        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vx_vt_elevation) ||
            !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical_debug.glslf", fs_vt_color_debug))
         {
             scm::err() << "error reading shader files" << scm::log::end;
             throw std::runtime_error("Error reading shader files");
         }
 #else
-        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_elevation.glslv", vx_vt_elevation) ||
+        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vx_vt_elevation) ||
            !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical.glslf", fs_vt_color))
         {
             scm::err() << "error reading shader files" << scm::log::end;
@@ -161,7 +161,7 @@ void VTRenderer::clear_buffers(uint16_t context_id)
 
     _ctxt_resources[context_id]->_render_context->apply();
 }
-void VTRenderer::render_earth(uint32_t earth_data_id, uint32_t earth_data_elevation_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::render_earth(uint32_t earth_data_id, uint16_t view_id, uint16_t context_id)
 {
     using namespace scm::math;
     using namespace scm::gl;
@@ -216,8 +216,6 @@ void VTRenderer::render_earth(uint32_t earth_data_id, uint32_t earth_data_elevat
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
 
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[earth_data_elevation_id]->_index_hierarchy.at(3), _filter_nearest, 18);
-
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
 
@@ -228,7 +226,7 @@ void VTRenderer::render_earth(uint32_t earth_data_id, uint32_t earth_data_elevat
     _ctxt_resources[context_id]->_render_context->sync();
 }
 
-void VTRenderer::render_moon(uint32_t moon_data_id, uint32_t moon_elevation_data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t context_id)
 {
     using namespace scm::math;
     using namespace scm::gl;
@@ -282,8 +280,6 @@ void VTRenderer::render_moon(uint32_t moon_data_id, uint32_t moon_elevation_data
     }
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
-
-    _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[moon_elevation_data_id]->_index_hierarchy.at(3), _filter_nearest, 18);
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);

@@ -95,6 +95,8 @@ void CutUpdate::dispatch()
 
             uint8_t *root_tile = slot->getBuffer();
 
+            cut->get_back()->get_cut().insert(0);
+
             add_to_indexed_memory(cut, 0, root_tile);
 
             cut->set_drawn(true);
@@ -104,11 +106,12 @@ void CutUpdate::dispatch()
             continue;
         }
 
-        cut_type cut_desired = cut_type(cut->get_front()->get_cut());
+        cut_type cut_desired = cut_type(cut->get_back()->get_cut());
+        cut_desired.clear();
 
         /* DECISION MAKING PASS */
 
-        for(auto iter = cut->get_front()->get_cut().crbegin(); iter != cut->get_front()->get_cut().crend(); iter++)
+        for(auto iter = cut->get_back()->get_cut().crbegin(); iter != cut->get_back()->get_cut().crend(); iter++)
         {
             id_type tile_id = *iter;
             id_type parent_id = QuadTree::get_parent_id(tile_id);
@@ -116,11 +119,26 @@ void CutUpdate::dispatch()
 
             uint16_t tile_depth = QuadTree::get_depth_of_node(tile_id);
 
-            if(mem_slot == nullptr)
+            if (mem_slot == nullptr)
             {
                 std::cerr << "Node " << std::to_string(tile_id) << " not found in memory slots" << std::endl;
                 continue;
             }
+
+
+            //if (check_all_siblings_in_cut(tile_id, cut->get_back()->get_cut()) {
+
+              //if all siblings feedback < tile_depth
+                //collapse all of, them move iterator+3, continue
+              //else
+                //go through all of them, decide keep or split individually, move iterator+3, continue
+            //}
+            //else {
+                //we can only keep or split
+                //do not move iterator! just do 1 node, continue
+
+            //}
+
 
             if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
             {
@@ -128,11 +146,11 @@ void CutUpdate::dispatch()
 
                 // std::cout << "decision: split " << tile_id << ", " << _feedback_buffer[mem_slot->position] << std::endl;
 
-                cut_desired.erase(tile_id);
+                //cut_desired.erase(tile_id);
 
                 for(uint8_t i = 0; i < 4; i++)
                 {
-                    cut_desired.insert(QuadTree::get_child_id(tile_id, i));
+                    //cut_desired.insert(QuadTree::get_child_id(tile_id, i));
                 }
 
                 split.insert(tile_id);
@@ -144,22 +162,24 @@ void CutUpdate::dispatch()
 
                 for(uint8_t i = 0; i < 4; i++)
                 {
-                    cut_desired.erase(QuadTree::get_child_id(parent_id, i));
+                    //cut_desired.erase(QuadTree::get_child_id(parent_id, i));
                 }
 
-                cut_desired.insert(parent_id);
+                //cut_desired.insert(parent_id);
 
                 collapse_to.insert(parent_id);
+                iter += 4;
             }
             else
             {
                 // std::cout << "decision: keep " << tile_id << ", " << _feedback_buffer[mem_slot->position] << std::endl;
 
                 keep.insert(tile_id);
+                //cut_desired.insert(tile_id);
             }
         }
 
-        cut->get_back()->get_cut().swap(cut_desired);
+        //cut->get_back()->get_cut().swap(cut_desired);
 
         // std::cout << "collapsing to " << collapse_to.size() << " nodes" << std::endl;
         // std::cout << "splitting " << split.size() << " nodes" << std::endl;
@@ -172,15 +192,19 @@ void CutUpdate::dispatch()
             // std::cout << "action: collapse to " << tile_id << std::endl;
             if(!collapse_to_id(cut, tile_id))
             {
-                cut->get_back()->get_cut().erase(tile_id);
+                //cut->get_back()->get_cut().erase(tile_id);
 
                 for(uint8_t i = 0; i < 4; i++)
                 {
                     id_type child_id = QuadTree::get_child_id(tile_id, i);
 
-                    cut->get_back()->get_cut().insert(child_id);
+                    //cut->get_back()->get_cut().insert(child_id);
+                    //cut_desired.insert(child_id);
                     keep.insert(child_id);
                 }
+            }
+            else {
+                cut_desired.insert(tile_id);
             }
         }
 
@@ -193,19 +217,30 @@ void CutUpdate::dispatch()
                 {
                     id_type child_id = QuadTree::get_child_id(tile_id, i);
 
-                    cut->get_back()->get_cut().erase(child_id);
+                    //cut->get_back()->get_cut().erase(child_id);
+
                 }
 
-                cut->get_back()->get_cut().insert(tile_id);
+                //cut->get_back()->get_cut().insert(tile_id);
                 keep.insert(tile_id);
+            }
+            else {
+                for(uint8_t i = 0; i < 4; i++)
+                {
+                    cut_desired.insert(QuadTree::get_child_id(tile_id, i));
+                }
             }
         }
 
         for(id_type tile_id : keep)
         {
             // std::cout << "action: keep " << tile_id << std::endl;
-            keep_id(cut, tile_id);
+            if (keep_id(cut, tile_id)) {
+                cut_desired.insert(tile_id);
+            }
         }
+
+        cut->get_back()->get_cut().swap(cut_desired);
 
         _cut_db->stop_writing_cut(cut_entry.first);
     }
@@ -263,7 +298,7 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
         ptr[3] = (uint8_t)1;
     }
 
-    cut->get_back()->get_cut().insert(tile_id);
+    //cut->get_back()->get_cut().insert(tile_id);
 
     if(mem_slot->updated)
     {
@@ -353,9 +388,9 @@ bool CutUpdate::keep_id(Cut *cut, id_type tile_id)
 }
 mem_slot_type *CutUpdate::read_mem_slot_for_id(Cut *cut, id_type tile_id)
 {
-    auto mem_slot_iter = cut->get_front()->get_mem_slots_locked().find(tile_id);
+    auto mem_slot_iter = cut->get_back()->get_mem_slots_locked().find(tile_id);
 
-    if(mem_slot_iter == cut->get_front()->get_mem_slots_locked().end())
+    if(mem_slot_iter == cut->get_back()->get_mem_slots_locked().end())
     {
         return nullptr;
     }
@@ -392,6 +427,7 @@ void CutUpdate::stop()
     _new_feedback.store(true);
     _cv.notify_one();
     _worker.join();
+    _cut_db->get_tile_provider()->stop();
 }
 uint8_t CutUpdate::count_children_in_cut(id_type tile_id, const cut_type &cut)
 {
