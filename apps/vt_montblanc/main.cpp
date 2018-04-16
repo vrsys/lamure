@@ -39,6 +39,9 @@ struct Window
     float _ref_rot_x;
     float _ref_rot_y;
 
+    float _ref_trans_x;
+    float _ref_trans_y;
+
     float _scale = 0.16f;
 
     enum MouseButtonState
@@ -51,7 +54,7 @@ struct Window
 
     MouseButtonState _mouse_button_state;
 
-    bool _toggle_level_illustration = false;
+    bool _enable_level_illustration = false;
     bool _enable_hierarchy = true;
 };
 
@@ -92,32 +95,55 @@ class EventHandler
                 break;
             case GLFW_KEY_RIGHT:
                 if (action != GLFW_RELEASE) {
-                    window->_trackball_manipulator.translation(-calculate_factor(window->_scale), 0.0f);
+                    float factor = -calculate_factor(window->_scale);
+                    window->_trackball_manipulator.translation(factor, 0.0f);
+                    window->_ref_trans_x += factor;
                 }
                 break;
             case GLFW_KEY_LEFT:
                 if (action != GLFW_RELEASE) {
-                    window->_trackball_manipulator.translation(calculate_factor(window->_scale), 0.0f);
+                    float factor = calculate_factor(window->_scale);
+                    window->_trackball_manipulator.translation(factor, 0.0f);
+                    window->_ref_trans_x += factor;
                 }
                 break;
             case GLFW_KEY_UP:
                 if (action != GLFW_RELEASE) {
-                    window->_trackball_manipulator.translation(0.0f, -calculate_factor(window->_scale));
+                    float factor = -calculate_factor(window->_scale);
+                    window->_trackball_manipulator.translation(0.0f, factor);
+                    window->_ref_trans_y += factor;
                 }
                 break;
             case GLFW_KEY_DOWN:
                 if (action != GLFW_RELEASE) {
-                    window->_trackball_manipulator.translation(0.0f, calculate_factor(window->_scale));
+                    float factor = calculate_factor(window->_scale);
+                    window->_trackball_manipulator.translation(0.0f, factor);
+                    window->_ref_trans_y += factor;
                 }
                 break;
             case GLFW_KEY_SPACE:
                 if (action == GLFW_PRESS) {
-                    window->_toggle_level_illustration = !window->_toggle_level_illustration;
+                    window->_enable_level_illustration = !window->_enable_level_illustration;
                 }
                 break;
             case GLFW_KEY_H:
                 if (action == GLFW_PRESS) {
                     window->_enable_hierarchy = !window->_enable_hierarchy;
+                }
+                break;
+            case GLFW_KEY_R:
+                if (action == GLFW_PRESS) {
+                    window->_trackball_manipulator.dolly(-2.5f);
+                    window->_trackball_manipulator.transform_matrix(scm::math::mat4f::identity());
+                    window->_trackball_manipulator.dolly(2.5f);
+
+                    window->_ref_rot_x = 0.0f;
+                    window->_ref_rot_y = 0.0f;
+
+                    window->_ref_trans_x = 0.0f;
+                    window->_ref_trans_y = 0.0f;
+
+                    window->_scale = 0.16f;
                 }
                 break;
         }
@@ -254,6 +280,7 @@ Window *create_window(unsigned int width, unsigned int height, const std::string
     glfwSetCursorPosCallback   (new_window->_glfw_window, &EventHandler::on_window_move_cursor);
     glfwSetScrollCallback      (new_window->_glfw_window, &EventHandler::on_window_scroll);
     glfwSetCursorEnterCallback (new_window->_glfw_window, &EventHandler::on_window_enter);
+    glfwSetWindowSizeCallback  (new_window->_glfw_window, &EventHandler::on_window_resize);
 
     glfwSetWindowUserPointer(new_window->_glfw_window, new_window);
 
@@ -345,8 +372,6 @@ int main(int argc, char *argv[])
     }
 
     Window *primary_window = create_window(1920, 1080, "First", nullptr, nullptr);
-    // TODO
-    // create_window(600, 600, "Second", nullptr, primary_window);
 
     make_context_current(primary_window);
 
@@ -379,8 +404,7 @@ int main(int argc, char *argv[])
 
             if(window == primary_window)
             {
-                //TODO
-                vtrenderer->enable_level_illustration(window->_toggle_level_illustration);
+                vtrenderer->enable_level_illustration(window->_enable_level_illustration);
                 vtrenderer->enable_hierarchy(window->_enable_hierarchy);
 
                 vtrenderer->update_view(view_id,
