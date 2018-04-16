@@ -380,8 +380,8 @@ int main(int argc, char *argv[])
             if(window == primary_window)
             {
                 //TODO
-                // vtrenderer->toggle_level_illustration(window->_toggle_level_illustration);
-                // vtrenderer->enable_hierarchy(window->_enable_hierarchy);
+                vtrenderer->enable_level_illustration(window->_toggle_level_illustration);
+                vtrenderer->enable_hierarchy(window->_enable_hierarchy);
 
                 vtrenderer->update_view(view_id,
                                         window->_width, window->_height,

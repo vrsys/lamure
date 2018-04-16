@@ -8,6 +8,9 @@ uniform uvec2 physical_texture_dim;
 uniform vec2 tile_size;
 uniform vec2 tile_padding;
 
+uniform bool enable_hierarchy;
+uniform bool enable_level_illustration;
+
 layout(binding = 0) uniform usampler2D hierarchical_idx_textures[16];
 layout(binding = 17) uniform sampler2DArray physical_texture_array;
 
@@ -94,7 +97,8 @@ vec4 mix_colors(idx_tex_positions positions, int desired_level, vec2 texture_coo
     vec4 child_color = get_physical_texture_color(positions.child_idx, texture_coordinates, positions.child_lvl);
     vec4 parent_color = get_physical_texture_color(positions.parent_idx, texture_coordinates, positions.parent_lvl);
 
-    return mix(parent_color, child_color, mix_ratio);
+    return enable_hierarchy == true ?
+        mix(parent_color, child_color, mix_ratio) : child_color;
 }
 
 /*
@@ -160,16 +164,18 @@ vec4 illustrate_level(float lambda) {
     vec4 child_color = vec4(0,0,0,1);
     vec4 parent_color = vec4(0,0,0,1);
 
-    vec4 c0 = vec4(0,0,0,1);
-    vec4 c1 = vec4(0,0,1,1);
-    vec4 c2 = vec4(0,1,0,1);
-    vec4 c3 = vec4(0,1,1,1);
-    vec4 c4 = vec4(1,0,0,1);
-    vec4 c5 = vec4(1,0,1,1);
-    vec4 c6 = vec4(1,1,0,1);
-    vec4 c7 = vec4(1,1,1,1);
+    vec4 c0 = vec4(0,0,0,1); // black   - level 0 and below
+    vec4 c1 = vec4(0,0,1,1); // blue    - level 1, 8, 15
+    vec4 c2 = vec4(0,1,0,1); // green   - level 2, 9, 16
+    vec4 c3 = vec4(0,1,1,1); // cyan    - level 3, 10
+    vec4 c4 = vec4(1,0,0,1); // red     - level 4, 11
+    vec4 c5 = vec4(1,0,1,1); // magenta - level 5, 12
+    vec4 c6 = vec4(1,1,0,1); // yellow  - level 6, 13
+    vec4 c7 = vec4(1,1,1,1); // white   - level 7, 14
 
     switch(desired_level) {
+        case -2:
+        case -1:
         case 0:
             parent_color = c0;
             child_color = c0;
@@ -179,39 +185,44 @@ vec4 illustrate_level(float lambda) {
             child_color = c1;
             break;
         case 2:
+        case 9:
+        case 16:
             parent_color = c1;
             child_color = c2;
             break;
         case 3:
+        case 10:
             parent_color = c2;
             child_color = c3;
             break;
         case 4:
+        case 11:
             parent_color = c3;
             child_color = c4;
             break;
         case 5:
+        case 12:
             parent_color = c4;
             child_color = c5;
             break;
         case 6:
+        case 13:
             parent_color = c5;
             child_color = c6;
             break;
         case 7:
+        case 14:
             parent_color = c6;
             child_color = c7;
             break;
-        default:
+        case 8:
+        case 15:
             parent_color = c7;
-            child_color = c7;
+            child_color = c1;
     }
 
-#if 1
-    return mix(parent_color, child_color, mix_ratio);
-#else
-    return parent_color;
-#endif
+    return enable_hierarchy == true ?
+        mix(parent_color, child_color, mix_ratio) : child_color;
 }
 
 void main()
@@ -223,10 +234,8 @@ void main()
 
     float lambda = -dxdy();
 
-#if 1
-    c = traverse_idx_hierarchy(lambda, texture_coordinates);
-#else
-    c = illustrate_level(lambda);
-#endif
+    c = enable_level_illustration == true ?
+            illustrate_level(lambda) : traverse_idx_hierarchy(lambda, texture_coordinates);
+
     out_color = c;
 }

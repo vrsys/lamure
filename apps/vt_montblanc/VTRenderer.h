@@ -1,5 +1,5 @@
-#ifndef VT_RENDERER_H
-#define VT_RENDERER_H
+#ifndef VT_RENDERER_MONTBLANC_H
+#define VT_RENDERER_MONTBLANC_H
 
 #include <chrono>
 #include <lamure/vt/common.h>
@@ -47,6 +47,11 @@ class VTRenderer
 
     void collect_feedback(uint16_t context_id);
     void clear_buffers(uint16_t context_id);
+
+    void enable_level_illustration(bool toggle);
+
+    void enable_hierarchy(bool enable);
+
 private:
     CutUpdate *_cut_update;
 
@@ -126,6 +131,9 @@ private:
     std::map<uint16_t, view_resource *> _view_resources;
     std::map<uint64_t, debug_cut *> _cut_debug_outputs;
     std::map<uint64_t, debug_context *> _ctxt_debug_outputs;
+
+    bool _enable_level_illustration;
+    bool _enable_hierarchy;
 };
 }
 

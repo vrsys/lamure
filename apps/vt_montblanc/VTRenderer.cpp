@@ -58,6 +58,9 @@ void VTRenderer::init()
 
     _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
     _ms_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
+
+    _enable_level_illustration = false;
+    _enable_hierarchy = true;
 }
 
 void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
@@ -164,6 +167,9 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
     _shader_vt->uniform("max_level", max_depth_level_color);
     _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
     _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
+
+    _shader_vt->uniform("enable_hierarchy", _enable_hierarchy);
+    _shader_vt->uniform("enable_level_illustration", _enable_level_illustration);
 
     for(uint32_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
     {
@@ -545,4 +551,12 @@ void VTRenderer::render_debug_context(uint16_t context_id)
 
     ImGui::End();
 }
+
+    void VTRenderer::enable_level_illustration(bool toggle) {
+        _enable_level_illustration = toggle;
+    }
+
+    void VTRenderer::enable_hierarchy(bool enable) {
+        _enable_hierarchy = enable;
+    }
 }
