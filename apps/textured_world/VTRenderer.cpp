@@ -44,6 +44,7 @@ void VTRenderer::init()
 #endif
 
 #ifndef NDEBUG
+        //_obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
         _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth.obj"));
         _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, "moon.obj"));
 #else
@@ -356,6 +357,18 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
             updated_levels.insert(QuadTree::get_depth_of_node(mem_slot_updated->tile_id));
             update_physical_texture_blockwise(context_id, mem_slot_updated->pointer, mem_slot_updated->position);
+        }
+
+        for(auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared())
+        {
+            const mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second);
+
+            if(mem_slot_cleared == nullptr)
+            {
+                std::cerr << "Mem slot at " << position_slot_cleared.second << " is null" << std::endl;
+            }
+
+            updated_levels.insert(QuadTree::get_depth_of_node(position_slot_cleared.first));
         }
 
         for(uint16_t updated_level : updated_levels)

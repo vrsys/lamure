@@ -20,6 +20,7 @@ class CutState
     uint8_t *get_index(uint16_t level);
     cut_type &get_cut();
     mem_slots_index_type &get_mem_slots_updated();
+    mem_slots_index_type &get_mem_slots_cleared();
     mem_slots_index_type &get_mem_slots_locked();
     void accept(CutState &cut_state);
 
@@ -28,6 +29,7 @@ class CutState
     std::vector<uint8_t *> _index_buffers;
     cut_type _cut;
     mem_slots_index_type _mem_slots_updated;
+    mem_slots_index_type _mem_slots_cleared;
     mem_slots_index_type _mem_slots_locked;
 };
 

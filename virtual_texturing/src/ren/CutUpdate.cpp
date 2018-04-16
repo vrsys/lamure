@@ -71,6 +71,8 @@ void CutUpdate::dispatch()
     uint32_t split_budget_available = (uint32_t)_cut_db->get_available_memory() / 4;
     uint32_t split_budget = std::min(split_budget_throughput, split_budget_available);
 
+    uint8_t split_counter = 0;
+
     // std::cout << "split budget: " << split_budget << std::endl;
 
     for(cut_map_entry_type cut_entry : (*_cut_db->get_cut_map()))
@@ -135,7 +137,10 @@ void CutUpdate::dispatch()
 
                 bool should_collapse = true;
 
-                for(uint8_t i = 0; i < 4; i++)
+                // std::cout << std::endl;
+                // std::cout << "Siblings are being checked " << std::endl;
+
+                for(uint8_t i = 0; i < 3; i++)
                 {
                     // std::cout << "Tile considered for collapse " + std::to_string(*iter) << std::endl;
 
@@ -160,6 +165,8 @@ void CutUpdate::dispatch()
                     }
                 }
 
+                // std::cout << std::endl;
+
                 if(should_collapse)
                 {
                     id_type parent_id = QuadTree::get_parent_id(*iter);
@@ -179,9 +186,10 @@ void CutUpdate::dispatch()
                             throw std::runtime_error("Node " + std::to_string(tile_id) + " not found in memory slots");
                         }
 
-                        if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split.size() < split_budget)
+                        if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
                         {
                             split.insert(tile_id);
+                            split_counter++;
                         }
                         else
                         {
@@ -191,6 +199,8 @@ void CutUpdate::dispatch()
                         iter++;
                     }
                 }
+
+                // std::cout << std::endl;
             }
             else
             {
@@ -201,9 +211,10 @@ void CutUpdate::dispatch()
                     throw std::runtime_error("Node " + std::to_string(tile_id) + " not found in memory slots");
                 }
 
-                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split.size() < split_budget)
+                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
                 {
                     split.insert(tile_id);
+                    split_counter++;
                 }
                 else
                 {
@@ -219,6 +230,7 @@ void CutUpdate::dispatch()
         /* MEMORY INDEXING PASS */
 
         cut->get_back()->get_mem_slots_updated().clear();
+        cut->get_back()->get_mem_slots_cleared().clear();
 
         for(id_type tile_id : collapse_to)
         {
@@ -329,10 +341,6 @@ bool CutUpdate::add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_p
     {
         cut->get_back()->get_mem_slots_updated()[tile_id] = mem_slot->position;
     }
-    else
-    {
-        cut->get_back()->get_mem_slots_updated().erase(tile_id);
-    };
 
     return true;
 }
@@ -433,12 +441,11 @@ void CutUpdate::feedback(int32_t *buf_lod, uint32_t *buf_count)
 
 void CutUpdate::stop()
 {
-    std::unique_lock<std::mutex> lk(_dispatch_lock);
+    _cut_db->get_tile_provider()->stop();
     _should_stop.store(true);
     _new_feedback.store(true);
     _cv.notify_one();
     _worker.join();
-    _cut_db->get_tile_provider()->stop();
 }
 bool CutUpdate::check_all_siblings_in_cut(id_type tile_id, const cut_type &cut)
 {
@@ -473,6 +480,11 @@ void CutUpdate::remove_from_indexed_memory(Cut *cut, id_type tile_id)
     uint16_t tile_depth = QuadTree::get_depth_of_node(tile_id);
 
     uint8_t *ptr = &cut->get_back()->get_index(tile_depth)[(y_orig * QuadTree::get_tiles_per_row(tile_depth) + x_orig) * 4];
+
+    ptr[0] = (uint8_t)0;
+    ptr[1] = (uint8_t)0;
+    ptr[2] = (uint8_t)0;
+
     ptr[3] = (uint8_t)0;
 
     cut->get_back()->get_mem_slots_locked().erase(mem_slot->tile_id);
@@ -482,5 +494,8 @@ void CutUpdate::remove_from_indexed_memory(Cut *cut, id_type tile_id)
     mem_slot->locked = false;
     mem_slot->updated = false;
     mem_slot->tile_id = UINT64_MAX;
+    mem_slot->pointer = nullptr;
+
+    cut->get_back()->get_mem_slots_cleared()[tile_id] = mem_slot->position;
 }
 }

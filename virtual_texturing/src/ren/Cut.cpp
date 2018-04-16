@@ -2,7 +2,7 @@
 
 namespace vt
 {
-CutState::CutState(uint16_t depth) : _cut(), _mem_slots_updated(), _mem_slots_locked()
+CutState::CutState(uint16_t depth) : _cut(), _mem_slots_updated(), _mem_slots_locked(), _mem_slots_cleared()
 {
     uint16_t level = 0;
 
@@ -31,18 +31,24 @@ void CutState::accept(CutState &cut_state)
     _mem_slots_updated.clear();
     _mem_slots_updated.insert(cut_state._mem_slots_updated.begin(), cut_state._mem_slots_updated.end());
 
-    for (size_t i = 0; i < _index_buffers.size(); ++i) {
+    _mem_slots_cleared.clear();
+    _mem_slots_cleared.insert(cut_state._mem_slots_cleared.begin(), cut_state._mem_slots_cleared.end());
+
+    for(size_t i = 0; i < _index_buffers.size(); ++i)
+    {
         std::copy(cut_state._index_buffers[i], cut_state._index_buffers[i] + cut_state._index_buffer_sizes[i], _index_buffers[i]);
     }
 }
-CutState::~CutState() {
-    for (auto &index_buffer : _index_buffers)
+CutState::~CutState()
+{
+    for(auto &index_buffer : _index_buffers)
     {
         delete index_buffer;
     }
 }
 cut_type &CutState::get_cut() { return _cut; }
 uint8_t *CutState::get_index(uint16_t level) { return _index_buffers.at(level); }
+mem_slots_index_type &CutState::get_mem_slots_cleared() { return _mem_slots_cleared; }
 mem_slots_index_type &CutState::get_mem_slots_updated() { return _mem_slots_updated; }
 mem_slots_index_type &CutState::get_mem_slots_locked() { return _mem_slots_locked; }
 Cut::Cut(pre::AtlasFile *atlas, CutState *front, CutState *back) : DoubleBuffer<CutState>(front, back)
