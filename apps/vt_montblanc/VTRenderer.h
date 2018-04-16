@@ -48,7 +48,7 @@ class VTRenderer
     void collect_feedback(uint16_t context_id);
     void clear_buffers(uint16_t context_id);
 
-    void enable_level_illustration(bool toggle);
+    void toggle_visualization(int toggle);
 
     void enable_hierarchy(bool enable);
 
@@ -132,7 +132,7 @@ private:
     std::map<uint64_t, debug_cut *> _cut_debug_outputs;
     std::map<uint64_t, debug_context *> _ctxt_debug_outputs;
 
-    bool _enable_level_illustration;
+    int _toggle_visualization;
     bool _enable_hierarchy;
 };
 }

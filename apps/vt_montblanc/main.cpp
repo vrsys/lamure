@@ -54,7 +54,7 @@ struct Window
 
     MouseButtonState _mouse_button_state;
 
-    bool _enable_level_illustration = false;
+    int _toggle_visualization = 0;
     bool _enable_hierarchy = true;
 };
 
@@ -123,7 +123,7 @@ class EventHandler
                 break;
             case GLFW_KEY_SPACE:
                 if (action == GLFW_PRESS) {
-                    window->_enable_level_illustration = !window->_enable_level_illustration;
+                    window->_toggle_visualization = (window->_toggle_visualization + 1) % 3;
                 }
                 break;
             case GLFW_KEY_H:
@@ -144,6 +144,9 @@ class EventHandler
                     window->_ref_trans_y = 0.0f;
 
                     window->_scale = 0.16f;
+
+                    window->_toggle_visualization = 0;
+                    window->_enable_hierarchy = true;
                 }
                 break;
         }
@@ -404,7 +407,7 @@ int main(int argc, char *argv[])
 
             if(window == primary_window)
             {
-                vtrenderer->enable_level_illustration(window->_enable_level_illustration);
+                vtrenderer->toggle_visualization(window->_toggle_visualization);
                 vtrenderer->enable_hierarchy(window->_enable_hierarchy);
 
                 vtrenderer->update_view(view_id,
