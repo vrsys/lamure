@@ -365,9 +365,10 @@ namespace vt{
 
                             //std::cout << currentOffset << std::endl;
                             _offsetIndex->set(absIterationId, currentOffset, _destTileByteSize);
+
                             std::memcpy(&writeBuffer[currentOffset - writeBufferOffset], (char *) &buffer[bufferOffset],
                                         _destTileByteSize);
-                            writeBufferLastId = idLookup[((currentOffset - writeBufferOffset) / _destTileByteSize) + 1];
+                            writeBufferLastId = idLookup[(((currentOffset - writeBufferOffset) / _destTileByteSize) + 1) % writeBufferTileSize];
                             writeBufferFirstId = absIterationId;
                             idLookup[(currentOffset - writeBufferOffset) / _destTileByteSize] = absIterationId;
                             currentOffset += _destTileByteSize;
@@ -624,6 +625,10 @@ namespace vt{
             _tileHeight = tileHeight;
             _padding = padding;
 
+            if(_destLayout != AtlasFile::LAYOUT::PACKED){
+                throw std::runtime_error("All formats but packed are deprecated.");
+            }
+
             if (!_isPowerOfTwo(tileWidth)) {
                 throw std::runtime_error("Tile Width needs to be a Power of 2.");
             }
@@ -682,6 +687,13 @@ namespace vt{
                 _destCielabIndexOffset = _destOffsetIndexOffset + _offsetIndex->getByteSize();
                 _cielabIndex = new vt::pre::CielabIndex(totalTileCount);
                 _destPayloadOffset = _destCielabIndexOffset + _cielabIndex->getByteSize();
+
+                /*std::ifstream indexFile(destFileName + ".atlas");
+
+                indexFile.seekg(_destOffsetIndexOffset);
+                _offsetIndex->readFromFile(indexFile);
+
+                indexFile.close();*/
             } else {
                 _destCombined = DEST_COMBINED::NOT_COMBINED;
                 //_destPayloadFile.rdbuf()->pubsetbuf(nullptr, 0);
