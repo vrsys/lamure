@@ -5,6 +5,7 @@
 #include "VTRenderer.h"
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
+#include <cublas_v2.h>
 #include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
 
@@ -70,14 +71,18 @@ void VTRenderer::init()
         throw std::runtime_error("Error creating shader program");
     }
 
-    _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
-    _blend_state = _device->create_blend_state(true, scm::gl::FUNC_SRC_COLOR, scm::gl::FUNC_ONE_MINUS_SRC_ALPHA, scm::gl::FUNC_SRC_ALPHA, scm::gl::FUNC_ONE_MINUS_SRC_ALPHA);
+    {
+        using namespace scm::gl;
 
-    _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
-    _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
+        _dstate_less = _device->create_depth_stencil_state(true, true, COMPARISON_LESS);
+        _blend_state = _device->create_blend_state(true, FUNC_ONE, FUNC_ONE, FUNC_ONE, FUNC_ONE, EQ_FUNC_ADD, EQ_FUNC_ADD);
 
-    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
-    _ms_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
+        _filter_nearest = _device->create_sampler_state(FILTER_MIN_MAG_NEAREST, WRAP_CLAMP_TO_EDGE);
+        _filter_linear = _device->create_sampler_state(FILTER_MIN_MAG_LINEAR, WRAP_CLAMP_TO_EDGE);
+
+        _ms_no_cull = _device->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, true);
+        _ms_cull = _device->create_rasterizer_state(FILL_SOLID, CULL_BACK, ORIENT_CCW, true);
+    }
 }
 
 void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
@@ -157,42 +162,56 @@ void VTRenderer::clear_buffers(uint16_t context_id)
 
     _ctxt_resources[context_id]->_render_context->set_default_frame_buffer();
 
-    _ctxt_resources[context_id]->_render_context->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(.2f, .2f, .2f, 1.0f));
+    _ctxt_resources[context_id]->_render_context->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(0.f, 0.f, 0.f, 1.0f));
     _ctxt_resources[context_id]->_render_context->clear_default_depth_stencil_buffer();
 
     _ctxt_resources[context_id]->_render_context->apply();
 }
-void VTRenderer::render_earth(uint32_t earth_data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::render_earth(uint32_t earth_color_id, uint16_t view_id, uint16_t context_id, bool exocentric, bool enable_hierarchical, int vis)
 {
     using namespace scm::math;
     using namespace scm::gl;
 
-    uint64_t color_cut_id = (((uint64_t)earth_data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+    uint64_t color_cut_id = (((uint64_t)earth_color_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
     uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
 
     mat4f projection_matrix = mat4f::identity();
-    perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
-    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
+    perspective_matrix(projection_matrix, 32.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
 
-    mat4f model_matrix = mat4f::identity() * make_translation(0.5f, 0.0f, 0.0f) * make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
-
-    mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
     _shader_vt->uniform("projection_matrix", projection_matrix);
-    _shader_vt->uniform("model_view_matrix", model_view_matrix);
+
+    if(!exocentric)
+    {
+        std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
+        mat4f model_matrix = mat4f::identity() * make_rotation(90.f, 1.f, 0.f, 0.f) * make_rotation(-90.f, 0.f, 0.f, 1.f) * make_scale(0.17529f, 0.17529f, 0.17529f);
+        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count());
+        mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * choreography_matrix * model_matrix;
+
+        _shader_vt->uniform("model_view_matrix", model_view_matrix);
+    }
+    else
+    {
+        mat4f model_matrix = mat4f::identity() * make_scale(_view_resources[view_id]->_scale, _view_resources[view_id]->_scale, _view_resources[view_id]->_scale);
+        mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
+
+        _shader_vt->uniform("model_view_matrix", model_view_matrix);
+    }
 
     _shader_vt->uniform("physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
     _shader_vt->uniform("max_level", max_depth_level);
     _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
     _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
 
-    for(uint32_t i = 0; i < _data_resources[earth_data_id]->_index_hierarchy.size(); ++i)
+    for(uint32_t i = 0; i < _data_resources[earth_color_id]->_index_hierarchy.size(); ++i)
     {
         std::string texture_string = "hierarchical_idx_textures";
         _shader_vt->uniform(texture_string, i, int((i)));
     }
 
     _shader_vt->uniform("physical_texture_array", 17);
-    _shader_vt->uniform("elevation_idx_texture", 18);
+
+    _shader_vt->uniform("enable_hierarchy", enable_hierarchical);
+    _shader_vt->uniform("toggle_visualization", (int)vis);
 
     context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
     context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
@@ -210,9 +229,9 @@ void VTRenderer::render_earth(uint32_t earth_data_id, uint16_t view_id, uint16_t
 
     apply_cut_update(context_id);
 
-    for(uint16_t i = 0; i < _data_resources[earth_data_id]->_index_hierarchy.size(); ++i)
+    for(uint16_t i = 0; i < _data_resources[earth_color_id]->_index_hierarchy.size(); ++i)
     {
-        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[earth_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
+        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[earth_color_id]->_index_hierarchy.at(i), _filter_nearest, i);
     }
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
@@ -227,7 +246,7 @@ void VTRenderer::render_earth(uint32_t earth_data_id, uint16_t view_id, uint16_t
     _ctxt_resources[context_id]->_render_context->sync();
 }
 
-void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t context_id, bool exocentric, bool enable_hierarchical, int vis)
 {
     using namespace scm::math;
     using namespace scm::gl;
@@ -236,14 +255,27 @@ void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t c
     uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
 
     mat4f projection_matrix = mat4f::identity();
-    perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
-    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
+    perspective_matrix(projection_matrix, 32.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 100000.0f);
 
-    mat4f model_matrix = mat4f::identity() * make_translation(-1.0f, 0.0f, 0.0f) * make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f) * make_scale(0.27f, 0.27f, 0.27f);
-
-    mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
     _shader_vt->uniform("projection_matrix", projection_matrix);
-    _shader_vt->uniform("model_view_matrix", model_view_matrix);
+
+    if(!exocentric)
+    {
+        std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
+        mat4f model_matrix =
+            mat4f::identity() * make_translation(0.0f, 1.0f, 0.0f) * make_rotation(90.f, 1.f, 0.f, 0.f) * make_rotation(-90.f, 0.f, 0.f, 1.f) * make_scale(0.04422f, 0.04422f, 0.04422f);
+        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count());
+        mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * choreography_matrix * model_matrix;
+
+        _shader_vt->uniform("model_view_matrix", model_view_matrix);
+    }
+    else
+    {
+        mat4f model_matrix = mat4f::identity() * make_scale(_view_resources[view_id]->_scale, _view_resources[view_id]->_scale, _view_resources[view_id]->_scale);
+        mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
+
+        _shader_vt->uniform("model_view_matrix", model_view_matrix);
+    }
 
     _shader_vt->uniform("physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
     _shader_vt->uniform("max_level", max_depth_level);
@@ -257,7 +289,9 @@ void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t c
     }
 
     _shader_vt->uniform("physical_texture_array", 17);
-    _shader_vt->uniform("elevation_idx_texture", 18);
+
+    _shader_vt->uniform("enable_hierarchy", enable_hierarchical);
+    _shader_vt->uniform("toggle_visualization", (int)vis);
 
     context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
     context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
@@ -642,5 +676,45 @@ void VTRenderer::render_debug_context(uint16_t context_id)
     }
 
     ImGui::End();
+}
+scm::math::mat4f VTRenderer::get_choreograpy(float time)
+{
+    using namespace scm::math;
+
+    float period = 60.f;
+
+    mat4f matrix = mat4f::identity();
+
+    float stage_time = time - std::floor(time / period) * period;
+
+    if(stage_time < period * 0.1f)
+    {
+        float stage_point = stage_time / (period * 0.1f);
+        matrix *= make_translation(0.f, -4.50f * std::sqrt(stage_point), 0.f);
+    }
+    else if(stage_time < period * 0.4f)
+    {
+        float stage_point = (stage_time - period * 0.1f) / (period * 0.3f);
+        matrix *= make_translation(0.f, -4.50f, 0.f) * make_rotation(360.f * stage_point, 1.f, 0.f, 0.f);
+    }
+    else if(stage_time < period * 0.8f)
+    {
+        float stage_point = (stage_time - period * 0.4f) / (period * 0.4f);
+
+        float z = 0.1f * std::sin(stage_point * 2.f * scm::math::pi_f);
+        float y = 0.35f - 0.35f * std::cos(stage_point * 2.f * scm::math::pi_f);
+
+        float angle = std::atan(z / y) * 360.0f / scm::math::pi_f + 180.0f;
+        float dist = std::sqrt(z * z + y * y);
+
+        matrix *= make_translation(0.f, -4.50f + dist, 0.f) * make_rotation(-angle, 1.f, 0.f, 0.f);
+    }
+    else if(stage_time < period)
+    {
+        float stage_point = (stage_time - period * 0.8f) / (period * 0.2f);
+        matrix *= make_translation(0.f, -4.50f * (1.0f - (float)std::pow(stage_point, 2)), 0.f);
+    }
+
+    return matrix;
 }
 }

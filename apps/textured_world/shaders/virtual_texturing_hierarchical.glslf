@@ -8,6 +8,9 @@ uniform uvec2 physical_texture_dim;
 uniform vec2 tile_size;
 uniform vec2 tile_padding;
 
+uniform bool enable_hierarchy;
+uniform int toggle_visualization;
+
 layout(binding = 0) uniform usampler2D hierarchical_idx_textures[16];
 layout(binding = 17) uniform sampler2DArray physical_texture_array;
 
@@ -29,10 +32,16 @@ struct idx_tex_positions
 */
 float dxdy()
 {
-    int depth = 0;
-    vec2 c = texture_coord * (1 << depth) * tile_size;
+    vec2 c = texture_coord * tile_size;
 
-    float rho = max(sqrt(pow(dFdx(c.x), 2) + pow(dFdx(c.y), 2)), sqrt(pow(dFdy(c.x), 2) + pow(dFdy(c.y), 2)));
+    float dFdxCx = dFdx(c.x);
+    float dFdxCy = dFdx(c.y);
+
+    float dFdyCx = dFdy(c.x);
+    float dFdyCy = dFdy(c.y);
+
+    float rho = max( sqrt( dFdxCx*dFdxCx + dFdxCy*dFdxCy ),
+                     sqrt( dFdyCx*dFdyCx + dFdyCy*dFdyCy ));
 
     float lambda = log2(rho);
 
@@ -94,7 +103,100 @@ vec4 mix_colors(idx_tex_positions positions, int desired_level, vec2 texture_coo
     vec4 child_color = get_physical_texture_color(positions.child_idx, texture_coordinates, positions.child_lvl);
     vec4 parent_color = get_physical_texture_color(positions.parent_idx, texture_coordinates, positions.parent_lvl);
 
-    return mix(parent_color, child_color, mix_ratio);
+    return enable_hierarchy == true ?
+        mix(parent_color, child_color, mix_ratio) : child_color;
+}
+
+vec4 illustrate_level(float lambda, idx_tex_positions positions) {
+    float mix_ratio = fract(lambda);
+    int desired_level = int(ceil(lambda));
+
+    vec4 child_color = vec4(0,0,0,1);
+    vec4 parent_color = vec4(0,0,0,1);
+
+    if (toggle_visualization == 1) {
+        vec4 c0 = vec4(0,0,0,1); // black   - level 0 and below
+        vec4 c1 = vec4(0,0,1,1); // blue    - level 1, 8, 15
+        vec4 c2 = vec4(0,1,0,1); // green   - level 2, 9, 16
+        vec4 c3 = vec4(0,1,1,1); // cyan    - level 3, 10
+        vec4 c4 = vec4(1,0,0,1); // red     - level 4, 11
+        vec4 c5 = vec4(1,0,1,1); // magenta - level 5, 12
+        vec4 c6 = vec4(1,1,0,1); // yellow  - level 6, 13
+        vec4 c7 = vec4(1,1,1,1); // white   - level 7, 14
+
+        switch(desired_level) {
+            case -2:
+            case -1:
+            case 0:
+                parent_color = c0;
+                child_color = c0;
+                break;
+            case 1:
+                parent_color = c0;
+                child_color = c1;
+                break;
+            case 2:
+            case 9:
+            case 16:
+                parent_color = c1;
+                child_color = c2;
+                break;
+            case 3:
+            case 10:
+                parent_color = c2;
+                child_color = c3;
+                break;
+            case 4:
+            case 11:
+                parent_color = c3;
+                child_color = c4;
+                break;
+            case 5:
+            case 12:
+                parent_color = c4;
+                child_color = c5;
+                break;
+            case 6:
+            case 13:
+                parent_color = c5;
+                child_color = c6;
+                break;
+            case 7:
+            case 14:
+                parent_color = c6;
+                child_color = c7;
+                break;
+            case 8:
+            case 15:
+                parent_color = c7;
+                child_color = c1;
+        }
+
+        //return vec4(lambda / 16.0f, 0.0f, 0.0f, 1.0f);
+    } else {
+        vec4  child_idx = positions.child_idx;
+        float child_lvl = positions.child_lvl;
+        vec4  parent_idx = positions.parent_idx;
+        float parent_lvl = positions.parent_lvl;
+
+        float array_size = textureSize(physical_texture_array, 0).z;
+
+        child_color = vec4(clamp((child_lvl/8.0) , 0.0, 1.0),
+                            (float(child_idx.x + child_idx.y + child_idx.z)/float(physical_texture_dim.x + physical_texture_dim.y + array_size)),
+                            clamp(((child_lvl - 8.0)/8.0), 0.0, 1.0),
+                            1);
+
+        parent_color = vec4(clamp((parent_lvl/8.0), 0.0, 1.0),
+                            (float(parent_idx.x + parent_idx.y + parent_idx.z)/float(physical_texture_dim.x + physical_texture_dim.y + array_size)),
+                            clamp(((parent_lvl - 8.0)/8.0), 0.0, 1.0),
+                            1);
+
+    }
+
+
+    return enable_hierarchy == true ?
+        mix(parent_color, child_color, mix_ratio) : child_color;
+    //color = vec3(child_idx.x, child_idx.y, 0.5);
 }
 
 /*
@@ -145,7 +247,12 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
         }
     }
 
-    vec4 c = mix_colors(positions, desired_level, texture_coordinates, mix_ratio);
+    vec4 c;
+    if (toggle_visualization == 1 || toggle_visualization == 2) {
+        c = illustrate_level(lambda, positions);
+    } else {
+        c = mix_colors(positions, desired_level, texture_coordinates, mix_ratio);
+    }
 
     int feedback_value = desired_level;
     update_feedback(feedback_value, positions.child_idx);

@@ -32,8 +32,8 @@ class VTRenderer
     VTRenderer();
     ~VTRenderer();
 
-    void render_earth(uint32_t earth_data_id, uint16_t view_id, uint16_t context_id);
-    void render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t context_id);
+    void render_earth(uint32_t earth_color_id, uint16_t view_id, uint16_t context_id, bool exocentric, bool enable_hierarchical, int vis);
+    void render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t context_id, bool exocentric, bool enable_hierarchical, int vis);
     void update_view(uint16_t view_id, uint32_t width, uint32_t height, float scale, const scm::math::mat4f &view_matrix);
 
     void add_data(uint64_t cut_id, uint32_t data_id);
@@ -127,6 +127,7 @@ private:
     std::map<uint16_t, view_resource *> _view_resources;
     std::map<uint64_t, debug_cut *> _cut_debug_outputs;
     std::map<uint64_t, debug_context *> _ctxt_debug_outputs;
+    scm::math::mat4f get_choreograpy(float time);
 };
 }
 

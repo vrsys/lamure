@@ -39,7 +39,25 @@ struct Window
     float _ref_rot_x;
     float _ref_rot_y;
 
-    float _scale = 1.f;
+    float _scale = 0.7f;
+
+    enum Dataset
+    {
+        COLOR = 0,
+        ELEVATION = 1,
+    };
+
+    enum Interaction
+    {
+        DEMO = 0,
+        EARTH = 1,
+        MOON = 2
+    };
+
+    int _vis = 0;
+    bool _enable_hierarchical = true;
+    Interaction _interaction = DEMO;
+    Dataset _dataset = COLOR;
 
     enum MouseButtonState
     {
@@ -81,6 +99,30 @@ class EventHandler
             case GLFW_KEY_P:
                 std::cout << "toggle cut freeze" << std::endl;
                 _cut_update->toggle_freeze_dispatch();
+                break;
+            case GLFW_KEY_0:
+                window->_vis = 0;
+                break;
+            case GLFW_KEY_1:
+                window->_vis = 1;
+                break;
+            case GLFW_KEY_2:
+                window->_vis = 2;
+                break;
+            case GLFW_KEY_E:
+                window->_interaction = Window::Interaction::EARTH;
+                break;
+            case GLFW_KEY_M:
+                window->_interaction = Window::Interaction::MOON;
+                break;
+            case GLFW_KEY_D:
+                window->_interaction = Window::Interaction::DEMO;
+                break;
+            case GLFW_KEY_H:
+                window->_enable_hierarchical = !window->_enable_hierarchical;
+                break;
+            case GLFW_KEY_C:
+                window->_dataset = window->_dataset == Window::Dataset::COLOR ? Window::Dataset::ELEVATION : Window::Dataset::COLOR;
                 break;
             }
         }
@@ -149,7 +191,7 @@ class EventHandler
     static void on_window_scroll(GLFWwindow *glfw_window, double xoffset, double yoffset)
     {
         Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        window->_scale = std::max(window->_scale + (float)yoffset * 0.01f, -0.07f);
+        window->_scale = std::min(window->_scale + (float)yoffset * 0.01f, 2.3f);
 
 #ifndef NDEBUG
         ImGui_ImplGlfwGL3_ScrollCallback(glfw_window, xoffset, yoffset);
@@ -287,17 +329,15 @@ int main(int argc, char *argv[])
     vt::VTConfig::get_instance().define_size_physical_texture(64, 8192);
 
     uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset("earth_colour_86400x43200_256x256_1_rgb.atlas");
-    // uint32_t data_world_elevation_map_id = vt::CutDatabase::get_instance().register_dataset("gebco_256x256_p1_rgb_packed.atlas");
+    uint32_t data_world_elevation_map_id = vt::CutDatabase::get_instance().register_dataset("earth_elevation_43200x21600_256x256_1_rgb.atlas");
     uint32_t data_moon_map_id = vt::CutDatabase::get_instance().register_dataset("moon_colour_109164x54582_256x256_1_rgb.atlas");
-    // uint32_t data_moon_elevation_map_id = vt::CutDatabase::get_instance().register_dataset("lunar_elevation_256x256_p1_rgb_packed.atlas");
 
     uint16_t view_id = vt::CutDatabase::get_instance().register_view();
     uint16_t primary_context_id = vt::CutDatabase::get_instance().register_context();
 
     uint64_t cut_map_id = vt::CutDatabase::get_instance().register_cut(data_world_map_id, view_id, primary_context_id);
-    // uint64_t cut_map_elevation_id = vt::CutDatabase::get_instance().register_cut(data_world_elevation_map_id, view_id, primary_context_id);
+    uint64_t cut_map_elevation_id = vt::CutDatabase::get_instance().register_cut(data_world_elevation_map_id, view_id, primary_context_id);
     uint64_t cut_moon_id = vt::CutDatabase::get_instance().register_cut(data_moon_map_id, view_id, primary_context_id);
-    // uint64_t cut_moon_elevation_id = vt::CutDatabase::get_instance().register_cut(data_moon_elevation_map_id, view_id, primary_context_id);
 
     // Registration of resources has to happen before cut update start
     _cut_update = &vt::CutUpdate::get_instance();
@@ -310,9 +350,12 @@ int main(int argc, char *argv[])
         std::runtime_error("GLFW initialisation failed");
     }
 
-    Window *primary_window = create_window(1920, 1080, "First", nullptr, nullptr);
-    // TODO
-    // create_window(600, 600, "Second", nullptr, primary_window);
+    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+
+    glfwWindowHint(GLFW_DECORATED, GL_FALSE);
+
+    Window *primary_window = create_window(mode->width, mode->height, "VT Demo", monitor, nullptr);
 
     make_context_current(primary_window);
 
@@ -322,9 +365,8 @@ int main(int argc, char *argv[])
     auto *vtrenderer = new vt::VTRenderer();
 
     vtrenderer->add_data(cut_map_id, data_world_map_id);
-    // vtrenderer->add_data(cut_map_elevation_id, data_world_elevation_map_id);
+    vtrenderer->add_data(cut_map_elevation_id, data_world_elevation_map_id);
     vtrenderer->add_data(cut_moon_id, data_moon_map_id);
-    // vtrenderer->add_data(cut_moon_elevation_id, data_moon_elevation_map_id);
 
     vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
@@ -344,41 +386,49 @@ int main(int argc, char *argv[])
     {
         glfwPollEvents();
 
-        for(const auto &window : _windows)
+        if(primary_window->_interaction == Window::Interaction::EARTH || primary_window->_interaction == Window::Interaction::MOON)
         {
-            make_context_current(window);
-
-            if(window == primary_window)
-            {
-                vtrenderer->update_view(view_id, window->_width, window->_height, window->_scale, window->_trackball_manipulator.transform_matrix());
-
-                vtrenderer->clear_buffers(primary_context_id);
-
-                vtrenderer->render_earth(data_world_map_id, view_id, primary_context_id);
-                vtrenderer->render_moon(data_moon_map_id, view_id, primary_context_id);
-
-                vtrenderer->collect_feedback(primary_context_id);
-#ifndef NDEBUG
-                vtrenderer->extract_debug_cut(data_world_map_id, view_id, primary_context_id);
-                vtrenderer->extract_debug_cut(data_moon_map_id, view_id, primary_context_id);
-                vtrenderer->extract_debug_context(primary_context_id);
-
-                ImGui_ImplGlfwGL3_NewFrame();
-
-                vtrenderer->render_debug_cut(data_world_map_id, view_id, primary_context_id);
-                vtrenderer->render_debug_cut(data_moon_map_id, view_id, primary_context_id);
-                vtrenderer->render_debug_context(primary_context_id);
-
-                ImGui::Render();
-#endif
-            }
-            else
-            {
-                // TODO
-            }
-
-            glfwSwapBuffers(window->_glfw_window);
+            vtrenderer->update_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale, primary_window->_trackball_manipulator.transform_matrix());
         }
+        else
+        {
+            scm::math::vec3f pos_camera = scm::math::vec3f(0.f, -5.f, 0.f);
+            scm::math::vec3f pos_origin = scm::math::vec3f(0.f, 0.f, 0.f);
+            scm::math::vec3f up = scm::math::vec3f(1.f, 0.f, 0.f);
+            scm::math::mat4f view_mat = scm::math::make_look_at_matrix(pos_camera, pos_origin, up);
+            vtrenderer->update_view(view_id, primary_window->_width, primary_window->_height, 1.0f, view_mat);
+        }
+
+        vtrenderer->clear_buffers(primary_context_id);
+
+        if(primary_window->_dataset == Window::Dataset::COLOR)
+        {
+            vtrenderer->render_earth(data_world_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH, primary_window->_enable_hierarchical,
+                                     primary_window->_vis);
+        }
+        else
+        {
+            vtrenderer->render_earth(data_world_elevation_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH, primary_window->_enable_hierarchical,
+                                     primary_window->_vis);
+        }
+        vtrenderer->render_moon(data_moon_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::MOON, primary_window->_enable_hierarchical, primary_window->_vis);
+
+        vtrenderer->collect_feedback(primary_context_id);
+#ifndef NDEBUG
+        vtrenderer->extract_debug_cut(data_world_map_id, view_id, primary_context_id);
+        vtrenderer->extract_debug_cut(data_moon_map_id, view_id, primary_context_id);
+        vtrenderer->extract_debug_context(primary_context_id);
+
+        ImGui_ImplGlfwGL3_NewFrame();
+
+        vtrenderer->render_debug_cut(data_world_map_id, view_id, primary_context_id);
+        vtrenderer->render_debug_cut(data_moon_map_id, view_id, primary_context_id);
+        vtrenderer->render_debug_context(primary_context_id);
+
+        ImGui::Render();
+#endif
+
+        glfwSwapBuffers(primary_window->_glfw_window);
     }
 
     _cut_update->stop();
