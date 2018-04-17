@@ -26,6 +26,7 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
       is_mapped_provenance_(false), 
       has_layout_(create_layout)
 {
+    std::cout << "gpu access constructor " << std::endl;
     assert(device);
     assert(sizeof(float) == 4);
 
@@ -34,7 +35,11 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     //std::cout << "num_surfels_per_node: " << num_surfels_per_node << ", size_of_surfel: " << size_of_surfel_ << std::endl;
 
     buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_, 0);
-
+    if (!buffer_) {
+        std::cout << "failed to create buffer" << std::endl;
+        exit(1);
+    }
+ 
     if(has_layout_)
     {
         pcl_memory_ = device->create_vertex_array(scm::gl::vertex_format

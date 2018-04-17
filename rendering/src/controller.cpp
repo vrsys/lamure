@@ -391,7 +391,7 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
         cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_fix_a().fix_buffer_, gpu_context_it->second->get_fix_b().fix_buffer_,
                                                    gpu_context_it->second->get_fix_a().fix_buffer_provenance_, gpu_context_it->second->get_fix_b().fix_buffer_provenance_);
 
-        GLenum first_error = device->opengl_api().glGetError();
+        //GLenum first_error = device->opengl_api().glGetError();
 
         if(cuts->is_front_modified(context_id))
         {
@@ -408,7 +408,7 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
             cuts->signal_upload_complete(context_id);
             // ctx->map_temporary_storage(current, device, data_provenance);
         }
-        first_error = device->opengl_api().glGetError();
+        //first_error = device->opengl_api().glGetError();
 
     }
     else
@@ -421,7 +421,7 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
 
             // fix for gua:
             ctx->create(device, data_provenance);
-            int first_error = device->opengl_api().glGetError();
+            //int first_error = device->opengl_api().glGetError();
             
         }
 

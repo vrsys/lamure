@@ -18,7 +18,6 @@ in VertexData {
 
 layout(location = 0) out vec4 out_color;
 
-
 OPTIONAL_BEGIN
   INCLUDE ../common/shading/blinn_phong.glsl
 OPTIONAL_END
