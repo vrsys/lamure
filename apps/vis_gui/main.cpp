@@ -14,7 +14,6 @@
 #include <scm/gl_util/primitives/primitives_fwd.h>
 #include <scm/core/platform/platform.h>
 #include <scm/core/utilities/platform_warning_disable.h>
-//#include <scm/gl_core/render_device/opengl/gl_core.h>
 #include <scm/gl_util/primitives/quad.h>
 #include <scm/gl_util/font/font_face.h>
 #include <scm/gl_util/font/text.h>
@@ -1364,24 +1363,29 @@ void glut_resize(int32_t w, int32_t h) {
 
 
 void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
-  switch (key) {
+
+  std::cout << std::to_string(key) << std::endl;
+
+  int k = (int)key;
+
+  switch (k) {
     case 27:
       exit(0);
       break;
 
-    case '.':
+    //case '.':
       //glutFullScreenToggle();
-      break;
+      //break;
 
-    case 'q':
+    case 'Q': //'q'
       settings_.splatting_ = !settings_.splatting_;
       break;
 
-    case 'd':
+    case 'D':
       settings_.lod_update_ = !settings_.lod_update_;
       break;
 
-    case 'e':
+    case 'E':
       ++settings_.vis_;
       if(settings_.vis_ > (4 + data_provenance_.get_size_in_bytes()/sizeof(float))) {
         settings_.vis_ = 0;
@@ -1398,38 +1402,23 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       }
       break;
 
-    case 'E':
-      --settings_.vis_;
-      if(settings_.vis_ < 0) {
-        settings_.vis_ = (4 + data_provenance_.get_size_in_bytes()/sizeof(float));
-      }
-      settings_.show_normals_ = (settings_.vis_ == 1);
-      settings_.show_accuracy_ = (settings_.vis_ == 2);
-      settings_.show_radius_deviation_ = (settings_.vis_ == 3);
-      settings_.show_output_sensitivity_ = (settings_.vis_ == 4);
-      if (settings_.vis_ > 4) {
-        settings_.channel_ = (settings_.vis_-4);
-      }
-      else {
-        settings_.channel_ = 0;
-      }
-      break;
-
-    case 'r':
+    case 'R':
       settings_.show_sparse_ = !settings_.show_sparse_;
       if (settings_.show_sparse_) {
         settings_.enable_lighting_ = false;
         settings_.splatting_ = false;
       }
       break;
-    case 't':
+
+    case 'T':
       settings_.show_views_ = !settings_.show_views_;
       if (settings_.show_views_) {
         settings_.enable_lighting_ = false;
         settings_.splatting_ = false;
       }
       break;
-    case 'y':
+
+    case 'Y':
       settings_.show_octrees_ = !settings_.show_octrees_;
       if (settings_.show_octrees_) {
         settings_.enable_lighting_ = false;
@@ -1437,15 +1426,15 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       }
       break;
 
-    case 'h':
+    case 'H':
       settings_.heatmap_ = !settings_.heatmap_;
       break;
 
-    case 'b':
+    case 'B':
       input_.brush_mode_ = !input_.brush_mode_;
       break;
 
-    case 'p':
+    case 'P':
       {
         lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
         pvs->activate(!pvs->is_activated());
@@ -1458,46 +1447,33 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       }
       break;
 
-    case 'u':
+    case 'I':
       if (settings_.lod_point_scale_ < 1.9) {
         settings_.lod_point_scale_ += 0.1;
       }
       break;
 
-    case 'I':
-      if (settings_.aux_point_scale_ >= 0.2) {
-        settings_.aux_point_scale_ -= 0.1;
-      }
-      break;
-
-    case 'i':
-      if (settings_.aux_point_scale_ < 1.9) {
-        settings_.aux_point_scale_ += 0.1;
-      }
-      break;
-
-    case 'O':
+    case 'N':
       settings_.lod_error_ -= 0.1f;
       if (settings_.lod_error_ < LAMURE_MIN_THRESHOLD)
         settings_.lod_error_ = LAMURE_MIN_THRESHOLD;
       break;
 
-    case 'o':
+    case 'M':
       settings_.lod_error_ += 0.1f;
       if (settings_.lod_error_ > LAMURE_MAX_THRESHOLD)
         settings_.lod_error_ = LAMURE_MAX_THRESHOLD;
       break;
 
-
-    case 'l':
+    case 'L':
       settings_.enable_lighting_ = !settings_.enable_lighting_;
       break;
 
-    case 'c':
+    case 'C':
       settings_.use_material_color_ = !settings_.use_material_color_;
       break;
 
-    case 'f':
+    case 'F':
       {
         ++settings_.travel_;
         if(settings_.travel_ > 4){
@@ -1512,20 +1488,6 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       }
       break;
       
-      case 'F':
-      {
-        if(settings_.travel_ > 0){
-          --settings_.travel_;
-        }
-        settings_.travel_speed_ = (settings_.travel_ == 0 ? 0.5f
-                  : settings_.travel_ == 1 ? 5.5f
-                  : settings_.travel_ == 2 ? 20.5f
-                  : settings_.travel_ == 3 ? 100.5f
-                  : 300.5f);
-        camera_->set_dolly_sens_(settings_.travel_speed_);
-      }
-      break;
-
     case '0':
       selection_.selected_model_ = -1;
       break;
@@ -1535,7 +1497,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case '=':
       if (++selection_.selected_model_ >= num_models_) selection_.selected_model_ = 0;
       break;
-
+/*
     case 'm':
       settings_.heatmap_max_ = std::min(settings_.heatmap_max_ + 0.1f, 1.0f);
       std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
@@ -1545,8 +1507,8 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       settings_.heatmap_max_ = std::max(settings_.heatmap_max_ - 0.1f, 0.0f);
       std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
       break;
-
-    case 'z':
+*/
+    case 'Z':
       //dump camera transform
       std::cout << "view_tf: " << std::endl;
       std::cout << camera_->get_high_precision_view_matrix() << std::endl;
@@ -1764,114 +1726,94 @@ void create_aux_resources() {
 
 
 
-struct Window
-{
-    Window()
-    {
-        _mouse_button_state = MouseButtonState::IDLE;
-        //_trackball_manipulator.dolly(2.5f);
-    }
+struct Window {
+  Window() {
+    _mouse_button_state = MouseButtonState::IDLE;
+    //_trackball_manipulator.dolly(2.5f);
+  }
 
-    unsigned int _width;
-    unsigned int _height;
+  unsigned int _width;
+  unsigned int _height;
 
-    GLFWwindow *_glfw_window;
+  GLFWwindow *_glfw_window;
 
-    //scm::gl::trackball_manipulator _trackball_manipulator;
+  enum MouseButtonState {
+    LEFT = 0,
+    WHEEL = 1,
+    RIGHT = 2,
+    IDLE = 3
+  };
 
-    float _ref_rot_x;
-    float _ref_rot_y;
-
-    float _scale = 1.f;
-
-    enum MouseButtonState
-    {
-        LEFT = 0,
-        WHEEL = 1,
-        RIGHT = 2,
-        IDLE = 3
-    };
-
-    MouseButtonState _mouse_button_state;
+  MouseButtonState _mouse_button_state;
 };
 
 std::list<Window *> _windows;
 Window *_current_context = nullptr;
 
-class EventHandler
-{
+class EventHandler {
   public:
     static void on_error(int _err_code, const char *err_msg) { throw std::runtime_error(err_msg); }
-    static void on_window_resize(GLFWwindow *glfw_window, int width, int height)
-    {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        window->_height = (uint32_t)height;
-        window->_width = (uint32_t)width;
-        glut_resize(width, height);
+    static void on_window_resize(GLFWwindow *glfw_window, int width, int height) {
+      Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+      window->_height = (uint32_t)height;
+      window->_width = (uint32_t)width;
+      glut_resize(width, height);
     }
-    static void on_window_key_press(GLFWwindow *glfw_window, int key, int scancode, int action, int mods)
-    {
-        if (action == GLFW_RELEASE)
-          return;
+    static void on_window_key_press(GLFWwindow *glfw_window, int key, int scancode, int action, int mods) {
+      if (action == GLFW_RELEASE)
+        return;
 
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        switch(key) {
-          case GLFW_KEY_ESCAPE:
-            glfwSetWindowShouldClose(glfw_window, GL_TRUE);
-            break;
-          default:
-            glut_keyboard((uint8_t)key, 0, 0);
-            break;
-        }
+      Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+      switch(key) {
+        case GLFW_KEY_ESCAPE:
+          glfwSetWindowShouldClose(glfw_window, GL_TRUE);
+          break;
+        default:
+          glut_keyboard((uint8_t)key, 0, 0);
+          break;
+      }
 
-        ImGui_ImplGlfwGL3_KeyCallback(glfw_window, key, scancode, action, mods);
+      ImGui_ImplGlfwGL3_KeyCallback(glfw_window, key, scancode, action, mods);
 
     }
-    static void on_window_char(GLFWwindow *glfw_window, unsigned int codepoint)
-    {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        ImGui_ImplGlfwGL3_CharCallback(glfw_window, codepoint);
 
+    static void on_window_char(GLFWwindow *glfw_window, unsigned int codepoint) {
+      Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+      ImGui_ImplGlfwGL3_CharCallback(glfw_window, codepoint);
     }
-    static void on_window_button_press(GLFWwindow *glfw_window, int button, int action, int mods)
-    {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-        {
-            window->_mouse_button_state = Window::MouseButtonState::LEFT;
-        }
-        else if(button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
-        {
-            window->_mouse_button_state = Window::MouseButtonState::WHEEL;
-        }
-        else if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
-        {
-            window->_mouse_button_state = Window::MouseButtonState::RIGHT;
-        }
-        else
-        {
-            window->_mouse_button_state = Window::MouseButtonState::IDLE;
-        }
+    static void on_window_button_press(GLFWwindow *glfw_window, int button, int action, int mods) {
+      Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+      if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        window->_mouse_button_state = Window::MouseButtonState::LEFT;
+      }
+      else if(button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
+        window->_mouse_button_state = Window::MouseButtonState::WHEEL;
+      }
+      else if(button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        window->_mouse_button_state = Window::MouseButtonState::RIGHT;
+      }
+      else {
+        window->_mouse_button_state = Window::MouseButtonState::IDLE;
+      }
 
-        ImGui_ImplGlfwGL3_MouseButtonCallback(glfw_window, button, action, mods);
-
+      ImGui_ImplGlfwGL3_MouseButtonCallback(glfw_window, button, action, mods);
     }
-    static void on_window_move_cursor(GLFWwindow *glfw_window, double x, double y)
-    {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
 
-        input_.prev_mouse_ = input_.mouse_;
-        input_.mouse_ = scm::math::vec2i(x, y);
+    static void on_window_move_cursor(GLFWwindow *glfw_window, double x, double y) {
+      Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+
+      input_.prev_mouse_ = input_.mouse_;
+      input_.mouse_ = scm::math::vec2i(x, y);
   
-        if (!input_.brush_mode_) {
-          camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
-        }
-        else {
-          brush();
-        }
+      if (!input_.brush_mode_) {
+        camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
+      }
+      else {
+        brush();
+      }
 
-        input_.mouse_state_.lb_down_ = (window->_mouse_button_state == Window::MouseButtonState::LEFT) ? true : false;
-        input_.mouse_state_.rb_down_ = (window->_mouse_button_state == Window::MouseButtonState::RIGHT) ? true : false;
+      input_.mouse_state_.lb_down_ = (window->_mouse_button_state == Window::MouseButtonState::LEFT) ? true : false;
+      input_.mouse_state_.rb_down_ = (window->_mouse_button_state == Window::MouseButtonState::RIGHT) ? true : false;
         
         
       input_.prev_mouse_ = input_.mouse_;
@@ -1886,141 +1828,119 @@ class EventHandler
       else {
         brush();
       }
-
-        //window->_ref_rot_x = x;
-        //window->_ref_rot_y = y;
     }
-    static void on_window_scroll(GLFWwindow *glfw_window, double xoffset, double yoffset)
-    {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        window->_scale = std::max(window->_scale + (float)yoffset * 0.01f, -0.07f);
 
-        ImGui_ImplGlfwGL3_ScrollCallback(glfw_window, xoffset, yoffset);
+    static void on_window_scroll(GLFWwindow *glfw_window, double xoffset, double yoffset) {
+      Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+
+      ImGui_ImplGlfwGL3_ScrollCallback(glfw_window, xoffset, yoffset);
 
     }
-    static void on_window_enter(GLFWwindow *glfw_window, int entered)
-    {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-        // TODO
+    
+    static void on_window_enter(GLFWwindow *glfw_window, int entered) {
+      Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
     }
 };
 
-void make_context_current(Window *_window)
-{
-    if(_window != nullptr)
-    {
-        glfwMakeContextCurrent(_window->_glfw_window);
-        _current_context = _window;
-    }
+void make_context_current(Window *_window) {
+  if(_window != nullptr) {
+    glfwMakeContextCurrent(_window->_glfw_window);
+    _current_context = _window;
+  }
 }
 
-Window *create_window(unsigned int width, unsigned int height, const std::string &title, GLFWmonitor *monitor, Window *share)
-{
-    Window *previous_context = _current_context;
+Window *create_window(unsigned int width, unsigned int height, const std::string &title, GLFWmonitor *monitor, Window *share) {
+  Window *previous_context = _current_context;
 
-    Window *new_window = new Window();
+  Window *new_window = new Window();
 
-    new_window->_glfw_window = nullptr;
-    new_window->_width = width;
-    new_window->_height = height;
+  new_window->_glfw_window = nullptr;
+  new_window->_width = width;
+  new_window->_height = height;
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_RESIZABLE, 1);
-    glfwWindowHint(GLFW_FOCUSED, 1);
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_RESIZABLE, 1);
+  glfwWindowHint(GLFW_FOCUSED, 1);
 
-    //glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, false);
+  //glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+  glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, false);
 
 
-    if(share != nullptr)
-    {
-        new_window->_glfw_window = glfwCreateWindow(width, height, title.c_str(), monitor, share->_glfw_window);
-    }
-    else
-    {
-        new_window->_glfw_window = glfwCreateWindow(width, height, title.c_str(), monitor, nullptr);
-    }
+  if(share != nullptr) {
+    new_window->_glfw_window = glfwCreateWindow(width, height, title.c_str(), monitor, share->_glfw_window);
+  }
+  else {
+    new_window->_glfw_window = glfwCreateWindow(width, height, title.c_str(), monitor, nullptr);
+  }
 
-    if(new_window->_glfw_window == nullptr)
-    {
-        std::runtime_error("GLFW window creation failed");
-    }
+  if(new_window->_glfw_window == nullptr) {
+    std::runtime_error("GLFW window creation failed");
+  }
 
-    make_context_current(new_window);
+  make_context_current(new_window);
 
-    glfwSetKeyCallback(new_window->_glfw_window, &EventHandler::on_window_key_press);
-    glfwSetCharCallback(new_window->_glfw_window, &EventHandler::on_window_char);
-    glfwSetMouseButtonCallback(new_window->_glfw_window, &EventHandler::on_window_button_press);
-    glfwSetCursorPosCallback(new_window->_glfw_window, &EventHandler::on_window_move_cursor);
-    glfwSetScrollCallback(new_window->_glfw_window, &EventHandler::on_window_scroll);
-    glfwSetCursorEnterCallback(new_window->_glfw_window, &EventHandler::on_window_enter);
+  glfwSetKeyCallback(new_window->_glfw_window, &EventHandler::on_window_key_press);
+  glfwSetCharCallback(new_window->_glfw_window, &EventHandler::on_window_char);
+  glfwSetMouseButtonCallback(new_window->_glfw_window, &EventHandler::on_window_button_press);
+  glfwSetCursorPosCallback(new_window->_glfw_window, &EventHandler::on_window_move_cursor);
+  glfwSetScrollCallback(new_window->_glfw_window, &EventHandler::on_window_scroll);
+  glfwSetCursorEnterCallback(new_window->_glfw_window, &EventHandler::on_window_enter);
 
-    glfwSetWindowUserPointer(new_window->_glfw_window, new_window);
+  glfwSetWindowUserPointer(new_window->_glfw_window, new_window);
 
-    _windows.push_back(new_window);
+  _windows.push_back(new_window);
 
-    make_context_current(previous_context);
+  make_context_current(previous_context);
 
-    return new_window;
+  return new_window;
 }
 
-bool should_close()
-{
-    if(_windows.empty())
-        return true;
+bool should_close() {
+  if(_windows.empty())
+    return true;
 
-    std::list<Window *> to_delete;
-    for(const auto &window : _windows)
-    {
-        if(glfwWindowShouldClose(window->_glfw_window))
-        {
-            to_delete.push_back(window);
-        }
+  std::list<Window *> to_delete;
+  for(const auto &window : _windows) {
+    if(glfwWindowShouldClose(window->_glfw_window)) {
+      to_delete.push_back(window);
     }
+  }
 
-    if(!to_delete.empty())
-    {
-        for(auto &window : to_delete)
-        {
-            ImGui_ImplGlfwGL3_Shutdown();
+  if(!to_delete.empty()) {
+    for(auto &window : to_delete) {
+      ImGui_ImplGlfwGL3_Shutdown();
 
-            glfwDestroyWindow(window->_glfw_window);
+      glfwDestroyWindow(window->_glfw_window);
 
-            delete window;
+      delete window;
 
-            _windows.remove(window);
-        }
+      _windows.remove(window);
     }
+  }
 
-    return _windows.empty();
+  return _windows.empty();
 }
 
-void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *param)
-{
-    switch(severity)
-    {
-    case GL_DEBUG_SEVERITY_HIGH:
-    {
+void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *param) {
+  switch(severity) {
+    case GL_DEBUG_SEVERITY_HIGH: {
         fprintf(stderr, "GL_DEBUG_SEVERITY_HIGH: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
-    }
-    break;
-    case GL_DEBUG_SEVERITY_MEDIUM:
-    {
+      }
+      break;
+    case GL_DEBUG_SEVERITY_MEDIUM: {
         fprintf(stderr, "GL_DEBUG_SEVERITY_MEDIUM: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
-    }
-    break;
-    case GL_DEBUG_SEVERITY_LOW:
-    {
+      }
+      break;
+    case GL_DEBUG_SEVERITY_LOW: {
         fprintf(stderr, "GL_DEBUG_SEVERITY_LOW: %s type = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, message);
-    }
-    break;
+      }
+      break;
     default:
-        // ignore
-        break;
-    }
+      break;
+  }
 }
 
 void init() {
@@ -2239,8 +2159,6 @@ void init() {
   }
 
   create_aux_resources();
-
-
   create_framebuffers();
 
   color_blending_state_ = device_->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, 
@@ -2327,7 +2245,7 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  //putenv((char *)"__GL_SYNC_TO_VBLANK=0");
+  putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
   load_settings(vis_file, settings_);
 
@@ -2362,86 +2280,59 @@ int main(int argc, char *argv[])
   }
   
     
-    glfwSetErrorCallback(EventHandler::on_error);
+  glfwSetErrorCallback(EventHandler::on_error);
 
-    if(!glfwInit())
-    {
-        std::runtime_error("GLFW initialisation failed");
-    }
+  if (!glfwInit()) {
+    std::runtime_error("GLFW initialisation failed");
+  }
 
-    Window *primary_window = create_window(settings_.width_, settings_.height_, "lamure_vis_gui", nullptr, nullptr);
+  Window *primary_window = create_window(settings_.width_, settings_.height_, "lamure_vis_gui", nullptr, nullptr);
+  make_context_current(primary_window);
+  glfwSwapInterval(1);
 
-    make_context_current(primary_window);
+  init();
 
-    glfwSwapInterval(1);
+  make_context_current(primary_window);
+  glut_display();
 
-    init();
-    //glut_resize(primary_window->_width, primary_window->_height);
+  glewExperimental = GL_TRUE;
+  GLenum err = glewInit();
+  if (GLEW_OK != err) {
+    std::cout << "GLEW error: " << glewGetErrorString(err) << std::endl;
+  }
+  std::cout << "using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
 
-    make_context_current(primary_window);
-    glut_display();
+  ImGui_ImplGlfwGL3_Init(primary_window->_glfw_window, false);
+  ImGui_ImplGlfwGL3_CreateDeviceObjects();
 
-    glewExperimental = GL_TRUE;
-    glewInit();
-    //ImGui_ImplGlfwGL3_CreateDeviceObjects();
-    //glewShutdown();
-    /*
-    GLenum err = glewInit();
-    if (GLEW_OK != err) {
-      std::cout << "GLEW error: " << glewGetErrorString(err) << std::endl;
-    }
-    std::cout << "using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
-*/
-    ImGui_ImplGlfwGL3_Init(primary_window->_glfw_window, false);
-    ImGui_ImplGlfwGL3_CreateDeviceObjects();
+  while(!should_close()) {
+    glfwPollEvents();
 
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glDebugMessageCallback((GLDEBUGPROC)debug_callback, nullptr);
+    for(const auto &window : _windows) {
+      make_context_current(window);
 
+      if (window == primary_window) {
+        glut_display();               
 
-    //settings_.info_ = false; //TODO
-    
-    while(!should_close())
-    {
-        glfwPollEvents();
+        ImGui_ImplGlfwGL3_NewFrame();
 
-        for(const auto &window : _windows)
-        {
-            make_context_current(window);
+        ImGui::Begin("Hello_gui");
 
-            if(window == primary_window)
-            {
+        ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
 
-                glut_display();               
-#if 1
-                //glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-                //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-                ImGui_ImplGlfwGL3_NewFrame();
-
-                ImGui::Begin("Hello_gui");
-
-                ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
-
-                if(ImGui::CollapsingHeader("Test"))
-                {
-                  ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0), "hello");
-                  ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0), "gui");
-                }
-
-                ImGui::End();
-
-                ImGui::Render();
-#endif
-            }
-            else
-            {
-                // TODO
-            }
-
-            glfwSwapBuffers(window->_glfw_window);
+        if (ImGui::CollapsingHeader("Test")) {
+          ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0), "hello");
+          ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0), "gui");
         }
-    }
 
-    return EXIT_SUCCESS;
+        ImGui::End();
+
+        ImGui::Render();
+
+      }
+      glfwSwapBuffers(window->_glfw_window);
+    }
+  }
+
+  return EXIT_SUCCESS;
 }
