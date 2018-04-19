@@ -329,8 +329,6 @@ void CutUpdate::dispatch()
 
         cut->get_back()->get_cut().swap(cut_desired);
 
-        std::cout << "cut l: " << cut_desired.size() << std::endl;
-
         _cut_db->stop_writing_cut(cut_entry.first);
     }
 

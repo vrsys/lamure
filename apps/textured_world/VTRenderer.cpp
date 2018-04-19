@@ -29,15 +29,15 @@ void VTRenderer::init()
         using namespace boost::assign;
 
 #ifndef NDEBUG
-        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vx_vt_elevation) ||
-           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical_debug.glslf", fs_vt_color_debug))
+        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/textured_world_elevation.glslv", vx_vt_elevation) ||
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/textured_world_hierarchical.glslf", fs_vt_color_debug))
         {
             scm::err() << "error reading shader files" << scm::log::end;
             throw std::runtime_error("Error reading shader files");
         }
 #else
-        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vx_vt_elevation) ||
-           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical.glslf", fs_vt_color))
+        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/textured_world_elevation.glslv", vx_vt_elevation) ||
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/textured_world_hierarchical.glslf", fs_vt_color))
         {
             scm::err() << "error reading shader files" << scm::log::end;
             throw std::runtime_error("Error reading shader files");
@@ -330,6 +330,11 @@ void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t c
     }
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
+
+    for(uint16_t i = 0; i < _data_resources[moon_data_id]->_index_hierarchy.size(); ++i)
+    {
+        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[moon_data_id]->_index_hierarchy.at(i), _filter_nearest, i + 18);
+    }
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
