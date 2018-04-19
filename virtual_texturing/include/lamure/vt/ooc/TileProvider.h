@@ -31,6 +31,9 @@ namespace vt{
             size_t _tilePxHeight;
             size_t _tileByteSize;
 
+            uint64_t _requested = 0;
+            uint64_t _loaded = 0;
+
         public:
             TileProvider();
 
@@ -51,6 +54,9 @@ namespace vt{
             bool wait(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
 
             bool ungetTile(pre::AtlasFile *resource, id_type id);
+
+            uint64_t get_requested();
+            uint64_t get_loaded();
         };
     }
 }

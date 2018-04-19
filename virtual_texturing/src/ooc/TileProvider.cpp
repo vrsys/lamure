@@ -75,6 +75,8 @@ namespace vt{
                 return nullptr;
             }
 
+            ++_requested;
+
             req = new TileRequest;
 
             req->setResource(resource);
@@ -119,5 +121,17 @@ namespace vt{
 
             return true;
         }
+
+    uint64_t TileProvider::get_requested(){
+        auto requested = _requested;
+
+        _requested = 0;
+
+        return requested;
+    }
+
+    uint64_t TileProvider::get_loaded(){
+        return _cache->tiles_loaded();
+    }
     }
 }

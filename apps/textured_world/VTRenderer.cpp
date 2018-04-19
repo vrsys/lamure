@@ -167,13 +167,16 @@ void VTRenderer::clear_buffers(uint16_t context_id)
 
     _ctxt_resources[context_id]->_render_context->apply();
 }
-void VTRenderer::render_earth(uint32_t earth_color_id, uint16_t view_id, uint16_t context_id, bool exocentric, bool enable_hierarchical, int vis)
+void VTRenderer::render_earth(uint32_t earth_color_id, uint32_t earth_elevation_id, uint16_t view_id, uint16_t context_id, bool exocentric, bool enable_hierarchical, int vis)
 {
     using namespace scm::math;
     using namespace scm::gl;
 
     uint64_t color_cut_id = (((uint64_t)earth_color_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
-    uint32_t max_depth_level = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
+    uint64_t elevation_cut_id = (((uint64_t)earth_elevation_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+
+    uint32_t color_max_depth = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
+    uint32_t elevation_max_depth = (*CutDatabase::get_instance().get_cut_map())[elevation_cut_id]->get_atlas()->getDepth() - 1;
 
     mat4f projection_matrix = mat4f::identity();
     perspective_matrix(projection_matrix, 32.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
@@ -198,7 +201,8 @@ void VTRenderer::render_earth(uint32_t earth_color_id, uint16_t view_id, uint16_
     }
 
     _shader_vt->uniform("physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
-    _shader_vt->uniform("max_level", max_depth_level);
+    _shader_vt->uniform("color_max_level", color_max_depth);
+    _shader_vt->uniform("elevation_max_level", elevation_max_depth);
     _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
     _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
 
@@ -209,6 +213,12 @@ void VTRenderer::render_earth(uint32_t earth_color_id, uint16_t view_id, uint16_
     }
 
     _shader_vt->uniform("physical_texture_array", 17);
+
+    for(uint32_t i = 18; i < _data_resources[earth_elevation_id]->_index_hierarchy.size() + 17; ++i)
+    {
+        std::string texture_string = "hierarchical_idx_textures_elevation";
+        _shader_vt->uniform(texture_string, i, int((i)));
+    }
 
     _shader_vt->uniform("enable_hierarchy", enable_hierarchical);
     _shader_vt->uniform("toggle_visualization", (int)vis);
@@ -235,6 +245,11 @@ void VTRenderer::render_earth(uint32_t earth_color_id, uint16_t view_id, uint16_
     }
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
+
+    for(uint16_t i = 0; i < _data_resources[earth_elevation_id]->_index_hierarchy.size(); ++i)
+    {
+        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[earth_elevation_id]->_index_hierarchy.at(i), _filter_nearest, i + 18);
+    }
 
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);

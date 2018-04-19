@@ -2,7 +2,7 @@
 
 in vec2 texture_coord;
 
-uniform uint max_level;
+uniform uint color_max_level;
 uniform uvec2 physical_texture_dim;
 
 uniform vec2 tile_size;
@@ -54,7 +54,7 @@ float dxdy()
 vec4 get_physical_texture_color(uvec4 index_quadruple, vec2 texture_sampling_coordinates, uint current_level)
 {
     // exponent for calculating the occupied pixels in our index texture, based on which level the tile is in
-    uint tile_occupation_exponent = max_level - current_level;
+    uint tile_occupation_exponent = color_max_level - current_level;
 
     // 2^tile_occupation_exponent defines how many pixel (of the index texture) are used by the given tile
     uint occupied_index_pixel_per_dimension = uint(1 << tile_occupation_exponent);
@@ -66,7 +66,7 @@ vec4 get_physical_texture_color(uvec4 index_quadruple, vec2 texture_sampling_coo
 
     // base x,y coordinates * number of tiles / number of used index texture pixel
     // taking the factional part by modf
-    vec2 physical_tile_ratio_xy = fract(texture_sampling_coordinates * (1 << max_level) / vec2(occupied_index_pixel_per_dimension));
+    vec2 physical_tile_ratio_xy = fract(texture_sampling_coordinates * (1 << color_max_level) / vec2(occupied_index_pixel_per_dimension));
 
     // Use only tile_size - 2*tile_padding pixels to render scene
     // Therefore, scale reduced tile size to full size and translate it

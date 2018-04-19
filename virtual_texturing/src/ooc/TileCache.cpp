@@ -149,12 +149,21 @@ namespace vt {
             return slot;
         }
 
+        uint64_t TileCache::tiles_loaded(){
+            auto loaded = _loaded;
+
+            _loaded = 0;
+
+            return loaded;
+        }
+
         void TileCache::setSlotReady(slot_type *slot){
             std::unique_lock<std::mutex> lockSlot(_locks[slot->getId()]);
 
             if(slot->hasState(slot_type::STATE::WRITING)){
                 std::lock_guard<std::mutex> lock(_idsLock);
                 _ids.insert(std::make_pair(std::make_pair(slot->getResource(), slot->getTileId()), slot));
+                ++_loaded;
             }
 
             slot->setState(slot_type::STATE::OCCUPIED);

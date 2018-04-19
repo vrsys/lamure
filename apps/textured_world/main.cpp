@@ -1,5 +1,6 @@
 #include "VTRenderer.h"
 #include "imgui_impl_glfw_gl3.h"
+#include "ostream.hpp"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <atomic>
@@ -10,6 +11,8 @@
 #include <lamure/vt/ren/CutUpdate.h>
 #include <queue>
 #include <unordered_map>
+
+//#define COLLECT_BENCHMARKS
 
 char *get_cmd_option(char **begin, char **end, const std::string &option)
 {
@@ -323,6 +326,18 @@ void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsi
     }
 }
 
+struct benchmark_entry
+{
+    uint64_t frame;
+    float frame_time;
+    float physical_texture_use;
+    uint64_t update_throughput;
+    uint64_t ooc_request_count;
+    uint64_t ooc_loaded_count;
+};
+
+std::vector<benchmark_entry> benchmark_entries;
+
 int main(int argc, char *argv[])
 {
     vt::VTConfig::CONFIG_PATH = "config_demo_do_not_modify.ini";
@@ -360,7 +375,7 @@ int main(int argc, char *argv[])
     make_context_current(primary_window);
 
     // VSYNC
-    // glfwSwapInterval(1);
+    glfwSwapInterval(1);
 
     auto *vtrenderer = new vt::VTRenderer();
 
@@ -382,8 +397,15 @@ int main(int argc, char *argv[])
     glDebugMessageCallback((GLDEBUGPROC)debug_callback, nullptr);
 #endif
 
+#ifndef NDEBUG
+    uint64_t frame_counter = 0;
+#endif
+
     while(!should_close())
     {
+#ifndef NDEBUG
+        std::chrono::time_point<std::chrono::high_resolution_clock> frame_start = std::chrono::system_clock::now();
+#endif
         glfwPollEvents();
 
         if(primary_window->_interaction == Window::Interaction::EARTH || primary_window->_interaction == Window::Interaction::MOON)
@@ -403,12 +425,21 @@ int main(int argc, char *argv[])
 
         if(primary_window->_dataset == Window::Dataset::COLOR)
         {
-            vtrenderer->render_earth(data_world_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH, primary_window->_enable_hierarchical,
+            vtrenderer->render_earth(data_world_map_id,
+                                     data_world_elevation_map_id,
+                                     view_id,
+                                     primary_context_id,
+                                     primary_window->_interaction == Window::Interaction::EARTH,
+                                     primary_window->_enable_hierarchical,
                                      primary_window->_vis);
         }
         else
         {
-            vtrenderer->render_earth(data_world_elevation_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH, primary_window->_enable_hierarchical,
+            vtrenderer->render_earth(data_world_elevation_map_id,
+                                     data_world_elevation_map_id,
+                                     view_id, primary_context_id,
+                                     primary_window->_interaction == Window::Interaction::EARTH,
+                                     primary_window->_enable_hierarchical,
                                      primary_window->_vis);
         }
         vtrenderer->render_moon(data_moon_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::MOON, primary_window->_enable_hierarchical, primary_window->_vis);
@@ -429,9 +460,60 @@ int main(int argc, char *argv[])
 #endif
 
         glfwSwapBuffers(primary_window->_glfw_window);
+
+#ifdef COLLECT_BENCHMARKS
+
+        std::chrono::duration<float> frame_seconds = std::chrono::high_resolution_clock::now() - frame_start;
+
+        vt::CutDatabase *cut_db = &vt::CutDatabase::get_instance();
+
+        float phys_mem_usage = (float)(cut_db->get_size_mem_interleaved() - cut_db->get_available_memory()) / cut_db->get_size_mem_interleaved();
+        uint64_t update_throughput = 0;
+
+        for(vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map()))
+        {
+            vt::Cut *cut = cut_db->start_reading_cut(cut_entry.first);
+            if(!cut->is_drawn())
+            {
+                cut_db->stop_reading_cut(cut_entry.first);
+                continue;
+            }
+
+            update_throughput += vt::VTConfig::get_instance().get_size_tile() * vt::VTConfig::get_instance().get_size_tile() * 4 * cut->get_front()->get_mem_slots_updated().size();
+
+            cut_db->stop_reading_cut(cut_entry.first);
+        }
+
+        uint64_t ooc_requested = vt::CutDatabase::get_instance().get_tile_provider()->get_requested();
+        uint64_t ooc_loaded = vt::CutDatabase::get_instance().get_tile_provider()->get_loaded();
+
+        benchmark_entries.push_back({frame_counter++, frame_seconds.count(), phys_mem_usage, update_throughput, ooc_requested, ooc_loaded});
+#endif
     }
 
     _cut_update->stop();
+
+#ifdef COLLECT_BENCHMARKS
+    uint32_t size_cache_ram = vt::VTConfig::get_instance().get_size_ram_cache();
+    uint32_t size_cache_vram =
+        vt::VTConfig::get_instance().get_phys_tex_layers() * vt::VTConfig::get_instance().get_phys_tex_px_width() * vt::VTConfig::get_instance().get_phys_tex_px_width() * 4 / 1024 / 1024;
+
+    std::ofstream fs("benchmark_" + std::to_string(size_cache_ram) + "_" + std::to_string(size_cache_vram) + ".csv");
+    text::csv::csv_ostream csvs(fs);
+
+    csvs << "frame"
+         << "frame_time"
+         << "physical texture use"
+         << "update throughput"
+         << "ooc requested"
+         << "ooc loaded" << text::csv::endl;
+
+    for(auto entry : benchmark_entries)
+    {
+        csvs << std::to_string(entry.frame).c_str() << entry.frame_time << entry.physical_texture_use << std::to_string(entry.update_throughput).c_str()
+             << std::to_string(entry.ooc_request_count).c_str() << std::to_string(entry.ooc_loaded_count).c_str() << text::csv::endl;
+    }
+#endif
 
     return EXIT_SUCCESS;
 }

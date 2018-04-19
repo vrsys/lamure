@@ -40,7 +40,6 @@ namespace vt {
 
             TileCache *_cache;
 
-
         public:
             TileCacheSlot();
 
@@ -92,7 +91,11 @@ namespace vt {
             std::mutex _idsLock;
             std::map<std::pair<pre::AtlasFile *, uint64_t>, slot_type *> _ids;
 
+            uint64_t _loaded = 0;
+
         public:
+            uint64_t tiles_loaded();
+
             TileCache(size_t tileByteSize, size_t slotCount);
 
             slot_type *readSlotById(pre::AtlasFile *resource, uint64_t id);
