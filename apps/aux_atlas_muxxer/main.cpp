@@ -99,8 +99,12 @@ int main(int argc, char *argv[]) {
       std::cout << "could not open log file" << std::endl;
       exit(-1);
     }
+
+    uint32_t atlas_width = 0;
+    uint32_t atlas_height = 0;
   
     std::string line;
+    uint32_t line_no = 0;
     while(std::getline(log_file, line)) {
       if(line.length() >= 2) {
         if (line[0] == '#') {
@@ -108,15 +112,26 @@ int main(int argc, char *argv[]) {
         }
         std::vector<std::string> values;
         split(line.begin(), line.end(), std::back_inserter(values));
-        tile t{atoi(values[1].c_str()), atoi(values[2].c_str()), atoi(values[3].c_str()), atoi(values[4].c_str())};
-        tile_map[values[values.size()-1]] = t;
+        if (line_no > 0) {        
+          tile t{atoi(values[1].c_str()), atoi(values[2].c_str()), atoi(values[3].c_str()), atoi(values[4].c_str())};
+          tile_map[values[values.size()-1]] = t;
+        }
+        else {
+          atlas_width = atoi(values[0].c_str());
+          atlas_height = atoi(values[1].c_str());
+        }
 
       }
+      ++line_no;
     }
 
     log_file.close();
 
-    std::cout << "muxing..." << std::endl;
+    std::cout << "muxing atlas..." << std::endl;
+    std::cout << "atlas width: " << atlas_width << std::endl;
+    std::cout << "atlas height: " << atlas_height << std::endl;
+    lamure::prov::aux::atlas atlas{aux_in.get_num_views(), atlas_width, atlas_height};
+    aux_out.set_atlas(atlas);
 
     for (uint32_t i = 0; i < aux_in.get_num_views(); ++i) {
       auto view = aux_in.get_view(i);

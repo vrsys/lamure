@@ -96,16 +96,25 @@ add_atlas_tile(const aux::atlas_tile& tile) {
     atlas_tiles_.push_back(tile);
 }
 
-
 void aux::set_octree(const std::shared_ptr<octree> _octree) {
   octree_ = _octree;
 }
-
 
 const std::shared_ptr<octree> aux::
 get_octree() const {
   return octree_;
 }
+
+void aux::set_atlas(const atlas& _atlas) {
+  atlas_ = _atlas;
+}
+
+const aux::atlas& aux::
+get_atlas() const {
+  return atlas_;
+}
+
+
 
 } } // namespace lamure
 

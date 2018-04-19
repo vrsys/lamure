@@ -142,6 +142,7 @@ read_aux(const std::string& filename, aux& aux) {
     std::vector<aux_view_seg> views;
     std::vector<aux_atlas_tile_seg> tiles;
     aux_tree_seg tree;
+    aux_atlas_seg atlas;
     uint32_t sparse_id = 0;
     uint32_t camera_id = 0;
     uint32_t tile_id = 0;
@@ -193,6 +194,10 @@ read_aux(const std::string& filename, aux& aux) {
                 ++camera_id;
                 break;
             }
+            case 'A': { //"AUXXATLS"
+              atlas.deserialize(file_);
+              break;
+            }
             case 'T': { 
                 switch (sig.signature_[5]) {
                     case 'I': { //"AUXXTILE"
@@ -226,7 +231,7 @@ read_aux(const std::string& filename, aux& aux) {
         }
 
         if (anchor + sig.allocated_size_ < filesize) {
-            file_.seekg(anchor + sig.allocated_size_, std::ios::beg);
+          file_.seekg(anchor + sig.allocated_size_, std::ios::beg);
         }
         else {
             break;
@@ -286,6 +291,12 @@ read_aux(const std::string& filename, aux& aux) {
 
    
     }
+
+    aux::atlas ta;
+    ta.num_atlas_tiles_ = atlas.num_atlas_tiles_;
+    ta.atlas_width_ = atlas.atlas_width_;
+    ta.atlas_height_ = atlas.atlas_height_;
+    aux.set_atlas(ta);
 
     for (const auto& tile : tiles) {
       aux::atlas_tile t;
@@ -373,6 +384,14 @@ write_aux(const std::string& filename, aux& aux) {
      write(v);
 
    }
+
+   aux_atlas_seg ta;
+   const auto& atlas = aux.get_atlas();
+   ta.segment_id_ = num_segments_++;
+   ta.num_atlas_tiles_ = atlas.num_atlas_tiles_;
+   ta.atlas_width_ = atlas.atlas_width_;
+   ta.atlas_height_ = atlas.atlas_height_;
+   write(ta);
 
    for (uint32_t i = 0; i < aux.get_num_atlas_tiles(); ++i) {
      const auto& tile = aux.get_atlas_tile(i);

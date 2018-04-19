@@ -53,12 +53,18 @@ public:
       std::string image_file_;
     };
 
+    struct atlas {
+      uint32_t num_atlas_tiles_{0};
+      uint32_t atlas_width_{0};
+      uint32_t atlas_height_{0};
+    };
+
     struct atlas_tile {
-      uint32_t atlas_tile_id_;
-      uint32_t x_;
-      uint32_t y_;
-      uint32_t width_;
-      uint32_t height_;
+      uint32_t atlas_tile_id_{0};
+      uint32_t x_{0};
+      uint32_t y_{0};
+      uint32_t width_{0};
+      uint32_t height_{0};
     };
 
                         aux();
@@ -81,6 +87,9 @@ public:
     void                set_octree(const std::shared_ptr<octree> _octree);
     const std::shared_ptr<octree> get_octree() const;
 
+    void                set_atlas(const atlas& atlas);
+    const atlas&        get_atlas() const;
+
     void                write_aux_file(const std::string& filename);
 
     std::vector<sparse_point>& get_sparse_points() { return sparse_points_; };
@@ -95,6 +104,7 @@ private:
     std::vector<sparse_point> sparse_points_;
     std::vector<atlas_tile> atlas_tiles_;
     std::shared_ptr<octree> octree_;
+    atlas atlas_;
     std::string filename_;
 
 };

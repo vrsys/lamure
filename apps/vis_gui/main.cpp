@@ -1555,6 +1555,7 @@ void create_aux_resources() {
       provenance_[model_id].num_views_ = aux.get_num_views();
       std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
       std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
+      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << std::endl;
       std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
       std::vector<xyz> ready_to_upload;

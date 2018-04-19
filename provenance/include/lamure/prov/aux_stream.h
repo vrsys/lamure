@@ -493,6 +493,59 @@ protected:
     };
 
 
+    class aux_atlas_seg : public aux_serializable { // 1 per file
+    public:
+        aux_atlas_seg()
+        : aux_serializable() {};
+        ~aux_atlas_seg() {};
+        
+        uint32_t segment_id_;
+        uint32_t num_atlas_tiles_;
+        uint32_t atlas_width_;
+        uint32_t atlas_height_;
+        
+    protected:
+        friend class aux_stream;
+        const size_t size() const {
+            return 4*sizeof(uint32_t);
+        };
+        void signature(char* signature) {
+            signature[0] = 'A';
+            signature[1] = 'U';
+            signature[2] = 'X';
+            signature[3] = 'X';
+            signature[4] = 'A';
+            signature[5] = 'T';
+            signature[6] = 'L';
+            signature[7] = 'S';
+        }
+        void serialize(std::fstream& file) {
+            if (!file.is_open()) {
+                throw std::runtime_error(
+                    "PROV: aux_stream::Unable to serialize");
+            }
+            file.write((char*)&segment_id_, 4);
+            file.write((char*)&num_atlas_tiles_, 4);
+            file.write((char*)&atlas_width_, 4);
+            file.write((char*)&atlas_height_, 4);
+            
+        }
+        void deserialize(std::fstream& file) {
+            if (!file.is_open()) {
+                throw std::runtime_error(
+                    "PROV: aux_stream::Unable to deserialize");
+            }
+
+            file.read((char*)&segment_id_, 4);
+            file.read((char*)&num_atlas_tiles_, 4);
+            file.read((char*)&atlas_width_, 4);
+            file.read((char*)&atlas_height_, 4);
+
+        }
+
+    };
+
+
     class aux_atlas_tile_seg : public aux_serializable { // 1 per camera
     public:
         aux_atlas_tile_seg()
