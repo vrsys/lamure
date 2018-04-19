@@ -39,8 +39,8 @@ struct Window
     float _ref_rot_x;
     float _ref_rot_y;
 
-    float _ref_trans_x;
-    float _ref_trans_y;
+    float lf_pos_x = -1;
+    float lf_pos_y = -1;
 
     float _scale = 0.16f;
 
@@ -97,28 +97,24 @@ class EventHandler
                 if (action != GLFW_RELEASE) {
                     float factor = -calculate_factor(window->_scale);
                     window->_trackball_manipulator.translation(factor, 0.0f);
-                    window->_ref_trans_x += factor;
                 }
                 break;
             case GLFW_KEY_LEFT:
                 if (action != GLFW_RELEASE) {
                     float factor = calculate_factor(window->_scale);
                     window->_trackball_manipulator.translation(factor, 0.0f);
-                    window->_ref_trans_x += factor;
                 }
                 break;
             case GLFW_KEY_UP:
                 if (action != GLFW_RELEASE) {
                     float factor = -calculate_factor(window->_scale);
                     window->_trackball_manipulator.translation(0.0f, factor);
-                    window->_ref_trans_y += factor;
                 }
                 break;
             case GLFW_KEY_DOWN:
                 if (action != GLFW_RELEASE) {
                     float factor = calculate_factor(window->_scale);
                     window->_trackball_manipulator.translation(0.0f, factor);
-                    window->_ref_trans_y += factor;
                 }
                 break;
             case GLFW_KEY_1:
@@ -149,9 +145,6 @@ class EventHandler
                     window->_ref_rot_x = 0.0f;
                     window->_ref_rot_y = 0.0f;
 
-                    window->_ref_trans_x = 0.0f;
-                    window->_ref_trans_y = 0.0f;
-
                     window->_scale = 0.16f;
 
                     window->_toggle_visualization = 0;
@@ -177,6 +170,12 @@ class EventHandler
         if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
         {
             window->_mouse_button_state = Window::MouseButtonState::LEFT;
+        }
+        else if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+        {
+            window->lf_pos_x = -1;
+            window->lf_pos_y = -1;
+            window->_mouse_button_state = Window::MouseButtonState::IDLE;
         }
         else if(button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
         {
@@ -206,12 +205,26 @@ class EventHandler
         {
         case Window::MouseButtonState::LEFT:
         {
-            window->_trackball_manipulator.rotation(window->_ref_rot_x, 0, x, 0);
+            float lf_pos_x = window->lf_pos_x;
+            float lf_pos_y = window->lf_pos_y;
+
+            if (lf_pos_x == -1 && lf_pos_y == -1) {
+                window->lf_pos_x = (float)xpos;
+                window->lf_pos_y = (float)ypos;
+            } else {
+                float diff_x =  (float) (xpos - lf_pos_x) / window->_width  * calculate_factor(window->_scale) * 85;
+                float diff_y = -(float) (ypos - lf_pos_y) / window->_height * calculate_factor(window->_scale) * 85;
+
+                window->_trackball_manipulator.translation(diff_x, diff_y);
+
+                window->lf_pos_x = (float) xpos;
+                window->lf_pos_y = (float) ypos;
+            }
         }
         break;
         case Window::MouseButtonState::RIGHT:
         {
-            window->_trackball_manipulator.rotation(0, window->_ref_rot_y, 0, y);
+            window->_trackball_manipulator.rotation(window->_ref_rot_x, 0, x, 0);
         }
         break;
         default:
@@ -225,7 +238,7 @@ class EventHandler
     {
         Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
 
-        window->_scale = std::max(window->_scale + (float)yoffset * calculate_factor(window->_scale), -0.1f);
+        window->_scale = std::max(window->_scale + (float)yoffset * calculate_factor(window->_scale) * -1, -0.1f);
         window->_scale = std::min(window->_scale, 1.7f);
 
 #ifndef NDEBUG
