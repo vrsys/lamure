@@ -1553,7 +1553,9 @@ void create_aux_resources() {
       lamure::prov::aux aux(aux_file.second);
 
       provenance_[model_id].num_views_ = aux.get_num_views();
-      std::cout << "sparse: " << aux.get_num_views() << " views, " << aux.get_num_sparse_points() << " points" << std::endl;
+      std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
+      std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
+      std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
       std::vector<xyz> ready_to_upload;
 

@@ -290,8 +290,10 @@ read_aux(const std::string& filename, aux& aux) {
     for (const auto& tile : tiles) {
       aux::atlas_tile t;
       t.atlas_tile_id_ = tile.atlas_tile_id_;
-      t.uv_ = scm::math::vec2f(tile.uv_.x_, tile.uv_.y_);
-      t.wh_ = scm::math::vec2f(tile.wh_.x_, tile.wh_.y_);
+      t.x_ = tile.x_;
+      t.y_ = tile.y_;
+      t.width_ = tile.width_;
+      t.height_ = tile.height_;
       
       aux.add_atlas_tile(t);
     }
@@ -378,10 +380,10 @@ write_aux(const std::string& filename, aux& aux) {
 
      t.segment_id_ = num_segments_++;
      t.atlas_tile_id_ = tile.atlas_tile_id_;
-     t.uv_.x_ = tile.uv_.x;
-     t.uv_.y_ = tile.uv_.y;
-     t.wh_.x_ = tile.wh_.x;
-     t.wh_.y_ = tile.wh_.y;
+     t.x_ = tile.x_;
+     t.y_ = tile.y_;
+     t.width_ = tile.width_;
+     t.height_ = tile.height_;
 
      write(t);
 

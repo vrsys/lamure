@@ -55,8 +55,10 @@ public:
 
     struct atlas_tile {
       uint32_t atlas_tile_id_;
-      scm::math::vec2f uv_;
-      scm::math::vec2f wh_;
+      uint32_t x_;
+      uint32_t y_;
+      uint32_t width_;
+      uint32_t height_;
     };
 
                         aux();

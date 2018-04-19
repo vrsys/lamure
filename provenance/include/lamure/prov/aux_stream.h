@@ -502,8 +502,10 @@ protected:
         uint32_t segment_id_;
         uint32_t atlas_tile_id_;
 
-        aux_vec2 uv_;
-        aux_vec3 wh_;
+        uint32_t x_;
+        uint32_t y_;
+        uint32_t width_;
+        uint32_t height_;
         
     protected:
         friend class aux_stream;
@@ -527,10 +529,10 @@ protected:
             }
             file.write((char*)&segment_id_, 4);
             file.write((char*)&atlas_tile_id_, 4);
-            file.write((char*)&uv_.x_, 4);
-            file.write((char*)&uv_.y_, 4);
-            file.write((char*)&wh_.x_, 4);
-            file.write((char*)&wh_.y_, 4);
+            file.write((char*)&x_, 4);
+            file.write((char*)&y_, 4);
+            file.write((char*)&width_, 4);
+            file.write((char*)&height_, 4);
             
         }
         void deserialize(std::fstream& file) {
@@ -541,10 +543,10 @@ protected:
 
             file.read((char*)&segment_id_, 4);
             file.read((char*)&atlas_tile_id_, 4);
-            file.read((char*)&uv_.x_, 4);
-            file.read((char*)&uv_.y_, 4);
-            file.read((char*)&wh_.x_, 4);
-            file.read((char*)&wh_.y_, 4);
+            file.read((char*)&x_, 4);
+            file.read((char*)&y_, 4);
+            file.read((char*)&width_, 4);
+            file.read((char*)&height_, 4);
 
         }
 

@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the aux_import executable
+# CMake Build Script for the aux_muxer executable
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
@@ -14,7 +14,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR})
 
 
-InitApp(${CMAKE_PROJECT_NAME}_aux_import)
+InitApp(${CMAKE_PROJECT_NAME}_aux_muxer)
 
 ############################################################
 # Libraries
