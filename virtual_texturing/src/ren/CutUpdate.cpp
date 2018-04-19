@@ -128,6 +128,53 @@ void CutUpdate::dispatch()
 
             if(check_all_siblings_in_cut(*iter, cut->get_back()->get_cut()))
             {
+#if 1
+
+                bool allow_collapse = true;
+
+                if ((*iter % 4) == 1) {
+
+                  id_type parent_id = QuadTree::get_parent_id(*iter);
+        
+                  for (int32_t c = 0; c < 4; ++c) {
+                    //id_type sibling_id = *(iter+c);
+                    id_type sibling_id = QuadTree::get_child_id(parent_id, c);
+                    if (sibling_id == 0) {
+                      allow_collapse = false;
+                      break;
+                    }
+
+                    //else check fb of all siblings < current_level
+                    mem_slot_type *sibling_mem_slot = write_mem_slot_for_id(cut, sibling_id);
+                    if (_feedback_lod_buffer[sibling_mem_slot->position] >= tile_depth) {
+                      allow_collapse = false;
+                      break;
+                    }
+                  }
+
+                  if (allow_collapse) {
+                    //collapse 1, skip others
+                    collapse_to.insert(parent_id);
+                    std::advance(iter, 4);
+                    continue;
+                  }
+                
+                }
+
+                mem_slot_type *mem_slot = write_mem_slot_for_id(cut, *iter);
+                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
+                {
+                  split.insert(*iter);
+                  split_counter++;
+                }
+                else
+                {
+                  keep.insert(*iter);
+                }
+
+                iter++;
+
+#else
                 if(*iter == 0)
                 {
                     keep.insert(*iter);
@@ -201,6 +248,7 @@ void CutUpdate::dispatch()
                 }
 
                 // std::cout << std::endl;
+#endif
             }
             else
             {
@@ -280,6 +328,8 @@ void CutUpdate::dispatch()
         }
 
         cut->get_back()->get_cut().swap(cut_desired);
+
+        std::cout << "cut l: " << cut_desired.size() << std::endl;
 
         _cut_db->stop_writing_cut(cut_entry.first);
     }
