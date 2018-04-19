@@ -90,7 +90,7 @@ class EventHandler
                 break;
             case GLFW_KEY_P:
                 if (action == GLFW_PRESS) {
-                    _cut_update->set_freeze_dispatch(!_cut_update->get_freeze_dispatch());
+                    _cut_update->toggle_freeze_dispatch();
                 }
                 break;
             case GLFW_KEY_RIGHT:
@@ -120,6 +120,15 @@ class EventHandler
                     window->_trackball_manipulator.translation(0.0f, factor);
                     window->_ref_trans_y += factor;
                 }
+                break;
+            case GLFW_KEY_1:
+                window->_toggle_visualization = 0;
+                break;
+            case GLFW_KEY_2:
+                window->_toggle_visualization = 1;
+                break;
+            case GLFW_KEY_3:
+                window->_toggle_visualization = 2;
                 break;
             case GLFW_KEY_SPACE:
                 if (action == GLFW_PRESS) {
@@ -352,8 +361,8 @@ void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsi
 
 int main(int argc, char *argv[])
 {
-    vt::VTConfig::CONFIG_PATH = "configuration_template.ini";
-    vt::VTConfig::get_instance().define_size_physical_texture(64, 8192);
+    vt::VTConfig::CONFIG_PATH = "/mnt/terabytes_of_textures/FINAL_DEMO_DATA/configuration_montblanc_demo.ini";
+    vt::VTConfig::get_instance().define_size_physical_texture(128, 8192);
 
     uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset(
             "/mnt/terabytes_of_textures/montblanc/montblanc_w1202116_h304384.atlas");
