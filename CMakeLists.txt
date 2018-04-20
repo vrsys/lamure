@@ -98,6 +98,11 @@ ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
 #INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 #LINK_DIRECTORIES(${Boost_LIBRARY_DIR})
 
+find_package(GLFW3 REQUIRED)
+include(findGLFW3)
+include(FindOpenGL)
+include(FindGLEW)
+
 ################################
 # GLUT
 ################################
@@ -167,6 +172,8 @@ IF (MSVC)
 ENDIF (MSVC)
 include (FindZLIB)
 
+include(FindGLEW)
+
 ############################################################
 # Build 3rd-party
 
@@ -177,13 +184,17 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_common)
 add_subdirectory(${CMAKE_SOURCE_DIR}/preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/provenance)
+add_subdirectory(${CMAKE_SOURCE_DIR}/virtual_texturing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
 add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 
-# add_dependencies(lamure_preprocessing lamure_common)
-# add_dependencies(lamure_provenance lamure_common)
-# add_dependencies(lamure_rendering lamure_common)
+add_dependencies(lamure_preprocessing lamure_common)
+add_dependencies(lamure_provenance lamure_common)
+add_dependencies(lamure_rendering lamure_common)
+add_dependencies(lamure_virtual_texturing lamure_common)
+add_dependencies(lamure_preprocessing lamure_common)
+add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
