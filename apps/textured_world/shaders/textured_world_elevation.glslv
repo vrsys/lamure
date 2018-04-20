@@ -15,6 +15,8 @@ uniform uvec2 physical_texture_dim;
 uniform vec2 tile_size;
 uniform vec2 tile_padding;
 
+uniform int enable_displacement;
+
 layout(binding = 17) uniform sampler2DArray physical_texture_array;
 
 layout(std430, binding = 0) buffer out_lod_feedback { int out_lod_feedback_values[]; };
@@ -136,5 +138,13 @@ void main()
     float lambda = 4;
     elevation = traverse_idx_hierarchy(lambda, texture_coordinates);
 
-    gl_Position = projection_matrix * model_view_matrix * (vec4(in_position, 1.0) + 0.05 * vec4(in_normal, 0.0) * (elevation.r + elevation.g + elevation.b) / 3.0);
+    vec4 displacement = vec4(0.0);
+
+    float normalized_elevation = (elevation.r - 0.5) * 2.0;
+
+    if (1 == enable_displacement) {
+      displacement = 0.0125 * vec4(in_normal, 0.0) * normalized_elevation;
+    }
+
+    gl_Position = projection_matrix * model_view_matrix * (vec4(in_position, 1.0) + displacement);
 }

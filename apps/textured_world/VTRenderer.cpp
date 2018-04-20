@@ -46,10 +46,10 @@ void VTRenderer::init()
 
 #ifndef NDEBUG
         //_obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
-        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth_4m.obj"));
         _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, "moon.obj"));
 #else
-        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth_4m.obj"));
         _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, "moon.obj"));
 #endif
     }
@@ -205,7 +205,8 @@ void VTRenderer::render_earth(uint32_t earth_color_id, uint32_t earth_elevation_
     _shader_vt->uniform("elevation_max_level", elevation_max_depth);
     _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
     _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
-
+    _shader_vt->uniform("enable_displacement", 1);
+    
     for(uint32_t i = 0; i < _data_resources[earth_color_id]->_index_hierarchy.size(); ++i)
     {
         std::string texture_string = "hierarchical_idx_textures";
@@ -296,6 +297,7 @@ void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t c
     _shader_vt->uniform("max_level", max_depth_level);
     _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
     _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
+    _shader_vt->uniform("enable_displacement", 0);
 
     for(uint32_t i = 0; i < _data_resources[moon_data_id]->_index_hierarchy.size(); ++i)
     {
