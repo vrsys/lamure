@@ -1,3 +1,10 @@
+// Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
 void compute_tangent_vectors(in vec3 normal, in float radius, out vec3 ms_u, out vec3 ms_v) {
 
   vec3 ms_n = normalize(normal.xyz);

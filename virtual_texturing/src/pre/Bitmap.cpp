@@ -1,13 +1,13 @@
+// Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Created by sebal_000 on 20.12.2017.
-//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
 
 #include <lamure/vt/pre/Bitmap.h>
 #include <cmath>
 
-//
-// Created by sebal_000 on 20.12.2017.
-//
 
 namespace vt {
     namespace pre {

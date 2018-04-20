@@ -1,6 +1,9 @@
+// Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Created by sebastian on 10.03.18.
-//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
 
 #ifndef VT_OOC_HEAPPROCESSOR_H
 #define VT_OOC_HEAPPROCESSOR_H

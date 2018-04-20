@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the rendering executable
+# CMake Build Script for the vt_stitch executable
 
 include_directories(${REND_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
@@ -7,7 +7,7 @@ include_directories(${REND_INCLUDE_DIR}
 
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
-InitApp(${CMAKE_PROJECT_NAME}_stitch_it)
+InitApp(${CMAKE_PROJECT_NAME}_vt_stitch)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
 

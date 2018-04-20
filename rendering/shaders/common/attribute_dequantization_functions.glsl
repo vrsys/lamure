@@ -1,3 +1,10 @@
+// Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
+
 const int num_points_u = 104;
 const int num_points_v = 105;
 const int total_num_points_per_face = 104 * 105;

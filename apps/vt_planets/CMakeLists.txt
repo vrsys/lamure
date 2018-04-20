@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the bvh_extractor executable
+# CMake Build Script for the vt_planets executable
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
@@ -25,7 +25,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR})
 
 
-InitApp(${CMAKE_PROJECT_NAME}_textured_world)
+InitApp(${CMAKE_PROJECT_NAME}_vt_planets)
 
 ############################################################
 # Libraries
