@@ -128,6 +128,7 @@ private:
     std::map<uint64_t, debug_cut *> _cut_debug_outputs;
     std::map<uint64_t, debug_context *> _ctxt_debug_outputs;
     scm::math::mat4f get_choreograpy(float time);
+    float choreography_scale;
 };
 }
 

@@ -19,6 +19,7 @@ VTRenderer::VTRenderer() : _data_resources(), _ctxt_resources(), _view_resources
 
 void VTRenderer::init()
 {
+    choreography_scale = 0.3f;
     _scm_core.reset(new scm::core(0, nullptr));
     _device.reset(new scm::gl::render_device());
 
@@ -46,10 +47,10 @@ void VTRenderer::init()
 
 #ifndef NDEBUG
         //_obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/quad.obj"));
-        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth_4m.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth.obj"));
         _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, "moon.obj"));
 #else
-        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth_4m.obj"));
+        _obj_earth.reset(new scm::gl::wavefront_obj_geometry(_device, "earth.obj"));
         _obj_moon.reset(new scm::gl::wavefront_obj_geometry(_device, "moon.obj"));
 #endif
     }
@@ -187,7 +188,7 @@ void VTRenderer::render_earth(uint32_t earth_color_id, uint32_t earth_elevation_
     {
         std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
         mat4f model_matrix = mat4f::identity() * make_rotation(90.f, 1.f, 0.f, 0.f) * make_rotation(-90.f, 0.f, 0.f, 1.f) * make_scale(0.17529f, 0.17529f, 0.17529f);
-        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count());
+        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count()*choreography_scale);
         mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * choreography_matrix * model_matrix;
 
         _shader_vt->uniform("model_view_matrix", model_view_matrix);
@@ -280,7 +281,7 @@ void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t c
         std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
         mat4f model_matrix =
             mat4f::identity() * make_translation(0.0f, 1.0f, 0.0f) * make_rotation(90.f, 1.f, 0.f, 0.f) * make_rotation(-90.f, 0.f, 0.f, 1.f) * make_scale(0.04422f, 0.04422f, 0.04422f);
-        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count());
+        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count()*choreography_scale);
         mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * choreography_matrix * model_matrix;
 
         _shader_vt->uniform("model_view_matrix", model_view_matrix);
