@@ -16,23 +16,21 @@
 #include <string>
 #include <map>
 
-using namespace std;
-
-char *get_cmd_option(char **begin, char **end, const string &option) {
+char *get_cmd_option(char **begin, char **end, const std::string &option) {
     char **it = find(begin, end, option);
     if(it != end && ++it != end)
         return *it;
     return 0;
 }
 
-bool cmd_option_exists(char **begin, char **end, const string &option) { 
+bool cmd_option_exists(char **begin, char **end, const std::string &option) { 
     return find(begin, end, option) != end; 
 }
 
-bool check_file_extensions(string name_file, const char *pext) {
-    string ext(pext);
+bool check_file_extensions(std::string name_file, const char *pext) {
+    std::string ext(pext);
     if (name_file.substr(name_file.size() - ext.size()).compare(ext) != 0) {
-        cout << "Please specify " + ext + " file as input" << endl;
+        std::cout << "Please specify " + ext + " file as input" << std::endl;
         return true;
     }
     return false;
@@ -89,7 +87,7 @@ int main(int argc, char *argv[]) {
       uint32_t width_;
       uint32_t height_;
     };
-    std::map<string, tile> tile_map;
+    std::map<std::string, tile> tile_map;
 
 
     std::cout << "loading atlas log file..." << std::endl;
