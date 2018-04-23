@@ -124,6 +124,18 @@ class EventHandler
                     window->_trackball_manipulator.translation(0.0f, factor);
                 }
                 break;
+            case GLFW_KEY_W:
+                window->_trackball_manipulator.dolly(-0.001f);
+                break;
+            case GLFW_KEY_S:
+                window->_trackball_manipulator.dolly(0.001f);
+                break;
+            case GLFW_KEY_A:
+                window->_trackball_manipulator.translation(0.0001f, 0.0f);
+                break;
+            case GLFW_KEY_D:
+                window->_trackball_manipulator.translation(-0.0001f, 0.0f);
+                break;
             case GLFW_KEY_1:
                 window->_toggle_visualization = 0;
                 break;
