@@ -44,7 +44,9 @@ pixel *read_img(char const *name, int *width, int *height, float scale) {
     RGBQUAD aPixel;
     pixel *data;
     
-    if((image = FreeImage_Load(FIF_JPEG, name, 0)) == NULL) {
+    FREE_IMAGE_FORMAT image_format = FreeImage_GetFileType(name,0);
+
+    if((image = FreeImage_Load(image_format, name, 0)) == NULL) {
         return NULL;
     }
 
@@ -82,11 +84,13 @@ int main(int argc, char *argv[]) {
   float scale = atof(get_cmd_option(argv, argv+argc, "-s"));
 
   std::cout << "loading image..." << std::endl;
+  std::cout << "Path: " << input_file << std::endl;
 
   int width, height;
   auto data = read_img(input_file.c_str(), &width, &height, scale);
 
-  std::cout << "width: " << width << ", height: " << height << std::endl;
+  std::cout << "width: "  << width << ", " 
+            << "height: " << height << std::endl;
 
   std::string output_file = input_file.substr(0, input_file.size()-4) + "_w" + std::to_string(width) + "_h" + std::to_string(height) + ".data";
   std::cout << output_file << std::endl;
