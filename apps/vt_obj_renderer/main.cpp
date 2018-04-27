@@ -183,8 +183,8 @@ void glut_display() {
   vt_shader_->uniform("tile_size", scm::math::vec2((uint32_t)vt::VTConfig::get_instance().get_size_tile()));
   vt_shader_->uniform("tile_padding", scm::math::vec2((uint32_t)vt::VTConfig::get_instance().get_size_padding()));
 
-  vt_shader_->uniform("enable_hierarchy", false);
-  vt_shader_->uniform("toggle_visualization", false);
+  vt_shader_->uniform("enable_hierarchy", true);
+  vt_shader_->uniform("toggle_visualization", 1);
 
   for (uint32_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
     std::string texture_string = "hierarchical_idx_textures";

@@ -106,10 +106,10 @@ void update_feedback(int feedback_value, uvec4 base_offset)
 {
     uint one_d_feedback_ssbo_index = base_offset.x + base_offset.y * physical_texture_dim.x + base_offset.z * physical_texture_dim.x * physical_texture_dim.y;
 
-    atomicMax(out_lod_feedback_values[one_d_feedback_ssbo_index], feedback_value);
-    //int prev = out_lod_feedback_values[one_d_feedback_ssbo_index];
-    //out_lod_feedback_values[one_d_feedback_ssbo_index] = max(prev, feedback_value);
-    atomicAdd(out_count_feedback_values[one_d_feedback_ssbo_index], 1);
+    //atomicMax(out_lod_feedback_values[one_d_feedback_ssbo_index], feedback_value);
+    int prev = out_lod_feedback_values[one_d_feedback_ssbo_index];
+    out_lod_feedback_values[one_d_feedback_ssbo_index] = max(prev, feedback_value);
+    //atomicAdd(out_count_feedback_values[one_d_feedback_ssbo_index], 1);
 }
 
 /*
@@ -228,10 +228,12 @@ vec4 illustrate_level(float lambda, idx_tex_positions positions) {
 vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
 {
     float mix_ratio = fract(lambda);
-    int desired_level = int(ceil(lambda));
+    int desired_level = int(ceil(lambda))*3;
 
     idx_tex_positions positions;
 
+    vec4 c = vec4(0.0, 0.0, 0.0, 1.0);
+ 
     // Desired level can be negative when the dxdy-fct requests a coarser representation as of the root tile size
     if(desired_level <= 0)
     {
@@ -243,6 +245,7 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
         // Go from desired tree level downwards to root until a loaded tile is found
         for(int i = desired_level; i >= 0; --i)
         {
+            c += vec4(0.1, 0.1, 0.1, 0.0);
             uvec4 idx_child_pos = texture(hierarchical_idx_textures[i], texture_coordinates).rgba;
 
             // check if the requested tile is loaded and if we are not at the root level
@@ -264,9 +267,10 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
         }
     }
 
-    vec4 c;
+    
     if (toggle_visualization == 1 || toggle_visualization == 2) {
-        c = illustrate_level(lambda, positions);
+        //c = illustrate_level(lambda, positions);
+        //c = vec4(1.0, lambda, lambda, 1.0);
     } else {
         c = mix_colors(positions, desired_level, texture_coordinates, mix_ratio);
     }
