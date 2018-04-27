@@ -27,7 +27,6 @@
 #include <scm/gl_util/primitives/primitives_fwd.h>
 #include <scm/core/platform/platform.h>
 #include <scm/core/utilities/platform_warning_disable.h>
-#include <scm/gl_core/render_device/opengl/gl_core.h>
 #include <scm/gl_util/primitives/quad.h>
 #include <scm/gl_util/font/font_face.h>
 #include <scm/gl_util/font/text.h>

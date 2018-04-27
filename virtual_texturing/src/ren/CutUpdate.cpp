@@ -90,6 +90,11 @@ void CutUpdate::dispatch()
 
         Cut *cut = _cut_db->start_writing_cut(cut_entry.first);
 
+        if (cut->get_atlas()->getDepth() < 1) {
+            std::cout << "tree is too flat" << std::endl;
+            exit(1);
+        }
+
         // std::cout << std::endl;
         // std::cout << "writing cut: " << cut_entry.first << std::endl;
         // std::cout << std::endl;
@@ -132,10 +137,11 @@ void CutUpdate::dispatch()
         while(iter != cut->get_back()->get_cut().cend())
         {
             uint16_t tile_depth = QuadTree::get_depth_of_node(*iter);
+            uint16_t max_depth = cut->get_atlas()->getDepth() - 1;
+
 
             if(check_all_siblings_in_cut(*iter, cut->get_back()->get_cut()))
             {
-#if 1
 
                 bool allow_collapse = true;
 
@@ -169,7 +175,7 @@ void CutUpdate::dispatch()
                 }
 
                 mem_slot_type *mem_slot = write_mem_slot_for_id(cut, *iter);
-                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
+                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
                 {
                   split.insert(*iter);
                   split_counter++;
@@ -181,81 +187,7 @@ void CutUpdate::dispatch()
 
                 iter++;
 
-#else
-                if(*iter == 0)
-                {
-                    keep.insert(*iter);
-                    iter++;
-                    continue;
-                }
 
-                bool should_collapse = true;
-
-                // std::cout << std::endl;
-                // std::cout << "Siblings are being checked " << std::endl;
-
-                for(uint8_t i = 0; i < 3; i++)
-                {
-                    // std::cout << "Tile considered for collapse " + std::to_string(*iter) << std::endl;
-
-                    id_type tile_id = *iter;
-                    mem_slot_type *mem_slot = write_mem_slot_for_id(cut, tile_id);
-                    if(mem_slot == nullptr)
-                    {
-                        throw std::runtime_error("Node " + std::to_string(tile_id) + " not found in memory slots");
-                    }
-                    should_collapse = should_collapse && _feedback_lod_buffer[mem_slot->position] < tile_depth;
-                    if(!should_collapse)
-                    {
-                        for(uint8_t k = 0; k < i; k++)
-                        {
-                            iter--;
-                        }
-                        break;
-                    }
-                    else
-                    {
-                        iter++;
-                    }
-                }
-
-                // std::cout << std::endl;
-
-                if(should_collapse)
-                {
-                    id_type parent_id = QuadTree::get_parent_id(*iter);
-                    collapse_to.insert(parent_id);
-                    iter++;
-                }
-                else
-                {
-                    for(uint8_t i = 0; i < 4; i++)
-                    {
-                        // std::cout << "Tile considered for split " + std::to_string(*iter) << std::endl;
-
-                        id_type tile_id = *iter;
-                        mem_slot_type *mem_slot = write_mem_slot_for_id(cut, tile_id);
-                        if(mem_slot == nullptr)
-                        {
-                            throw std::runtime_error("Node " + std::to_string(tile_id) + " not found in memory slots");
-                        }
-
-                        if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
-                        {
-                            split.insert(tile_id);
-                            split_counter++;
-                        }
-                        else
-                        {
-                            keep.insert(tile_id);
-                        }
-
-                        iter++;
-                    }
-                }
-
-                // std::cout << std::endl;
-#endif
             }
             else
             {
@@ -266,7 +198,7 @@ void CutUpdate::dispatch()
                     throw std::runtime_error("Node " + std::to_string(tile_id) + " not found in memory slots");
                 }
 
-                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < (cut->get_atlas()->getDepth() - 1) && split_counter < split_budget)
+                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
                 {
                     split.insert(tile_id);
                     split_counter++;

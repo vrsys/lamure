@@ -1,5 +1,5 @@
 ############################################################
-# CMake Build Script for the atlas_compiler executable
+# CMake Build Script for the vt_atlas_obj_scaler executable
 
 link_directories(${SCHISM_LIBRARY_DIRS})
 
@@ -14,7 +14,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIR})
 
 
-InitApp(${CMAKE_PROJECT_NAME}_atlas_compiler)
+InitApp(${CMAKE_PROJECT_NAME}_vt_atlas_obj_scaler)
 
 ############################################################
 # Libraries
@@ -23,8 +23,6 @@ target_link_libraries(${PROJECT_NAME}
         ${PROV_LIBRARY}
         ${OpenGL_LIBRARIES}
         ${GLUT_LIBRARY}
-        optimized ${FREEIMAGE_LIBRARY} debug ${FREEIMAGE_LIBRARY_DEBUG}
-        optimized ${FREEIMAGEPLUS_LIBRARY} debug ${FREEIMAGEPLUS_LIBRARY_DEBUG}
         optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
         optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
         optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}

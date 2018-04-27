@@ -209,6 +209,8 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
 
     _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
 
+//////////
+
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
     _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
 
@@ -285,6 +287,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
             updated_levels.insert(QuadTree::get_depth_of_node(mem_slot_updated->tile_id));
             update_physical_texture_blockwise(context_id, mem_slot_updated->pointer, mem_slot_updated->position);
         }
+        
 
         for(auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared())
         {

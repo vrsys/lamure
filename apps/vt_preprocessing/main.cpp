@@ -67,7 +67,7 @@ int process(const int argc, const char **argv){
         std::cout << "\t<image width> <image height>" << std::endl;
         std::cout << "\t<tile width> <tile height> <padding>" << std::endl;
         std::cout << "\t<out file (without extension)> <out pixel format (r, rgb, rgba)>" << std::endl;
-        std::cout << "\t<max memory usage>" << std::endl;
+        std::cout << "\t<max memory usage (in GB)>" << std::endl;
 
         return 1;
     }
@@ -162,6 +162,8 @@ int process(const int argc, const char **argv){
 
         return 1;
     }
+    //convert to GB
+    maxMemory *= 1024*1024*1024;
 
     Preprocessor pre(argv[0], inPixelFormat, imageWidth, imageHeight);
 
