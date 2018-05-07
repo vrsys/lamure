@@ -6,8 +6,8 @@
 // http://www.uni-weimar.de/medien/vr
 
 
-#ifndef LAMURE_PREPROCESSOBJSCALER_H
-#define LAMURE_PREPROCESSOBJSCALER_H
+#ifndef LAMURE_PREPROCESSOBJTRANSFORMER_H
+#define LAMURE_PREPROCESSOBJTRANSFORMER_H
 
 
 #include <string>
@@ -38,4 +38,4 @@ private:
 };
 
 
-#endif //LAMURE_PREPROCESSOBJSCALER_H
+#endif //LAMURE_PREPROCESSOBJTRANSFORMER_H
