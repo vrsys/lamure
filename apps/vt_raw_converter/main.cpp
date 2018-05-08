@@ -59,7 +59,7 @@ pixel *read_img(char const *name, int *width, int *height, float scale) {
     
     for(i = 0 ; i < (*height) ; i++) {
         for(j = 0 ; j < (*width) ; j++) {
-            FreeImage_GetPixelColor(image, j, (*width) - i, &aPixel);
+            FreeImage_GetPixelColor(image, j, (*height) - i, &aPixel);
             data[pnum].r = (aPixel.rgbRed);
             data[pnum].g = (aPixel.rgbGreen);
             data[pnum++].b = (aPixel.rgbBlue);
