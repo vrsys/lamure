@@ -26,15 +26,18 @@ public:
 
     void set_atlas(const std::string &atlas_file);
 
-    std::string scale() const;
+    /**
+     * Starts the transformation of .obj uv-coordinates into the virtual texuring uv-space
+     * @return path of the transformed .obj file
+     */
+    std::string start() const;
 
 private:
+    std::vector<std::string> split(const std::string &phrase, const std::string &delimiter) const;
+
     std::string obj_in_path;
     std::string obj_out_path;
-
     AtlasFile *atlas;
-
-    std::vector<std::string> split(const std::string &phrase, const std::string &delimiter) const;
 };
 
 

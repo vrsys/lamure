@@ -48,17 +48,21 @@ std::vector<std::string> preprocess_obj_transformer::split(const std::string &ph
     return ret;
 }
 
-std::string preprocess_obj_transformer::scale() const {
+std::string preprocess_obj_transformer::start() const {
     uint64_t image_width    = atlas->getImageWidth();
     uint64_t image_height   = atlas->getImageHeight();
 
+    // tile's width and height without padding
     uint64_t tile_inner_width  = atlas->getInnerTileWidth();
     uint64_t tile_inner_height = atlas->getInnerTileHeight();
 
+    // Quadtree depth counter, ranges from 0 to depth-1
     uint64_t depth = atlas->getDepth();
 
-    double scale_u  = (double) image_width  / (tile_inner_width  * std::pow(2, depth-1));
-    double scale_v  = (double) image_height / (tile_inner_height * std::pow(2, depth-1));
+    double factor_u  = (double) image_width  / (tile_inner_width  * std::pow(2, depth-1));
+    double factor_v  = (double) image_height / (tile_inner_height * std::pow(2, depth-1));
+
+    double factor_max = std::max(factor_u, factor_v);
 
     // open streams
     std::ifstream obj_file_in(obj_in_path.c_str());
@@ -76,8 +80,8 @@ std::string preprocess_obj_transformer::scale() const {
         if (line.substr(0,2) == "vt") {
             auto tokens = split(line, " ");
             line = tokens[0] + " "
-                   + std::to_string(std::stod(tokens[1]) * scale_u) + " "
-                   + std::to_string(std::stod(tokens[2]) * scale_v + (1 - scale_v));
+                   + std::to_string(std::stod(tokens[1]) * factor_max) + " "
+                   + std::to_string(std::stod(tokens[2]) * factor_max + (1 - factor_max));
         }
         obj_file_out << line << std::endl;
     }

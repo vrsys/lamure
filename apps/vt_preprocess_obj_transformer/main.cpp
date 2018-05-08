@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
 
     auto *obj_transformer = new preprocess_obj_transformer(in_obj_file, in_atlas_file);
 
-    obj_transformer->scale();
+    obj_transformer->start();
 
     return 0;
 }
