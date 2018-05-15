@@ -251,16 +251,24 @@ int main(int argc, char *argv[]) {
           std::cout << mat << " tile: " << tile.x_ << " " << tile.y_ << " " << tile.width_ << " " << tile.height_ << std::endl;
         }
         else { 
-          //std::cout << "tile was not found" << std::endl;
+          std::cout << "tile was not found" << std::endl;
+          exit(1);
         }
       }
       else { std::cout << "material was not found" << std::endl; exit(1); }
 
+      std::set<uint32_t> scaled_indices;
+
       for (const auto& tindex : tindices[mat]) {
+        if (scaled_indices.find(tindex) != scaled_indices.end()) {
+            //already scaled
+            continue;
+        }
+        scaled_indices.insert(tindex);
+
         double u = t[2*(tindex-1)];
         double v = t[2*(tindex-1)+1];
 
-        //std::cout << u << std::endl;
         uint32_t image_dim = std::max(atlas_width, atlas_height);
 
         double scaled_u = ((double)(tile.x_) + (u)*(double)tile.width_) / (double)image_dim;
@@ -268,16 +276,12 @@ int main(int argc, char *argv[]) {
         scaled_u = std::min(0.999999999, std::max(0.0000001, scaled_u));
         scaled_v = std::min(0.999999999, std::max(0.0000001, scaled_v));
 
-        //std::cout << scaled_u << std::endl;
-
-        t[2*(tindex-1)] = scaled_u;
-        t[2*(tindex-1)+1] = scaled_v;
-
-        //line = "vt " + std::to_string(scaled_u) + " " + std::to_string(scaled_v);
-
+        t[2*(tindex-1)] = scaled_v;
+        t[2*(tindex-1)+1] = scaled_u;
       }
-            
-      
+
+      scaled_indices.clear();
+
     }
 
 
@@ -303,7 +307,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         else if (line.substr(0, 2) == "vt") {
-          line = "vt " + std::to_string(t[current_t++]) + " " + std::to_string(t[current_t++]);
+            line = "vt " + std::to_string(t[current_t++]) + " " + std::to_string(t[current_t++]);
         }
         else {
           line = line.substr(0, line.size()-1);

@@ -157,6 +157,8 @@ void glut_display() {
   context_->clear_default_color_buffer();
   context_->set_default_frame_buffer();
 
+  context_->apply();
+
   context_->bind_program(shader_);
   context_->set_blend_state(color_no_blending_state_);
   context_->set_depth_stencil_state(depth_state_less_);
@@ -184,7 +186,7 @@ void glut_display() {
   vt_shader_->uniform("tile_padding", scm::math::vec2((uint32_t)vt::VTConfig::get_instance().get_size_padding()));
 
   vt_shader_->uniform("enable_hierarchy", true);
-  vt_shader_->uniform("toggle_visualization", 1);
+  vt_shader_->uniform("toggle_visualization", 0);
 
   for (uint32_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
     std::string texture_string = "hierarchical_idx_textures";
@@ -410,7 +412,7 @@ uint32_t load_obj(const std::string& _file, std::vector<vertex>& _vertices) {
       else if (strcmp(line, "vt") == 0) {
         float tx, ty;
         fscanf(file, "%f %f %f\n", &tx, &ty);
-        t.insert(t.end(), {tx, 1.0-ty});
+        t.insert(t.end(), {tx, ty});
       }
       else if (strcmp(line, "f") == 0) {
         std::string vertex1, vertex2, vertex3;
@@ -533,9 +535,10 @@ bool read_shader(std::string const& path_string,
 
 int32_t main(int argc, char* argv[]) {
 
-  std::string obj_file = "";
-  std::string atlas_file = "";
+  std::string obj_file;
+  std::string atlas_file;
   bool terminate = false;
+
   if (cmd_option_exists(argv, argv+argc, "-f")) {
     obj_file = get_cmd_option(argv, argv+argc, "-f");
   }
