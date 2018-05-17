@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
       uint32_t y_;
       uint32_t width_;
       uint32_t height_;
+      uint32_t rotated_;
     };
     std::map<std::string, tile> tile_map;
 
@@ -199,9 +200,11 @@ int main(int argc, char *argv[]) {
         std::vector<std::string> values;
         split(line.begin(), line.end(), std::back_inserter(values), ',');
         if (line_no > 0) {        
-          tile t{atoi(values[1].c_str()), atoi(values[2].c_str()), atoi(values[3].c_str()), atoi(values[4].c_str())};
+          tile t{atoi(values[1].c_str()), atoi(values[2].c_str()), atoi(values[3].c_str()), atoi(values[4].c_str()), atoi(values[5].c_str())};
           tile_map[values[values.size()-1]] = t;
-          std::cout << values[values.size()-1] << " tile: " << t.x_ << " " << t.y_ << " " << t.width_ << " " << t.height_ << std::endl;
+          std::cout << values[values.size()-1] << 
+            " tile: " << t.x_ << " " << t.y_ << " " << 
+            t.width_ << " " << t.height_ << " " << t.rotated_ << std::endl;
         }
         else {
           atlas_width = atoi(values[0].c_str());
@@ -262,16 +265,20 @@ int main(int argc, char *argv[]) {
 
         //std::cout << u << std::endl;
         uint32_t image_dim = std::max(atlas_width, atlas_height);
+        
+        if (tile.rotated_) {
+          std::cout << "rotated tiles not implemented" << std::endl;
+          exit(1);
+        }
+        else {
+          double scaled_u = ((double)(tile.x_) + (u)*(double)tile.width_) / (double)image_dim;
+          double scaled_v = ((double)(tile.y_) + (v)*(double)tile.height_) / (double)image_dim;
+          scaled_u = std::min(0.999999999, std::max(0.0000001, scaled_u));
+          scaled_v = std::min(0.999999999, std::max(0.0000001, scaled_v));
 
-        double scaled_u = ((double)(tile.x_) + (u)*(double)tile.width_) / (double)image_dim;
-        double scaled_v = ((double)(tile.y_) + (v)*(double)tile.height_) / (double)image_dim;
-        scaled_u = std::min(0.999999999, std::max(0.0000001, scaled_u));
-        scaled_v = std::min(0.999999999, std::max(0.0000001, scaled_v));
-
-        //std::cout << scaled_u << std::endl;
-
-        t[2*(tindex-1)] = scaled_u;
-        t[2*(tindex-1)+1] = scaled_v;
+          t[2*(tindex-1)] = scaled_u;
+          t[2*(tindex-1)+1] = scaled_v;
+        }
 
         //line = "vt " + std::to_string(scaled_u) + " " + std::to_string(scaled_v);
 

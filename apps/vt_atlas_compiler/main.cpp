@@ -61,14 +61,18 @@ pixel *read_img(char const *name, int *width, int *height, float scale) {
     RGBQUAD aPixel;
     pixel *data;
     
-    if((image = FreeImage_Load(FIF_JPEG, name, 0)) == NULL) {
+    FREE_IMAGE_FORMAT image_format = FreeImage_GetFileType(name, 0);
+
+    if((image = FreeImage_Load(image_format, name, 0)) == NULL) {
         return NULL;
     }
+    *width = ((float)FreeImage_GetWidth(image)) * scale;
+    *height = ((float)FreeImage_GetHeight(image)) * scale;
 
-    image = FreeImage_Rescale(image, FreeImage_GetWidth(image)*scale, FreeImage_GetHeight(image)*scale);
+    if (scale < 1.0 && scale > 0.0) {
+      image = FreeImage_Rescale(image, *width, *height);
+    }
 
-    *width = FreeImage_GetWidth(image);
-    *height = FreeImage_GetHeight(image);
     data = (pixel *)malloc((*height)*(*width)*sizeof(pixel *));
     pnum=0;
     
@@ -121,7 +125,9 @@ int getdir (string dir, vector<string> &files){
     while ((dirp = readdir(dp)) != NULL) {
         if (strcmp(string(dirp->d_name).c_str(), ".") != 0 && strcmp(string(dirp->d_name).c_str(), "..") != 0 ){
             std::string name = std::string(dirp->d_name);
-            if ((name.substr(name.size()-3)).compare("jpg") == 0 || (name.substr(name.size()-3)).compare("png") == 0) {
+            if ((name.substr(name.size()-3)).compare("jpg") == 0 || 
+                (name.substr(name.size()-3)).compare("png") == 0 ||
+                (name.substr(name.size()-3)).compare("tif") == 0) {
               files.push_back(string(dirp->d_name));
             }
         }
@@ -179,14 +185,20 @@ int main(int argc, char *argv[]) {
 
     std::cout << "loading images..." << std::endl;
 
+    std::vector<bool> rotate;
+
     for (int i=0; i<files.size(); i++) {
         string s1 = dir.c_str() + files[i];
         global.data = read_img(s1.c_str(), &global.w, &global.h, scale);
         pixelInfo.push_back(global);
         heightVector.push_back((int)global.h);
         widthVector.push_back((int)global.w);
-        //std::cout << "image: " << global.w << " " << global.h << std::endl;
+        bool height_larger_width = global.h > global.w;
+        rotate.push_back(height_larger_width);
+        std::cout << "image: " << global.w << " " << global.h << " " << height_larger_width << std::endl;
+        
     }
+
 
     std::cout << pixelInfo.size() << " images" << std::endl;
     
@@ -244,6 +256,7 @@ int main(int argc, char *argv[]) {
         log += std::to_string(packedRect.y) + ",";
         log += std::to_string(packedRect.width) + ",";
         log += std::to_string(packedRect.height) + ",";
+        log += std::to_string(rotate[i]) + ",";
         log += files[i] + "\n";
 #else
         log += std::to_string(i) + ",";
@@ -251,6 +264,7 @@ int main(int argc, char *argv[]) {
         log += std::to_string(packedRect.y/(float)maxFrameH) + ",";
         log += std::to_string(packedRect.width/(float)maxFrameW) + ",";
         log += std::to_string(packedRect.height/(float)maxFrameH) + ",";
+        log += std::to_string(rotate[i]) + ",";
         log += files[i] + "\n";
 #endif
 
@@ -273,13 +287,24 @@ int main(int argc, char *argv[]) {
             offset_startX = PackedRectangle[k].x;
             offset_startY = PackedRectangle[k].y;
         }
-
-        for (int y = 0; y < pixelInfo[k].h; ++y) {
-            for (int x = 0; x < pixelInfo[k].w; ++x) {
-                aPixel.rgbRed = pixelInfo[k].data[y * pixelInfo[k].w + x].r;
-                aPixel.rgbGreen = pixelInfo[k].data[y * pixelInfo[k].w + x].g;
-                aPixel.rgbBlue = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
-                FreeImage_SetPixelColor(image, x+offset_startX, y+offset_startY, &aPixel);
+        if (rotate[k]) {
+            for (int y = 0; y < pixelInfo[k].h; ++y) {
+                for (int x = 0; x < pixelInfo[k].w; ++x) {
+                    aPixel.rgbRed = pixelInfo[k].data[y * pixelInfo[k].w + x].r;
+                    aPixel.rgbGreen = pixelInfo[k].data[y * pixelInfo[k].w + x].g;
+                    aPixel.rgbBlue = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
+                    FreeImage_SetPixelColor(image, y+offset_startX, x+offset_startY, &aPixel);
+                }
+            }
+        }
+        else {
+            for (int y = 0; y < pixelInfo[k].h; ++y) {
+                for (int x = 0; x < pixelInfo[k].w; ++x) {
+                    aPixel.rgbRed = pixelInfo[k].data[y * pixelInfo[k].w + x].r;
+                    aPixel.rgbGreen = pixelInfo[k].data[y * pixelInfo[k].w + x].g;
+                    aPixel.rgbBlue = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
+                    FreeImage_SetPixelColor(image, x+offset_startX, y+offset_startY, &aPixel);
+                }
             }
         }
     }
