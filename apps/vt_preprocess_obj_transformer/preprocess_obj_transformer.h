@@ -27,7 +27,7 @@ public:
     void set_atlas(const std::string &atlas_file);
 
     /**
-     * Starts the transformation of .obj uv-coordinates into the virtual texuring uv-space
+     * Starts the transformation of .obj uv-coordinates into the virtual texture uv-space
      * @return path of the transformed .obj file
      */
     std::string start() const;
