@@ -50,6 +50,8 @@ struct vertex {
   scm::math::vec3f normal_;
 };
 
+bool flip_ = true; //for .objs should be flipped by default
+
 //load an .obj file and return all coordinates by material
 void load_obj_mat(const std::string& _file, std::vector<float>& t, std::map<std::string, std::vector<uint32_t>>& tindices) {
   
@@ -118,14 +120,19 @@ void load_obj_mat(const std::string& _file, std::vector<float>& t, std::map<std:
 
 int main(int argc, char *argv[]) {
 
+
+
     if (argc == 1 || 
       !cmd_option_exists(argv, argv+argc, "-obj") ||
       !cmd_option_exists(argv, argv+argc, "-log")) {
       std::cout << "Usage: " << argv[0] << " -obj <input_mesh.obj> -log <atlas.log>" << std::endl <<
-         "INFO: argv[0] " << std::endl ;
+         "INFO: argv[0] \n" <<
+              "optional : -f to prevent flipping of uv coords" << std::endl ;
       return 0;
     }
-    
+
+    flip_ = !cmd_option_exists(argv, argv+argc, "-f");
+
     std::string in_obj_file = get_cmd_option(argv, argv+argc, "-obj");
     std::string in_log_file = get_cmd_option(argv, argv+argc, "-log");
 
@@ -254,16 +261,24 @@ int main(int argc, char *argv[]) {
           std::cout << mat << " tile: " << tile.x_ << " " << tile.y_ << " " << tile.width_ << " " << tile.height_ << std::endl;
         }
         else { 
-          //std::cout << "tile was not found" << std::endl;
+          std::cout << "tile was not found" << std::endl;
+          exit(1);
         }
       }
       else { std::cout << "material was not found" << std::endl; exit(1); }
 
+      std::set<uint32_t> scaled_indices;
+
       for (const auto& tindex : tindices[mat]) {
+        if (scaled_indices.find(tindex) != scaled_indices.end()) {
+            //already scaled
+            continue;
+        }
+        scaled_indices.insert(tindex);
+
         double u = t[2*(tindex-1)];
         double v = t[2*(tindex-1)+1];
 
-        //std::cout << u << std::endl;
         uint32_t image_dim = std::max(atlas_width, atlas_height);
         
         if (tile.rotated_) {
@@ -276,15 +291,20 @@ int main(int argc, char *argv[]) {
           scaled_u = std::min(0.999999999, std::max(0.0000001, scaled_u));
           scaled_v = std::min(0.999999999, std::max(0.0000001, scaled_v));
 
-          t[2*(tindex-1)] = scaled_u;
-          t[2*(tindex-1)+1] = scaled_v;
+          if (flip_) {
+            t[2*(tindex-1)] = scaled_v;
+            t[2*(tindex-1)+1] = scaled_u;
+          }
+          else {
+            t[2*(tindex-1)] = scaled_u;
+            t[2*(tindex-1)+1] = scaled_v;
+          }
         }
 
-        //line = "vt " + std::to_string(scaled_u) + " " + std::to_string(scaled_v);
-
       }
-            
-      
+
+      scaled_indices.clear();
+
     }
 
 
@@ -310,7 +330,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         else if (line.substr(0, 2) == "vt") {
-          line = "vt " + std::to_string(t[current_t++]) + " " + std::to_string(t[current_t++]);
+            line = "vt " + std::to_string(t[current_t++]) + " " + std::to_string(t[current_t++]);
         }
         else {
           line = line.substr(0, line.size()-1);
