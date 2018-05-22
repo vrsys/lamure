@@ -86,6 +86,7 @@ int main(int argc, char *argv[]) {
       uint32_t y_;
       uint32_t width_;
       uint32_t height_;
+      uint32_t rotated_;
     };
     std::map<std::string, tile> tile_map;
 
@@ -100,6 +101,7 @@ int main(int argc, char *argv[]) {
 
     uint32_t atlas_width = 0;
     uint32_t atlas_height = 0;
+    uint32_t rotated = 0;
   
     std::string line;
     uint32_t line_no = 0;
@@ -111,7 +113,13 @@ int main(int argc, char *argv[]) {
         std::vector<std::string> values;
         split(line.begin(), line.end(), std::back_inserter(values));
         if (line_no > 0) {        
-          tile t{atoi(values[1].c_str()), atoi(values[2].c_str()), atoi(values[3].c_str()), atoi(values[4].c_str())};
+          tile t{
+            atoi(values[1].c_str()), 
+            atoi(values[2].c_str()), 
+            atoi(values[3].c_str()), 
+            atoi(values[4].c_str()), 
+            atoi(values[5].c_str())};
+          rotated = t.rotated_;
           tile_map[values[values.size()-1]] = t;
         }
         else {
@@ -128,7 +136,7 @@ int main(int argc, char *argv[]) {
     std::cout << "muxing atlas..." << std::endl;
     std::cout << "atlas width: " << atlas_width << std::endl;
     std::cout << "atlas height: " << atlas_height << std::endl;
-    lamure::prov::aux::atlas atlas{aux_in.get_num_views(), atlas_width, atlas_height};
+    lamure::prov::aux::atlas atlas{aux_in.get_num_views(), atlas_width, atlas_height, rotated};
     aux_out.set_atlas(atlas);
 
     for (uint32_t i = 0; i < aux_in.get_num_views(); ++i) {

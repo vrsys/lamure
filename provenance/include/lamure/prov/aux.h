@@ -57,6 +57,7 @@ public:
       uint32_t num_atlas_tiles_{0};
       uint32_t atlas_width_{0};
       uint32_t atlas_height_{0};
+      uint32_t rotated_{0};
     };
 
     struct atlas_tile {

@@ -50,6 +50,8 @@ struct vertex {
   scm::math::vec3f normal_;
 };
 
+bool flip_ = true; //for .objs should be flipped by default
+
 //load an .obj file and return all coordinates by material
 void load_obj_mat(const std::string& _file, std::vector<float>& t, std::map<std::string, std::vector<uint32_t>>& tindices) {
   
@@ -118,14 +120,19 @@ void load_obj_mat(const std::string& _file, std::vector<float>& t, std::map<std:
 
 int main(int argc, char *argv[]) {
 
+
+
     if (argc == 1 || 
       !cmd_option_exists(argv, argv+argc, "-obj") ||
       !cmd_option_exists(argv, argv+argc, "-log")) {
       std::cout << "Usage: " << argv[0] << " -obj <input_mesh.obj> -log <atlas.log>" << std::endl <<
-         "INFO: argv[0] " << std::endl ;
+         "INFO: argv[0] \n" <<
+              "optional : -f to prevent flipping of uv coords" << std::endl ;
       return 0;
     }
-    
+
+    flip_ = !cmd_option_exists(argv, argv+argc, "-f");
+
     std::string in_obj_file = get_cmd_option(argv, argv+argc, "-obj");
     std::string in_log_file = get_cmd_option(argv, argv+argc, "-log");
 
@@ -176,6 +183,7 @@ int main(int argc, char *argv[]) {
       uint32_t y_;
       uint32_t width_;
       uint32_t height_;
+      uint32_t rotated_;
     };
     std::map<std::string, tile> tile_map;
 
@@ -199,9 +207,11 @@ int main(int argc, char *argv[]) {
         std::vector<std::string> values;
         split(line.begin(), line.end(), std::back_inserter(values), ',');
         if (line_no > 0) {        
-          tile t{atoi(values[1].c_str()), atoi(values[2].c_str()), atoi(values[3].c_str()), atoi(values[4].c_str())};
+          tile t{atoi(values[1].c_str()), atoi(values[2].c_str()), atoi(values[3].c_str()), atoi(values[4].c_str()), atoi(values[5].c_str())};
           tile_map[values[values.size()-1]] = t;
-          std::cout << values[values.size()-1] << " tile: " << t.x_ << " " << t.y_ << " " << t.width_ << " " << t.height_ << std::endl;
+          std::cout << values[values.size()-1] << 
+            " tile: " << t.x_ << " " << t.y_ << " " << 
+            t.width_ << " " << t.height_ << " " << t.rotated_ << std::endl;
         }
         else {
           atlas_width = atoi(values[0].c_str());
@@ -270,14 +280,27 @@ int main(int argc, char *argv[]) {
         double v = t[2*(tindex-1)+1];
 
         uint32_t image_dim = std::max(atlas_width, atlas_height);
+        
+        if (tile.rotated_) {
+          std::cout << "rotated tiles not implemented" << std::endl;
+          exit(1);
+        }
+        else {
+          double scaled_u = ((double)(tile.x_) + (u)*(double)tile.width_) / (double)image_dim;
+          double scaled_v = ((double)(tile.y_) + (v)*(double)tile.height_) / (double)image_dim;
+          scaled_u = std::min(0.999999999, std::max(0.0000001, scaled_u));
+          scaled_v = std::min(0.999999999, std::max(0.0000001, scaled_v));
 
-        double scaled_u = ((double)(tile.x_) + (u)*(double)tile.width_) / (double)image_dim;
-        double scaled_v = ((double)(tile.y_) + (v)*(double)tile.height_) / (double)image_dim;
-        scaled_u = std::min(0.999999999, std::max(0.0000001, scaled_u));
-        scaled_v = std::min(0.999999999, std::max(0.0000001, scaled_v));
+          if (flip_) {
+            t[2*(tindex-1)] = scaled_v;
+            t[2*(tindex-1)+1] = scaled_u;
+          }
+          else {
+            t[2*(tindex-1)] = scaled_u;
+            t[2*(tindex-1)+1] = scaled_v;
+          }
+        }
 
-        t[2*(tindex-1)] = scaled_v;
-        t[2*(tindex-1)+1] = scaled_u;
       }
 
       scaled_indices.clear();

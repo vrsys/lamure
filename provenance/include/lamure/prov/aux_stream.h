@@ -503,11 +503,12 @@ protected:
         uint32_t num_atlas_tiles_;
         uint32_t atlas_width_;
         uint32_t atlas_height_;
+        uint32_t rotated_;
         
     protected:
         friend class aux_stream;
         const size_t size() const {
-            return 4*sizeof(uint32_t);
+            return 5*sizeof(uint32_t);
         };
         void signature(char* signature) {
             signature[0] = 'A';
@@ -528,6 +529,7 @@ protected:
             file.write((char*)&num_atlas_tiles_, 4);
             file.write((char*)&atlas_width_, 4);
             file.write((char*)&atlas_height_, 4);
+            file.write((char*)&rotated_, 4);
             
         }
         void deserialize(std::fstream& file) {
@@ -540,6 +542,7 @@ protected:
             file.read((char*)&num_atlas_tiles_, 4);
             file.read((char*)&atlas_width_, 4);
             file.read((char*)&atlas_height_, 4);
+            file.read((char*)&rotated_, 4);
 
         }
 

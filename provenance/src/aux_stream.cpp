@@ -296,6 +296,7 @@ read_aux(const std::string& filename, aux& aux) {
     ta.num_atlas_tiles_ = atlas.num_atlas_tiles_;
     ta.atlas_width_ = atlas.atlas_width_;
     ta.atlas_height_ = atlas.atlas_height_;
+    ta.rotated_ = atlas.rotated_;
     aux.set_atlas(ta);
 
     for (const auto& tile : tiles) {
@@ -391,6 +392,7 @@ write_aux(const std::string& filename, aux& aux) {
    ta.num_atlas_tiles_ = atlas.num_atlas_tiles_;
    ta.atlas_width_ = atlas.atlas_width_;
    ta.atlas_height_ = atlas.atlas_height_;
+   ta.rotated_ = atlas.rotated_;
    write(ta);
 
    for (uint32_t i = 0; i < aux.get_num_atlas_tiles(); ++i) {
