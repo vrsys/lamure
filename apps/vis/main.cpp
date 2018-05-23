@@ -80,6 +80,7 @@ scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
 
 scm::gl::program_ptr vis_quad_shader_;
 scm::gl::program_ptr vis_line_shader_;
+scm::gl::program_ptr vis_triangle_shader_;
 
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
@@ -117,6 +118,10 @@ std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
 std::map<uint32_t, resource> octree_resources_;
 
+//TODO: 4) add a global resource-map "image_plane_resources" which maps from model_id to the resource you created per dataset (see "octree_resources_[model_id])")
+std::map<uint32_t, resource> image_plane_resources_;
+
+
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 scm::gl::text_renderer_ptr text_renderer_;
 scm::gl::text_ptr renderable_text_;
@@ -153,6 +158,11 @@ struct xyz {
   uint8_t a_;
   float rad_;
   scm::math::vec3f nml_;
+};
+
+struct triangle {
+    scm::math::vec3f pos_;
+    scm::math::vec2f uv_;
 };
 
 struct selection {
@@ -652,7 +662,7 @@ void draw_resources() {
         if (selection_.selected_model_ != -1) {
           model_id = selection_.selected_model_;
         }
-        
+
         auto s_res = sparse_resources_[model_id];
         if (s_res.num_primitives_ > 0) {
           context_->bind_vertex_array(s_res.array_);
@@ -671,10 +681,9 @@ void draw_resources() {
             }
           }
           if (settings_.show_sparse_) {
-            context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, num_views, 
+            context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, num_views,
               s_res.num_primitives_-num_views);
           }
-        
         }
 
         if (selection_.selected_model_ != -1) {
@@ -682,6 +691,42 @@ void draw_resources() {
         }
       }
 
+    }
+
+
+    //TODO: 5) add your own logic to draw from your image_plane_resources here if settings_.show_views_
+    if (settings_.show_views_) {
+      context_->bind_program(vis_triangle_shader_);
+
+      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
+      scm::math::mat4f view_matrix = camera_->get_view_matrix();
+      vis_triangle_shader_->uniform("view_matrix", view_matrix);
+      vis_triangle_shader_->uniform("projection_matrix", projection_matrix);
+
+      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+        if (selection_.selected_model_ != -1) {
+          model_id = selection_.selected_model_;
+        }
+
+        auto t_res = image_plane_resources_[model_id];
+
+        if (t_res.num_primitives_ > 0) {
+          context_->bind_vertex_array(t_res.array_);
+          context_->apply();
+          if (selection_.selected_views_.empty()) {
+            context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, 0, t_res.num_primitives_);
+          }
+          else {
+            for (const auto view : selection_.selected_views_) {
+              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view*16, 16);
+            }
+          }
+        }
+
+        if (selection_.selected_model_ != -1) {
+          break;
+        }
+      }
     }
 
     if (settings_.show_views_ || settings_.show_octrees_) {
@@ -1619,7 +1664,7 @@ void create_aux_resources() {
       provenance_[model_id].num_views_ = aux.get_num_views();
       std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
       std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
-      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << std::endl;
+      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
       std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
       std::vector<xyz> ready_to_upload;
@@ -1726,18 +1771,105 @@ void create_aux_resources() {
 
       octree_res.num_primitives_ = octree_lines_to_upload.size();
       octree_resources_[model_id] = octree_res;
+   
+      auto root_bb = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
+      auto root_bb_min = scm::math::mat4f(model_transformations_[model_id]) * root_bb.min_vertex();
+      auto root_bb_max = scm::math::mat4f(model_transformations_[model_id]) * root_bb.max_vertex();
+      auto model_dim = scm::math::length(root_bb_max - root_bb_min);
+
+      //for image planes
+      //TODO: 7) PREPROCESS the atlas from /opt/, incorporate the VT system, init, and use vt-shader to draw
+
+      for (uint32_t i = 0; i < aux.get_num_atlas_tiles(); ++i) {
+        auto& atlas_tile = aux.get_atlas_tile(i);
+        std::cout << atlas_tile.x_ << " " << atlas_tile.y_ << " " << atlas_tile.width_ << " " << atlas_tile.height_ << std::endl;
+      }
+
+      if (aux.get_num_atlas_tiles() != aux.get_num_views()) {
+        throw std::runtime_error(
+                "Number of atlas_tiles (" + std::to_string(aux.get_num_atlas_tiles()) + ") "
+                + "does not match number of views (" + std::to_string(aux.get_num_views()) + ")");
+      }
+
+      //TODO: 1) fill tris_to_upload with a vec3 and a vec2 per view, don't forget view.transform_
+      std::vector<triangle> tris_to_upload;
+      for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
+        const auto& view       = aux.get_view(i);
+        const auto& atlas_tile = aux.get_atlas_tile(i);
+
+        float aspect_ratio = view.image_height_ / (float)view.image_width_;
+        float img_w_half   = (settings_.aux_focal_length_)*0.5f;
+        float img_h_half   = img_w_half * aspect_ratio;
+        float focal_length = settings_.aux_focal_length_;
+
+        //TODO: 6) use information from  aux.get_atlas_tile(i) to create proper uvs
+        float atlas_width, atlas_height;
+        if (aux.get_atlas().rotated_ == 1) {
+            atlas_width  = aux.get_atlas().atlas_height_;
+            atlas_height = aux.get_atlas().atlas_width_;
+        } else {
+            atlas_width  = aux.get_atlas().atlas_width_;
+            atlas_height = aux.get_atlas().atlas_height_;
+        }
+
+        float tile_pos_x   = (float) atlas_tile.x_      / atlas_width  ;
+        float tile_pos_y   = (float) atlas_tile.y_      / atlas_height ;
+        float tile_width   = (float) atlas_tile.width_  / atlas_width  ;
+        float tile_height  = (float) atlas_tile.height_ / atlas_height ;
+
+        triangle tri_ul;
+        tri_ul.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length);
+        tri_ul.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y + tile_width);
+
+        triangle tri_ur;
+        tri_ur.pos_ = view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length);
+        tri_ur.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y + tile_height);
+
+        triangle tri_bl;
+        tri_bl.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length);
+        tri_bl.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y);
+
+        triangle tri_br;
+        tri_br.pos_ = view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length);
+        tri_br.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y);
+
+        // left quad triangle
+        tris_to_upload.push_back(tri_ul);
+        tris_to_upload.push_back(tri_br);
+        tris_to_upload.push_back(tri_bl);
+
+        // right quad triangle
+        tris_to_upload.push_back(tri_ur);
+        tris_to_upload.push_back(tri_br);
+        tris_to_upload.push_back(tri_ul);
+      }
+
+      //TODO: 2) use tris_to_upload to create a resource object and assign members num_primitives_, buffer_ and array_
+      //init triangle buffer
+      resource tri_res;
+      tri_res.buffer_.reset();
+      tri_res.array_.reset();
+
+      tri_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
+                                               scm::gl::USAGE_STATIC_DRAW,
+                                               (sizeof(triangle)) * tris_to_upload.size(),
+                                               &tris_to_upload[0]);
+
+      tri_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+                                                            (0, 0, scm::gl::TYPE_VEC3F, sizeof(triangle))
+                                                            (0, 1, scm::gl::TYPE_VEC2F, sizeof(triangle)),
+                                                     boost::assign::list_of(tri_res.buffer_));
+
+
+      tri_res.num_primitives_ = tris_to_upload.size();
+
+      image_plane_resources_[model_id] = tri_res;
 
 
       //init line buffers
       resource line_res;
       line_res.buffer_.reset();
       line_res.array_.reset();
-
-   
-      auto root_bb = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
-      auto root_bb_min = scm::math::mat4f(model_transformations_[model_id]) * root_bb.min_vertex();
-      auto root_bb_max = scm::math::mat4f(model_transformations_[model_id]) * root_bb.max_vertex();
-      auto model_dim = scm::math::length(root_bb_max - root_bb_min);
 
       std::vector<scm::math::vec3f> lines_to_upload;
       for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
@@ -1792,6 +1924,280 @@ void create_aux_resources() {
 }
 
 
+void init_glut(int &argc, char *argv[]) {
+  glutInit(&argc, argv);
+  glutInitContextVersion(4, 4);
+  glutInitContextProfile(GLUT_CORE_PROFILE);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
+  //glewExperimental = GL_TRUE;
+  //glewInit();
+  glutInitWindowSize(settings_.width_, settings_.height_);
+  glutInitWindowPosition(64, 64);
+  glutCreateWindow(argv[0]);
+  glutSetWindowTitle("lamure_vis");
+
+  glutDisplayFunc(glut_display);
+  glutReshapeFunc(glut_resize);
+  glutKeyboardFunc(glut_keyboard);
+  glutMotionFunc(glut_motion);
+  glutMouseFunc(glut_mouse);
+  glutIdleFunc(glut_idle);
+}
+
+void init_shader() {
+  try
+  {
+    std::string vis_quad_vs_source;
+    std::string vis_quad_fs_source;
+    std::string vis_line_vs_source;
+    std::string vis_line_fs_source;
+
+    //TODO: 3) write a very simple shader for rendering triangles (input: pos and uv), load the shader
+    std::string vis_triangle_vs_source;
+    std::string vis_triangle_fs_source;
+
+    std::string vis_xyz_vs_source;
+    std::string vis_xyz_gs_source;
+    std::string vis_xyz_fs_source;
+
+    std::string vis_xyz_pass1_vs_source;
+    std::string vis_xyz_pass1_gs_source;
+    std::string vis_xyz_pass1_fs_source;
+    std::string vis_xyz_pass2_vs_source;
+    std::string vis_xyz_pass2_gs_source;
+    std::string vis_xyz_pass2_fs_source;
+    std::string vis_xyz_pass3_vs_source;
+    std::string vis_xyz_pass3_fs_source;
+
+
+    std::string vis_xyz_qz_vs_source;
+    std::string vis_xyz_qz_pass1_vs_source;
+    std::string vis_xyz_qz_pass2_vs_source;
+
+    /* parsed with optional lighting code */
+    std::string vis_xyz_vs_lighting_source;
+    std::string vis_xyz_gs_lighting_source;
+    std::string vis_xyz_fs_lighting_source;
+    std::string vis_xyz_pass2_vs_lighting_source;
+    std::string vis_xyz_pass2_gs_lighting_source;
+    std::string vis_xyz_pass2_fs_lighting_source;
+    std::string vis_xyz_pass3_vs_lighting_source;
+    std::string vis_xyz_pass3_fs_lighting_source;
+
+    std::string shader_root_path = LAMURE_SHADERS_DIR;
+
+    if (!read_shader(shader_root_path + "/vis/vis_quad.glslv", vis_quad_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
+        || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
+
+        //TODO: 3) write a very simple shader for rendering triangles (input: pos and uv), load the shader
+        || !read_shader(shader_root_path + "/vis/vis_triangle.glslv", vis_triangle_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_triangle.glslf", vis_triangle_fs_source)
+
+        || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_qz.glslv", vis_xyz_qz_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass1.glslv", vis_xyz_qz_pass1_vs_source)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass2.glslv", vis_xyz_qz_pass2_vs_source)
+
+        || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_lighting_source, true)
+        || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_lighting_source, true)
+        || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_lighting_source, true)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_lighting_source, true)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_lighting_source, true)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_lighting_source, true)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_lighting_source, true)
+        || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_lighting_source, true)
+            ) {
+      std::cout << "error reading shader files" << std::endl;
+      std::exit(1);
+    }
+
+    vis_quad_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_quad_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_quad_fs_source)));
+    if (!vis_quad_shader_) {
+      std::cout << "error creating shader vis_quad_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_line_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_line_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_line_fs_source)));
+    if (!vis_line_shader_) {
+      std::cout << "error creating shader vis_line_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    //TODO: 3) write a very simple shader for rendering triangles (input: pos and uv), load the shader
+    vis_triangle_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_triangle_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_triangle_fs_source)));
+    if (!vis_triangle_shader_) {
+      std::cout << "error creating shader vis_triangle_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
+    if (!vis_xyz_shader_) {
+      //scm::err() << scm::log::error << scm::log::end;
+      std::cout << "error creating shader vis_xyz_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_pass1_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass1_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass1_gs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
+    if (!vis_xyz_pass1_shader_) {
+      std::cout << "error creating vis_xyz_pass1_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_pass2_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
+    if (!vis_xyz_pass2_shader_) {
+      std::cout << "error creating vis_xyz_pass2_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_pass3_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_source)));
+    if (!vis_xyz_pass3_shader_) {
+      std::cout << "error creating vis_xyz_pass3_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_lighting_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_lighting_source))
+                    (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_lighting_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_lighting_source)));
+    if (!vis_xyz_lighting_shader_) {
+      std::cout << "error creating vis_xyz_lighting_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_pass2_lighting_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_lighting_source))
+                    (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_lighting_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_lighting_source)));
+    if (!vis_xyz_pass2_lighting_shader_) {
+      std::cout << "error creating vis_xyz_pass2_lighting_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_pass3_lighting_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_lighting_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_lighting_source)));
+    if (!vis_xyz_pass3_lighting_shader_) {
+      std::cout << "error creating vis_xyz_pass3_lighting_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+/*
+    vis_xyz_qz_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
+    if (!vis_xyz_qz_shader_) {
+      std::cout << "error vis_xyz_qz_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_qz_pass1_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass1_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
+    if (!vis_xyz_qz_pass1_shader_) {
+      std::cout << "error vis_xyz_qz_pass1_shader program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_xyz_qz_pass2_shader_ = device_->create_program(
+      boost::assign::list_of
+        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass2_vs_source))
+        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
+    if (!vis_xyz_qz_pass2_shader_) {
+      std::cout << "error creating vis_xyz_qz_pass2_shader_ program" << std::endl;
+      std::exit(1);
+    }
+*/
+  }
+  catch (std::exception& e)
+  {
+    std::cout << e.what() << std::endl;
+  }
+}
+
+void init_render_states() {
+  color_blending_state_ = device_->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE,
+                                                      scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
+  color_no_blending_state_ = device_->create_blend_state(false);
+
+  depth_state_less_ = device_->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
+  auto no_depth_test_descriptor = depth_state_less_->descriptor();
+  no_depth_test_descriptor._depth_test = false;
+  depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
+  depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
+
+  no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
+
+  filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
+  filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
+}
+
+void init_camera(lamure::ren::model_database *database) {
+  if (settings_.use_view_tf_) {
+    camera_ = new lamure::ren::camera();
+    camera_->set_view_matrix(settings_.view_tf_);
+    std::cout << "view_tf:" << std::endl;
+    std::cout << camera_->get_high_precision_view_matrix() << std::endl;
+    camera_->set_dolly_sens_(settings_.travel_speed_);
+  }
+  else {
+    auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
+    auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
+    auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
+    scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
+
+    camera_ = new lamure::ren::camera(0,
+                                      make_look_at_matrix(center + scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)),
+                                      length(root_bb_max-root_bb_min), false, false);
+    camera_->set_dolly_sens_(settings_.travel_speed_);
+  }
+  camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
+
+  screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
+
+  gui_.ortho_matrix_ = scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
+                                                    0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
+}
 
 int32_t main(int argc, char* argv[]) {
 
@@ -1839,221 +2245,14 @@ int32_t main(int argc, char* argv[]) {
     model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
     ++num_models_;
   }
-  
-  
- 
-  glutInit(&argc, argv);
-  glutInitContextVersion(4, 4);
-  glutInitContextProfile(GLUT_CORE_PROFILE);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
-  //glewExperimental = GL_TRUE;
-  //glewInit();
-  glutInitWindowSize(settings_.width_, settings_.height_);
-  glutInitWindowPosition(64, 64);
-  glutCreateWindow(argv[0]);
-  glutSetWindowTitle("lamure_vis");
-  
-  glutDisplayFunc(glut_display);
-  glutReshapeFunc(glut_resize);
-  glutKeyboardFunc(glut_keyboard);
-  glutMotionFunc(glut_motion);
-  glutMouseFunc(glut_mouse);
-  glutIdleFunc(glut_idle);
+
+
+  init_glut(argc, argv);
 
   device_.reset(new scm::gl::render_device());
-
-
   context_ = device_->main_context();
   
-  try
-  {
-    std::string vis_quad_vs_source;
-    std::string vis_quad_fs_source;
-    std::string vis_line_vs_source;
-    std::string vis_line_fs_source;
-    
-    std::string vis_xyz_vs_source;
-    std::string vis_xyz_gs_source;
-    std::string vis_xyz_fs_source;
-    
-    std::string vis_xyz_pass1_vs_source;
-    std::string vis_xyz_pass1_gs_source;
-    std::string vis_xyz_pass1_fs_source;
-    std::string vis_xyz_pass2_vs_source;
-    std::string vis_xyz_pass2_gs_source;
-    std::string vis_xyz_pass2_fs_source;
-    std::string vis_xyz_pass3_vs_source;
-    std::string vis_xyz_pass3_fs_source;
-
-
-    std::string vis_xyz_qz_vs_source;
-    std::string vis_xyz_qz_pass1_vs_source;
-    std::string vis_xyz_qz_pass2_vs_source;
-
-    /* parsed with optional lighting code */
-    std::string vis_xyz_vs_lighting_source;
-    std::string vis_xyz_gs_lighting_source;
-    std::string vis_xyz_fs_lighting_source;
-    std::string vis_xyz_pass2_vs_lighting_source;
-    std::string vis_xyz_pass2_gs_lighting_source;
-    std::string vis_xyz_pass2_fs_lighting_source;
-    std::string vis_xyz_pass3_vs_lighting_source;
-    std::string vis_xyz_pass3_fs_lighting_source;
-
-    std::string shader_root_path = LAMURE_SHADERS_DIR;
-
-    if (!read_shader(shader_root_path + "/vis/vis_quad.glslv", vis_quad_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_qz.glslv", vis_xyz_qz_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass1.glslv", vis_xyz_qz_pass1_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass2.glslv", vis_xyz_qz_pass2_vs_source)
-
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_lighting_source, true)
-      ) {
-      std::cout << "error reading shader files" << std::endl;
-      return 1;
-    }
-
-    vis_quad_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_quad_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_quad_fs_source)));
-    if (!vis_quad_shader_) {
-      std::cout << "error creating shader vis_quad_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_line_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_line_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_line_fs_source)));
-    if (!vis_line_shader_) {
-      std::cout << "error creating shader vis_line_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
-    if (!vis_xyz_shader_) {
-      //scm::err() << scm::log::error << scm::log::end;
-      std::cout << "error creating shader vis_xyz_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_pass1_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass1_vs_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass1_gs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
-    if (!vis_xyz_pass1_shader_) {
-      std::cout << "error creating vis_xyz_pass1_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_pass2_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
-    if (!vis_xyz_pass2_shader_) {
-      std::cout << "error creating vis_xyz_pass2_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_pass3_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_source)));
-    if (!vis_xyz_pass3_shader_) {
-      std::cout << "error creating vis_xyz_pass3_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_lighting_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_lighting_source)));
-    if (!vis_xyz_lighting_shader_) {
-      std::cout << "error creating vis_xyz_lighting_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_pass2_lighting_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_lighting_source)));
-    if (!vis_xyz_pass2_lighting_shader_) {
-      std::cout << "error creating vis_xyz_pass2_lighting_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_pass3_lighting_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_lighting_source)));
-    if (!vis_xyz_pass3_lighting_shader_) {
-      std::cout << "error creating vis_xyz_pass3_lighting_shader_ program" << std::endl;
-      return 1;
-    }
-
-/*
-    vis_xyz_qz_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
-    if (!vis_xyz_qz_shader_) {
-      std::cout << "error vis_xyz_qz_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_qz_pass1_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass1_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
-    if (!vis_xyz_qz_pass1_shader_) {
-      std::cout << "error vis_xyz_qz_pass1_shader program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_qz_pass2_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass2_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
-    if (!vis_xyz_qz_pass2_shader_) {
-      std::cout << "error creating vis_xyz_qz_pass2_shader_ program" << std::endl;
-      return 1;
-    }
-*/
-  }
-  catch (std::exception& e)
-  {
-      std::cout << e.what() << std::endl;
-  }
+  init_shader();
 
 
   if (settings_.pvs_ != "") {
@@ -2073,45 +2272,8 @@ int32_t main(int argc, char* argv[]) {
   
   create_framebuffers();
 
-  color_blending_state_ = device_->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, 
-    scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
-  color_no_blending_state_ = device_->create_blend_state(false);
-
-  depth_state_less_ = device_->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
-  auto no_depth_test_descriptor = depth_state_less_->descriptor();
-  no_depth_test_descriptor._depth_test = false;
-  depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
-  depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
-
-  no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
-
-  filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);  
-  filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
-
-  if (settings_.use_view_tf_) {
-    camera_ = new lamure::ren::camera();
-    camera_->set_view_matrix(settings_.view_tf_);
-    std::cout << "view_tf:" << std::endl;
-    std::cout << camera_->get_high_precision_view_matrix() << std::endl;
-    camera_->set_dolly_sens_(settings_.travel_speed_);
-  }
-  else {
-    auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
-    auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
-    auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
-    scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
-
-    camera_ = new lamure::ren::camera(0, 
-      scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)), 
-      scm::math::length(root_bb_max-root_bb_min), false, false);
-    camera_->set_dolly_sens_(settings_.travel_speed_);
-  }
-  camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
-
-  screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
-  
-  gui_.ortho_matrix_ = scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
-      0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
+  init_render_states();
+  init_camera(database);
 
 
   try {
