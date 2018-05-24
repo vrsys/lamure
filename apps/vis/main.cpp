@@ -129,7 +129,6 @@ std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
 std::map<uint32_t, resource> octree_resources_;
 
-//TODO: 4) add a global resource-map "image_plane_resources" which maps from model_id to the resource you created per dataset (see "octree_resources_[model_id])")
 std::map<uint32_t, resource> image_plane_resources_;
 
 
@@ -2171,7 +2170,6 @@ void init_shader() {
     std::string vis_line_vs_source;
     std::string vis_line_fs_source;
 
-    //TODO: 3) write a very simple shader for rendering triangles (input: pos and uv), load the shader
     std::string vis_triangle_vs_source;
     std::string vis_triangle_fs_source;
 
@@ -2212,8 +2210,6 @@ void init_shader() {
         || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
         || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
         || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
-
-        //TODO: 3) write a very simple shader for rendering triangles (input: pos and uv), load the shader
         || !read_shader(shader_root_path + "/vis/vis_triangle.glslv", vis_triangle_vs_source)
         || !read_shader(shader_root_path + "/vis/vis_triangle.glslf", vis_triangle_fs_source)
 
@@ -2266,7 +2262,6 @@ void init_shader() {
       std::exit(1);
     }
 
-    //TODO: 3) write a very simple shader for rendering triangles (input: pos and uv), load the shader
     vis_triangle_shader_ = device_->create_program(
             boost::assign::list_of
                     (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_triangle_vs_source))
