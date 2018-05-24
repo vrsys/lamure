@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
         widthVector.push_back((int)global.w);
         bool height_larger_width = global.h > global.w;
         rotate.push_back(height_larger_width);
-        std::cout << "image: " << global.w << " " << global.h << " " << height_larger_width << std::endl;
+        std::cout << "image " << i << ": "  << global.w << " " << global.h << " " << height_larger_width << std::endl;
         
     }
 
@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
     MaxRectsBinPack bin;
     GuillotineBinPack gBin;
     
-    bin.Init(maxFrameW, maxFrameH);
+    bin.Init(maxFrameW, maxFrameH, false);
     
     vector<Rect> PackedRectangle = vector<Rect>(files.size());
 
@@ -287,24 +287,12 @@ int main(int argc, char *argv[]) {
             offset_startX = PackedRectangle[k].x;
             offset_startY = PackedRectangle[k].y;
         }
-        if (rotate[k]) {
-            for (int y = 0; y < pixelInfo[k].h; ++y) {
-                for (int x = 0; x < pixelInfo[k].w; ++x) {
-                    aPixel.rgbRed = pixelInfo[k].data[y * pixelInfo[k].w + x].r;
-                    aPixel.rgbGreen = pixelInfo[k].data[y * pixelInfo[k].w + x].g;
-                    aPixel.rgbBlue = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
-                    FreeImage_SetPixelColor(image, y+offset_startX, x+offset_startY, &aPixel);
-                }
-            }
-        }
-        else {
-            for (int y = 0; y < pixelInfo[k].h; ++y) {
-                for (int x = 0; x < pixelInfo[k].w; ++x) {
-                    aPixel.rgbRed = pixelInfo[k].data[y * pixelInfo[k].w + x].r;
-                    aPixel.rgbGreen = pixelInfo[k].data[y * pixelInfo[k].w + x].g;
-                    aPixel.rgbBlue = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
-                    FreeImage_SetPixelColor(image, x+offset_startX, y+offset_startY, &aPixel);
-                }
+        for (int y = 0; y < pixelInfo[k].h; ++y) {
+            for (int x = 0; x < pixelInfo[k].w; ++x) {
+                aPixel.rgbRed = pixelInfo[k].data[y * pixelInfo[k].w + x].r;
+                aPixel.rgbGreen = pixelInfo[k].data[y * pixelInfo[k].w + x].g;
+                aPixel.rgbBlue = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
+                FreeImage_SetPixelColor(image, x+offset_startX, y+offset_startY, &aPixel);
             }
         }
     }
