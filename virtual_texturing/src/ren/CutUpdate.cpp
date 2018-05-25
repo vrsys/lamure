@@ -268,12 +268,6 @@ void CutUpdate::dispatch()
 
         cut->get_back()->get_cut().swap(cut_desired);
 
-        std::cout << "cut: " << cut_desired.size() << std::endl;
-        for (const auto& node : cut_desired) {
-            std::cout << node << " ";
-        }
-        std::cout << std::endl;
-
         _cut_db->stop_writing_cut(cut_entry.first);
     }
 

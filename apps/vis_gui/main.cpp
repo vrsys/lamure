@@ -188,11 +188,12 @@ struct settings {
   float fov_ {30.0f};
   bool splatting_ {1};
   bool gamma_correction_ {1};
-  int32_t info_ {1};
+  int32_t gui_ {1};
   int32_t travel_ {2};
   float travel_speed_ {20.5f};
   bool lod_update_ {1};
-  bool pvs_cull_ {0};
+  bool use_pvs_ {1};
+  bool pvs_culling_ {0};
   float lod_point_scale_ {1.0f};
   float aux_point_size_ {1.0f};
   float aux_point_scale_ {1.0f};
@@ -349,14 +350,17 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "gamma_correction") {
             settings.gamma_correction_ = (bool)std::max(atoi(value.c_str()), 0);
           }
-          else if (key == "info") {
-            settings.info_ = std::max(atoi(value.c_str()), 0);
+          else if (key == "gui") {
+            settings.gui_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "speed") {
             settings.travel_speed_ = std::min(std::max(atof(value.c_str()), 0.0), 400.0);
           }
-          else if (key == "pvs_cull") {
-            settings.pvs_cull_ = (bool)std::max(atoi(value.c_str()), 0);
+          else if (key == "pvs_culling") {
+            settings.pvs_culling_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "use_pvs") {
+            settings.use_pvs_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "lod_point_scale") {
             settings.lod_point_scale_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
@@ -814,7 +818,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         
       if (node_culling_result != 1) {
 
-        if (pvs->is_activated() && settings_.pvs_cull_ 
+        if (settings_.use_pvs_ && pvs->is_activated() && settings_.pvs_culling_ 
           && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_)) {
           continue;
         }
@@ -969,46 +973,6 @@ void glut_display() {
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-  
-
-  if (settings_.info_) {
-    std::ostringstream text_ss;
-    text_ss << "fps: " << (int32_t)fps_ << "\n";
-    text_ss << "# points: " << std::setprecision(2) << (rendered_splats_ / 1000000.0) << " mio.\n";
-    text_ss << "# nodes: " << std::to_string(rendered_nodes_) << "\n";
-    text_ss << "\n";
-    text_ss << "vis (e/E): " << settings_.vis_ << "\n";
-
-    if (selection_.selected_model_ == -1) {
-      text_ss << "datasets: " << num_models_ << "\n";
-    }
-    else {
-      text_ss << "dataset: " << selection_.selected_model_+1 << " / " << num_models_ << "\n";
-    }
-
-    if (sparse_resources_[0].num_primitives_ > 0) {
-      text_ss << "sparse (r): " << settings_.show_sparse_ << "\n";
-      text_ss << "views (t): " << settings_.show_views_ << "\n";
-      text_ss << "octrees (y): " << settings_.show_octrees_ << "\n";
-    }
-
-    text_ss << "brush (b): " << input_.brush_mode_ << "\n";
-    text_ss << "speed (f/F): " << std::setprecision(3) << settings_.travel_speed_ << "\n";
-    text_ss << "\n";
-    text_ss << "splatting (q): " << settings_.splatting_ << "\n";
-    text_ss << "lighting (l): " << settings_.enable_lighting_ << "\n";
-    text_ss << "use point color for lighting (c): " << !settings_.use_material_color_ << "\n";
-
-    text_ss << "\n";
-    text_ss << "lod_point_scale (u/U): " << std::setprecision(2) << settings_.lod_point_scale_ << "\n";
-    if (sparse_resources_[0].num_primitives_ > 0) {
-      text_ss << "aux_point_scale (i/I): " << std::setprecision(2) << settings_.aux_point_scale_ << "\n";
-    }
-    text_ss << "lod_update (d): " << settings_.lod_update_ << "\n";
-    text_ss << "lod_error (o/O): " << std::setprecision(2) << settings_.lod_error_ << "\n";
-    text_ss << "pvs (p): " << pvs->is_activated() << "\n";
-    text_ = text_ss.str();
-  }
 
   bool signal_shutdown = false;
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
@@ -1199,11 +1163,6 @@ void glut_display() {
   
   screen_quad_->draw(context_);
 
-  if (settings_.info_) {
-    renderable_text_->text_string(text_);
-    text_renderer_->draw_shadowed(context_, scm::math::vec2i(28, settings_.height_- 40), renderable_text_);
-  }
-
   rendering_ = false;
   //glutSwapBuffers();
 
@@ -1312,6 +1271,16 @@ void brush() {
 
 void create_framebuffers() {
 
+  fbo_.reset();
+  fbo_color_buffer_.reset();
+  fbo_depth_buffer_.reset();
+  pass1_fbo_.reset();
+  pass1_depth_buffer_.reset();
+  pass2_fbo_.reset();
+  pass2_color_buffer_.reset();
+  pass2_normal_buffer_.reset();
+  pass2_view_space_pos_buffer_.reset();
+
   fbo_ = device_->create_frame_buffer();
   fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
   fbo_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_D24, 1, 1, 1);
@@ -1327,12 +1296,10 @@ void create_framebuffers() {
   pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
   pass2_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
 
-  // begin: optional block
   pass2_normal_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGB_32F, 1, 1, 1);
   pass2_fbo_->attach_color_buffer(1, pass2_normal_buffer_);
   pass2_view_space_pos_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGB_32F, 1, 1, 1);
   pass2_fbo_->attach_color_buffer(2, pass2_view_space_pos_buffer_);
-  // end: optional block
 
 }
 
@@ -1341,18 +1308,18 @@ void create_framebuffers() {
 void glut_resize(int32_t w, int32_t h) {
   settings_.width_ = w;
   settings_.height_ = h;
-
+/*
   render_width_ = settings_.width_ / settings_.frame_div_;
   render_height_ = settings_.height_ / settings_.frame_div_;
 
   create_framebuffers();
-  
+
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_window_width(render_width_);
   policy->set_window_height(render_height_);
   
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
-
+*/
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
   gui_.ortho_matrix_ = 
@@ -1382,102 +1349,6 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       //glutFullScreenToggle();
       //break;
 
-    case 'Q': //'q'
-      settings_.splatting_ = !settings_.splatting_;
-      break;
-
-    case 'D':
-      settings_.lod_update_ = !settings_.lod_update_;
-      break;
-
-    case 'E':
-      ++settings_.vis_;
-      if(settings_.vis_ > (4 + data_provenance_.get_size_in_bytes()/sizeof(float))) {
-        settings_.vis_ = 0;
-      }
-      settings_.show_normals_ = (settings_.vis_ == 1);
-      settings_.show_accuracy_ = (settings_.vis_ == 2);
-      settings_.show_radius_deviation_ = (settings_.vis_ == 3);
-      settings_.show_output_sensitivity_ = (settings_.vis_ == 4);
-      if (settings_.vis_ > 4) {
-        settings_.channel_ = (settings_.vis_-4);
-      }
-      else {
-        settings_.channel_ = 0;
-      }
-      break;
-
-    case 'R':
-      settings_.show_sparse_ = !settings_.show_sparse_;
-      if (settings_.show_sparse_) {
-        settings_.enable_lighting_ = false;
-        settings_.splatting_ = false;
-      }
-      break;
-
-    case 'T':
-      settings_.show_views_ = !settings_.show_views_;
-      if (settings_.show_views_) {
-        settings_.enable_lighting_ = false;
-        settings_.splatting_ = false;
-      }
-      break;
-
-    case 'Y':
-      settings_.show_octrees_ = !settings_.show_octrees_;
-      if (settings_.show_octrees_) {
-        settings_.enable_lighting_ = false;
-        settings_.splatting_ = false;
-      }
-      break;
-
-    case 'H':
-      settings_.heatmap_ = !settings_.heatmap_;
-      break;
-
-    case 'B':
-      input_.brush_mode_ = !input_.brush_mode_;
-      break;
-
-    case 'P':
-      {
-        lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-        pvs->activate(!pvs->is_activated());
-        break;
-      }
-
-    case 'U':
-      if (settings_.lod_point_scale_ >= 0.2) {
-        settings_.lod_point_scale_ -= 0.1;
-      }
-      break;
-
-    case 'I':
-      if (settings_.lod_point_scale_ < 1.9) {
-        settings_.lod_point_scale_ += 0.1;
-      }
-      break;
-
-    case 'N':
-      settings_.lod_error_ -= 0.1f;
-      if (settings_.lod_error_ < LAMURE_MIN_THRESHOLD)
-        settings_.lod_error_ = LAMURE_MIN_THRESHOLD;
-      break;
-
-    case 'M':
-      settings_.lod_error_ += 0.1f;
-      if (settings_.lod_error_ > LAMURE_MAX_THRESHOLD)
-        settings_.lod_error_ = LAMURE_MAX_THRESHOLD;
-      break;
-
-    case 'L':
-      settings_.enable_lighting_ = !settings_.enable_lighting_;
-      break;
-
-    case 'C':
-      settings_.use_material_color_ = !settings_.use_material_color_;
-      break;
-
     case 'F':
       {
         ++settings_.travel_;
@@ -1502,17 +1373,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     case '=':
       if (++selection_.selected_model_ >= num_models_) selection_.selected_model_ = 0;
       break;
-/*
-    case 'm':
-      settings_.heatmap_max_ = std::min(settings_.heatmap_max_ + 0.1f, 1.0f);
-      std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
-      break;
 
-    case 'M':
-      settings_.heatmap_max_ = std::max(settings_.heatmap_max_ - 0.1f, 0.0f);
-      std::cout << "heatmap max: " << settings_.heatmap_max_ << std::endl;
-      break;
-*/
     case 'Z':
       //dump camera transform
       std::cout << "view_tf: " << std::endl;
@@ -1520,7 +1381,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       break;
 
     case ' ':
-      settings_.info_ = !settings_.info_;
+      settings_.gui_ = !settings_.gui_;
       break;
 
 
@@ -2167,7 +2028,9 @@ void init() {
 
     lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
     pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
+    pvs->activate(settings_.use_pvs_);
   }
+
 
   create_aux_resources();
   create_framebuffers();
@@ -2242,12 +2105,12 @@ void init() {
 
 }
 
-void viewSettings(){
-    bool my_view_settings_active = true;
+void gui_view_settings(){
+    bool view_settings_active = true;
 
-    ImGui::SetNextWindowPos(ImVec2(20, 500));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 150.0f));
-    ImGui::Begin("View Settings", &my_view_settings_active, ImGuiWindowFlags_MenuBar);
+    ImGui::SetNextWindowPos(ImVec2(20, 390));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 180.0f));
+    ImGui::Begin("View Settings", &view_settings_active, ImGuiWindowFlags_MenuBar);
     ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f);
     ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f);
     ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f);
@@ -2256,27 +2119,52 @@ void viewSettings(){
     ImGui::End();
 }
 
-void visualSettings(){
-    bool my_visual_settings_active = true;
 
-    //int32_t vis_ {0}; //visual settings (1-7) change visualization
+void gui_lod_settings(){
+    bool lod_settings_active = true;
+
+    ImGui::SetNextWindowPos(ImVec2(20, 590));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 210.0f));
+
+    ImGui::Begin("LOD Settings", &lod_settings_active, ImGuiWindowFlags_MenuBar);
+    
+    ImGui::Checkbox("Lod Update", &settings_.lod_update_);
+
+    ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f);
+    ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f);
+    if (ImGui::Checkbox("Use PVS", &settings_.use_pvs_)) {
+      lamure::pvs::pvs_database::get_instance()->activate(true);
+    }
+    else {
+      lamure::pvs::pvs_database::get_instance()->activate(false);
+    }
+    ImGui::Checkbox("PVS Culling", &settings_.pvs_culling_);
+    
+
+    ImGui::End();
+}
+
+void gui_visual_settings(){
+    bool visual_settings_active = true;
 
     uint32_t num_attributes = 5 + data_provenance_.get_size_in_bytes()/sizeof(float);
 
-    //const char* vis_values[] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11" };
-    const char* vis_values[] = { "Color", "Normals", "Accuracy", "Radius Deviation", "Output Sensitivity", "Provenance 1", "Provenance 2", "Provenance 3", "Provenance 4", "9", "10", "11" };
+    const char* vis_values[] = {
+      "Color", "Normals", "Accuracy", 
+      "Radius Deviation", "Output Sensitivity", 
+      "Provenance 1", "Provenance 2", "Provenance 3", 
+      "Provenance 4", "Provenance 5", "Provenance 6", "Provenance 7" };
     static int it = settings_.vis_;
 
-    //ImGui::SetNextWindowPos(ImVec2(1400, 20));
     ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 20));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 500.0f));
-    ImGui::Begin("Visual Settings", &my_visual_settings_active, ImGuiWindowFlags_MenuBar);
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 305.0f));
+    ImGui::Begin("Visual Settings", &visual_settings_active, ImGuiWindowFlags_MenuBar);
     
-    ImGui::Combo("VIS", &it, vis_values, IM_ARRAYSIZE(vis_values));
+    uint32_t num_vis_entries = (5 + data_provenance_.get_size_in_bytes()/sizeof(float));
+    ImGui::Combo("Vis", &it, vis_values, num_vis_entries);
     settings_.vis_ = it;
-    //std::cout << "Data Load" << (data_provenance_.get_size_in_bytes()/sizeof(float));
-    //++settings_.vis_;
-      if(settings_.vis_ > (4 + data_provenance_.get_size_in_bytes()/sizeof(float))) {
+
+      if(settings_.vis_ > num_vis_entries) {
         settings_.vis_ = 0;
       }
       settings_.show_normals_ = (settings_.vis_ == 1);
@@ -2294,11 +2182,6 @@ void visualSettings(){
     ImGui::Checkbox("Splatting", &settings_.splatting_);
     ImGui::Checkbox("Gamma Correction", &settings_.gamma_correction_);
 
-    //ImGui::Checkbox("Show Normals", &settings_.show_normals_); // Same as VIS Show
-    //ImGui::Checkbox("Show Accuracy", &settings_.show_accuracy_); // Same as VIS Show
-    //ImGui::Checkbox("Show Radius Deviation", &settings_.show_radius_deviation_); // Same as VIS Show
-    //ImGui::Checkbox("Show Output Sensitivity", &settings_.show_output_sensitivity_);
-   
     ImGui::Checkbox("Enable Lighting", &settings_.enable_lighting_);
     ImGui::Checkbox("Use Material Color", &settings_.use_material_color_);
     
@@ -2308,7 +2191,7 @@ void visualSettings(){
     settings_.material_diffuse_.x = color_mat_diff.x;
     settings_.material_diffuse_.y = color_mat_diff.y;
     settings_.material_diffuse_.z = color_mat_diff.z;
-
+/*
     static ImVec4 color_mat_spec = ImColor(0.4f, 0.4f, 0.4f, 1.0f);
     ImGui::Text("Material Specular");
     ImGui::ColorEdit3("Specular", (float*)&color_mat_spec, ImGuiColorEditFlags_Float);
@@ -2329,7 +2212,7 @@ void visualSettings(){
     settings_.point_light_color_.x = color_point_light.x;
     settings_.point_light_color_.y = color_point_light.y;
     settings_.point_light_color_.z = color_point_light.z;
-
+*/
     static ImVec4 background_color = ImColor(0.5f, 0.5f, 0.5f, 1.0f);
     ImGui::Text("Background Color");
     ImGui::ColorEdit3("Background", (float*)&background_color, ImGuiColorEditFlags_Float);
@@ -2340,35 +2223,14 @@ void visualSettings(){
     ImGui::End();
 }
 
-void dataSettings(){
-    bool my_data_settings_active = true;
 
-    ImGui::SetNextWindowPos(ImVec2(20, 700));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 200.0f));
-
-    ImGui::Begin("Data Settings", &my_data_settings_active, ImGuiWindowFlags_MenuBar);
+void gui_provenance_settings(){
     
-    ImGui::Checkbox("Provenance", &settings_.provenance_);
-    ImGui::Checkbox("Lod Update", &settings_.lod_update_);
-    ImGui::Checkbox("PVS Cull", &settings_.pvs_cull_);
+    bool provenance_settings_active = true;
     
-    ImGui::InputFloat("LOD Point Scale", &settings_.lod_point_scale_);
-    ImGui::InputFloat("LOD Error", &settings_.lod_error_);
-
-    ImGui::End();
-}
-
-void provenanceSettings(){
-    
-    //scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f}; //provenance settings
-    //scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f}; //provenance settings
-
-    bool my_provenance_settings_active = true;
-    
-    //ImGui::SetNextWindowPos(ImVec2(1400, 540));
-    ImGui::SetNextWindowPos(ImVec2(settings_.width_-520,540));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 400.0f));
-    ImGui::Begin("Provenance Settings", &my_provenance_settings_active, ImGuiWindowFlags_MenuBar);
+    ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 345));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 425.0f));
+    ImGui::Begin("Provenance Settings", &provenance_settings_active, ImGuiWindowFlags_MenuBar);
 
     if (ImGui::SliderFloat("AUX Point Size", &settings_.aux_point_size_, 0.1f, 10.0f, "%.4f", 4.0f)) {
       input_.gui_lock_ = true;
@@ -2403,16 +2265,12 @@ void provenanceSettings(){
     ImGui::InputFloat("Heatmap MIN", &settings_.heatmap_min_);
     ImGui::InputFloat("Heatmap MAX", &settings_.heatmap_max_);
 
-    //scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f}; //provenance settings
-    
     static ImVec4 color_heatmap_min = ImColor(68.0f/255.0f, 0.0f, 84.0f/255.0f, 1.0f);
     ImGui::Text("Heatmap Color Min");
     ImGui::ColorEdit3("Heatmap Min", (float*)&color_heatmap_min, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
     settings_.heatmap_color_min_.x = color_heatmap_min.x;
     settings_.heatmap_color_min_.y = color_heatmap_min.y;
     settings_.heatmap_color_min_.z = color_heatmap_min.z;
-
-    //scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f}; //provenance settings
 
     static ImVec4 color_heatmap_max = ImColor(251.f/255.f, 231.f/255.f, 35.f/255.f, 1.0f);
     ImGui::Text("Heatmap Color Max");
@@ -2426,12 +2284,12 @@ void provenanceSettings(){
 }
 
 
-void statusScreen(){
-    bool my_status_screen_active = true;
-    static bool my_view_screen_active = true;
-    static bool my_visual_screen_active = true;
-    static bool my_data_screen_active = true;
-    static bool my_provenance_screen_active = true;
+void gui_status_screen(){
+    bool status_screen_active = true;
+    static bool view_screen_active = false;
+    static bool visual_screen_active = true;
+    static bool lod_screen_active = false;
+    static bool provenance_screen_active = false;
 
 
     static int dataset = 0;
@@ -2439,7 +2297,6 @@ void statusScreen(){
     char* vis_values[num_models_+1] = { };
     for (int i=0; i<num_models_+1; i++) {
         char buffer [32];
-        //snprintf(buffer, sizeof(buffer), "%d", i);
         snprintf(buffer, sizeof(buffer), "%s%d", "Dataset ", i);
         if(i==num_models_){
            snprintf(buffer, sizeof(buffer), "%s", "All");
@@ -2447,9 +2304,9 @@ void statusScreen(){
         vis_values[i] = strdup(buffer);
     }
 
-    ImGui::SetNextWindowPos(ImVec2(20, 150));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 300.0f));
-    ImGui::Begin("Status Screen", &my_status_screen_active, ImGuiWindowFlags_MenuBar);
+    ImGui::SetNextWindowPos(ImVec2(20, 20));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 350.0f));
+    ImGui::Begin("Status Screen", &status_screen_active, ImGuiWindowFlags_MenuBar);
     ImGui::Text("fps %d", (int32_t)fps_);
 
     double f = (rendered_splats_ / 1000000.0);
@@ -2470,35 +2327,34 @@ void statusScreen(){
       selection_.selected_model_ = dataset;
     }
 
-    ImGui::Checkbox("View Settings", &my_view_screen_active);
-    ImGui::Checkbox("Visual Settings", &my_visual_screen_active);
-    ImGui::Checkbox("Data Settings", &my_data_screen_active);
-    ImGui::Checkbox("Provenance Settings", &my_provenance_screen_active);
+    ImGui::Checkbox("View Settings", &view_screen_active);
+    ImGui::Checkbox("LOD Settings", &lod_screen_active);
+    ImGui::Checkbox("Visual Settings", &visual_screen_active);
+    if (settings_.provenance_) {
+      ImGui::Checkbox("Provenance Settings", &provenance_screen_active);
+    }
     ImGui::Checkbox("Brush", &input_.brush_mode_);
-    if (ImGui::Checkbox("Brush Clear", &input_.brush_clear_)) {
+    if (ImGui::Checkbox("Clear Brush", &input_.brush_clear_)) {
       selection_.brush_.clear();
       selection_.selected_views_.clear();
       input_.brush_clear_ = false;
     }
     
-
-
-    if(my_view_screen_active){
-        viewSettings();
+    if (view_screen_active){
+        gui_view_settings();
     }
       
-    if(my_visual_screen_active){
-        visualSettings();
+    if (lod_screen_active){
+        gui_lod_settings();
     }
 
-    if(my_data_screen_active){
-        dataSettings();
+    if (visual_screen_active){
+        gui_visual_settings();
     }
 
-    if(my_provenance_screen_active){
-        provenanceSettings();
+    if (settings_.provenance_ && provenance_screen_active){
+        gui_provenance_settings();
     }
-
 
     ImGui::End();
 }
@@ -2585,11 +2441,11 @@ int main(int argc, char *argv[])
       if (window == primary_window) {
         glut_display();               
 
-        ImGui_ImplGlfwGL3_NewFrame();
-
-        statusScreen();
-        //if(!ImGui::IsWindowHovered()){
-        ImGui::Render();
+        if (settings_.gui_) {
+          ImGui_ImplGlfwGL3_NewFrame();
+          gui_status_screen();
+          ImGui::Render();
+        }
 
       }
       glfwSwapBuffers(window->_glfw_window);
