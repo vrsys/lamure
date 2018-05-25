@@ -1,4 +1,9 @@
-
+// Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
+// This Software is distributed under the Modified BSD License, see license.txt.
+//
+// Virtual Reality and Visualization Research Group 
+// Faculty of Media, Bauhaus-Universitaet Weimar
+// http://www.uni-weimar.de/medien/vr
 
 //gl
 #include "imgui_impl_glfw_gl3.h"
@@ -40,6 +45,10 @@
 #include <lamure/ren/ray.h>
 #include <lamure/prov/aux.h>
 #include <lamure/prov/octree.h>
+#include <lamure/vt/VTConfig.h>
+#include <lamure/vt/ren/CutDatabase.h>
+#include <lamure/vt/ren/CutUpdate.h>
+#include <lamure/vt/pre/AtlasFile.h>
 
 #include <iostream>
 #include <fstream>
@@ -62,8 +71,6 @@ std::vector<scm::math::mat4d> model_transformations_;
 
 float height_divided_by_top_minus_bottom_ = 0.f;
 
-std::string text = "";
-
 lamure::ren::camera* camera_ = nullptr;
 
 scm::shared_ptr<scm::gl::render_device> device_;
@@ -84,6 +91,8 @@ scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
 
 scm::gl::program_ptr vis_quad_shader_;
 scm::gl::program_ptr vis_line_shader_;
+scm::gl::program_ptr vis_triangle_shader_;
+scm::gl::program_ptr vis_vt_shader_;
 
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
@@ -108,6 +117,9 @@ scm::gl::blend_state_ptr color_no_blending_state_;
 scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
 
+scm::gl::sampler_state_ptr vt_filter_linear_;
+scm::gl::sampler_state_ptr vt_filter_nearest_;
+
 scm::gl::texture_2d_ptr bg_texture_;
 
 struct resource {
@@ -120,12 +132,11 @@ resource brush_resource_;
 std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
 std::map<uint32_t, resource> octree_resources_;
+std::map<uint32_t, resource> image_plane_resources_;
 
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
-scm::gl::text_renderer_ptr text_renderer_;
-scm::gl::text_ptr renderable_text_;
-std::string text_ = "";
 scm::time::accum_timer<scm::time::high_res_timer> frame_time_;
+
 double fps_ = 0.0;
 uint64_t rendered_splats_ = 0;
 uint64_t rendered_nodes_ = 0;
@@ -159,6 +170,11 @@ struct xyz {
   uint8_t a_;
   float rad_;
   scm::math::vec3f nml_;
+};
+
+struct triangle {
+    scm::math::vec3f pos_;
+    scm::math::vec2f uv_;
 };
 
 struct selection {
@@ -220,6 +236,7 @@ struct settings {
   scm::math::vec3f background_color_ {LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B};
   scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f};
   scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
+  std::string atlas_file_ {""};
   std::string json_ {""};
   std::string pvs_ {""};
   std::string background_image_ {""};
@@ -233,6 +250,33 @@ struct settings {
 };
 
 settings settings_;
+
+struct vt_info {
+    uint32_t texture_id_;
+    uint16_t view_id_;
+    uint16_t context_id_;
+    uint64_t cut_id_;
+    vt::CutUpdate *cut_update_;
+
+    std::vector<scm::gl::texture_2d_ptr> index_texture_hierarchy_;
+    scm::gl::texture_2d_ptr physical_texture_;
+
+    scm::math::vec2ui physical_texture_size_;
+    scm::math::vec2ui physical_texture_tile_size_;
+    size_t size_feedback_;
+
+    int32_t  *feedback_lod_cpu_buffer_;
+    uint32_t *feedback_count_cpu_buffer_;
+
+    scm::gl::buffer_ptr feedback_lod_storage_;
+    scm::gl::buffer_ptr feedback_count_storage_;
+
+    int toggle_visualization_;
+    bool enable_hierarchy_;
+};
+
+vt_info vt_;
+
 
 scm::math::mat4f load_matrix(const std::string& filename) {
   std::ifstream file(filename);
@@ -485,6 +529,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "heatmap_max_b") {
             settings.heatmap_color_max_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
           }
+          else if (key == "atlas_file") {
+            settings.atlas_file_ = value;
+          }
           else if (key == "json") {
             settings.json_ = value;
           }
@@ -548,7 +595,17 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
   return std::find(begin, end, option) != end;
 }
 
-
+scm::gl::data_format get_tex_format() {
+    switch (vt::VTConfig::get_instance().get_format_texture()) {
+        case vt::VTConfig::R8:
+            return scm::gl::FORMAT_R_8;
+        case vt::VTConfig::RGB8:
+            return scm::gl::FORMAT_RGB_8;
+        case vt::VTConfig::RGBA8:
+        default:
+            return scm::gl::FORMAT_RGBA_8;
+    }
+}
 
 void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
@@ -618,6 +675,109 @@ void draw_brush(scm::gl::program_ptr shader) {
     context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, brush_resource_.num_primitives_);
   }
 
+}
+
+
+void apply_vt_cut_update() {
+  auto *cut_db = &vt::CutDatabase::get_instance();
+
+  for (vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map())) {
+    vt::Cut *cut = cut_db->start_reading_cut(cut_entry.first);
+
+    if (!cut->is_drawn()) {
+      cut_db->stop_reading_cut(cut_entry.first);
+      continue;
+    }
+
+    std::set<uint16_t> updated_levels;
+
+    for (auto position_slot_updated : cut->get_front()->get_mem_slots_updated()) {
+      const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second);
+
+      if (mem_slot_updated == nullptr || !mem_slot_updated->updated
+          || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr) {
+        if (mem_slot_updated == nullptr) {
+          std::cerr << "Mem slot at " << position_slot_updated.second << " is null" << std::endl;
+        } else {
+          std::cerr << "Mem slot at " << position_slot_updated.second << std::endl;
+          std::cerr << "Mem slot #" << mem_slot_updated->position << std::endl;
+          std::cerr << "Tile id: " << mem_slot_updated->tile_id << std::endl;
+          std::cerr << "Locked: " << mem_slot_updated->locked << std::endl;
+          std::cerr << "Updated: " << mem_slot_updated->updated << std::endl;
+          std::cerr << "Pointer valid: " << (mem_slot_updated->pointer != nullptr) << std::endl;
+        }
+
+        throw std::runtime_error("updated mem slot inconsistency");
+      }
+
+      updated_levels.insert(vt::QuadTree::get_depth_of_node(mem_slot_updated->tile_id));
+
+      // update_physical_texture_blockwise
+      size_t slots_per_texture = vt::VTConfig::get_instance().get_phys_tex_tile_width() *
+                                 vt::VTConfig::get_instance().get_phys_tex_tile_width();
+      size_t layer = mem_slot_updated->position / slots_per_texture;
+      size_t rel_slot_position = mem_slot_updated->position - layer * slots_per_texture;
+
+      size_t x_tile = rel_slot_position % vt::VTConfig::get_instance().get_phys_tex_tile_width();
+      size_t y_tile = rel_slot_position / vt::VTConfig::get_instance().get_phys_tex_tile_width();
+
+      scm::math::vec3ui origin = scm::math::vec3ui(
+              (uint32_t) x_tile * vt::VTConfig::get_instance().get_size_tile(),
+              (uint32_t) y_tile * vt::VTConfig::get_instance().get_size_tile(), (uint32_t) layer);
+      scm::math::vec3ui dimensions = scm::math::vec3ui(vt::VTConfig::get_instance().get_size_tile(),
+                                                       vt::VTConfig::get_instance().get_size_tile(), 1);
+
+      context_->update_sub_texture(vt_.physical_texture_, scm::gl::texture_region(origin, dimensions), 0,
+                                   get_tex_format(), mem_slot_updated->pointer);
+    }
+
+
+    for (auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared()) {
+      const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second);
+
+      if (mem_slot_cleared == nullptr) {
+        std::cerr << "Mem slot at " << position_slot_cleared.second << " is null" << std::endl;
+      }
+
+      updated_levels.insert(vt::QuadTree::get_depth_of_node(position_slot_cleared.first));
+    }
+
+    // update_index_texture
+    for (uint16_t updated_level : updated_levels) {
+      uint32_t size_index_texture = (uint32_t) vt::QuadTree::get_tiles_per_row(updated_level);
+
+      scm::math::vec3ui origin = scm::math::vec3ui(0, 0, 0);
+      scm::math::vec3ui dimensions = scm::math::vec3ui(size_index_texture, size_index_texture, 1);
+
+      context_->update_sub_texture(vt_.index_texture_hierarchy_.at(updated_level),
+                                   scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI,
+                                   cut->get_front()->get_index(updated_level));
+
+    }
+
+    cut_db->stop_reading_cut(cut_entry.first);
+  }
+
+  context_->sync();
+}
+
+void collect_vt_feedback() {
+  int32_t *feedback_lod = (int32_t *) context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
+  memcpy(vt_.feedback_lod_cpu_buffer_, feedback_lod, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
+  context_->sync();
+
+  context_->unmap_buffer(vt_.feedback_lod_storage_);
+  context_->clear_buffer_data(vt_.feedback_lod_storage_, scm::gl::FORMAT_R_32I, nullptr);
+
+  uint32_t *feedback_count = (uint32_t *) context_->map_buffer(vt_.feedback_count_storage_,
+                                                               scm::gl::ACCESS_READ_ONLY);
+  memcpy(vt_.feedback_count_cpu_buffer_, feedback_count, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
+  context_->sync();
+
+  vt_.cut_update_->feedback(vt_.feedback_lod_cpu_buffer_, vt_.feedback_count_cpu_buffer_);
+
+  context_->unmap_buffer(vt_.feedback_count_storage_);
+  context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);
 }
 
 void draw_resources() {
@@ -692,6 +852,88 @@ void draw_resources() {
           break;
         }
       }
+
+    }
+
+    // draw image_plane resources with vt system
+    if (settings_.show_views_ && !settings_.atlas_file_.empty()) {
+      context_->bind_program(vis_vt_shader_);
+
+      uint64_t color_cut_id =
+              (((uint64_t) vt_.texture_id_) << 32) | ((uint64_t) vt_.view_id_ << 16) | ((uint64_t) vt_.context_id_);
+      uint32_t max_depth_level_color =
+              (*vt::CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
+
+      scm::math::mat4f view_matrix       = camera_->get_view_matrix();
+      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
+
+      vis_vt_shader_->uniform("model_view_matrix", view_matrix);
+      vis_vt_shader_->uniform("projection_matrix", projection_matrix);
+
+      vis_vt_shader_->uniform("physical_texture_dim", vt_.physical_texture_size_);
+      vis_vt_shader_->uniform("max_level", max_depth_level_color);
+      vis_vt_shader_->uniform("tile_size", scm::math::vec2((uint32_t) vt::VTConfig::get_instance().get_size_tile()));
+      vis_vt_shader_->uniform("tile_padding", scm::math::vec2((uint32_t) vt::VTConfig::get_instance().get_size_padding()));
+
+      vis_vt_shader_->uniform("enable_hierarchy", vt_.enable_hierarchy_);
+      vis_vt_shader_->uniform("toggle_visualization", vt_.toggle_visualization_);
+
+      for (uint32_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
+        std::string texture_string = "hierarchical_idx_textures";
+        vis_vt_shader_->uniform(texture_string, i, int((i)));
+      }
+
+      vis_vt_shader_->uniform("physical_texture_array", 17);
+
+      context_->set_viewport(
+              scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(render_width_, render_height_)));
+
+      context_->set_depth_stencil_state(depth_state_less_);
+      context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+      context_->set_blend_state(color_no_blending_state_);
+
+      context_->sync();
+
+      apply_vt_cut_update();
+
+      for (uint16_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
+        context_->bind_texture(vt_.index_texture_hierarchy_.at(i), vt_filter_nearest_, i);
+      }
+
+      context_->bind_texture(vt_.physical_texture_, vt_filter_linear_, 17);
+
+      context_->bind_storage_buffer(vt_.feedback_lod_storage_, 0);
+      context_->bind_storage_buffer(vt_.feedback_count_storage_, 1);
+
+      context_->apply();
+
+      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+        if (selection_.selected_model_ != -1) {
+          model_id = selection_.selected_model_;
+        }
+
+        auto t_res = image_plane_resources_[model_id];
+
+        if (t_res.num_primitives_ > 0) {
+          context_->bind_vertex_array(t_res.array_);
+          context_->apply();
+          if (selection_.selected_views_.empty()) {
+            context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, 0, t_res.num_primitives_);
+          }
+          else {
+            for (const auto view : selection_.selected_views_) {
+              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view * 16, 16);
+            }
+          }
+        }
+
+        if (selection_.selected_model_ != -1) {
+          break;
+        }
+      }
+      context_->sync();
+
+      collect_vt_feedback();
 
     }
 
@@ -874,12 +1116,8 @@ bool parse_prefix(std::string& in_string, std::string const& prefix) {
 
 void resolve_relative_path(std::string& base_path, std::string& relative_path) {
 
-    std::cout << "Starting parse prefix with relative path: " << relative_path << "\n";
-
   while(parse_prefix(relative_path, "../")) {
-    std::cout << "Parse prefix true\n";
       size_t slash_position = base_path.find_last_of("/", base_path.size()-2);
-
       base_path = base_path.substr(0, slash_position);
   }
 }
@@ -908,7 +1146,6 @@ bool read_shader(std::string const& path_string,
 
   while( std::getline(shader_source, line_buffer) ) {
     line_buffer = strip_whitespace(line_buffer);
-    //std::cout << line_buffer << "\n";
 
     if( parse_prefix(line_buffer, include_prefix) ) {
       if(!disregard_code || keep_optional_shader_code) {
@@ -974,7 +1211,6 @@ void glut_display() {
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
-  bool signal_shutdown = false;
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
     controller->reset_system(data_provenance_);
   }
@@ -1003,7 +1239,7 @@ void glut_display() {
 
   cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom_);
 
-  if (false) { //TODO
+  if (settings_.use_pvs_) {
     scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(camera_->trackball_matrix()));
     scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
     pvs->set_viewer_position(cam_pos);
@@ -1253,13 +1489,15 @@ void brush() {
         intersection.normal_});
 
     if (selection_.selected_model_ != -1) {
-      if (settings_.octrees_[selection_.selected_model_]) {
-        uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
-        if (selected_node_id > 0) {
-          const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
-          std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
-          //std::cout << "selected_node_id " << selected_node_id << std::endl;
-          selection_.selected_views_.insert(imgs.begin(), imgs.end());
+      if (settings_.octrees_.size() > selection_.selected_model_) {
+        if (settings_.octrees_[selection_.selected_model_]) {
+          uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
+          if (selected_node_id > 0) {
+            const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
+            std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
+            //std::cout << "selected_node_id " << selected_node_id << std::endl;
+            selection_.selected_views_.insert(imgs.begin(), imgs.end());
+          }
         }
       }
     }
@@ -1326,17 +1564,12 @@ void glut_resize(int32_t w, int32_t h) {
     scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
     0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
 
-  
-  text_renderer_->projection_matrix(gui_.ortho_matrix_);
-
-  
-
 }
 
 
 void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
-  std::cout << std::to_string(key) << std::endl;
+  //std::cout << std::to_string(key) << std::endl;
 
   int k = (int)key;
 
@@ -1407,6 +1640,24 @@ void glut_motion(int32_t x, int32_t y) {
   }
 }
 
+float get_atlas_scale_factor() {
+  auto atlas = new vt::pre::AtlasFile(settings_.atlas_file_.c_str());
+  uint64_t image_width    = atlas->getImageWidth();
+  uint64_t image_height   = atlas->getImageHeight();
+
+  // tile's width and height without padding
+  uint64_t tile_inner_width  = atlas->getInnerTileWidth();
+  uint64_t tile_inner_height = atlas->getInnerTileHeight();
+
+  // Quadtree depth counter, ranges from 0 to depth-1
+  uint64_t depth = atlas->getDepth();
+
+  double factor_u  = (double) image_width  / (tile_inner_width  * std::pow(2, depth-1));
+  double factor_v  = (double) image_height / (tile_inner_height * std::pow(2, depth-1));
+
+  return std::max(factor_u, factor_v);
+}
+
 
 void create_aux_resources() {
 
@@ -1421,7 +1672,7 @@ void create_aux_resources() {
       provenance_[model_id].num_views_ = aux.get_num_views();
       std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
       std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
-      //std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << std::endl;
+      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
       std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
       std::vector<xyz> ready_to_upload;
@@ -1529,17 +1780,95 @@ void create_aux_resources() {
       octree_res.num_primitives_ = octree_lines_to_upload.size();
       octree_resources_[model_id] = octree_res;
 
+      auto root_bb = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
+      auto root_bb_min = scm::math::mat4f(model_transformations_[model_id]) * root_bb.min_vertex();
+      auto root_bb_max = scm::math::mat4f(model_transformations_[model_id]) * root_bb.max_vertex();
+      auto model_dim = scm::math::length(root_bb_max - root_bb_min);
+
+      //for image planes
+      if (!settings_.atlas_file_.empty()) {
+        if (aux.get_num_atlas_tiles() != aux.get_num_views()) {
+          throw std::runtime_error(
+                  "Number of atlas_tiles (" + std::to_string(aux.get_num_atlas_tiles()) + ") "
+                  + "does not match number of views (" + std::to_string(aux.get_num_views()) + ")");
+        }
+
+        std::vector<triangle> tris_to_upload;
+        for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
+          const auto& view       = aux.get_view(i);
+          const auto& atlas_tile = aux.get_atlas_tile(i);
+
+          float aspect_ratio = view.image_height_ / (float)view.image_width_;
+          float img_w_half   = (settings_.aux_focal_length_)*0.5f;
+          float img_h_half   = img_w_half * aspect_ratio;
+          float focal_length = settings_.aux_focal_length_;
+
+          float atlas_width  = aux.get_atlas().atlas_width_;
+          float atlas_height = aux.get_atlas().atlas_height_;
+
+          // scale factor from image space to vt atlas space
+          float factor = get_atlas_scale_factor();
+
+          // positions in vt atlas space coordinate system
+          float tile_height  = (float) atlas_tile.width_  / atlas_width  * factor;
+          float tile_width   = (float) atlas_tile.width_  / atlas_height * factor;
+
+          float tile_pos_x   = (float) atlas_tile.x_ / atlas_height * factor;
+          float tile_pos_y   = (float) atlas_tile.y_ / atlas_tile.height_ * tile_height + (1 - factor);
+
+
+          triangle p1;
+          p1.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length);
+          p1.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y);
+
+          triangle p2;
+          p2.pos_ = view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length);
+          p2.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y);
+
+          triangle p3;
+          p3.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length);
+          p3.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y + tile_height);
+
+          triangle p4;
+          p4.pos_ = view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length);
+          p4.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y + tile_height);
+
+          // left quad triangle
+          tris_to_upload.push_back(p1);
+          tris_to_upload.push_back(p4);
+          tris_to_upload.push_back(p3);
+
+          // right quad triangle
+          tris_to_upload.push_back(p2);
+          tris_to_upload.push_back(p4);
+          tris_to_upload.push_back(p1);
+        }
+
+        //init triangle buffer
+        resource tri_res;
+        tri_res.buffer_.reset();
+        tri_res.array_.reset();
+
+        tri_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
+                                                 scm::gl::USAGE_STATIC_DRAW,
+                                                 (sizeof(triangle)) * tris_to_upload.size(),
+                                                 &tris_to_upload[0]);
+
+        tri_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+                                                              (0, 0, scm::gl::TYPE_VEC3F, sizeof(triangle))
+                                                              (0, 1, scm::gl::TYPE_VEC2F, sizeof(triangle)),
+                                                      boost::assign::list_of(tri_res.buffer_));
+
+
+        tri_res.num_primitives_ = tris_to_upload.size();
+
+        image_plane_resources_[model_id] = tri_res;
+      }
 
       //init line buffers
       resource line_res;
       line_res.buffer_.reset();
       line_res.array_.reset();
-
-   
-      auto root_bb = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
-      auto root_bb_min = scm::math::mat4f(model_transformations_[model_id]) * root_bb.min_vertex();
-      auto root_bb_max = scm::math::mat4f(model_transformations_[model_id]) * root_bb.max_vertex();
-      auto model_dim = scm::math::length(root_bb_max - root_bb_min);
 
       std::vector<scm::math::vec3f> lines_to_upload;
       for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
@@ -1574,8 +1903,6 @@ void create_aux_resources() {
         lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
         lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
 
-        //std::cout << "v: " << view.camera_id_ << " w " << view.image_width_ << " h " << view.image_height_ << std::endl;
-
       }
 
       line_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
@@ -1598,7 +1925,6 @@ void create_aux_resources() {
 struct Window {
   Window() {
     _mouse_button_state = MouseButtonState::IDLE;
-    //_trackball_manipulator.dolly(2.5f);
   }
 
   unsigned int _width;
@@ -1684,9 +2010,9 @@ class EventHandler {
       }
 
       input_.mouse_state_.lb_down_ = (window->_mouse_button_state == Window::MouseButtonState::LEFT) ? true : false;
+      input_.mouse_state_.mb_down_ = (window->_mouse_button_state == Window::MouseButtonState::WHEEL) ? true : false;
       input_.mouse_state_.rb_down_ = (window->_mouse_button_state == Window::MouseButtonState::RIGHT) ? true : false;
-        
-        
+
       input_.prev_mouse_ = input_.mouse_;
       input_.mouse_ = scm::math::vec2i(x, y);
 
@@ -1815,6 +2141,119 @@ void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsi
   }
 }
 
+
+void init_render_states() {
+  color_blending_state_ = device_->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE,
+                                                      scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
+  color_no_blending_state_ = device_->create_blend_state(false);
+
+  depth_state_less_ = device_->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
+  auto no_depth_test_descriptor = depth_state_less_->descriptor();
+  no_depth_test_descriptor._depth_test = false;
+  depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
+  depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
+
+  no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
+
+  filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
+  filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
+
+  vt_filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR , scm::gl::WRAP_CLAMP_TO_EDGE);
+  vt_filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
+}
+
+
+void init_camera() {
+  if (settings_.use_view_tf_) {
+    camera_ = new lamure::ren::camera();
+    camera_->set_view_matrix(settings_.view_tf_);
+    std::cout << "view_tf:" << std::endl;
+    std::cout << camera_->get_high_precision_view_matrix() << std::endl;
+    camera_->set_dolly_sens_(settings_.travel_speed_);
+  }
+  else {
+    auto root_bb = lamure::ren::model_database::get_instance()->get_model(0)->get_bvh()->get_bounding_boxes()[0];
+    auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
+    auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
+    scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
+
+    camera_ = new lamure::ren::camera(0,
+                                      make_look_at_matrix(center + scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)),
+                                      length(root_bb_max-root_bb_min), false, false);
+    camera_->set_dolly_sens_(settings_.travel_speed_);
+  }
+  camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
+
+  screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
+
+  gui_.ortho_matrix_ = scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
+                                                    0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
+}
+
+
+void init_vt_database() {
+  vt::VTConfig::CONFIG_PATH = settings_.atlas_file_.substr(0, settings_.atlas_file_.size() - 5) + "ini";
+
+  vt::VTConfig::get_instance().define_size_physical_texture(128, 8192);
+  vt_.texture_id_ = vt::CutDatabase::get_instance().register_dataset(settings_.atlas_file_);
+  vt_.context_id_ = vt::CutDatabase::get_instance().register_context();
+  vt_.view_id_    = vt::CutDatabase::get_instance().register_view();
+  vt_.cut_id_     = vt::CutDatabase::get_instance().register_cut(vt_.texture_id_, vt_.view_id_, vt_.context_id_);
+  vt_.cut_update_ = &vt::CutUpdate::get_instance();
+  vt_.cut_update_->start();
+}
+
+
+void init_vt_system() {
+    vt_.enable_hierarchy_     = true;
+    vt_.toggle_visualization_ = 0;
+
+    // add_data
+    uint16_t depth = (uint16_t) ((*vt::CutDatabase::get_instance().get_cut_map())[vt_.cut_id_]->get_atlas()->getDepth());
+    uint16_t level = 0;
+
+    while (level < depth) {
+        uint32_t size_index_texture = (uint32_t) vt::QuadTree::get_tiles_per_row(level);
+
+        auto index_texture_level_ptr = device_->create_texture_2d(
+                scm::math::vec2ui(size_index_texture, size_index_texture), scm::gl::FORMAT_RGBA_8UI);
+
+        device_->main_context()->clear_image_data(index_texture_level_ptr, 0, scm::gl::FORMAT_RGBA_8UI, 0);
+        vt_.index_texture_hierarchy_.emplace_back(index_texture_level_ptr);
+
+        level++;
+    }
+
+    // add_context
+    context_ = device_->main_context();
+    vt_.physical_texture_size_ = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_tile_width(),
+                                                   vt::VTConfig::get_instance().get_phys_tex_tile_width());
+
+    auto physical_texture_size = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_px_width(),
+                                                   vt::VTConfig::get_instance().get_phys_tex_px_width());
+
+    vt_.physical_texture_ = device_->create_texture_2d(physical_texture_size, get_tex_format(), 1,
+                                                       vt::VTConfig::get_instance().get_phys_tex_layers() + 1);
+
+    vt_.size_feedback_ = vt::VTConfig::get_instance().get_phys_tex_tile_width() *
+                         vt::VTConfig::get_instance().get_phys_tex_tile_width() *
+                         vt::VTConfig::get_instance().get_phys_tex_layers();
+
+    vt_.feedback_lod_storage_   = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY,
+                                                         vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
+    vt_.feedback_count_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY,
+                                                         vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
+
+    vt_.feedback_lod_cpu_buffer_   = new int32_t[vt_.size_feedback_];
+    vt_.feedback_count_cpu_buffer_ = new uint32_t[vt_.size_feedback_];
+
+    for (size_t i = 0; i < vt_.size_feedback_; ++i) {
+        vt_.feedback_lod_cpu_buffer_[i] = 0;
+        vt_.feedback_count_cpu_buffer_[i] = 0;
+    }
+}
+
+
 void init() {
 
 
@@ -1836,6 +2275,12 @@ void init() {
     std::string vis_line_vs_source;
     std::string vis_line_fs_source;
     
+    std::string vis_triangle_vs_source;
+    std::string vis_triangle_fs_source;
+
+    std::string vis_vt_vs_source;
+    std::string vis_vt_fs_source;
+
     std::string vis_xyz_vs_source;
     std::string vis_xyz_gs_source;
     std::string vis_xyz_fs_source;
@@ -1870,6 +2315,12 @@ void init() {
       || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_triangle.glslv", vis_triangle_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_triangle.glslf", vis_triangle_fs_source)
+
+      || !read_shader(shader_root_path + "/vt/virtual_texturing.glslv", vis_vt_vs_source)
+      || !read_shader(shader_root_path + "/vt/virtual_texturing_hierarchical.glslf", vis_vt_fs_source)
+
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_source)
@@ -1914,6 +2365,24 @@ void init() {
     if (!vis_line_shader_) {
       std::cout << "error creating shader vis_line_shader_ program" << std::endl;
       exit(1);
+    }
+
+    vis_triangle_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_triangle_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_triangle_fs_source)));
+    if (!vis_triangle_shader_) {
+      std::cout << "error creating shader vis_triangle_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_vt_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_vt_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_vt_fs_source)));
+    if (!vis_vt_shader_) {
+      std::cout << "error creating shader vis_vt_shader_ program" << std::endl;
+      std::exit(1);
     }
 
     vis_xyz_shader_ = device_->create_program(
@@ -2029,70 +2498,21 @@ void init() {
     lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
     pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
     pvs->activate(settings_.use_pvs_);
+    std::cout << "use pvs: " << (int)pvs->is_activated() << std::endl;
   }
 
 
   create_aux_resources();
   create_framebuffers();
 
-  color_blending_state_ = device_->create_blend_state(true, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, scm::gl::FUNC_ONE, 
-    scm::gl::FUNC_ONE, scm::gl::EQ_FUNC_ADD, scm::gl::EQ_FUNC_ADD);
-  color_no_blending_state_ = device_->create_blend_state(false);
+  init_render_states();
 
-  depth_state_less_ = device_->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
-  auto no_depth_test_descriptor = depth_state_less_->descriptor();
-  no_depth_test_descriptor._depth_test = false;
-  depth_state_disable_ = device_->create_depth_stencil_state(no_depth_test_descriptor);
-  depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
-
-  no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
-
-  filter_linear_ = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);  
-  filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
-
-  if (settings_.use_view_tf_) {
-    camera_ = new lamure::ren::camera();
-    camera_->set_view_matrix(settings_.view_tf_);
-    std::cout << "view_tf:" << std::endl;
-    std::cout << camera_->get_high_precision_view_matrix() << std::endl;
-    camera_->set_dolly_sens_(settings_.travel_speed_);
+  if (!settings_.atlas_file_.empty()) {
+    init_vt_database();
+    init_vt_system();
   }
-  else {
 
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-  
-    auto root_bb = database->get_model(0)->get_bvh()->get_bounding_boxes()[0];
-    auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
-    auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
-    scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
-
-    camera_ = new lamure::ren::camera(0, 
-      scm::math::make_look_at_matrix(center+scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)), 
-      scm::math::length(root_bb_max-root_bb_min), false, false);
-    camera_->set_dolly_sens_(settings_.travel_speed_);
-  }
-  
-  camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
-
-  screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
-  
-  gui_.ortho_matrix_ = scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
-      0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
-
-
-  try {
-    scm::gl::font_face_ptr output_font(new scm::gl::font_face(device_, std::string(LAMURE_FONTS_DIR) + "/Ubuntu.ttf", 20, 0, scm::gl::font_face::smooth_lcd));
-    text_renderer_ = scm::make_shared<scm::gl::text_renderer>(device_);
-    renderable_text_ = scm::make_shared<scm::gl::text>(device_, output_font, scm::gl::font_face::style_regular, "sick, sad world...");
-
-    text_renderer_->projection_matrix(gui_.ortho_matrix_);
-      
-    renderable_text_->text_color(scm::math::vec4f(1.0f, 1.0f, 0.0f, 1.0f));
-    renderable_text_->text_kerning(true);
-  }
-  catch(const std::exception& e) {
-    throw std::runtime_error(e.what());
-  }
+  init_camera();
 
 
   if (settings_.background_image_ != "") {
@@ -2132,12 +2552,11 @@ void gui_lod_settings(){
 
     ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f);
     ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f);
-    if (ImGui::Checkbox("Use PVS", &settings_.use_pvs_)) {
-      lamure::pvs::pvs_database::get_instance()->activate(true);
-    }
-    else {
-      lamure::pvs::pvs_database::get_instance()->activate(false);
-    }
+    ImGui::Checkbox("Use PVS", &settings_.use_pvs_);
+    
+    lamure::pvs::pvs_database::get_instance()->activate(settings_.use_pvs_);
+
+    
     ImGui::Checkbox("PVS Culling", &settings_.pvs_culling_);
     
 

@@ -1559,13 +1559,15 @@ void brush() {
         intersection.normal_});
 
     if (selection_.selected_model_ != -1) {
-      if (settings_.octrees_[selection_.selected_model_]) {
-        uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
-        if (selected_node_id > 0) {
-          const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
-          std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
-          //std::cout << "selected_node_id " << selected_node_id << std::endl;
-          selection_.selected_views_.insert(imgs.begin(), imgs.end());
+      if (settings_.octrees_.size() > selection_.selected_model_) {
+        if (settings_.octrees_[selection_.selected_model_]) {
+          uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
+          if (selected_node_id > 0) {
+            const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
+            std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
+            //std::cout << "selected_node_id " << selected_node_id << std::endl;
+            selection_.selected_views_.insert(imgs.begin(), imgs.end());
+          }
         }
       }
     }
@@ -1576,8 +1578,17 @@ void brush() {
 }
 
 void create_framebuffers() {
-
+  fbo_.reset();
+  fbo_color_buffer_.reset();
+  fbo_depth_buffer_.reset();
+  pass1_fbo_.reset();
+  pass1_depth_buffer_.reset();
+  pass2_fbo_.reset();
+  pass2_color_buffer_.reset();
+  pass2_normal_buffer_.reset();
+  pass2_view_space_pos_buffer_.reset();
   fbo_ = device_->create_frame_buffer();
+
   fbo_color_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGBA_32F , 1, 1, 1);
   fbo_depth_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_D24, 1, 1, 1);
   fbo_->attach_color_buffer(0, fbo_color_buffer_);
@@ -1592,12 +1603,10 @@ void create_framebuffers() {
   pass2_fbo_->attach_color_buffer(0, pass2_color_buffer_);
   pass2_fbo_->attach_depth_stencil_buffer(pass1_depth_buffer_);
 
-  // begin: optional block
   pass2_normal_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGB_32F, 1, 1, 1);
   pass2_fbo_->attach_color_buffer(1, pass2_normal_buffer_);
   pass2_view_space_pos_buffer_ = device_->create_texture_2d(scm::math::vec2ui(render_width_, render_height_), scm::gl::FORMAT_RGB_32F, 1, 1, 1);
   pass2_fbo_->attach_color_buffer(2, pass2_view_space_pos_buffer_);
-  // end: optional block
 
 }
 
@@ -2314,7 +2323,7 @@ void init_shader() {
                     (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_vt_vs_source))
                     (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_vt_fs_source)));
     if (!vis_vt_shader_) {
-      std::cout << "error creating shader vis_triangle_shader_ program" << std::endl;
+      std::cout << "error creating shader vis_vt_shader_ program" << std::endl;
       std::exit(1);
     }
 
