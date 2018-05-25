@@ -1,9 +1,4 @@
-// Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
-// This Software is distributed under the Modified BSD License, see license.txt.
-//
-// Virtual Reality and Visualization Research Group 
-// Faculty of Media, Bauhaus-Universitaet Weimar
-// http://www.uni-weimar.de/medien/vr
+
 
 //gl
 #include "imgui_impl_glfw_gl3.h"
@@ -58,7 +53,6 @@
 #include <algorithm>
 #include <list>
 
-
 bool rendering_ = false;
 int32_t render_width_ = 1280;
 int32_t render_height_ = 720;
@@ -68,6 +62,7 @@ std::vector<scm::math::mat4d> model_transformations_;
 
 float height_divided_by_top_minus_bottom_ = 0.f;
 
+std::string text = "";
 
 lamure::ren::camera* camera_ = nullptr;
 
@@ -142,7 +137,9 @@ struct input {
   float trackball_y_ = 0.f;
   scm::math::vec2i mouse_;
   scm::math::vec2i prev_mouse_;
-  int32_t brush_mode_ = 0;
+  bool brush_mode_ = 0;
+  bool brush_clear_ = 0;
+  bool gui_lock_ = false;
   lamure::ren::camera::mouse_state mouse_state_;
 };
 
@@ -185,38 +182,38 @@ struct settings {
   int32_t vram_ {2048};
   int32_t ram_ {4096};
   int32_t upload_ {32};
-  int32_t provenance_ {0};
+  bool provenance_ {0};
   float near_plane_ {0.001f};
   float far_plane_ {1000.0f};
   float fov_ {30.0f};
-  int32_t splatting_ {1};
-  int32_t gamma_correction_ {1};
+  bool splatting_ {1};
+  bool gamma_correction_ {1};
   int32_t info_ {1};
   int32_t travel_ {2};
   float travel_speed_ {20.5f};
-  int32_t lod_update_ {1};
-  int32_t pvs_cull_ {0};
+  bool lod_update_ {1};
+  bool pvs_cull_ {0};
   float lod_point_scale_ {1.0f};
   float aux_point_size_ {1.0f};
   float aux_point_scale_ {1.0f};
   float aux_focal_length_ {1.0f};
   int32_t vis_ {0};
   int32_t show_normals_ {0};
-  int32_t show_accuracy_ {0};
-  int32_t show_radius_deviation_ {0};
-  int32_t show_output_sensitivity_ {0};
-  int32_t show_sparse_ {0};
-  int32_t show_views_ {0};
-  int32_t show_octrees_ {0};
+  bool show_accuracy_ {0};
+  bool show_radius_deviation_ {0};
+  bool show_output_sensitivity_ {0};
+  bool show_sparse_ {0};
+  bool show_views_ {0};
+  bool show_octrees_ {0};
   int32_t channel_ {0};
   float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
-  int32_t enable_lighting_ {1};
-  int32_t use_material_color_ {0};
+  bool enable_lighting_ {1};
+  bool use_material_color_ {0};
   scm::math::vec3f material_diffuse_ {0.6f, 0.6f, 0.6f};
   scm::math::vec4f material_specular_ {0.4f, 0.4f, 0.4f, 1000.0f};
   scm::math::vec3f ambient_light_color_ {0.1f, 0.1f, 0.1f};
   scm::math::vec4f point_light_color_ {1.0f, 1.0f, 1.0f, 1.2f};
-  int32_t heatmap_ {0};
+  bool heatmap_ {0};
   float heatmap_min_ {0.0f};
   float heatmap_max_ {0.05f};
   scm::math::vec3f background_color_ {LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B};
@@ -347,10 +344,10 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             settings.fov_ = std::max(atof(value.c_str()), 9.0);
           }
           else if (key == "splatting") {
-            settings.splatting_ = std::max(atoi(value.c_str()), 0);
+            settings.splatting_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "gamma_correction") {
-            settings.gamma_correction_ = std::max(atoi(value.c_str()), 0);
+            settings.gamma_correction_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "info") {
             settings.info_ = std::max(atoi(value.c_str()), 0);
@@ -359,7 +356,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             settings.travel_speed_ = std::min(std::max(atof(value.c_str()), 0.0), 400.0);
           }
           else if (key == "pvs_cull") {
-            settings.pvs_cull_ = std::max(atoi(value.c_str()), 0);
+            settings.pvs_cull_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "lod_point_scale") {
             settings.lod_point_scale_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
@@ -374,37 +371,37 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             settings.lod_error_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
           }
           else if (key == "provenance") {
-            settings.provenance_ = std::max(atoi(value.c_str()), 0);
+            settings.provenance_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_normals") {
             settings.show_normals_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_accuracy") {
-            settings.show_accuracy_ = std::max(atoi(value.c_str()), 0);
+            settings.show_accuracy_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_radius_deviation") {
-            settings.show_radius_deviation_ = std::max(atoi(value.c_str()), 0);
+            settings.show_radius_deviation_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_output_sensitivity") {
-            settings.show_output_sensitivity_ = std::max(atoi(value.c_str()), 0);
+            settings.show_output_sensitivity_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_sparse") {
-            settings.show_sparse_ = std::max(atoi(value.c_str()), 0);
+            settings.show_sparse_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_views") {
-            settings.show_views_ = std::max(atoi(value.c_str()), 0);
+            settings.show_views_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_octrees") {
-            settings.show_octrees_ = std::max(atoi(value.c_str()), 0);
+            settings.show_octrees_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "channel") {
             settings.channel_ = std::max(atoi(value.c_str()), 0);
           }
           else if (key == "enable_lighting") {
-            settings.enable_lighting_ = std::min(std::max(atoi(value.c_str()), 0), 1);
+            settings.enable_lighting_ = (bool)std::min(std::max(atoi(value.c_str()), 0), 1);
           }
           else if (key == "use_material_color") {
-            settings.use_material_color_ = std::min(std::max(atoi(value.c_str()), 0), 1);
+            settings.use_material_color_ = (bool)std::min(std::max(atoi(value.c_str()), 0), 1);
           }
           else if (key == "material_diffuse_r") {
             settings.material_diffuse_.x = std::max(atof(value.c_str()), 0.0);
@@ -458,7 +455,7 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             settings.background_color_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
           }
           else if (key == "heatmap") {
-            settings.heatmap_ = std::max(atoi(value.c_str()), 0);
+            settings.heatmap_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "heatmap_min") {
             settings.heatmap_min_ = std::max(atof(value.c_str()), 0.0);
@@ -964,6 +961,9 @@ void glut_display() {
     return;
   }
   rendering_ = true;
+
+  camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
+
 
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
@@ -1538,7 +1538,7 @@ void glut_motion(int32_t x, int32_t y) {
   input_.prev_mouse_ = input_.mouse_;
   input_.mouse_ = scm::math::vec2i(x, y);
   
-  if (!input_.brush_mode_) {
+  if (!input_.brush_mode_ && !input_.gui_lock_) {
     camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
   }
   else {
@@ -1560,7 +1560,7 @@ void create_aux_resources() {
       provenance_[model_id].num_views_ = aux.get_num_views();
       std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
       std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
-      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << std::endl;
+      //std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << std::endl;
       std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
       std::vector<xyz> ready_to_upload;
@@ -1766,6 +1766,7 @@ class EventHandler {
       window->_height = (uint32_t)height;
       window->_width = (uint32_t)width;
       glut_resize(width, height);
+
     }
     static void on_window_key_press(GLFWwindow *glfw_window, int key, int scancode, int action, int mods) {
       if (action == GLFW_RELEASE)
@@ -1789,6 +1790,7 @@ class EventHandler {
       Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
       ImGui_ImplGlfwGL3_CharCallback(glfw_window, codepoint);
     }
+
     static void on_window_button_press(GLFWwindow *glfw_window, int button, int action, int mods) {
       Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
       if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
@@ -1803,17 +1805,17 @@ class EventHandler {
       else {
         window->_mouse_button_state = Window::MouseButtonState::IDLE;
       }
-
+      
       ImGui_ImplGlfwGL3_MouseButtonCallback(glfw_window, button, action, mods);
     }
 
     static void on_window_move_cursor(GLFWwindow *glfw_window, double x, double y) {
       Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
-
+      
       input_.prev_mouse_ = input_.mouse_;
       input_.mouse_ = scm::math::vec2i(x, y);
   
-      if (!input_.brush_mode_) {
+      if (!input_.brush_mode_ && !input_.gui_lock_) {
         camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
       }
       else {
@@ -1827,7 +1829,7 @@ class EventHandler {
       input_.prev_mouse_ = input_.mouse_;
       input_.mouse_ = scm::math::vec2i(x, y);
 
-      if (!input_.brush_mode_) {
+      if (!input_.brush_mode_ && !input_.gui_lock_) {
         input_.trackball_x_ = 2.f * float(x - (settings_.width_/2))/float(settings_.width_) ;
         input_.trackball_y_ = 2.f * float(settings_.height_ - y - (settings_.height_/2))/float(settings_.height_);
       
@@ -1896,6 +1898,7 @@ Window *create_window(unsigned int width, unsigned int height, const std::string
   glfwSetCursorPosCallback(new_window->_glfw_window, &EventHandler::on_window_move_cursor);
   glfwSetScrollCallback(new_window->_glfw_window, &EventHandler::on_window_scroll);
   glfwSetCursorEnterCallback(new_window->_glfw_window, &EventHandler::on_window_enter);
+  glfwSetWindowSizeCallback(new_window->_glfw_window, &EventHandler::on_window_resize);
 
   glfwSetWindowUserPointer(new_window->_glfw_window, new_window);
 
@@ -2230,13 +2233,274 @@ void init() {
 
 
   if (settings_.background_image_ != "") {
-    std::cout << "background image: " << settings_.background_image_ << std::endl;
+    //std::cout << "background image: " << settings_.background_image_ << std::endl;
     scm::gl::texture_loader tl;
     bg_texture_ = tl.load_texture_2d(*device_, settings_.background_image_, true, false);
   }
 
 
 
+}
+
+void viewSettings(){
+    bool my_view_settings_active = true;
+
+    ImGui::SetNextWindowPos(ImVec2(20, 500));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 150.0f));
+    ImGui::Begin("View Settings", &my_view_settings_active, ImGuiWindowFlags_MenuBar);
+    ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f);
+    ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f);
+    ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f);
+    ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f);
+
+    ImGui::End();
+}
+
+void visualSettings(){
+    bool my_visual_settings_active = true;
+
+    //int32_t vis_ {0}; //visual settings (1-7) change visualization
+
+    uint32_t num_attributes = 5 + data_provenance_.get_size_in_bytes()/sizeof(float);
+
+    //const char* vis_values[] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11" };
+    const char* vis_values[] = { "Color", "Normals", "Accuracy", "Radius Deviation", "Output Sensitivity", "Provenance 1", "Provenance 2", "Provenance 3", "Provenance 4", "9", "10", "11" };
+    static int it = settings_.vis_;
+
+    //ImGui::SetNextWindowPos(ImVec2(1400, 20));
+    ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 20));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 500.0f));
+    ImGui::Begin("Visual Settings", &my_visual_settings_active, ImGuiWindowFlags_MenuBar);
+    
+    ImGui::Combo("VIS", &it, vis_values, IM_ARRAYSIZE(vis_values));
+    settings_.vis_ = it;
+    //std::cout << "Data Load" << (data_provenance_.get_size_in_bytes()/sizeof(float));
+    //++settings_.vis_;
+      if(settings_.vis_ > (4 + data_provenance_.get_size_in_bytes()/sizeof(float))) {
+        settings_.vis_ = 0;
+      }
+      settings_.show_normals_ = (settings_.vis_ == 1);
+      settings_.show_accuracy_ = (settings_.vis_ == 2);
+      settings_.show_radius_deviation_ = (settings_.vis_ == 3);
+      settings_.show_output_sensitivity_ = (settings_.vis_ == 4);
+      if (settings_.vis_ > 4) {
+        settings_.channel_ = (settings_.vis_-4);
+      }
+      else {
+        settings_.channel_ = 0;
+      }
+      
+
+    ImGui::Checkbox("Splatting", &settings_.splatting_);
+    ImGui::Checkbox("Gamma Correction", &settings_.gamma_correction_);
+
+    //ImGui::Checkbox("Show Normals", &settings_.show_normals_); // Same as VIS Show
+    //ImGui::Checkbox("Show Accuracy", &settings_.show_accuracy_); // Same as VIS Show
+    //ImGui::Checkbox("Show Radius Deviation", &settings_.show_radius_deviation_); // Same as VIS Show
+    //ImGui::Checkbox("Show Output Sensitivity", &settings_.show_output_sensitivity_);
+   
+    ImGui::Checkbox("Enable Lighting", &settings_.enable_lighting_);
+    ImGui::Checkbox("Use Material Color", &settings_.use_material_color_);
+    
+    static ImVec4 color_mat_diff = ImColor(0.6f, 0.6f, 0.6f, 1.0f);
+    ImGui::Text("Material Diffuse");
+    ImGui::ColorEdit3("Diffuse", (float*)&color_mat_diff, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
+    settings_.material_diffuse_.x = color_mat_diff.x;
+    settings_.material_diffuse_.y = color_mat_diff.y;
+    settings_.material_diffuse_.z = color_mat_diff.z;
+
+    static ImVec4 color_mat_spec = ImColor(0.4f, 0.4f, 0.4f, 1.0f);
+    ImGui::Text("Material Specular");
+    ImGui::ColorEdit3("Specular", (float*)&color_mat_spec, ImGuiColorEditFlags_Float);
+    settings_.material_specular_.x = color_mat_spec.x;
+    settings_.material_specular_.y = color_mat_spec.y;
+    settings_.material_specular_.z = color_mat_spec.z;
+
+    static ImVec4 color_ambient_light = ImColor(0.1f, 0.1f, 0.1f, 1.0f);
+    ImGui::Text("Ambient Light Color");
+    ImGui::ColorEdit3("Ambient", (float*)&color_ambient_light, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
+    settings_.ambient_light_color_.x = color_ambient_light.x;
+    settings_.ambient_light_color_.y = color_ambient_light.y;
+    settings_.ambient_light_color_.z = color_ambient_light.z;
+
+    static ImVec4 color_point_light = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
+    ImGui::Text("Point Light Color");
+    ImGui::ColorEdit3("Point", (float*)&color_point_light, ImGuiColorEditFlags_Float);
+    settings_.point_light_color_.x = color_point_light.x;
+    settings_.point_light_color_.y = color_point_light.y;
+    settings_.point_light_color_.z = color_point_light.z;
+
+    static ImVec4 background_color = ImColor(0.5f, 0.5f, 0.5f, 1.0f);
+    ImGui::Text("Background Color");
+    ImGui::ColorEdit3("Background", (float*)&background_color, ImGuiColorEditFlags_Float);
+    settings_.background_color_.x = background_color.x;
+    settings_.background_color_.y = background_color.y;
+    settings_.background_color_.z = background_color.z;
+
+    ImGui::End();
+}
+
+void dataSettings(){
+    bool my_data_settings_active = true;
+
+    ImGui::SetNextWindowPos(ImVec2(20, 700));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 200.0f));
+
+    ImGui::Begin("Data Settings", &my_data_settings_active, ImGuiWindowFlags_MenuBar);
+    
+    ImGui::Checkbox("Provenance", &settings_.provenance_);
+    ImGui::Checkbox("Lod Update", &settings_.lod_update_);
+    ImGui::Checkbox("PVS Cull", &settings_.pvs_cull_);
+    
+    ImGui::InputFloat("LOD Point Scale", &settings_.lod_point_scale_);
+    ImGui::InputFloat("LOD Error", &settings_.lod_error_);
+
+    ImGui::End();
+}
+
+void provenanceSettings(){
+    
+    //scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f}; //provenance settings
+    //scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f}; //provenance settings
+
+    bool my_provenance_settings_active = true;
+    
+    //ImGui::SetNextWindowPos(ImVec2(1400, 540));
+    ImGui::SetNextWindowPos(ImVec2(settings_.width_-520,540));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 400.0f));
+    ImGui::Begin("Provenance Settings", &my_provenance_settings_active, ImGuiWindowFlags_MenuBar);
+
+    if (ImGui::SliderFloat("AUX Point Size", &settings_.aux_point_size_, 0.1f, 10.0f, "%.4f", 4.0f)) {
+      input_.gui_lock_ = true;
+    }
+    else input_.gui_lock_ = false;
+    ImGui::SliderFloat("AUX Point Scale", &settings_.aux_point_scale_, 0.1f, 2.0f, "%.4f", 4.0f);
+    ImGui::SliderFloat("AUX Focal Length", &settings_.aux_focal_length_, 0.1f, 2.0f, "%.4f", 4.0f);
+
+
+    ImGui::Checkbox("Show Sparse", &settings_.show_sparse_);
+    if (settings_.show_sparse_) {
+        settings_.enable_lighting_ = false;
+        settings_.splatting_ = false;
+    }
+
+    ImGui::Checkbox("Show Views", &settings_.show_views_);
+    if (settings_.show_views_) {
+      settings_.enable_lighting_ = false;
+      settings_.splatting_ = false;
+    }
+
+
+    ImGui::Checkbox("Show Octrees", &settings_.show_octrees_);
+    if (settings_.show_octrees_) {
+        settings_.enable_lighting_ = false;
+        settings_.splatting_ = false;
+    }
+
+    ImGui::Checkbox("Heatmap", &settings_.heatmap_);
+    
+
+    ImGui::InputFloat("Heatmap MIN", &settings_.heatmap_min_);
+    ImGui::InputFloat("Heatmap MAX", &settings_.heatmap_max_);
+
+    //scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f}; //provenance settings
+    
+    static ImVec4 color_heatmap_min = ImColor(68.0f/255.0f, 0.0f, 84.0f/255.0f, 1.0f);
+    ImGui::Text("Heatmap Color Min");
+    ImGui::ColorEdit3("Heatmap Min", (float*)&color_heatmap_min, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
+    settings_.heatmap_color_min_.x = color_heatmap_min.x;
+    settings_.heatmap_color_min_.y = color_heatmap_min.y;
+    settings_.heatmap_color_min_.z = color_heatmap_min.z;
+
+    //scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f}; //provenance settings
+
+    static ImVec4 color_heatmap_max = ImColor(251.f/255.f, 231.f/255.f, 35.f/255.f, 1.0f);
+    ImGui::Text("Heatmap Color Max");
+    ImGui::ColorEdit3("Heatmap Max", (float*)&color_heatmap_max, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
+    settings_.heatmap_color_max_.x = color_heatmap_max.x;
+    settings_.heatmap_color_max_.y = color_heatmap_max.y;
+    settings_.heatmap_color_max_.z = color_heatmap_max.z;
+
+
+    ImGui::End();
+}
+
+
+void statusScreen(){
+    bool my_status_screen_active = true;
+    static bool my_view_screen_active = true;
+    static bool my_visual_screen_active = true;
+    static bool my_data_screen_active = true;
+    static bool my_provenance_screen_active = true;
+
+
+    static int dataset = 0;
+
+    char* vis_values[num_models_+1] = { };
+    for (int i=0; i<num_models_+1; i++) {
+        char buffer [32];
+        //snprintf(buffer, sizeof(buffer), "%d", i);
+        snprintf(buffer, sizeof(buffer), "%s%d", "Dataset ", i);
+        if(i==num_models_){
+           snprintf(buffer, sizeof(buffer), "%s", "All");
+        }
+        vis_values[i] = strdup(buffer);
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(20, 150));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 300.0f));
+    ImGui::Begin("Status Screen", &my_status_screen_active, ImGuiWindowFlags_MenuBar);
+    ImGui::Text("fps %d", (int32_t)fps_);
+
+    double f = (rendered_splats_ / 1000000.0);
+    
+    std::stringstream stream;
+    stream << std::setprecision(2) << f;
+    std::string s = stream.str();
+
+    ImGui::Text("# points %s mio.", s.c_str());
+    ImGui::Text("# nodes %d", (uint64_t)rendered_nodes_);
+    ImGui::Text("# models %d", num_models_);
+    
+    ImGui::Combo("Dataset", &dataset, vis_values, IM_ARRAYSIZE(vis_values));
+  
+    if(dataset == (sizeof vis_values / sizeof vis_values[0]) - 1){
+      selection_.selected_model_ = -1;
+    }else{
+      selection_.selected_model_ = dataset;
+    }
+
+    ImGui::Checkbox("View Settings", &my_view_screen_active);
+    ImGui::Checkbox("Visual Settings", &my_visual_screen_active);
+    ImGui::Checkbox("Data Settings", &my_data_screen_active);
+    ImGui::Checkbox("Provenance Settings", &my_provenance_screen_active);
+    ImGui::Checkbox("Brush", &input_.brush_mode_);
+    if (ImGui::Checkbox("Brush Clear", &input_.brush_clear_)) {
+      selection_.brush_.clear();
+      selection_.selected_views_.clear();
+      input_.brush_clear_ = false;
+    }
+    
+
+
+    if(my_view_screen_active){
+        viewSettings();
+    }
+      
+    if(my_visual_screen_active){
+        visualSettings();
+    }
+
+    if(my_data_screen_active){
+        dataSettings();
+    }
+
+    if(my_provenance_screen_active){
+        provenanceSettings();
+    }
+
+
+    ImGui::End();
 }
 
 int main(int argc, char *argv[])
@@ -2286,8 +2550,7 @@ int main(int argc, char *argv[])
     model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
     ++num_models_;
   }
-  
-    
+
   glfwSetErrorCallback(EventHandler::on_error);
 
   if (!glfwInit()) {
@@ -2324,17 +2587,8 @@ int main(int argc, char *argv[])
 
         ImGui_ImplGlfwGL3_NewFrame();
 
-        ImGui::Begin("Hello_gui");
-
-        ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
-
-        if (ImGui::CollapsingHeader("Test")) {
-          ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0), "hello");
-          ImGui::TextColored(ImVec4(0.5f, 0.5f, 1.0f, 1.0), "gui");
-        }
-
-        ImGui::End();
-
+        statusScreen();
+        //if(!ImGui::IsWindowHovered()){
         ImGui::Render();
 
       }

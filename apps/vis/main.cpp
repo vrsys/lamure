@@ -190,6 +190,7 @@ struct settings {
   float lod_point_scale_ {1.0f};
   float aux_point_size_ {1.0f};
   float aux_point_scale_ {1.0f};
+  float aux_point_offset_ {0.5f};
   float aux_focal_length_ {1.0f};
   int32_t vis_ {0};
   int32_t show_normals_ {0};
@@ -357,6 +358,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "aux_point_size") {
             settings.aux_point_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
+          }
+          else if (key == "aux_point_offset") {
+            settings.aux_point_offset_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
           }
           else if (key == "aux_focal_length") {
             settings.aux_focal_length_ = std::min(std::max(atof(value.c_str()), 0.001), 10.0);
@@ -571,6 +575,35 @@ void set_uniforms(scm::gl::program_ptr shader) {
   }
 }
 
+
+void save_brush() {
+  if (!input_.brush_mode_) {
+    std::cout << "INFO: not in brush mode" << std::endl;
+    return;
+  }
+
+  if (selection_.selected_model_ == -1) {
+    std::cout << "INFO: no model selected" << std::endl;
+    return;
+  }
+
+  if (selection_.brush_.size() > 0) {
+    std::string out_filename = settings_.models_[selection_.selected_model_].substr(0, settings_.models_[selection_.selected_model_].size()-4) + "_BRUSH.xyz";
+    std::ofstream out_file(out_filename.c_str(), std::ios::trunc);
+
+    for (const auto& xyz : selection_.brush_) {
+      out_file << xyz.pos_.x << " " << xyz.pos_.y << " " << xyz.pos_.z << " ";
+      out_file << (int32_t)xyz.r_ << " " << (int32_t)xyz.g_ << " " << (int32_t)xyz.b_ << std::endl;
+    }
+
+    out_file.close();
+
+    std::cout << "INFO: selection of model " << selection_.selected_model_ << " saved to " << out_filename << std::endl;
+  }
+  else {
+    std::cout << "INFO: no brush selection" << std::endl;
+  }
+}
 
 
 void draw_brush(scm::gl::program_ptr shader) {
@@ -1278,7 +1311,7 @@ void brush() {
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
     selection_.brush_.push_back(
       xyz{
-        intersection.position_ + intersection.normal_ * settings_.aux_point_size_,
+        intersection.position_ + intersection.normal_ * settings_.aux_point_offset_,
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
         settings_.aux_point_size_,
         intersection.normal_});
@@ -1435,6 +1468,10 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
     case 'b':
       input_.brush_mode_ = !input_.brush_mode_;
+      break;
+
+    case 'B':
+      save_brush();
       break;
 
     case 'p':

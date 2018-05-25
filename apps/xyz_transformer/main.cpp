@@ -48,19 +48,19 @@ int32_t main(int argc, char* argv[]) {
     std::cout << "Usage: " << argv[0] << "<flags>\n" <<
       "INFO: " << argv[0] << "\n" <<
       "\t-f: select xyz / xyz_all file\n" << 
-      "\t-x: integer x-transform (default: 0)\n" <<
-      "\t-y: integer y-transform (default: 0)\n" <<
-      "\t-z: integer z-transform (default: 0)\n" <<
+      "\t-x: integer x-transform (default: 0.f)\n" <<
+      "\t-y: integer y-transform (default: 0.f)\n" <<
+      "\t-z: integer z-transform (default: 0.f)\n" <<
       "\n";
     return 0;
   }
 
-  int x = 0;
-  int y = 0;
-  int z = 0;
-  if (cmd_option_exists(argv, argv+argc, "-x")) x = atoi(get_cmd_option(argv, argv+argc, "-x"));
-  if (cmd_option_exists(argv, argv+argc, "-y")) y = atoi(get_cmd_option(argv, argv+argc, "-y"));
-  if (cmd_option_exists(argv, argv+argc, "-z")) z = atoi(get_cmd_option(argv, argv+argc, "-z"));
+  float x = 0.f;
+  float y = 0.f;
+  float z = 0.f;
+  if (cmd_option_exists(argv, argv+argc, "-x")) x = atof(get_cmd_option(argv, argv+argc, "-x"));
+  if (cmd_option_exists(argv, argv+argc, "-y")) y = atof(get_cmd_option(argv, argv+argc, "-y"));
+  if (cmd_option_exists(argv, argv+argc, "-z")) z = atof(get_cmd_option(argv, argv+argc, "-z"));
 
   bool xyz_all = false;
   std::string out_filename = xyz_file.substr(0, xyz_file.size()-4) + "_TRF.xyz";
@@ -138,7 +138,7 @@ int32_t main(int argc, char* argv[]) {
   if (!out_file_stream.is_open())
       throw std::runtime_error("Unable to open file: " + out_filename);
 
-  scm::math::mat4f mat = scm::math::make_rotation(-90.f, scm::math::vec3f(1.f, 0.f, 0.f));
+  //scm::math::mat4f mat = scm::math::make_rotation(-90.f, scm::math::vec3f(1.f, 0.f, 0.f));
 
   for (const auto s: surfels) {
 
@@ -148,12 +148,12 @@ int32_t main(int argc, char* argv[]) {
         std::cout << "\r" << "output: " << (int) percent_processed << "% processed" << std::flush;
     }
 
-    auto s_pos = scm::math::vec4f(s.pos().x, s.pos().y, s.pos().z, 1.f) * mat;
+    //auto s_pos = scm::math::vec4f(s.pos().x, s.pos().y, s.pos().z, 1.f) * mat;
 
       out_file_stream << std::setprecision(LAMURE_STREAM_PRECISION) 
-        << s_pos.x + x << " " 
-        << s_pos.y + y << " " 
-        << s_pos.z + z << " ";
+        << s.pos().x + x << " " 
+        << s.pos().y + y << " " 
+        << s.pos().z + z << " ";
       if (xyz_all) {
         out_file_stream
           << s.normal().x << " "
