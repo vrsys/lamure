@@ -157,6 +157,10 @@ struct input {
 input input_;
 
 struct gui {
+  bool view_settings_ {false};
+  bool lod_settings_ {false};
+  bool visual_settings_ {false};
+  bool provenance_settings_ {false};
   scm::math::mat4f ortho_matrix_;
 };
 
@@ -172,7 +176,7 @@ struct xyz {
   scm::math::vec3f nml_;
 };
 
-struct triangle {
+struct vertex {
     scm::math::vec3f pos_;
     scm::math::vec2f uv_;
 };
@@ -221,6 +225,7 @@ struct settings {
   bool show_output_sensitivity_ {0};
   bool show_sparse_ {0};
   bool show_views_ {0};
+  bool show_photos_ {0};
   bool show_octrees_ {0};
   int32_t channel_ {0};
   float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
@@ -438,6 +443,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "show_views") {
             settings.show_views_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "show_photos") {
+            settings.show_photos_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_octrees") {
             settings.show_octrees_ = (bool)std::max(atoi(value.c_str()), 0);
@@ -856,7 +864,7 @@ void draw_resources() {
     }
 
     // draw image_plane resources with vt system
-    if (settings_.show_views_ && !settings_.atlas_file_.empty()) {
+    if (settings_.show_photos_ && !settings_.atlas_file_.empty()) {
       context_->bind_program(vis_vt_shader_);
 
       uint64_t color_cut_id =
@@ -922,7 +930,7 @@ void draw_resources() {
           }
           else {
             for (const auto view : selection_.selected_views_) {
-              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view * 16, 16);
+              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view * 3, 3);
             }
           }
         }
@@ -961,7 +969,7 @@ void draw_resources() {
             }
             else {
               for (const auto view : selection_.selected_views_) {
-                context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, view*16, 16);
+                context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, view * 16, 16);
               }
             }
           }
@@ -1481,12 +1489,12 @@ void brush() {
 
   if (hit) {
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
-    selection_.brush_.push_back(
+/*    selection_.brush_.push_back(
       xyz{
         intersection.position_ + intersection.normal_ * settings_.aux_point_size_,
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
         settings_.aux_point_size_,
-        intersection.normal_});
+        intersection.normal_});*/
 
     if (selection_.selected_model_ != -1) {
       if (settings_.octrees_.size() > selection_.selected_model_) {
@@ -1629,10 +1637,16 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
 void glut_motion(int32_t x, int32_t y) {
 
+  if (input_.gui_lock_) {
+    input_.prev_mouse_ = scm::math::vec2i(x, y);
+    input_.mouse_ = scm::math::vec2i(x, y);
+    return;
+  }
+
   input_.prev_mouse_ = input_.mouse_;
   input_.mouse_ = scm::math::vec2i(x, y);
   
-  if (!input_.brush_mode_ && !input_.gui_lock_) {
+  if (!input_.brush_mode_) {
     camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
   }
   else {
@@ -1793,7 +1807,7 @@ void create_aux_resources() {
                   + "does not match number of views (" + std::to_string(aux.get_num_views()) + ")");
         }
 
-        std::vector<triangle> tris_to_upload;
+        std::vector<vertex> tris_to_upload;
         for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
           const auto& view       = aux.get_view(i);
           const auto& atlas_tile = aux.get_atlas_tile(i);
@@ -1817,19 +1831,19 @@ void create_aux_resources() {
           float tile_pos_y   = (float) atlas_tile.y_ / atlas_tile.height_ * tile_height + (1 - factor);
 
 
-          triangle p1;
+          vertex p1;
           p1.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length);
           p1.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y);
 
-          triangle p2;
+          vertex p2;
           p2.pos_ = view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length);
           p2.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y);
 
-          triangle p3;
+          vertex p3;
           p3.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length);
           p3.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y + tile_height);
 
-          triangle p4;
+          vertex p4;
           p4.pos_ = view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length);
           p4.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y + tile_height);
 
@@ -1851,12 +1865,12 @@ void create_aux_resources() {
 
         tri_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
                                                  scm::gl::USAGE_STATIC_DRAW,
-                                                 (sizeof(triangle)) * tris_to_upload.size(),
+                                                 (sizeof(vertex)) * tris_to_upload.size(),
                                                  &tris_to_upload[0]);
 
         tri_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
-                                                              (0, 0, scm::gl::TYPE_VEC3F, sizeof(triangle))
-                                                              (0, 1, scm::gl::TYPE_VEC2F, sizeof(triangle)),
+                                                              (0, 0, scm::gl::TYPE_VEC3F, sizeof(vertex))
+                                                              (0, 1, scm::gl::TYPE_VEC2F, sizeof(vertex)),
                                                       boost::assign::list_of(tri_res.buffer_));
 
 
@@ -1992,6 +2006,10 @@ class EventHandler {
       else {
         window->_mouse_button_state = Window::MouseButtonState::IDLE;
       }
+
+      if (action == GLFW_RELEASE) {
+        input_.gui_lock_ = false;
+      }
       
       ImGui_ImplGlfwGL3_MouseButtonCallback(glfw_window, button, action, mods);
     }
@@ -1999,10 +2017,16 @@ class EventHandler {
     static void on_window_move_cursor(GLFWwindow *glfw_window, double x, double y) {
       Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
       
+      if (input_.gui_lock_) {
+        input_.prev_mouse_ = scm::math::vec2i(x, y);
+        input_.mouse_ = scm::math::vec2i(x, y);
+        return;
+      }
+
       input_.prev_mouse_ = input_.mouse_;
       input_.mouse_ = scm::math::vec2i(x, y);
   
-      if (!input_.brush_mode_ && !input_.gui_lock_) {
+      if (!input_.brush_mode_) {
         camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
       }
       else {
@@ -2016,7 +2040,7 @@ class EventHandler {
       input_.prev_mouse_ = input_.mouse_;
       input_.mouse_ = scm::math::vec2i(x, y);
 
-      if (!input_.brush_mode_ && !input_.gui_lock_) {
+      if (!input_.brush_mode_) {
         input_.trackball_x_ = 2.f * float(x - (settings_.width_/2))/float(settings_.width_) ;
         input_.trackball_y_ = 2.f * float(settings_.height_ - y - (settings_.height_/2))/float(settings_.height_);
       
@@ -2526,32 +2550,41 @@ void init() {
 }
 
 void gui_view_settings(){
-    bool view_settings_active = true;
-
     ImGui::SetNextWindowPos(ImVec2(20, 390));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 180.0f));
-    ImGui::Begin("View Settings", &view_settings_active, ImGuiWindowFlags_MenuBar);
-    ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f);
-    ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f);
-    ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f);
-    ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f);
+    ImGui::Begin("View Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
+    if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
+      input_.gui_lock_ = true;
+    }
+    if (ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f)) {
+      input_.gui_lock_ = true;
+    }
+    if (ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f)) {
+      input_.gui_lock_ = true;
+    }
+    if (ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f)) {
+      input_.gui_lock_ = true;
+    }
 
     ImGui::End();
 }
 
 
 void gui_lod_settings(){
-    bool lod_settings_active = true;
 
     ImGui::SetNextWindowPos(ImVec2(20, 590));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 210.0f));
 
-    ImGui::Begin("LOD Settings", &lod_settings_active, ImGuiWindowFlags_MenuBar);
+    ImGui::Begin("LOD Settings", &gui_.lod_settings_, ImGuiWindowFlags_MenuBar);
     
     ImGui::Checkbox("Lod Update", &settings_.lod_update_);
 
-    ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f);
-    ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f);
+    if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f)) {
+      input_.gui_lock_ = true;
+    }
+    if (ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f)) {
+      input_.gui_lock_ = true;
+    }
     ImGui::Checkbox("Use PVS", &settings_.use_pvs_);
     
     lamure::pvs::pvs_database::get_instance()->activate(settings_.use_pvs_);
@@ -2564,7 +2597,6 @@ void gui_lod_settings(){
 }
 
 void gui_visual_settings(){
-    bool visual_settings_active = true;
 
     uint32_t num_attributes = 5 + data_provenance_.get_size_in_bytes()/sizeof(float);
 
@@ -2577,7 +2609,7 @@ void gui_visual_settings(){
 
     ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 20));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 305.0f));
-    ImGui::Begin("Visual Settings", &visual_settings_active, ImGuiWindowFlags_MenuBar);
+    ImGui::Begin("Visual Settings", &gui_.visual_settings_, ImGuiWindowFlags_MenuBar);
     
     uint32_t num_vis_entries = (5 + data_provenance_.get_size_in_bytes()/sizeof(float));
     ImGui::Combo("Vis", &it, vis_values, num_vis_entries);
@@ -2645,18 +2677,19 @@ void gui_visual_settings(){
 
 void gui_provenance_settings(){
     
-    bool provenance_settings_active = true;
-    
     ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 345));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 425.0f));
-    ImGui::Begin("Provenance Settings", &provenance_settings_active, ImGuiWindowFlags_MenuBar);
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 450.0f));
+    ImGui::Begin("Provenance Settings", &gui_.provenance_settings_, ImGuiWindowFlags_MenuBar);
 
     if (ImGui::SliderFloat("AUX Point Size", &settings_.aux_point_size_, 0.1f, 10.0f, "%.4f", 4.0f)) {
       input_.gui_lock_ = true;
     }
-    else input_.gui_lock_ = false;
-    ImGui::SliderFloat("AUX Point Scale", &settings_.aux_point_scale_, 0.1f, 2.0f, "%.4f", 4.0f);
-    ImGui::SliderFloat("AUX Focal Length", &settings_.aux_focal_length_, 0.1f, 2.0f, "%.4f", 4.0f);
+    if (ImGui::SliderFloat("AUX Point Scale", &settings_.aux_point_scale_, 0.1f, 2.0f, "%.4f", 4.0f)) {
+      input_.gui_lock_ = true;
+    }
+    if (ImGui::SliderFloat("AUX Focal Length", &settings_.aux_focal_length_, 0.1f, 2.0f, "%.4f", 4.0f)) {
+      input_.gui_lock_ = true;
+    }
 
 
     ImGui::Checkbox("Show Sparse", &settings_.show_sparse_);
@@ -2667,14 +2700,19 @@ void gui_provenance_settings(){
 
     ImGui::Checkbox("Show Views", &settings_.show_views_);
     if (settings_.show_views_) {
-      settings_.enable_lighting_ = false;
+      //settings_.enable_lighting_ = false;
       settings_.splatting_ = false;
     }
 
+    ImGui::Checkbox("Show Photos", &settings_.show_photos_);
+    if (settings_.show_views_) {
+      //settings_.enable_lighting_ = false;
+      settings_.splatting_ = false;
+    }
 
     ImGui::Checkbox("Show Octrees", &settings_.show_octrees_);
     if (settings_.show_octrees_) {
-        settings_.enable_lighting_ = false;
+        //settings_.enable_lighting_ = false;
         settings_.splatting_ = false;
     }
 
@@ -2704,13 +2742,7 @@ void gui_provenance_settings(){
 
 
 void gui_status_screen(){
-    bool status_screen_active = true;
-    static bool view_screen_active = false;
-    static bool visual_screen_active = true;
-    static bool lod_screen_active = false;
-    static bool provenance_screen_active = false;
-
-
+    static bool status_screen = false;
     static int dataset = 0;
 
     char* vis_values[num_models_+1] = { };
@@ -2725,7 +2757,7 @@ void gui_status_screen(){
 
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 350.0f));
-    ImGui::Begin("Status Screen", &status_screen_active, ImGuiWindowFlags_MenuBar);
+    ImGui::Begin("lamure_vis_gui", &status_screen, ImGuiWindowFlags_MenuBar);
     ImGui::Text("fps %d", (int32_t)fps_);
 
     double f = (rendered_splats_ / 1000000.0);
@@ -2746,11 +2778,11 @@ void gui_status_screen(){
       selection_.selected_model_ = dataset;
     }
 
-    ImGui::Checkbox("View Settings", &view_screen_active);
-    ImGui::Checkbox("LOD Settings", &lod_screen_active);
-    ImGui::Checkbox("Visual Settings", &visual_screen_active);
+    ImGui::Checkbox("View Settings", &gui_.view_settings_);
+    ImGui::Checkbox("LOD Settings", &gui_.lod_settings_);
+    ImGui::Checkbox("Visual Settings", &gui_.visual_settings_);
     if (settings_.provenance_) {
-      ImGui::Checkbox("Provenance Settings", &provenance_screen_active);
+      ImGui::Checkbox("Provenance Settings", &gui_.provenance_settings_);
     }
     ImGui::Checkbox("Brush", &input_.brush_mode_);
     if (ImGui::Checkbox("Clear Brush", &input_.brush_clear_)) {
@@ -2759,19 +2791,19 @@ void gui_status_screen(){
       input_.brush_clear_ = false;
     }
     
-    if (view_screen_active){
+    if (gui_.view_settings_){
         gui_view_settings();
     }
       
-    if (lod_screen_active){
+    if (gui_.lod_settings_){
         gui_lod_settings();
     }
 
-    if (visual_screen_active){
+    if (gui_.visual_settings_){
         gui_visual_settings();
     }
 
-    if (settings_.provenance_ && provenance_screen_active){
+    if (settings_.provenance_ && gui_.provenance_settings_){
         gui_provenance_settings();
     }
 
