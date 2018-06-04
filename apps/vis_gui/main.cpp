@@ -45,10 +45,7 @@
 #include <lamure/ren/ray.h>
 #include <lamure/prov/aux.h>
 #include <lamure/prov/octree.h>
-#include <lamure/vt/VTConfig.h>
-#include <lamure/vt/ren/CutDatabase.h>
-#include <lamure/vt/ren/CutUpdate.h>
-#include <lamure/vt/pre/AtlasFile.h>
+
 
 #include <iostream>
 #include <fstream>
@@ -61,6 +58,32 @@
 #include <string>
 #include <algorithm>
 #include <list>
+
+#include "utils.h"
+#include "input.h"
+#include "selection.h"
+#include "provenance.h"
+#include "settings.h"
+#include "vertex.h"
+#include "window.h"
+#include "gui.h"
+
+#include "vt_system.h"
+#include "shader_manager.h"
+
+using namespace vis_utils;
+
+static const std::string VIS_QUAD_SHADER               = "vis_quad_shader";
+static const std::string VIS_XYZ_SHADER                = "vis_xyz_shader";
+static const std::string VIS_LINE_SHADER               = "vis_line_shader";
+static const std::string VIS_TRIANGLE_SHADER           = "vis_triangle_shader";
+static const std::string VIS_XYZ_PASS1_SHADER          = "vis_xyz_pass1_shader";
+static const std::string VIS_XYZ_PASS2_SHADER          = "vis_xyz_pass2_shader";
+static const std::string VIS_XYZ_PASS3_SHADER          = "vis_xyz_pass3_shader";
+static const std::string VIS_XYZ_LIGHTING_SHADER       = "vis_xyz_lighting_shader";
+static const std::string VIS_XYZ_PASS2_LIGHTING_SHADER = "vis_xyz_pass2_lighting_shader";
+static const std::string VIS_XYZ_PASS3_LIGHTING_SHADER = "vis_xyz_pass3_lighting_shader";
+static const std::string VIS_VT_SHADER                 = "vis_vt_shader";
 
 bool rendering_ = false;
 int32_t render_width_ = 1280;
@@ -76,23 +99,8 @@ lamure::ren::camera* camera_ = nullptr;
 scm::shared_ptr<scm::gl::render_device> device_;
 scm::shared_ptr<scm::gl::render_context> context_;
 
-scm::gl::program_ptr vis_xyz_shader_;
-scm::gl::program_ptr vis_xyz_pass1_shader_;
-scm::gl::program_ptr vis_xyz_pass2_shader_;
-scm::gl::program_ptr vis_xyz_pass3_shader_;
+std::shared_ptr<shader_manager> shader_manager_;
 
-scm::gl::program_ptr vis_xyz_lighting_shader_;
-scm::gl::program_ptr vis_xyz_pass2_lighting_shader_;
-scm::gl::program_ptr vis_xyz_pass3_lighting_shader_;
-
-scm::gl::program_ptr vis_xyz_qz_shader_;
-scm::gl::program_ptr vis_xyz_qz_pass1_shader_;
-scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
-
-scm::gl::program_ptr vis_quad_shader_;
-scm::gl::program_ptr vis_line_shader_;
-scm::gl::program_ptr vis_triangle_shader_;
-scm::gl::program_ptr vis_vt_shader_;
 
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
@@ -117,16 +125,7 @@ scm::gl::blend_state_ptr color_no_blending_state_;
 scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
 
-scm::gl::sampler_state_ptr vt_filter_linear_;
-scm::gl::sampler_state_ptr vt_filter_nearest_;
-
 scm::gl::texture_2d_ptr bg_texture_;
-
-struct resource {
-  uint64_t num_primitives_ {0};
-  scm::gl::buffer_ptr buffer_;
-  scm::gl::vertex_array_ptr array_;
-};
 
 resource brush_resource_;
 std::map<uint32_t, resource> sparse_resources_;
@@ -143,477 +142,18 @@ uint64_t rendered_nodes_ = 0;
 
 lamure::ren::Data_Provenance data_provenance_;
 
-struct input {
-  float trackball_x_ = 0.f;
-  float trackball_y_ = 0.f;
-  scm::math::vec2i mouse_;
-  scm::math::vec2i prev_mouse_;
-  bool brush_mode_ = 0;
-  bool brush_clear_ = 0;
-  bool gui_lock_ = false;
-  lamure::ren::camera::mouse_state mouse_state_;
-};
-
 input input_;
 
-struct gui {
-  bool view_settings_ {false};
-  bool lod_settings_ {false};
-  bool visual_settings_ {false};
-  bool provenance_settings_ {false};
-  scm::math::mat4f ortho_matrix_;
-};
-
-gui gui_;
-
-struct xyz {
-  scm::math::vec3f pos_;
-  uint8_t r_;
-  uint8_t g_;
-  uint8_t b_;
-  uint8_t a_;
-  float rad_;
-  scm::math::vec3f nml_;
-};
-
-struct vertex {
-    scm::math::vec3f pos_;
-    scm::math::vec2f uv_;
-};
-
-struct selection {
-  int32_t selected_model_ = -1;
-  std::vector<xyz> brush_;
-  std::set<uint32_t> selected_views_;
-};
+std::shared_ptr<gui> gui_{};
 
 selection selection_;
 
-struct provenance {
-  uint32_t num_views_ {0};
-};
-
 std::map<uint32_t, provenance> provenance_;
-
-struct settings {
-  int32_t width_ {1920};
-  int32_t height_ {1080};
-  int32_t frame_div_ {1};
-  int32_t vram_ {2048};
-  int32_t ram_ {4096};
-  int32_t upload_ {32};
-  bool provenance_ {0};
-  float near_plane_ {0.001f};
-  float far_plane_ {1000.0f};
-  float fov_ {30.0f};
-  bool splatting_ {1};
-  bool gamma_correction_ {1};
-  int32_t gui_ {1};
-  int32_t travel_ {2};
-  float travel_speed_ {20.5f};
-  bool lod_update_ {1};
-  bool use_pvs_ {1};
-  bool pvs_culling_ {0};
-  float lod_point_scale_ {1.0f};
-  float aux_point_size_ {1.0f};
-  float aux_point_scale_ {1.0f};
-  float aux_focal_length_ {1.0f};
-  int32_t vis_ {0};
-  int32_t show_normals_ {0};
-  bool show_accuracy_ {0};
-  bool show_radius_deviation_ {0};
-  bool show_output_sensitivity_ {0};
-  bool show_sparse_ {0};
-  bool show_views_ {0};
-  bool show_photos_ {0};
-  bool show_octrees_ {0};
-  int32_t channel_ {0};
-  float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
-  bool enable_lighting_ {1};
-  bool use_material_color_ {0};
-  scm::math::vec3f material_diffuse_ {0.6f, 0.6f, 0.6f};
-  scm::math::vec4f material_specular_ {0.4f, 0.4f, 0.4f, 1000.0f};
-  scm::math::vec3f ambient_light_color_ {0.1f, 0.1f, 0.1f};
-  scm::math::vec4f point_light_color_ {1.0f, 1.0f, 1.0f, 1.2f};
-  bool heatmap_ {0};
-  float heatmap_min_ {0.0f};
-  float heatmap_max_ {0.05f};
-  scm::math::vec3f background_color_ {LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B};
-  scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f};
-  scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
-  std::string atlas_file_ {""};
-  std::string json_ {""};
-  std::string pvs_ {""};
-  std::string background_image_ {""};
-  int32_t use_view_tf_ {0};
-  scm::math::mat4d view_tf_ {scm::math::mat4d::identity()};
-  std::vector<std::string> models_;
-  std::map<uint32_t, scm::math::mat4d> transforms_;
-  std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
-  std::map<uint32_t, std::string> aux_;
-
-};
 
 settings settings_;
 
-struct vt_info {
-    uint32_t texture_id_;
-    uint16_t view_id_;
-    uint16_t context_id_;
-    uint64_t cut_id_;
-    vt::CutUpdate *cut_update_;
+vt_system *vt_system_ = nullptr;
 
-    std::vector<scm::gl::texture_2d_ptr> index_texture_hierarchy_;
-    scm::gl::texture_2d_ptr physical_texture_;
-
-    scm::math::vec2ui physical_texture_size_;
-    scm::math::vec2ui physical_texture_tile_size_;
-    size_t size_feedback_;
-
-    int32_t  *feedback_lod_cpu_buffer_;
-    uint32_t *feedback_count_cpu_buffer_;
-
-    scm::gl::buffer_ptr feedback_lod_storage_;
-    scm::gl::buffer_ptr feedback_count_storage_;
-
-    int toggle_visualization_;
-    bool enable_hierarchy_;
-};
-
-vt_info vt_;
-
-
-scm::math::mat4f load_matrix(const std::string& filename) {
-  std::ifstream file(filename);
-  if (!file.is_open()) {
-      std::cerr << "Unable to open transformation file: \"" 
-          << filename << "\"\n";
-      return scm::math::mat4f::identity();
-  }
-  scm::math::mat4f mat = scm::math::mat4f::identity();
-  std::string matrix_values_string;
-  std::getline(file, matrix_values_string);
-  std::stringstream sstr(matrix_values_string);
-  for (int i = 0; i < 16; ++i)
-      sstr >> mat[i];
-  file.close();
-  return scm::math::transpose(mat);
-}
-
-
-std::string const strip_whitespace(std::string const& in_string) {
-  return boost::regex_replace(in_string, boost::regex("^ +| +$|( ) +"), "$1");
-
-}
-
-
-void load_settings(std::string const& vis_file_name, settings& settings) {
-
-  std::ifstream vis_file(vis_file_name.c_str());
-
-  if (!vis_file.is_open()) {
-    std::cout << "could not open vis file" << std::endl;
-    exit(-1);
-  }
-  else {
-    lamure::model_t model_id = 0;
-
-    std::string line;
-    while(std::getline(vis_file, line)) {
-      if(line.length() >= 2) {
-        if (line[0] == '#') {
-          continue;
-        }
-        auto colon = line.find_first_of(':');
-        if (colon == std::string::npos) {
-          scm::math::mat4d transform = scm::math::mat4d::identity();
-          std::string model;
-
-          std::istringstream line_ss(line);
-          line_ss >> model;
-
-          settings.models_.push_back(model);
-          settings.transforms_[model_id] = scm::math::mat4d::identity();
-          settings.aux_[model_id] = "";
-          ++model_id;
-
-        }
-        else {
-
-          std::string key = line.substr(0, colon);
-
-          if (key[0] == '@') {
-            auto ws = line.find_first_of(' ');
-            uint32_t address = atoi(strip_whitespace(line.substr(1, ws-1)).c_str());
-            key = strip_whitespace(line.substr(ws+1, colon-(ws+1)));
-            std::string value = strip_whitespace(line.substr(colon+1));
-
-            if (key == "tf") {
-              settings.transforms_[address] = load_matrix(value);
-              std::cout << "found transform for model id " << address << std::endl;
-            }
-            else if (key == "aux") {
-              settings.aux_[address] = value;
-              std::cout << "found aux data for model id " << address << std::endl;
-            }
-            else {
-              std::cout << "unrecognized key: " << key << std::endl;
-              exit(-1);
-            }
-            continue;
-          }
-
-          key = strip_whitespace(key);
-          std::string value = strip_whitespace(line.substr(colon+1));
-
-          if (key == "width") {
-            settings.width_ = std::max(atoi(value.c_str()), 64);
-          }
-          else if (key == "height") {
-            settings.height_ = std::max(atoi(value.c_str()), 64);
-          }
-          else if (key == "frame_div") {
-            settings.frame_div_ = std::max(atoi(value.c_str()), 1);
-          }
-          else if (key == "vram") {
-            settings.vram_ = std::max(atoi(value.c_str()), 8);
-          }
-          else if (key == "ram") {
-            settings.ram_ = std::max(atoi(value.c_str()), 8);
-          }
-          else if (key == "upload") {
-            settings.upload_ = std::max(atoi(value.c_str()), 8);
-          }
-          else if (key == "near") {
-            settings.near_plane_ = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "far") {
-            settings.far_plane_ = std::max(atof(value.c_str()), 0.1);
-          }
-          else if (key == "fov") {
-            settings.fov_ = std::max(atof(value.c_str()), 9.0);
-          }
-          else if (key == "splatting") {
-            settings.splatting_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "gamma_correction") {
-            settings.gamma_correction_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "gui") {
-            settings.gui_ = std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "speed") {
-            settings.travel_speed_ = std::min(std::max(atof(value.c_str()), 0.0), 400.0);
-          }
-          else if (key == "pvs_culling") {
-            settings.pvs_culling_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "use_pvs") {
-            settings.use_pvs_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "lod_point_scale") {
-            settings.lod_point_scale_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
-          }
-          else if (key == "aux_point_size") {
-            settings.aux_point_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
-          }
-          else if (key == "aux_focal_length") {
-            settings.aux_focal_length_ = std::min(std::max(atof(value.c_str()), 0.001), 10.0);
-          }
-          else if (key == "lod_error") {
-            settings.lod_error_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
-          }
-          else if (key == "provenance") {
-            settings.provenance_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_normals") {
-            settings.show_normals_ = std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_accuracy") {
-            settings.show_accuracy_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_radius_deviation") {
-            settings.show_radius_deviation_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_output_sensitivity") {
-            settings.show_output_sensitivity_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_sparse") {
-            settings.show_sparse_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_views") {
-            settings.show_views_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_photos") {
-            settings.show_photos_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "show_octrees") {
-            settings.show_octrees_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "channel") {
-            settings.channel_ = std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "enable_lighting") {
-            settings.enable_lighting_ = (bool)std::min(std::max(atoi(value.c_str()), 0), 1);
-          }
-          else if (key == "use_material_color") {
-            settings.use_material_color_ = (bool)std::min(std::max(atoi(value.c_str()), 0), 1);
-          }
-          else if (key == "material_diffuse_r") {
-            settings.material_diffuse_.x = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "material_diffuse_g") {
-            settings.material_diffuse_.y = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "material_diffuse_b") {
-            settings.material_diffuse_.z = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "material_specular_r") {
-            settings.material_specular_.x = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "material_specular_g") {
-            settings.material_specular_.y = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "material_specular_b") {
-            settings.material_specular_.z = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "material_specular_exponent") {
-            settings.material_specular_.w = std::min(std::max(atof(value.c_str()), 0.0), 10000.0);
-          }
-          else if (key == "ambient_light_color_r") {
-            settings.ambient_light_color_.r = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
-          }
-          else if (key == "ambient_light_color_g") {
-            settings.ambient_light_color_.g = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
-          }
-          else if (key == "ambient_light_color_b") {
-            settings.ambient_light_color_.b = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
-          }
-          else if (key == "point_light_color_r") {
-            settings.point_light_color_.r = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
-          }
-          else if (key == "point_light_color_g") {
-            settings.point_light_color_.g = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
-          }
-          else if (key == "point_light_color_b") {
-            settings.point_light_color_.b = std::min(std::max(atof(value.c_str()), 0.0), 1.0);
-          }
-          else if (key == "point_light_intensity") {
-            settings.point_light_color_.w = std::min(std::max(atof(value.c_str()), 0.0), 10000.0);
-          }
-          else if (key == "background_color_r") {
-            settings.background_color_.x = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "background_color_g") {
-            settings.background_color_.y = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "background_color_b") {
-            settings.background_color_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "heatmap") {
-            settings.heatmap_ = (bool)std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "heatmap_min") {
-            settings.heatmap_min_ = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "heatmap_max") {
-            settings.heatmap_max_ = std::max(atof(value.c_str()), 0.0);
-          }
-          else if (key == "heatmap_min_r") {
-            settings.heatmap_color_min_.x = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "heatmap_min_g") {
-            settings.heatmap_color_min_.y = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "heatmap_min_b") {
-            settings.heatmap_color_min_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "heatmap_max_r") {
-            settings.heatmap_color_max_.x = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "heatmap_max_g") {
-            settings.heatmap_color_max_.y = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "heatmap_max_b") {
-            settings.heatmap_color_max_.z = std::min(std::max(atoi(value.c_str()), 0), 255)/255.f;
-          }
-          else if (key == "atlas_file") {
-            settings.atlas_file_ = value;
-          }
-          else if (key == "json") {
-            settings.json_ = value;
-          }
-          else if (key == "pvs") {
-            settings.pvs_ = value;
-          }
-          else if (key == "background_image") {
-            settings.background_image_ = value;
-          }
-          else if (key == "use_view_tf") {
-            settings.use_view_tf_ = std::max(atoi(value.c_str()), 0);
-          }
-          else if (key == "view_tf") {
-            settings.view_tf_ = load_matrix(value);
-          }
-          else {
-            std::cout << "unrecognized key: " << key << std::endl;
-            exit(-1);
-          }
-
-          //std::cout << key << " : " << value << std::endl;
-        }
-
-      }
-    }
-    vis_file.close();
-  }
-
-  //assertions
-  if (settings.provenance_ != 0) {
-    if (settings.json_.size() > 0) {
-      if (settings.json_.substr(settings.json_.size()-5) != ".json") {
-        std::cout << "unsupported json file" << std::endl;
-        exit(-1);
-      }
-    }
-  }
-  if (settings.models_.empty()) {
-    std::cout << "error: no model filename specified" << std::endl;
-    exit(-1);
-  }
-  if (settings.pvs_.size() > 0) {
-    if (settings.pvs_.substr(settings.pvs_.size()-4) != ".pvs") {
-      std::cout << "unsupported pvs file" << std::endl;
-      exit(-1);
-    }
-  }
-
-
-}
-
-char* get_cmd_option(char** begin, char** end, const std::string& option) {
-  char** it = std::find(begin, end, option);
-  if (it != end && ++it != end) {
-    return *it;
-  }
-  return 0;
-}
-
-bool cmd_option_exists(char** begin, char** end, const std::string& option) {
-  return std::find(begin, end, option) != end;
-}
-
-scm::gl::data_format get_tex_format() {
-    switch (vt::VTConfig::get_instance().get_format_texture()) {
-        case vt::VTConfig::R8:
-            return scm::gl::FORMAT_R_8;
-        case vt::VTConfig::RGB8:
-            return scm::gl::FORMAT_RGB_8;
-        case vt::VTConfig::RGBA8:
-        default:
-            return scm::gl::FORMAT_RGBA_8;
-    }
-}
 
 void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("win_size", scm::math::vec2f(render_width_, render_height_));
@@ -686,112 +226,12 @@ void draw_brush(scm::gl::program_ptr shader) {
 }
 
 
-void apply_vt_cut_update() {
-  auto *cut_db = &vt::CutDatabase::get_instance();
-
-  for (vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map())) {
-    vt::Cut *cut = cut_db->start_reading_cut(cut_entry.first);
-
-    if (!cut->is_drawn()) {
-      cut_db->stop_reading_cut(cut_entry.first);
-      continue;
-    }
-
-    std::set<uint16_t> updated_levels;
-
-    for (auto position_slot_updated : cut->get_front()->get_mem_slots_updated()) {
-      const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second);
-
-      if (mem_slot_updated == nullptr || !mem_slot_updated->updated
-          || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr) {
-        if (mem_slot_updated == nullptr) {
-          std::cerr << "Mem slot at " << position_slot_updated.second << " is null" << std::endl;
-        } else {
-          std::cerr << "Mem slot at " << position_slot_updated.second << std::endl;
-          std::cerr << "Mem slot #" << mem_slot_updated->position << std::endl;
-          std::cerr << "Tile id: " << mem_slot_updated->tile_id << std::endl;
-          std::cerr << "Locked: " << mem_slot_updated->locked << std::endl;
-          std::cerr << "Updated: " << mem_slot_updated->updated << std::endl;
-          std::cerr << "Pointer valid: " << (mem_slot_updated->pointer != nullptr) << std::endl;
-        }
-
-        throw std::runtime_error("updated mem slot inconsistency");
-      }
-
-      updated_levels.insert(vt::QuadTree::get_depth_of_node(mem_slot_updated->tile_id));
-
-      // update_physical_texture_blockwise
-      size_t slots_per_texture = vt::VTConfig::get_instance().get_phys_tex_tile_width() *
-                                 vt::VTConfig::get_instance().get_phys_tex_tile_width();
-      size_t layer = mem_slot_updated->position / slots_per_texture;
-      size_t rel_slot_position = mem_slot_updated->position - layer * slots_per_texture;
-
-      size_t x_tile = rel_slot_position % vt::VTConfig::get_instance().get_phys_tex_tile_width();
-      size_t y_tile = rel_slot_position / vt::VTConfig::get_instance().get_phys_tex_tile_width();
-
-      scm::math::vec3ui origin = scm::math::vec3ui(
-              (uint32_t) x_tile * vt::VTConfig::get_instance().get_size_tile(),
-              (uint32_t) y_tile * vt::VTConfig::get_instance().get_size_tile(), (uint32_t) layer);
-      scm::math::vec3ui dimensions = scm::math::vec3ui(vt::VTConfig::get_instance().get_size_tile(),
-                                                       vt::VTConfig::get_instance().get_size_tile(), 1);
-
-      context_->update_sub_texture(vt_.physical_texture_, scm::gl::texture_region(origin, dimensions), 0,
-                                   get_tex_format(), mem_slot_updated->pointer);
-    }
-
-
-    for (auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared()) {
-      const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second);
-
-      if (mem_slot_cleared == nullptr) {
-        std::cerr << "Mem slot at " << position_slot_cleared.second << " is null" << std::endl;
-      }
-
-      updated_levels.insert(vt::QuadTree::get_depth_of_node(position_slot_cleared.first));
-    }
-
-    // update_index_texture
-    for (uint16_t updated_level : updated_levels) {
-      uint32_t size_index_texture = (uint32_t) vt::QuadTree::get_tiles_per_row(updated_level);
-
-      scm::math::vec3ui origin = scm::math::vec3ui(0, 0, 0);
-      scm::math::vec3ui dimensions = scm::math::vec3ui(size_index_texture, size_index_texture, 1);
-
-      context_->update_sub_texture(vt_.index_texture_hierarchy_.at(updated_level),
-                                   scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI,
-                                   cut->get_front()->get_index(updated_level));
-
-    }
-
-    cut_db->stop_reading_cut(cut_entry.first);
-  }
-
-  context_->sync();
-}
-
-void collect_vt_feedback() {
-  int32_t *feedback_lod = (int32_t *) context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
-  memcpy(vt_.feedback_lod_cpu_buffer_, feedback_lod, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
-  context_->sync();
-
-  context_->unmap_buffer(vt_.feedback_lod_storage_);
-  context_->clear_buffer_data(vt_.feedback_lod_storage_, scm::gl::FORMAT_R_32I, nullptr);
-
-  uint32_t *feedback_count = (uint32_t *) context_->map_buffer(vt_.feedback_count_storage_,
-                                                               scm::gl::ACCESS_READ_ONLY);
-  memcpy(vt_.feedback_count_cpu_buffer_, feedback_count, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
-  context_->sync();
-
-  vt_.cut_update_->feedback(vt_.feedback_lod_cpu_buffer_, vt_.feedback_count_cpu_buffer_);
-
-  context_->unmap_buffer(vt_.feedback_count_storage_);
-  context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);
-}
-
 void draw_resources() {
 
   if (sparse_resources_.size() > 0) { 
     if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
+
+      auto vis_xyz_shader_ = shader_manager_->get_program(VIS_XYZ_SHADER);
 
       context_->bind_program(vis_xyz_shader_);
       context_->set_blend_state(color_no_blending_state_);
@@ -865,87 +305,12 @@ void draw_resources() {
 
     // draw image_plane resources with vt system
     if (settings_.show_photos_ && !settings_.atlas_file_.empty()) {
-      context_->bind_program(vis_vt_shader_);
-
-      uint64_t color_cut_id =
-              (((uint64_t) vt_.texture_id_) << 32) | ((uint64_t) vt_.view_id_ << 16) | ((uint64_t) vt_.context_id_);
-      uint32_t max_depth_level_color =
-              (*vt::CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
-
-      scm::math::mat4f view_matrix       = camera_->get_view_matrix();
-      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-
-      vis_vt_shader_->uniform("model_view_matrix", view_matrix);
-      vis_vt_shader_->uniform("projection_matrix", projection_matrix);
-
-      vis_vt_shader_->uniform("physical_texture_dim", vt_.physical_texture_size_);
-      vis_vt_shader_->uniform("max_level", max_depth_level_color);
-      vis_vt_shader_->uniform("tile_size", scm::math::vec2((uint32_t) vt::VTConfig::get_instance().get_size_tile()));
-      vis_vt_shader_->uniform("tile_padding", scm::math::vec2((uint32_t) vt::VTConfig::get_instance().get_size_padding()));
-
-      vis_vt_shader_->uniform("enable_hierarchy", vt_.enable_hierarchy_);
-      vis_vt_shader_->uniform("toggle_visualization", vt_.toggle_visualization_);
-
-      for (uint32_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
-        std::string texture_string = "hierarchical_idx_textures";
-        vis_vt_shader_->uniform(texture_string, i, int((i)));
-      }
-
-      vis_vt_shader_->uniform("physical_texture_array", 17);
-
-      context_->set_viewport(
-              scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(render_width_, render_height_)));
-
-      context_->set_depth_stencil_state(depth_state_less_);
-      context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-      context_->set_blend_state(color_no_blending_state_);
-
-      context_->sync();
-
-      apply_vt_cut_update();
-
-      for (uint16_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
-        context_->bind_texture(vt_.index_texture_hierarchy_.at(i), vt_filter_nearest_, i);
-      }
-
-      context_->bind_texture(vt_.physical_texture_, vt_filter_linear_, 17);
-
-      context_->bind_storage_buffer(vt_.feedback_lod_storage_, 0);
-      context_->bind_storage_buffer(vt_.feedback_count_storage_, 1);
-
-      context_->apply();
-
-      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-        if (selection_.selected_model_ != -1) {
-          model_id = selection_.selected_model_;
-        }
-
-        auto t_res = image_plane_resources_[model_id];
-
-        if (t_res.num_primitives_ > 0) {
-          context_->bind_vertex_array(t_res.array_);
-          context_->apply();
-          if (selection_.selected_views_.empty()) {
-            context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, 0, t_res.num_primitives_);
-          }
-          else {
-            for (const auto view : selection_.selected_views_) {
-              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view * 3, 3);
-            }
-          }
-        }
-
-        if (selection_.selected_model_ != -1) {
-          break;
-        }
-      }
-      context_->sync();
-
-      collect_vt_feedback();
-
+        vt_system_->render(camera_, render_width_, render_height_, num_models_, selection_);
     }
 
     if (settings_.show_views_ || settings_.show_octrees_) {
+      auto vis_line_shader_ = shader_manager_->get_program(VIS_LINE_SHADER);
+
       context_->bind_program(vis_line_shader_);
 
       scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
@@ -1102,80 +467,6 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 
 }
 
-
-
-//checks for prefix AND removes it (+ whitespace) if it is found; 
-//returns true, if prefix was found; else false
-bool parse_prefix(std::string& in_string, std::string const& prefix) {
-
- uint32_t num_prefix_characters = prefix.size();
-
- bool prefix_found 
-  = (!(in_string.size() < num_prefix_characters ) 
-     && strncmp(in_string.c_str(), prefix.c_str(), num_prefix_characters ) == 0); 
-
-  if( prefix_found ) {
-    in_string = in_string.substr(num_prefix_characters);
-    in_string = strip_whitespace(in_string);
-  }
-
-  return prefix_found;
-}
-
-void resolve_relative_path(std::string& base_path, std::string& relative_path) {
-
-  while(parse_prefix(relative_path, "../")) {
-      size_t slash_position = base_path.find_last_of("/", base_path.size()-2);
-      base_path = base_path.substr(0, slash_position);
-  }
-}
-
-bool read_shader(std::string const& path_string, 
-                 std::string& shader_string, bool keep_optional_shader_code = false) {
-
-
-  if ( !boost::filesystem::exists( path_string ) ) {
-    std::cout << "WARNING: File " << path_string << "does not exist." <<  std::endl;
-    return false;
-  }
-
-  std::ifstream shader_source(path_string, std::ios::in);
-  std::string line_buffer;
-
-  std::string include_prefix("INCLUDE");
-
-  std::string optional_begin_prefix("OPTIONAL_BEGIN");
-  std::string optional_end_prefix("OPTIONAL_END");
-
-  std::size_t slash_position = path_string.find_last_of("/\\");
-  std::string const base_path =  path_string.substr(0,slash_position+1);
-
-  bool disregard_code = false;
-
-  while( std::getline(shader_source, line_buffer) ) {
-    line_buffer = strip_whitespace(line_buffer);
-
-    if( parse_prefix(line_buffer, include_prefix) ) {
-      if(!disregard_code || keep_optional_shader_code) {
-        std::string filename_string = line_buffer;
-        read_shader(base_path+filename_string, shader_string);
-      }
-    } else if (parse_prefix(line_buffer, optional_begin_prefix)) {
-      disregard_code = true;
-    } else if (parse_prefix(line_buffer, optional_end_prefix)) {
-      disregard_code = false;
-    } 
-    else {
-      if( (!disregard_code) || keep_optional_shader_code ) {
-        shader_string += line_buffer+"\n";
-      }
-    }
-  }
-
-  return true;
-}
-
-
 void create_brush_resource() {
 
   if (selection_.brush_.empty()) {
@@ -1275,6 +566,8 @@ void glut_display() {
     context_->clear_color_buffer(pass1_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
     context_->clear_depth_stencil_buffer(pass1_fbo_);
     context_->set_frame_buffer(pass1_fbo_);
+
+    auto vis_xyz_pass1_shader_ = shader_manager_->get_program(VIS_XYZ_PASS1_SHADER);
       
     context_->bind_program(vis_xyz_pass1_shader_);
     context_->set_blend_state(color_no_blending_state_);
@@ -1301,10 +594,10 @@ void glut_display() {
     context_->set_depth_stencil_state(depth_state_without_writing_);
     context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
 
-    auto selected_pass2_shading_program = vis_xyz_pass2_shader_;
+    auto selected_pass2_shading_program = shader_manager_->get_program(VIS_XYZ_PASS2_SHADER);
 
     if(settings_.enable_lighting_) {
-      selected_pass2_shading_program = vis_xyz_pass2_lighting_shader_;
+      selected_pass2_shading_program = shader_manager_->get_program(VIS_XYZ_PASS2_LIGHTING_SHADER);
     }
 
     context_->bind_program(selected_pass2_shading_program);
@@ -1326,10 +619,10 @@ void glut_display() {
     
     context_->set_depth_stencil_state(depth_state_disable_);
 
-    auto selected_pass3_shading_program = vis_xyz_pass3_shader_;
+    auto selected_pass3_shading_program = shader_manager_->get_program(VIS_XYZ_PASS3_SHADER);
 
     if(settings_.enable_lighting_) {
-      selected_pass3_shading_program = vis_xyz_pass3_lighting_shader_;
+      selected_pass3_shading_program = shader_manager_->get_program(VIS_XYZ_PASS3_LIGHTING_SHADER);
     }
 
     context_->bind_program(selected_pass3_shading_program);
@@ -1361,10 +654,10 @@ void glut_display() {
     context_->clear_depth_stencil_buffer(fbo_);
     context_->set_frame_buffer(fbo_);
 
-    auto selected_single_pass_shading_program = vis_xyz_shader_;
+    auto selected_single_pass_shading_program = shader_manager_->get_program(VIS_XYZ_SHADER);
 
     if(settings_.enable_lighting_) {
-      selected_single_pass_shading_program = vis_xyz_lighting_shader_;
+      selected_single_pass_shading_program = shader_manager_->get_program(VIS_XYZ_LIGHTING_SHADER);
     }
 
     context_->bind_program(selected_single_pass_shading_program);
@@ -1382,8 +675,8 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, selected_single_pass_shading_program);
 
-    context_->bind_program(vis_xyz_shader_);
-    draw_brush(vis_xyz_shader_);
+    context_->bind_program(shader_manager_->get_program(VIS_XYZ_SHADER));
+    draw_brush(shader_manager_->get_program(VIS_XYZ_SHADER));
     draw_resources();
 
 
@@ -1396,7 +689,8 @@ void glut_display() {
   context_->clear_default_color_buffer();
   context_->set_default_frame_buffer();
   context_->set_depth_stencil_state(depth_state_disable_);
-  
+
+  auto vis_quad_shader_ = shader_manager_->get_program(VIS_QUAD_SHADER);
   context_->bind_program(vis_quad_shader_);
   
   context_->bind_texture(fbo_color_buffer_, filter_linear_, 0);
@@ -1489,12 +783,12 @@ void brush() {
 
   if (hit) {
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
-/*    selection_.brush_.push_back(
+    selection_.brush_.push_back(
       xyz{
         intersection.position_ + intersection.normal_ * settings_.aux_point_size_,
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
         settings_.aux_point_size_,
-        intersection.normal_});*/
+        intersection.normal_});
 
     if (selection_.selected_model_ != -1) {
       if (settings_.octrees_.size() > selection_.selected_model_) {
@@ -1567,11 +861,6 @@ void glut_resize(int32_t w, int32_t h) {
   context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
 */
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
-
-  gui_.ortho_matrix_ = 
-    scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
-    0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
-
 }
 
 
@@ -1652,24 +941,6 @@ void glut_motion(int32_t x, int32_t y) {
   else {
     brush();
   }
-}
-
-float get_atlas_scale_factor() {
-  auto atlas = new vt::pre::AtlasFile(settings_.atlas_file_.c_str());
-  uint64_t image_width    = atlas->getImageWidth();
-  uint64_t image_height   = atlas->getImageHeight();
-
-  // tile's width and height without padding
-  uint64_t tile_inner_width  = atlas->getInnerTileWidth();
-  uint64_t tile_inner_height = atlas->getInnerTileHeight();
-
-  // Quadtree depth counter, ranges from 0 to depth-1
-  uint64_t depth = atlas->getDepth();
-
-  double factor_u  = (double) image_width  / (tile_inner_width  * std::pow(2, depth-1));
-  double factor_v  = (double) image_height / (tile_inner_height * std::pow(2, depth-1));
-
-  return std::max(factor_u, factor_v);
 }
 
 
@@ -1821,7 +1092,7 @@ void create_aux_resources() {
           float atlas_height = aux.get_atlas().atlas_height_;
 
           // scale factor from image space to vt atlas space
-          float factor = get_atlas_scale_factor();
+          float factor = vt_system_->get_atlas_scale_factor();
 
           // positions in vt atlas space coordinate system
           float tile_height  = (float) atlas_tile.width_  / atlas_width  * factor;
@@ -1879,6 +1150,8 @@ void create_aux_resources() {
         image_plane_resources_[model_id] = tri_res;
       }
 
+      vt_system_->set_image_resources(image_plane_resources_);
+
       //init line buffers
       resource line_res;
       line_res.buffer_.reset();
@@ -1934,27 +1207,6 @@ void create_aux_resources() {
 
 }
 
-
-
-struct Window {
-  Window() {
-    _mouse_button_state = MouseButtonState::IDLE;
-  }
-
-  unsigned int _width;
-  unsigned int _height;
-
-  GLFWwindow *_glfw_window;
-
-  enum MouseButtonState {
-    LEFT = 0,
-    WHEEL = 1,
-    RIGHT = 2,
-    IDLE = 3
-  };
-
-  MouseButtonState _mouse_button_state;
-};
 
 std::list<Window *> _windows;
 Window *_current_context = nullptr;
@@ -2181,9 +1433,6 @@ void init_render_states() {
 
   filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
-
-  vt_filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR , scm::gl::WRAP_CLAMP_TO_EDGE);
-  vt_filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
 }
 
 
@@ -2209,72 +1458,24 @@ void init_camera() {
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
   screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
-
-  gui_.ortho_matrix_ = scm::math::make_ortho_matrix(0.0f, static_cast<float>(settings_.width_),
-                                                    0.0f, static_cast<float>(settings_.height_), -1.0f, 1.0f);
 }
 
 
-void init_vt_database() {
-  vt::VTConfig::CONFIG_PATH = settings_.atlas_file_.substr(0, settings_.atlas_file_.size() - 5) + "ini";
+void init_shaders() {
+    shader_manager_ = std::make_shared<shader_manager>(device_);
 
-  vt::VTConfig::get_instance().define_size_physical_texture(128, 8192);
-  vt_.texture_id_ = vt::CutDatabase::get_instance().register_dataset(settings_.atlas_file_);
-  vt_.context_id_ = vt::CutDatabase::get_instance().register_context();
-  vt_.view_id_    = vt::CutDatabase::get_instance().register_view();
-  vt_.cut_id_     = vt::CutDatabase::get_instance().register_cut(vt_.texture_id_, vt_.view_id_, vt_.context_id_);
-  vt_.cut_update_ = &vt::CutUpdate::get_instance();
-  vt_.cut_update_->start();
-}
+    shader_manager_->add(VIS_QUAD_SHADER     , std::string("/vis/vis_quad.glslv")        , "/vis/vis_quad.glslf"                                 );
+    shader_manager_->add(VIS_LINE_SHADER     , std::string("/vis/vis_line.glslv")        , "/vis/vis_line.glslf"                                 );
+    shader_manager_->add(VIS_TRIANGLE_SHADER , std::string("/vis/vis_triangle.glslv")    , "/vis/vis_triangle.glslf"                             );
+    shader_manager_->add(VIS_XYZ_SHADER      , std::string("/vis/vis_xyz.glslv")         , "/vis/vis_xyz.glslf"      , "/vis/vis_xyz.glslg"      );
+    shader_manager_->add(VIS_XYZ_PASS1_SHADER, std::string("/vis/vis_xyz_pass1.glslv")   , "/vis/vis_xyz_pass1.glslf", "/vis/vis_xyz_pass1.glslg");
+    shader_manager_->add(VIS_XYZ_PASS2_SHADER, std::string("/vis/vis_xyz_pass2.glslv")   , "/vis/vis_xyz_pass2.glslf", "/vis/vis_xyz_pass2.glslg");
+    shader_manager_->add(VIS_XYZ_PASS3_SHADER, std::string("/vis/vis_xyz_pass3.glslv")   , "/vis/vis_xyz_pass3.glslf"                            );
+    shader_manager_->add(VIS_VT_SHADER       , std::string("/vt/virtual_texturing.glslv"), "/vt/virtual_texturing_hierarchical.glslf"            );
 
-
-void init_vt_system() {
-    vt_.enable_hierarchy_     = true;
-    vt_.toggle_visualization_ = 0;
-
-    // add_data
-    uint16_t depth = (uint16_t) ((*vt::CutDatabase::get_instance().get_cut_map())[vt_.cut_id_]->get_atlas()->getDepth());
-    uint16_t level = 0;
-
-    while (level < depth) {
-        uint32_t size_index_texture = (uint32_t) vt::QuadTree::get_tiles_per_row(level);
-
-        auto index_texture_level_ptr = device_->create_texture_2d(
-                scm::math::vec2ui(size_index_texture, size_index_texture), scm::gl::FORMAT_RGBA_8UI);
-
-        device_->main_context()->clear_image_data(index_texture_level_ptr, 0, scm::gl::FORMAT_RGBA_8UI, 0);
-        vt_.index_texture_hierarchy_.emplace_back(index_texture_level_ptr);
-
-        level++;
-    }
-
-    // add_context
-    context_ = device_->main_context();
-    vt_.physical_texture_size_ = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_tile_width(),
-                                                   vt::VTConfig::get_instance().get_phys_tex_tile_width());
-
-    auto physical_texture_size = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_px_width(),
-                                                   vt::VTConfig::get_instance().get_phys_tex_px_width());
-
-    vt_.physical_texture_ = device_->create_texture_2d(physical_texture_size, get_tex_format(), 1,
-                                                       vt::VTConfig::get_instance().get_phys_tex_layers() + 1);
-
-    vt_.size_feedback_ = vt::VTConfig::get_instance().get_phys_tex_tile_width() *
-                         vt::VTConfig::get_instance().get_phys_tex_tile_width() *
-                         vt::VTConfig::get_instance().get_phys_tex_layers();
-
-    vt_.feedback_lod_storage_   = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY,
-                                                         vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
-    vt_.feedback_count_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY,
-                                                         vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
-
-    vt_.feedback_lod_cpu_buffer_   = new int32_t[vt_.size_feedback_];
-    vt_.feedback_count_cpu_buffer_ = new uint32_t[vt_.size_feedback_];
-
-    for (size_t i = 0; i < vt_.size_feedback_; ++i) {
-        vt_.feedback_lod_cpu_buffer_[i] = 0;
-        vt_.feedback_count_cpu_buffer_[i] = 0;
-    }
+    shader_manager_->add(VIS_XYZ_LIGHTING_SHADER      , true, "/vis/vis_xyz.glslv"         , "/vis/vis_xyz.glslf"      , "/vis/vis_xyz.glslg"      );
+    shader_manager_->add(VIS_XYZ_PASS2_LIGHTING_SHADER, true, "/vis/vis_xyz_pass2.glslv"   , "/vis/vis_xyz_pass2.glslf", "/vis/vis_xyz_pass2.glslg");
+    shader_manager_->add(VIS_XYZ_PASS3_LIGHTING_SHADER, true, "/vis/vis_xyz_pass3.glslv"   , "/vis/vis_xyz_pass3.glslf"                            );
 }
 
 
@@ -2292,225 +1493,7 @@ void init() {
     std::cout << "error creating context" << std::endl;
   }
 
-  try
-  {
-    std::string vis_quad_vs_source;
-    std::string vis_quad_fs_source;
-    std::string vis_line_vs_source;
-    std::string vis_line_fs_source;
-    
-    std::string vis_triangle_vs_source;
-    std::string vis_triangle_fs_source;
-
-    std::string vis_vt_vs_source;
-    std::string vis_vt_fs_source;
-
-    std::string vis_xyz_vs_source;
-    std::string vis_xyz_gs_source;
-    std::string vis_xyz_fs_source;
-    
-    std::string vis_xyz_pass1_vs_source;
-    std::string vis_xyz_pass1_gs_source;
-    std::string vis_xyz_pass1_fs_source;
-    std::string vis_xyz_pass2_vs_source;
-    std::string vis_xyz_pass2_gs_source;
-    std::string vis_xyz_pass2_fs_source;
-    std::string vis_xyz_pass3_vs_source;
-    std::string vis_xyz_pass3_fs_source;
-
-
-    std::string vis_xyz_qz_vs_source;
-    std::string vis_xyz_qz_pass1_vs_source;
-    std::string vis_xyz_qz_pass2_vs_source;
-
-    /* parsed with optional lighting code */
-    std::string vis_xyz_vs_lighting_source;
-    std::string vis_xyz_gs_lighting_source;
-    std::string vis_xyz_fs_lighting_source;
-    std::string vis_xyz_pass2_vs_lighting_source;
-    std::string vis_xyz_pass2_gs_lighting_source;
-    std::string vis_xyz_pass2_fs_lighting_source;
-    std::string vis_xyz_pass3_vs_lighting_source;
-    std::string vis_xyz_pass3_fs_lighting_source;
-
-    std::string shader_root_path = LAMURE_SHADERS_DIR;
-
-    if (!read_shader(shader_root_path + "/vis/vis_quad.glslv", vis_quad_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_triangle.glslv", vis_triangle_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_triangle.glslf", vis_triangle_fs_source)
-
-      || !read_shader(shader_root_path + "/vt/virtual_texturing.glslv", vis_vt_vs_source)
-      || !read_shader(shader_root_path + "/vt/virtual_texturing_hierarchical.glslf", vis_vt_fs_source)
-
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_qz.glslv", vis_xyz_qz_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass1.glslv", vis_xyz_qz_pass1_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_qz_pass2.glslv", vis_xyz_qz_pass2_vs_source)
-
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslv", vis_xyz_pass2_vs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslg", vis_xyz_pass2_gs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass2.glslf", vis_xyz_pass2_fs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_lighting_source, true)
-      || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslf", vis_xyz_pass3_fs_lighting_source, true)
-      ) {
-      std::cout << "error reading shader files" << std::endl;
-      exit(1);
-    }
-
-    vis_quad_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_quad_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_quad_fs_source)));
-    if (!vis_quad_shader_) {
-      std::cout << "error creating shader vis_quad_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_line_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_line_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_line_fs_source)));
-    if (!vis_line_shader_) {
-      std::cout << "error creating shader vis_line_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_triangle_shader_ = device_->create_program(
-            boost::assign::list_of
-                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_triangle_vs_source))
-                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_triangle_fs_source)));
-    if (!vis_triangle_shader_) {
-      std::cout << "error creating shader vis_triangle_shader_ program" << std::endl;
-      std::exit(1);
-    }
-
-    vis_vt_shader_ = device_->create_program(
-            boost::assign::list_of
-                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_vt_vs_source))
-                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_vt_fs_source)));
-    if (!vis_vt_shader_) {
-      std::cout << "error creating shader vis_vt_shader_ program" << std::endl;
-      std::exit(1);
-    }
-
-    vis_xyz_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
-    if (!vis_xyz_shader_) {
-      //scm::err() << scm::log::error << scm::log::end;
-      std::cout << "error creating shader vis_xyz_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_xyz_pass1_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass1_vs_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass1_gs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
-    if (!vis_xyz_pass1_shader_) {
-      std::cout << "error creating vis_xyz_pass1_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_xyz_pass2_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
-    if (!vis_xyz_pass2_shader_) {
-      std::cout << "error creating vis_xyz_pass2_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_xyz_pass3_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_source)));
-    if (!vis_xyz_pass3_shader_) {
-      std::cout << "error creating vis_xyz_pass3_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_xyz_lighting_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_vs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_gs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_lighting_source)));
-    if (!vis_xyz_lighting_shader_) {
-      std::cout << "error creating vis_xyz_lighting_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_xyz_pass2_lighting_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass2_vs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_GEOMETRY_SHADER, vis_xyz_pass2_gs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_lighting_source)));
-    if (!vis_xyz_pass2_lighting_shader_) {
-      std::cout << "error creating vis_xyz_pass2_lighting_shader_ program" << std::endl;
-      exit(1);
-    }
-
-    vis_xyz_pass3_lighting_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_pass3_vs_lighting_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass3_fs_lighting_source)));
-    if (!vis_xyz_pass3_lighting_shader_) {
-      std::cout << "error creating vis_xyz_pass3_lighting_shader_ program" << std::endl;
-      exit(1);
-    }
-
-/*
-    vis_xyz_qz_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
-    if (!vis_xyz_qz_shader_) {
-      std::cout << "error vis_xyz_qz_shader_ program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_qz_pass1_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass1_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
-    if (!vis_xyz_qz_pass1_shader_) {
-      std::cout << "error vis_xyz_qz_pass1_shader program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_qz_pass2_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass2_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
-    if (!vis_xyz_qz_pass2_shader_) {
-      std::cout << "error creating vis_xyz_qz_pass2_shader_ program" << std::endl;
-      return 1;
-    }
-*/
-  }
-  catch (std::exception& e)
-  {
-      std::cout << e.what() << std::endl;
-  }
+  init_shaders();
 
 
   if (settings_.pvs_ != "") {
@@ -2525,290 +1508,28 @@ void init() {
     std::cout << "use pvs: " << (int)pvs->is_activated() << std::endl;
   }
 
+  if (!settings_.atlas_file_.empty()) {
+    vt_system_ = new vt_system(device_, context_, settings_.atlas_file_);
+    vt_system_->set_shader_program(shader_manager_->get_program(VIS_VT_SHADER));
+  }
 
   create_aux_resources();
   create_framebuffers();
 
   init_render_states();
 
-  if (!settings_.atlas_file_.empty()) {
-    init_vt_database();
-    init_vt_system();
-  }
+  gui_ = std::make_shared<gui>();
 
   init_camera();
-
 
   if (settings_.background_image_ != "") {
     //std::cout << "background image: " << settings_.background_image_ << std::endl;
     scm::gl::texture_loader tl;
     bg_texture_ = tl.load_texture_2d(*device_, settings_.background_image_, true, false);
   }
-
-
-
-}
-
-void gui_view_settings(){
-    ImGui::SetNextWindowPos(ImVec2(20, 390));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 180.0f));
-    ImGui::Begin("View Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
-    if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
-    }
-    if (ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
-    }
-    if (ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f)) {
-      input_.gui_lock_ = true;
-    }
-    if (ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
-    }
-
-    ImGui::End();
 }
 
 
-void gui_lod_settings(){
-
-    ImGui::SetNextWindowPos(ImVec2(20, 590));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 210.0f));
-
-    ImGui::Begin("LOD Settings", &gui_.lod_settings_, ImGuiWindowFlags_MenuBar);
-    
-    ImGui::Checkbox("Lod Update", &settings_.lod_update_);
-
-    if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f)) {
-      input_.gui_lock_ = true;
-    }
-    if (ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f)) {
-      input_.gui_lock_ = true;
-    }
-    ImGui::Checkbox("Use PVS", &settings_.use_pvs_);
-    
-    lamure::pvs::pvs_database::get_instance()->activate(settings_.use_pvs_);
-
-    
-    ImGui::Checkbox("PVS Culling", &settings_.pvs_culling_);
-    
-
-    ImGui::End();
-}
-
-void gui_visual_settings(){
-
-    uint32_t num_attributes = 5 + data_provenance_.get_size_in_bytes()/sizeof(float);
-
-    const char* vis_values[] = {
-      "Color", "Normals", "Accuracy", 
-      "Radius Deviation", "Output Sensitivity", 
-      "Provenance 1", "Provenance 2", "Provenance 3", 
-      "Provenance 4", "Provenance 5", "Provenance 6", "Provenance 7" };
-    static int it = settings_.vis_;
-
-    ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 20));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 305.0f));
-    ImGui::Begin("Visual Settings", &gui_.visual_settings_, ImGuiWindowFlags_MenuBar);
-    
-    uint32_t num_vis_entries = (5 + data_provenance_.get_size_in_bytes()/sizeof(float));
-    ImGui::Combo("Vis", &it, vis_values, num_vis_entries);
-    settings_.vis_ = it;
-
-      if(settings_.vis_ > num_vis_entries) {
-        settings_.vis_ = 0;
-      }
-      settings_.show_normals_ = (settings_.vis_ == 1);
-      settings_.show_accuracy_ = (settings_.vis_ == 2);
-      settings_.show_radius_deviation_ = (settings_.vis_ == 3);
-      settings_.show_output_sensitivity_ = (settings_.vis_ == 4);
-      if (settings_.vis_ > 4) {
-        settings_.channel_ = (settings_.vis_-4);
-      }
-      else {
-        settings_.channel_ = 0;
-      }
-      
-
-    ImGui::Checkbox("Splatting", &settings_.splatting_);
-    ImGui::Checkbox("Gamma Correction", &settings_.gamma_correction_);
-
-    ImGui::Checkbox("Enable Lighting", &settings_.enable_lighting_);
-    ImGui::Checkbox("Use Material Color", &settings_.use_material_color_);
-    
-    static ImVec4 color_mat_diff = ImColor(0.6f, 0.6f, 0.6f, 1.0f);
-    ImGui::Text("Material Diffuse");
-    ImGui::ColorEdit3("Diffuse", (float*)&color_mat_diff, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
-    settings_.material_diffuse_.x = color_mat_diff.x;
-    settings_.material_diffuse_.y = color_mat_diff.y;
-    settings_.material_diffuse_.z = color_mat_diff.z;
-/*
-    static ImVec4 color_mat_spec = ImColor(0.4f, 0.4f, 0.4f, 1.0f);
-    ImGui::Text("Material Specular");
-    ImGui::ColorEdit3("Specular", (float*)&color_mat_spec, ImGuiColorEditFlags_Float);
-    settings_.material_specular_.x = color_mat_spec.x;
-    settings_.material_specular_.y = color_mat_spec.y;
-    settings_.material_specular_.z = color_mat_spec.z;
-
-    static ImVec4 color_ambient_light = ImColor(0.1f, 0.1f, 0.1f, 1.0f);
-    ImGui::Text("Ambient Light Color");
-    ImGui::ColorEdit3("Ambient", (float*)&color_ambient_light, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
-    settings_.ambient_light_color_.x = color_ambient_light.x;
-    settings_.ambient_light_color_.y = color_ambient_light.y;
-    settings_.ambient_light_color_.z = color_ambient_light.z;
-
-    static ImVec4 color_point_light = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
-    ImGui::Text("Point Light Color");
-    ImGui::ColorEdit3("Point", (float*)&color_point_light, ImGuiColorEditFlags_Float);
-    settings_.point_light_color_.x = color_point_light.x;
-    settings_.point_light_color_.y = color_point_light.y;
-    settings_.point_light_color_.z = color_point_light.z;
-*/
-    static ImVec4 background_color = ImColor(0.5f, 0.5f, 0.5f, 1.0f);
-    ImGui::Text("Background Color");
-    ImGui::ColorEdit3("Background", (float*)&background_color, ImGuiColorEditFlags_Float);
-    settings_.background_color_.x = background_color.x;
-    settings_.background_color_.y = background_color.y;
-    settings_.background_color_.z = background_color.z;
-
-    ImGui::End();
-}
-
-
-void gui_provenance_settings(){
-    
-    ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 345));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 450.0f));
-    ImGui::Begin("Provenance Settings", &gui_.provenance_settings_, ImGuiWindowFlags_MenuBar);
-
-    if (ImGui::SliderFloat("AUX Point Size", &settings_.aux_point_size_, 0.1f, 10.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
-    }
-    if (ImGui::SliderFloat("AUX Point Scale", &settings_.aux_point_scale_, 0.1f, 2.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
-    }
-    if (ImGui::SliderFloat("AUX Focal Length", &settings_.aux_focal_length_, 0.1f, 2.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
-    }
-
-
-    ImGui::Checkbox("Show Sparse", &settings_.show_sparse_);
-    if (settings_.show_sparse_) {
-        settings_.enable_lighting_ = false;
-        settings_.splatting_ = false;
-    }
-
-    ImGui::Checkbox("Show Views", &settings_.show_views_);
-    if (settings_.show_views_) {
-      //settings_.enable_lighting_ = false;
-      settings_.splatting_ = false;
-    }
-
-    ImGui::Checkbox("Show Photos", &settings_.show_photos_);
-    if (settings_.show_views_) {
-      //settings_.enable_lighting_ = false;
-      settings_.splatting_ = false;
-    }
-
-    ImGui::Checkbox("Show Octrees", &settings_.show_octrees_);
-    if (settings_.show_octrees_) {
-        //settings_.enable_lighting_ = false;
-        settings_.splatting_ = false;
-    }
-
-    ImGui::Checkbox("Heatmap", &settings_.heatmap_);
-    
-
-    ImGui::InputFloat("Heatmap MIN", &settings_.heatmap_min_);
-    ImGui::InputFloat("Heatmap MAX", &settings_.heatmap_max_);
-
-    static ImVec4 color_heatmap_min = ImColor(68.0f/255.0f, 0.0f, 84.0f/255.0f, 1.0f);
-    ImGui::Text("Heatmap Color Min");
-    ImGui::ColorEdit3("Heatmap Min", (float*)&color_heatmap_min, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
-    settings_.heatmap_color_min_.x = color_heatmap_min.x;
-    settings_.heatmap_color_min_.y = color_heatmap_min.y;
-    settings_.heatmap_color_min_.z = color_heatmap_min.z;
-
-    static ImVec4 color_heatmap_max = ImColor(251.f/255.f, 231.f/255.f, 35.f/255.f, 1.0f);
-    ImGui::Text("Heatmap Color Max");
-    ImGui::ColorEdit3("Heatmap Max", (float*)&color_heatmap_max, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
-    settings_.heatmap_color_max_.x = color_heatmap_max.x;
-    settings_.heatmap_color_max_.y = color_heatmap_max.y;
-    settings_.heatmap_color_max_.z = color_heatmap_max.z;
-
-
-    ImGui::End();
-}
-
-
-void gui_status_screen(){
-    static bool status_screen = false;
-    static int dataset = 0;
-
-    char* vis_values[num_models_+1] = { };
-    for (int i=0; i<num_models_+1; i++) {
-        char buffer [32];
-        snprintf(buffer, sizeof(buffer), "%s%d", "Dataset ", i);
-        if(i==num_models_){
-           snprintf(buffer, sizeof(buffer), "%s", "All");
-        }
-        vis_values[i] = strdup(buffer);
-    }
-
-    ImGui::SetNextWindowPos(ImVec2(20, 20));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 350.0f));
-    ImGui::Begin("lamure_vis_gui", &status_screen, ImGuiWindowFlags_MenuBar);
-    ImGui::Text("fps %d", (int32_t)fps_);
-
-    double f = (rendered_splats_ / 1000000.0);
-    
-    std::stringstream stream;
-    stream << std::setprecision(2) << f;
-    std::string s = stream.str();
-
-    ImGui::Text("# points %s mio.", s.c_str());
-    ImGui::Text("# nodes %d", (uint64_t)rendered_nodes_);
-    ImGui::Text("# models %d", num_models_);
-    
-    ImGui::Combo("Dataset", &dataset, vis_values, IM_ARRAYSIZE(vis_values));
-  
-    if(dataset == (sizeof vis_values / sizeof vis_values[0]) - 1){
-      selection_.selected_model_ = -1;
-    }else{
-      selection_.selected_model_ = dataset;
-    }
-
-    ImGui::Checkbox("View Settings", &gui_.view_settings_);
-    ImGui::Checkbox("LOD Settings", &gui_.lod_settings_);
-    ImGui::Checkbox("Visual Settings", &gui_.visual_settings_);
-    if (settings_.provenance_) {
-      ImGui::Checkbox("Provenance Settings", &gui_.provenance_settings_);
-    }
-    ImGui::Checkbox("Brush", &input_.brush_mode_);
-    if (ImGui::Checkbox("Clear Brush", &input_.brush_clear_)) {
-      selection_.brush_.clear();
-      selection_.selected_views_.clear();
-      input_.brush_clear_ = false;
-    }
-    
-    if (gui_.view_settings_){
-        gui_view_settings();
-    }
-      
-    if (gui_.lod_settings_){
-        gui_lod_settings();
-    }
-
-    if (gui_.visual_settings_){
-        gui_visual_settings();
-    }
-
-    if (settings_.provenance_ && gui_.provenance_settings_){
-        gui_provenance_settings();
-    }
-
-    ImGui::End();
-}
 
 int main(int argc, char *argv[])
 {
@@ -2826,7 +1547,7 @@ int main(int argc, char *argv[])
 
   putenv((char *)"__GL_SYNC_TO_VBLANK=0");
 
-  load_settings(vis_file, settings_);
+  settings_.load(vis_file);
 
   settings_.vis_ = settings_.show_normals_ ? 1
     : settings_.show_accuracy_ ? 2
@@ -2894,7 +1615,7 @@ int main(int argc, char *argv[])
 
         if (settings_.gui_) {
           ImGui_ImplGlfwGL3_NewFrame();
-          gui_status_screen();
+          gui_->status_screen(settings_, input_, selection_, data_provenance_, num_models_, fps_, rendered_splats_, rendered_nodes_);
           ImGui::Render();
         }
 
