@@ -157,8 +157,8 @@ struct input {
 input input_;
 
 struct gui {
+  bool selection_settings_ {false};
   bool view_settings_ {false};
-  bool lod_settings_ {false};
   bool visual_settings_ {false};
   bool provenance_settings_ {false};
   scm::math::mat4f ortho_matrix_;
@@ -185,6 +185,7 @@ struct selection {
   int32_t selected_model_ = -1;
   std::vector<xyz> brush_;
   std::set<uint32_t> selected_views_;
+  int64_t brush_end_{0};
 };
 
 selection selection_;
@@ -211,6 +212,7 @@ struct settings {
   int32_t gui_ {1};
   int32_t travel_ {2};
   float travel_speed_ {20.5f};
+  int32_t max_brush_size_{1024};
   bool lod_update_ {1};
   bool use_pvs_ {1};
   bool pvs_culling_ {0};
@@ -650,8 +652,8 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
 
 void draw_brush(scm::gl::program_ptr shader) {
-  if (brush_resource_.num_primitives_ > 0) {
-
+  //if (brush_resource_.num_primitives_ > 0) {
+  if (selection_.brush_end_ > 0) {
     set_uniforms(shader);
 
     scm::math::mat4d model_matrix = scm::math::mat4d::identity();
@@ -680,7 +682,8 @@ void draw_brush(scm::gl::program_ptr shader) {
 
     context_->bind_vertex_array(brush_resource_.array_);
     context_->apply();
-    context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, brush_resource_.num_primitives_);
+    context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, selection_.brush_end_);
+    
   }
 
 }
@@ -930,7 +933,7 @@ void draw_resources() {
           }
           else {
             for (const auto view : selection_.selected_views_) {
-              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view * 3, 3);
+              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view * 6, 6);
             }
           }
         }
@@ -1176,35 +1179,6 @@ bool read_shader(std::string const& path_string,
 }
 
 
-void create_brush_resource() {
-
-  if (selection_.brush_.empty()) {
-    brush_resource_.num_primitives_ = 0;
-    return;
-  }
-  if (brush_resource_.num_primitives_ == selection_.brush_.size()) {
-    return;
-  }
-
-  brush_resource_.num_primitives_ = selection_.brush_.size();
-  
-  brush_resource_.buffer_.reset();
-  brush_resource_.array_.reset(); 
-
-  brush_resource_.buffer_ = device_->create_buffer(
-    scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * brush_resource_.num_primitives_, &selection_.brush_[0]);
-  brush_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
-    (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
-    (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
-    (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
-    boost::assign::list_of(brush_resource_.buffer_));
-
-}
-
 void glut_display() {
   if (rendering_) {
     return;
@@ -1262,9 +1236,7 @@ void glut_display() {
     }
   }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
- 
-  
-  create_brush_resource();
+
 
   context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
 
@@ -1442,8 +1414,8 @@ void brush() {
   }
 
   if (input_.mouse_state_.rb_down_) {
-    selection_.brush_.clear();
-    selection_.selected_views_.clear();
+    //selection_.brush_.clear();
+    //selection_.selected_views_.clear();
     return;
   }
 
@@ -1488,13 +1460,24 @@ void brush() {
   }
 
   if (hit) {
+    selection_.brush_end_ = ((selection_.brush_end_+1) % settings_.max_brush_size_);
+    //if (selection_.brush_end_ >= settings_.max_brush_size_) {
+    //  return;
+    //}
+    
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
-/*    selection_.brush_.push_back(
+    
+    selection_.brush_[selection_.brush_end_] = 
       xyz{
         intersection.position_ + intersection.normal_ * settings_.aux_point_size_,
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
         settings_.aux_point_size_,
-        intersection.normal_});*/
+        intersection.normal_};
+
+    char* brush_buffer = (char*)device_->main_context()->map_buffer(brush_resource_.buffer_, scm::gl::ACCESS_READ_WRITE);
+    memcpy(&brush_buffer[0], (char*)&selection_.brush_[0], sizeof(xyz)*settings_.max_brush_size_);
+    device_->main_context()->unmap_buffer(brush_resource_.buffer_);
+
 
     if (selection_.selected_model_ != -1) {
       if (settings_.octrees_.size() > selection_.selected_model_) {
@@ -1502,7 +1485,7 @@ void brush() {
           uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
           if (selected_node_id > 0) {
             const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
-            std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
+            //std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
             //std::cout << "selected_node_id " << selected_node_id << std::endl;
             selection_.selected_views_.insert(imgs.begin(), imgs.end());
           }
@@ -2529,6 +2512,23 @@ void init() {
   create_aux_resources();
   create_framebuffers();
 
+  brush_resource_.buffer_.reset();
+  brush_resource_.array_.reset(); 
+
+  selection_.brush_.resize(settings_.max_brush_size_);
+
+  brush_resource_.buffer_ = device_->create_buffer(
+    scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * settings_.max_brush_size_, &selection_.brush_[0]);
+  brush_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
+    (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
+    (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
+    (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
+    (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
+    boost::assign::list_of(brush_resource_.buffer_));
+
   init_render_states();
 
   if (!settings_.atlas_file_.empty()) {
@@ -2549,33 +2549,63 @@ void init() {
 
 }
 
-void gui_view_settings(){
-    ImGui::SetNextWindowPos(ImVec2(20, 390));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 180.0f));
-    ImGui::Begin("View Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
-    if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
+
+void gui_selection_settings(){
+
+    ImGui::SetNextWindowPos(ImVec2(20, 305));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 210.0f));
+
+    ImGui::Begin("Selection", &gui_.selection_settings_, ImGuiWindowFlags_MenuBar);
+
+    char* model_values[num_models_+1] = { };
+    for (int i=0; i<num_models_+1; i++) {
+        char buffer [32];
+        snprintf(buffer, sizeof(buffer), "%s%d", "Dataset ", i);
+        if(i==num_models_){
+           snprintf(buffer, sizeof(buffer), "%s", "All");
+        }
+        model_values[i] = strdup(buffer);
     }
-    if (ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
+
+    static int dataset = 0;
+    ImGui::Combo("Dataset", &dataset, model_values, IM_ARRAYSIZE(model_values));
+    
+    if(dataset == (sizeof model_values / sizeof model_values[0]) - 1){
+      selection_.selected_model_ = -1;
+    }else{
+      selection_.selected_model_ = dataset;
     }
-    if (ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f)) {
-      input_.gui_lock_ = true;
+
+    ImGui::Checkbox("Brush", &input_.brush_mode_);
+    if (ImGui::Checkbox("Clear Brush", &input_.brush_clear_)) {
+      selection_.selected_views_.clear();
+      selection_.brush_end_ = 0;
+      input_.brush_clear_ = false;
     }
-    if (ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f)) {
-      input_.gui_lock_ = true;
-    }
+
+    ImGui::Text("Selection: %d", (int32_t)selection_.brush_end_);
+    ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
 
     ImGui::End();
 }
 
 
-void gui_lod_settings(){
-
-    ImGui::SetNextWindowPos(ImVec2(20, 590));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 210.0f));
-
-    ImGui::Begin("LOD Settings", &gui_.lod_settings_, ImGuiWindowFlags_MenuBar);
+void gui_view_settings(){
+    ImGui::SetNextWindowPos(ImVec2(20, 535));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 260.0f));
+    ImGui::Begin("View / LOD Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
+    //if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
+    //  input_.gui_lock_ = true;
+    //}
+    //if (ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f)) {
+    //  input_.gui_lock_ = true;
+    //}
+    if (ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f)) {
+      input_.gui_lock_ = true;
+    }
+    if (ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f)) {
+      input_.gui_lock_ = true;
+    }
     
     ImGui::Checkbox("Lod Update", &settings_.lod_update_);
 
@@ -2595,6 +2625,7 @@ void gui_lod_settings(){
 
     ImGui::End();
 }
+
 
 void gui_visual_settings(){
 
@@ -2743,20 +2774,9 @@ void gui_provenance_settings(){
 
 void gui_status_screen(){
     static bool status_screen = false;
-    static int dataset = 0;
-
-    char* vis_values[num_models_+1] = { };
-    for (int i=0; i<num_models_+1; i++) {
-        char buffer [32];
-        snprintf(buffer, sizeof(buffer), "%s%d", "Dataset ", i);
-        if(i==num_models_){
-           snprintf(buffer, sizeof(buffer), "%s", "All");
-        }
-        vis_values[i] = strdup(buffer);
-    }
-
+    
     ImGui::SetNextWindowPos(ImVec2(20, 20));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 350.0f));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 265.0f));
     ImGui::Begin("lamure_vis_gui", &status_screen, ImGuiWindowFlags_MenuBar);
     ImGui::Text("fps %d", (int32_t)fps_);
 
@@ -2770,35 +2790,21 @@ void gui_status_screen(){
     ImGui::Text("# nodes %d", (uint64_t)rendered_nodes_);
     ImGui::Text("# models %d", num_models_);
     
-    ImGui::Combo("Dataset", &dataset, vis_values, IM_ARRAYSIZE(vis_values));
-  
-    if(dataset == (sizeof vis_values / sizeof vis_values[0]) - 1){
-      selection_.selected_model_ = -1;
-    }else{
-      selection_.selected_model_ = dataset;
-    }
-
+    ImGui::Checkbox("Selection", &gui_.selection_settings_);
     ImGui::Checkbox("View Settings", &gui_.view_settings_);
-    ImGui::Checkbox("LOD Settings", &gui_.lod_settings_);
     ImGui::Checkbox("Visual Settings", &gui_.visual_settings_);
     if (settings_.provenance_) {
       ImGui::Checkbox("Provenance Settings", &gui_.provenance_settings_);
     }
-    ImGui::Checkbox("Brush", &input_.brush_mode_);
-    if (ImGui::Checkbox("Clear Brush", &input_.brush_clear_)) {
-      selection_.brush_.clear();
-      selection_.selected_views_.clear();
-      input_.brush_clear_ = false;
-    }
     
+    if (gui_.selection_settings_){
+        gui_selection_settings();
+    }
+
     if (gui_.view_settings_){
         gui_view_settings();
     }
       
-    if (gui_.lod_settings_){
-        gui_lod_settings();
-    }
-
     if (gui_.visual_settings_){
         gui_visual_settings();
     }
