@@ -252,6 +252,7 @@ struct settings {
   std::vector<std::string> models_;
   std::map<uint32_t, scm::math::mat4d> transforms_;
   std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
+  std::map<uint32_t, std::vector<lamure::prov::aux::view>> views_;
   std::map<uint32_t, std::string> aux_;
 
 };
@@ -421,6 +422,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "aux_focal_length") {
             settings.aux_focal_length_ = std::min(std::max(atof(value.c_str()), 0.001), 10.0);
+          }
+          else if (key == "max_brush_size") {
+            settings.max_brush_size_ = std::min(std::max(atoi(value.c_str()), 64), 1024*1024);
           }
           else if (key == "lod_error") {
             settings.lod_error_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
@@ -1461,37 +1465,64 @@ void brush() {
 
   if (hit) {
     selection_.brush_end_ = ((selection_.brush_end_+1) % settings_.max_brush_size_);
-    //if (selection_.brush_end_ >= settings_.max_brush_size_) {
-    //  return;
-    //}
     
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
     
-    selection_.brush_[selection_.brush_end_] = 
-      xyz{
+    xyz xyz{
         intersection.position_ + intersection.normal_ * settings_.aux_point_size_,
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
         settings_.aux_point_size_,
         intersection.normal_};
 
-    char* brush_buffer = (char*)device_->main_context()->map_buffer(brush_resource_.buffer_, scm::gl::ACCESS_READ_WRITE);
-    memcpy(&brush_buffer[0], (char*)&selection_.brush_[0], sizeof(xyz)*settings_.max_brush_size_);
-    device_->main_context()->unmap_buffer(brush_resource_.buffer_);
-
-
+    selection_.brush_[selection_.brush_end_] = xyz;
+    
     if (selection_.selected_model_ != -1) {
       if (settings_.octrees_.size() > selection_.selected_model_) {
         if (settings_.octrees_[selection_.selected_model_]) {
           uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
           if (selected_node_id > 0) {
             const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
-            //std::cout << "found " << imgs.size() << " of " << provenance_[selection_.selected_model_].num_views_ << " imgs" << std::endl;
-            //std::cout << "selected_node_id " << selected_node_id << std::endl;
+
             selection_.selected_views_.insert(imgs.begin(), imgs.end());
+
+            if (settings_.show_photos_) {
+              //mark images
+              for (const auto img : imgs) {
+                const auto& view = settings_.views_[selection_.selected_model_][img];
+                float aspect_ratio = view.image_height_ / (float)view.image_width_;
+                float img_w_half   = (settings_.aux_focal_length_)*0.5f;
+                float img_h_half   = img_w_half * aspect_ratio;
+                float focal_length = settings_.aux_focal_length_;
+
+                scm::math::vec3f view_translation(view.transform_ * scm::math::vec3f(0.f));
+                scm::math::vec3f direction_feature = scm::math::normalize(
+                  scm::math::vec3f(xyz.pos_.x, xyz.pos_.y, xyz.pos_.z) - view_translation);
+                scm::math::vec3f direction_view = scm::math::normalize(
+                  scm::math::vec3f(view.transform_[8], view.transform_[9], view.transform_[10]));
+                float angle_between_directions = scm::math::rad2deg(scm::math::acos(scm::math::dot(direction_feature, direction_view)));
+                float distance = (focal_length / scm::math::sin(scm::math::deg2rad(90.0f - angle_between_directions))) * scm::math::sin(scm::math::deg2rad(90.0f));
+
+                scm::math::vec3f position_pixel = view_translation - distance * direction_feature;
+
+                selection_.brush_end_ = ((selection_.brush_end_+1) % settings_.max_brush_size_);
+
+                selection_.brush_[selection_.brush_end_] = {position_pixel,
+                  (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
+                  settings_.aux_point_size_*0.5f,
+                  intersection.normal_}; 
+              }
+            }
           }
+
         }
       }
     }
+
+
+    char* brush_buffer = (char*)device_->main_context()->map_buffer(brush_resource_.buffer_, scm::gl::ACCESS_READ_WRITE);
+    memcpy(&brush_buffer[0], (char*)&selection_.brush_[0], sizeof(xyz)*settings_.max_brush_size_);
+    device_->main_context()->unmap_buffer(brush_resource_.buffer_);
+
 
 
   }
@@ -1682,6 +1713,7 @@ void create_aux_resources() {
             settings_.aux_point_size_,
             scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
         );
+        settings_.views_[model_id].push_back(view);
       }
 
       for (uint32_t i = 0; i < aux.get_num_sparse_points(); ++i) {
@@ -2552,7 +2584,7 @@ void init() {
 
 void gui_selection_settings(){
 
-    ImGui::SetNextWindowPos(ImVec2(20, 305));
+    ImGui::SetNextWindowPos(ImVec2(20, 315));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 210.0f));
 
     ImGui::Begin("Selection", &gui_.selection_settings_, ImGuiWindowFlags_MenuBar);
@@ -2577,21 +2609,22 @@ void gui_selection_settings(){
     }
 
     ImGui::Checkbox("Brush", &input_.brush_mode_);
+
+
+    ImGui::Text("Selection: %d / %d", (int32_t)selection_.brush_end_, (int32_t)settings_.max_brush_size_);
+    ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
     if (ImGui::Checkbox("Clear Brush", &input_.brush_clear_)) {
       selection_.selected_views_.clear();
       selection_.brush_end_ = 0;
       input_.brush_clear_ = false;
     }
 
-    ImGui::Text("Selection: %d", (int32_t)selection_.brush_end_);
-    ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
-
     ImGui::End();
 }
 
 
 void gui_view_settings(){
-    ImGui::SetNextWindowPos(ImVec2(20, 535));
+    ImGui::SetNextWindowPos(ImVec2(20, 545));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 260.0f));
     ImGui::Begin("View / LOD Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
     //if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
@@ -2662,10 +2695,9 @@ void gui_visual_settings(){
       
 
     ImGui::Checkbox("Splatting", &settings_.splatting_);
-    ImGui::Checkbox("Gamma Correction", &settings_.gamma_correction_);
-
     ImGui::Checkbox("Enable Lighting", &settings_.enable_lighting_);
     ImGui::Checkbox("Use Material Color", &settings_.use_material_color_);
+    ImGui::Checkbox("Gamma Correction", &settings_.gamma_correction_);
     
     static ImVec4 color_mat_diff = ImColor(0.6f, 0.6f, 0.6f, 1.0f);
     ImGui::Text("Material Diffuse");
@@ -2695,7 +2727,7 @@ void gui_visual_settings(){
     settings_.point_light_color_.y = color_point_light.y;
     settings_.point_light_color_.z = color_point_light.z;
 */
-    static ImVec4 background_color = ImColor(0.5f, 0.5f, 0.5f, 1.0f);
+    static ImVec4 background_color = ImColor(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z, 1.0f);
     ImGui::Text("Background Color");
     ImGui::ColorEdit3("Background", (float*)&background_color, ImGuiColorEditFlags_Float);
     settings_.background_color_.x = background_color.x;
@@ -2731,19 +2763,16 @@ void gui_provenance_settings(){
 
     ImGui::Checkbox("Show Views", &settings_.show_views_);
     if (settings_.show_views_) {
-      //settings_.enable_lighting_ = false;
       settings_.splatting_ = false;
     }
 
     ImGui::Checkbox("Show Photos", &settings_.show_photos_);
-    if (settings_.show_views_) {
-      //settings_.enable_lighting_ = false;
+    if (settings_.show_photos_) {
       settings_.splatting_ = false;
     }
 
     ImGui::Checkbox("Show Octrees", &settings_.show_octrees_);
     if (settings_.show_octrees_) {
-        //settings_.enable_lighting_ = false;
         settings_.splatting_ = false;
     }
 
@@ -2776,7 +2805,7 @@ void gui_status_screen(){
     static bool status_screen = false;
     
     ImGui::SetNextWindowPos(ImVec2(20, 20));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 265.0f));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 275.0f));
     ImGui::Begin("lamure_vis_gui", &status_screen, ImGuiWindowFlags_MenuBar);
     ImGui::Text("fps %d", (int32_t)fps_);
 
@@ -2790,8 +2819,10 @@ void gui_status_screen(){
     ImGui::Text("# nodes %d", (uint64_t)rendered_nodes_);
     ImGui::Text("# models %d", num_models_);
     
+    ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+
     ImGui::Checkbox("Selection", &gui_.selection_settings_);
-    ImGui::Checkbox("View Settings", &gui_.view_settings_);
+    ImGui::Checkbox("View / LOD Settings", &gui_.view_settings_);
     ImGui::Checkbox("Visual Settings", &gui_.visual_settings_);
     if (settings_.provenance_) {
       ImGui::Checkbox("Provenance Settings", &gui_.provenance_settings_);
