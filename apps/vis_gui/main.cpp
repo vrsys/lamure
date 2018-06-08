@@ -26,6 +26,8 @@
 #include <scm/core/time/accum_timer.h>
 #include <scm/core/time/high_res_timer.h>
 #include <scm/gl_util/data/imaging/texture_loader.h>
+#include <scm/gl_util/primitives/geometry.h>
+#include <scm/gl_util/primitives/box.h>
 
 //boost
 #include <boost/assign/list_of.hpp>
@@ -129,6 +131,8 @@ struct resource {
 };
 
 resource brush_resource_;
+resource pvs_resource_;
+std::map<uint32_t, resource> bvh_resources_;
 std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
 std::map<uint32_t, resource> octree_resources_;
@@ -183,6 +187,7 @@ struct vertex {
 
 struct selection {
   int32_t selected_model_ = -1;
+  int32_t selected_view_ = -1;
   std::vector<xyz> brush_;
   std::set<uint32_t> selected_views_;
   int64_t brush_end_{0};
@@ -212,7 +217,7 @@ struct settings {
   int32_t gui_ {1};
   int32_t travel_ {2};
   float travel_speed_ {20.5f};
-  int32_t max_brush_size_{1024};
+  int32_t max_brush_size_{4096};
   bool lod_update_ {1};
   bool use_pvs_ {1};
   bool pvs_culling_ {0};
@@ -229,6 +234,8 @@ struct settings {
   bool show_views_ {0};
   bool show_photos_ {0};
   bool show_octrees_ {0};
+  bool show_bvhs_ {0};
+  bool show_pvs_ {0};
   int32_t channel_ {0};
   float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
   bool enable_lighting_ {1};
@@ -456,6 +463,12 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "show_octrees") {
             settings.show_octrees_ = (bool)std::max(atoi(value.c_str()), 0);
           }
+          else if (key == "show_bvhs") {
+            settings.show_bvhs_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "show_pvs") {
+            settings.show_pvs_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
           else if (key == "channel") {
             settings.channel_ = std::max(atoi(value.c_str()), 0);
           }
@@ -656,7 +669,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
 
 void draw_brush(scm::gl::program_ptr shader) {
-  //if (brush_resource_.num_primitives_ > 0) {
+
   if (selection_.brush_end_ > 0) {
     set_uniforms(shader);
 
@@ -694,6 +707,7 @@ void draw_brush(scm::gl::program_ptr shader) {
 
 
 void apply_vt_cut_update() {
+
   auto *cut_db = &vt::CutDatabase::get_instance();
 
   for (vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map())) {
@@ -777,6 +791,7 @@ void apply_vt_cut_update() {
 }
 
 void collect_vt_feedback() {
+
   int32_t *feedback_lod = (int32_t *) context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
   memcpy(vt_.feedback_lod_cpu_buffer_, feedback_lod, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
   context_->sync();
@@ -795,7 +810,7 @@ void collect_vt_feedback() {
   context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);
 }
 
-void draw_resources() {
+void draw_resources(const lamure::context_t context_id, const lamure::view_t view_id) {
 
   if (sparse_resources_.size() > 0) { 
     if ((settings_.show_sparse_ || settings_.show_views_) && sparse_resources_.size() > 0) {
@@ -901,7 +916,8 @@ void draw_resources() {
       vis_vt_shader_->uniform("physical_texture_array", 17);
 
       context_->set_viewport(
-              scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(render_width_, render_height_)));
+        scm::gl::viewport(scm::math::vec2ui(0, 0), 
+        scm::math::vec2ui(render_width_, render_height_)));
 
       context_->set_depth_stencil_state(depth_state_less_);
       context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
@@ -956,7 +972,8 @@ void draw_resources() {
       context_->bind_program(vis_line_shader_);
 
       scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-      scm::math::mat4f view_matrix = camera_->get_view_matrix();   
+      scm::math::mat4f view_matrix = camera_->get_view_matrix();
+      vis_line_shader_->uniform("model_matrix", scm::math::mat4f::identity());
       vis_line_shader_->uniform("view_matrix", view_matrix);
       vis_line_shader_->uniform("projection_matrix", projection_matrix);
       
@@ -996,8 +1013,94 @@ void draw_resources() {
         }
       }
     }
+  }
 
+  if (settings_.show_bvhs_) {
+
+    lamure::ren::controller* controller = lamure::ren::controller::get_instance();
+    lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
+    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+
+
+    context_->bind_program(vis_line_shader_);
+
+    scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
+    scm::math::mat4f view_matrix = camera_->get_view_matrix();
     
+    vis_line_shader_->uniform("view_matrix", view_matrix);
+    vis_line_shader_->uniform("projection_matrix", projection_matrix);
+    
+    for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+      if (selection_.selected_model_ != -1) {
+        model_id = selection_.selected_model_;
+      }
+      
+      bool draw = true;
+      lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
+      lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
+      std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
+      const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
+      if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
+        if (selection_.selected_model_ != -1) break;
+        else draw = false;
+      }
+
+      if (draw) {
+      
+        //uniforms per model
+        scm::math::mat4d model_matrix = model_transformations_[model_id];
+        vis_line_shader_->uniform("model_matrix", scm::math::mat4f(model_matrix));
+        
+        std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
+        scm::gl::frustum frustum_by_model = camera_->get_frustum_by_model(scm::math::mat4f(model_matrix));
+        
+
+        auto bvh_res = bvh_resources_[model_id];
+        if (bvh_res.num_primitives_ > 0) {
+          context_->bind_vertex_array(bvh_res.array_);
+          context_->apply();
+
+          for(auto const& node_slot_aggregate : renderable) {
+            uint32_t node_culling_result = camera_->cull_against_frustum(
+              frustum_by_model,
+              bounding_box_vector[node_slot_aggregate.node_id_]);
+            
+            if (node_culling_result != 1) {
+
+              if (settings_.use_pvs_ && pvs->is_activated() && settings_.pvs_culling_ 
+                && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_)) {
+                continue;
+              }
+
+              context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, node_slot_aggregate.node_id_*24, 24);
+
+            }
+          }
+        }
+      }
+
+      if (selection_.selected_model_ != -1) {
+        break;
+      }
+    }
+
+  }
+
+  if (settings_.pvs_ != "" && settings_.show_pvs_) {
+    if (pvs_resource_.num_primitives_ > 0) {
+      context_->bind_program(vis_line_shader_);
+
+      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
+      scm::math::mat4f view_matrix = camera_->get_view_matrix();
+      vis_line_shader_->uniform("model_matrix", scm::math::mat4f::identity());
+      vis_line_shader_->uniform("view_matrix", view_matrix);
+      vis_line_shader_->uniform("projection_matrix", projection_matrix);
+      
+      context_->bind_vertex_array(pvs_resource_.array_);
+      context_->apply();
+      context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, pvs_resource_.num_primitives_);
+    }
   }
 
 }
@@ -1360,7 +1463,7 @@ void glut_display() {
 
     context_->bind_program(vis_xyz_shader_);
     draw_brush(vis_xyz_shader_);
-    draw_resources();
+    draw_resources(context_id, view_id);
 
 
   }
@@ -1506,14 +1609,13 @@ void brush() {
 
                 selection_.brush_end_ = ((selection_.brush_end_+1) % settings_.max_brush_size_);
 
-                selection_.brush_[selection_.brush_end_] = {position_pixel,
+                selection_.brush_[selection_.brush_end_] = {position_pixel + direction_view * settings_.aux_point_size_*0.1f,
                   (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
                   settings_.aux_point_size_*0.5f,
-                  intersection.normal_}; 
+                  direction_view};
               }
             }
           }
-
         }
       }
     }
@@ -1589,9 +1691,37 @@ void glut_resize(int32_t w, int32_t h) {
 }
 
 
-void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
+void save_brush() {
+  if (!input_.brush_mode_) {
+    std::cout << "INFO: not in brush mode" << std::endl;
+    return;
+  }
 
-  //std::cout << std::to_string(key) << std::endl;
+  if (selection_.selected_model_ == -1) {
+    std::cout << "INFO: no model selected" << std::endl;
+    return;
+  }
+
+  if (selection_.brush_.size() > 0) {
+    std::string out_filename = settings_.models_[selection_.selected_model_].substr(0, settings_.models_[selection_.selected_model_].size()-4) + "_BRUSH.xyz";
+    std::ofstream out_file(out_filename.c_str(), std::ios::trunc);
+
+    for (const auto& xyz : selection_.brush_) {
+      out_file << xyz.pos_.x << " " << xyz.pos_.y << " " << xyz.pos_.z << " ";
+      out_file << (int32_t)xyz.r_ << " " << (int32_t)xyz.g_ << " " << (int32_t)xyz.b_ << std::endl;
+    }
+
+    out_file.close();
+
+    std::cout << "INFO: selection of model " << selection_.selected_model_ << " saved to " << out_filename << std::endl;
+  }
+  else {
+    std::cout << "INFO: no brush selection" << std::endl;
+  }
+}
+
+
+void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
 
   int k = (int)key;
 
@@ -1639,7 +1769,9 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       settings_.gui_ = !settings_.gui_;
       break;
 
-
+    case 'B':
+      save_brush();
+      break;
 
     default:
       break;
@@ -1686,9 +1818,122 @@ float get_atlas_scale_factor() {
   return std::max(factor_u, factor_v);
 }
 
+void lines_from_min_max(
+  const scm::math::vec3f& min_vertex,
+  const scm::math::vec3f& max_vertex,
+  std::vector<scm::math::vec3f>& lines) {
+
+  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
+  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
+
+  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
+  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
+
+  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
+  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
+
+  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
+  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
+
+
+  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
+  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
+
+  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
+  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
+
+  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
+  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
+
+  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
+  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
+
+
+  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
+  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
+
+  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
+  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
+
+  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
+  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
+
+  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
+  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
+}
+
 
 void create_aux_resources() {
 
+  //create pvs representation
+  if (settings_.pvs_ != "") {
+    std::cout << "pvs: " << settings_.pvs_ << std::endl;
+    std::string pvs_grid_file_path = settings_.pvs_;
+    pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
+    pvs_grid_file_path = pvs_grid_file_path + "grid";
+
+    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+    pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
+    pvs->activate(settings_.use_pvs_);
+    std::cout << "use pvs: " << (int)pvs->is_activated() << std::endl;
+  
+    if (pvs->get_visibility_grid() != nullptr) {
+      
+      pvs_resource_.buffer_.reset();
+      pvs_resource_.array_.reset();
+
+      std::vector<scm::math::vec3f> pvs_lines_to_upload;
+
+      for (size_t cell_id = 0; cell_id < pvs->get_visibility_grid()->get_cell_count(); ++cell_id) {
+        const lamure::pvs::view_cell* cell = pvs->get_visibility_grid()->get_cell_at_index(cell_id);
+
+        scm::math::vec3f min_vertex(cell->get_position_center() - (cell->get_size() * 0.5f));
+        scm::math::vec3f max_vertex(cell->get_position_center() + (cell->get_size() * 0.5f));
+
+        lines_from_min_max(min_vertex, max_vertex, pvs_lines_to_upload);
+      }
+
+      pvs_resource_.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
+        scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * pvs_lines_to_upload.size(), &pvs_lines_to_upload[0]);
+      pvs_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
+        (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
+        boost::assign::list_of(pvs_resource_.buffer_));
+
+      pvs_resource_.num_primitives_ = pvs_lines_to_upload.size();
+
+    }
+    else {
+      std::cout << "no pvs grid!" << std::endl;
+    }
+  }
+
+  //create bvh representation
+  for (uint32_t model_id = 0; model_id < num_models_; ++model_id) {
+    const auto& bounding_boxes = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes();
+
+    resource bvh_line_resource;
+    bvh_line_resource.buffer_.reset();
+    bvh_line_resource.array_.reset();
+
+    std::vector<scm::math::vec3f> bvh_lines_to_upload;
+    for (uint64_t node_id = 0; node_id < bounding_boxes.size(); ++node_id) {
+      const auto& node = bounding_boxes[node_id];
+
+      lines_from_min_max(node.min_vertex(), node.max_vertex(), bvh_lines_to_upload);
+
+    }
+
+    bvh_line_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
+      scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * bvh_lines_to_upload.size(), &bvh_lines_to_upload[0]);
+    bvh_line_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
+      (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
+      boost::assign::list_of(bvh_line_resource.buffer_));
+
+    bvh_line_resource.num_primitives_ = bvh_lines_to_upload.size();
+    bvh_resources_[model_id] = bvh_line_resource;
+  }
+
+  //create auxiliary representations
   for (const auto& aux_file : settings_.aux_) {
     if (aux_file.second != "") {
       
@@ -1703,11 +1948,11 @@ void create_aux_resources() {
       std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
       std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
-      std::vector<xyz> ready_to_upload;
+      std::vector<xyz> points_to_upload;
 
       for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
         const auto& view = aux.get_view(i);
-        ready_to_upload.push_back(
+        points_to_upload.push_back(
           xyz{view.position_,
             (uint8_t)255, (uint8_t)240, (uint8_t)0, (uint8_t)255,
             settings_.aux_point_size_,
@@ -1718,7 +1963,7 @@ void create_aux_resources() {
 
       for (uint32_t i = 0; i < aux.get_num_sparse_points(); ++i) {
         const auto& point = aux.get_sparse_point(i);
-        ready_to_upload.push_back(
+        points_to_upload.push_back(
           xyz{point.pos_,
             point.r_, point.g_, point.b_, point.a_,
             settings_.aux_point_size_,
@@ -1726,14 +1971,14 @@ void create_aux_resources() {
         );
       }
 
-      resource point_res;
-      point_res.num_primitives_ = ready_to_upload.size();
-      point_res.buffer_.reset();
-      point_res.array_.reset();
+      resource points_resource;
+      points_resource.num_primitives_ = points_to_upload.size();
+      points_resource.buffer_.reset();
+      points_resource.array_.reset();
 
-      point_res.buffer_ = device_->create_buffer(
-        scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * ready_to_upload.size(), &ready_to_upload[0]);
-      point_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+      points_resource.buffer_ = device_->create_buffer(
+        scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * points_to_upload.size(), &points_to_upload[0]);
+      points_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
         (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
         (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
         (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
@@ -1741,73 +1986,35 @@ void create_aux_resources() {
         (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
         (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
         (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
-        boost::assign::list_of(point_res.buffer_));
+        boost::assign::list_of(points_resource.buffer_));
 
-      sparse_resources_[model_id] = point_res;
+      sparse_resources_[model_id] = points_resource;
 
       //init octree
       settings_.octrees_[model_id] = aux.get_octree();
       std::cout << "Octree loaded (" << settings_.octrees_[model_id]->get_num_nodes() << " nodes)" << std::endl;
       
       //init octree buffers
-      resource octree_res;
-      octree_res.buffer_.reset();
-      octree_res.array_.reset();
+      resource octree_resource;
+      octree_resource.buffer_.reset();
+      octree_resource.array_.reset();
 
       std::vector<scm::math::vec3f> octree_lines_to_upload;
       for (uint64_t i = 0; i < settings_.octrees_[model_id]->get_num_nodes(); ++i) {
         const auto& node = settings_.octrees_[model_id]->get_node(i);
 
-        const auto min_vertex = scm::math::vec3d(node.get_min().x, node.get_min().y, node.get_min().z);
-        const auto max_vertex = scm::math::vec3d(node.get_max().x, node.get_max().y, node.get_max().z);
+        lines_from_min_max(node.get_min(), node.get_max(), octree_lines_to_upload);
 
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
-
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
-
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
-
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
-        octree_lines_to_upload.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
       }
 
-      octree_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
+      octree_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
         scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * octree_lines_to_upload.size(), &octree_lines_to_upload[0]);
-      octree_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+      octree_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
         (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
-        boost::assign::list_of(octree_res.buffer_));
+        boost::assign::list_of(octree_resource.buffer_));
 
-      octree_res.num_primitives_ = octree_lines_to_upload.size();
-      octree_resources_[model_id] = octree_res;
+      octree_resource.num_primitives_ = octree_lines_to_upload.size();
+      octree_resources_[model_id] = octree_resource;
 
       auto root_bb = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
       auto root_bb_min = scm::math::mat4f(model_transformations_[model_id]) * root_bb.min_vertex();
@@ -1822,7 +2029,7 @@ void create_aux_resources() {
                   + "does not match number of views (" + std::to_string(aux.get_num_views()) + ")");
         }
 
-        std::vector<vertex> tris_to_upload;
+        std::vector<vertex> triangles_to_upload;
         for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
           const auto& view       = aux.get_view(i);
           const auto& atlas_tile = aux.get_atlas_tile(i);
@@ -1863,41 +2070,41 @@ void create_aux_resources() {
           p4.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y + tile_height);
 
           // left quad triangle
-          tris_to_upload.push_back(p1);
-          tris_to_upload.push_back(p4);
-          tris_to_upload.push_back(p3);
+          triangles_to_upload.push_back(p1);
+          triangles_to_upload.push_back(p4);
+          triangles_to_upload.push_back(p3);
 
           // right quad triangle
-          tris_to_upload.push_back(p2);
-          tris_to_upload.push_back(p4);
-          tris_to_upload.push_back(p1);
+          triangles_to_upload.push_back(p2);
+          triangles_to_upload.push_back(p4);
+          triangles_to_upload.push_back(p1);
         }
 
         //init triangle buffer
-        resource tri_res;
-        tri_res.buffer_.reset();
-        tri_res.array_.reset();
+        resource triangles_resource;
+        triangles_resource.buffer_.reset();
+        triangles_resource.array_.reset();
 
-        tri_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
+        triangles_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
                                                  scm::gl::USAGE_STATIC_DRAW,
-                                                 (sizeof(vertex)) * tris_to_upload.size(),
-                                                 &tris_to_upload[0]);
+                                                 (sizeof(vertex)) * triangles_to_upload.size(),
+                                                 &triangles_to_upload[0]);
 
-        tri_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+        triangles_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
                                                               (0, 0, scm::gl::TYPE_VEC3F, sizeof(vertex))
                                                               (0, 1, scm::gl::TYPE_VEC2F, sizeof(vertex)),
-                                                      boost::assign::list_of(tri_res.buffer_));
+                                                      boost::assign::list_of(triangles_resource.buffer_));
 
 
-        tri_res.num_primitives_ = tris_to_upload.size();
+        triangles_resource.num_primitives_ = triangles_to_upload.size();
 
-        image_plane_resources_[model_id] = tri_res;
+        image_plane_resources_[model_id] = triangles_resource;
       }
 
       //init line buffers
-      resource line_res;
-      line_res.buffer_.reset();
-      line_res.array_.reset();
+      resource lines_resource;
+      lines_resource.buffer_.reset();
+      lines_resource.array_.reset();
 
       std::vector<scm::math::vec3f> lines_to_upload;
       for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
@@ -1934,15 +2141,15 @@ void create_aux_resources() {
 
       }
 
-      line_res.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
+      lines_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
         scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * lines_to_upload.size(), &lines_to_upload[0]);
-      line_res.array_ = device_->create_vertex_array(scm::gl::vertex_format
+      lines_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
         (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
-        boost::assign::list_of(line_res.buffer_));
+        boost::assign::list_of(lines_resource.buffer_));
 
-      line_res.num_primitives_ = lines_to_upload.size();
+      lines_resource.num_primitives_ = lines_to_upload.size();
 
-      frusta_resources_[model_id] = line_res;
+      frusta_resources_[model_id] = lines_resource;
 
     }
   }
@@ -2244,7 +2451,7 @@ void init_vt_database() {
 
 
 void init_vt_system() {
-    vt_.enable_hierarchy_     = true;
+    vt_.enable_hierarchy_ = true;
     vt_.toggle_visualization_ = 0;
 
     // add_data
@@ -2528,17 +2735,6 @@ void init() {
   }
 
 
-  if (settings_.pvs_ != "") {
-    std::cout << "pvs: " << settings_.pvs_ << std::endl;
-    std::string pvs_grid_file_path = settings_.pvs_;
-    pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
-    pvs_grid_file_path = pvs_grid_file_path + "grid";
-
-    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-    pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
-    pvs->activate(settings_.use_pvs_);
-    std::cout << "use pvs: " << (int)pvs->is_activated() << std::endl;
-  }
 
 
   create_aux_resources();
@@ -2585,7 +2781,7 @@ void init() {
 void gui_selection_settings(){
 
     ImGui::SetNextWindowPos(ImVec2(20, 315));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 210.0f));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 220.0f));
 
     ImGui::Begin("Selection", &gui_.selection_settings_, ImGuiWindowFlags_MenuBar);
 
@@ -2599,21 +2795,47 @@ void gui_selection_settings(){
         model_values[i] = strdup(buffer);
     }
 
-    static int dataset = 0;
+    static int32_t dataset = selection_.selected_model_;
+    if (selection_.selected_model_ == -1) {
+      dataset = num_models_;
+    }
     ImGui::Combo("Dataset", &dataset, model_values, IM_ARRAYSIZE(model_values));
     
-    if(dataset == (sizeof model_values / sizeof model_values[0]) - 1){
+    if(dataset == num_models_){
       selection_.selected_model_ = -1;
-    }else{
+    } else {
       selection_.selected_model_ = dataset;
     }
-
+    if (ImGui::Button("Cycle Images")) {
+      if (selection_.selected_model_ != -1) {
+        if (settings_.views_.find(selection_.selected_model_) != settings_.views_.end()) {
+          selection_.selected_view_ = (selection_.selected_view_+1) % settings_.views_[selection_.selected_model_].size();
+          const auto& view = settings_.views_[selection_.selected_model_][selection_.selected_view_];
+          auto camera_matrix = view.transform_;
+          camera_matrix = camera_matrix 
+            //* scm::math::make_translation(0.f, 0.f, settings_.aux_point_size_*10.f) 
+            * scm::math::make_rotation(180.f, 0.f, 0.f, 1.f);
+          camera_->set_view_matrix(scm::math::mat4d(scm::math::inverse(camera_matrix)));
+          camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
+          selection_.selected_views_.clear();
+          selection_.selected_views_.insert(selection_.selected_view_);
+          settings_.show_views_ = true;
+          settings_.splatting_ = false;
+        }
+      }
+    }
     ImGui::Checkbox("Brush", &input_.brush_mode_);
 
-
     ImGui::Text("Selection: %d / %d", (int32_t)selection_.brush_end_, (int32_t)settings_.max_brush_size_);
-    ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
-    if (ImGui::Checkbox("Clear Brush", &input_.brush_clear_)) {
+    if (selection_.selected_model_ != -1 && selection_.selected_views_.size() == 1) {
+      ImGui::Text("Image: %d %s", (int32_t)selection_.selected_view_, 
+        settings_.views_[selection_.selected_model_][selection_.selected_view_].image_file_.c_str());
+    }
+    else {
+      ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
+    }
+
+    if (ImGui::Button("Clear Selection")) {
       selection_.selected_views_.clear();
       selection_.brush_end_ = 0;
       input_.brush_clear_ = false;
@@ -2624,8 +2846,8 @@ void gui_selection_settings(){
 
 
 void gui_view_settings(){
-    ImGui::SetNextWindowPos(ImVec2(20, 545));
-    ImGui::SetNextWindowSize(ImVec2(500.0f, 260.0f));
+    ImGui::SetNextWindowPos(ImVec2(20, 555));
+    ImGui::SetNextWindowSize(ImVec2(500.0f, 335.0f));
     ImGui::Begin("View / LOD Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
     //if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
     //  input_.gui_lock_ = true;
@@ -2636,11 +2858,17 @@ void gui_view_settings(){
     if (ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f)) {
       input_.gui_lock_ = true;
     }
-    if (ImGui::SliderFloat("FOV", &settings_.fov_, 18, 60.0f)) {
+    if (ImGui::SliderFloat("FOV", &settings_.fov_, 18, 90.0f)) {
       input_.gui_lock_ = true;
     }
+
+    ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
     
     ImGui::Checkbox("Lod Update", &settings_.lod_update_);
+    ImGui::Checkbox("Show BVHs", &settings_.show_bvhs_);
+    if (settings_.show_bvhs_) {
+      settings_.splatting_ = false;
+    }
 
     if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f)) {
       input_.gui_lock_ = true;
@@ -2648,13 +2876,23 @@ void gui_view_settings(){
     if (ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f)) {
       input_.gui_lock_ = true;
     }
-    ImGui::Checkbox("Use PVS", &settings_.use_pvs_);
     
-    lamure::pvs::pvs_database::get_instance()->activate(settings_.use_pvs_);
+    ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
 
+    if (settings_.pvs_ != "") {
+      //ImGui::Text("PVS: %s", settings_.pvs_.c_str());
+      ImGui::Checkbox("Use PVS", &settings_.use_pvs_);
+      lamure::pvs::pvs_database::get_instance()->activate(settings_.use_pvs_);
     
-    ImGui::Checkbox("PVS Culling", &settings_.pvs_culling_);
-    
+      ImGui::Checkbox("PVS Culling", &settings_.pvs_culling_);
+      ImGui::Checkbox("Show PVS", &settings_.show_pvs_);
+      if (settings_.show_pvs_) {
+        settings_.splatting_ = false;
+      }
+    }
+    else {
+      ImGui::Text("No PVS");
+    }
 
     ImGui::End();
 }
