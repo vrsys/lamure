@@ -209,6 +209,7 @@ struct settings {
   int32_t ram_ {4096};
   int32_t upload_ {32};
   bool provenance_ {0};
+  bool create_aux_resources_ {1};
   float near_plane_ {0.001f};
   float far_plane_ {1000.0f};
   float fov_ {30.0f};
@@ -293,19 +294,19 @@ struct vt_info {
 vt_info vt_;
 
 
-scm::math::mat4f load_matrix(const std::string& filename) {
+scm::math::mat4d load_matrix(const std::string& filename) {
   std::ifstream file(filename);
   if (!file.is_open()) {
       std::cerr << "Unable to open transformation file: \"" 
           << filename << "\"\n";
-      return scm::math::mat4f::identity();
+      return scm::math::mat4d::identity();
   }
-  scm::math::mat4f mat = scm::math::mat4f::identity();
+  scm::math::mat4d mat = scm::math::mat4d::identity();
   std::string matrix_values_string;
   std::getline(file, matrix_values_string);
   std::stringstream sstr(matrix_values_string);
   for (int i = 0; i < 16; ++i)
-      sstr >> mat[i];
+      sstr >> std::setprecision(16) >> mat[i];
   file.close();
   return scm::math::transpose(mat);
 }
@@ -438,6 +439,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "provenance") {
             settings.provenance_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "create_aux_resources") {
+            settings.create_aux_resources_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "show_normals") {
             settings.show_normals_ = std::max(atoi(value.c_str()), 0);
@@ -1157,14 +1161,15 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
 
-    const scm::math::mat4f viewport_scale = scm::math::make_scale(render_width_ * 0.5f, render_width_ * 0.5f, 0.5f);;
-    const scm::math::mat4f viewport_translate = scm::math::make_translation(1.0f,1.0f,1.0f);
-    const scm::math::mat4d model_to_screen =  scm::math::mat4d(viewport_scale) * scm::math::mat4d(viewport_translate) * model_view_projection_matrix;
+    const scm::math::mat4d viewport_scale = scm::math::make_scale(render_width_ * 0.5, render_width_ * 0.5, 0.5);
+    const scm::math::mat4d viewport_translate = scm::math::make_translation(1.0,1.0,1.0);
+    const scm::math::mat4d model_to_screen = viewport_scale * viewport_translate * model_view_projection_matrix;
     shader->uniform("model_to_screen_matrix", scm::math::mat4f(model_to_screen));
 
-    scm::math::vec4d x_unit_vec = scm::math::vec4d(1.0,0.0,0.0,0.0);
-    float model_radius_scale = scm::math::length(model_matrix * x_unit_vec);
-    shader->uniform("model_radius_scale", model_radius_scale);
+    //scm::math::vec4d x_unit_vec = scm::math::vec4d(1.0,0.0,0.0,0.0);
+    //float model_radius_scale = scm::math::length(scm::math::vec3d(model_matrix * x_unit_vec));
+    //shader->uniform("model_radius_scale", model_radius_scale);
+    shader->uniform("model_radius_scale", 1.f);
 
     size_t surfels_per_node = database->get_primitives_per_node();
     std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
@@ -1877,34 +1882,41 @@ void create_aux_resources() {
     pvs->activate(settings_.use_pvs_);
     std::cout << "use pvs: " << (int)pvs->is_activated() << std::endl;
   
-    if (pvs->get_visibility_grid() != nullptr) {
-      
-      pvs_resource_.buffer_.reset();
-      pvs_resource_.array_.reset();
 
-      std::vector<scm::math::vec3f> pvs_lines_to_upload;
+    if (settings_.create_aux_resources_) {
+      if (pvs->get_visibility_grid() != nullptr) {
+        
+        pvs_resource_.buffer_.reset();
+        pvs_resource_.array_.reset();
 
-      for (size_t cell_id = 0; cell_id < pvs->get_visibility_grid()->get_cell_count(); ++cell_id) {
-        const lamure::pvs::view_cell* cell = pvs->get_visibility_grid()->get_cell_at_index(cell_id);
+        std::vector<scm::math::vec3f> pvs_lines_to_upload;
 
-        scm::math::vec3f min_vertex(cell->get_position_center() - (cell->get_size() * 0.5f));
-        scm::math::vec3f max_vertex(cell->get_position_center() + (cell->get_size() * 0.5f));
+        for (size_t cell_id = 0; cell_id < pvs->get_visibility_grid()->get_cell_count(); ++cell_id) {
+          const lamure::pvs::view_cell* cell = pvs->get_visibility_grid()->get_cell_at_index(cell_id);
 
-        lines_from_min_max(min_vertex, max_vertex, pvs_lines_to_upload);
+          scm::math::vec3f min_vertex(cell->get_position_center() - (cell->get_size() * 0.5f));
+          scm::math::vec3f max_vertex(cell->get_position_center() + (cell->get_size() * 0.5f));
+
+          lines_from_min_max(min_vertex, max_vertex, pvs_lines_to_upload);
+        }
+
+        pvs_resource_.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
+          scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * pvs_lines_to_upload.size(), &pvs_lines_to_upload[0]);
+        pvs_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
+          (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
+          boost::assign::list_of(pvs_resource_.buffer_));
+
+        pvs_resource_.num_primitives_ = pvs_lines_to_upload.size();
+
       }
-
-      pvs_resource_.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
-        scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * pvs_lines_to_upload.size(), &pvs_lines_to_upload[0]);
-      pvs_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
-        (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
-        boost::assign::list_of(pvs_resource_.buffer_));
-
-      pvs_resource_.num_primitives_ = pvs_lines_to_upload.size();
-
+      else {
+        std::cout << "no pvs grid!" << std::endl;
+      }
     }
-    else {
-      std::cout << "no pvs grid!" << std::endl;
-    }
+  }
+
+  if (!settings_.create_aux_resources_) {
+    return;
   }
 
   //create bvh representation
@@ -2736,7 +2748,6 @@ void init() {
 
 
 
-
   create_aux_resources();
   create_framebuffers();
 
@@ -2806,33 +2817,38 @@ void gui_selection_settings(){
     } else {
       selection_.selected_model_ = dataset;
     }
-    if (ImGui::Button("Cycle Images")) {
-      if (selection_.selected_model_ != -1) {
-        if (settings_.views_.find(selection_.selected_model_) != settings_.views_.end()) {
-          selection_.selected_view_ = (selection_.selected_view_+1) % settings_.views_[selection_.selected_model_].size();
-          const auto& view = settings_.views_[selection_.selected_model_][selection_.selected_view_];
-          auto camera_matrix = view.transform_;
-          camera_matrix = camera_matrix 
-            //* scm::math::make_translation(0.f, 0.f, settings_.aux_point_size_*10.f) 
-            * scm::math::make_rotation(180.f, 0.f, 0.f, 1.f);
-          camera_->set_view_matrix(scm::math::mat4d(scm::math::inverse(camera_matrix)));
-          camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
-          selection_.selected_views_.clear();
-          selection_.selected_views_.insert(selection_.selected_view_);
-          settings_.show_views_ = true;
-          settings_.splatting_ = false;
+
+    if (settings_.create_aux_resources_ && settings_.atlas_file_ != "") {
+      if (ImGui::Button("Cycle Images")) {
+        if (selection_.selected_model_ != -1) {
+          if (settings_.views_.find(selection_.selected_model_) != settings_.views_.end()) {
+            selection_.selected_view_ = (selection_.selected_view_+1) % settings_.views_[selection_.selected_model_].size();
+            const auto& view = settings_.views_[selection_.selected_model_][selection_.selected_view_];
+            auto camera_matrix = view.transform_;
+            camera_matrix = camera_matrix 
+              //* scm::math::make_translation(0.f, 0.f, settings_.aux_point_size_*10.f) 
+              * scm::math::make_rotation(180.f, 0.f, 0.f, 1.f);
+            camera_->set_view_matrix(scm::math::mat4d(scm::math::inverse(camera_matrix)));
+            camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
+            selection_.selected_views_.clear();
+            selection_.selected_views_.insert(selection_.selected_view_);
+            settings_.show_views_ = true;
+            settings_.splatting_ = false;
+          }
         }
       }
     }
     ImGui::Checkbox("Brush", &input_.brush_mode_);
 
     ImGui::Text("Selection: %d / %d", (int32_t)selection_.brush_end_, (int32_t)settings_.max_brush_size_);
-    if (selection_.selected_model_ != -1 && selection_.selected_views_.size() == 1) {
-      ImGui::Text("Image: %d %s", (int32_t)selection_.selected_view_, 
-        settings_.views_[selection_.selected_model_][selection_.selected_view_].image_file_.c_str());
-    }
-    else {
-      ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
+    if (settings_.create_aux_resources_ && settings_.atlas_file_ != "") {
+      if (selection_.selected_model_ != -1 && selection_.selected_views_.size() == 1) {
+        ImGui::Text("Image: %d %s", (int32_t)selection_.selected_view_, 
+          settings_.views_[selection_.selected_model_][selection_.selected_view_].image_file_.c_str());
+      }
+      else {
+        ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
+      }
     }
 
     if (ImGui::Button("Clear Selection")) {
@@ -2855,7 +2871,7 @@ void gui_view_settings(){
     //if (ImGui::SliderFloat("Far Plane", &settings_.far_plane_, 0, 1000.0f, "%.4f", 4.0f)) {
     //  input_.gui_lock_ = true;
     //}
-    if (ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.5f, 300.0f, "%.4f", 4.0f)) {
+    if (ImGui::SliderFloat("Travel Speed", &settings_.travel_speed_, 0.01f, 300.0f, "%.4f", 4.0f)) {
       input_.gui_lock_ = true;
     }
     if (ImGui::SliderFloat("FOV", &settings_.fov_, 18, 90.0f)) {
@@ -2865,9 +2881,11 @@ void gui_view_settings(){
     ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
     
     ImGui::Checkbox("Lod Update", &settings_.lod_update_);
-    ImGui::Checkbox("Show BVHs", &settings_.show_bvhs_);
-    if (settings_.show_bvhs_) {
-      settings_.splatting_ = false;
+    if (settings_.create_aux_resources_) {
+      ImGui::Checkbox("Show BVHs", &settings_.show_bvhs_);
+      if (settings_.show_bvhs_) {
+        settings_.splatting_ = false;
+      }
     }
 
     if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f)) {
@@ -2992,26 +3010,29 @@ void gui_provenance_settings(){
       input_.gui_lock_ = true;
     }
 
+    if (settings_.create_aux_resources_) {
+      ImGui::Checkbox("Show Sparse", &settings_.show_sparse_);
+      if (settings_.show_sparse_) {
+          settings_.enable_lighting_ = false;
+          settings_.splatting_ = false;
+      }
 
-    ImGui::Checkbox("Show Sparse", &settings_.show_sparse_);
-    if (settings_.show_sparse_) {
-        settings_.enable_lighting_ = false;
+      ImGui::Checkbox("Show Views", &settings_.show_views_);
+      if (settings_.show_views_) {
         settings_.splatting_ = false;
-    }
+      }
 
-    ImGui::Checkbox("Show Views", &settings_.show_views_);
-    if (settings_.show_views_) {
-      settings_.splatting_ = false;
-    }
+      if (settings_.atlas_file_ != "") {
+        ImGui::Checkbox("Show Photos", &settings_.show_photos_);
+        if (settings_.show_photos_) {
+          settings_.splatting_ = false;
+        }
+      }
 
-    ImGui::Checkbox("Show Photos", &settings_.show_photos_);
-    if (settings_.show_photos_) {
-      settings_.splatting_ = false;
-    }
-
-    ImGui::Checkbox("Show Octrees", &settings_.show_octrees_);
-    if (settings_.show_octrees_) {
-        settings_.splatting_ = false;
+      ImGui::Checkbox("Show Octrees", &settings_.show_octrees_);
+      if (settings_.show_octrees_) {
+          settings_.splatting_ = false;
+      }
     }
 
     ImGui::Checkbox("Heatmap", &settings_.heatmap_);
@@ -3078,7 +3099,7 @@ void gui_status_screen(){
         gui_visual_settings();
     }
 
-    if (settings_.provenance_ && gui_.provenance_settings_){
+    if (settings_.provenance_ && gui_.provenance_settings_ && settings_.create_aux_resources_){
         gui_provenance_settings();
     }
 
