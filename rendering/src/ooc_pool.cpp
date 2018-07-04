@@ -150,8 +150,8 @@ void ooc_pool::run()
             lod_stream access;
             access.open(lod_files[job.model_id_]);
             access.read(local_cache, offset_in_bytes, stride_in_bytes);
-
             access.close();
+
             std::lock_guard<std::mutex> lock(mutex_);
             bytes_loaded_ += stride_in_bytes;
 

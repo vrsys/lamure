@@ -18,6 +18,7 @@ std::mutex model_database::mutex_;
 bool model_database::is_instanced_ = false;
 model_database* model_database::single_ = nullptr;
 bool model_database::contains_only_compressed_data_ = true;
+bool model_database::contains_trimesh_ = false;
 
 model_database::
 model_database()
@@ -84,6 +85,10 @@ add_model(const std::string& filepath, const std::string& model_key) {
 
         if( lamure::ren::bvh::primitive_type::POINTCLOUD_QZ != bvh->get_primitive() ) {
             model_database::contains_only_compressed_data_ = false;
+        }
+
+        if( lamure::ren::bvh::primitive_type::TRIMESH == bvh->get_primitive() ) {
+            model_database::contains_trimesh_ = true;
         }
 
         if (num_datasets_ == 0) {
@@ -176,7 +181,7 @@ get_primitive_size(const bvh::primitive_type type) const {
         case bvh::primitive_type::POINTCLOUD_QZ:
             return sizeof(dataset::serialized_surfel_qz);
         case bvh::primitive_type::TRIMESH:
-            return sizeof(dataset::serialized_triangle);
+            return sizeof(dataset::serialized_vertex);
         default: break;
     }
     throw std::runtime_error(
@@ -214,11 +219,18 @@ const size_t model_database::
 get_slot_size() const {
     //return the combined slot size in bytes for both trimeshes and pointclouds
     if( model_database::contains_only_compressed_data_ ) {
-        return primitives_per_node_ * sizeof(dataset::serialized_surfel_qz);
-    } else {
-        return primitives_per_node_ * sizeof(dataset::serialized_surfel);
+      return primitives_per_node_ * sizeof(dataset::serialized_surfel_qz);
     }
-
+    else {
+      if (model_database::contains_trimesh_) {
+        return primitives_per_node_ * sizeof(dataset::serialized_vertex);
+      }
+      else {
+        return primitives_per_node_ * sizeof(dataset::serialized_surfel);    
+      }
+    }
+    return 0;
+    
 }
 
 const size_t model_database::

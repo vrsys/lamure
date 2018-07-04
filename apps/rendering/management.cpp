@@ -68,6 +68,8 @@ management::management(std::vector<std::string> const &model_filenames, std::vec
     }
 #endif
 
+    //std::cout << database->get_model(0)->get_bvh()->get_depth() << std::endl;
+
     {
         float scene_diameter = far_plane_;
         for(lamure::model_t model_id = 0; model_id < database->num_models(); ++model_id)

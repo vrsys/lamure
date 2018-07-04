@@ -46,6 +46,7 @@ public:
     const size_t        get_primitives_per_node(const model_t model_id) const;
 
     static bool         contains_only_compressed_data_;
+    static bool         contains_trimesh_;
 protected:
 
                         model_database();

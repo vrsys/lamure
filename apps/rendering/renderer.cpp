@@ -1129,8 +1129,9 @@ render(lamure::context_t context_id, lamure::ren::camera const& camera, const la
                for (auto const& node_slot_aggregate : renderable) {
                   uint32_t node_culling_result = camera.cull_against_frustum( frustum_by_model ,bounding_box_vector[ node_slot_aggregate.node_id_ ] );
 
-                  if( node_culling_result != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
+                  //if( node_culling_result != 1)  // 0 = inside, 1 = outside, 2 = intersectingS
                   {
+                      rendered_splats_ += database->get_primitives_per_node();
                       context_->apply();
                       context_->draw_arrays(PRIMITIVE_TRIANGLE_LIST, (node_slot_aggregate.slot_id_) * database->get_primitives_per_node(), surfels_per_node_of_model);
                   }

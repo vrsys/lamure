@@ -224,6 +224,7 @@ struct settings {
   bool pvs_culling_ {0};
   float lod_point_scale_ {1.0f};
   float aux_point_size_ {1.0f};
+  float aux_point_distance_ {0.5f};
   float aux_point_scale_ {1.0f};
   float aux_focal_length_ {1.0f};
   int32_t vis_ {0};
@@ -428,6 +429,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "aux_point_size") {
             settings.aux_point_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
           }
+          else if (key == "aux_point_distance") {
+            settings.aux_point_distance_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
+          }
           else if (key == "aux_focal_length") {
             settings.aux_focal_length_ = std::min(std::max(atof(value.c_str()), 0.001), 10.0);
           }
@@ -610,7 +614,6 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
       exit(-1);
     }
   }
-
 
 }
 
@@ -1561,7 +1564,7 @@ void brush() {
   else {
     scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(camera_->trackball_matrix()));
     scm::math::vec3f cam_up = scm::math::normalize(scm::math::vec3f(cm[0], cm[1], cm[2]));
-    float plane_dim = 0.1f;
+    float plane_dim = 0.02f; //0.1
     if (ray_brush.intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
       hit = true;
     }
@@ -1577,7 +1580,7 @@ void brush() {
     auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
     
     xyz xyz{
-        intersection.position_ + intersection.normal_ * settings_.aux_point_size_,
+        intersection.position_ + intersection.normal_ * settings_.aux_point_distance_,
         (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
         settings_.aux_point_size_,
         intersection.normal_};
@@ -2838,6 +2841,9 @@ void gui_selection_settings(){
         }
       }
     }
+    else {
+      ImGui::Text("No atlas file");
+    }
     ImGui::Checkbox("Brush", &input_.brush_mode_);
 
     ImGui::Text("Selection: %d / %d", (int32_t)selection_.brush_end_, (int32_t)settings_.max_brush_size_);
@@ -2909,7 +2915,7 @@ void gui_view_settings(){
       }
     }
     else {
-      ImGui::Text("No PVS");
+      ImGui::Text("No pvs file");
     }
 
     ImGui::End();
@@ -3034,6 +3040,9 @@ void gui_provenance_settings(){
           settings_.splatting_ = false;
       }
     }
+    else {
+      ImGui::Text("No aux file");
+    }
 
     ImGui::Checkbox("Heatmap", &settings_.heatmap_);
     
@@ -3086,6 +3095,9 @@ void gui_status_screen(){
     if (settings_.provenance_) {
       ImGui::Checkbox("Provenance Settings", &gui_.provenance_settings_);
     }
+    else {
+      ImGui::Text("No provenance file");
+    }
     
     if (gui_.selection_settings_){
         gui_selection_settings();
@@ -3102,6 +3114,7 @@ void gui_status_screen(){
     if (settings_.provenance_ && gui_.provenance_settings_ && settings_.create_aux_resources_){
         gui_provenance_settings();
     }
+
 
     ImGui::End();
 }

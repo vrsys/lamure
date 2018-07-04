@@ -46,6 +46,11 @@ public:
       float n2_x_, n2_y_, n2_z_;
       float c2_x_, c2_y_;
     };
+    struct serialized_vertex {
+      float v_x_, v_y_, v_z_;
+      float n_x_, n_y_, n_z_;
+      float c_x_, c_y_;
+    };
     struct serialized_surfel_qz {
       uint16_t x, y, z; // quantized pos between node extents
       uint16_t n_enum;  // enumerated point on unit cube
