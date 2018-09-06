@@ -72,6 +72,8 @@ public:
                         aux(const std::string& filename);
     virtual             ~aux() {}
 
+    void                test_wrapping() const;
+
     const std::string   get_filename() const { return filename_; }
     const uint32_t      get_num_views() const { return views_.size(); }
     const uint64_t      get_num_sparse_points() const { return sparse_points_.size(); }

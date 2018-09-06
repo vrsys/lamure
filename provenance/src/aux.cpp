@@ -43,6 +43,11 @@ aux(const std::string& filename)
 };
 
 void aux::
+test_wrapping() const {
+  std::cout << "Hello Wrap!" << std::endl;
+}
+
+void aux::
 load_aux_file(const std::string& filename) {
 
     filename_ = filename;
