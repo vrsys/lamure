@@ -14,6 +14,7 @@
 
 #include <lamure/prov/aux_stream.h>
 #include <lamure/prov/octree.h>
+#include <lamure/prov/octree_node.h>
 
 namespace lamure {
 namespace prov {
@@ -30,30 +31,30 @@ aux::
 aux(const std::string& filename)
 : filename_("") {
 
+    load_aux_file(filename);
+
+};
+
+void aux::
+load_aux_file(const std::string& filename) {
     std::string extension = filename.substr(filename.find_last_of(".") + 1);
 
     if (extension.compare("aux") == 0) {
-       load_aux_file(filename);
+       filename_ = filename;
+
+       aux_stream aux_stream;
+       aux_stream.read_aux(filename, *this);
     }
     else {
        throw std::runtime_error(
           "lamure: aux::Invalid file extension encountered.");
     }
 
-};
-
-void aux::
-test_wrapping() const {
-  std::cout << "Hello Wrap!" << std::endl;
 }
 
 void aux::
-load_aux_file(const std::string& filename) {
-
-    filename_ = filename;
-
-    aux_stream aux_stream;
-    aux_stream.read_aux(filename, *this);
+test_wrapping() const {
+  std::cout << "The wrapped function in lamure has been called!" << std::endl;
 }
 
 
@@ -66,6 +67,19 @@ write_aux_file(const std::string& filename) {
     aux_stream.write_aux(filename, *this);
 
 }
+
+
+uint64_t aux::
+get_octree_query(const scm::math::vec3f& _pos){
+  return octree_->query(_pos);
+}
+
+
+const octree_node&  
+aux::get_octree_node(uint64_t _node_id){
+  return octree_->get_node(_node_id);
+}
+
 
 const aux::view& aux::
 get_view(const uint32_t view_id) const {

@@ -21,6 +21,7 @@ namespace lamure {
 namespace prov {
 
 class octree;
+class octree_node;
 
 class aux {
 public:
@@ -70,36 +71,41 @@ public:
 
                         aux();
                         aux(const std::string& filename);
-    virtual             ~aux() {}
+    virtual             ~aux() {}                                         //do not wrap!
+
+    void                load_aux_file(const std::string& filename);                       //done
 
     void                test_wrapping() const;
 
-    const std::string   get_filename() const { return filename_; }
-    const uint32_t      get_num_views() const { return views_.size(); }
-    const uint64_t      get_num_sparse_points() const { return sparse_points_.size(); }
-    const uint32_t      get_num_atlas_tiles() const { return atlas_tiles_.size(); }
+    const std::string   get_filename() const { return filename_; }                        //done
+    const uint32_t      get_num_views() const { return views_.size(); }                   //done
+    const uint64_t      get_num_sparse_points() const { return sparse_points_.size(); }   //done
+    const uint32_t      get_num_atlas_tiles() const { return atlas_tiles_.size(); }       //done
 
-    const view&         get_view(uint32_t id) const;
-    const sparse_point& get_sparse_point(uint64_t id) const;
-    const atlas_tile&   get_atlas_tile(uint32_t id) const;
-    
-    void                add_view(const view& view);
-    void                add_sparse_point(const sparse_point& point);
-    void                add_atlas_tile(const atlas_tile& tile);
+    uint64_t            get_octree_query(const scm::math::vec3f& _pos);
+    const octree_node&  get_octree_node(uint64_t _node_id);
+    //uint64_t            octree::query(const scm::math::vec3f& _pos); ->  octree_->query...;
+    //const octree_node&  octree::get_node(uint64_t _node_id);  ->  octree_->get_node...;
 
-    void                set_octree(const std::shared_ptr<octree> _octree);
-    const std::shared_ptr<octree> get_octree() const;
+    const view&         get_view(uint32_t id) const;                       //done
+    const sparse_point& get_sparse_point(uint64_t id) const;               //done
+    const atlas_tile&   get_atlas_tile(uint32_t id) const;                 //done
+     
+    void                add_view(const view& view);                        //do not wrap!
+    void                add_sparse_point(const sparse_point& point);       //do not wrap!
+    void                add_atlas_tile(const atlas_tile& tile);            //do not wrap!
 
-    void                set_atlas(const atlas& atlas);
-    const atlas&        get_atlas() const;
+    void                set_octree(const std::shared_ptr<octree> _octree); //do not wrap!
+    const std::shared_ptr<octree> get_octree() const;                      //do not wrap!
 
-    void                write_aux_file(const std::string& filename);
+    void                set_atlas(const atlas& atlas);                     //do not wrap!
+    const atlas&        get_atlas() const;                                 //done
 
-    std::vector<sparse_point>& get_sparse_points() { return sparse_points_; };
+    void                write_aux_file(const std::string& filename);       //do not wrap!
+
+    std::vector<sparse_point>& get_sparse_points() { return sparse_points_; }; //do not wrap!
 
 protected:
-
-    void                load_aux_file(const std::string& filename);
 
 private:
 
