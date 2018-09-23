@@ -187,18 +187,20 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/provenance)
 add_subdirectory(${CMAKE_SOURCE_DIR}/virtual_texturing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/rendering)
 add_subdirectory(${CMAKE_SOURCE_DIR}/pvs_preprocessing)
+add_subdirectory(${CMAKE_SOURCE_DIR}/mesh_preprocessing)
 add_subdirectory(${CMAKE_SOURCE_DIR}/apps)
 
 add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_provenance lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 add_dependencies(lamure_virtual_texturing lamure_common)
-add_dependencies(lamure_preprocessing lamure_common)
+add_dependencies(lamure_mesh_preprocessing lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_mesh_preprocessing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_provenance PROPERTIES DEBUG_POSTFIX "d")
 
 
