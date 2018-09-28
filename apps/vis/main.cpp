@@ -264,6 +264,7 @@ struct settings {
   std::map<uint32_t, std::vector<lamure::prov::aux::view>> views_;
   std::map<uint32_t, std::string> aux_;
   std::string selection_ {""};
+  float max_radius_ {std::numeric_limits<float>::max()};
 
 };
 
@@ -586,6 +587,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "view_tf") {
             settings.view_tf_ = load_matrix(value);
           }
+          else if (key == "max_radius") {
+            settings.max_radius_ = std::max(atof(value.c_str()), 0.0);
+          }
           else {
             std::cout << "unrecognized key: " << key << std::endl;
             exit(-1);
@@ -661,6 +665,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("heatmap", (bool)settings_.heatmap_);
 
   shader->uniform("face_eye", false);
+  shader->uniform("max_radius", settings_.max_radius_);
 
   shader->uniform("heatmap_min", settings_.heatmap_min_);
   shader->uniform("heatmap_max", settings_.heatmap_max_);

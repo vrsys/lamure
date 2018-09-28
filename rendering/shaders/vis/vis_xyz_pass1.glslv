@@ -24,6 +24,7 @@ uniform float near_plane;
 
 uniform bool face_eye;
 uniform vec3 eye;
+uniform float max_radius;
 
 uniform float point_size_factor;
 uniform float model_radius_scale;
@@ -41,6 +42,12 @@ layout(location = 6) in vec3 in_normal;
 INCLUDE ../common/compute_tangent_vectors.glsl
 
 void main() {
+  float radius = in_radius;
+  if (radius > max_radius) {
+    radius = max_radius;
+  }
+
+
   vec3 normal = in_normal;
   if (face_eye) {
     normal = normalize(eye-(model_matrix*vec4(in_position, 1.0)).xyz);
@@ -49,7 +56,7 @@ void main() {
   // precalculate tangent vectors to establish the surfel shape
   vec3 tangent   = vec3(0.0);
   vec3 bitangent = vec3(0.0);
-  compute_tangent_vectors(normal, in_radius, tangent, bitangent);
+  compute_tangent_vectors(normal, radius, tangent, bitangent);
 
   if (!face_eye) {
     normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
