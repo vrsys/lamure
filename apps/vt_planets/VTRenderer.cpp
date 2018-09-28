@@ -12,7 +12,7 @@
 #include "VTRenderer.h"
 #include "imgui.h"
 #include "imgui_impl_glfw_gl3.h"
-#include <cublas_v2.h>
+
 #include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
 
