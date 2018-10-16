@@ -74,6 +74,10 @@ get_octree_query(const scm::math::vec3f& _pos){
   return octree_->query(_pos);
 }
 
+const uint64_t aux::
+get_num_nodes() const {
+ return octree_->get_num_nodes();
+}
 
 const octree_node&  
 aux::get_octree_node(uint64_t _node_id){

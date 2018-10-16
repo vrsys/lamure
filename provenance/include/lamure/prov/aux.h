@@ -80,7 +80,9 @@ public:
     const std::string   get_filename() const { return filename_; }                        //done
     const uint32_t      get_num_views() const { return views_.size(); }                   //done
     const uint64_t      get_num_sparse_points() const { return sparse_points_.size(); }   //done
-    const uint32_t      get_num_atlas_tiles() const { return atlas_tiles_.size(); }       //done
+    const uint32_t      get_num_atlas_tiles() const { return atlas_tiles_.size(); }  
+         //done
+    const uint64_t      get_num_nodes() const;      //done
 
     uint64_t            get_octree_query(const scm::math::vec3f& _pos);
     const octree_node&  get_octree_node(uint64_t _node_id);
