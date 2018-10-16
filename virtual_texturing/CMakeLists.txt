@@ -1,4 +1,4 @@
-############################################################
+###########################################################
 # CMake Build Script for the svt library
 
 cmake_minimum_required(VERSION 2.8.7)
@@ -60,6 +60,10 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED
+	${PROJECT_INCLUDES}
+	${PROJECT_SOURCES})
+
+add_library(${PROJECT_NAME}_s STATIC
         ${PROJECT_INCLUDES}
         ${PROJECT_SOURCES})
 
@@ -112,7 +116,7 @@ IF (MSVC)
             ARCHIVE DESTINATION lib/Debug
             )
 ELSEIF (UNIX)
-    install (TARGETS ${PROJECT_NAME}
+	install (TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_s
             RUNTIME DESTINATION lib
             LIBRARY DESTINATION lib
             ARCHIVE DESTINATION lib
