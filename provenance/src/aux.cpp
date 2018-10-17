@@ -52,11 +52,6 @@ load_aux_file(const std::string& filename) {
 
 }
 
-void aux::
-test_wrapping() const {
-  std::cout << "The wrapped function in lamure has been called!" << std::endl;
-}
-
 
 void aux::
 write_aux_file(const std::string& filename) {
