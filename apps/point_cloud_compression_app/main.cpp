@@ -77,11 +77,7 @@ void quantize_position(surfel const& in_uncompressed_surfel, quantized_surfel& o
     out_compressed_surfel.pos_16ui_components[dim_idx] = std::min(int32_t(std::numeric_limits<uint16_t>::max()), std::max(int32_t(std::numeric_limits<uint16_t>::min()), overflow_protected_pos));
   }
 }
-/*
-void unquantize_position(quantized_surfel const& in_compressed_surfel, surfel& out_uncompressed_surfel, scm::gl::boxf const& node_extents) {
-  unquantized_pos[dim_idx] = qz_surfel.pos_16ui_components[dim_idx] * ((((double)bvh_bounding_boxes[node_idx].max_vertex()[dim_idx]) - ((double)bvh_bounding_boxes[node_idx].min_vertex()[dim_idx])) / 65536.0 ) + ((double)bvh_bounding_boxes[node_idx].min_vertex()[dim_idx] );
-}
-*/
+
 
 void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel, float const avg_surfel_radius, float const max_surfel_radius_deviation) {
   //currently, min and max radius are not exposed in the tree, so we should use the avg radius
@@ -106,9 +102,7 @@ void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out
   } else if ((0.0 == one_sided_quantization_step) ) { //if it was not a zero surfel, make sure, handle the division by zero case (=> all surfels have exactly the same size)
     out_compressed_surfel.color777ui_and_radius11ui_combined = (out_compressed_surfel.color777ui_and_radius11ui_combined & (0xFFFFF800)) | ( half_range_minus_one );
     return;
-  } // if it was not a zero surfel, handle
-
-  //if ((0.0 == one_sided_quantization_step) ||)
+  }
 
   double reference_min_range = avg_surfel_radius - max_surfel_radius_deviation;
   double normalized_float_radius = ((double)in_uncompressed_surfel.size - reference_min_range) / (2*max_surfel_radius_deviation);
@@ -120,31 +114,6 @@ void quantize_radius(surfel const& in_uncompressed_surfel, quantized_surfel& out
 }
 
 void quantize_color(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel) {
-  /*
-  int32_t rb_quantization_step = 8;
-  int32_t g_quantization_step  = 4;
-
-  int8_t r5 = int32_t( std::round(in_uncompressed_surfel.rgbf[0] / (double)rb_quantization_step) );
-  int8_t g6 = int32_t( std::round(in_uncompressed_surfel.rgbf[1] /  (double)g_quantization_step) );
-  int8_t b5 = int32_t( std::round(in_uncompressed_surfel.rgbf[2] / (double)rb_quantization_step) );
-
-  r5 = std::min(int8_t(31), r5);
-  g6 = std::min(int8_t(63), g6);
-  b5 = std::min(int8_t(31), b5);
-
-  uint8_t rb_combination_mask = 0x1F;
-  uint8_t  g_combination_mask = 0x3F;
-
-
-  //bit pattern: rrrrr gggggg bbbbb  <----- 16 bit
-  uint16_t quantized_and_combined_color =  ((r5 & rb_combination_mask) << 11) |
-                                           ((g6 &  g_combination_mask) <<  5) |
-                                           ((b5 & rb_combination_mask) << 0);
-
-
-
-  out_compressed_surfel.color_565ui_combined = quantized_and_combined_color;
-  */
 
   int32_t rb_quantization_step = 2;
   int32_t g_quantization_step  = 2;
@@ -195,9 +164,6 @@ void quantize_normal(surfel const& in_uncompressed_surfel, quantized_surfel& out
 
   //face ids based on dominant axes: -x = 0; +x = 1; -y = 2; +y=3; -z = 4; +z = 5 
   int32_t dominant_face_idx = dominant_axis_idx*2 + ( in_uncompressed_surfel.normal[dominant_axis_idx] < 0.0 ? 1 : 0 );
-  //int32_t dominant_face_idx = dominant_axis_idx;//+ ( in_uncompressed_surfel.normal[dominant_axis_idx] < 0.0 ? 1 : 0 );
-  //quantize dom_axis_idx + 1 with 104 positions and dom_axis_idx+2 with 105 positions
-
 
   int32_t dominant_axis_idx_p1 = (dominant_axis_idx + 1) % 3;
   int32_t dominant_axis_idx_p2 = (dominant_axis_idx + 2) % 3;
@@ -219,9 +185,6 @@ void quantize_normal(surfel const& in_uncompressed_surfel, quantized_surfel& out
 //Assume normalized input on +Z hemisphere.
 //Output is on [-1, 1].
 void float32x3_to_hemioct(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel) {
-//Project the hemisphere onto the hemi-octahedron,
-//and then into the xy plane
-
 
   double tmp_normal[3] = {in_uncompressed_surfel.normal[0], in_uncompressed_surfel.normal[1], in_uncompressed_surfel.normal[2]};
 
@@ -240,8 +203,6 @@ uint16_t compressed_first_part_8_bit = ( std::max(0, std::min(255, int32_t(std::
 uint16_t compressed_second_part_8_bit = ( std::max(0, std::min(255, int32_t(std::round((((p[0] - p[1]) + 1.0) / 2.0) * 255)) ) )) << 0 ;
 
 out_compressed_surfel.normal_16ui = compressed_first_part_8_bit | compressed_second_part_8_bit;
-//Rotate and scale the center diamond to the unit square
-//return vec2(p.x + p.y, p.x - p.y);
 }
 
 
@@ -255,7 +216,6 @@ void hemioct_to_float32x3(quantized_surfel const& in_compressed_surfel, surfel& 
   e[0] = (((looked_up_compressed_normal >> 8) / 255.0) - 1.0) * 2.0;
   e[1] = (((looked_up_compressed_normal & 0xFF) / 255.0) - 1.0) * 2.0;
 
-  //double tmp_compr_normal[2] = {in_uncompressed_surfel.normal[0], in_uncompressed_surfel.normal[1], in_uncompressed_surfel.normal[2]};
   double temp[2];
   temp[0] = (e[0] + e[1]) * 0.5;
   temp[1] = (e[0] - e[1]) * 0.5;
@@ -273,19 +233,8 @@ void hemioct_to_float32x3(quantized_surfel const& in_compressed_surfel, surfel& 
   out_uncompressed_surfel.normal[0] /= vector_length;
   out_uncompressed_surfel.normal[1] /= vector_length;
   out_uncompressed_surfel.normal[2] /= vector_length;
-  // //TODO
-  //vec3 v = vec3(temp, 1.0 - abs(temp.x) - abs(temp.y));
-  //return normalize(v);
 }
 
-/*
-vec3 hemioct_to_float32x3(vec2 e) {
-//Rotate and scale the unit square back to the center diamond
-vec2 temp = vec2(e.x + e.y, e.x - e.y) * 0.5;
-vec3 v = vec3(temp, 1.0 - abs(temp.x) - abs(temp.y));
-return normalize(v);
-}
-*/
 
 
 void quantize_complete_surfel(surfel const& in_uncompressed_surfel, quantized_surfel& out_compressed_surfel, scm::gl::boxf const& node_extents, float const avg_surfel_radius, float const max_surfel_radius_deviation ) {

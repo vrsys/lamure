@@ -263,6 +263,8 @@ struct settings {
   std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
   std::map<uint32_t, std::vector<lamure::prov::aux::view>> views_;
   std::map<uint32_t, std::string> aux_;
+  std::string selection_ {""};
+  float max_radius_ {std::numeric_limits<float>::max()};
 
 };
 
@@ -427,10 +429,10 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             settings.lod_point_scale_ = std::min(std::max(atof(value.c_str()), 0.0), 10.0);
           }
           else if (key == "aux_point_size") {
-            settings.aux_point_size_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
+            settings.aux_point_size_ = std::min(std::max(atof(value.c_str()), 0.00001), 1.0);
           }
           else if (key == "aux_point_distance") {
-            settings.aux_point_distance_ = std::min(std::max(atof(value.c_str()), 0.001), 1.0);
+            settings.aux_point_distance_ = std::min(std::max(atof(value.c_str()), 0.00001), 1.0);
           }
           else if (key == "aux_focal_length") {
             settings.aux_focal_length_ = std::min(std::max(atof(value.c_str()), 0.001), 10.0);
@@ -573,6 +575,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "pvs") {
             settings.pvs_ = value;
           }
+          else if (key == "selection") {
+            settings.selection_ = value;
+          }
           else if (key == "background_image") {
             settings.background_image_ = value;
           }
@@ -581,6 +586,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "view_tf") {
             settings.view_tf_ = load_matrix(value);
+          }
+          else if (key == "max_radius") {
+            settings.max_radius_ = std::max(atof(value.c_str()), 0.0);
           }
           else {
             std::cout << "unrecognized key: " << key << std::endl;
@@ -657,6 +665,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("heatmap", (bool)settings_.heatmap_);
 
   shader->uniform("face_eye", false);
+  shader->uniform("max_radius", settings_.max_radius_);
 
   shader->uniform("heatmap_min", settings_.heatmap_min_);
   shader->uniform("heatmap_max", settings_.heatmap_max_);
@@ -1699,29 +1708,70 @@ void glut_resize(int32_t w, int32_t h) {
 }
 
 
+void load_brush(const std::string& filename) {
+
+  std::ifstream file(filename.c_str());
+  if (!file) {
+    std::cout << "Couldn't load brush selection" << std::endl;
+    exit(0);
+  }
+
+  uint32_t i = 0;
+  std::string line;
+  while (!file.eof()) {
+
+    std::getline(file, line);
+    std::istringstream ss(line);
+
+    xyz xyz;
+    ss >> xyz.pos_.x; ss >> xyz.pos_.y; ss >> xyz.pos_.z;
+    int r, g, b, a;
+    ss >> r; ss >> g; ss >> b; ss >> a;
+    xyz.r_ = (uint8_t)r; xyz.g_ = (uint8_t)g; xyz.b_ = (uint8_t)b; xyz.a_ = (uint8_t)255;
+    ss >> xyz.rad_;
+    ss >> xyz.nml_.x; ss >> xyz.nml_.y; ss >> xyz.nml_.z;
+
+    if (i < settings_.max_brush_size_) {
+      selection_.brush_[i++] = xyz;
+    }
+  }
+
+  selection_.brush_end_ = std::min(i, (uint32_t)settings_.max_brush_size_);
+
+  file.close();
+  std::cout << "INFO: selection loaded (" << i << " points)" << std::endl;
+
+
+  char* brush_buffer = (char*)device_->main_context()->map_buffer(brush_resource_.buffer_, scm::gl::ACCESS_READ_WRITE);
+  memcpy(&brush_buffer[0], (char*)&selection_.brush_[0], sizeof(xyz)*settings_.max_brush_size_);
+  device_->main_context()->unmap_buffer(brush_resource_.buffer_);
+
+}
+
 void save_brush() {
   if (!input_.brush_mode_) {
     std::cout << "INFO: not in brush mode" << std::endl;
     return;
   }
 
-  if (selection_.selected_model_ == -1) {
-    std::cout << "INFO: no model selected" << std::endl;
-    return;
-  }
+  std::cout << selection_.brush_.size() << std::endl;
+  std::cout << selection_.brush_end_ << std::endl;
 
   if (selection_.brush_.size() > 0) {
-    std::string out_filename = settings_.models_[selection_.selected_model_].substr(0, settings_.models_[selection_.selected_model_].size()-4) + "_BRUSH.xyz";
+    std::string out_filename = settings_.models_[0].substr(0, settings_.models_[0].size()-4) + "_BRUSH.xyz";
     std::ofstream out_file(out_filename.c_str(), std::ios::trunc);
 
-    for (const auto& xyz : selection_.brush_) {
+    for (uint32_t i = 0; i < selection_.brush_end_; ++i) {
+      const auto& xyz = selection_.brush_[i];
       out_file << xyz.pos_.x << " " << xyz.pos_.y << " " << xyz.pos_.z << " ";
-      out_file << (int32_t)xyz.r_ << " " << (int32_t)xyz.g_ << " " << (int32_t)xyz.b_ << std::endl;
+      out_file << (int32_t)xyz.r_ << " " << (int32_t)xyz.g_ << " " << (int32_t)xyz.b_ << " " << (int32_t)255 << " ";
+      out_file << xyz.rad_ << " ";
+      out_file << xyz.nml_.x << " " << xyz.nml_.y << " " << xyz.nml_.z << "\n";
     }
 
     out_file.close();
 
-    std::cout << "INFO: selection of model " << selection_.selected_model_ << " saved to " << out_filename << std::endl;
+    std::cout << "INFO: " << selection_.brush_.size() << " points saved to " << out_filename << std::endl;
   }
   else {
     std::cout << "INFO: no brush selection" << std::endl;
@@ -2425,24 +2475,24 @@ void init_render_states() {
 
 
 void init_camera() {
+
+  auto root_bb = lamure::ren::model_database::get_instance()->get_model(0)->get_bvh()->get_bounding_boxes()[0];
+  auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
+  auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
+  scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
+
+  camera_ = new lamure::ren::camera(0,
+                                    make_look_at_matrix(center + scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)),
+                                    length(root_bb_max-root_bb_min), false, false);
+  camera_->set_dolly_sens_(settings_.travel_speed_);
+
   if (settings_.use_view_tf_) {
-    camera_ = new lamure::ren::camera();
     camera_->set_view_matrix(settings_.view_tf_);
     std::cout << "view_tf:" << std::endl;
     std::cout << camera_->get_high_precision_view_matrix() << std::endl;
     camera_->set_dolly_sens_(settings_.travel_speed_);
   }
-  else {
-    auto root_bb = lamure::ren::model_database::get_instance()->get_model(0)->get_bvh()->get_bounding_boxes()[0];
-    auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
-    auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
-    scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
 
-    camera_ = new lamure::ren::camera(0,
-                                      make_look_at_matrix(center + scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)),
-                                      length(root_bb_max-root_bb_min), false, false);
-    camera_->set_dolly_sens_(settings_.travel_speed_);
-  }
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
   screen_quad_.reset(new scm::gl::quad_geometry(device_, scm::math::vec2f(-1.0f, -1.0f), scm::math::vec2f(1.0f, 1.0f)));
@@ -2780,6 +2830,9 @@ void init() {
 
   init_camera();
 
+  if (settings_.selection_ != "") {
+    load_brush(settings_.selection_);
+  }
 
   if (settings_.background_image_ != "") {
     //std::cout << "background image: " << settings_.background_image_ << std::endl;
