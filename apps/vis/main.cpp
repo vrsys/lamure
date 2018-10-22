@@ -2844,14 +2844,48 @@ void init() {
 
 }
 
+std::string
+make_short_name(const std::string& s){
+#if 0
+  boost::filesystem::path p(s);
+  std::string filename(p.stem().string());
+  const unsigned max_length = 36;
+  if(filename.length() > max_length){
+    std::string shortname = filename.substr(0,12) + "..." + filename.substr(filename.length() - 21, 21);
+    return shortname;
+  }
+  return filename;
+#endif
+  const unsigned max_length = 36;
+  if(s.length() > max_length){
+    std::string shortname = s.substr(s.length() - 36, 36);
+    return shortname;
+  }
+  return s;
 
-void gui_selection_settings(){
+}
+
+void gui_selection_settings(settings& stgs){
 
     ImGui::SetNextWindowPos(ImVec2(20, 315));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 220.0f));
 
     ImGui::Begin("Selection", &gui_.selection_settings_, ImGuiWindowFlags_MenuBar);
 
+    std::vector<std::string> model_names_short;
+    for(const auto& s : stgs.models_){
+      model_names_short.push_back(make_short_name(s));
+    }
+
+    char* model_names[num_models_ + 1];
+    for(unsigned i = 0; i < model_names_short.size(); ++i ){
+      model_names[i] = ((char *) model_names_short[i].c_str());
+    }
+    std::string all("All");
+    model_names[num_models_] = (char *) all.c_str();
+
+#if 0
+    // old code from student
     char* model_values[num_models_+1] = { };
     for (int i=0; i<num_models_+1; i++) {
         char buffer [32];
@@ -2861,13 +2895,20 @@ void gui_selection_settings(){
         }
         model_values[i] = strdup(buffer);
     }
+#endif
+
 
     static int32_t dataset = selection_.selected_model_;
     if (selection_.selected_model_ == -1) {
       dataset = num_models_;
     }
-    ImGui::Combo("Dataset", &dataset, model_values, IM_ARRAYSIZE(model_values));
-    
+
+    ImGui::Combo("Dataset", &dataset, model_names, num_models_+1);
+#if 0
+    // old code from student
+    ImGui::Combo("Dataset", &dataset, model_values, IM_ARRAYSIZE(model_names));
+#endif    
+
     if(dataset == num_models_){
       selection_.selected_model_ = -1;
     } else {
@@ -3153,7 +3194,7 @@ void gui_status_screen(){
     }
     
     if (gui_.selection_settings_){
-        gui_selection_settings();
+        gui_selection_settings(settings_);
     }
 
     if (gui_.view_settings_){
