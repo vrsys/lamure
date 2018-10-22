@@ -11,7 +11,7 @@ include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 						   ${Boost_INCLUDE_DIR})
 
 
-InitApp(${CMAKE_PROJECT_NAME}_bvh_compressor)
+InitApp(${CMAKE_PROJECT_NAME}_point_cloud_quantization)
 
 ############################################################
 # Libraries
