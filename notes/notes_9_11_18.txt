@@ -5,6 +5,12 @@ TODO:
  - create simplified mesh comparison
 
 
+ - try to read mesh to write obj file in order to output it / test it
+
+OBJ load: meshlab ~/Desktop/lamure/lamure/install/bin/data/cube.obj 
+
+
+
 to add normals/texture coords:
  - decide which data format would be best to add them to the polyhedron, and incorporate obj loader function accordingly
  - use property maps? http://cgal-discuss.949826.n4.nabble.com/How-do-I-construct-a-WritablePropertyMap-td4662333.html

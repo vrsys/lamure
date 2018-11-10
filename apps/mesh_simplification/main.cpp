@@ -10,6 +10,7 @@
 
 // Simplification function
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
+#include <CGAL/Surface_mesh.h>
 
 // Stop-condition policy
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
@@ -25,6 +26,12 @@
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Polyhedron_3<Kernel> Surface_mesh;
 typedef Surface_mesh::HalfedgeDS HalfedgeDS;
+
+typedef boost::graph_traits<Surface_mesh>::vertex_descriptor vertex_descriptor;
+
+
+typedef CGAL::Surface_mesh<Kernel::Point_3> GMesh;
+typedef GMesh::Vertex_index vertex_index;
 
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
@@ -77,6 +84,24 @@ public:
     B.end_surface();
     }
 };
+
+//custom function to build a mesh of type Surface Mesh
+void build_surface_mesh (GMesh &_gmesh, std::vector<double> &_points, std::vector<int> &_tris ){
+
+  std::vector<vertex_index> v_indices;
+
+  //add vertices, record indexes 
+  for (int i = 0; i < (int)_points.size(); i+=3){
+    vertex_index v = _gmesh.add_vertex(Kernel::Point_3(_points[i+0], _points[i+1], _points[i+2]));
+    v_indices.push_back(v);
+  }
+  //add faces
+  for (int i = 0; i < (int)_tris.size(); i+=3){
+    _gmesh.add_face(v_indices[_tris[i+0]],v_indices[_tris[i+1]], v_indices[_tris[i+2]]);
+  }
+
+
+}
  
 
 
@@ -91,105 +116,140 @@ int get_first_integer( const char *v ){
  return ival;
 }
 
-//original load function from James code
-void load_obj(const std::string& filename, std::vector<double>& coords, std::vector<int>& tris ){
- double x, y, z;
- char line[1024], v0[1024], v1[1024], v2[1024];
+// //original load function from James code
+// void load_obj(const std::string& filename, std::vector<double>& coords, std::vector<int>& tris ){
+//  double x, y, z;
+//  char line[1024], v0[1024], v1[1024], v2[1024];
 
- // open the file, return if open fails
- FILE *fp = fopen(filename.c_str(), "r" );
- if( !fp ) return;
+//  // open the file, return if open fails
+//  FILE *fp = fopen(filename.c_str(), "r" );
+//  if( !fp ) return;
   
- // read lines from the file, if the first character of the
- // line is 'v', we are reading a vertex, otherwise, if the
- // first character is a 'f' we are reading a facet
- while( fgets( line, 1024, fp ) ){
-  if( line[0] == 'v' ){
-    sscanf( line, "%*s%lf%lf%lf", &x, &y, &z );
-    coords.push_back( x );
-    coords.push_back( y );
-    coords.push_back( z );
-  } 
-  else if( line[0] == 'f' ){
-    sscanf( line, "%*s%s%s%s", v0, v1, v2 );
-    tris.push_back( get_first_integer( v0 )-1 );
-    tris.push_back( get_first_integer( v1 )-1 );
-    tris.push_back( get_first_integer( v2 )-1 );
-  }
-  // else if( line[])
- }
- fclose(fp); 
-}
+//  // read lines from the file, if the first character of the
+//  // line is 'v', we are reading a vertex, otherwise, if the
+//  // first character is a 'f' we are reading a facet
+//  // while( fgets( line, 1024, fp ) ){
+//  while (true) {
+//   char line[128];
+//   int32_t l = fscanf(fp, "%s", line);
 
+//   if (l == EOF) break;
 
-//load obj function from vt_obj_loader/Utils.h
-// void load_obj(const std::string& filename, std::vector<double>& v, std::vector<int>& vindices ){
-
-//   // std::vector<float> v;
-//   // std::vector<uint32_t> vindices;
-//   // std::vector<float> n;
-//   // std::vector<uint32_t> nindices;
-//   // std::vector<float> t;
-//   // std::vector<uint32_t> tindices;
-
-//   uint32_t num_tris = 0;
-
-//   FILE *file = fopen(filename.c_str(), "r");
-
-//   if (0 != file) {
-
-//     while (true) {
-//       char line[128];
-//       int32_t l = fscanf(file, "%s", line);
-
-//       if (l == EOF) break;
-//       if (strcmp(line, "v") == 0) {
-//         double vx, vy, vz;
-//         fscanf(file, "%f %f %f\n", &vx, &vy, &vz);
-//         v.insert(v.end(), {vx, vy, vz});
-//       } 
-//       // else if (strcmp(line, "vn") == 0) {
-//       //   float nx, ny, nz;
-//       //   fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
-//       //   n.insert(n.end(), {nx, ny, nz});
-//       // } 
-//       // else if (strcmp(line, "vt") == 0) {
-//       //   float tx, ty;
-//       //   fscanf(file, "%f %f\n", &tx, &ty);
-//       //   t.insert(t.end(), {tx, ty});
-//       // } 
-//       else if (strcmp(line, "f") == 0) {
-//         std::string vertex1, vertex2, vertex3;
-//         int index[3];
-//         int coord[3];
-//         int normal[3];
-//         fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
-//            &index[0], &coord[0], &normal[0],
-//            &index[1], &coord[1], &normal[1],
-//            &index[2], &coord[2], &normal[2]);
-
-//         vindices.insert(vindices.end(), {index[0], index[1], index[2]});
-//         // tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
-//         // nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
-//       }
-//     }
-
-//     fclose(file);
-
-//     std::cout << "positions: " << vindices.size() << std::endl;
-//     // std::cout << "normals: " << nindices.size() << std::endl;
-//     // std::cout << "coords: " << tindices.size() << std::endl;
-
+//   // if ( line)
+//     // std::cout << line;
+//   if (strcmp(line, "vn") == 0) {
+//   } 
+//   else if (strcmp(line, "vt") == 0) {
+//   } 
+//   else if (strcmp(line, "v") == 0) {
+//     // sscanf( line, "%*s%lf%lf%lf", &x, &y, &z );
+//     fscanf(fp, "%f %f %f\n", &x, &y, &z);
+//     coords.push_back( x );
+//     coords.push_back( y );
+//     coords.push_back( z );
+//   } 
+//   else if(strcmp(line, "f") == 0){
+//     sscanf( line, "%*s%s%s%s", v0, v1, v2 );
+//     tris.push_back( get_first_integer( v0 )-1 );
+//     tris.push_back( get_first_integer( v1 )-1 );
+//     tris.push_back( get_first_integer( v2 )-1 );
 //   }
-
+//     // else if( line[])
+//  }
+//  fclose(fp); 
 // }
 
 
-// struct vertex {
-//     scm::math::vec3f position_;
-//     scm::math::vec2f coords_;
-//     scm::math::vec3f normal_;
-// };
+// load obj function from vt_obj_loader/Utils.h
+void load_obj(const std::string& filename, std::vector<double>& v, std::vector<int>& vindices ){
+
+  // std::vector<float> v;
+  // std::vector<uint32_t> vindices;
+  // std::vector<float> n;
+  // std::vector<uint32_t> nindices;
+  // std::vector<float> t;
+  // std::vector<uint32_t> tindices;
+
+  uint32_t num_tris = 0;
+
+  FILE *file = fopen(filename.c_str(), "r");
+
+  if (0 != file) {
+
+    while (true) {
+      char line[128];
+      int32_t l = fscanf(file, "%s", line);
+
+      if (l == EOF) break;
+      if (strcmp(line, "v") == 0) {
+        double vx, vy, vz;
+        fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
+        v.insert(v.end(), {vx, vy, vz});
+      } 
+      // else if (strcmp(line, "vn") == 0) {
+      //   float nx, ny, nz;
+      //   fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
+      //   n.insert(n.end(), {nx, ny, nz});
+      // } 
+      // else if (strcmp(line, "vt") == 0) {
+      //   float tx, ty;
+      //   fscanf(file, "%f %f\n", &tx, &ty);
+      //   t.insert(t.end(), {tx, ty});
+      // } 
+      else if (strcmp(line, "f") == 0) {
+        std::string vertex1, vertex2, vertex3;
+        int index[3];
+        int coord[3];
+        int normal[3];
+        fscanf(file, "%d//%d %d//%d %d//%d\n",
+           &index[0], &normal[0],
+           &index[1], &normal[1],
+           &index[2], &normal[2]);
+
+           // &index[0], &coord[0], &normal[0],
+           // &index[1], &coord[1], &normal[1],
+           // &index[2], &coord[2], &normal[2]);
+
+        vindices.insert(vindices.end(), {index[0], index[1], index[2]});
+        // tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
+        // nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
+      }
+    }
+
+    fclose(file);
+
+    std::cout << "positions: " << vindices.size() << std::endl;
+    // std::cout << "normals: " << nindices.size() << std::endl;
+    // std::cout << "coords: " << tindices.size() << std::endl;
+
+  }
+
+}
+
+void output_obj (GMesh &gmesh, const std::string& filename, std::vector<double>& v, std::vector<int>& vindices) {
+  // https://doc.cgal.org/4.9/Surface_mesh/index.html
+
+    typedef typename HDS::Vertex   Vertex;
+    typedef typename Vertex::Point Point;
+  
+  std::cout << "all vertices " << std::endl;
+  // The vertex iterator type is a nested type of the Vertex_range
+  GMesh::Vertex_range::iterator  vb, ve;
+  GMesh::Vertex_range r = gmesh.vertices();
+  // The iterators can be accessed through the C++ range API
+  vb = r.begin(); 
+  ve = r.end();
+  // or the boost Range API
+  vb = boost::begin(r);
+  ve = boost::end(r);
+  // or with boost::tie, as the CGAL range derives from std::pair
+  for(boost::tie(vb, ve) = gmesh.vertices(); vb != ve; ++vb){
+    Point p = gmesh.point(*vb);
+    std::cout << p << std::endl;
+          // std::cout << *vb << std::endl;
+  }
+}
+
 
 int main( int argc, char** argv ) 
 {
@@ -201,62 +261,87 @@ int main( int argc, char** argv )
     std::cout << "Please provide a obj filename using -f <filename.obj>" << std::endl;
     return 1;
   }
-
   std::string out_filename = "data/simplified_mesh.obj";
   if (cmdOptionExists(argv, argv+argc, "-o")) {
     out_filename = std::string(getCmdOption(argv, argv + argc, "-o"));
   }
 
 
-  //load a mesh
-  std::vector<double> coords;
+  //load a mesh into vectors
+  std::vector<double> points;
   std::vector<int>    tris;
-  load_obj( obj_filename, coords, tris );
-
-  if (coords.size() == 0 ) {
+  load_obj( obj_filename, points, tris );
+  if (points.size() == 0 ) {
     std::cout << "didnt find any vertices" << std::endl;
     return 1;
   }
+  std::cout << "Mesh loaded (" << points.size()/3 << " vertices)" << std::endl;
 
-  std::cout << "Mesh loaded (" << coords.size() << " vertices)" << std::endl;
-
-  Surface_mesh surface_mesh;
-  polyhedron_builder<HalfedgeDS> builder( coords, tris );
-  surface_mesh.delegate(builder);
-
-  if (!CGAL::is_triangle_mesh(surface_mesh)){
-    std::cerr << "Input geometry is not triangulated." << std::endl;
-    return EXIT_FAILURE;
+  for (int i = 0; i < points.size(); i+=3)
+  {
+    std::cout << points[i] << " "  << points[i+1] << " "  << points[i+2] << std::endl;
   }
-  // This is a stop predicate (defines when the algorithm terminates).
-  // In this example, the simplification stops when the number of undirected edges
-  // left in the surface mesh drops below the specified number (1000)
-  SMS::Count_stop_predicate<Surface_mesh> stop(500);
+  for (int i = 0; i < tris.size(); i+=3)
+  {
+    std::cout << tris[i] << " "  << tris[i+1] << " "  << tris[i+2] << std::endl;
+  }
 
-  std::cout << "Starting simplification" << std::endl;
+
+  //create a mesh from vectors
+  // Surface_mesh surface_mesh;
+  // polyhedron_builder<HalfedgeDS> builder( points, tris );
+  // surface_mesh.delegate(builder);
+  GMesh gmesh;
+  build_surface_mesh(gmesh, points, tris);
+
+  if (gmesh.is_valid(true)){
+    std::cout << "mesh valid\n";
+  }
+
+  //trying to add a property map
+  // Surface_mesh::Property_map<vertex_descriptor, Vector> vnormals =
+  // surface_mesh.add_property_map<vertex_descriptor, Vector>
+  //   ("v:normals", CGAL::NULL_VECTOR).first;
+
+  // GMesh::Property_map<vertex_descriptor,std::string> name;
+
+
+  // if (!CGAL::is_triangle_mesh(surface_mesh)){
+  //   std::cerr << "Input geometry is not triangulated." << std::endl;
+  //   return EXIT_FAILURE;
+  // }
+  // // This is a stop predicate (defines when the algorithm terminates).
+  // // In this example, the simplification stops when the number of undirected edges
+  // // left in the surface mesh drops below the specified number (1000)
+  // SMS::Count_stop_predicate<Surface_mesh> stop(500);
+
+  // std::cout << "Starting simplification" << std::endl;
   
-  // This the actual call to the simplification algorithm.
-  // The surface mesh and stop conditions are mandatory arguments.
-  // The index maps are needed because the vertices and edges
-  // of this surface mesh lack an "id()" field.
-  int r = SMS::edge_collapse
-            (surface_mesh
-            ,stop
-             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,surface_mesh)) 
-                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,surface_mesh)) 
-                               .get_cost (SMS::Edge_length_cost <Surface_mesh>())
-                               .get_placement(SMS::Midpoint_placement<Surface_mesh>())
-            );
+  // // This the actual call to the simplification algorithm.
+  // // The surface mesh and stop conditions are mandatory arguments.
+  // // The index maps are needed because the vertices and edges
+  // // of this surface mesh lack an "id()" field.
+  // int r = SMS::edge_collapse
+  //           (surface_mesh
+  //           ,stop
+  //            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,surface_mesh)) 
+  //                              .halfedge_index_map  (get(CGAL::halfedge_external_index  ,surface_mesh)) 
+  //                              .get_cost (SMS::Edge_length_cost <Surface_mesh>())
+  //                              .get_placement(SMS::Midpoint_placement<Surface_mesh>())
+  //           );
   
-  std::cout << "\nFinished...\n" << r << " edges removed.\n" 
-            << (surface_mesh.size_of_halfedges()/2) << " final edges.\n" ;
+  // std::cout << "\nFinished...\n" << r << " edges removed.\n" 
+  //           << (surface_mesh.size_of_halfedges()/2) << " final edges.\n" ;
         
-  //write obj file
-  std::ofstream ofs(out_filename);
-  CGAL::print_polyhedron_wavefront(ofs, surface_mesh);
-  ofs.close();
 
-  std::cout << "Simplified mesh was written to " << out_filename << std::endl;
+  output_obj(gmesh,"bla", points, tris);
+
+  //write obj file
+  // std::ofstream ofs(out_filename);
+  // // ofs << gmesh;
+  // CGAL::print_polyhedron_wavefront(ofs, gmesh);
+  // ofs.close();
+  // std::cout << "Simplified mesh was written to " << out_filename << std::endl;
 
   
   return EXIT_SUCCESS ;      
