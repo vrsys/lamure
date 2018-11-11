@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 
 #include <CGAL/Simple_cartesian.h>
@@ -11,6 +12,7 @@
 // Simplification function
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
 #include <CGAL/Surface_mesh.h>
+#include <CGAL/property_map.h>
 
 // Stop-condition policy
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
@@ -18,6 +20,10 @@
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
 
 #include<CGAL/Polyhedron_incremental_builder_3.h>
+
+
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 
 #include <scm/core.h>
@@ -86,7 +92,12 @@ public:
 };
 
 //custom function to build a mesh of type Surface Mesh
-void build_surface_mesh (GMesh &_gmesh, std::vector<double> &_points, std::vector<int> &_tris ){
+void build_surface_mesh (GMesh &_gmesh, 
+              std::vector<double> &_points, 
+              std::vector<int> &_tris,
+              std::vector<double> &_normals, 
+              std::vector<int> &_n_inds
+              ){
 
   std::vector<vertex_index> v_indices;
 
@@ -100,6 +111,20 @@ void build_surface_mesh (GMesh &_gmesh, std::vector<double> &_points, std::vecto
     _gmesh.add_face(v_indices[_tris[i+0]],v_indices[_tris[i+1]], v_indices[_tris[i+2]]);
   }
 
+  //ref: https://doc.cgal.org/4.7/Surface_mesh/index.html#sectionSurfaceMesh_properties
+  GMesh::Property_map<vertex_index, Kernel::Point_3> normal;
+  bool created;
+  boost::tie(normal, created) = 
+    _gmesh.add_property_map<vertex_index, Kernel::Point_3>("v:normal", Kernel::Point_3(0,0,0));
+  assert(created);
+
+  //add properties
+  uint32_t num_normals = 0;
+  BOOST_FOREACH( vertex_index vi, _gmesh.vertices()) { 
+    normal[vi] = Kernel::Point_3(_normals[num_normals+0], _normals[num_normals+1], _normals[num_normals+2]);
+    std::cout << normal[vi] << std::endl;
+    num_normals+=3;
+  }
 
 }
  
@@ -114,6 +139,46 @@ int get_first_integer( const char *v ){
  std::replace( s.begin(), s.end(), '/', ' ' );
  sscanf( s.c_str(), "%d", &ival );
  return ival;
+}
+
+void parse_face_string (std::string face_string, int (&index)[3], int (&coord)[3], int (&normal)[3]){
+  
+  // std::cout << "face_string: " << face_string << std::endl;
+
+  //split into faces
+  std::vector<std::string> faces;
+  boost::algorithm::split(faces, face_string, boost::algorithm::is_any_of(" "));
+
+  for (int i = 0; i < 3; ++i)
+  {
+
+    // std::cout << faces[i] << std::endl;
+
+    //split by / for indices
+    std::vector<std::string> inds;
+    boost::algorithm::split(inds, faces[i], [](char c){return c == '/';}, boost::algorithm::token_compress_off);
+
+    for (int j = 0; j < inds.size(); ++j)
+    {
+      
+      // std::cout << inds[j] << std::endl;
+
+      int idx = 0;
+      if (inds[j] != ""){
+        idx = stoi(inds[j]);
+      }
+      if (j == 0){index[i] = idx;}
+      else if (j == 1){coord[i] = idx;}
+      else if (j == 2){normal[i] = idx;}
+
+
+      
+    }
+
+    std::cout << index[i] << " : " << coord[i]<< " : "  << normal[i] << "  ||  ";
+  }
+ std::cout << std::endl;
+
 }
 
 // //original load function from James code
@@ -161,7 +226,11 @@ int get_first_integer( const char *v ){
 
 
 // load obj function from vt_obj_loader/Utils.h
-void load_obj(const std::string& filename, std::vector<double>& v, std::vector<int>& vindices ){
+void load_obj(const std::string& filename, 
+              std::vector<double>& v,
+              std::vector<int>& vindices,
+              std::vector<double>& n,  
+              std::vector<int>& nindices){
 
   // std::vector<float> v;
   // std::vector<uint32_t> vindices;
@@ -186,69 +255,68 @@ void load_obj(const std::string& filename, std::vector<double>& v, std::vector<i
         fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
         v.insert(v.end(), {vx, vy, vz});
       } 
-      // else if (strcmp(line, "vn") == 0) {
-      //   float nx, ny, nz;
-      //   fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
-      //   n.insert(n.end(), {nx, ny, nz});
-      // } 
+      else if (strcmp(line, "vn") == 0) {
+        float nx, ny, nz;
+        fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
+        n.insert(n.end(), {nx, ny, nz});
+      } 
       // else if (strcmp(line, "vt") == 0) {
       //   float tx, ty;
       //   fscanf(file, "%f %f\n", &tx, &ty);
       //   t.insert(t.end(), {tx, ty});
       // } 
       else if (strcmp(line, "f") == 0) {
-        std::string vertex1, vertex2, vertex3;
+        fgets(line, 128, file);
+        std::string face_string = line; 
         int index[3];
         int coord[3];
         int normal[3];
-        fscanf(file, "%d//%d %d//%d %d//%d\n",
-           &index[0], &normal[0],
-           &index[1], &normal[1],
-           &index[2], &normal[2]);
-
-           // &index[0], &coord[0], &normal[0],
-           // &index[1], &coord[1], &normal[1],
-           // &index[2], &coord[2], &normal[2]);
+        // fscanf(file, "%d//%d %d//%d %d//%d\n", //TODO adjust to correctly deal woth missing tex coords
+        //    &index[0], &normal[0],
+        //    &index[1], &normal[1],
+        //    &index[2], &normal[2]);
+        // fscanf(file, "%s", &face_string);
+        parse_face_string(face_string, index, coord, normal);
 
         vindices.insert(vindices.end(), {index[0], index[1], index[2]});
         // tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
-        // nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
+        nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
       }
     }
 
     fclose(file);
 
     std::cout << "positions: " << vindices.size() << std::endl;
-    // std::cout << "normals: " << nindices.size() << std::endl;
+    std::cout << "normals: " << nindices.size() << std::endl;
     // std::cout << "coords: " << tindices.size() << std::endl;
 
   }
 
 }
 
-void output_obj (GMesh &gmesh, const std::string& filename, std::vector<double>& v, std::vector<int>& vindices) {
-  // https://doc.cgal.org/4.9/Surface_mesh/index.html
+// void output_obj (GMesh &gmesh, const std::string& filename, std::vector<double>& v, std::vector<int>& vindices) {
+//   // https://doc.cgal.org/4.9/Surface_mesh/index.html
 
-    typedef typename HDS::Vertex   Vertex;
-    typedef typename Vertex::Point Point;
+//     typedef typename HDS::Vertex   Vertex;
+//     typedef typename Vertex::Point Point;
   
-  std::cout << "all vertices " << std::endl;
-  // The vertex iterator type is a nested type of the Vertex_range
-  GMesh::Vertex_range::iterator  vb, ve;
-  GMesh::Vertex_range r = gmesh.vertices();
-  // The iterators can be accessed through the C++ range API
-  vb = r.begin(); 
-  ve = r.end();
-  // or the boost Range API
-  vb = boost::begin(r);
-  ve = boost::end(r);
-  // or with boost::tie, as the CGAL range derives from std::pair
-  for(boost::tie(vb, ve) = gmesh.vertices(); vb != ve; ++vb){
-    Point p = gmesh.point(*vb);
-    std::cout << p << std::endl;
-          // std::cout << *vb << std::endl;
-  }
-}
+//   std::cout << "all vertices " << std::endl;
+//   // The vertex iterator type is a nested type of the Vertex_range
+//   GMesh::Vertex_range::iterator  vb, ve;
+//   GMesh::Vertex_range r = gmesh.vertices();
+//   // The iterators can be accessed through the C++ range API
+//   vb = r.begin(); 
+//   ve = r.end();
+//   // or the boost Range API
+//   vb = boost::begin(r);
+//   ve = boost::end(r);
+//   // or with boost::tie, as the CGAL range derives from std::pair
+//   for(boost::tie(vb, ve) = gmesh.vertices(); vb != ve; ++vb){
+//     Point p = gmesh.point(*vb);
+//     std::cout << p << std::endl;
+//           // std::cout << *vb << std::endl;
+//   }
+// }
 
 
 int main( int argc, char** argv ) 
@@ -267,23 +335,39 @@ int main( int argc, char** argv )
   }
 
 
-  //load a mesh into vectors
+  //load a n obj file into vectors
   std::vector<double> points;
   std::vector<int>    tris;
-  load_obj( obj_filename, points, tris );
+  std::vector<double> normals;
+  std::vector<int> n_inds;
+  load_obj( obj_filename, points, tris, normals, n_inds);
   if (points.size() == 0 ) {
     std::cout << "didnt find any vertices" << std::endl;
     return 1;
   }
   std::cout << "Mesh loaded (" << points.size()/3 << " vertices)" << std::endl;
 
+  // print loaded obj info
+
+  std::cout << "points" << std::endl;
   for (int i = 0; i < points.size(); i+=3)
   {
     std::cout << points[i] << " "  << points[i+1] << " "  << points[i+2] << std::endl;
   }
+  std::cout << "faces" << std::endl;
   for (int i = 0; i < tris.size(); i+=3)
   {
     std::cout << tris[i] << " "  << tris[i+1] << " "  << tris[i+2] << std::endl;
+  }
+  std::cout << "normals" << std::endl;
+  for (int i = 0; i < normals.size(); i+=3)
+  {
+    std::cout << normals[i] << " "  << normals[i+1] << " "  << normals[i+2] << std::endl;
+  }
+  std::cout << "norm indexes" << std::endl;
+  for (int i = 0; i < n_inds.size(); i+=3)
+  {
+    std::cout << n_inds[i] << " "  << n_inds[i+1] << " "  << n_inds[i+2] << std::endl;
   }
 
 
@@ -292,7 +376,7 @@ int main( int argc, char** argv )
   // polyhedron_builder<HalfedgeDS> builder( points, tris );
   // surface_mesh.delegate(builder);
   GMesh gmesh;
-  build_surface_mesh(gmesh, points, tris);
+  // build_surface_mesh(gmesh, points, tris, normals, n_inds);
 
   if (gmesh.is_valid(true)){
     std::cout << "mesh valid\n";
@@ -334,7 +418,7 @@ int main( int argc, char** argv )
   //           << (surface_mesh.size_of_halfedges()/2) << " final edges.\n" ;
         
 
-  output_obj(gmesh,"bla", points, tris);
+  // output_obj(gmesh,"bla", points, tris);
 
   //write obj file
   // std::ofstream ofs(out_filename);
