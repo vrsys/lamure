@@ -17,3 +17,5 @@ to add normals/texture coords:
  - extend vertices? https://doc.cgal.org/latest/Polyhedron/index.html#title12
 
  - find out why supplied obj functions are working differently
+
+
