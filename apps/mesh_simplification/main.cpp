@@ -363,15 +363,15 @@ int main( int argc, char** argv )
   // The surface mesh and stop conditions are mandatory arguments.
   // The index maps are needed because the vertices and edges
   // of this surface mesh lack an "id()" field.
-  int r = SMS::edge_collapse
-            (gmesh
-            ,stop
-             ,CGAL::parameters::halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
-             // ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,gmesh)) 
-                               // .halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
-             //                   .get_cost (SMS::Edge_length_cost <Surface_mesh>())
-             //                   .get_placement(SMS::Midpoint_placement<Surface_mesh>())
-            );
+  // int r = SMS::edge_collapse
+  //           (gmesh
+  //           ,stop
+  //            ,CGAL::parameters::halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
+  //            // ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,gmesh)) 
+  //                              // .halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
+  //            //                   .get_cost (SMS::Edge_length_cost <Surface_mesh>())
+  //            //                   .get_placement(SMS::Midpoint_placement<Surface_mesh>())
+  //           );
   
   // std::cout << "\nFinished...\n" << (gmesh.size_of_halfedges()/2) << " final edges.\n" ;
         
