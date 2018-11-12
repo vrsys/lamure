@@ -152,7 +152,7 @@ void build_surface_mesh (GMesh &_gmesh,
 }
 
 //parses a face string like "f  2//1  8//1  4//1 " into 3 given arrays
-void parse_face_string (std::string face_string, int (&index)[3], int (&coord)[3], int (&normal)[3]){
+void parse_face_string (std::string face_string, uint32_t (&index)[3], uint32_t (&coord)[3], uint32_t (&normal)[3]){
 
   //split by space into faces
   std::vector<std::string> faces;
@@ -165,12 +165,12 @@ void parse_face_string (std::string face_string, int (&index)[3], int (&coord)[3
     std::vector<std::string> inds;
     boost::algorithm::split(inds, faces[i], [](char c){return c == '/';}, boost::algorithm::token_compress_off);
 
-    for (int j = 0; j < inds.size(); ++j)
+    for (int j = 0; j < (int)inds.size(); ++j)
     {
-      int idx = 0;
+      uint32_t idx = 0;
       //parse value from string
       if (inds[j] != ""){
-        idx = stoi(inds[j]);
+        idx = (uint32_t)stoi(inds[j]);
       }
       if (j == 0){index[i] = idx;}
       else if (j == 1){coord[i] = idx;}
@@ -192,15 +192,6 @@ void load_obj(const std::string& filename,
   std::vector<Kernel::Point_2> t;
   std::vector<uint32_t> tindices;
 
-  // std::vector<float> v;
-  // std::vector<uint32_t> vindices;
-  // std::vector<float> n;
-  // std::vector<uint32_t> nindices;
-  // std::vector<float> t;
-  // std::vector<uint32_t> tindices;
-
-  uint32_t num_tris = 0;
-
   FILE *file = fopen(filename.c_str(), "r");
 
   if (0 != file) {
@@ -218,21 +209,19 @@ void load_obj(const std::string& filename,
       else if (strcmp(line, "vn") == 0) {
         float nx, ny, nz;
         fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
-        // n.insert(n.end(), {nx, ny, nz});
         n.push_back(Kernel::Point_3(nx,ny,nz));
       } 
       else if (strcmp(line, "vt") == 0) {
         float tx, ty;
         fscanf(file, "%f %f\n", &tx, &ty);
-        // t.insert(t.end(), {tx, ty});
         t.push_back(Kernel::Point_2(tx,ty));
       } 
       else if (strcmp(line, "f") == 0) {
         fgets(line, 128, file);
         std::string face_string = line; 
-        int index[3];
-        int coord[3];
-        int normal[3];
+        uint32_t index[3];
+        uint32_t coord[3];
+        uint32_t normal[3];
 
         parse_face_string(face_string, index, coord, normal);
 
@@ -253,7 +242,7 @@ void load_obj(const std::string& filename,
 
   //read from indices arrays to construct list of vertices in open GL style
   //http://www.opengl-tutorial.org/beginners-tutorials/tutorial-7-model-loading/
-  for (int i = 0; i < vindices.size(); ++i)
+  for (int i = 0; i < (int)vindices.size(); ++i)
   {
     Kernel::Point_3 newv;
     Kernel::Point_2 newt;
@@ -377,7 +366,8 @@ int main( int argc, char** argv )
   int r = SMS::edge_collapse
             (gmesh
             ,stop
-             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,gmesh)) 
+             ,CGAL::parameters::halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
+             // ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,gmesh)) 
                                // .halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
              //                   .get_cost (SMS::Edge_length_cost <Surface_mesh>())
              //                   .get_placement(SMS::Midpoint_placement<Surface_mesh>())
