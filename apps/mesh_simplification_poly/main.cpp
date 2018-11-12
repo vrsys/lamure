@@ -32,7 +32,47 @@
 #include <scm/core.h>
 #include <scm/core/math.h>
 
+
+// typedef typename Traits::Point_3  Point;
+// typedef typename Traits::Vector_3 Normal;
+// // //define a new vertex type - inheriting from base type CGAL::HalfedgeDS_vertex_base
+// template <class Refs, class T, class Point>
+
+// struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, CGAL::Tag_true, Point>  {
+//     //define extra items
+//     Point pos;
+//     Normal normal;
+
+//     XtndVertex() {}
+//     XtndVertex(Point p, Normal n): pos(p), normal(n) {}
+
+// };
+
+// // A new items type using extended vertex
+// struct Custom_items : public CGAL::Polyhedron_items_3 {
+//     template <class Refs, class Traits>
+//     struct Vertex_wrapper {
+//       typedef XtndVertex<Refs,CGAL::Tag_true,Point> Vertex;
+//     };
+// };
+
+// //from http://cgal-discuss.949826.n4.nabble.com/Extended-polyhedra-amp-nef-polyhedra-td4656726.html
+
+// // struct Custom_items : public CGAL::Polyhedron_items_3 { 
+
+// //   // wrap vertex
+// //   template <class Refs, class Traits>
+// //   struct Vertex_wrapper
+// //   {
+// //       typedef typename Traits::Point_3  Point;
+// //       typedef typename Traits::Vector_3 Normal;
+// //       typedef XtndVertex<Refs,CGAL::Tag_true,Point,Normal> Vertex;
+// //   }; 
+// };
+
+
 typedef CGAL::Simple_cartesian<double> Kernel;
+// typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
@@ -40,12 +80,12 @@ typedef Polyhedron::HalfedgeDS HalfedgeDS;
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
 
-struct GVertex
-{
-  Kernel::Point_3 v_pos;
-  Kernel::Point_2 t_coord;
-  Kernel::Point_3 normal;
-};
+// struct GVertex
+// {
+//   Kernel::Point_3 v_pos;
+//   Kernel::Point_2 t_coord;
+//   Kernel::Point_3 normal;
+// };
 
 char* getCmdOption(char ** begin, char ** end, const std::string & option) {
   char ** itr = std::find(begin, end, option);
