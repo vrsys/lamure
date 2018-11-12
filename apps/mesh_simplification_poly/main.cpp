@@ -37,8 +37,6 @@ typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
 
-
-
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
 
@@ -153,28 +151,6 @@ void load_obj(const std::string& filename,
 
   }
 
-  //read from indices arrays to construct list of vertices in open GL style
-  //http://www.opengl-tutorial.org/beginners-tutorials/tutorial-7-model-loading/
-  // for (int i = 0; i < (int)vindices.size(); ++i)
-  // {
-  //   Kernel::Point_3 newv;
-  //   Kernel::Point_2 newt;
-  //   Kernel::Point_3 newn;
-
-  //   //guard against empty arrays 
-  //   if (v.size() == 0) {newv = Kernel::Point_3(0,0,0);}
-  //   else {newv = v[vindices[i]-1];}
-
-  //   if (t.size() == 0) {newt = Kernel::Point_2(0,0,0);}
-  //   else {newt = t[tindices[i]-1];}
-
-  //   if (n.size() == 0) {newn = Kernel::Point_3(0,0,0);}
-  //   else {newn = n[nindices[i]-1];}
-
-  //   GVertex new_Vertex = {newv, newt, newn};
-  //   vertices.push_back(new_Vertex);
-  // }
-
 }
 
 // // A modifier creating a triangle with the incremental builder.
@@ -215,12 +191,6 @@ public:
     B.end_surface();
     }
 };
-
-
-
-
-
-
 
 
 
@@ -271,33 +241,31 @@ int main( int argc, char** argv )
   // This is a stop predicate (defines when the algorithm terminates).
   // In this example, the simplification stops when the number of undirected edges
   // left in the surface mesh drops below the specified number (1000)
-  // SMS::Count_stop_predicate<Polyhedron> stop(300);
+  SMS::Count_stop_predicate<Polyhedron> stop(300);
 
-  // std::cout << "Starting simplification" << std::endl;
+  std::cout << "Starting simplification" << std::endl;
   
   // This the actual call to the simplification algorithm.
   // The surface mesh and stop conditions are mandatory arguments.
   // The index maps are needed because the vertices and edges
   // of this surface mesh lack an "id()" field.
-  // int r = SMS::edge_collapse
-  //           (gmesh
-  //           ,stop
-  //            ,CGAL::parameters::halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
-  //            // ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,gmesh)) 
-  //                              // .halfedge_index_map  (get(CGAL::halfedge_external_index  ,gmesh)) 
-  //            //                   .get_cost (SMS::Edge_length_cost <Surface_mesh>())
-  //            //                   .get_placement(SMS::Midpoint_placement<Surface_mesh>())
-  //           );
+  int r = SMS::edge_collapse
+            (polyMesh
+            ,stop
+             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh)) 
+                               .get_cost (SMS::Edge_length_cost <Polyhedron>())
+                               .get_placement(SMS::Midpoint_placement<Polyhedron>())
+            );
   
-  // std::cout << "\nFinished...\n" << (gmesh.size_of_halfedges()/2) << " final edges.\n" ;
+  std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
         
 
   //write to file
   std::ofstream ofs(out_filename);
-  // ofs << polyMesh;
   CGAL::print_polyhedron_wavefront(ofs, polyMesh);
   ofs.close();
-  std::cout << "mesh was written to " << out_filename << std::endl;
+  std::cout << "simplified mesh was written to " << out_filename << std::endl;
 
   
   return EXIT_SUCCESS ;      
