@@ -37,12 +37,6 @@
 template <class Refs, class T, class P, class Traits>
 struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
     
-    // typedef typename Traits::Vector_3 Point;
-    // typedef typename Traits::Vector_3 Normal;
-    // Normal normal;
-    // Point pos;
-
-  // XtndVertex(Point p) : CGAL::HalfedgeDS_vertex_base(p){}
   using CGAL::HalfedgeDS_vertex_base<Refs, T, P>::HalfedgeDS_vertex_base;
 
 };
@@ -53,14 +47,24 @@ struct XtndPoint : public Traits::Point_3 {
 
   XtndPoint() : Traits::Point_3() {}
 
-  XtndPoint(double a, double b, double c) 
-    : Traits::Point_3(a, b, c),
-      normal(a, b, c) {}
+  XtndPoint(double x, double y, double z) 
+    : Traits::Point_3(x, y, z),
+      texCoord(0.0, 0.0) {}
+
+  XtndPoint(double x, double y, double z, double u, double v ) 
+  : Traits::Point_3(x, y, z),
+    texCoord(u, v) {}
+
+  
+
   //XtndPoint(Traits const& a, Traits const& b, Traits const& c) 
   //  : Traits::Point_3(a, b, c) {}
   // typedef typename Traits::Point_3 Point;
-  typedef typename Traits::Vector_3 Normal;
-  Normal normal;
+  typedef typename Traits::Vector_2 TexCoord;
+  TexCoord texCoord;
+
+  double get_u () const {return texCoord.hx();}
+  double get_v () const {return texCoord.hy();}
 
   // using Traits::Point_3
 
@@ -156,14 +160,16 @@ void parse_face_string (std::string face_string, int (&index)[3], int (&coord)[3
 // load obj function from vt_obj_loader/Utils.h
 void load_obj(const std::string& filename, 
               std::vector<double> &v, 
-              std::vector<int> &vindices ){
+              std::vector<int> &vindices, 
+              std::vector<double> &t,
+              std::vector<int> &tindices ){
 
   // std::vector<double> v;
   // std::vector<int> vindices;
-  std::vector<double> n;
-  std::vector<int> nindices;
-  std::vector<double> t;
-  std::vector<int> tindices;
+  // std::vector<double> n;
+  // std::vector<int> nindices;
+  // std::vector<double> t;
+  // std::vector<int> tindices;
 
   FILE *file = fopen(filename.c_str(), "r");
 
@@ -177,19 +183,16 @@ void load_obj(const std::string& filename,
       if (strcmp(line, "v") == 0) {
         double vx, vy, vz;
         fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
-        // v.push_back(Kernel::Point_3(vx,vy,vz));
         v.insert(v.end(), {vx, vy, vz});
       } 
-      else if (strcmp(line, "vn") == 0) {
-        float nx, ny, nz;
-        fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
-        // n.push_back(Kernel::Point_3(nx,ny,nz));
-        n.insert(n.end(), {nx,ny, nz});
-      } 
+      // else if (strcmp(line, "vn") == 0) {
+      //   float nx, ny, nz;
+      //   fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
+      //   n.insert(n.end(), {nx,ny, nz});
+      // } 
       else if (strcmp(line, "vt") == 0) {
         float tx, ty;
         fscanf(file, "%f %f\n", &tx, &ty);
-        // t.push_back(Kernel::Point_2(tx,ty));
         t.insert(t.end(), {tx, ty});
       } 
       else if (strcmp(line, "f") == 0) {
@@ -201,21 +204,56 @@ void load_obj(const std::string& filename,
 
         parse_face_string(face_string, index, coord, normal);
 
+        //here all indices are decremented by 1 to fit 0 indexing schemes
         vindices.insert(vindices.end(), {index[0]-1, index[1]-1, index[2]-1});
         tindices.insert(tindices.end(), {coord[0]-1, coord[1]-1, coord[2]-1});
-        nindices.insert(nindices.end(), {normal[0]-1, normal[1]-1, normal[2]-1});
+        // nindices.insert(nindices.end(), {normal[0]-1, normal[1]-1, normal[2]-1});
       }
     }
 
     fclose(file);
 
     std::cout << "positions: " << v.size()/3 << std::endl;
-    std::cout << "normals: " << n.size()/3 << std::endl;
+    // std::cout << "normals: " << n.size()/3 << std::endl;
     std::cout << "coords: " << t.size()/2 << std::endl;
     std::cout << "faces: " << vindices.size()/3 << std::endl;
 
   }
 
+}
+
+// load obj function from vt_obj_loader/Utils.h
+void build_t_coords(std::vector<double> &v, 
+                    std::vector<int> &vindices, 
+                    std::vector<double> &t,
+                    std::vector<int> &tindices,
+                    std::vector<double> &built_t_coords ){
+
+  //for each point in vertex position list
+  for (int i = 0; i < (int)v.size(); i+=3)
+  {
+    //find location of first vertex index reference
+    int idx = i/3;
+    int tloc = 0;
+    std::vector<int>::iterator it;
+    it = std::find(vindices.begin(), vindices.end(), idx);
+    if (it != vindices.end()){
+      tloc = it - vindices.begin();
+    }
+    else {
+      std::cout << "build_t_coords: vertex not found in indices list: " << idx << std::endl;
+    }
+
+    //get tex coord corresponding to that index reference
+    double u = 0.0, v = 0.0;
+    if (tloc < (int)t.size() && tloc < (int)tindices.size())
+    {
+      int tidx = tindices[tloc];
+      u = t[tidx * 2];
+      v = t[(tidx * 2) + 1];
+    }
+    built_t_coords.insert(built_t_coords.end(), {u, v});
+  }
 }
 
 // // A modifier creating a triangle with the incremental builder.
@@ -226,9 +264,13 @@ class polyhedron_builder : public CGAL::Modifier_base<HDS> {
 public:
   std::vector<double> &vertices;
   std::vector<int>    &tris;
+  std::vector<double> &t_coords;
 
 
-  polyhedron_builder( std::vector<double> &_vertices, std::vector<int> &_tris ) : vertices(_vertices), tris(_tris) {}
+  polyhedron_builder( std::vector<double> &_vertices,
+                      std::vector<int> &_tris,
+                      std::vector<double> &_t_coords ) 
+                      : vertices(_vertices), tris(_tris), t_coords(_t_coords) {}
 
   void operator()( HDS& hds) {
     // typedef typename HDS::Vertex   Vertex;
@@ -240,13 +282,9 @@ public:
     B.begin_surface( vertices.size()/3, tris.size()/3 );
    
     // add the polyhedron vertices
-    for( int i=0; i<(int)vertices.size(); i+=3 ){
-      // B.add_vertex( Point( vertices[i+0], vertices[i+1], vertices[i+2] ) );
-      // B.add_vertex( Point( vertices[i+0], vertices[i+1], vertices[i+2] ) );
-      // XtndPoint xP(0,0,0);
+    for( int i=0; i<(int)vertices.size() / 3; ++i ){
 
-      B.add_vertex( XtndPoint<Kernel>( vertices[i+0], vertices[i+1], vertices[i+2] ));
-
+      B.add_vertex( XtndPoint<Kernel>( vertices[(i*3)], vertices[(i*3)+1], vertices[(i*3)+2] , t_coords[i*2],  t_coords[(i*2)+1]));
     }
    
     // add the polyhedron triangles
@@ -264,6 +302,28 @@ public:
 };
 
 
+void see_polyhedron(const Polyhedron& P){
+
+  typedef typename Polyhedron::Vertex_const_iterator VCI;
+
+  for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+
+    // int idx = vi - P.vertices_begin();
+  // for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+
+
+    // writer.write_vertex( ::CGAL::to_double( vi->point().x()),
+    //                      ::CGAL::to_double( vi->point().y()),
+    //                      ::CGAL::to_double( vi->point().z()));
+
+    double u = CGAL::to_double( vi->point().get_u());
+    double v = CGAL::to_double( vi->point().get_v());
+    // double z = CGAL::to_double( vi->point().z());
+
+    std::cout << "v " << ": " << u << ' ' << v << '\n';
+  }
+
+}
 
 
 int main( int argc, char** argv ) 
@@ -285,7 +345,9 @@ int main( int argc, char** argv )
   //load OBJ into arrays
   std::vector<double> vertices;
   std::vector<int> tris;
-  load_obj( obj_filename, vertices, tris);
+  std::vector<double> t_coords;
+  std::vector<int> tindices;
+  load_obj( obj_filename, vertices, tris, t_coords, tindices);
 
   if (vertices.size() == 0 ) {
     std::cout << "didnt find any vertices" << std::endl;
@@ -294,9 +356,14 @@ int main( int argc, char** argv )
   std::cout << "Mesh loaded (" << vertices.size() << " vertices)" << std::endl;
 
 
+  //decide the best text coord for each vertex position
+  std::vector<double> built_t_coords;
+  build_t_coords(vertices, tris, t_coords, tindices, built_t_coords);
+
+
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;
-  polyhedron_builder<HalfedgeDS> builder( vertices, tris );
+  polyhedron_builder<HalfedgeDS> builder( vertices, tris, built_t_coords );
   polyMesh.delegate( builder );
 
   if (polyMesh.is_valid(true)){
@@ -312,7 +379,7 @@ int main( int argc, char** argv )
   // This is a stop predicate (defines when the algorithm terminates).
   // In this example, the simplification stops when the number of undirected edges
   // left in the surface mesh drops below the specified number (1000)
-  SMS::Count_stop_predicate<Polyhedron> stop(300);
+  SMS::Count_stop_predicate<Polyhedron> stop(50);
 
   std::cout << "Starting simplification" << std::endl;
   
@@ -330,6 +397,10 @@ int main( int argc, char** argv )
             );
   
   std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
+
+  std::cout << "Final vertices: " << polyMesh.size_of_vertices() << "\n";
+
+  see_polyhedron(polyMesh);
         
 
   //write to file
