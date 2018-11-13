@@ -53,9 +53,9 @@ struct XtndPoint : public Traits::Point_3 {
 
   XtndPoint() : Traits::Point_3() {}
 
-  XtndPoint(double a, double b, double c, double d, double e, double f) 
+  XtndPoint(double a, double b, double c) 
     : Traits::Point_3(a, b, c),
-      normal(d, e, f) {}
+      normal(a, b, c) {}
   //XtndPoint(Traits const& a, Traits const& b, Traits const& c) 
   //  : Traits::Point_3(a, b, c) {}
   // typedef typename Traits::Point_3 Point;
@@ -245,7 +245,7 @@ public:
       // B.add_vertex( Point( vertices[i+0], vertices[i+1], vertices[i+2] ) );
       // XtndPoint xP(0,0,0);
 
-      B.add_vertex( XtndPoint<Kernel>( vertices[i+0], vertices[i+1], vertices[i+2] ), 0 , 0 , 0 );
+      B.add_vertex( XtndPoint<Kernel>( vertices[i+0], vertices[i+1], vertices[i+2] ));
 
     }
    
