@@ -32,32 +32,57 @@
 #include <scm/core.h>
 #include <scm/core/math.h>
 
-
-// typedef typename Traits::Point_3  Point;
-// typedef typename Traits::Vector_3 Normal;
 // // //define a new vertex type - inheriting from base type CGAL::HalfedgeDS_vertex_base
-// template <class Refs, class T, class Point>
+//ref https://doc.cgal.org/4.7/Polyhedron/index.html#title11
+template <class Refs, class T, class P, class Traits>
+struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
+    
+    // typedef typename Traits::Vector_3 Point;
+    // typedef typename Traits::Vector_3 Normal;
+    // Normal normal;
+    // Point pos;
 
-// struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, CGAL::Tag_true, Point>  {
-//     //define extra items
-//     Point pos;
-//     Normal normal;
+  // XtndVertex(Point p) : CGAL::HalfedgeDS_vertex_base(p){}
+  using CGAL::HalfedgeDS_vertex_base<Refs, T, P>::HalfedgeDS_vertex_base;
 
-//     XtndVertex() {}
-//     XtndVertex(Point p, Normal n): pos(p), normal(n) {}
+};
 
-// };
+// namespace Traits{
+template <class Traits>
+struct XtndPoint : public Traits::Point_3 {
 
-// // A new items type using extended vertex
-// struct Custom_items : public CGAL::Polyhedron_items_3 {
-//     template <class Refs, class Traits>
-//     struct Vertex_wrapper {
-//       typedef XtndVertex<Refs,CGAL::Tag_true,Point> Vertex;
-//     };
-// };
+  XtndPoint() : Traits::Point_3() {}
+
+  XtndPoint(double a, double b, double c, double d, double e, double f) 
+    : Traits::Point_3(a, b, c),
+      normal(d, e, f) {}
+  //XtndPoint(Traits const& a, Traits const& b, Traits const& c) 
+  //  : Traits::Point_3(a, b, c) {}
+  // typedef typename Traits::Point_3 Point;
+  typedef typename Traits::Vector_3 Normal;
+  Normal normal;
+
+  // using Traits::Point_3
+
+};
+// }
+
+// A new items type using extended vertex
+struct Custom_items : public CGAL::Polyhedron_items_3 {
+    template <class Refs, class Traits>
+    struct Vertex_wrapper {
+
+
+      // typedef typename Traits::XtndPoint XtndPoint;
+      // typedef typename Traits::Vector_3 Normal;
+
+      typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>,  Traits> Vertex;
+    };
+};
+
+
 
 // //from http://cgal-discuss.949826.n4.nabble.com/Extended-polyhedra-amp-nef-polyhedra-td4656726.html
-
 // // struct Custom_items : public CGAL::Polyhedron_items_3 { 
 
 // //   // wrap vertex
@@ -72,8 +97,8 @@
 
 
 typedef CGAL::Simple_cartesian<double> Kernel;
-// typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
-typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
+typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
+// typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
 
@@ -206,8 +231,9 @@ public:
   polyhedron_builder( std::vector<double> &_vertices, std::vector<int> &_tris ) : vertices(_vertices), tris(_tris) {}
 
   void operator()( HDS& hds) {
-    typedef typename HDS::Vertex   Vertex;
-    typedef typename Vertex::Point Point;
+    // typedef typename HDS::Vertex   Vertex;
+    // typedef typename XtndPoint xPoint;
+    // typedef typename Vertex::Normal Normal;
  
     // create a cgal incremental builder
     CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
@@ -215,7 +241,12 @@ public:
    
     // add the polyhedron vertices
     for( int i=0; i<(int)vertices.size(); i+=3 ){
-      B.add_vertex( Point( vertices[i+0], vertices[i+1], vertices[i+2] ) );
+      // B.add_vertex( Point( vertices[i+0], vertices[i+1], vertices[i+2] ) );
+      // B.add_vertex( Point( vertices[i+0], vertices[i+1], vertices[i+2] ) );
+      // XtndPoint xP(0,0,0);
+
+      B.add_vertex( XtndPoint<Kernel>( vertices[i+0], vertices[i+1], vertices[i+2] ), 0 , 0 , 0 );
+
     }
    
     // add the polyhedron triangles
