@@ -1,0 +1,49 @@
+Tasks for next week
+
+
+Sort and test adding stuff to vertices
+
+
+Use Adrians code to see if textures are propogated through simplification process:
+
+ - pass texture coordinates and normals and indices to polyhedron builder function
+	 - can this be done with a better data struct - worth it?
+ - add to polyhedron within points
+ - check simplification still runs
+ - manual check of post simplification mesh? 
+
+
+To test, write an obj with a tex coord fields
+- overwrite polyhedron writer classes to create an updated writer
+ - all in /usr/include/CGAL/IO
+
+
+Look into creating charts - process
+
+
+
+
+Downsweep algorithm overview:
+
+ - load i all triangles
+ - make a queue of nodes with a root node
+
+  - while queue is not empty:
+  	- fetch front node
+  	- sort and split along longest axis
+  	- calculate bounds of children
+  	- push to queue
+  	- termination - min number of triangles
+
+
+Node class needed with range (begin and end)
+hierarchy can be stored implicitly
+
+
+
+
+Upsweep:
+ - simplification
+ - need to consider how to treat boundaries between nodes
+ - 
+
