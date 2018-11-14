@@ -18,7 +18,7 @@ public:
           n0_(_t.n0_), n1_(_t.n1_), n2_(_t.n2_),
           c0_(_t.c0_), c1_(_t.c1_), c2_(_t.c2_) {
     }
-
+/*
     triangle_t& operator =(const triangle_t& _t) {
         va_ = _t.va_;
         vb_ = _t.vb_;
@@ -31,7 +31,7 @@ public:
         c2_ = _t.c2_;
         return *this;
     }
-
+*/
     const vec3f get_centroid() const;
     const float get_area() const;
     const vec3f get_normal() const;
@@ -77,13 +77,15 @@ public:
 
     }
 
-    vec3f va_;
-    vec3f n0_;
-    vec2f c0_;
-    vec3f vb_;
+    vec3f va_; //vertex position a
+    vec3f n0_; //normal of vertex a
+    vec2f c0_; //texture coordinate of vertex a
+
+    vec3f vb_; //vertex position b
     vec3f n1_;
     vec2f c1_;
-    vec3f vc_;
+    
+    vec3f vc_; //vertex position c
     vec3f n2_;
     vec2f c2_;
 };
