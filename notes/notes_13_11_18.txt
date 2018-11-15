@@ -48,6 +48,30 @@ Upsweep:
  - 
 
 
-TO DO Thursday:
-		
+TO DO:
+ - find out how to constrain edge boundaries through simplification	
  - look into chart creation algorithm
+
+
+
+Edge freezing:
+ - example 4.9 here: https://doc.cgal.org/latest/Surface_mesh_simplification/index.html
+
+Summary:
+
+{
+JUST FOR CHECKING
+ - iterate through edges with Polyhedron::Halfedge_iterator
+ - add certain edges to a "constrained_edges" list, according to...
+	- whether the triangles that belong to them are in a different node?
+}
+
+ - create struct that takes pointer to poyhedron, and has a get function that, for each edge, returns true if it is protected
+	- in the default implementation, an is_border() function exists:
+		-how does this work? is it enough for us if we only simplify part of the mesh at a time, i.e. treat each node as a separate mesh
+		- if not, Polyhedron_items_with_id_3 allows attachment of ids to points, halfedges and faces
+			- we could use this to lookup which edges should be protected, e.g. by checking if an edge's triangles belong to different nodes  
+
+
+ - attempting to make non-manifold meshes to check whether CGAL automatically detects borders. Could look in the code to acheive this?
+ - are Polyhedron mesheseven allowed to be non-manifold?? - yes: "The polyhedral surface itself can have holes. The halfedges along the boundary of a hole are called border halfedges and have no incident facet. An edge is a border edge if one of its halfedges is a border halfedge. A surface is closed if it contains no border halfedges. A closed surface is a boundary representation for polyhedra in three dimensions." https://doc.cgal.org/latest/Polyhedron/classCGAL_1_1Polyhedron__3.html.

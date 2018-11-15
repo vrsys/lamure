@@ -20,6 +20,7 @@
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Constrained_placement.h>
 
 #include<CGAL/Polyhedron_incremental_builder_3.h>
 
@@ -34,6 +35,12 @@
 
 #include "Utils.h"
 #include "OBJ_printer.h"
+
+/*
+
+CUSTOM DATA STRUCTURES ===================================================
+
+*/
 
 // // //define a new vertex type - inheriting from base type CGAL::HalfedgeDS_vertex_base
 //ref https://doc.cgal.org/4.7/Polyhedron/index.html#title11
@@ -86,6 +93,37 @@ typedef Polyhedron::HalfedgeDS HalfedgeDS;
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
 
+/*
+OTHER STRUCTS ===================================================
+*/
+
+//
+// BGL property map which indicates whether an edge is marked as non-removable
+//
+struct Border_is_constrained_edge_map {
+  const Polyhedron* sm_ptr;
+  typedef boost::graph_traits<Polyhedron>::edge_descriptor key_type;
+  typedef bool value_type;
+  typedef value_type reference;
+  typedef boost::readable_property_map_tag category;
+
+  Border_is_constrained_edge_map(const Polyhedron& sm)
+  : sm_ptr(&sm)
+  {}
+
+  friend bool get(Border_is_constrained_edge_map m, const key_type& edge) {
+    return CGAL::is_border(edge, *m.sm_ptr);
+  }
+};
+
+// Placement class
+typedef SMS::Constrained_placement<SMS::Midpoint_placement<Polyhedron>, Border_is_constrained_edge_map > Placement;
+
+
+/*
+ ===================================================
+*/
+
 
 //assigns a tex coord to each vertex by matching a coordinate and a tex coord that are
 //used for the same vertex in the OBJ file
@@ -132,11 +170,19 @@ public:
   std::vector<int>    &tris;
   std::vector<double> &t_coords;
 
+  //how many of the given triangles are added to the final mesh
+  //to enable creation of non-manifold meshes 
+  double mesh_proportion = 1.0;
+
 
   polyhedron_builder( std::vector<double> &_vertices,
                       std::vector<int> &_tris,
                       std::vector<double> &_t_coords ) 
                       : vertices(_vertices), tris(_tris), t_coords(_t_coords) {}
+
+  void set_mesh_proportion(const double _mp){
+    mesh_proportion = _mp;
+  }
 
   void operator()( HDS& hds) {
  
@@ -163,7 +209,7 @@ public:
     }
    
     // add the polyhedron triangles
-    for( int i=0; i<(int)tris.size(); i+=3 ){
+    for( int i=0; i<(int)(tris.size() * mesh_proportion); i+=3 ){
       B.begin_facet();
       B.add_vertex_to_facet( tris[i+0] );
       B.add_vertex_to_facet( tris[i+1] );
@@ -177,28 +223,19 @@ public:
 };
 
 
-void see_polyhedron(const Polyhedron& P){
+// void see_polyhedron(const Polyhedron& P){
 
-  typedef typename Polyhedron::Vertex_const_iterator VCI;
+//   typedef typename Polyhedron::Vertex_const_iterator VCI;
 
-  for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+//   for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
 
-    // int idx = vi - P.vertices_begin();
-  // for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+//     double u = CGAL::to_double( vi->point().get_u());
+//     double v = CGAL::to_double( vi->point().get_v());
 
+//     std::cout << "v " << ": " << u << ' ' << v << '\n';
+//   }
 
-    // writer.write_vertex( ::CGAL::to_double( vi->point().x()),
-    //                      ::CGAL::to_double( vi->point().y()),
-    //                      ::CGAL::to_double( vi->point().z()));
-
-    double u = CGAL::to_double( vi->point().get_u());
-    double v = CGAL::to_double( vi->point().get_v());
-    // double z = CGAL::to_double( vi->point().z());
-
-    std::cout << "v " << ": " << u << ' ' << v << '\n';
-  }
-
-}
+// }
 
 
 int main( int argc, char** argv ) 
@@ -239,6 +276,7 @@ int main( int argc, char** argv )
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;
   polyhedron_builder<HalfedgeDS> builder( vertices, tris, built_t_coords );
+  builder.set_mesh_proportion(0.5);
   polyMesh.delegate( builder );
 
   if (polyMesh.is_valid(true)){
@@ -254,7 +292,10 @@ int main( int argc, char** argv )
   // This is a stop predicate (defines when the algorithm terminates).
   // In this example, the simplification stops when the number of undirected edges
   // left in the surface mesh drops below the specified number (1000)
-  SMS::Count_stop_predicate<Polyhedron> stop(50);
+  SMS::Count_stop_predicate<Polyhedron> stop(10000);
+
+  // map that defines which edges are protected
+  Border_is_constrained_edge_map bem(polyMesh);
 
   std::cout << "Starting simplification" << std::endl;
   
@@ -262,25 +303,21 @@ int main( int argc, char** argv )
   // The surface mesh and stop conditions are mandatory arguments.
   // The index maps are needed because the vertices and edges
   // of this surface mesh lack an "id()" field.
-  int r = SMS::edge_collapse
+  SMS::edge_collapse
             (polyMesh
             ,stop
              ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh)) 
-                               .get_cost (SMS::Edge_length_cost <Polyhedron>())
-                               .get_placement(SMS::Midpoint_placement<Polyhedron>())
+                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+                               .edge_is_constrained_map(bem)
+                               .get_placement(Placement(bem))
             );
   
   std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
 
-  std::cout << "Final vertices: " << polyMesh.size_of_vertices() << "\n";
-
-  see_polyhedron(polyMesh);
         
 
   //write to file
   std::ofstream ofs(out_filename);
-  // CGAL::print_polyhedron_wavefront(ofs, polyMesh);
   OBJ_printer::print_polyhedron_wavefront_with_tex(ofs, polyMesh);
   ofs.close();
   std::cout << "simplified mesh was written to " << out_filename << std::endl;
