@@ -85,7 +85,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
     });
 
     //determine split
-    int64_t split_id = (node.end_ - node.begin_)/2;
+    int64_t split_id = (node.begin_+node.end_)/2;
 
     //first create the children
     

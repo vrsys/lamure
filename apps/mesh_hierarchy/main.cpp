@@ -1,7 +1,21 @@
 #include <iostream>
+#include <algorithm>
 
 #include <lamure/mesh/bvh.h>
 #include <cstring>
+
+
+char* get_cmd_option(char** begin, char** end, const std::string& option) {
+  char** it = std::find(begin, end, option);
+  if (it != end && ++it != end) {
+    return *it;
+  }
+  return 0;
+}
+
+bool cmd_option_exists(char** begin, char** end, const std::string& option) {
+  return std::find(begin, end, option) != end;
+}
 
 
 //load an .obj file and return all vertices, normals and coords interleaved
@@ -111,9 +125,26 @@ void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& t
 }
 
 
-int main( int argc, char** argv ) {
+int32_t main(int argc, char* argv[]) {
 
-  std::string obj_filename = "dino.obj";
+  std::string obj_filename = "../data/bunny.obj";
+  
+  bool terminate = false;
+  
+  if (cmd_option_exists(argv, argv+argc, "-f")) {
+    obj_filename = get_cmd_option(argv, argv+argc, "-f");
+  }
+  else {
+    terminate = true;
+  }
+  
+  if (terminate) {
+    std::cout << "Usage: " << argv[0] << "<flags>\n" <<
+      "INFO: " << argv[0] << "\n" <<
+      "\t-f: select .obj file\n" << 
+      "\n";
+    return 0;
+  }
 
   std::vector<lamure::mesh::triangle_t> triangles;
 
