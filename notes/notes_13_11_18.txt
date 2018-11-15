@@ -4,7 +4,7 @@ Tasks for next week
 Sort and test adding stuff to vertices
 
 
-Use Adrians code to see if textures are propogated through simplification process:
+See if textures are propogated through simplification process:
 
  - pass texture coordinates and normals and indices to polyhedron builder function
 	 - can this be done with a better data struct - worth it?
@@ -47,3 +47,7 @@ Upsweep:
  - need to consider how to treat boundaries between nodes
  - 
 
+
+TO DO Thursday:
+		
+ - look into chart creation algorithm

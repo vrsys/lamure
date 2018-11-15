@@ -64,7 +64,7 @@ public:
     }
 
     void write_facet_vertex_index( std::size_t idx) {
-    	out() << ' ' << idx+1 << "//" << idx+1; 
+    	out() << ' ' << idx+1 << "/" << idx+1; 
     }
 
 };
