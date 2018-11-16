@@ -25,6 +25,7 @@ include_directories(${PROJECT_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${GMP_INCLUDE_DIR}
         ${MPFR_INCLUDE_DIR}
+        ${CGAL_INCLUDE_DIR}
         )
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
@@ -53,6 +54,8 @@ target_link_libraries(${PROJECT_NAME}
         ${REND_LIBRARY}
         ${PROJECT_LIBS}
         optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
+        optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
+        optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
         )
 
 if (${LAMURE_USE_CGAL_FOR_NNI})

@@ -1,9 +1,12 @@
 
 #include <lamure/mesh/bvh.h>
+#include <lamure/mesh/polyhedron.h>
+
 #include <limits>
 #include <queue>
 #include <algorithm>
 #include <iostream>
+
 
 namespace lamure {
 namespace mesh {
@@ -167,11 +170,92 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
   } //end of while
 
+
+
   std::cout << "construction done" << std::endl;
   std::cout << "hierarchy depth: " << depth_ << std::endl;
   std::cout << "number of nodes: " << nodes_.size() << std::endl;
   std::cout << "hierarchy min: " << nodes_[0].min_ << std::endl;
   std::cout << "hierarchy max: " << nodes_[0].max_ << std::endl;
+
+
+  //populate the triangles map (but only from the leaf level)
+  {
+	  uint32_t first_node = get_first_node_id_of_depth(depth_);
+	  uint32_t num_of_nodes = get_length_of_depth(depth_);
+
+	  //check the actual number of tris per node
+	  triangles_per_node = 0;
+      for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; ++node_id) {
+	  	bvh_node& node = nodes_[node_id];  	
+        triangles_per_node = std::max(triangles_per_node, node.end_-node.begin_);
+      };
+
+      std::cout << "actual triangles per node " << triangles_per_node << std::endl;
+
+	  for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; ++node_id) {
+	  	bvh_node& node = nodes_[node_id];
+
+	  	//copy triangles to triangle map
+        for (uint64_t tri = node.begin_; tri < node.end_; ++tri) {
+    	  triangles_map_[node_id].push_back(triangles[tri]);
+        }
+	  }
+  }
+
+  std::cout << "triangles map populated" << std::endl;
+
+  //upsweep:
+  //for each depth starting at (max depth)-1, depth--
+  //  for each node at that depth
+  //    take all triangles from the two children
+  //    simplify these (half the number of triangles)
+
+  for (int d = depth_-1; d>=0; d--) {
+  	uint32_t first_node = get_first_node_id_of_depth(d);
+  	uint32_t num_of_nodes = get_length_of_depth(d);
+  	for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; node_id++) {
+
+  	  uint32_t left_child = get_child_id(node_id, 0);
+  	  uint32_t right_child = get_child_id(node_id, 1);
+
+  	  //params to simplify: input set of tris for both children, output set of tris
+  	  simplify(
+  	  	triangles_map_[left_child],
+  	  	triangles_map_[right_child],
+  	  	triangles_map_[node_id]);
+
+  	  std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
+  	}
+  }
+
+  //if the number of triangles was not divisible by two, add another tri for padding
+  for (uint32_t node_id = 0; node_id < nodes_.size(); ++node_id) {
+    while (triangles_map_[node_id].size() < triangles_per_node) {
+      triangles_map_[node_id].push_back(triangle_t());
+    }
+  }
+
+}
+
+void bvh::simplify(
+  std::vector<triangle_t>& left_child_tris,
+  std::vector<triangle_t>& right_child_tris,
+  std::vector<triangle_t>& output_tris) {
+
+  
+  //create a mesh from vectors
+  Polyhedron polyMesh;
+  polyhedron_builder<HalfedgeDS> builder(left_child_tris, right_child_tris);
+  builder.set_mesh_proportion(0.5);
+  polyMesh.delegate(builder);
+
+  if (polyMesh.is_valid(true)) {
+    std::cout << "mesh valid\n"; 
+  }
+
+
+  //TODO: simplify the two input sets of tris into output_tris
 
 }
 

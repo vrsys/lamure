@@ -6,6 +6,9 @@
 #include <lamure/mesh/triangle.h>
 //#include <lamure/ren/bvh.h>
 
+#include <map>
+#include <vector>
+
 namespace lamure {
 namespace mesh {
 
@@ -32,9 +35,18 @@ public:
 protected:
 
   void create_hierarchy(std::vector<triangle_t>& triangles);
+  
+
+  void simplify(
+    std::vector<triangle_t>& left_child_tris,
+    std::vector<triangle_t>& right_child_tris,
+    std::vector<triangle_t>& output_tris);
 
   int32_t depth_;
   std::vector<bvh_node> nodes_;
+
+  //node_id -> triangles
+  std::map<uint32_t, std::vector<triangle_t>> triangles_map_;
 
 };
 
