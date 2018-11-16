@@ -4,6 +4,7 @@
 
 #include <lamure/types.h>
 #include <lamure/mesh/triangle.h>
+//#include <lamure/ren/bvh.h>
 
 namespace lamure {
 namespace mesh {
@@ -20,6 +21,13 @@ class bvh {
 public:
   bvh(std::vector<triangle_t>& triangles);
   ~bvh();
+
+
+  const uint32_t get_child_id(const uint32_t node_id, const uint32_t child_index) const;
+  const uint32_t get_parent_id(const uint32_t node_id) const;
+  const uint32_t get_first_node_id_of_depth(uint32_t depth) const;
+  const uint32_t get_length_of_depth(uint32_t depth) const;
+  const uint32_t get_depth_of_node(const uint32_t node_id) const;
 
 protected:
 

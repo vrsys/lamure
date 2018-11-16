@@ -19,6 +19,45 @@ bvh::~bvh() {
 
 }
 
+
+const uint32_t bvh::
+get_child_id(const uint32_t node_id, const uint32_t child_index) const {
+    return node_id*2 + 1 + child_index;
+}
+
+const uint32_t bvh::
+get_parent_id(const uint32_t node_id) const {
+    if (node_id == 0) return 0;
+
+    if (node_id % 2 == 0) {
+        return node_id/2 - 1;
+    }
+    else {
+        return (node_id + 2 - (node_id % 2)) / 2 - 1;
+    }
+}
+
+const uint32_t bvh::
+get_first_node_id_of_depth(uint32_t depth) const {
+    uint32_t id = 0;
+    for (uint32_t i = 0; i < depth; ++i) {
+        id += (uint32_t)pow((double)2, (double)i);
+    }
+
+    return id;
+}
+
+const uint32_t bvh::
+get_length_of_depth(uint32_t depth) const {
+    return pow((double)2, (double)depth);
+}
+
+const uint32_t bvh::
+get_depth_of_node(const uint32_t node_id) const {
+    return (uint32_t)(std::log((node_id+1) * (2-1)) / std::log(2));
+}
+
+
 void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
   int64_t triangles_per_node = 1000;
