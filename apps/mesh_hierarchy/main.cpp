@@ -93,21 +93,21 @@ void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& t
             
             switch (j) {
               case 0:
-              tri.va_ =  position;
-              tri.n0_ = normal;
-              tri.c0_ = coord;
+              tri.v0_.pos_ =  position;
+              tri.v0_.nml_ = normal;
+              tri.v0_.tex_ = coord;
               break;
 
               case 1:
-              tri.vb_ =  position;
-              tri.n1_ = normal;
-              tri.c1_ = coord;
+              tri.v1_.pos_ =  position;
+              tri.v1_.nml_ = normal;
+              tri.v1_.tex_ = coord;
               break;
 
               case 2:
-              tri.vc_ =  position;
-              tri.n2_ = normal;
-              tri.c2_ = coord;
+              tri.v2_.pos_ =  position;
+              tri.v2_.nml_ = normal;
+              tri.v2_.tex_ = coord;
               break;
 
               default:
