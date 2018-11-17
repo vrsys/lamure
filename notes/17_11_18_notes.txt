@@ -1,0 +1,5 @@
+to test if edge constraint function can be used, created a boolean flag in each face that says whether it was in ledft or right
+
+this could be used to check if faces are in different parts/charts/nodes and stop those edges from being merged
+
+

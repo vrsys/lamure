@@ -74,13 +74,27 @@ struct XtndPoint : public Traits::Point_3 {
 
 };
 
+template <class Refs>
+struct XtndFace : public CGAL::HalfedgeDS_face_base<Refs> {
+  bool in_left_node;
+
+  void set_in_left_node(bool _in_left_node) {
+    in_left_node = _in_left_node;
+  }
+  bool is_in_left_node() {return in_left_node;}
+};
+
 // A new items type using extended vertex
 //TODO change XtndVertex back to original vertex class??
 struct Custom_items : public CGAL::Polyhedron_items_3 {
     template <class Refs, class Traits>
     struct Vertex_wrapper {
-
       typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
+    };
+
+    template <class Refs, class Traits>
+    struct Face_wrapper {
+      typedef XtndFace<Refs> Face;
     };
 };
 
@@ -112,7 +126,10 @@ struct Border_is_constrained_edge_map {
   {}
 
   friend bool get(Border_is_constrained_edge_map m, const key_type& edge) {
-    return CGAL::is_border(edge, *m.sm_ptr);
+    // return CGAL::is_border(edge, *m.sm_ptr);
+
+    //TODO compare adjacent faces to check if they have different is_left flags
+    return false;
   }
 };
 
@@ -174,6 +191,8 @@ public:
   //to enable creation of non-manifold meshes 
   double mesh_proportion = 1.0;
 
+  std::string report = "no report";
+
 
   polyhedron_builder( std::vector<double> &_vertices,
                       std::vector<int> &_tris,
@@ -184,7 +203,29 @@ public:
     mesh_proportion = _mp;
   }
 
+  std::string get_report () {return report;}
+
   void operator()( HDS& hds) {
+
+    typedef CGAL::Point_3<Kernel> Point;
+
+    std::vector<Point> centroids;
+    for( int i=0; i<(int)(tris.size()); i+=3 ){
+      Point p = CGAL::centroid(Point(vertices[tris[i]*3],vertices[(tris[i]*3)+1],vertices[(tris[i]*3)+2]),
+                             Point(vertices[tris[i+1]*3],vertices[(tris[i+1]*3)+1],vertices[(tris[i+1]*3)+2]),
+                             Point(vertices[tris[i+2]*3],vertices[(tris[i+2]*3)+1],vertices[(tris[i+2]*3)+2]));
+
+      centroids.push_back(p);
+    }
+
+    double avg_x = (1.0/centroids.size()) * std::accumulate(centroids.begin(), centroids.end(), 0.0, 
+                                              [](double a, Point b){
+                                                return a + b.x();
+                                              });
+
+    std::cout << "avg x = " << avg_x << std::endl;
+
+
  
     // create a cgal incremental builder
     CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
@@ -207,19 +248,40 @@ public:
       //                            t_coords[i*2],  
       //                            t_coords[(i*2)+1]));
     }
+
+    // int total_lefties = 0;
    
     // add the polyhedron triangles
     for( int i=0; i<(int)(tris.size() * mesh_proportion); i+=3 ){
-      B.begin_facet();
+
+      bool is_left_node = (centroids[i/3].x() < avg_x);
+
+      HalfedgeDS::Face_handle face = B.begin_facet();
       B.add_vertex_to_facet( tris[i+0] );
       B.add_vertex_to_facet( tris[i+1] );
       B.add_vertex_to_facet( tris[i+2] );
       B.end_facet();
+
+      face->set_in_left_node(is_left_node);
+      
+      // if (is_left_node)
+      // {
+      //   total_lefties++;
+      // }
+
+
     }
    
     // finish up the surface
-    B.end_surface();
+    // B.end_surface();
+
+    // std::stringstream ss;
+    // ss << "created mesh with " << tris.size()/3 << " triangles: " << total_lefties << " in left node";
+    // report = ss.str();
+
     }
+
+
 };
 
 
@@ -276,43 +338,76 @@ int main( int argc, char** argv )
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;
   polyhedron_builder<HalfedgeDS> builder( vertices, tris, built_t_coords );
-  builder.set_mesh_proportion(0.5);
   polyMesh.delegate( builder );
+
+  std::cout << builder.get_report() << std::endl;
 
   if (polyMesh.is_valid(true)){
     std::cout << "mesh valid\n"; 
   }
 
 
-
   if (!CGAL::is_triangle_mesh(polyMesh)){
     std::cerr << "Input geometry is not triangulated." << std::endl;
     return EXIT_FAILURE;
   }
+
+
+  int total_lefties = 0;
+
+  //test if faces have been stored
+  for( Polyhedron::Facet_iterator fb = polyMesh.facets_begin()
+   , fe = polyMesh.facets_end()
+   ; fb != fe
+   ; ++ fb
+   ) {
+
+    if (fb->is_in_left_node()){
+
+      total_lefties++;
+    }
+  }
+
+
+  std::cout << "total num faces: " << polyMesh.size_of_facets() << std::endl;
+  std::cout << "total lefties found in built mesh = " << total_lefties << std::endl;
+    
+
   // This is a stop predicate (defines when the algorithm terminates).
   // In this example, the simplification stops when the number of undirected edges
   // left in the surface mesh drops below the specified number (1000)
-  SMS::Count_stop_predicate<Polyhedron> stop(10000);
+  // SMS::Count_stop_predicate<Polyhedron> stop(1000);
 
   // map that defines which edges are protected
-  Border_is_constrained_edge_map bem(polyMesh);
+  // Border_is_constrained_edge_map bem(polyMesh);
 
-  std::cout << "Starting simplification" << std::endl;
+  // std::cout << "Starting simplification" << std::endl;
   
   // This the actual call to the simplification algorithm.
   // The surface mesh and stop conditions are mandatory arguments.
   // The index maps are needed because the vertices and edges
   // of this surface mesh lack an "id()" field.
-  SMS::edge_collapse
-            (polyMesh
-            ,stop
-             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
-                               .edge_is_constrained_map(bem)
-                               .get_placement(Placement(bem))
-            );
+  // SMS::edge_collapse
+  //           (polyMesh
+  //           ,stop
+  //            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+  //                              .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+  //                              .edge_is_constrained_map(bem)
+  //                              .get_placement(Placement(bem))
+  //           );
+
+  // SMS::edge_collapse
+  //           (polyMesh
+  //           ,stop
+  //            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+  //                              .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+  //                              .get_cost (SMS::Edge_length_cost <Polyhedron>())
+  //                              .get_placement(SMS::Midpoint_placement<Polyhedron>())
+  //           );
+
+
   
-  std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
+  // std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
 
         
 

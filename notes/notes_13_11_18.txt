@@ -75,3 +75,5 @@ JUST FOR CHECKING
 
  - attempting to make non-manifold meshes to check whether CGAL automatically detects borders. Could look in the code to acheive this?
  - are Polyhedron mesheseven allowed to be non-manifold?? - yes: "The polyhedral surface itself can have holes. The halfedges along the boundary of a hole are called border halfedges and have no incident facet. An edge is a border edge if one of its halfedges is a border halfedge. A surface is closed if it contains no border halfedges. A closed surface is a boundary representation for polyhedra in three dimensions." https://doc.cgal.org/latest/Polyhedron/classCGAL_1_1Polyhedron__3.html.
+
+
