@@ -8,6 +8,13 @@
 #include <iostream>
 
 
+
+// Stop-condition policy
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
+#include <CGAL/Surface_mesh_simplification/edge_collapse.h>
+
 namespace lamure {
 namespace mesh {
 
@@ -247,7 +254,7 @@ void bvh::simplify(
   //create a mesh from vectors
   Polyhedron polyMesh;
   polyhedron_builder<HalfedgeDS> builder(left_child_tris, right_child_tris);
-  builder.set_mesh_proportion(0.5);
+  // builder.set_mesh_proportion(0.5);
   polyMesh.delegate(builder);
 
   if (polyMesh.is_valid(true)) {
@@ -255,7 +262,22 @@ void bvh::simplify(
   }
 
 
+
   //TODO: simplify the two input sets of tris into output_tris
+  //instruct 
+  SMS::Count_stop_predicate<Polyhedron> stop(0.5);
+
+  SMS::edge_collapse
+            (polyMesh
+            ,stop
+             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh)) 
+                               .get_cost (SMS::Edge_length_cost <Polyhedron>())
+                               .get_placement(SMS::Midpoint_placement<Polyhedron>())
+            );
+
+  uint32_t start_tris = left_child_tris.size() + right_child_tris.size();
+  std::cout << "Simplified:  " << start_tris << " original triangles to " << polyMesh.size_of_facets() << " final triangles.\n" ;
 
 }
 
