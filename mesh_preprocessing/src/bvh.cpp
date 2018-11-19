@@ -11,6 +11,7 @@
 
 // Stop-condition policy
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_ratio_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
@@ -226,13 +227,18 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   	  uint32_t left_child = get_child_id(node_id, 0);
   	  uint32_t right_child = get_child_id(node_id, 1);
 
+      std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
+      std::cout << "left tris: " << triangles_map_[left_child].size() << std::endl;
+      std::cout << "right tris: " << triangles_map_[right_child].size() << std::endl;
+
   	  //params to simplify: input set of tris for both children, output set of tris
   	  simplify(
   	  	triangles_map_[left_child],
   	  	triangles_map_[right_child],
-  	  	triangles_map_[node_id]);
+  	  	triangles_map_[node_id],
+        triangles_per_node);
 
-  	  std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
+
   	}
   }
 
@@ -248,7 +254,8 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 void bvh::simplify(
   std::vector<triangle_t>& left_child_tris,
   std::vector<triangle_t>& right_child_tris,
-  std::vector<triangle_t>& output_tris) {
+  std::vector<triangle_t>& output_tris,
+  uint32_t triangles_per_node) {
 
   
   //create a mesh from vectors
@@ -257,27 +264,23 @@ void bvh::simplify(
   // builder.set_mesh_proportion(0.5);
   polyMesh.delegate(builder);
 
-  if (polyMesh.is_valid(true)) {
-    std::cout << "mesh valid\n"; 
+  if (polyMesh.is_valid(false)) {
+    std::cout << "mesh valid" << std::endl; 
   }
 
-
-
   //TODO: simplify the two input sets of tris into output_tris
-  //instruct 
-  SMS::Count_stop_predicate<Polyhedron> stop(0.5);
+  SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
 
   SMS::edge_collapse
             (polyMesh
             ,stop
-             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh)) 
-                               .get_cost (SMS::Edge_length_cost <Polyhedron>())
+            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index, polyMesh))
+                               .halfedge_index_map(get(CGAL::halfedge_external_index, polyMesh))
+                               .get_cost(SMS::Edge_length_cost<Polyhedron>())
                                .get_placement(SMS::Midpoint_placement<Polyhedron>())
             );
 
-  uint32_t start_tris = left_child_tris.size() + right_child_tris.size();
-  std::cout << "Simplified:  " << start_tris << " original triangles to " << polyMesh.size_of_facets() << " final triangles.\n" ;
+  std::cout << "simplified: " << polyMesh.size_of_facets() << std::endl;
 
 }
 

@@ -40,7 +40,8 @@ protected:
   void simplify(
     std::vector<triangle_t>& left_child_tris,
     std::vector<triangle_t>& right_child_tris,
-    std::vector<triangle_t>& output_tris);
+    std::vector<triangle_t>& output_tris,
+    uint32_t triangles_per_node);
 
   int32_t depth_;
   std::vector<bvh_node> nodes_;
