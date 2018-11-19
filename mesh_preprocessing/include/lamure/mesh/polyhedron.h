@@ -120,7 +120,7 @@ public:
   void operator()(HDS& hds) {
  
     // create a cgal incremental builder
-    CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
+    CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
     uint32_t num_tris = left_tris_.size()+right_tris_.size();
     B.begin_surface(3*num_tris, num_tris);
     

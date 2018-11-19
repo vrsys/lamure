@@ -264,12 +264,26 @@ void bvh::simplify(
   // builder.set_mesh_proportion(0.5);
   polyMesh.delegate(builder);
 
-  if (polyMesh.is_valid(false)) {
-    std::cout << "mesh valid" << std::endl; 
+  if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
+    std::cout << "triangle mesh valid" << std::endl;
   }
 
-  //TODO: simplify the two input sets of tris into output_tris
+
+  uint32_t num_vertices = 0;
+  for (Polyhedron::Facet_iterator f = polyMesh.facets_begin(); f != polyMesh.facets_end(); ++f) {
+    Polyhedron::Halfedge_around_facet_circulator c = f->facet_begin();
+    for (int i = 0; i < 3; ++i, ++c) {
+      ++num_vertices;
+    }
+  }
+
+  std::cout << "original: " << num_vertices << std::endl;
+
+  //simplify the two input sets of tris into output_tris
+  
+  //SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
+  
 
   SMS::edge_collapse
             (polyMesh
@@ -280,7 +294,49 @@ void bvh::simplify(
                                .get_placement(SMS::Midpoint_placement<Polyhedron>())
             );
 
-  std::cout << "simplified: " << polyMesh.size_of_facets() << std::endl;
+  
+
+  //convert back to triangle soup
+  uint32_t num_vertices_simplified = 0;
+  for (Polyhedron::Facet_iterator f = polyMesh.facets_begin(); f != polyMesh.facets_end(); ++f) {
+    Polyhedron::Halfedge_around_facet_circulator c = f->facet_begin();
+
+    triangle_t tri;
+
+    for (int i = 0; i < 3; ++i, ++c) {
+
+      switch (i) {
+        case 0:
+        tri.v0_.pos_ = vec3f(
+          c->vertex()->point()[0],
+          c->vertex()->point()[1],
+          c->vertex()->point()[2]);
+        break;
+
+        case 1: 
+        tri.v1_.pos_ = vec3f(
+          c->vertex()->point()[0],
+          c->vertex()->point()[1],
+          c->vertex()->point()[2]);
+        break;
+
+        case 2: 
+        tri.v2_.pos_ = vec3f(
+          c->vertex()->point()[0],
+          c->vertex()->point()[1],
+          c->vertex()->point()[2]);
+        break;
+
+        default: break;
+      }
+
+      ++num_vertices_simplified;
+    }
+
+    output_tris.push_back(tri);
+  }
+
+  std::cout << "simplified: " << num_vertices_simplified << std::endl; 
 
 }
 
