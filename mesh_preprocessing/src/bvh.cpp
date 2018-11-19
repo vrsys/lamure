@@ -1,6 +1,7 @@
 
 #include <lamure/mesh/bvh.h>
 #include <lamure/mesh/polyhedron.h>
+#include <lamure/ren/lod_stream.h>
 
 #include <limits>
 #include <queue>
@@ -19,8 +20,13 @@
 namespace lamure {
 namespace mesh {
 
-bvh::bvh(std::vector<triangle_t>& triangles)
-: depth_(0) {
+bvh::bvh(std::vector<triangle_t>& triangles, uint32_t primitives_per_node)
+: lamure::ren::bvh() {
+
+  fan_factor_ = 2;
+  size_of_primitive_ = sizeof(vertex);
+  primitive_ = primitive_type::TRIMESH;
+  primitives_per_node_ = primitives_per_node;
 
   create_hierarchy(triangles);
 
@@ -31,47 +37,7 @@ bvh::~bvh() {
 }
 
 
-const uint32_t bvh::
-get_child_id(const uint32_t node_id, const uint32_t child_index) const {
-    return node_id*2 + 1 + child_index;
-}
-
-const uint32_t bvh::
-get_parent_id(const uint32_t node_id) const {
-    if (node_id == 0) return 0;
-
-    if (node_id % 2 == 0) {
-        return node_id/2 - 1;
-    }
-    else {
-        return (node_id + 2 - (node_id % 2)) / 2 - 1;
-    }
-}
-
-const uint32_t bvh::
-get_first_node_id_of_depth(uint32_t depth) const {
-    uint32_t id = 0;
-    for (uint32_t i = 0; i < depth; ++i) {
-        id += (uint32_t)pow((double)2, (double)i);
-    }
-
-    return id;
-}
-
-const uint32_t bvh::
-get_length_of_depth(uint32_t depth) const {
-    return pow((double)2, (double)depth);
-}
-
-const uint32_t bvh::
-get_depth_of_node(const uint32_t node_id) const {
-    return (uint32_t)(std::log((node_id+1) * (2-1)) / std::log(2));
-}
-
-
 void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
-
-  int64_t triangles_per_node = 1000;
 
   //Determine the bounding box of all tris ---root
   vec3f min(std::numeric_limits<float>::max());
@@ -97,8 +63,10 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   };
   q.push(root);
 
+  std::vector<bvh_node> nodes;
+
   //remember the root
-  nodes_.push_back(root);
+  nodes.push_back(root);
 
   while (q.size() > 0) {
     bvh_node node = q.front(); //get the first element
@@ -165,50 +133,48 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
       right_child.min_.z = triangles[split_id+1].get_centroid().z;
     }
 
-    if (left_child.end_-left_child.begin_ > triangles_per_node
-      || right_child.end_-right_child.begin_ > triangles_per_node) {
+    if (left_child.end_-left_child.begin_ > primitives_per_node_
+      || right_child.end_-right_child.begin_ > primitives_per_node_) {
         q.push(left_child);
         q.push(right_child);
     }
 
-    nodes_.push_back(left_child);
-    nodes_.push_back(right_child);
+    nodes.push_back(left_child);
+    nodes.push_back(right_child);
 
     depth_ = std::max(left_child.depth_, depth_);
 
   } //end of while
 
-
-
-  std::cout << "construction done" << std::endl;
+  std::cout << "Downsweep done" << std::endl;
   std::cout << "hierarchy depth: " << depth_ << std::endl;
-  std::cout << "number of nodes: " << nodes_.size() << std::endl;
-  std::cout << "hierarchy min: " << nodes_[0].min_ << std::endl;
-  std::cout << "hierarchy max: " << nodes_[0].max_ << std::endl;
+  std::cout << "number of nodes: " << nodes.size() << std::endl;
+  std::cout << "hierarchy min: " << nodes[0].min_ << std::endl;
+  std::cout << "hierarchy max: " << nodes[0].max_ << std::endl;
 
 
   //populate the triangles map (but only from the leaf level)
   {
-	  uint32_t first_node = get_first_node_id_of_depth(depth_);
-	  uint32_t num_of_nodes = get_length_of_depth(depth_);
+    uint32_t first_node = get_first_node_id_of_depth(depth_);
+    uint32_t num_of_nodes = get_length_of_depth(depth_);
 
-	  //check the actual number of tris per node
-	  triangles_per_node = 0;
-      for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; ++node_id) {
-	  	bvh_node& node = nodes_[node_id];  	
-        triangles_per_node = std::max(triangles_per_node, node.end_-node.begin_);
-      };
+    //check the actual number of tris per node
+    primitives_per_node_ = 0;
+    for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; ++node_id) {
+      bvh_node& node = nodes[node_id];  	
+      primitives_per_node_ = std::max(primitives_per_node_, (uint32_t)(node.end_-node.begin_));
+    };
 
-      std::cout << "actual triangles per node " << triangles_per_node << std::endl;
+    std::cout << "actual triangles per node " << primitives_per_node_ << std::endl;
 
-	  for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; ++node_id) {
-	  	bvh_node& node = nodes_[node_id];
+    for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; ++node_id) {
+      bvh_node& node = nodes[node_id];
 
-	  	//copy triangles to triangle map
-        for (uint64_t tri = node.begin_; tri < node.end_; ++tri) {
-    	  triangles_map_[node_id].push_back(triangles[tri]);
-        }
-	  }
+      //copy triangles to triangle map
+      for (uint64_t tri = node.begin_; tri < node.end_; ++tri) {
+        triangles_map_[node_id].push_back(triangles[tri]);
+      }
+    }
   }
 
   std::cout << "triangles map populated" << std::endl;
@@ -220,42 +186,62 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   //    simplify these (half the number of triangles)
 
   for (int d = depth_-1; d>=0; d--) {
-  	uint32_t first_node = get_first_node_id_of_depth(d);
-  	uint32_t num_of_nodes = get_length_of_depth(d);
-  	for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; node_id++) {
+    uint32_t first_node = get_first_node_id_of_depth(d);
+    uint32_t num_of_nodes = get_length_of_depth(d);
+    for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; node_id++) {
 
-  	  uint32_t left_child = get_child_id(node_id, 0);
-  	  uint32_t right_child = get_child_id(node_id, 1);
+      uint32_t left_child = get_child_id(node_id, 0);
+      uint32_t right_child = get_child_id(node_id, 1);
 
       std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
       std::cout << "left tris: " << triangles_map_[left_child].size() << std::endl;
       std::cout << "right tris: " << triangles_map_[right_child].size() << std::endl;
 
-  	  //params to simplify: input set of tris for both children, output set of tris
-  	  simplify(
-  	  	triangles_map_[left_child],
-  	  	triangles_map_[right_child],
-  	  	triangles_map_[node_id],
-        triangles_per_node);
+      //params to simplify: input set of tris for both children, output set of tris
+      simplify(
+        triangles_map_[left_child],
+        triangles_map_[right_child],
+        triangles_map_[node_id]);
 
 
-  	}
-  }
-
-  //if the number of triangles was not divisible by two, add another tri for padding
-  for (uint32_t node_id = 0; node_id < nodes_.size(); ++node_id) {
-    while (triangles_map_[node_id].size() < triangles_per_node) {
-      triangles_map_[node_id].push_back(triangle_t());
     }
   }
+
+  std::cout << "Upsweep done." << std::endl;
+
+  
+  for (uint32_t node_id = 0; node_id < nodes.size(); ++node_id) {
+    const auto& node = nodes[node_id];
+    
+    bounding_boxes_.push_back(scm::gl::boxf(node.min_, node.max_));
+    centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f);
+    visibility_.push_back(node_visibility::NODE_VISIBLE);
+
+    //if the number of triangles was not divisible by two, add another tri for padding
+    while (triangles_map_[node_id].size() < primitives_per_node_) {
+      triangles_map_[node_id].push_back(triangle_t());
+    }
+
+    float avg_primitive_extent = 0;
+    float max_primitive_extent_deviation = 0;
+
+    //...
+
+    avg_primitive_extent_.push_back(avg_primitive_extent);
+    max_primitive_extent_deviation_.push_back(max_primitive_extent_deviation);
+  }
+
+  num_nodes_ = nodes.size();
+
+  nodes.clear();
+
 
 }
 
 void bvh::simplify(
   std::vector<triangle_t>& left_child_tris,
   std::vector<triangle_t>& right_child_tris,
-  std::vector<triangle_t>& output_tris,
-  uint32_t triangles_per_node) {
+  std::vector<triangle_t>& output_tris) {
 
   
   //create a mesh from vectors
@@ -280,7 +266,7 @@ void bvh::simplify(
   std::cout << "original: " << num_vertices << std::endl;
 
   //simplify the two input sets of tris into output_tris
-  
+
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
@@ -337,6 +323,22 @@ void bvh::simplify(
   }
 
   std::cout << "simplified: " << num_vertices_simplified << std::endl; 
+
+}
+
+void bvh::write_lod_file(const std::string& lod_filename) {
+
+  auto lod = std::make_shared<lamure::ren::lod_stream>();
+  lod->open_for_writing(lod_filename);
+
+  for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
+    size_t length_in_bytes = primitives_per_node_*sizeof(vertex);
+    size_t start_in_file = node_id*length_in_bytes;
+    lod->write((char*)&triangles_map_[node_id][0], start_in_file, length_in_bytes);
+  }
+
+  lod->close();
+
 
 }
 

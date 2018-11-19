@@ -477,7 +477,7 @@ int main( int argc, char** argv )
   std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
 
 
-  std::cout << "constrained edges : " << bem.num_constrained_edges() << std::endl;
+  //std::cout << "constrained edges : " << bem.num_constrained_edges() << std::endl;
         
 
   //write to file

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 #include <lamure/mesh/bvh.h>
 #include <cstring>
@@ -152,11 +153,19 @@ int32_t main(int argc, char* argv[]) {
   load_obj(obj_filename, triangles);
 
   std::cout << "obj loaded" << std::endl;
-  std::cout << "creating hierarchy..." << std::endl;
+  std::cout << "creating LOD hierarchy..." << std::endl;
 
-  lamure::mesh::bvh bvh(triangles);
+  auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, 1000);
 
+  std::string bvh_filename = obj_filename.substr(0, obj_filename.size()-4)+".bvh";
+  bvh->write_bvh_file(bvh_filename);
+  std::cout << "Bvh file written to " << bvh_filename << std::endl;
 
+  std::string lod_filename = obj_filename.substr(0, obj_filename.size()-4)+".lod";
+  bvh->write_lod_file(lod_filename);
+  std::cout << "Lod file written to " << lod_filename << std::endl;
+
+  bvh.reset();
 
   return 0;
    
