@@ -103,6 +103,12 @@ typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
+//for property map
+typedef boost::graph_traits<Polyhedron>::face_descriptor face_descriptor;
+typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
+typedef std::map<face_descriptor,bool> Face_is_left_map;
+typedef boost::associative_property_map<Face_is_left_map> Face_is_left_pmap;
+
 
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
@@ -116,21 +122,40 @@ OTHER STRUCTS ===================================================
 //
 struct Border_is_constrained_edge_map {
   const Polyhedron* sm_ptr;
+  const Face_is_left_pmap fm_ptr;
   typedef boost::graph_traits<Polyhedron>::edge_descriptor key_type;
+  typedef boost::graph_traits<Polyhedron>::halfedge_descriptor HE;
+  typedef boost::graph_traits<Polyhedron>::face_descriptor Face;
+
   typedef bool value_type;
   typedef value_type reference;
   typedef boost::readable_property_map_tag category;
 
-  Border_is_constrained_edge_map(const Polyhedron& sm)
-  : sm_ptr(&sm)
+  int constrained_edges = 0;
+
+
+  Border_is_constrained_edge_map(const Polyhedron& sm, const Face_is_left_pmap& fmap)
+  : sm_ptr(&sm), fm_ptr(fmap)
   {}
 
   friend bool get(Border_is_constrained_edge_map m, const key_type& edge) {
-    // return CGAL::is_border(edge, *m.sm_ptr);
 
-    //TODO compare adjacent faces to check if they have different is_left flags
-    return false;
+    //get descriptors for adjacent faces
+    HE he1 = halfedge(edge, *m.sm_ptr);
+    HE he2 = opposite(he1, *m.sm_ptr);
+    Face f1 = face(he1, *m.sm_ptr);
+    Face f2 = face(he2, *m.sm_ptr);
+
+    //border is constrained if the faces ar in different sides
+    bool constrained = (m.fm_ptr[f1] != m.fm_ptr[f2]);
+    if (constrained) {m.constrained_edges++;}
+    return constrained;
   }
+
+//not currently working
+  // int num_constrained_edges(){
+  //   return constrained_edges;
+  // }
 };
 
 // Placement class
@@ -223,9 +248,6 @@ public:
                                                 return a + b.x();
                                               });
 
-    std::cout << "avg x = " << avg_x << std::endl;
-
-
  
     // create a cgal incremental builder
     CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
@@ -307,12 +329,18 @@ int main( int argc, char** argv )
     obj_filename = std::string(Utils::getCmdOption(argv, argv + argc, "-f"));
   }
   else {
-    std::cout << "Please provide a obj filename using -f <filename.obj>" << std::endl;
+    std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
     return 1;
   }
+
   std::string out_filename = "data/simplified_mesh.obj";
   if (Utils::cmdOptionExists(argv, argv+argc, "-o")) {
     out_filename = std::string(Utils::getCmdOption(argv, argv + argc, "-o"));
+  }
+
+  int target_edges = 1000;
+  if(Utils::cmdOptionExists(argv, argv+argc, "-e")){
+    target_edges = stoi(std::string(Utils::getCmdOption(argv, argv + argc, "-e")));
   }
 
 
@@ -340,7 +368,7 @@ int main( int argc, char** argv )
   polyhedron_builder<HalfedgeDS> builder( vertices, tris, built_t_coords );
   polyMesh.delegate( builder );
 
-  std::cout << builder.get_report() << std::endl;
+  // std::cout << builder.get_report() << std::endl;
 
   if (polyMesh.is_valid(true)){
     std::cout << "mesh valid\n"; 
@@ -351,6 +379,8 @@ int main( int argc, char** argv )
     std::cerr << "Input geometry is not triangulated." << std::endl;
     return EXIT_FAILURE;
   }
+
+
 
 
   int total_lefties = 0;
@@ -368,7 +398,6 @@ int main( int argc, char** argv )
     }
   }
 
-
   std::cout << "total num faces: " << polyMesh.size_of_facets() << std::endl;
   std::cout << "total lefties found in built mesh = " << total_lefties << std::endl;
     
@@ -376,25 +405,63 @@ int main( int argc, char** argv )
   // This is a stop predicate (defines when the algorithm terminates).
   // In this example, the simplification stops when the number of undirected edges
   // left in the surface mesh drops below the specified number (1000)
-  // SMS::Count_stop_predicate<Polyhedron> stop(1000);
+  //target edges set from input
+  SMS::Count_stop_predicate<Polyhedron> stop(target_edges);
+
+
+  //build property map
+  Face_is_left_map face_is_left_map;
+  Face_is_left_pmap face_is_left_pmap(face_is_left_map);
+
+  typedef CGAL::Point_3<Kernel> Point;
+  std::vector<Point> centroids;
+
+  // for each face, associate bools to faces depending on position
+  face_iterator fb, fe;
+  for(boost::tie(fb, fe)=faces(polyMesh); fb!=fe; ++fb){
+
+    //calculate centroid for each face
+    CGAL::Vertex_around_face_iterator<Polyhedron> vbegin, vend;
+    boost::tie(vbegin, vend) = vertices_around_face(halfedge(*fb, polyMesh), polyMesh);
+    Point p1 = (*vbegin)->point();  ++vbegin;
+    Point p2 = (*vbegin)->point();  ++vbegin;
+    Point p3 = (*vbegin)->point();  ++vbegin;
+    Point centroid = CGAL::centroid(p1,p2,p3);
+    centroids.push_back(centroid);
+  }
+  //get average centroid
+  double avg_x = (1.0/centroids.size()) * std::accumulate(centroids.begin(), centroids.end(), 0.0, 
+                                          [](double a, Point b){
+                                            return a + b.x();
+                                          });
+
+  //fill property map with boolean
+  int index = 0;
+  for(boost::tie(fb, fe)=faces(polyMesh); fb!=fe; ++fb){
+    bool is_left = (centroids[index].x() < avg_x);
+    face_is_left_pmap[*fb] = is_left;
+    index++;
+  }
+
 
   // map that defines which edges are protected
-  // Border_is_constrained_edge_map bem(polyMesh);
+  Border_is_constrained_edge_map bem(polyMesh, face_is_left_pmap);
 
-  // std::cout << "Starting simplification" << std::endl;
+
+  std::cout << "Starting simplification" << std::endl;
   
   // This the actual call to the simplification algorithm.
   // The surface mesh and stop conditions are mandatory arguments.
   // The index maps are needed because the vertices and edges
   // of this surface mesh lack an "id()" field.
-  // SMS::edge_collapse
-  //           (polyMesh
-  //           ,stop
-  //            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-  //                              .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
-  //                              .edge_is_constrained_map(bem)
-  //                              .get_placement(Placement(bem))
-  //           );
+  SMS::edge_collapse
+            (polyMesh
+            ,stop
+             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+                               .edge_is_constrained_map(bem)
+                               .get_placement(Placement(bem))
+            );
 
   // SMS::edge_collapse
   //           (polyMesh
@@ -407,8 +474,10 @@ int main( int argc, char** argv )
 
 
   
-  // std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
+  std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
 
+
+  std::cout << "constrained edges : " << bem.num_constrained_edges() << std::endl;
         
 
   //write to file
