@@ -295,7 +295,7 @@ public:
     }
    
     // finish up the surface
-    // B.end_surface();
+    B.end_surface();
 
     // std::stringstream ss;
     // ss << "created mesh with " << tris.size()/3 << " triangles: " << total_lefties << " in left node";
