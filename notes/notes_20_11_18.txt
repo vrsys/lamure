@@ -1,0 +1,25 @@
+
+for next week:
+
+
+fix simplification in mesh-hierarchy app
+
+isolate to test operation
+
+
+Edge constraints:
+constrain outer borders of nodes
+
+
+Charts:
+
+cost calculation: fit average plane and then compute distance from each vertex to plane
+
+to visualise: 
+
+write colour as tex coords (2 element vector)
+
+in app OBJ this will be interpreted as colour:
+e.g. ./lamure_obj -f ../../data/bunny.obj
+
+

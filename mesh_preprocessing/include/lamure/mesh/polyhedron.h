@@ -155,6 +155,8 @@ public:
 
       vertex_id += 3;
     }
+
+    //DETECT BORDER EDGES AND FREEZE THEM
    
     // finish up the surface
     B.end_surface();
