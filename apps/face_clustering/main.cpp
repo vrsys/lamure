@@ -41,6 +41,7 @@ typedef Polyhedron::Facet_handle Facet_handle;
 typedef Polyhedron::Facet Facet; 
 
 
+typedef Polyhedron::Halfedge Halfedge;
 typedef Polyhedron::Edge_iterator Edge_iterator;
 
 
@@ -97,13 +98,14 @@ public:
 // struct to hold a vector of facets that make a chart
 struct Chart
 {
-  std::vector<Facet> facets;
-  bool active = true;
+  std::vector<uint32_t> facets;
+  bool active;
 
-  Chart(Facet &f){
+  Chart(uint32_t f){
     add_face(f);
+    active = true;
   }
-  void add_face(Facet f){
+  void add_face(uint32_t f){
     facets.push_back(f);
   }
   //concatenate face lists
@@ -140,34 +142,46 @@ bool sort_joins (JoinOperation j1, JoinOperation j2) {
 void 
 create_charts (Polyhedron &P){
 
-
-  uint32_t chart_target = 100;
-  uint32_t chart_merges = 0;
+  std::stringstream report;
 
   //each face begins as its own chart
   //ad face ids in same loop
   std::vector<Chart> charts;
   for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
     fb->id() = charts.size();  
-    Chart c(*fb);
+    Chart c(fb->id());
     charts.push_back(c);
+
+    std::cout << "creating chart " << charts.size()-1 << " with face id " << fb->id() << std::endl;
   }
+
   const uint32_t initial_charts = charts.size();
+  const uint32_t chart_target = 100;
+  const uint32_t desired_merges = initial_charts - chart_target;
+  uint32_t chart_merges = 0;
 
   //create possible join list
   std::list<JoinOperation> joins;
   std::list<JoinOperation>::iterator it;
   for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
-    uint32_t face1 = eb->facet()->id();
-    uint32_t face2 = eb->opposite()->facet()->id();
 
-    JoinOperation join (face1,face2,2.0);
-    joins.push_back(join);
+    //disallow join if halfedge is a boundary edge
+    if ( !(eb->is_border()) && !(eb->opposite()->is_border()) )
+    {
+          uint32_t face1 = eb->facet()->id();
+          uint32_t face2 = eb->opposite()->facet()->id();
 
+          JoinOperation join (face1,face2,2.0);
+          joins.push_back(join);
+
+          std::cout << "create join between faces " << face1 << " and " << face2  << std::endl;
+    }
   } 
 
   //make joins until target is reached
-  while ((initial_charts-chart_merges) > chart_target){
+  // while ((initial_charts-chart_merges) > chart_target){
+
+  while (chart_merges < desired_merges && !joins.empty()){
 
     //sort joins by cost
     // std::sort (joins.begin(), joins.end(), sort_joins);
@@ -175,10 +189,16 @@ create_charts (Polyhedron &P){
     joins.sort(sort_joins);
 
     //implement the join with lowest cost
-    JoinOperation &join_todo = joins.front();
+    JoinOperation join_todo = joins.front();
 
     //merge faces from chart2 into chart 1
     charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id]);
+
+    if (charts[join_todo.chart2_id].active == false)
+    {
+      report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl;
+    }
+
     charts[join_todo.chart2_id].active = false;
     joins.pop_front();
 
@@ -200,10 +220,20 @@ create_charts (Polyhedron &P){
           it->chart2_id = join_todo.chart1_id; 
         }
 
-        //update cost with new references/cost
+        //update cost with new cost
         it->cost = cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
+
+        //check for joins within a chart
+        if (it->chart1_id == it->chart2_id)
+        {
+          report << "Join found within a chart: " << it->chart1_id << std::endl;
+          // joins.erase(it);
+        }
       }
     }
+
+
+    
 
     chart_merges++;
     std::cout << chart_merges << " merges\n";
@@ -217,7 +247,7 @@ create_charts (Polyhedron &P){
 
   uint32_t total_faces = 0;
   uint32_t total_active_charts = 0;
-  for (int i = 0; i < (int)charts.size(); ++i)
+  for (uint32_t i = 0; i < charts.size(); ++i)
   {
     if (charts[i].active)
     {
@@ -229,8 +259,12 @@ create_charts (Polyhedron &P){
   }
   std::cout << "Total number of faces in charts = " << total_faces << std::endl;
   std::cout << "Initial charts = " << initial_charts << std::endl;
+  std::cout << "Total number merges = " << chart_merges << std::endl;
   std::cout << "Total active charts = " << total_active_charts << std::endl;
 
+
+  std::cout << "--------------------\nReport:\n----------------------\n";
+  std::cout << report.str();
 }
 
 int main( int argc, char** argv ) 

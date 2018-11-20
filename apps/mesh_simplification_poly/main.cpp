@@ -454,23 +454,23 @@ int main( int argc, char** argv )
   // The surface mesh and stop conditions are mandatory arguments.
   // The index maps are needed because the vertices and edges
   // of this surface mesh lack an "id()" field.
-  SMS::edge_collapse
-            (polyMesh
-            ,stop
-             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
-                               .edge_is_constrained_map(bem)
-                               .get_placement(Placement(bem))
-            );
-
   // SMS::edge_collapse
   //           (polyMesh
   //           ,stop
   //            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
   //                              .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
-  //                              .get_cost (SMS::Edge_length_cost <Polyhedron>())
-  //                              .get_placement(SMS::Midpoint_placement<Polyhedron>())
+  //                              .edge_is_constrained_map(bem)
+  //                              .get_placement(Placement(bem))
   //           );
+
+  SMS::edge_collapse
+            (polyMesh
+            ,stop
+             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+                               .get_cost (SMS::Edge_length_cost <Polyhedron>())
+                               .get_placement(SMS::Midpoint_placement<Polyhedron>())
+            );
 
 
   
