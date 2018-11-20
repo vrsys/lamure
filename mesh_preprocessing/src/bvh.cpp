@@ -17,6 +17,9 @@
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
 
+
+namespace SMS = CGAL::Surface_mesh_simplification ;
+
 namespace lamure {
 namespace mesh {
 
@@ -247,7 +250,6 @@ void bvh::simplify(
   //create a mesh from vectors
   Polyhedron polyMesh;
   polyhedron_builder<HalfedgeDS> builder(left_child_tris, right_child_tris);
-  // builder.set_mesh_proportion(0.5);
   polyMesh.delegate(builder);
 
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
@@ -263,12 +265,14 @@ void bvh::simplify(
     }
   }
 
-  std::cout << "original: " << num_vertices << std::endl;
+  // std::cout << "original: " << num_vertices << std::endl;
+
+  std::cout << "original: " << polyMesh.size_of_facets() << std::endl;
 
   //simplify the two input sets of tris into output_tris
 
-  //SMS::Count_stop_predicate<Polyhedron> stop(50);
-  SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
+  SMS::Count_stop_predicate<Polyhedron> stop(50);
+  // SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
 
   SMS::edge_collapse
@@ -322,7 +326,9 @@ void bvh::simplify(
     output_tris.push_back(tri);
   }
 
-  std::cout << "simplified: " << num_vertices_simplified << std::endl; 
+  // std::cout << "simplified: " << num_vertices_simplified << std::endl; 
+  std::cout << "simplified: " << polyMesh.size_of_facets() << std::endl;
+  
 
 }
 

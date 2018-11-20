@@ -23,3 +23,6 @@ in app OBJ this will be interpreted as colour:
 e.g. ./lamure_obj -f ../../data/bunny.obj
 
 
+
+simplification works in new app (test_simplification) with old polyhedron builder
+investigate what the difference is!
