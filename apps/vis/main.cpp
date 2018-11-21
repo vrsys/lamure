@@ -93,7 +93,7 @@ scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
 
 scm::gl::program_ptr vis_quad_shader_;
 scm::gl::program_ptr vis_line_shader_;
-scm::gl::program_ptr vis_triangle_shader_;
+scm::gl::program_ptr vis_lod_trimesh_shader_;
 scm::gl::program_ptr vis_vt_shader_;
 
 scm::gl::frame_buffer_ptr fbo_;
@@ -1121,7 +1121,7 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
 
 }
 
-void draw_all_models(const lamure::context_t context_id, const lamure::view_t view_id, scm::gl::program_ptr shader) {
+void draw_all_models(const lamure::context_t context_id, const lamure::view_t view_id, scm::gl::program_ptr shader, lamure::ren::bvh::primitive_type _type) {
 
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
@@ -1130,11 +1130,11 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
 
   if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
     context_->bind_vertex_array(
-      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_, data_provenance_));
+      controller->get_context_memory(context_id, _type, device_, data_provenance_));
   }
   else {
    context_->bind_vertex_array(
-      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_)); 
+      controller->get_context_memory(context_id, _type, device_)); 
   }
   context_->apply();
 
@@ -1155,7 +1155,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
     std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
     const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
-    if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
+    if (bvh->get_primitive() != _type) {
       if (selection_.selected_model_ != -1) break;
       //else continue;
       else draw = false;
@@ -1211,14 +1211,23 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         context_->apply();
 
         if (draw) {
-          context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
-            (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+          switch (_type) {
+            case lamure::ren::bvh::primitive_type::POINTCLOUD:
+              context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
+                (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+              break;
+
+            case lamure::ren::bvh::primitive_type::TRIMESH:
+              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST,
+                (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+              break;
+
+            default: break;
+          }
           rendered_splats_ += surfels_per_node;
           ++rendered_nodes_;
         }
 
-        
-      
       }
     }
     if (selection_.selected_model_ != -1) {
@@ -1381,7 +1390,7 @@ void glut_display() {
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
 
-    draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
+    draw_all_models(context_id, view_id, vis_xyz_pass1_shader_, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
     draw_brush(vis_xyz_pass1_shader_);
 
@@ -1410,7 +1419,7 @@ void glut_display() {
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
 
-    draw_all_models(context_id, view_id, selected_pass2_shading_program);
+    draw_all_models(context_id, view_id, selected_pass2_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
     draw_brush(selected_pass2_shading_program);
 
@@ -1468,15 +1477,15 @@ void glut_display() {
     context_->set_depth_stencil_state(depth_state_less_);
     
     set_uniforms(selected_single_pass_shading_program);
-    /*if (settings_.background_image_ != "") {
-      context_->bind_texture(bg_texture_, filter_linear_, 0);
-      selected_single_pass_shading_program->uniform("background_image", true);
-    }*/
-
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
-    draw_all_models(context_id, view_id, selected_single_pass_shading_program);
+
+    context_->bind_program(vis_lod_trimesh_shader_);
+    set_uniforms(vis_lod_trimesh_shader_);
+    context_->apply();
+    draw_all_models(context_id, view_id, vis_lod_trimesh_shader_, lamure::ren::bvh::primitive_type::TRIMESH);
 
     context_->bind_program(vis_xyz_shader_);
     draw_brush(vis_xyz_shader_);
@@ -2586,8 +2595,8 @@ void init() {
     std::string vis_line_vs_source;
     std::string vis_line_fs_source;
     
-    std::string vis_triangle_vs_source;
-    std::string vis_triangle_fs_source;
+    std::string vis_lod_trimesh_vs_source;
+    std::string vis_lod_trimesh_fs_source;
 
     std::string vis_vt_vs_source;
     std::string vis_vt_fs_source;
@@ -2626,8 +2635,8 @@ void init() {
       || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_triangle.glslv", vis_triangle_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_triangle.glslf", vis_triangle_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_lod_trimesh.glslv", vis_lod_trimesh_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_lod_trimesh.glslf", vis_lod_trimesh_fs_source)
 
       || !read_shader(shader_root_path + "/vt/virtual_texturing.glslv", vis_vt_vs_source)
       || !read_shader(shader_root_path + "/vt/virtual_texturing_hierarchical.glslf", vis_vt_fs_source)
@@ -2678,12 +2687,12 @@ void init() {
       exit(1);
     }
 
-    vis_triangle_shader_ = device_->create_program(
+    vis_lod_trimesh_shader_ = device_->create_program(
             boost::assign::list_of
-                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_triangle_vs_source))
-                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_triangle_fs_source)));
-    if (!vis_triangle_shader_) {
-      std::cout << "error creating shader vis_triangle_shader_ program" << std::endl;
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_lod_trimesh_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_lod_trimesh_fs_source)));
+    if (!vis_lod_trimesh_shader_) {
+      std::cout << "error creating shader vis_lod_trimesh_shader_ program" << std::endl;
       std::exit(1);
     }
 
@@ -3258,6 +3267,13 @@ int main(int argc, char *argv[])
   for (const auto& input_file : settings_.models_) {
     lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
     model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
+    
+    //force single pass for trimeshes
+    const lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
+    if (bvh->get_primitive() == lamure::ren::bvh::primitive_type::TRIMESH) {
+      settings_.splatting_ = false;
+    }
+
     ++num_models_;
   }
 
