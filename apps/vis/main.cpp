@@ -93,7 +93,8 @@ scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
 
 scm::gl::program_ptr vis_quad_shader_;
 scm::gl::program_ptr vis_line_shader_;
-scm::gl::program_ptr vis_lod_trimesh_shader_;
+scm::gl::program_ptr vis_trimesh_shader_;
+scm::gl::program_ptr vis_trimesh_lighting_shader_;
 scm::gl::program_ptr vis_vt_shader_;
 
 scm::gl::frame_buffer_ptr fbo_;
@@ -638,15 +639,15 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
 }
 
 scm::gl::data_format get_tex_format() {
-    switch (vt::VTConfig::get_instance().get_format_texture()) {
-        case vt::VTConfig::R8:
-            return scm::gl::FORMAT_R_8;
-        case vt::VTConfig::RGB8:
-            return scm::gl::FORMAT_RGB_8;
-        case vt::VTConfig::RGBA8:
-        default:
-            return scm::gl::FORMAT_RGBA_8;
-    }
+  switch (vt::VTConfig::get_instance().get_format_texture()) {
+    case vt::VTConfig::R8:
+      return scm::gl::FORMAT_R_8;
+    case vt::VTConfig::RGB8:
+      return scm::gl::FORMAT_RGB_8;
+    case vt::VTConfig::RGBA8:
+    default:
+      return scm::gl::FORMAT_RGBA_8;
+  }
 }
 
 void set_uniforms(scm::gl::program_ptr shader) {
@@ -1057,10 +1058,6 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
       lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
       std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
       const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
-      if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
-        if (selection_.selected_model_ != -1) break;
-        else draw = false;
-      }
 
       if (draw) {
       
@@ -1466,6 +1463,7 @@ void glut_display() {
     context_->clear_depth_stencil_buffer(fbo_);
     context_->set_frame_buffer(fbo_);
 
+    //draw pointclouds
     auto selected_single_pass_shading_program = vis_xyz_shader_;
 
     if(settings_.enable_lighting_) {
@@ -1481,11 +1479,16 @@ void glut_display() {
     context_->apply();
     draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
+    //draw meshes
+    selected_single_pass_shading_program = vis_trimesh_shader_;
+    if(settings_.enable_lighting_) {
+      selected_single_pass_shading_program = vis_trimesh_lighting_shader_;
+    }
+    context_->bind_program(selected_single_pass_shading_program);
 
-    context_->bind_program(vis_lod_trimesh_shader_);
-    set_uniforms(vis_lod_trimesh_shader_);
+    set_uniforms(selected_single_pass_shading_program);
     context_->apply();
-    draw_all_models(context_id, view_id, vis_lod_trimesh_shader_, lamure::ren::bvh::primitive_type::TRIMESH);
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
 
     context_->bind_program(vis_xyz_shader_);
     draw_brush(vis_xyz_shader_);
@@ -1513,10 +1516,10 @@ void glut_display() {
   screen_quad_->draw(context_);
 
   rendering_ = false;
-  //glutSwapBuffers();
 
   frame_time_.stop();
   frame_time_.start();
+
   //schism bug ? time::to_seconds yields milliseconds
   if (scm::time::to_seconds(frame_time_.accumulated_duration()) > 100.0) {
     fps_ = 1000.0f / scm::time::to_seconds(frame_time_.average_duration());
@@ -1696,18 +1699,7 @@ void create_framebuffers() {
 void glut_resize(int32_t w, int32_t h) {
   settings_.width_ = w;
   settings_.height_ = h;
-/*
-  render_width_ = settings_.width_ / settings_.frame_div_;
-  render_height_ = settings_.height_ / settings_.frame_div_;
 
-  create_framebuffers();
-
-  lamure::ren::policy* policy = lamure::ren::policy::get_instance();
-  policy->set_window_width(render_width_);
-  policy->set_window_height(render_height_);
-  
-  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
-*/
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
   gui_.ortho_matrix_ = 
@@ -2595,8 +2587,10 @@ void init() {
     std::string vis_line_vs_source;
     std::string vis_line_fs_source;
     
-    std::string vis_lod_trimesh_vs_source;
-    std::string vis_lod_trimesh_fs_source;
+    std::string vis_trimesh_vs_source;
+    std::string vis_trimesh_fs_source;
+    std::string vis_trimesh_vs_lighting_source;
+    std::string vis_trimesh_fs_lighting_source;
 
     std::string vis_vt_vs_source;
     std::string vis_vt_fs_source;
@@ -2635,8 +2629,10 @@ void init() {
       || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_lod_trimesh.glslv", vis_lod_trimesh_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_lod_trimesh.glslf", vis_lod_trimesh_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslv", vis_trimesh_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslf", vis_trimesh_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslv", vis_trimesh_vs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslf", vis_trimesh_fs_lighting_source, true)
 
       || !read_shader(shader_root_path + "/vt/virtual_texturing.glslv", vis_vt_vs_source)
       || !read_shader(shader_root_path + "/vt/virtual_texturing_hierarchical.glslf", vis_vt_fs_source)
@@ -2687,12 +2683,21 @@ void init() {
       exit(1);
     }
 
-    vis_lod_trimesh_shader_ = device_->create_program(
+    vis_trimesh_shader_ = device_->create_program(
             boost::assign::list_of
-                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_lod_trimesh_vs_source))
-                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_lod_trimesh_fs_source)));
-    if (!vis_lod_trimesh_shader_) {
-      std::cout << "error creating shader vis_lod_trimesh_shader_ program" << std::endl;
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_trimesh_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_trimesh_fs_source)));
+    if (!vis_trimesh_shader_) {
+      std::cout << "error creating shader vis_trimesh_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_trimesh_lighting_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_trimesh_vs_lighting_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_trimesh_fs_lighting_source)));
+    if (!vis_trimesh_lighting_shader_) {
+      std::cout << "error creating shader vis_trimesh_lighting_shader_ program" << std::endl;
       std::exit(1);
     }
 
@@ -2855,16 +2860,6 @@ void init() {
 
 std::string
 make_short_name(const std::string& s){
-#if 0
-  boost::filesystem::path p(s);
-  std::string filename(p.stem().string());
-  const unsigned max_length = 36;
-  if(filename.length() > max_length){
-    std::string shortname = filename.substr(0,12) + "..." + filename.substr(filename.length() - 21, 21);
-    return shortname;
-  }
-  return filename;
-#endif
   const unsigned max_length = 36;
   if(s.length() > max_length){
     std::string shortname = s.substr(s.length() - 36, 36);
@@ -2893,30 +2888,12 @@ void gui_selection_settings(settings& stgs){
     std::string all("All");
     model_names[num_models_] = (char *) all.c_str();
 
-#if 0
-    // old code from student
-    char* model_values[num_models_+1] = { };
-    for (int i=0; i<num_models_+1; i++) {
-        char buffer [32];
-        snprintf(buffer, sizeof(buffer), "%s%d", "Dataset ", i);
-        if(i==num_models_){
-           snprintf(buffer, sizeof(buffer), "%s", "All");
-        }
-        model_values[i] = strdup(buffer);
-    }
-#endif
-
-
     static int32_t dataset = selection_.selected_model_;
     if (selection_.selected_model_ == -1) {
       dataset = num_models_;
     }
 
     ImGui::Combo("Dataset", &dataset, model_names, num_models_+1);
-#if 0
-    // old code from student
-    ImGui::Combo("Dataset", &dataset, model_values, IM_ARRAYSIZE(model_names));
-#endif    
 
     if(dataset == num_models_){
       selection_.selected_model_ = -1;

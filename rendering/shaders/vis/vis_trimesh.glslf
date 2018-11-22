@@ -9,16 +9,30 @@
 
 layout (location = 0) out vec4 out_color;
 
+
+uniform mat4 model_view_matrix;
+
 in vertex_data {
     vec4 position;
     vec4 normal;
     vec2 coord;
 } vertex_in;
 
-void main()
-{
+OPTIONAL_BEGIN
+  INCLUDE ../common/shading/blinn_phong.glsl
+OPTIONAL_END
+
+void main() {
+
   vec4 n = vertex_in.normal;
-  out_color = vec4(n.r*0.5+0.5, n.g*0.5+0.5, n.b*0.5+0.5, 1.0f);
+  vec3 color = vec3(n.x*0.5+0.5, n.y*0.5+0.5, n.z*0.5+0.5);
+
+  OPTIONAL_BEGIN
+    vec4 pos_es = model_view_matrix * vec4(vertex_in.position.xyz, 1.0f);
+    color = shade_blinn_phong(pos_es.xyz, n.xyz, vec3(0.0, 0.0, 0.0), color);
+  OPTIONAL_END
+
+  out_color = vec4(color, 1.0);
 
 }
 
