@@ -16,6 +16,7 @@
 #include <lamure/pre/io/format_ply.h>
 #include <lamure/pre/io/format_xyz.h>
 #include <lamure/pre/io/format_xyz_all.h>
+#include <lamure/pre/io/format_xyz_grey.h>
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
 
@@ -215,6 +216,7 @@ int main(int argc, const char *argv[])
         lamure::pre::format_factory f;
         f[".xyz"] = &lamure::pre::create_format_instance<lamure::pre::format_xyz>;
         f[".xyz_all"] = &lamure::pre::create_format_instance<lamure::pre::format_xyzall>;
+        f[".xyz_grey"] = &lamure::pre::create_format_instance<lamure::pre::format_xyz_grey>;
         f[".ply"] = &lamure::pre::create_format_instance<lamure::pre::format_ply>;
         f[".bin"] = &lamure::pre::create_format_instance<lamure::pre::format_bin>;
 
@@ -222,11 +224,11 @@ int main(int argc, const char *argv[])
         auto output_type = output_file.extension().string();
 
         if (f.find(input_type) == f.end()) {
-            std::cerr << "Unknown input file format" << details_msg;
+            std::cerr << "Unknown input file format: " << input_type << details_msg;
             return EXIT_FAILURE;
         }
         if (f.find(output_type) == f.end()) {
-            std::cerr << "Unknown output file format" << details_msg;
+            std::cerr << "Unknown output file format" << input_type << details_msg;
             return EXIT_FAILURE;
         }
         lamure::pre::format_abstract* inp = f[input_type]();

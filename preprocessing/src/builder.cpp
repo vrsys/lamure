@@ -14,6 +14,7 @@
 #include <lamure/pre/io/format_xyz.h>
 #include <lamure/pre/io/format_xyz_all.h>
 #include <lamure/pre/io/format_xyz_bin.h>
+#include <lamure/pre/io/format_xyz_grey.h>
 #include <lamure/pre/io/format_ply.h>
 #include <lamure/pre/io/format_bin.h>
 #include <lamure/pre/io/converter.h>
@@ -153,6 +154,10 @@ boost::filesystem::path builder::convert_to_binary(std::string const& input_file
     else if (input_type == ".ply") {
         binary_file += ".bin";
         format_in = std::unique_ptr<format_ply>{new format_ply()};
+    }
+    else if (input_type == ".xyz_grey") {
+       binary_file += ".bin";
+       format_in = std::unique_ptr<format_xyz_grey>{new format_xyz_grey()};   
     }
     else {
         LOGGER_ERROR("Unable to convert input file: Unknown file format");
@@ -421,6 +426,7 @@ bool builder::resample()
         input_file_type == ".bin" ||
         input_file_type == ".xyz" ||
         input_file_type == ".xyz_all" ||
+        input_file_type == ".xyz_grey" ||
         input_file_type == ".xyz_bin" ||
         input_file_type == ".ply")
         start_stage = 0;
@@ -461,11 +467,13 @@ construct()
 
     if (input_file_type == ".xyz" ||
         input_file_type == ".ply" ||
+        input_file_type == ".xyz_grey" ||
         input_file_type == ".bin")
         desc_.compute_normals_and_radii = true;
 
     if (input_file_type == ".xyz" ||
         input_file_type == ".xyz_all" ||
+        input_file_type == ".xyz_grey" ||
         input_file_type == ".xyz_bin" ||
         input_file_type == ".ply")
         start_stage = 0;
