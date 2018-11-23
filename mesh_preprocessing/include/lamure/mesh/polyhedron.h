@@ -92,6 +92,39 @@ typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
+
+
+// struct that allows lableling and constraining of border edges
+struct Border_is_constrained_edge_map {
+  const Polyhedron* sm_ptr;
+  typedef boost::graph_traits<Polyhedron>::edge_descriptor key_type;
+  typedef boost::graph_traits<Polyhedron>::halfedge_descriptor HE;
+  typedef boost::graph_traits<Polyhedron>::face_descriptor Face;
+
+  typedef bool value_type;
+  // typedef value_type reference;
+  // typedef boost::readable_property_map_tag category;
+
+
+  Border_is_constrained_edge_map(const Polyhedron& sm)
+  : sm_ptr(&sm)
+  {}
+
+  friend bool get(Border_is_constrained_edge_map m, const key_type& edge) {
+    return CGAL::is_border(edge, *m.sm_ptr);
+  }
+
+};
+
+// Placement class
+typedef SMS::Constrained_placement<SMS::Midpoint_placement<Polyhedron>, Border_is_constrained_edge_map > Placement;
+
+
+
+
+
+
+
 // implementatio of a Polyhedron_incremental_builder_3 to create the  polyhedron
 //http://jamesgregson.blogspot.com/2012/05/example-code-for-building.html
 template<class HDS>
@@ -144,37 +177,6 @@ public:
       B.end_facet();
     }
 
-    // //add the polyhedron vertices
-    // uint32_t vertex_id = 0;
-    // for (uint32_t i = 0; i < left_tris_.size(); ++i) {
-    //   const triangle_t& tri = left_tris_[i];
-    //   B.add_vertex(XtndPoint<Kernel>(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
-    //   B.add_vertex(XtndPoint<Kernel>(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
-    //   B.add_vertex(XtndPoint<Kernel>(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
-
-    //   B.begin_facet();
-    //   B.add_vertex_to_facet(vertex_id);
-    //   B.add_vertex_to_facet(vertex_id+1);
-    //   B.add_vertex_to_facet(vertex_id+2);
-    //   B.end_facet();
-
-    //   vertex_id += 3;
-    // }
-
-    // for (uint32_t i = 0; i < right_tris_.size(); ++i) {
-    //   const triangle_t& tri = right_tris_[i];
-    //   B.add_vertex(XtndPoint<Kernel>(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
-    //   B.add_vertex(XtndPoint<Kernel>(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
-    //   B.add_vertex(XtndPoint<Kernel>(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
-
-    //   B.begin_facet();
-    //   B.add_vertex_to_facet(vertex_id);
-    //   B.add_vertex_to_facet(vertex_id+1);
-    //   B.add_vertex_to_facet(vertex_id+2);
-    //   B.end_facet();
-
-    //   vertex_id += 3;
-    // }
 
     //DETECT BORDER EDGES AND FREEZE THEM
     //borders of whole node set, not borders between children!
@@ -216,10 +218,6 @@ public:
         tris.push_back(vertex_id);
       }
     }
-
-    // std::cout << "Index triangle list creation:\n";
-    // std::cout << "Started with " << input_triangles.size() << " triangles, " << input_triangles.size() * 3 << " vertices\n";
-    // std::cout << "Finished with " << tris.size() / 3 << " triangles, " << vertices.size() << " unique vertices\n";
   }
 
 };

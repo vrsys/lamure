@@ -272,7 +272,12 @@ void bvh::simplify(
   // SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
+  std::cout << "B | ";
 
+  Border_is_constrained_edge_map bem(polyMesh);
+
+  std::cout << "S | ";
+  
   SMS::edge_collapse
             (polyMesh
             ,stop
@@ -281,6 +286,16 @@ void bvh::simplify(
                                .get_cost(SMS::Edge_length_cost<Polyhedron>())
                                .get_placement(SMS::Midpoint_placement<Polyhedron>())
             );
+
+  //simplification with borders constrained
+  // SMS::edge_collapse
+  //         (polyMesh
+  //         ,stop
+  //          ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+  //                            .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+  //                            .edge_is_constrained_map(bem)
+  //                            .get_placement(Placement(bem))
+  //         );
 
   
 
