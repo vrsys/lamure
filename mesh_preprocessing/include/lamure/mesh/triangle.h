@@ -63,6 +63,21 @@ public:
 
     }
 
+    const vertex getVertex(const int vertex_id) const {
+        switch (vertex_id){
+            case 0: return v0_;
+            break;
+            case 1: return v1_;
+            break;
+            case 2: return v2_;
+            break;
+            default:
+            break;
+        }
+        vertex v;
+        return v;
+    }
+
     vertex v0_;
     vertex v1_;
     vertex v2_;

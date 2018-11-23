@@ -162,99 +162,134 @@ template<class HDS>
 class polyhedron_builder : public CGAL::Modifier_base<HDS> {
 
 public:
-  // std::vector<lamure::mesh::triangle_t> &left_tris_;
+  std::vector<lamure::mesh::triangle_t> &left_tris_;
 
 
-  std::vector<double> &vertices;
-  std::vector<int>    &tris;
+  // std::vector<double> &vertices;
+  // std::vector<int>    &tris;
 
 
 
-  polyhedron_builder( std::vector<double> &_vertices,
-                      std::vector<int> &_tris ) 
-                      : vertices(_vertices), tris(_tris)
-                       {}
+  // polyhedron_builder( std::vector<double> &_vertices,
+  //                     std::vector<int> &_tris ) 
+  //                     : vertices(_vertices), tris(_tris)
+  //                      {}
 
-  // polyhedron_builder(
-  //   std::vector<lamure::mesh::triangle_t>& left_child_tris) 
-  //   : left_tris_(left_child_tris) {}
+  polyhedron_builder(
+    std::vector<lamure::mesh::triangle_t>& left_child_tris) 
+    : left_tris_(left_child_tris) {}
 
 
-  // void operator()(HDS& hds) {
+  void operator()(HDS& hds) {
  
-  //   // create a cgal incremental builder
-  //   CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
-  //   uint32_t num_tris = left_tris_.size();
-  //   B.begin_surface(3*num_tris, num_tris);
+    // create a cgal incremental builder
+    CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
+    uint32_t num_tris = left_tris_.size();
+    B.begin_surface(3*num_tris, num_tris);
+
+    //create indexed vertex list
+    std::vector<Point> vertices;
+    std::vector<uint32_t> tris;
+    create_indexed_triangle_list(left_tris_, tris, vertices);
+
+
     
-  //   //add the polyhedron vertices
-  //   // uint32_t vertex_id = 0;
+    //add the polyhedron vertices
+    // uint32_t vertex_id = 0;
 
-  //   for (uint32_t i = 0; i < left_tris_.size(); ++i) {
+    for (uint32_t i = 0; i < vertices.size(); ++i) {
 
-  //     const lamure::mesh::triangle_t& tri = left_tris_[i];
+      // const lamure::mesh::triangle_t& tri = left_tris_[i];
 
-  //     // B.add_vertex(XtndPoint<Kernel>(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
-  //     // B.add_vertex(XtndPoint<Kernel>(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
-  //     // B.add_vertex(XtndPoint<Kernel>(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
+      // B.add_vertex(Point(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
+      // B.add_vertex(Point(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
+      // B.add_vertex(Point(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
 
-  //     B.add_vertex(Point(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
-  //     B.add_vertex(Point(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
-  //     B.add_vertex(Point(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
+      B.add_vertex(vertices[i]);
+    }
 
-  //     // B.begin_facet();
-  //     // B.add_vertex_to_facet(vertex_id);
-  //     // B.add_vertex_to_facet(vertex_id+1);
-  //     // B.add_vertex_to_facet(vertex_id+2);
-  //     // B.end_facet();
+    for (uint32_t i = 0; i < tris.size(); i+=3) {
 
-  //     // vertex_id += 3;
-  //   }
+      B.begin_facet();
+      B.add_vertex_to_facet(tris[i]);
+      B.add_vertex_to_facet(tris[i+1]);
+      B.add_vertex_to_facet(tris[i+2]);
+      B.end_facet();
+    }
 
-  //   for (uint32_t i = 0; i < left_tris_.size()*3; i+=3) {
+    B.end_surface();
+  }
 
-  //     B.begin_facet();
-  //     B.add_vertex_to_facet(i);
-  //     B.add_vertex_to_facet(i+1);
-  //     B.add_vertex_to_facet(i+2);
-  //     B.end_facet();
+  // void operator()( HDS& hds) {
 
-  //     // vertex_id += 3;
-  //   }
+  // typedef CGAL::Point_3<Kernel> Point;
 
-  //   B.end_surface();
+
+  // // create a cgal incremental builder
+  // CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
+  // B.begin_surface( vertices.size()/3, tris.size()/3 );
+ 
+  // // add the polyhedron vertices
+  // for( int i=0; i<(int)vertices.size() / 3; ++i ){
+
+  //   B.add_vertex( Point( vertices[(i*3)], 
+  //                                    vertices[(i*3)+1], 
+  //                                    vertices[(i*3)+2]));
+  // }
+ 
+  // // add the polyhedron triangles
+  // for( int i=0; i<(int)(tris.size()); i+=3 ){
+
+
+  //   B.begin_facet();
+  //   B.add_vertex_to_facet( tris[i+0] );
+  //   B.add_vertex_to_facet( tris[i+1] );
+  //   B.add_vertex_to_facet( tris[i+2] );
+  //   B.end_facet();
+  // }
+ 
+  // B.end_surface();
   // }
 
-  void operator()( HDS& hds) {
+  //creates indexed trinagles list (indexes and vertices) from triangle list
+  void create_indexed_triangle_list(std::vector<lamure::mesh::triangle_t>& input_triangles,
+                                    std::vector<uint32_t>& tris,
+                                    std::vector<Point>& vertices) {
 
-  typedef CGAL::Point_3<Kernel> Point;
+    //for each vertex in each triangle
+    for (const lamure::mesh::triangle_t tri : input_triangles){
+      for (int v = 0; v < 3; ++v)
+      {
+        //get Point value
+        const Point tri_pnt = Point(tri.getVertex(v).pos_.x, tri.getVertex(v).pos_.y, tri.getVertex(v).pos_.z);
 
+        //compare point with all previous vertices
+        //go backwards, neighbours are more likely to be added at the end of the list
+        uint32_t vertex_id = vertices.size();
+        for (int32_t p = (vertices.size() - 1); p >= 0; --p)
+        {
+          //if a match is found, record index 
+          if (tri_pnt == vertices[p])
+          {
+            vertex_id = p;
+            break;
+          }
+        }
 
-  // create a cgal incremental builder
-  CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
-  B.begin_surface( vertices.size()/3, tris.size()/3 );
- 
-  // add the polyhedron vertices
-  for( int i=0; i<(int)vertices.size() / 3; ++i ){
+        //if no match then add to vertices list
+        if (vertex_id == vertices.size()){
+          vertices.push_back(tri_pnt);
+        }
+        //store index
+        tris.push_back(vertex_id);
+      }
+    }
 
-    B.add_vertex( Point( vertices[(i*3)], 
-                                     vertices[(i*3)+1], 
-                                     vertices[(i*3)+2]));
+    // std::cout << "Index triangle list creation:\n";
+    // std::cout << "Started with " << input_triangles.size() << " triangles, " << input_triangles.size() * 3 << " vertices\n";
+    // std::cout << "Finished with " << tris.size() / 3 << " triangles, " << vertices.size() << " unique vertices\n";
   }
- 
-  // add the polyhedron triangles
-  for( int i=0; i<(int)(tris.size()); i+=3 ){
 
-
-    B.begin_facet();
-    B.add_vertex_to_facet( tris[i+0] );
-    B.add_vertex_to_facet( tris[i+1] );
-    B.add_vertex_to_facet( tris[i+2] );
-    B.end_facet();
-  }
- 
-  B.end_surface();
-  }
 };
 
 
@@ -307,8 +342,8 @@ int main( int argc, char** argv )
 
   //build a polyhedron
   Polyhedron polyMesh;
-  // polyhedron_builder<HalfedgeDS> builder(triangles);
-  polyhedron_builder<HalfedgeDS> builder( vertices, tris );
+  polyhedron_builder<HalfedgeDS> builder(triangles);
+  // polyhedron_builder<HalfedgeDS> builder( vertices, tris );
   polyMesh.delegate(builder);
 
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){

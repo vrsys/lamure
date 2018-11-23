@@ -26,3 +26,11 @@ e.g. ./lamure_obj -f ../../data/bunny.obj
 
 simplification works in new app (test_simplification) with old polyhedron builder
 investigate what the difference is!
+
+
+to create a vis file for the ./lamure_vis app:
+-create file with .vis extension
+-enter path to bvh file
+-comments with #
+-pass vis file as argument when running
+
