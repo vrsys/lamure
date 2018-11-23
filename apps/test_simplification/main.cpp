@@ -192,19 +192,7 @@ public:
     std::vector<uint32_t> tris;
     create_indexed_triangle_list(left_tris_, tris, vertices);
 
-
-    
-    //add the polyhedron vertices
-    // uint32_t vertex_id = 0;
-
     for (uint32_t i = 0; i < vertices.size(); ++i) {
-
-      // const lamure::mesh::triangle_t& tri = left_tris_[i];
-
-      // B.add_vertex(Point(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
-      // B.add_vertex(Point(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
-      // B.add_vertex(Point(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
-
       B.add_vertex(vertices[i]);
     }
 
@@ -251,7 +239,7 @@ public:
   // B.end_surface();
   // }
 
-  //creates indexed trinagles list (indexes and vertices) from triangle list
+  //creates indexed triangles list (indexes and vertices) from triangle list
   void create_indexed_triangle_list(std::vector<lamure::mesh::triangle_t>& input_triangles,
                                     std::vector<uint32_t>& tris,
                                     std::vector<Point>& vertices) {

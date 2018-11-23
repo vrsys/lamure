@@ -86,14 +86,11 @@ struct Custom_items : public CGAL::Polyhedron_items_3 {
     };
 };
 
-
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
-
 namespace SMS = CGAL::Surface_mesh_simplification ;
-
 
 // implementatio of a Polyhedron_incremental_builder_3 to create the  polyhedron
 //http://jamesgregson.blogspot.com/2012/05/example-code-for-building.html
@@ -123,44 +120,108 @@ public:
     CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
     uint32_t num_tris = left_tris_.size()+right_tris_.size();
     B.begin_surface(3*num_tris, num_tris);
+
+    //concatenate triangle sets
+    left_tris_.insert(left_tris_.end(), right_tris_.begin(), right_tris_.end());
+
+    //create indexed vertex list
+    std::vector<XtndPoint<Kernel> > vertices;
+    std::vector<uint32_t> tris;
+    create_indexed_triangle_list(left_tris_, tris, vertices);
     
-    //add the polyhedron vertices
-    uint32_t vertex_id = 0;
-    for (uint32_t i = 0; i < left_tris_.size(); ++i) {
-      const triangle_t& tri = left_tris_[i];
-      B.add_vertex(XtndPoint<Kernel>(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
-      B.add_vertex(XtndPoint<Kernel>(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
-      B.add_vertex(XtndPoint<Kernel>(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
-
-      B.begin_facet();
-      B.add_vertex_to_facet(vertex_id);
-      B.add_vertex_to_facet(vertex_id+1);
-      B.add_vertex_to_facet(vertex_id+2);
-      B.end_facet();
-
-      vertex_id += 3;
+    //add vertices of surface
+    for (uint32_t i = 0; i < vertices.size(); ++i) {
+      B.add_vertex(vertices[i]);
     }
 
-    for (uint32_t i = 0; i < right_tris_.size(); ++i) {
-      const triangle_t& tri = right_tris_[i];
-      B.add_vertex(XtndPoint<Kernel>(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
-      B.add_vertex(XtndPoint<Kernel>(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
-      B.add_vertex(XtndPoint<Kernel>(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
+    //create faces using vertex index references
+    for (uint32_t i = 0; i < tris.size(); i+=3) {
 
       B.begin_facet();
-      B.add_vertex_to_facet(vertex_id);
-      B.add_vertex_to_facet(vertex_id+1);
-      B.add_vertex_to_facet(vertex_id+2);
+      B.add_vertex_to_facet(tris[i]);
+      B.add_vertex_to_facet(tris[i+1]);
+      B.add_vertex_to_facet(tris[i+2]);
       B.end_facet();
-
-      vertex_id += 3;
     }
+
+    // //add the polyhedron vertices
+    // uint32_t vertex_id = 0;
+    // for (uint32_t i = 0; i < left_tris_.size(); ++i) {
+    //   const triangle_t& tri = left_tris_[i];
+    //   B.add_vertex(XtndPoint<Kernel>(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
+    //   B.add_vertex(XtndPoint<Kernel>(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
+    //   B.add_vertex(XtndPoint<Kernel>(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
+
+    //   B.begin_facet();
+    //   B.add_vertex_to_facet(vertex_id);
+    //   B.add_vertex_to_facet(vertex_id+1);
+    //   B.add_vertex_to_facet(vertex_id+2);
+    //   B.end_facet();
+
+    //   vertex_id += 3;
+    // }
+
+    // for (uint32_t i = 0; i < right_tris_.size(); ++i) {
+    //   const triangle_t& tri = right_tris_[i];
+    //   B.add_vertex(XtndPoint<Kernel>(tri.v0_.pos_.x, tri.v0_.pos_.y, tri.v0_.pos_.z));
+    //   B.add_vertex(XtndPoint<Kernel>(tri.v1_.pos_.x, tri.v1_.pos_.y, tri.v1_.pos_.z));
+    //   B.add_vertex(XtndPoint<Kernel>(tri.v2_.pos_.x, tri.v2_.pos_.y, tri.v2_.pos_.z));
+
+    //   B.begin_facet();
+    //   B.add_vertex_to_facet(vertex_id);
+    //   B.add_vertex_to_facet(vertex_id+1);
+    //   B.add_vertex_to_facet(vertex_id+2);
+    //   B.end_facet();
+
+    //   vertex_id += 3;
+    // }
 
     //DETECT BORDER EDGES AND FREEZE THEM
+    //borders of whole node set, not borders between children!
    
     // finish up the surface
     B.end_surface();
   }
+
+  //creates indexed triangles list (indexes and vertices) from triangle list
+  void create_indexed_triangle_list(std::vector<lamure::mesh::triangle_t>& input_triangles,
+                                    std::vector<uint32_t>& tris,
+                                    std::vector<XtndPoint<Kernel> >& vertices) {
+
+    //for each vertex in each triangle
+    for (const lamure::mesh::triangle_t tri : input_triangles){
+      for (int v = 0; v < 3; ++v)
+      {
+        //get Point value
+        const XtndPoint<Kernel> tri_pnt = XtndPoint<Kernel>(tri.getVertex(v).pos_.x, tri.getVertex(v).pos_.y, tri.getVertex(v).pos_.z);
+
+        //compare point with all previous vertices
+        //go backwards, neighbours are more likely to be added at the end of the list
+        uint32_t vertex_id = vertices.size();
+        for (int32_t p = (vertices.size() - 1); p >= 0; --p)
+        {
+          //if a match is found, record index 
+          if (tri_pnt == vertices[p])
+          {
+            vertex_id = p;
+            break;
+          }
+        }
+
+        //if no match then add to vertices list
+        if (vertex_id == vertices.size()){
+          vertices.push_back(tri_pnt);
+        }
+        //store index
+        tris.push_back(vertex_id);
+      }
+    }
+
+    // std::cout << "Index triangle list creation:\n";
+    // std::cout << "Started with " << input_triangles.size() << " triangles, " << input_triangles.size() * 3 << " vertices\n";
+    // std::cout << "Finished with " << tris.size() / 3 << " triangles, " << vertices.size() << " unique vertices\n";
+  }
+
 };
 
 

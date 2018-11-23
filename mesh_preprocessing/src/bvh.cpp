@@ -246,7 +246,6 @@ void bvh::simplify(
   std::vector<triangle_t>& right_child_tris,
   std::vector<triangle_t>& output_tris) {
 
-  
   //create a mesh from vectors
   Polyhedron polyMesh;
   polyhedron_builder<HalfedgeDS> builder(left_child_tris, right_child_tris);
@@ -255,7 +254,6 @@ void bvh::simplify(
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
     std::cout << "triangle mesh valid" << std::endl;
   }
-
 
   uint32_t num_vertices = 0;
   for (Polyhedron::Facet_iterator f = polyMesh.facets_begin(); f != polyMesh.facets_end(); ++f) {
@@ -271,8 +269,8 @@ void bvh::simplify(
 
   //simplify the two input sets of tris into output_tris
 
-  SMS::Count_stop_predicate<Polyhedron> stop(50);
-  // SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
+  // SMS::Count_stop_predicate<Polyhedron> stop(50);
+  SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
 
   SMS::edge_collapse
