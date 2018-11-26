@@ -34,3 +34,17 @@ to create a vis file for the ./lamure_vis app:
 -comments with #
 -pass vis file as argument when running
 
+
+
+
+
+to deal with triangles facing wrong way:
+ - cycle through and calculate normals, discard outliers?
+ - find shared halfedges, discard one of the owners (smaller)
+ - test with other obj files
+
+problem seems to come from strange edge constraint simplification:
+ - creates a new triangle which doesn't follow correct mesh structure
+ - this is visible between files:
+	- data/nodes/simplified_node_78.obj
+	- data/nodes/unsimplified_node_78.obj

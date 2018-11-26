@@ -6,4 +6,4 @@ install
 .idea
 cmake-build-debug
 cmake-build-release
-
+data/bunny.lod

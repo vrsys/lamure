@@ -214,11 +214,6 @@ public:
     }
 
 
-    //DETECT BORDER EDGES AND FREEZE THEM
-    //borders of whole node set, not borders between children!
-   
-    // finish up the surface
-
     std::cout << "all vertices and faces added" << std::endl;
 
     B.end_surface();
@@ -244,7 +239,6 @@ public:
           //if a match is found, record index 
           // if (tri_pnt == vertices[p])
           if (XtndPoint<Kernel>::float_safe_equals(tri_pnt, vertices[p]))
-          // if (tri_pnt.float_safe_equals(vertices[p]))
           {
             vertex_id = p;
             break;
@@ -271,7 +265,7 @@ struct OBJ_printer
 
   template <class Polyhedron>
   static void
-print_polyhedron( std::ostream& out, const Polyhedron& P, std::string filename) {
+  print_polyhedron( std::ostream& out, const Polyhedron& P, std::string filename) {
 
       typedef typename Polyhedron::Vertex_const_iterator                  VCI;
       typedef typename Polyhedron::Facet_const_iterator                   FCI;
@@ -295,20 +289,20 @@ print_polyhedron( std::ostream& out, const Polyhedron& P, std::string filename) 
 
       //faces
       for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
-          HFCC hc = fi->facet_begin();
-          HFCC hc_end = hc;
-          std::size_t n = circulator_size( hc);
-          CGAL_assertion( n >= 3);
+        HFCC hc = fi->facet_begin();
+        HFCC hc_end = hc;
+        std::size_t n = circulator_size( hc);
+        CGAL_assertion( n >= 3);
 
-          out << "f";
-          do {
-              out << ' ' << index[ VCI(hc->vertex())];
-              ++hc;
-          } while( hc != hc_end);
-          out << std::endl;
+        out << "f";
+        do {
+            out << ' ' << (index[ VCI(hc->vertex())]) + 1;
+            ++hc;
+        } while( hc != hc_end);
+        out << std::endl;
       }
-  }
-};
+    }
+  };
 
 
 

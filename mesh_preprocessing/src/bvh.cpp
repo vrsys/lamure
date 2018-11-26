@@ -19,6 +19,13 @@
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_ratio_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
+
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/LindstromTurk_cost.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/LindstromTurk_placement.h>
+
+//need update to use:
+// #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Bounded_normal_change_placement.h>
+
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
 
 
@@ -204,12 +211,18 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
       //std::cout << "left tris: " << triangles_map_[left_child].size() << std::endl;
       //std::cout << "right tris: " << triangles_map_[right_child].size() << std::endl;
 
-      //flag decides if node is printed after simplification
+      //flag decides if node is printed to obj, before and after simplification
       int print_id = -1;
-      if (node_id == 101 || node_id == 102 || node_id == 103 || node_id == 104  )
+#if 0
+      if (node_id == 78 
+        // || node_id == 15 
+        // || node_id == 103 
+        // || node_id == 158  
+        )
       {
         print_id = node_id;
       }
+#endif
 
       //params to simplify: input set of tris for both children, output set of tris
       simplify(
@@ -220,7 +233,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
         );
 
 
-      std::cout << "simplified: " << triangles_map_[node_id].size() << std::endl; 
+      std::cout << "simplified: " << triangles_map_[node_id].size() << "\n-----------------" << std::endl; 
     }
   }
 
@@ -317,6 +330,10 @@ void bvh::simplify(
   std::vector<triangle_t>& output_tris,
   int print_mesh_to_obj_id) {
 
+
+  std::cout << "left tris : " << left_child_tris.size() << std::endl;
+  std::cout << "right tris : " << right_child_tris.size() << std::endl;  
+
   //create a mesh from vectors
   Polyhedron polyMesh;
   polyhedron_builder<HalfedgeDS> builder(left_child_tris, right_child_tris);
@@ -326,7 +343,16 @@ void bvh::simplify(
     std::cout << "triangle mesh valid" << std::endl;
   }
 
-  //std::cout << "original: " << polyMesh.size_of_facets() << std::endl;
+    //print to obj if required
+  if (print_mesh_to_obj_id >= 0)
+  {
+    std::string filename = "data/nodes/unsimplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
+    std::ofstream ofs(filename);
+    OBJ_printer::print_polyhedron(ofs,polyMesh,filename);
+    ofs.close();
+    std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
+  }
+
 
   //simplify the two input sets of tris into output_tris
 
@@ -347,8 +373,12 @@ void bvh::simplify(
                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
                               .edge_is_constrained_map(bem)
                               .get_placement(Placement(bem))
+                              // .get_cost (SMS::Edge_length_cost <Polyhedron>())
+                              // .get_placement(SMS::Midpoint_placement<Polyhedron>())
            );
 #else
+
+  //without border constraint
   
   SMS::edge_collapse
             (polyMesh
