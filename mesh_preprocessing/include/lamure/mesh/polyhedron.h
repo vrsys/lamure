@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <limits>
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
@@ -57,6 +58,8 @@ struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
 template <class Traits>
 struct XtndPoint : public Traits::Point_3 {
 
+  typedef typename Traits::Point_3 Point;
+
   XtndPoint() : Traits::Point_3() {}
 
   XtndPoint(double x, double y, double z) 
@@ -73,10 +76,22 @@ struct XtndPoint : public Traits::Point_3 {
   double get_u () const {return texCoord.hx();}
   double get_v () const {return texCoord.hy();}
 
-  bool float_safe_equals()
 
+  static bool float_safe_equals(Point p1, Point p2){
+    double eps = std::numeric_limits<double>::epsilon();
+    // double eps = 0.0000001;
 
+    if (std::abs(p1.x() - p2.x()) > eps
+      || std::abs(p1.y() - p2.y()) > eps
+      || std::abs(p1.z() - p2.z()) > eps)
+    {
+      return false;
+    }
+    return true;
+  }
 };
+
+
 
 template <class Traits>
 std::ostream& operator << (std::ostream& os, const XtndPoint<Traits> &pnt)  
@@ -225,7 +240,9 @@ public:
         for (int32_t p = (vertices.size() - 1); p >= 0; --p)
         {
           //if a match is found, record index 
-          if (tri_pnt == vertices[p])
+          // if (tri_pnt == vertices[p])
+          if (XtndPoint<Kernel>::float_safe_equals(tri_pnt, vertices[p]))
+          // if (tri_pnt.float_safe_equals(vertices[p]))
           {
             vertex_id = p;
             break;
