@@ -114,6 +114,8 @@ scm::gl::depth_stencil_state_ptr depth_state_less_;
 scm::gl::depth_stencil_state_ptr depth_state_without_writing_;
 scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
 
+scm::gl::rasterizer_state_ptr wireframe_no_backface_culling_rasterizer_state_;
+
 scm::gl::blend_state_ptr color_blending_state_;
 scm::gl::blend_state_ptr color_no_blending_state_;
 
@@ -1480,6 +1482,8 @@ void glut_display() {
     draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
     //draw meshes
+    context_->set_rasterizer_state(wireframe_no_backface_culling_rasterizer_state_);
+
     selected_single_pass_shading_program = vis_trimesh_shader_;
     if(settings_.enable_lighting_) {
       selected_single_pass_shading_program = vis_trimesh_lighting_shader_;
@@ -1490,6 +1494,8 @@ void glut_display() {
     context_->apply();
     draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
 
+
+    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
     context_->bind_program(vis_xyz_shader_);
     draw_brush(vis_xyz_shader_);
     draw_resources(context_id, view_id);
@@ -2466,7 +2472,7 @@ void init_render_states() {
   depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
 
   no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
-
+  wireframe_no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_WIREFRAME, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
   filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 

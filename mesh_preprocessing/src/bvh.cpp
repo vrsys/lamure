@@ -93,13 +93,13 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
       [&](const triangle_t& a, const triangle_t& b) {
 
       	if (axis == 0) {
-          return a.get_centroid().x > b.get_centroid().x;
+          return a.get_centroid().x < b.get_centroid().x;
         }
         else if (axis == 1) {
-          return a.get_centroid().y > b.get_centroid().y;	
+          return a.get_centroid().y < b.get_centroid().y;	
         }
         else if (axis == 2) {
-          return a.get_centroid().z > b.get_centroid().z;
+          return a.get_centroid().z < b.get_centroid().z;
         }
 
         return true;
@@ -214,25 +214,73 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
   
   for (uint32_t node_id = 0; node_id < nodes.size(); ++node_id) {
-    const auto& node = nodes[node_id];
+    auto& node = nodes[node_id];
     
-    bounding_boxes_.push_back(scm::gl::boxf(node.min_, node.max_));
     centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f);
     visibility_.push_back(node_visibility::NODE_VISIBLE);
 
+
+    float avg_primitive_extent = 0;
+    float max_primitive_extent_deviation = 0;
+
+    //recompute bounding box
+    node.min_ = scm::math::vec3f(std::numeric_limits<float>::max());
+    node.max_ = scm::math::vec3f(std::numeric_limits<float>::lowest());
+
+    for (const auto& tri : triangles_map_[node_id]) {
+
+      avg_primitive_extent += tri.get_area();
+      max_primitive_extent_deviation = std::max(tri.get_area(), max_primitive_extent_deviation);
+
+      if (tri.v0_.pos_.x < node.min_.x) node.min_.x = tri.v0_.pos_.x;
+      if (tri.v0_.pos_.y < node.min_.y) node.min_.y = tri.v0_.pos_.y;
+      if (tri.v0_.pos_.z < node.min_.z) node.min_.z = tri.v0_.pos_.z;
+
+      if (tri.v0_.pos_.x > node.max_.x) node.max_.x = tri.v0_.pos_.x;
+      if (tri.v0_.pos_.y > node.max_.y) node.max_.y = tri.v0_.pos_.y;
+      if (tri.v0_.pos_.z > node.max_.z) node.max_.z = tri.v0_.pos_.z;
+
+      if (tri.v1_.pos_.x < node.min_.x) node.min_.x = tri.v1_.pos_.x;
+      if (tri.v1_.pos_.y < node.min_.y) node.min_.y = tri.v1_.pos_.y;
+      if (tri.v1_.pos_.z < node.min_.z) node.min_.z = tri.v1_.pos_.z;
+
+      if (tri.v1_.pos_.x > node.max_.x) node.max_.x = tri.v1_.pos_.x;
+      if (tri.v1_.pos_.y > node.max_.y) node.max_.y = tri.v1_.pos_.y;
+      if (tri.v1_.pos_.z > node.max_.z) node.max_.z = tri.v1_.pos_.z;
+
+      if (tri.v2_.pos_.x < node.min_.x) node.min_.x = tri.v2_.pos_.x;
+      if (tri.v2_.pos_.y < node.min_.y) node.min_.y = tri.v2_.pos_.y;
+      if (tri.v2_.pos_.z < node.min_.z) node.min_.z = tri.v2_.pos_.z;
+
+      if (tri.v2_.pos_.x > node.max_.x) node.max_.x = tri.v2_.pos_.x;
+      if (tri.v2_.pos_.y > node.max_.y) node.max_.y = tri.v2_.pos_.y;
+      if (tri.v2_.pos_.z > node.max_.z) node.max_.z = tri.v2_.pos_.z;
+    }
+
+    bounding_boxes_.push_back(scm::gl::boxf(node.min_, node.max_));
+
+    avg_primitive_extent /= (float)triangles_map_[node_id].size();
+    avg_primitive_extent_.push_back(avg_primitive_extent);
+    max_primitive_extent_deviation_.push_back(max_primitive_extent_deviation);
+
+    if (triangles_map_[node_id].size() > primitives_per_node_) {
+      std::cout << "WARNING: (" << node_id << ") removing triangles manually to stay on budget" << std::endl;
+    }
+
+    //if we have too many, remove some
+    while (triangles_map_[node_id].size() > primitives_per_node_) {
+      triangles_map_[node_id].pop_back();
+    }
+    
     //if the number of triangles was not divisible by two, add another tri for padding
     while (triangles_map_[node_id].size() < primitives_per_node_) {
       triangles_map_[node_id].push_back(triangle_t());
     }
 
-    float avg_primitive_extent = 0;
-    float max_primitive_extent_deviation = 0;
 
-    //...
-
-    avg_primitive_extent_.push_back(avg_primitive_extent);
-    max_primitive_extent_deviation_.push_back(max_primitive_extent_deviation);
   }
+
+  primitives_per_node_ *= 3;
 
   num_nodes_ = nodes.size();
 
@@ -255,28 +303,30 @@ void bvh::simplify(
     std::cout << "triangle mesh valid" << std::endl;
   }
 
-  uint32_t num_vertices = 0;
-  for (Polyhedron::Facet_iterator f = polyMesh.facets_begin(); f != polyMesh.facets_end(); ++f) {
-    Polyhedron::Halfedge_around_facet_circulator c = f->facet_begin();
-    for (int i = 0; i < 3; ++i, ++c) {
-      ++num_vertices;
-    }
-  }
-
-  // std::cout << "original: " << num_vertices << std::endl;
-
   std::cout << "original: " << polyMesh.size_of_facets() << std::endl;
 
   //simplify the two input sets of tris into output_tris
 
-  // SMS::Count_stop_predicate<Polyhedron> stop(50);
+  //SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
+#if 0
   std::cout << "B | ";
 
   Border_is_constrained_edge_map bem(polyMesh);
 
   std::cout << "S | ";
+  
+  simplification with borders constrained
+  SMS::edge_collapse
+           (polyMesh
+           ,stop
+            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+                              .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+                              .edge_is_constrained_map(bem)
+                              .get_placement(Placement(bem))
+           );
+#else
   
   SMS::edge_collapse
             (polyMesh
@@ -286,18 +336,7 @@ void bvh::simplify(
                                .get_cost(SMS::Edge_length_cost<Polyhedron>())
                                .get_placement(SMS::Midpoint_placement<Polyhedron>())
             );
-
-  //simplification with borders constrained
-  // SMS::edge_collapse
-  //         (polyMesh
-  //         ,stop
-  //          ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-  //                            .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
-  //                            .edge_is_constrained_map(bem)
-  //                            .get_placement(Placement(bem))
-  //         );
-
-  
+#endif
 
   //convert back to triangle soup
   uint32_t num_vertices_simplified = 0;

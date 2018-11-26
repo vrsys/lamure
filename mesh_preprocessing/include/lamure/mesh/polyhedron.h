@@ -155,7 +155,8 @@ public:
     B.begin_surface(3*num_tris, num_tris);
 
     //concatenate triangle sets
-    left_tris_.insert(left_tris_.end(), right_tris_.begin(), right_tris_.end());
+    //left_tris_.insert(left_tris_.end(), right_tris_.begin(), right_tris_.end());
+    std::copy(right_tris_.begin(), right_tris_.end(), std::back_inserter(left_tris_));
 
     //create indexed vertex list
     std::vector<XtndPoint<Kernel> > vertices;
