@@ -49,4 +49,4 @@ problem seems to come from strange edge constraint simplification:
 	- data/nodes/simplified_node_78.obj
 	- data/nodes/unsimplified_node_78.obj
 
-test
+
