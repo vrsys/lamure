@@ -206,7 +206,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
       //flag decides if node is printed after simplification
       int print_id = -1;
-      if (node_id == 101 || node_id == 102 )
+      if (node_id == 101 || node_id == 102 || node_id == 103 || node_id == 104  )
       {
         print_id = node_id;
       }
@@ -229,7 +229,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   for (uint32_t node_id = 0; node_id < nodes.size(); ++node_id) {
     auto& node = nodes[node_id];
     
-    centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f);
+    centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f); //ok to compute centroids before recomputing bounding box?
     visibility_.push_back(node_visibility::NODE_VISIBLE);
 
 
@@ -324,11 +324,13 @@ void bvh::simplify(
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
-#if 0
+#if 1
+
+
+  // simplification with borders constrained
 
   Border_is_constrained_edge_map bem(polyMesh);
   
-  simplification with borders constrained
   SMS::edge_collapse
            (polyMesh
            ,stop
@@ -348,19 +350,19 @@ void bvh::simplify(
                                .get_placement(SMS::Midpoint_placement<Polyhedron>())
             );
 
-
+#endif
 
   //print to obj if required
   if (print_mesh_to_obj_id >= 0)
   {
-    std::string filename = "data/simplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
+    std::string filename = "data/nodes/simplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
     std::ofstream ofs(filename);
     OBJ_printer::print_polyhedron(ofs,polyMesh,filename);
     ofs.close();
     std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
   }
   
-#endif
+
 
   //convert back to triangle soup
   uint32_t num_vertices_simplified = 0;

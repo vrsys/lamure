@@ -73,6 +73,8 @@ struct XtndPoint : public Traits::Point_3 {
   double get_u () const {return texCoord.hx();}
   double get_v () const {return texCoord.hy();}
 
+  bool float_safe_equals()
+
 
 };
 
@@ -257,7 +259,7 @@ print_polyhedron( std::ostream& out, const Polyhedron& P, std::string filename) 
       typedef typename Polyhedron::Halfedge_around_facet_const_circulator HFCC;
 
       // Print header.
-      out << "# " << filename << std::endl << "#\n\n";
+      out << "# " << filename << "\n#\n\n";
 
       //print vertices
       for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
@@ -271,7 +273,6 @@ print_polyhedron( std::ostream& out, const Polyhedron& P, std::string filename) 
 
       typedef CGAL::Inverse_index< VCI> Index;
       Index index( P.vertices_begin(), P.vertices_end());
-      // writer.write_facet_header();
 
       //faces
       for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
@@ -279,17 +280,14 @@ print_polyhedron( std::ostream& out, const Polyhedron& P, std::string filename) 
           HFCC hc_end = hc;
           std::size_t n = circulator_size( hc);
           CGAL_assertion( n >= 3);
-          // writer.write_facet_begin( n);
+
           out << "f";
           do {
-              // writer.write_facet_vertex_index( index[ VCI(hc->vertex())]);
               out << ' ' << index[ VCI(hc->vertex())];
               ++hc;
           } while( hc != hc_end);
-          // writer.write_facet_end();
           out << std::endl;
       }
-      // writer.write_footer();
   }
 };
 
