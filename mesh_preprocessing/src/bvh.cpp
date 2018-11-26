@@ -9,6 +9,10 @@
 #include <iostream>
 
 
+#include <CGAL/IO/print_wavefront.h>
+
+
+
 
 // Stop-condition policy
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
@@ -106,7 +110,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
     });
 
     //determine split
-    int64_t split_id = (node.begin_+node.end_)/2;
+    uint64_t split_id = (node.begin_+node.end_)/2;
 
     //first create the children
     
@@ -200,11 +204,20 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
       std::cout << "left tris: " << triangles_map_[left_child].size() << std::endl;
       std::cout << "right tris: " << triangles_map_[right_child].size() << std::endl;
 
+      //flag decides if node is printed after simplification
+      int print_id = -1;
+      if (node_id == 101 || node_id == 102 )
+      {
+        print_id = node_id;
+      }
+
       //params to simplify: input set of tris for both children, output set of tris
       simplify(
         triangles_map_[left_child],
         triangles_map_[right_child],
-        triangles_map_[node_id]);
+        triangles_map_[node_id],
+        print_id
+        );
 
 
     }
@@ -244,7 +257,8 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 void bvh::simplify(
   std::vector<triangle_t>& left_child_tris,
   std::vector<triangle_t>& right_child_tris,
-  std::vector<triangle_t>& output_tris) {
+  std::vector<triangle_t>& output_tris,
+  int print_mesh_to_obj_id) {
 
   //create a mesh from vectors
   Polyhedron polyMesh;
@@ -272,11 +286,11 @@ void bvh::simplify(
   // SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
-  std::cout << "B | ";
+  // std::cout << "B | ";
 
   Border_is_constrained_edge_map bem(polyMesh);
 
-  std::cout << "S | ";
+  // std::cout << "S | ";
   
   SMS::edge_collapse
             (polyMesh
@@ -297,6 +311,15 @@ void bvh::simplify(
   //                            .get_placement(Placement(bem))
   //         );
 
+  //print to obj if required
+  if (print_mesh_to_obj_id >= 0)
+  {
+    std::string filename = "data/simplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
+    std::ofstream ofs(filename);
+    OBJ_printer::print_polyhedron(ofs,polyMesh,filename);
+    ofs.close();
+    std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
+  }
   
 
   //convert back to triangle soup
@@ -338,6 +361,8 @@ void bvh::simplify(
 
     output_tris.push_back(tri);
   }
+
+  //TODO - update bounds here
 
   // std::cout << "simplified: " << num_vertices_simplified << std::endl; 
   std::cout << "simplified: " << polyMesh.size_of_facets() << std::endl;

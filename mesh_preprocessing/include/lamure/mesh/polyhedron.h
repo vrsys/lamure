@@ -76,6 +76,13 @@ struct XtndPoint : public Traits::Point_3 {
 
 };
 
+template <class Traits>
+std::ostream& operator << (std::ostream& os, const XtndPoint<Traits> &pnt)  
+{  
+  os << pnt.x() << ", " << pnt.y() << ", " << pnt.z();  
+  return os;  
+} 
+
 // A new items type using extended vertex
 //TODO change XtndVertex back to original vertex class??
 struct Custom_items : public CGAL::Polyhedron_items_3 {
@@ -175,6 +182,15 @@ public:
       B.add_vertex_to_facet(tris[i+1]);
       B.add_vertex_to_facet(tris[i+2]);
       B.end_facet();
+
+      //printing for debugging edge sharing error
+      // if (i == 281 * 3 || i == 545 * 3)
+      // {
+      //   std::cout << "Vertx " << i/3 << " : \n" 
+      //     << tris[i] << " : " << vertices[tris[i]] << std::endl 
+      //     << tris[i+1] << " : " << vertices[tris[i+1]] << std::endl 
+      //     << tris[i+2] << " : " << vertices[tris[i+2]] << std::endl; 
+      // }
     }
 
 
@@ -182,6 +198,9 @@ public:
     //borders of whole node set, not borders between children!
    
     // finish up the surface
+
+    std::cout << "all vertices and faces added" << std::endl;
+
     B.end_surface();
   }
 
@@ -209,7 +228,6 @@ public:
             break;
           }
         }
-
         //if no match then add to vertices list
         if (vertex_id == vertices.size()){
           vertices.push_back(tri_pnt);
@@ -220,6 +238,58 @@ public:
     }
   }
 
+};
+
+struct OBJ_printer
+{
+
+  static void write_vertex(std::ostream& out, const double& x, const double& y, const double& z) {
+      out << "v " << x << ' ' << y <<  ' ' << z << '\n';
+  }
+
+  template <class Polyhedron>
+  static void
+print_polyhedron( std::ostream& out, const Polyhedron& P, std::string filename) {
+
+      typedef typename Polyhedron::Vertex_const_iterator                  VCI;
+      typedef typename Polyhedron::Facet_const_iterator                   FCI;
+      typedef typename Polyhedron::Halfedge_around_facet_const_circulator HFCC;
+
+      // Print header.
+      out << "# " << filename << std::endl << "#\n\n";
+
+      //print vertices
+      for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+          write_vertex(out, ::CGAL::to_double( vi->point().x()),
+                               ::CGAL::to_double( vi->point().y()),
+                               ::CGAL::to_double( vi->point().z()));
+      }
+
+      out << std::endl;
+
+
+      typedef CGAL::Inverse_index< VCI> Index;
+      Index index( P.vertices_begin(), P.vertices_end());
+      // writer.write_facet_header();
+
+      //faces
+      for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+          HFCC hc = fi->facet_begin();
+          HFCC hc_end = hc;
+          std::size_t n = circulator_size( hc);
+          CGAL_assertion( n >= 3);
+          // writer.write_facet_begin( n);
+          out << "f";
+          do {
+              // writer.write_facet_vertex_index( index[ VCI(hc->vertex())]);
+              out << ' ' << index[ VCI(hc->vertex())];
+              ++hc;
+          } while( hc != hc_end);
+          // writer.write_facet_end();
+          out << std::endl;
+      }
+      // writer.write_footer();
+  }
 };
 
 
