@@ -1482,7 +1482,7 @@ void glut_display() {
     draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
     //draw meshes
-    context_->set_rasterizer_state(wireframe_no_backface_culling_rasterizer_state_);
+    
 
     selected_single_pass_shading_program = vis_trimesh_shader_;
     if(settings_.enable_lighting_) {
@@ -1492,8 +1492,16 @@ void glut_display() {
 
     set_uniforms(selected_single_pass_shading_program);
     context_->apply();
-    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
 
+#if 1
+    //draw shaded
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
+#else
+    //draw wireframe
+    context_->set_rasterizer_state(wireframe_no_backface_culling_rasterizer_state_);
+    context_->apply();
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
+#endif
 
     context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
     context_->bind_program(vis_xyz_shader_);

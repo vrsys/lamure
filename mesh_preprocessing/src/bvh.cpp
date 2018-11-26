@@ -201,8 +201,8 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
       uint32_t right_child = get_child_id(node_id, 1);
 
       std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
-      std::cout << "left tris: " << triangles_map_[left_child].size() << std::endl;
-      std::cout << "right tris: " << triangles_map_[right_child].size() << std::endl;
+      //std::cout << "left tris: " << triangles_map_[left_child].size() << std::endl;
+      //std::cout << "right tris: " << triangles_map_[right_child].size() << std::endl;
 
       //flag decides if node is printed after simplification
       int print_id = -1;
@@ -220,6 +220,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
         );
 
 
+      std::cout << "simplified: " << triangles_map_[node_id].size() << std::endl; 
     }
   }
 
@@ -229,7 +230,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   for (uint32_t node_id = 0; node_id < nodes.size(); ++node_id) {
     auto& node = nodes[node_id];
     
-    centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f); //ok to compute centroids before recomputing bounding box?
+    
     visibility_.push_back(node_visibility::NODE_VISIBLE);
 
 
@@ -240,7 +241,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
     node.min_ = scm::math::vec3f(std::numeric_limits<float>::max());
     node.max_ = scm::math::vec3f(std::numeric_limits<float>::lowest());
 
-    for (const auto& tri : triangles_map_[node_id]) {
+    for (auto& tri : triangles_map_[node_id]) {
 
       avg_primitive_extent += tri.get_area();
       max_primitive_extent_deviation = std::max(tri.get_area(), max_primitive_extent_deviation);
@@ -268,16 +269,24 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
       if (tri.v2_.pos_.x > node.max_.x) node.max_.x = tri.v2_.pos_.x;
       if (tri.v2_.pos_.y > node.max_.y) node.max_.y = tri.v2_.pos_.y;
       if (tri.v2_.pos_.z > node.max_.z) node.max_.z = tri.v2_.pos_.z;
+
+      auto normal = tri.get_normal();
+      tri.v0_.nml_ = normal;
+      tri.v1_.nml_ = normal;
+      tri.v2_.nml_ = normal;
     }
 
     bounding_boxes_.push_back(scm::gl::boxf(node.min_, node.max_));
+
+    centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f);
 
     avg_primitive_extent /= (float)triangles_map_[node_id].size();
     avg_primitive_extent_.push_back(avg_primitive_extent);
     max_primitive_extent_deviation_.push_back(max_primitive_extent_deviation);
 
     if (triangles_map_[node_id].size() > primitives_per_node_) {
-      std::cout << "WARNING: (" << node_id << ") removing triangles manually to stay on budget" << std::endl;
+      std::cout << "WARNING: (" << node_id << ": " << triangles_map_[node_id].size() << ") removing \
+      " <<  triangles_map_[node_id].size()-primitives_per_node_ << " triangles manually to stay on budget: " << primitives_per_node_ << std::endl;
     }
 
     //if we have too many, remove some
@@ -317,14 +326,14 @@ void bvh::simplify(
     std::cout << "triangle mesh valid" << std::endl;
   }
 
-  std::cout << "original: " << polyMesh.size_of_facets() << std::endl;
+  //std::cout << "original: " << polyMesh.size_of_facets() << std::endl;
 
   //simplify the two input sets of tris into output_tris
 
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
-#if 1
+#if 0
 
 
   // simplification with borders constrained
@@ -362,6 +371,8 @@ void bvh::simplify(
     std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
   }
   
+
+  output_tris.clear();
 
 
   //convert back to triangle soup
@@ -404,11 +415,6 @@ void bvh::simplify(
     output_tris.push_back(tri);
   }
 
-  //TODO - update bounds here
-
-  // std::cout << "simplified: " << num_vertices_simplified << std::endl; 
-  std::cout << "simplified: " << polyMesh.size_of_facets() << std::endl;
-  
 
 }
 
