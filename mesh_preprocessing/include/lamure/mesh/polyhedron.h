@@ -73,7 +73,6 @@ struct XtndPoint : public Traits::Point_3 {
   double get_u () const {return texCoord.hx();}
   double get_v () const {return texCoord.hy();}
 
-  bool float_safe_equals()
 
 
 };
@@ -165,12 +164,14 @@ public:
 
     //concatenate triangle sets
     //left_tris_.insert(left_tris_.end(), right_tris_.begin(), right_tris_.end());
-    std::copy(right_tris_.begin(), right_tris_.end(), std::back_inserter(left_tris_));
+    std::vector<triangle_t> combined_set;
+    std::copy(left_tris_.begin(), left_tris_.end(), std::back_inserter(combined_set));
+    std::copy(right_tris_.begin(), right_tris_.end(), std::back_inserter(combined_set));
 
     //create indexed vertex list
     std::vector<XtndPoint<Kernel> > vertices;
     std::vector<uint32_t> tris;
-    create_indexed_triangle_list(left_tris_, tris, vertices);
+    create_indexed_triangle_list(combined_set, tris, vertices);
     
     //add vertices of surface
     for (uint32_t i = 0; i < vertices.size(); ++i) {
