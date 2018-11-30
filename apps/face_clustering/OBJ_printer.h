@@ -63,25 +63,31 @@ public:
         out() << "# ------------------------------------------\n\n";
     }
 
-    void write_facet_vertex_index( std::size_t idx) {
-    	out() << ' ' << idx+1 << "/" << idx+1; 
+    void write_facet_vertex_index( std::size_t idx, int tex_idx) {
+    	out() << ' ' << idx+1 << "/" << tex_idx+1; 
     }
 
 };
 
+//u = ((1.0/chart.size()) * chart_id)
+
 struct OBJ_printer
 {
 	template <class Polyhedron>
-	static void print_polyhedron_wavefront_with_tex( std::ostream& out, const Polyhedron& P) {
+	static void print_polyhedron_wavefront_with_tex( std::ostream& out, const Polyhedron& P, std::map<uint32_t, int32_t> &chart_id_map) {
 	    File_writer_wavefront_xtnd  writer;
-	    generic_print_polyhedron( out, P, writer);
+	    generic_print_polyhedron( out, P, writer, chart_id_map);
 	}
 
 	template <class Polyhedron, class Writer>
+	// template <class Polyhedron>
 	static void
 	generic_print_polyhedron( std::ostream&     out, 
 	                          const Polyhedron& P,
-	                          Writer&           writer) {
+	                          Writer&           writer,
+	                          std::map<uint32_t, int32_t> &chart_id_map) {
+
+
 	    // writes P to `out' in the format provided by `writer'.
 	    typedef typename Polyhedron::Vertex_const_iterator                  VCI;
 	    typedef typename Polyhedron::Facet_const_iterator                   FCI;
@@ -98,10 +104,13 @@ struct OBJ_printer
 	    }
 
 	    //tex coords
-	    writer.write_tex_coord_header(P.size_of_vertices());
-	    for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
-	        writer.write_tex_coord( ::CGAL::to_double( vi->point().get_u()),
-	                                ::CGAL::to_double( vi->point().get_v()));
+
+	    writer.write_tex_coord_header(P.size_of_facets());
+	    //for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+	    for (uint32_t face = 0; face < P.size_of_facets(); ++face) {
+	        double u = ((1.0/(double)P.size_of_facets()) * face);
+
+	        writer.write_tex_coord(u,u);
 	    }
 	    typedef CGAL::Inverse_index< VCI> Index;
 	    Index index( P.vertices_begin(), P.vertices_end());
@@ -112,10 +121,14 @@ struct OBJ_printer
 	        HFCC hc = fi->facet_begin();
 	        HFCC hc_end = hc;
 	        std::size_t n = circulator_size( hc);
-	        CGAL_assertion( n >= 3);
+	        CGAL_assertion( idx+n >= 3);
 	        writer.write_facet_begin( n);
+
+	        int id = fi->id();
+	        int chart_id = chart_id_map[id];
 	        do {
-	            writer.write_facet_vertex_index( index[ VCI(hc->vertex())]);
+	            writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id);
+	           
 	            ++hc;
 	        } while( hc != hc_end);
 	        writer.write_facet_end();

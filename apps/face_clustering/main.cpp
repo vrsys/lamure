@@ -95,6 +95,10 @@ public:
 
 };
 
+
+//key: face_id, value: chart_id
+std::map<uint32_t, int32_t> chart_id_map;
+
 // struct to hold a vector of facets that make a chart
 struct Chart
 {
@@ -156,7 +160,7 @@ create_charts (Polyhedron &P){
   }
 
   const uint32_t initial_charts = charts.size();
-  const uint32_t chart_target = 100;
+  const uint32_t chart_target = 20;
   const uint32_t desired_merges = initial_charts - chart_target;
   uint32_t chart_merges = 0;
 
@@ -180,8 +184,15 @@ create_charts (Polyhedron &P){
 
   //make joins until target is reached
   // while ((initial_charts-chart_merges) > chart_target){
+  int prev_percent = -1;
 
   while (chart_merges < desired_merges && !joins.empty()){
+
+    int percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
+    if (percent != prev_percent) {
+      prev_percent = percent;
+      std::cout << percent << " percent merged\n";
+    }
 
     //sort joins by cost
     // std::sort (joins.begin(), joins.end(), sort_joins);
@@ -190,19 +201,23 @@ create_charts (Polyhedron &P){
 
     //implement the join with lowest cost
     JoinOperation join_todo = joins.front();
+    joins.pop_front();
 
     //merge faces from chart2 into chart 1
     charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id]);
 
     if (charts[join_todo.chart2_id].active == false)
     {
-      report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl;
+      //report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl;
+      continue;
     }
 
     charts[join_todo.chart2_id].active = false;
-    joins.pop_front();
+    
+    int current_item = 0;
+    std::vector<int> to_erase;
 
-    //update remaining joins that include either of the merged charts
+    //update itremaining joins that include either of the merged charts
     for (it = joins.begin(); it != joins.end(); ++it)
     {
       //if join is affected, update references and cost
@@ -216,7 +231,7 @@ create_charts (Polyhedron &P){
         if (it->chart1_id == join_todo.chart2_id){
           it->chart1_id = join_todo.chart1_id;
         }
-        else if (it->chart2_id == join_todo.chart2_id){
+        if (it->chart2_id == join_todo.chart2_id){
           it->chart2_id = join_todo.chart1_id; 
         }
 
@@ -227,17 +242,24 @@ create_charts (Polyhedron &P){
         if (it->chart1_id == it->chart2_id)
         {
           report << "Join found within a chart: " << it->chart1_id << std::endl;
-          // joins.erase(it);
+          to_erase.push_back(current_item);
+          
         }
       }
+      current_item++;
     }
 
+    for (auto id : to_erase) {
+      std::list<JoinOperation>::iterator it = joins.begin();
+      std::advance(it, id);
+      joins.erase(it);
+    }
 
     
 
     chart_merges++;
-    std::cout << chart_merges << " merges\n";
-
+    //std::cout << chart_merges << " merges\n";
+    
   }
 
 
@@ -265,6 +287,17 @@ create_charts (Polyhedron &P){
 
   std::cout << "--------------------\nReport:\n----------------------\n";
   std::cout << report.str();
+
+  //populate LUT for face to chart mapping
+  for (uint32_t id = 0; id < charts.size(); ++id) {
+    auto& chart = charts[id];
+    if (chart.active) {
+      for (auto& f : chart.facets) {
+        chart_id_map[f] = id;
+      }
+    }
+  }
+
 }
 
 int main( int argc, char** argv ) 
@@ -297,7 +330,7 @@ int main( int argc, char** argv )
   polyhedron_builder<HalfedgeDS> builder( vertices, tris );
   polyMesh.delegate( builder );
 
-  if (polyMesh.is_valid(true)){
+  if (polyMesh.is_valid(false)){
     std::cout << "mesh valid\n"; 
   }
 
@@ -311,27 +344,18 @@ int main( int argc, char** argv )
   }
 
 
-
+  //split the mesh into charts
+  //chart configuration can be accessed
   create_charts(polyMesh);
 
-  //create dual graph of polyMesh
-  // Dual dual(polyMesh);
-  // std::cout << "dual has " << num_vertices(dual) << " vertices" << std::endl;
+  std::string out_filename = "data/charts.obj";
+  std::ofstream ofs( out_filename );
 
-  // SMS::Count_stop_predicate<Polyhedron> stop(3000);
+  OBJ_printer::print_polyhedron_wavefront_with_tex( ofs, polyMesh,chart_id_map);
 
-  // std::cout << "Starting simplification" << std::endl;
+  ofs.close();
+  std::cout << "simplified mesh was written to " << out_filename << std::endl;
 
-  // SMS::edge_collapse
-  //           (dual
-  //           ,stop
-  //            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,dual)) 
-                               // .halfedge_index_map  (get(CGAL::halfedge_external_index  ,dual))
-    //                            .get_cost (SMS::Edge_length_cost <Polyhedron>())
-    //                            .get_placement(SMS::Midpoint_placement<Polyhedron>())
-    //         );
-
-    // std::cout << "\nFinished...\n" << (polyMesh.size_of_halfedges()/2) << " final edges.\n" ;
 
   return EXIT_SUCCESS ; 
 }

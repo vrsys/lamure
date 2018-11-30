@@ -60,7 +60,6 @@ public:
     const lamure::mesh::plane_t get_plane() const {
         vec3r n = vec3r(v0_.nml_ + v1_.nml_ + v2_.nml_) * (1.0 / 3.0);
         return lamure::mesh::plane_t(n, vec3r(v0_.pos_));
-
     }
 
     const vertex getVertex(const int vertex_id) const {
