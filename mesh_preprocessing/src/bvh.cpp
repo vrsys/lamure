@@ -24,7 +24,7 @@
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/LindstromTurk_placement.h>
 
 //need update to use:
-// #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Bounded_normal_change_placement.h>
+#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Bounded_normal_change_placement.h>
 
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
 
@@ -213,7 +213,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
       //flag decides if node is printed to obj, before and after simplification
       int print_id = -1;
-#if 0
+#if 1
       if (node_id == 78 
         // || node_id == 15 
         // || node_id == 103 
@@ -359,12 +359,14 @@ void bvh::simplify(
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
-#if 0
+#if 1
 
 
   // simplification with borders constrained
 
   Border_is_constrained_edge_map bem(polyMesh);
+
+  typedef SMS::Bounded_normal_change_placement<SMS::LindstromTurk_placement<Polyhedron> > Placement;
   
   SMS::edge_collapse
            (polyMesh
@@ -372,9 +374,11 @@ void bvh::simplify(
             ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
                               .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
                               .edge_is_constrained_map(bem)
-                              .get_placement(Placement(bem))
+                              // .get_placement(Placement(bem))
                               // .get_cost (SMS::Edge_length_cost <Polyhedron>())
                               // .get_placement(SMS::Midpoint_placement<Polyhedron>())
+                              .get_cost (SMS::LindstromTurk_cost<Polyhedron>())
+                              .get_placement(Placement())
            );
 #else
 

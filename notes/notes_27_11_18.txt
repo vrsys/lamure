@@ -1,0 +1,28 @@
+For next week:
+
+ - Finish edge constraint - review result
+	- adrien will update CGAL
+
+ - finish chart creation
+	- 
+
+
+Next steps for chart simplification:
+ 1. create charts from hires mesh
+ 2. project triangles on best plane into rectangles
+ 3. pack rectangles into texture space
+ 4. render to texture
+
+
+
+For the intermediate presentation:
+
+ - introduce motivation for method:
+	- LOD mesh loading with coherent texturing
+	- 
+ - describe choice of methods - against progressive texturing - and jusitfy choice
+ - describe road map for progress:
+	- solving chart problems
+	- solving simplification problems - over complicated border edges
+
+  
