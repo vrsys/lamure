@@ -97,7 +97,7 @@ public:
 
 
 //key: face_id, value: chart_id
-std::map<uint32_t, int32_t> chart_id_map;
+std::map<uint32_t, uint32_t> chart_id_map;
 
 // struct to hold a vector of facets that make a chart
 struct Chart
@@ -143,7 +143,7 @@ bool sort_joins (JoinOperation j1, JoinOperation j2) {
   return (j1.cost < j2.cost);
 }
 
-void 
+uint32_t 
 create_charts (Polyhedron &P){
 
   std::stringstream report;
@@ -289,16 +289,34 @@ create_charts (Polyhedron &P){
   std::cout << report.str();
 
   //populate LUT for face to chart mapping
+  //count charts on the way to apply new chart ids
+  uint32_t active_charts = 0;
   for (uint32_t id = 0; id < charts.size(); ++id) {
     auto& chart = charts[id];
     if (chart.active) {
       for (auto& f : chart.facets) {
-        chart_id_map[f] = id;
+        chart_id_map[f] = active_charts;
       }
+      active_charts++;
     }
   }
 
+  return active_charts;
+
 }
+
+// void organise_chart_id_map(std::map<uint32_t, uint32_t>& chart_id_map){
+
+//   std::map<uint32_t, uint32_t> new_map;
+
+//   for (auto const& x : chart_id_map)
+//   {
+//       std::cout << x.first  // string (key)
+//                 // << ':' 
+//                 // << x.second // string's value 
+//                 << std::endl ;
+//   }
+// }
 
 int main( int argc, char** argv ) 
 {
@@ -345,13 +363,15 @@ int main( int argc, char** argv )
 
 
   //split the mesh into charts
-  //chart configuration can be accessed
-  create_charts(polyMesh);
+  //chart configuration can be accessed in chart_id_map
+  uint32_t active_charts = create_charts(polyMesh);
+
+
 
   std::string out_filename = "data/charts.obj";
   std::ofstream ofs( out_filename );
 
-  OBJ_printer::print_polyhedron_wavefront_with_tex( ofs, polyMesh,chart_id_map);
+  OBJ_printer::print_polyhedron_wavefront_with_tex( ofs, polyMesh,chart_id_map, active_charts);
 
   ofs.close();
   std::cout << "simplified mesh was written to " << out_filename << std::endl;

@@ -25,4 +25,23 @@ For the intermediate presentation:
 	- solving chart problems
 	- solving simplification problems - over complicated border edges
 
-  
+
+-----------------------------------------------------------------------
+
+done:
+
+ - edge constraint impemented and working, looks good at finer detail but streaking persists at low levels (and dissappearing triangles in low detail)
+
+ - charts fixed but:
+	- improve vis capabilities - better colour differences
+	- map to textures in a more sensible manner
+	- why does meshlab not load them?
+
+
+TO DO: 
+ - develop error metric for joins
+	- use lamure function for calculating normals/CGAL?
+	- compare difference in normals - arccos of dot product between normals
+	- accumulate error at joins
+
+ - continue debugging obj printing
