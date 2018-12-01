@@ -59,26 +59,35 @@
 
 class File_writer_wavefront_xtnd : public CGAL::File_writer_wavefront {
 public:
+
+	std::ostream &out;
+
+	File_writer_wavefront_xtnd(std::ostream &_out) : out (_out){
+		// out = _out;
+	}
+
     void write_tex_coord_header(std::size_t tex_coords) {
-        out() << "\n# " <<  tex_coords << " texture coordinates\n";
-        out() << "# ------------------------------------------\n\n";
+        out << "\n# " <<  tex_coords << " texture coordinates\n";
+        out << "# ------------------------------------------\n\n";
     }
     void write_tex_coord( const double& u, const double& v) {
-        out() << "vt " << u << ' ' << v << '\n';
+        out << "vt " << u << ' ' << v << '\n';
     }
 
 
     void write_normal_header(std::size_t normals) {
-        out() << "\n# " <<  normals << " normal coordinates\n";
-        out() << "# ------------------------------------------\n\n";
+        out << "\n# " <<  normals << " normal coordinates\n";
+        out << "# ------------------------------------------\n\n";
+
     }
     void write_normal( const double& x, const double& y,  const double& z) {
-        out() << "vn " << x << ' ' << y << ' ' << z << '\n';
+        out << "vn " << x << ' ' << y << ' ' << z << '\n';
     }
 
     void write_facet_vertex_index( std::size_t idx, int tex_idx, int normal_idx) {
-    	// out() << ' ' << idx+1 << "/" << tex_idx+1 << "/" << normal_idx+1; 
-    	out() << ' ' << idx+1; 
+    	out << ' ' << idx+1 << "/" << tex_idx+1 << "/" << normal_idx+1; 
+    	// out << ' ' << idx+1 << "/" << tex_idx+1; 
+    	// out() << ' ' << idx+1; 
     }
 
 };
@@ -87,8 +96,8 @@ public:
 struct OBJ_printer
 {
 	template <class Polyhedron>
-	static void print_polyhedron_wavefront_with_tex( std::ostream& out, const Polyhedron& P, std::map<uint32_t, uint32_t> &chart_id_map, const uint32_t active_charts) {
-	    File_writer_wavefront_xtnd  writer;
+	static void print_polyhedron_wavefront_with_chart_colours( std::ostream& out, const Polyhedron& P, std::map<uint32_t, uint32_t> &chart_id_map, const uint32_t active_charts) {
+	    File_writer_wavefront_xtnd  writer(out);
 	    generic_print_polyhedron( out, P, writer, chart_id_map, active_charts);
 	}
 
@@ -123,39 +132,41 @@ struct OBJ_printer
 
 
 	 //    //calculate normals
-	 //    writer.write_normal_header(0);
-	 //    // writer.write_normal(0.5,0.5,0.5);
-
-	 //    typedef CGAL::Simple_cartesian<double> Kernel;
-		// typedef typename boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
-		// typedef typename boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
-		// typedef Kernel::Vector_3 Vector;
-
-		// std::map<face_descriptor,Vector> fnormals;
-		// std::map<vertex_descriptor,Vector> vnormals;
-		// CGAL::Polygon_mesh_processing::compute_normals(P,
-		//                                      boost::make_assoc_property_map(vnormals),
-  //                                            boost::make_assoc_property_map(fnormals));
-		// for(face_descriptor fd: faces(P)){
-		//     // std::cout << fnormals[fd] << std::endl;
-		//     writer.write_normal((double)fnormals[fd].x(),(double)fnormals[fd].y(),(double)fnormals[fd].z());
-		// }
+	    // writer.write_normal_header(1);
+	    // writer.write_normal(0.5,0.5,0.5);
 
 
-	 //    //write tex coords
-	 //    writer.write_tex_coord_header(P.size_of_facets());
-	 //    //for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
-	 //    for (uint32_t face = 0; face < active_charts; ++face) {
-	 //        double u = ((1.0/(double)active_charts) * face);
+	    writer.write_normal_header(P.size_of_facets());
+	    typedef CGAL::Simple_cartesian<double> Kernel;
+		typedef typename boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
+		typedef typename boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
+		typedef Kernel::Vector_3 Vector;
 
-	 //        writer.write_tex_coord(u,u);
-	 //    }
+		std::map<face_descriptor,Vector> fnormals;
+		std::map<vertex_descriptor,Vector> vnormals;
+		CGAL::Polygon_mesh_processing::compute_normals(P,
+		                                     boost::make_assoc_property_map(vnormals),
+                                             boost::make_assoc_property_map(fnormals));
+		for(face_descriptor fd: faces(P)){
+		    // std::cout << fnormals[fd] << std::endl;
+		    writer.write_normal((double)fnormals[fd].x(),(double)fnormals[fd].y(),(double)fnormals[fd].z());
+		}
+
+
+	    //write tex coords
+	    writer.write_tex_coord_header(active_charts);
+	    //for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+	    for (uint32_t face = 0; face < active_charts; ++face) {
+	        double u = ((1.0/(double)active_charts) * face);
+
+	        writer.write_tex_coord(u,u);
+	    }
 	    
 
 	    //write faces
 	    typedef CGAL::Inverse_index< VCI> Index;
 	    Index index( P.vertices_begin(), P.vertices_end());
-	    // writer.write_facet_header();
+	    writer.write_facet_header();
 
 
 	    int32_t face_id = 0;

@@ -8,7 +8,7 @@ For next week:
 
 
 Next steps for chart simplification:
- 1. create charts from hires mesh
+ 1. create charts from hi-res mesh
  2. project triangles on best plane into rectangles
  3. pack rectangles into texture space
  4. render to texture
@@ -45,3 +45,13 @@ TO DO:
 	- accumulate error at joins
 
  - continue debugging obj printing
+ 	- problem occurs in schism function to create vertex buffer from imported obj
+
+
+-----------------------------------------------------------------------
+
+done: 
+
+ - started adding normals into join cost calculation
+
+ - obj output problem occurs in schism call to create vertex buffer from obj

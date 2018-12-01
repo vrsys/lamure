@@ -210,7 +210,9 @@ void init_shader() {
         throw std::runtime_error("Error reading shader files");
     }
 
+    //error here
     obj_.reset(new scm::gl::wavefront_obj_geometry(device_, obj_file_));
+
 
     shader_ = device_->create_program(boost::assign::list_of(
             device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vertex_source))(
@@ -264,13 +266,22 @@ int32_t main(int argc, char *argv[]) {
     std::vector<vertex> vertices;
     uint32_t num_tris = Utils::load_obj(obj_file_, vertices);
 
+
+
     init_glut(argc, argv);
+
 
     device_.reset(new scm::gl::render_device());
     context_ = device_->main_context();
 
+
     init_shader();
+
+
     init_render_states();
+
+
+
     init_camera(vertices);
 
     std::cout << num_tris << " triangles" << std::endl;

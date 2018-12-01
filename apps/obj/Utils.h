@@ -1,6 +1,11 @@
 #ifndef VT_OBJ_RENDERER_UTILS_H
 #define VT_OBJ_RENDERER_UTILS_H
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+
 //lamure
 #include <lamure/types.h>
 #include <lamure/ren/camera.h>
@@ -52,6 +57,35 @@ struct Utils {
         return std::find(begin, end, option) != end;
     }
 
+    // //parses a face string like "f  2//1  8//1  4//1 " into 3 given arrays
+    // static void parse_face_string (std::string face_string, int (&index)[3], int (&coord)[3], int (&normal)[3]){
+
+    //   //split by space into faces
+    //   std::vector<std::string> faces;
+    //   boost::algorithm::trim(face_string);
+    //   boost::algorithm::split(faces, face_string, boost::algorithm::is_any_of(" "), boost::algorithm::token_compress_on);
+
+    //   for (int i = 0; i < 3; ++i)
+    //   {
+    //     //split by / for indices
+    //     std::vector<std::string> inds;
+    //     boost::algorithm::split(inds, faces[i], [](char c){return c == '/';}, boost::algorithm::token_compress_off);
+
+    //     for (int j = 0; j < (int)inds.size(); ++j)
+    //     {
+    //       int idx = 0;
+    //       //parse value from string
+    //       if (inds[j] != ""){
+    //         idx = stoi(inds[j]);
+    //       }
+    //       if (j == 0){index[i] = idx;}
+    //       else if (j == 1){coord[i] = idx;}
+    //       else if (j == 2){normal[i] = idx;}
+          
+    //     }
+    //   }
+    // }
+
 
     //load an .obj file and return all vertices, normals and coords interleaved
     static uint32_t load_obj(const std::string &_file, std::vector<vertex> &_vertices) {
@@ -95,9 +129,16 @@ struct Utils {
                            &index[1], &coord[1], &normal[1],
                            &index[2], &coord[2], &normal[2]);
 
+
+                    // fscanf(file, "%d/%d %d/%d %d/%d\n",
+                    //        &index[0], &coord[0],
+                    //        &index[1], &coord[1],
+                    //        &index[2], &coord[2]);
+
                     vindices.insert(vindices.end(), {index[0], index[1], index[2]});
                     tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
                     nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
+
                 }
             }
 
@@ -108,6 +149,7 @@ struct Utils {
             std::cout << "coords: " << tindices.size() << std::endl;
 
             _vertices.resize(nindices.size());
+
 
             for (uint32_t i = 0; i < nindices.size(); i++) {
                 vertex vertex;
@@ -123,6 +165,7 @@ struct Utils {
 
                 _vertices[i] = vertex;
             }
+
 
             num_tris = _vertices.size() / 3;
 

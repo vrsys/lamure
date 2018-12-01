@@ -8,11 +8,16 @@
 #include <CGAL/Polyhedron_items_with_id_3.h>
 
 
+
+#include <CGAL/IO/print_wavefront.h>
+
 // Simplification function
 #include <CGAL/Surface_mesh_simplification/edge_collapse.h>
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/property_map.h>
 
+
+#include <CGAL/Polygon_mesh_processing/measure.h>
 // Stop-condition policy
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
 #include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
@@ -29,8 +34,11 @@
 
 #include "Utils.h"
 #include "OBJ_printer.h"
+// #include "OBJ_printer_test.h"
 
 typedef CGAL::Simple_cartesian<double> Kernel;
+
+typedef Kernel::Vector_3 Vector;
 
 typedef CGAL::Polyhedron_3<Kernel,CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
@@ -43,6 +51,11 @@ typedef Polyhedron::Facet Facet;
 
 typedef Polyhedron::Halfedge Halfedge;
 typedef Polyhedron::Edge_iterator Edge_iterator;
+
+
+typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
+typedef boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
+typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
 
 
 namespace SMS = CGAL::Surface_mesh_simplification ;
@@ -95,6 +108,16 @@ public:
 
 };
 
+struct Compute_area
+{
+   double operator()(Polyhedron::Facet f) const {
+   return Kernel::Compute_area_3()(
+     f.halfedge()->vertex()->point(),
+     f.halfedge()->next()->vertex()->point(),
+     f.halfedge()->opposite()->vertex()->point() );
+    }
+};     
+
 
 //key: face_id, value: chart_id
 std::map<uint32_t, uint32_t> chart_id_map;
@@ -104,10 +127,14 @@ struct Chart
 {
   std::vector<uint32_t> facets;
   bool active;
+  Vector avg_normal;
+  double total_area;
 
-  Chart(uint32_t f){
+  Chart(uint32_t f, Vector normal, double area){
     add_face(f);
     active = true;
+    total_area = area;
+    avg_normal = normal;
   }
   void add_face(uint32_t f){
     facets.push_back(f);
@@ -115,6 +142,11 @@ struct Chart
   //concatenate face lists
   void merge_with(Chart &mc){
     facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
+
+    Vector n = (avg_normal * total_area) + (mc.avg_normal * mc.total_area);
+    avg_normal = n / std::sqrt(n.squared_length()); 
+    total_area += mc.total_area;
+
   }
   uint32_t num_faces(){
     return facets.size();
@@ -124,6 +156,8 @@ struct Chart
 
 double cost_of_join(Chart &c1, Chart &c2){
   return c1.num_faces() + c2.num_faces();
+
+  //TODo calculate cost of join from normal differences
 }
 
 struct JoinOperation {
@@ -145,18 +179,37 @@ bool sort_joins (JoinOperation j1, JoinOperation j2) {
 
 uint32_t 
 create_charts (Polyhedron &P){
-
   std::stringstream report;
 
+  //calculate areas
+  std::map<face_descriptor,double> fareas;
+  for(face_descriptor fd: faces(P)){
+    fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
+  }
+  //calculate normals of all faces
+  std::map<face_descriptor,Vector> fnormals;
+  std::map<vertex_descriptor,Vector> vnormals;
+  CGAL::Polygon_mesh_processing::compute_normals(P,
+                                                 boost::make_assoc_property_map(vnormals),
+                                                 boost::make_assoc_property_map(fnormals));
+
+  //get boost face iterator
+  face_iterator fb_boost, fe_boost;
+  boost::tie(fb_boost, fe_boost) = faces(P);
+
   //each face begins as its own chart
-  //ad face ids in same loop
+  //add face ids in same loop
   std::vector<Chart> charts;
   for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
     fb->id() = charts.size();  
-    Chart c(fb->id());
+
+    Vector normal = fnormals[*fb_boost];
+    double area = fareas[*fb_boost];
+
+    Chart c(fb->id(), normal, area);
     charts.push_back(c);
 
-    std::cout << "creating chart " << charts.size()-1 << " with face id " << fb->id() << std::endl;
+    fb_boost++;
   }
 
   const uint32_t initial_charts = charts.size();
@@ -175,10 +228,10 @@ create_charts (Polyhedron &P){
           uint32_t face1 = eb->facet()->id();
           uint32_t face2 = eb->opposite()->facet()->id();
 
-          JoinOperation join (face1,face2,2.0);
+          JoinOperation join (face1,face2,cost_of_join(charts[face1],charts[face2]));
           joins.push_back(join);
 
-          std::cout << "create join between faces " << face1 << " and " << face2  << std::endl;
+          // std::cout << "create join between faces " << face1 << " and " << face2  << std::endl;
     }
   } 
 
@@ -191,7 +244,7 @@ create_charts (Polyhedron &P){
     int percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
     if (percent != prev_percent) {
       prev_percent = percent;
-      std::cout << percent << " percent merged\n";
+      // std::cout << percent << " percent merged\n";
     }
 
     //sort joins by cost
@@ -286,7 +339,7 @@ create_charts (Polyhedron &P){
 
 
   std::cout << "--------------------\nReport:\n----------------------\n";
-  std::cout << report.str();
+  // std::cout << report.str();
 
   //populate LUT for face to chart mapping
   //count charts on the way to apply new chart ids
@@ -361,20 +414,15 @@ int main( int argc, char** argv )
     std::cout << "mesh is triangulated\n";
   }
 
-
-  //split the mesh into charts
-  //chart configuration can be accessed in chart_id_map
   uint32_t active_charts = create_charts(polyMesh);
-
 
 
   std::string out_filename = "data/charts.obj";
   std::ofstream ofs( out_filename );
-
-  OBJ_printer::print_polyhedron_wavefront_with_tex( ofs, polyMesh,chart_id_map, active_charts);
-
+  OBJ_printer::print_polyhedron_wavefront_with_chart_colours( ofs, polyMesh,chart_id_map, active_charts);
   ofs.close();
   std::cout << "simplified mesh was written to " << out_filename << std::endl;
+
 
 
   return EXIT_SUCCESS ; 
