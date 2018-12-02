@@ -131,7 +131,19 @@ struct OBJ_printer
 	    }
 
 
-	 //    //calculate normals
+
+
+
+	    //write tex coords
+	    writer.write_tex_coord_header(active_charts);
+	    //for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+	    for (uint32_t face = 0; face < active_charts; ++face) {
+	        double u = ((1.0/(double)active_charts) * face);
+
+	        writer.write_tex_coord(u,(double)(face % 2));
+	    }
+
+	    	 //    //calculate normals
 	    // writer.write_normal_header(1);
 	    // writer.write_normal(0.5,0.5,0.5);
 
@@ -151,16 +163,6 @@ struct OBJ_printer
 		    // std::cout << fnormals[fd] << std::endl;
 		    writer.write_normal((double)fnormals[fd].x(),(double)fnormals[fd].y(),(double)fnormals[fd].z());
 		}
-
-
-	    //write tex coords
-	    writer.write_tex_coord_header(active_charts);
-	    //for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
-	    for (uint32_t face = 0; face < active_charts; ++face) {
-	        double u = ((1.0/(double)active_charts) * face);
-
-	        writer.write_tex_coord(u,u);
-	    }
 	    
 
 	    //write faces

@@ -35,8 +35,8 @@
 using namespace std;
 
 
-int32_t window_width_ = 1280;
-int32_t window_height_ = 720;
+int32_t window_width_ = 1920;
+int32_t window_height_ = 1080;
 
 std::string obj_file_;
 

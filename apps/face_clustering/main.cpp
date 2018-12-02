@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <cmath>
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
@@ -39,6 +40,7 @@
 typedef CGAL::Simple_cartesian<double> Kernel;
 
 typedef Kernel::Vector_3 Vector;
+typedef CGAL::Point_3<Kernel> Point;
 
 typedef CGAL::Polyhedron_3<Kernel,CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
@@ -47,6 +49,8 @@ typedef Polyhedron::HalfedgeDS HalfedgeDS;
 typedef Polyhedron::Facet_iterator Facet_iterator;
 typedef Polyhedron::Facet_handle Facet_handle;
 typedef Polyhedron::Facet Facet; 
+
+typedef Polyhedron::Halfedge_around_facet_circulator Halfedge_facet_circulator;
 
 
 typedef Polyhedron::Halfedge Halfedge;
@@ -75,7 +79,6 @@ public:
 
   void operator()( HDS& hds) {
 
-    typedef CGAL::Point_3<Kernel> Point;
 
     // create a cgal incremental builder
     CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
@@ -107,16 +110,7 @@ public:
     }
 
 };
-
-struct Compute_area
-{
-   double operator()(Polyhedron::Facet f) const {
-   return Kernel::Compute_area_3()(
-     f.halfedge()->vertex()->point(),
-     f.halfedge()->next()->vertex()->point(),
-     f.halfedge()->opposite()->vertex()->point() );
-    }
-};     
+  
 
 
 //key: face_id, value: chart_id
@@ -125,39 +119,110 @@ std::map<uint32_t, uint32_t> chart_id_map;
 // struct to hold a vector of facets that make a chart
 struct Chart
 {
-  std::vector<uint32_t> facets;
+  std::vector<Facet> facets;
   bool active;
   Vector avg_normal;
-  double total_area;
+  double area;
+  double error;
 
-  Chart(uint32_t f, Vector normal, double area){
-    add_face(f);
-    active = true;
-    total_area = area;
-    avg_normal = normal;
-  }
-  void add_face(uint32_t f){
+  Chart(Facet f, Vector normal, double _area){
     facets.push_back(f);
+    active = true;
+    area = _area;
+    avg_normal = normal;
+    error = 0;
   }
+
   //concatenate face lists
-  void merge_with(Chart &mc){
+  void merge_with(Chart &mc, double cost_of_join){
     facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
 
-    Vector n = (avg_normal * total_area) + (mc.avg_normal * mc.total_area);
-    avg_normal = n / std::sqrt(n.squared_length()); 
-    total_area += mc.total_area;
+    Vector n = (avg_normal * area) + (mc.avg_normal * mc.area); //create new chart normal
+    avg_normal = n / std::sqrt(n.squared_length()); //normalise normal
+    area += mc.area;
+
+    error += (mc.error + cost_of_join);
 
   }
-  uint32_t num_faces(){
-    return facets.size();
+
+  static double get_compactness_of_merged_charts(Chart& c1, Chart& c2){
+    double area = c1.area + c2.area;
+    std::vector<Facet> combined_facets (c1.facets);
+    combined_facets.insert(combined_facets.end(), c2.facets.begin(), c2.facets.end());
+    double perimeter = get_perimeter(combined_facets);
+
+    return perimeter / area;
+  }
+
+  //calculate perimeter of chart
+  static double get_perimeter(std::vector<Facet> chart_facets){
+    double accum_perimeter = 0;
+
+    //for each face
+    for (auto& face : chart_facets)
+    {
+
+        Halfedge_facet_circulator he = face.facet_begin();
+        CGAL_assertion( CGAL::circulator_size(he) >= 3);
+        //for 3 adjacent faces
+        do {
+            uint32_t adj_face_id = he->opposite()->facet()->id();
+
+            //check if they are in this chart
+            bool found_in_this_chart = false;
+            for (auto& chart_member : chart_facets){
+              if (chart_member.id() == adj_face_id)
+              {
+                found_in_this_chart = true;
+              }
+            }
+            //if not, add edge length to perimeter total
+            if (!found_in_this_chart)
+            {
+              accum_perimeter += edge_length(he);
+            }
+
+        } while ( ++he != face.facet_begin());
+    }
+
+    return accum_perimeter;
+  }
+
+  static double edge_length(Halfedge_facet_circulator he){
+    const Point& p = he->opposite()->vertex()->point();
+    const Point& q = he->vertex()->point();
+    return CGAL::sqrt(CGAL::squared_distance(p, q));
   }
 
 };
 
 double cost_of_join(Chart &c1, Chart &c2){
-  return c1.num_faces() + c2.num_faces();
+  // return c1.num_faces() + c2.num_faces();
 
-  //TODo calculate cost of join from normal differences
+
+  const double accum_error_factor = 1.0;
+  const double compactness_factor = 100.0;
+
+
+
+  // std::cout << "pre-existing error   c1 : " << c1.error << " c2: " << c2.error << std::endl;
+
+  //define error as angle between normal directions of charts
+
+  double dot_product = c1.avg_normal * c2.avg_normal;
+
+  double error = acos(dot_product);
+
+
+  double compactness = Chart::get_compactness_of_merged_charts(c1,c2);
+
+
+  error += (accum_error_factor * (c1.error + c2.error));
+  error += (compactness_factor * compactness);
+
+  // std::cout << "error : " << error << std::endl;
+
+  return error;
 }
 
 struct JoinOperation {
@@ -175,6 +240,18 @@ struct JoinOperation {
 
 bool sort_joins (JoinOperation j1, JoinOperation j2) {
   return (j1.cost < j2.cost);
+}
+
+void count_faces_in_active_charts(std::vector<Chart> &charts) {
+  uint32_t active_faces = 0;
+  for (auto& chart : charts)
+  {
+    if (chart.active) 
+    {
+      active_faces += chart.facets.size();
+    }
+  }
+  std::cout << "found " << active_faces << " active faces\n";
 }
 
 uint32_t 
@@ -206,7 +283,8 @@ create_charts (Polyhedron &P){
     Vector normal = fnormals[*fb_boost];
     double area = fareas[*fb_boost];
 
-    Chart c(fb->id(), normal, area);
+    // Chart c(fb->id(), normal, area);
+    Chart c(*fb, normal, area);
     charts.push_back(c);
 
     fb_boost++;
@@ -222,7 +300,7 @@ create_charts (Polyhedron &P){
   std::list<JoinOperation>::iterator it;
   for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
 
-    //disallow join if halfedge is a boundary edge
+    //only create join if halfedge is not a boundary edge
     if ( !(eb->is_border()) && !(eb->opposite()->is_border()) )
     {
           uint32_t face1 = eb->facet()->id();
@@ -231,12 +309,13 @@ create_charts (Polyhedron &P){
           JoinOperation join (face1,face2,cost_of_join(charts[face1],charts[face2]));
           joins.push_back(join);
 
+
+          // std::cout << "join cost : " << cost_of_join(charts[face1],charts[face2]) << std::endl; 
           // std::cout << "create join between faces " << face1 << " and " << face2  << std::endl;
     }
   } 
 
-  //make joins until target is reached
-  // while ((initial_charts-chart_merges) > chart_target){
+  // join charts until target is reached
   int prev_percent = -1;
 
   while (chart_merges < desired_merges && !joins.empty()){
@@ -248,7 +327,6 @@ create_charts (Polyhedron &P){
     }
 
     //sort joins by cost
-    // std::sort (joins.begin(), joins.end(), sort_joins);
     //TODO faster way than sorting the whole list each time - change the placing only of affected items
     joins.sort(sort_joins);
 
@@ -256,12 +334,15 @@ create_charts (Polyhedron &P){
     JoinOperation join_todo = joins.front();
     joins.pop_front();
 
+
+    // std::cout << "join cost : " << join_todo.cost << std::endl; 
+
     //merge faces from chart2 into chart 1
-    charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id]);
+    charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id], join_todo.cost);
 
     if (charts[join_todo.chart2_id].active == false)
     {
-      //report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl;
+      report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl;
       continue;
     }
 
@@ -279,6 +360,16 @@ create_charts (Polyhedron &P){
          || it->chart2_id == join_todo.chart1_id 
          || it->chart2_id == join_todo.chart2_id )
       {
+
+
+        //search for duplicates
+        if ((it->chart1_id == join_todo.chart1_id && it->chart2_id == join_todo.chart2_id) 
+          || (it->chart2_id == join_todo.chart1_id && it->chart1_id == join_todo.chart2_id) ){
+          report << "duplicate found : c1 = " << it->chart1_id << ", c2 = " << it->chart2_id << std::endl; 
+
+          to_erase.push_back(current_item);
+        }
+
         //eliminate references to joined chart 2 (it is no longer active)
         // by pointing them to chart 1
         if (it->chart1_id == join_todo.chart2_id){
@@ -288,8 +379,6 @@ create_charts (Polyhedron &P){
           it->chart2_id = join_todo.chart1_id; 
         }
 
-        //update cost with new cost
-        it->cost = cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
 
         //check for joins within a chart
         if (it->chart1_id == it->chart2_id)
@@ -297,6 +386,10 @@ create_charts (Polyhedron &P){
           report << "Join found within a chart: " << it->chart1_id << std::endl;
           to_erase.push_back(current_item);
           
+        }
+        else {
+          //update cost with new cost
+          it->cost = cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
         }
       }
       current_item++;
@@ -308,7 +401,7 @@ create_charts (Polyhedron &P){
       joins.erase(it);
     }
 
-    
+    count_faces_in_active_charts(charts);
 
     chart_merges++;
     //std::cout << chart_merges << " merges\n";
@@ -326,10 +419,10 @@ create_charts (Polyhedron &P){
   {
     if (charts[i].active)
     {
-      uint32_t num_faces = charts[i].num_faces();
+      uint32_t num_faces = charts[i].facets.size();
       total_faces += num_faces;
       total_active_charts++;
-      std::cout << "Chart " << i << " : " << num_faces << " faces\n";
+      std::cout << "Chart " << i << " : " << num_faces << " faces" << std::endl;
     }
   }
   std::cout << "Total number of faces in charts = " << total_faces << std::endl;
@@ -339,7 +432,7 @@ create_charts (Polyhedron &P){
 
 
   std::cout << "--------------------\nReport:\n----------------------\n";
-  // std::cout << report.str();
+  std::cout << report.str();
 
   //populate LUT for face to chart mapping
   //count charts on the way to apply new chart ids
@@ -348,7 +441,7 @@ create_charts (Polyhedron &P){
     auto& chart = charts[id];
     if (chart.active) {
       for (auto& f : chart.facets) {
-        chart_id_map[f] = active_charts;
+        chart_id_map[f.id()] = active_charts;
       }
       active_charts++;
     }
