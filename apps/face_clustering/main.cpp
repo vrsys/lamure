@@ -177,7 +177,7 @@ struct Chart
                 found_in_this_chart = true;
               }
             }
-            //if not, add edge length to perimeter total
+            //if not, add edge length to perimeter total, record as neighbour
             if (!found_in_this_chart)
             {
               accum_perimeter += edge_length(he);
@@ -198,31 +198,23 @@ struct Chart
 };
 
 double cost_of_join(Chart &c1, Chart &c2){
-  // return c1.num_faces() + c2.num_faces();
-
 
   const double accum_error_factor = 1.0;
-  const double compactness_factor = 100.0;
-
-
-
-  // std::cout << "pre-existing error   c1 : " << c1.error << " c2: " << c2.error << std::endl;
+  const double angle_error_factor = 10.0;
+  const double compactness_factor = 10000.0;
 
   //define error as angle between normal directions of charts
-
   double dot_product = c1.avg_normal * c2.avg_normal;
-
-  double error = acos(dot_product);
-
+  double error = angle_error_factor * acos(dot_product);
 
   double compactness = Chart::get_compactness_of_merged_charts(c1,c2);
-
+  
+  // std::cout << "error output : angle: " << error << " compactness: " << compactness << " pre-existing: " << (c1.error + c2.error);
 
   error += (accum_error_factor * (c1.error + c2.error));
   error += (compactness_factor * compactness);
 
-  // std::cout << "error : " << error << std::endl;
-
+  // std::cout << " total: " << error << std::endl; 
   return error;
 }
 
@@ -256,7 +248,7 @@ void count_faces_in_active_charts(std::vector<Chart> &charts) {
 }
 
 uint32_t 
-create_charts (Polyhedron &P){
+create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart_threshold){
   std::stringstream report;
 
   //calculate areas
@@ -290,9 +282,9 @@ create_charts (Polyhedron &P){
     fb_boost++;
   }
 
-  const uint32_t initial_charts = charts.size();
-  const uint32_t chart_target = 20;
-  const uint32_t desired_merges = initial_charts - chart_target;
+  // const uint32_t initial_charts = charts.size();
+  // const uint32_t chart_target = 20;
+  // const uint32_t desired_merges = initial_charts - chart_target;
   uint32_t chart_merges = 0;
 
   //create possible join list
@@ -315,20 +307,30 @@ create_charts (Polyhedron &P){
     }
   } 
 
+  joins.sort(sort_joins);
+
   // join charts until target is reached
   int prev_percent = -1;
 
-  while (chart_merges < desired_merges && !joins.empty()){
+  const double lowest_cost = joins.front().cost;
 
-    int percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
+  // while (chart_merges < desired_merges && !joins.empty()){
+  while (joins.front().cost < cost_threshold  
+        &&  !joins.empty()
+        &&  (charts.size() - chart_merges) > chart_threshold){
+
+    int percent = (int)(((joins.front().cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
+    // int percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
     if (percent != prev_percent) {
       prev_percent = percent;
-      // std::cout << percent << " percent merged\n";
+      std::cout << percent << " percent complete\n";
     }
+
+
 
     //sort joins by cost
     //TODO faster way than sorting the whole list each time - change the placing only of affected items
-    joins.sort(sort_joins);
+    
 
     //implement the join with lowest cost
     JoinOperation join_todo = joins.front();
@@ -370,6 +372,10 @@ create_charts (Polyhedron &P){
           it->chart2_id = join_todo.chart1_id; 
         }
 
+
+        //TODO - search for joins that would result in charts with less than 3 corners
+        // therefore search for joins, where member charts are included in at least 3 joins, not including the shared join
+
         //search for duplicates
         if ((it->chart1_id == join_todo.chart1_id && it->chart2_id == join_todo.chart2_id) 
           || (it->chart2_id == join_todo.chart1_id && it->chart1_id == join_todo.chart2_id) ){
@@ -404,12 +410,14 @@ create_charts (Polyhedron &P){
 
     // count_faces_in_active_charts(charts);
 
-    if(chart_merges > (desired_merges - 10)){
-      std::cout << "Join cost = " << join_todo.cost << std::endl;
-    }
+    // if(chart_merges > (desired_merges - 10)){
+    //   std::cout << "Join cost = " << join_todo.cost << std::endl;
+    // }
 
     chart_merges++;
     //std::cout << chart_merges << " merges\n";
+
+    joins.sort(sort_joins);
     
   }
 
@@ -431,7 +439,7 @@ create_charts (Polyhedron &P){
     }
   }
   std::cout << "Total number of faces in charts = " << total_faces << std::endl;
-  std::cout << "Initial charts = " << initial_charts << std::endl;
+  std::cout << "Initial charts = " << charts.size() << std::endl;
   std::cout << "Total number merges = " << chart_merges << std::endl;
   std::cout << "Total active charts = " << total_active_charts << std::endl;
 
@@ -480,6 +488,15 @@ int main( int argc, char** argv )
     return 1;
   }
 
+  double cost_threshold = 10000.0;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-co")) {
+    cost_threshold = atof(Utils::getCmdOption(argv, argv + argc, "-co"));
+  }
+  uint32_t chart_threshold = 10;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-ch")) {
+    chart_threshold = atoi(Utils::getCmdOption(argv, argv + argc, "-ch"));
+  }
+
     //load OBJ into arrays
   std::vector<double> vertices;
   std::vector<int> tris;
@@ -512,7 +529,7 @@ int main( int argc, char** argv )
     std::cout << "mesh is triangulated\n";
   }
 
-  uint32_t active_charts = create_charts(polyMesh);
+  uint32_t active_charts = create_charts(polyMesh, cost_threshold, chart_threshold);
 
 
   std::string out_filename = "data/charts.obj";
