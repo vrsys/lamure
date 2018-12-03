@@ -125,7 +125,7 @@ struct Chart
   double area;
   double error;
 
-  Chart(Facet f, Vector normal, double _area){
+  Chart(const Facet f,const Vector normal,const double _area){
     facets.push_back(f);
     active = true;
     area = _area;
@@ -134,7 +134,8 @@ struct Chart
   }
 
   //concatenate face lists
-  void merge_with(Chart &mc, double cost_of_join){
+  void merge_with(Chart &mc, const double cost_of_join){
+
     facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
 
     Vector n = (avg_normal * area) + (mc.avg_normal * mc.area); //create new chart normal
@@ -283,7 +284,6 @@ create_charts (Polyhedron &P){
     Vector normal = fnormals[*fb_boost];
     double area = fareas[*fb_boost];
 
-    // Chart c(fb->id(), normal, area);
     Chart c(*fb, normal, area);
     charts.push_back(c);
 
@@ -349,7 +349,7 @@ create_charts (Polyhedron &P){
     charts[join_todo.chart2_id].active = false;
     
     int current_item = 0;
-    std::vector<int> to_erase;
+    std::list<int> to_erase;
 
     //update itremaining joins that include either of the merged charts
     for (it = joins.begin(); it != joins.end(); ++it)
@@ -361,15 +361,6 @@ create_charts (Polyhedron &P){
          || it->chart2_id == join_todo.chart2_id )
       {
 
-
-        //search for duplicates
-        if ((it->chart1_id == join_todo.chart1_id && it->chart2_id == join_todo.chart2_id) 
-          || (it->chart2_id == join_todo.chart1_id && it->chart1_id == join_todo.chart2_id) ){
-          report << "duplicate found : c1 = " << it->chart1_id << ", c2 = " << it->chart2_id << std::endl; 
-
-          to_erase.push_back(current_item);
-        }
-
         //eliminate references to joined chart 2 (it is no longer active)
         // by pointing them to chart 1
         if (it->chart1_id == join_todo.chart2_id){
@@ -379,9 +370,15 @@ create_charts (Polyhedron &P){
           it->chart2_id = join_todo.chart1_id; 
         }
 
+        //search for duplicates
+        if ((it->chart1_id == join_todo.chart1_id && it->chart2_id == join_todo.chart2_id) 
+          || (it->chart2_id == join_todo.chart1_id && it->chart1_id == join_todo.chart2_id) ){
+          report << "duplicate found : c1 = " << it->chart1_id << ", c2 = " << it->chart2_id << std::endl; 
 
+          to_erase.push_back(current_item);
+        }
         //check for joins within a chart
-        if (it->chart1_id == it->chart2_id)
+        else if (it->chart1_id == it->chart2_id)
         {
           report << "Join found within a chart: " << it->chart1_id << std::endl;
           to_erase.push_back(current_item);
@@ -395,13 +392,21 @@ create_charts (Polyhedron &P){
       current_item++;
     }
 
+    //adjust ID to be deleted to account for previously deleted items
+    to_erase.sort();
+    int num_erased = 0;
     for (auto id : to_erase) {
       std::list<JoinOperation>::iterator it = joins.begin();
-      std::advance(it, id);
+      std::advance(it, id - num_erased);
       joins.erase(it);
+      num_erased++;
     }
 
-    count_faces_in_active_charts(charts);
+    // count_faces_in_active_charts(charts);
+
+    if(chart_merges > (desired_merges - 10)){
+      std::cout << "Join cost = " << join_todo.cost << std::endl;
+    }
 
     chart_merges++;
     //std::cout << chart_merges << " merges\n";
@@ -432,7 +437,7 @@ create_charts (Polyhedron &P){
 
 
   std::cout << "--------------------\nReport:\n----------------------\n";
-  std::cout << report.str();
+  // std::cout << report.str();
 
   //populate LUT for face to chart mapping
   //count charts on the way to apply new chart ids
