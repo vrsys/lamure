@@ -307,14 +307,12 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     }
   } 
 
-  joins.sort(sort_joins);
-
   // join charts until target is reached
   int prev_percent = -1;
 
+  joins.sort(sort_joins);
   const double lowest_cost = joins.front().cost;
 
-  // while (chart_merges < desired_merges && !joins.empty()){
   while (joins.front().cost < cost_threshold  
         &&  !joins.empty()
         &&  (charts.size() - chart_merges) > chart_threshold){
@@ -325,12 +323,6 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       prev_percent = percent;
       std::cout << percent << " percent complete\n";
     }
-
-
-
-    //sort joins by cost
-    //TODO faster way than sorting the whole list each time - change the placing only of affected items
-    
 
     //implement the join with lowest cost
     JoinOperation join_todo = joins.front();
@@ -352,7 +344,8 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     
     int current_item = 0;
     std::list<int> to_erase;
-    std::list<int> to_sort;
+    std::vector<JoinOperation> to_replace;
+    // std::list<int> to_sort;
 
     //update itremaining joins that include either of the merged charts
     for (it = joins.begin(); it != joins.end(); ++it)
@@ -394,7 +387,10 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
         else {
           //update cost with new cost
           it->cost = cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
-          to_sort.push_back(current_item);
+
+          //save this join to be deleted and replaced in correct position after deleting duplicates
+          to_replace.push_back(*it);
+          to_erase.push_back(current_item);
         }
       }
       current_item++;
@@ -404,11 +400,33 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     to_erase.sort();
     int num_erased = 0;
     for (auto id : to_erase) {
-      std::list<JoinOperation>::iterator it = joins.begin();
-      std::advance(it, id - num_erased);
-      joins.erase(it);
+      std::list<JoinOperation>::iterator it2 = joins.begin();
+      std::advance(it2, id - num_erased);
+      joins.erase(it2);
       num_erased++;
     }
+
+    //replace joins that were filtered out to be sorted
+    //TODO fix sorting function
+    // TODO debug new sort and delete oldmethod
+    std::sort(to_replace.begin(), to_replace.end(), sort_joins);
+    std::list<JoinOperation>::iterator it2;
+    uint32_t insert_item = 0;
+    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+      //insert items while join list item has bigger cost than element to be inserted
+      while (it2->cost > to_replace[insert_item].cost
+            && insert_item < to_replace.size()){
+
+        joins.insert(it2, to_replace[insert_item]);
+        insert_item++;
+      }
+      //if all items are in place, we are done
+      if (insert_item >= to_replace.size())
+      {
+        break;
+      }
+    }
+
 
     // count_faces_in_active_charts(charts);
 
