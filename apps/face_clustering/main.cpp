@@ -427,6 +427,22 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       }
     }
 
+    //DEBUG sorting
+
+    uint32_t index = 0;
+    double last_cost = 0.0;
+    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+      if (index>0)
+      {
+        if (it2->cost < last_cost)
+        {
+          std::cout << "SORTING ERROR\n";
+        }
+      }
+
+    }
+
+
 
     // count_faces_in_active_charts(charts);
 
