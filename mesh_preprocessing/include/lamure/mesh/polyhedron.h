@@ -214,7 +214,7 @@ public:
     }
 
 
-    std::cout << "all vertices and faces added" << std::endl;
+    //std::cout << "all vertices and faces added" << std::endl;
 
     B.end_surface();
   }
