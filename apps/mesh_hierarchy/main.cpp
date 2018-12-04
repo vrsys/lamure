@@ -138,11 +138,17 @@ int32_t main(int argc, char* argv[]) {
   else {
     terminate = true;
   }
+
+  uint32_t triangle_budget = 1000;
+  if (cmd_option_exists(argv, argv+argc, "-t")) {
+    triangle_budget = atoi(get_cmd_option(argv, argv+argc, "-t"));
+  }
   
   if (terminate) {
     std::cout << "Usage: " << argv[0] << "<flags>\n" <<
       "INFO: " << argv[0] << "\n" <<
       "\t-f: select .obj file\n" << 
+      "\t-t: set triangle budget (=1000)\n" << 
       "\n";
     return 0;
   }
@@ -155,7 +161,7 @@ int32_t main(int argc, char* argv[]) {
   std::cout << "obj loaded" << std::endl;
   std::cout << "creating LOD hierarchy..." << std::endl;
 
-  auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, 1000);
+  auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, triangle_budget);
 
   std::string bvh_filename = obj_filename.substr(0, obj_filename.size()-4)+".bvh";
   bvh->write_bvh_file(bvh_filename);

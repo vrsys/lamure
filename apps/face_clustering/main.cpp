@@ -352,6 +352,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     
     int current_item = 0;
     std::list<int> to_erase;
+    std::list<int> to_sort;
 
     //update itremaining joins that include either of the merged charts
     for (it = joins.begin(); it != joins.end(); ++it)
@@ -393,6 +394,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
         else {
           //update cost with new cost
           it->cost = cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
+          to_sort.push_back(current_item);
         }
       }
       current_item++;
