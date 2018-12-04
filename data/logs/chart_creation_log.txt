@@ -1,0 +1,38 @@
+
+-------------------------------------
+Executed at 2018-12-04 20:06:17
+Ran for 0.018464
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Desired Charts: 20, active charts: 1282
+Cost threshold: 4000
+
+-------------------------------------
+Executed at 2018-12-04 20:11:41
+Ran for 0.0748071 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 4e+07
+
+-------------------------------------
+Executed at 2018-12-04 20:15:40
+Ran for 182.208 s
+Input file: data/dinosaur.obj
+Output file: data/charts.obj
+Vertices: 27727 , faces: 55550
+Desired Charts: 100, active charts: 150
+Cost threshold: 4e+11
+
+-------------------------------------
+Executed at 2018-12-04 20:25:56
+Ran for 420.366 s
+Input file: data/dinosaur.obj
+Output file: data/charts.obj
+Vertices: 27727 , faces: 55550
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+
+saved as /home/hoqe4365/Desktop/lamure/lamure/install/bin/data/chart_demos/dino_2018-12-04 20:25:56.obj
+

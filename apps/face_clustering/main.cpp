@@ -3,6 +3,9 @@
 #include <sstream>
 #include <algorithm>
 #include <cmath>
+#include <numeric>
+#include <chrono>
+#include <limits>
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
@@ -366,10 +369,6 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
           it->chart2_id = join_todo.chart1_id; 
         }
 
-
-        //TODO - search for joins that would result in charts with less than 3 corners
-        // therefore search for joins, where member charts are included in at least 3 joins, not including the shared join
-
         //search for duplicates
         if ((it->chart1_id == join_todo.chart1_id && it->chart2_id == join_todo.chart2_id) 
           || (it->chart2_id == join_todo.chart1_id && it->chart1_id == join_todo.chart2_id) ){
@@ -396,6 +395,8 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       current_item++;
     }
 
+    uint32_t joins_after_first_pass = joins.size();
+
     //adjust ID to be deleted to account for previously deleted items
     to_erase.sort();
     int num_erased = 0;
@@ -406,56 +407,68 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       num_erased++;
     }
 
-    //replace joins that were filtered out to be sorted
-    //TODO fix sorting function
-    // TODO debug new sort and delete oldmethod
-    std::sort(to_replace.begin(), to_replace.end(), sort_joins);
-    std::list<JoinOperation>::iterator it2;
-    uint32_t insert_item = 0;
-    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-      //insert items while join list item has bigger cost than element to be inserted
-      while (it2->cost > to_replace[insert_item].cost
-            && insert_item < to_replace.size()){
-
-        joins.insert(it2, to_replace[insert_item]);
-        insert_item++;
-      }
-      //if all items are in place, we are done
-      if (insert_item >= to_replace.size())
-      {
-        break;
-      }
-    }
-
-    //DEBUG sorting
-
-    uint32_t index = 0;
-    double last_cost = 0.0;
-    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-      if (index>0)
-      {
-        if (it2->cost < last_cost)
+    // replace joins that were filtered out to be sorted
+    if (to_replace.size() > 0)
+    {
+      std::sort(to_replace.begin(), to_replace.end(), sort_joins);
+      std::list<JoinOperation>::iterator it2;
+      uint32_t insert_item = 0;
+      for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+        //insert items while join list item has bigger cost than element to be inserted
+        while (it2->cost > to_replace[insert_item].cost
+              && insert_item < to_replace.size()){
+          joins.insert(it2, to_replace[insert_item]);
+          insert_item++;
+        }
+        //if all items are in place, we are done
+        if (insert_item >= to_replace.size())
         {
-          std::cout << "SORTING ERROR\n";
+          break;
         }
       }
-
+      //add any remaining items
+      for (uint32_t i = insert_item; i < to_replace.size(); i++){
+        joins.push_back(to_replace[i]);
+      }
     }
 
 
+    //     //TODO - search for joins that would result in charts with less than 3 corners
+    //     // therefore search for joins, where member charts are included in at least 3 joins, not including the shared join
+    // //create map of chart ids to a list/map/vector of adjacent charts
+    // //populate this on 1 pass through joins
+    // //then pass through again and check all merges would leave at least 3 neighbours
+    // to_erase.clear();
+    // std::map<uint32_t, std::map<uint32_t, bool> > neighbour_count;
+    // std::list<JoinOperation>::iterator it2;
+    // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+    //   //for chart 1 , add entry in map for that chart containing id of chart 2
+    //   // and vice versa
+    //   auto& c_map = neighbour_count[it2->chart1_id];
+    //   c_map[it2->chart2_id] = true;
+    //   c_map = neighbour_count[it2->chart2_id];
+    //   c_map[it2->chart1_id] = true;
+    // }
+    // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+    //   // combined neighbour count of joins' 2 charts should be at least 5
+    //   // they will both contain each other (accounting for 2 neighbours) and require 3 more
 
-    // count_faces_in_active_charts(charts);
-
-    // if(chart_merges > (desired_merges - 10)){
-    //   std::cout << "Join cost = " << join_todo.cost << std::endl;
+    //   //if total neighbour count < 5
+    //   //    add to to_erase list
     // }
 
     chart_merges++;
-    //std::cout << chart_merges << " merges\n";
 
-    joins.sort(sort_joins);
+    // joins.sort(sort_joins);
     
   }
+
+  // std::cout << "Printing Joins:\n";  
+  // int index = 0;
+  // std::list<JoinOperation>::iterator it2;
+  // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+  //   std::cout << "Join " << ++index << ", cost " << it2->cost << std::endl;
+  // }
 
 
   //reporting//testing
@@ -471,7 +484,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       uint32_t num_faces = charts[i].facets.size();
       total_faces += num_faces;
       total_active_charts++;
-      std::cout << "Chart " << i << " : " << num_faces << " faces" << std::endl;
+      // std::cout << "Chart " << i << " : " << num_faces << " faces" << std::endl;
     }
   }
   std::cout << "Total number of faces in charts = " << total_faces << std::endl;
@@ -515,6 +528,10 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 
 int main( int argc, char** argv ) 
 {
+
+  auto start_time = std::chrono::system_clock::now();
+
+
   std::string obj_filename = "dino.obj";
   if (Utils::cmdOptionExists(argv, argv+argc, "-f")) {
     obj_filename = std::string(Utils::getCmdOption(argv, argv + argc, "-f"));
@@ -524,7 +541,7 @@ int main( int argc, char** argv )
     return 1;
   }
 
-  double cost_threshold = 10000.0;
+  double cost_threshold = std::numeric_limits<double>::max();
   if (Utils::cmdOptionExists(argv, argv+argc, "-co")) {
     cost_threshold = atof(Utils::getCmdOption(argv, argv + argc, "-co"));
   }
@@ -573,6 +590,23 @@ int main( int argc, char** argv )
   OBJ_printer::print_polyhedron_wavefront_with_chart_colours( ofs, polyMesh,chart_id_map, active_charts);
   ofs.close();
   std::cout << "simplified mesh was written to " << out_filename << std::endl;
+
+  //Logging
+  auto time = std::chrono::system_clock::now();
+  std::chrono::duration<double> diff = time - start_time;
+  std::time_t now_c = std::chrono::system_clock::to_time_t(time);
+  std::string log_path = "../../data/logs/chart_creation_log.txt";
+  ofs.open (log_path, std::ofstream::out | std::ofstream::app);
+  ofs << "\n-------------------------------------\n";
+  
+  ofs << "Executed at " << std::put_time(std::localtime(&now_c), "%F %T") << std::endl;
+  ofs << "Ran for " << diff.count() << " s" << std::endl;
+  ofs << "Input file: " << obj_filename << "\nOutput file: " << out_filename << std::endl;
+  ofs << "Vertices: " << vertices.size()/3 << " , faces: " << tris.size()/3 << std::endl; 
+  ofs << "Desired Charts: " << chart_threshold << ", active charts: " << active_charts << std::endl;
+  ofs << "Cost threshold: " << cost_threshold << std::endl;
+  ofs.close();
+  std::cout << "Log written to " << log_path << std::endl;
 
 
 
