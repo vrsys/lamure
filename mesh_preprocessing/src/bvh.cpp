@@ -212,7 +212,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
     for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; node_id++) {
 
       int percent = (int)((float)num_nodes_done / (float)num_nodes_todo);
-      if (precent != prev_percent) {
+      if (percent != prev_percent) {
         prev_percent = percent;
         std::cout << "Simplification: " << percent << " %" << std::endl;
       }
