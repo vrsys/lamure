@@ -199,18 +199,29 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   //    take all triangles from the two children
   //    simplify these (half the number of triangles)
 
+  uint32_t num_nodes_todo = 0;
+  for (int d = depth_-1; d>=0; d--) {
+    num_nodes_todo +=  get_length_of_depth(d);
+  }
+  uint32_t num_nodes_done = 0;
+  int prev_percent = -1;
+
   for (int d = depth_-1; d>=0; d--) {
     uint32_t first_node = get_first_node_id_of_depth(d);
     uint32_t num_of_nodes = get_length_of_depth(d);
     for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; node_id++) {
 
+      int percent = (int)((float)num_nodes_done / (float)num_nodes_todo);
+      if (precent != prev_percent) {
+        prev_percent = percent;
+        std::cout << "Simplification: " << percent << " %" << std::endl;
+      }
+
       uint32_t left_child = get_child_id(node_id, 0);
       uint32_t right_child = get_child_id(node_id, 1);
 
-      std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
-      //std::cout << "left tris: " << triangles_map_[left_child].size() << std::endl;
-      //std::cout << "right tris: " << triangles_map_[right_child].size() << std::endl;
-
+      //std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
+      
       //flag decides if node is printed to obj, before and after simplification
       int print_id = -1;
 #if 1
@@ -233,7 +244,8 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
         );
 
 
-      std::cout << "simplified: " << triangles_map_[node_id].size() << "\n-----------------" << std::endl; 
+      std::cout << "simplified: " << triangles_map_[node_id].size() << " desired: " << primitives_per_node_ << std::endl; 
+      num_nodes_done++;
     }
   }
 
@@ -331,8 +343,8 @@ void bvh::simplify(
   int print_mesh_to_obj_id) {
 
 
-  std::cout << "left tris : " << left_child_tris.size() << std::endl;
-  std::cout << "right tris : " << right_child_tris.size() << std::endl;  
+  //std::cout << "left tris : " << left_child_tris.size() << std::endl;
+  //std::cout << "right tris : " << right_child_tris.size() << std::endl;  
 
   //create a mesh from vectors
   Polyhedron polyMesh;
@@ -340,7 +352,11 @@ void bvh::simplify(
   polyMesh.delegate(builder);
 
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
-    std::cout << "triangle mesh valid" << std::endl;
+    
+  }
+  else {
+    std::cout << "WARNING! Triangle mesh invalid!" << std::endl;
+    return;
   }
 
     //print to obj if required
