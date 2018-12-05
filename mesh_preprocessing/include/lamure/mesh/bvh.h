@@ -38,8 +38,7 @@ protected:
   void simplify(
     std::vector<triangle_t>& left_child_tris,
     std::vector<triangle_t>& right_child_tris,
-    std::vector<triangle_t>& output_tris,
-    int print_mesh_to_obj_id=-1);
+    std::vector<triangle_t>& output_tris);
 
 
   //node_id -> triangles

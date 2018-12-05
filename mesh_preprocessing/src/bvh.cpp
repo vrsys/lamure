@@ -2,6 +2,7 @@
 #include <lamure/mesh/bvh.h>
 #include <lamure/mesh/polyhedron.h>
 #include <lamure/ren/lod_stream.h>
+#include <lamure/mesh/tools.h>
 
 #include <limits>
 #include <queue>
@@ -199,6 +200,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   //    take all triangles from the two children
   //    simplify these (half the number of triangles)
 
+
   uint32_t num_nodes_todo = 0;
   for (int d = depth_-1; d>=0; d--) {
     num_nodes_todo +=  get_length_of_depth(d);
@@ -209,9 +211,19 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   for (int d = depth_-1; d>=0; d--) {
     uint32_t first_node = get_first_node_id_of_depth(d);
     uint32_t num_of_nodes = get_length_of_depth(d);
-    for (uint32_t node_id = first_node; node_id < first_node+num_of_nodes; node_id++) {
 
-      int percent = (int)((float)num_nodes_done / (float)num_nodes_todo);
+    std::vector<uint32_t> nodes_todo;
+    for (uint32_t i = first_node; i < first_node+num_of_nodes; ++i) {
+      nodes_todo.push_back(i);
+    }
+
+    //lambda for parallel version
+    
+    auto lambda_simplify = [&](uint64_t i, uint32_t id)->void{
+
+      uint32_t node_id = nodes_todo[i];
+
+      int percent = (int)(((float)num_nodes_done / (float)num_nodes_todo)*100.f);
       if (percent != prev_percent) {
         prev_percent = percent;
         std::cout << "Simplification: " << percent << " %" << std::endl;
@@ -221,32 +233,24 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
       uint32_t right_child = get_child_id(node_id, 1);
 
       //std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
-      
-      //flag decides if node is printed to obj, before and after simplification
-      int print_id = -1;
-#if 1
-      if (node_id == 78 
-        // || node_id == 15 
-        // || node_id == 103 
-        // || node_id == 158  
-        )
-      {
-        print_id = node_id;
-      }
-#endif
 
       //params to simplify: input set of tris for both children, output set of tris
       simplify(
         triangles_map_[left_child],
         triangles_map_[right_child],
-        triangles_map_[node_id],
-        print_id
+        triangles_map_[node_id]
         );
 
-
-      std::cout << "simplified: " << triangles_map_[node_id].size() << " desired: " << primitives_per_node_ << std::endl; 
+      if (triangles_map_[node_id].size() > primitives_per_node_) {
+        std::cout << "WARNING! @node_id " << node_id << " : simplified: " << triangles_map_[node_id].size() << " / desired: " << primitives_per_node_ << std::endl; 
+      }
       num_nodes_done++;
-    }
+    };
+
+
+    uint32_t num_threads = 24;
+
+    lamure::mesh::parallel_for(num_threads, nodes_todo.size(), lambda_simplify);
   }
 
   std::cout << "Upsweep done." << std::endl;
@@ -255,6 +259,18 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
   for (uint32_t node_id = 0; node_id < nodes.size(); ++node_id) {
     auto& node = nodes[node_id];
     
+
+    if (triangles_map_[node_id].size() > primitives_per_node_) {
+      std::cout << "WARNING: (" << node_id << ": " << triangles_map_[node_id].size() << ") removing \
+      " <<  triangles_map_[node_id].size()-primitives_per_node_ << " triangles manually to stay on budget: " << primitives_per_node_ << std::endl;
+    }
+
+    //if we have too many, remove some
+    while (triangles_map_[node_id].size() > primitives_per_node_) {
+      triangles_map_[node_id].pop_back();
+    }
+    
+
     
     visibility_.push_back(node_visibility::NODE_VISIBLE);
 
@@ -306,24 +322,14 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
     centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f);
 
     avg_primitive_extent /= (float)triangles_map_[node_id].size();
-    avg_primitive_extent_.push_back(avg_primitive_extent);
+    avg_primitive_extent_.push_back(std::max(0.01f, avg_primitive_extent));
     max_primitive_extent_deviation_.push_back(max_primitive_extent_deviation);
 
-    if (triangles_map_[node_id].size() > primitives_per_node_) {
-      std::cout << "WARNING: (" << node_id << ": " << triangles_map_[node_id].size() << ") removing \
-      " <<  triangles_map_[node_id].size()-primitives_per_node_ << " triangles manually to stay on budget: " << primitives_per_node_ << std::endl;
-    }
 
-    //if we have too many, remove some
-    while (triangles_map_[node_id].size() > primitives_per_node_) {
-      triangles_map_[node_id].pop_back();
-    }
-    
     //if the number of triangles was not divisible by two, add another tri for padding
     while (triangles_map_[node_id].size() < primitives_per_node_) {
       triangles_map_[node_id].push_back(triangle_t());
     }
-
 
   }
 
@@ -339,8 +345,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 void bvh::simplify(
   std::vector<triangle_t>& left_child_tris,
   std::vector<triangle_t>& right_child_tris,
-  std::vector<triangle_t>& output_tris,
-  int print_mesh_to_obj_id) {
+  std::vector<triangle_t>& output_tris) {
 
 
   //std::cout << "left tris : " << left_child_tris.size() << std::endl;
@@ -358,17 +363,6 @@ void bvh::simplify(
     std::cout << "WARNING! Triangle mesh invalid!" << std::endl;
     return;
   }
-
-    //print to obj if required
-  if (print_mesh_to_obj_id >= 0)
-  {
-    std::string filename = "data/nodes/unsimplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
-    std::ofstream ofs(filename);
-    OBJ_printer::print_polyhedron(ofs,polyMesh,filename);
-    ofs.close();
-    std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
-  }
-
 
   //simplify the two input sets of tris into output_tris
 
@@ -411,15 +405,14 @@ void bvh::simplify(
 
 #endif
 
+/*
   //print to obj if required
-  if (print_mesh_to_obj_id >= 0)
-  {
-    std::string filename = "data/nodes/simplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
-    std::ofstream ofs(filename);
-    OBJ_printer::print_polyhedron(ofs,polyMesh,filename);
-    ofs.close();
-    std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
-  }
+  std::string filename = "data/nodes/simplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
+  std::ofstream ofs(filename);
+  OBJ_printer::print_polyhedron(ofs,polyMesh,filename);
+  ofs.close();
+  std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
+  */
   
 
   output_tris.clear();
