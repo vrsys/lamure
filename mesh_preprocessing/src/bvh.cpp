@@ -157,6 +157,10 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
     nodes.push_back(left_child);
     nodes.push_back(right_child);
 
+    if (left_child.depth_ > depth_) {
+      std::cout << "depth: " << left_child.depth_ << 
+        " (+" << get_length_of_depth(left_child.depth_) << " nodes)" << std::endl;
+    }
     depth_ = std::max(left_child.depth_, depth_);
 
   } //end of while
@@ -234,16 +238,27 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
       //std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
 
-      //params to simplify: input set of tris for both children, output set of tris
+      //try simplification with edge constraint
       simplify(
         triangles_map_[left_child],
         triangles_map_[right_child],
-        triangles_map_[node_id]
-        );
+        triangles_map_[node_id],
+        true);
+
+      if (triangles_map_[node_id].size() > primitives_per_node_) {
+        //simplify without constraint
+        triangles_map_[node_id].clear();
+        simplify(
+          triangles_map_[left_child],
+          triangles_map_[right_child],
+          triangles_map_[node_id],
+          false);
+      }
 
       if (triangles_map_[node_id].size() > primitives_per_node_) {
         std::cout << "WARNING! @node_id " << node_id << " : simplified: " << triangles_map_[node_id].size() << " / desired: " << primitives_per_node_ << std::endl; 
       }
+
       num_nodes_done++;
     };
 
@@ -322,7 +337,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
     centroids_.push_back(vec3f(node.min_ + node.max_)*0.5f);
 
     avg_primitive_extent /= (float)triangles_map_[node_id].size();
-    avg_primitive_extent_.push_back(std::max(0.01f, avg_primitive_extent));
+    avg_primitive_extent_.push_back(std::max((1.f/(get_depth_of_node(node_id)+1))*0.1f, 10.f*avg_primitive_extent));
     max_primitive_extent_deviation_.push_back(max_primitive_extent_deviation);
 
 
@@ -345,7 +360,8 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 void bvh::simplify(
   std::vector<triangle_t>& left_child_tris,
   std::vector<triangle_t>& right_child_tris,
-  std::vector<triangle_t>& output_tris) {
+  std::vector<triangle_t>& output_tris,
+  bool contrain_edges) {
 
 
   //std::cout << "left tris : " << left_child_tris.size() << std::endl;
@@ -369,41 +385,41 @@ void bvh::simplify(
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
   SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
   
-#if 1
 
+  if (contrain_edges) {
 
-  // simplification with borders constrained
+    //simplification with borders constrained
+    Border_is_constrained_edge_map bem(polyMesh);
 
-  Border_is_constrained_edge_map bem(polyMesh);
+    typedef SMS::Bounded_normal_change_placement<SMS::LindstromTurk_placement<Polyhedron> > Placement;
+    
+    SMS::edge_collapse
+             (polyMesh
+             ,stop
+              ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+                                .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+                                .edge_is_constrained_map(bem)
+                                // .get_placement(Placement(bem))
+                                // .get_cost (SMS::Edge_length_cost <Polyhedron>())
+                                // .get_placement(SMS::Midpoint_placement<Polyhedron>())
+                                .get_cost (SMS::LindstromTurk_cost<Polyhedron>())
+                                .get_placement(Placement())
+             );
+  } 
+  else {
 
-  typedef SMS::Bounded_normal_change_placement<SMS::LindstromTurk_placement<Polyhedron> > Placement;
-  
-  SMS::edge_collapse
-           (polyMesh
-           ,stop
-            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-                              .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
-                              .edge_is_constrained_map(bem)
-                              // .get_placement(Placement(bem))
-                              // .get_cost (SMS::Edge_length_cost <Polyhedron>())
-                              // .get_placement(SMS::Midpoint_placement<Polyhedron>())
-                              .get_cost (SMS::LindstromTurk_cost<Polyhedron>())
-                              .get_placement(Placement())
-           );
-#else
+    //without border constraint    
+    SMS::edge_collapse
+              (polyMesh
+              ,stop
+              ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index, polyMesh))
+                                 .halfedge_index_map(get(CGAL::halfedge_external_index, polyMesh))
+                                 .get_cost(SMS::Edge_length_cost<Polyhedron>())
+                                 //.get_cost (SMS::LindstromTurk_cost<Polyhedron>())
+                                 .get_placement(SMS::Midpoint_placement<Polyhedron>())
+              );
 
-  //without border constraint
-  
-  SMS::edge_collapse
-            (polyMesh
-            ,stop
-            ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index, polyMesh))
-                               .halfedge_index_map(get(CGAL::halfedge_external_index, polyMesh))
-                               .get_cost(SMS::Edge_length_cost<Polyhedron>())
-                               .get_placement(SMS::Midpoint_placement<Polyhedron>())
-            );
-
-#endif
+  }
 
 /*
   //print to obj if required

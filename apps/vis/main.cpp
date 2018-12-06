@@ -2988,7 +2988,7 @@ void gui_view_settings(){
       }
     }
 
-    if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f)) {
+    if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 0.1f, 50.0f, "%.2f", 2.5f)) {
       input_.gui_lock_ = true;
     }
     if (ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f)) {

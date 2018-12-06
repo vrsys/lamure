@@ -38,7 +38,8 @@ protected:
   void simplify(
     std::vector<triangle_t>& left_child_tris,
     std::vector<triangle_t>& right_child_tris,
-    std::vector<triangle_t>& output_tris);
+    std::vector<triangle_t>& output_tris,
+    bool contrain_edges);
 
 
   //node_id -> triangles
