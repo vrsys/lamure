@@ -25,7 +25,8 @@ OPTIONAL_END
 void main() {
 
   vec4 n = vertex_in.normal;
-  vec3 color = vec3(n.x*0.5+0.5, n.y*0.5+0.5, n.z*0.5+0.5);
+  vec3 nv = normalize((n*inverse(model_view_matrix)).xyz);
+  vec3 color = vec3(nv.x*0.5+0.5, nv.y*0.5+0.5, nv.z*0.5+0.5);
 
   OPTIONAL_BEGIN
     vec4 pos_es = model_view_matrix * vec4(vertex_in.position.xyz, 1.0f);
