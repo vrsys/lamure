@@ -150,9 +150,10 @@ struct Chart
   }
 
   static double get_compactness_of_merged_charts(Chart& c1, Chart& c2){
+
     double area = c1.area + c2.area;
     std::vector<Facet> combined_facets (c1.facets);
-    combined_facets.insert(combined_facets.end(), c2.facets.begin(), c2.facets.end());
+    combined_facets.insert(combined_facets.end(), c2.facets.begin(), c2.facets.end());    
     double perimeter = get_perimeter(combined_facets);
 
     return perimeter / area;
@@ -162,32 +163,46 @@ struct Chart
   static double get_perimeter(std::vector<Facet> chart_facets){
     double accum_perimeter = 0;
 
+
+
     //for each face
     for (auto& face : chart_facets)
     {
-
+    
         Halfedge_facet_circulator he = face.facet_begin();
         CGAL_assertion( CGAL::circulator_size(he) >= 3);
-        //for 3 adjacent faces
-        do {
-            uint32_t adj_face_id = he->opposite()->facet()->id();
 
-            //check if they are in this chart
-            bool found_in_this_chart = false;
-            for (auto& chart_member : chart_facets){
-              if (chart_member.id() == adj_face_id)
-              {
-                found_in_this_chart = true;
-              }
-            }
-            //if not, add edge length to perimeter total, record as neighbour
-            if (!found_in_this_chart)
+
+        //for 3 edges (adjacent faces)
+        do {
+            //check this edge is not a border
+            if ( !(he->is_border()) && !(he->opposite()->is_border()) )
             {
-              accum_perimeter += edge_length(he);
+              uint32_t adj_face_id = he->opposite()->facet()->id();
+
+              //check if they are in this chart
+              bool found_in_this_chart = false;
+              for (auto& chart_member : chart_facets){
+                if (chart_member.id() == adj_face_id)
+                {
+                  found_in_this_chart = true;
+                }
+              }
+              
+              //if not, add edge length to perimeter total, record as neighbour
+              if (!found_in_this_chart)
+              {
+                
+                accum_perimeter += edge_length(he);
+              }
             }
 
         } while ( ++he != face.facet_begin());
+
+        
     }
+
+
 
     return accum_perimeter;
   }
@@ -195,6 +210,7 @@ struct Chart
   static double edge_length(Halfedge_facet_circulator he){
     const Point& p = he->opposite()->vertex()->point();
     const Point& q = he->vertex()->point();
+
     return CGAL::sqrt(CGAL::squared_distance(p, q));
   }
 
@@ -212,12 +228,9 @@ double cost_of_join(Chart &c1, Chart &c2){
 
   double compactness = Chart::get_compactness_of_merged_charts(c1,c2);
   
-  // std::cout << "error output : angle: " << error << " compactness: " << compactness << " pre-existing: " << (c1.error + c2.error);
 
   error += (accum_error_factor * (c1.error + c2.error));
   error += (compactness_factor * compactness);
-
-  // std::cout << " total: " << error << std::endl; 
   return error;
 }
 
@@ -288,9 +301,8 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     fb_boost++;
   }
 
-  // const uint32_t initial_charts = charts.size();
-  // const uint32_t chart_target = 20;
-  // const uint32_t desired_merges = initial_charts - chart_target;
+  const uint32_t initial_charts = charts.size();
+  const uint32_t desired_merges = initial_charts - chart_threshold;
   uint32_t chart_merges = 0;
 
   //create possible join list
@@ -304,18 +316,19 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     {
           uint32_t face1 = eb->facet()->id();
           uint32_t face2 = eb->opposite()->facet()->id();
-
           JoinOperation join (face1,face2,cost_of_join(charts[face1],charts[face2]));
           joins.push_back(join);
-
-
-          // std::cout << "join cost : " << cost_of_join(charts[face1],charts[face2]) << std::endl; 
-          // std::cout << "create join between faces " << face1 << " and " << face2  << std::endl;
     }
   } 
 
+  std::cout << joins.size() << " joins\n";
+
   // join charts until target is reached
-  int prev_percent = -1;
+  int prev_cost_percent = -1;
+  int prev_charts_percent = -1;
+  int overall_percent = -1;
+
+
 
   joins.sort(sort_joins);
   const double lowest_cost = joins.front().cost;
@@ -326,11 +339,23 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
         &&  (charts.size() - chart_merges) > chart_threshold){
 
     int percent = (int)(((joins.front().cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
-    // int percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
-    if (percent != prev_percent) {
-      prev_percent = percent;
+    if (percent != prev_cost_percent && percent > overall_percent) {
+      prev_cost_percent = percent;
+      overall_percent = percent;
+      std::cout << percent << " percent complete\n";
+    } 
+
+
+  // return 1;
+
+  // //end test
+    percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
+    if (percent != prev_charts_percent && percent > overall_percent) {
+      prev_charts_percent = percent;
+      overall_percent = percent;
       std::cout << percent << " percent complete\n";
     }
+
 
     //implement the join with lowest cost
     JoinOperation join_todo = joins.front();
@@ -400,8 +425,6 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       current_item++;
     }
 
-    uint32_t joins_after_first_pass = joins.size();
-
     //adjust ID to be deleted to account for previously deleted items
     to_erase.sort();
     int num_erased = 0;
@@ -438,33 +461,51 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     }
 
 
-    //     //TODO - search for joins that would result in charts with less than 3 corners
-    //     // therefore search for joins, where member charts are included in at least 3 joins, not including the shared join
-    // //create map of chart ids to a list/map/vector of adjacent charts
-    // //populate this on 1 pass through joins
-    // //then pass through again and check all merges would leave at least 3 neighbours
-    // to_erase.clear();
-    // std::map<uint32_t, std::map<uint32_t, bool> > neighbour_count;
-    // std::list<JoinOperation>::iterator it2;
-    // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-    //   //for chart 1 , add entry in map for that chart containing id of chart 2
-    //   // and vice versa
-    //   auto& c_map = neighbour_count[it2->chart1_id];
-    //   c_map[it2->chart2_id] = true;
-    //   c_map = neighbour_count[it2->chart2_id];
-    //   c_map[it2->chart1_id] = true;
-    // }
-    // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-    //   // combined neighbour count of joins' 2 charts should be at least 5
-    //   // they will both contain each other (accounting for 2 neighbours) and require 3 more
+    //   search for joins that would result in charts with less than 3 corners
+    //     therefore search for joins, where member charts are included in less than 3 joins, not including the shared join
+    // create map of chart ids to a list/map/vector of adjacent charts
+    // populate this on 1 pass through joins
+    // then pass through again and check all merges would leave at least 3 neighbours
+    to_erase.clear();
+    std::map<uint32_t, std::map<uint32_t, bool> > neighbour_count;
+    std::list<JoinOperation>::iterator it2;
+    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+      //for chart 1 , add entry in map for that chart containing id of chart 2
+      // and vice versa
+      std::map<uint32_t, bool>& c_map_1 = neighbour_count[it2->chart1_id];
+      c_map_1[it2->chart2_id] = true;
 
-    //   //if total neighbour count < 5
-    //   //    add to to_erase list
-    // }
+      std::map<uint32_t, bool>& c_map_2 = neighbour_count[it2->chart2_id];
+      c_map_2[it2->chart1_id] = true;
+
+    }
+
+    uint32_t join_id = 0;
+    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+      // combined neighbour count of joins' 2 charts should be at least 5
+      // they will both contain each other (accounting for 2 neighbours) and require 3 more
+
+      //merge the maps for each chart in the join and count unique neighbours
+      std::map<uint32_t, bool> combined_nbrs (neighbour_count[it2->chart1_id]);
+      combined_nbrs.insert(neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
+      if (combined_nbrs.size() < 5)
+      {
+        to_erase.push_back(join_id);
+      }
+      join_id++;
+    }
+    //erase joins that would result in less than 3 corners
+    to_erase.sort();
+    num_erased = 0;
+    for (auto id : to_erase) {
+      std::list<JoinOperation>::iterator it2 = joins.begin();
+      std::advance(it2, id - num_erased);
+      joins.erase(it2);
+      num_erased++;
+    }
 
     chart_merges++;
 
-    // joins.sort(sort_joins);
     
   }
 
@@ -518,18 +559,6 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 
 }
 
-// void organise_chart_id_map(std::map<uint32_t, uint32_t>& chart_id_map){
-
-//   std::map<uint32_t, uint32_t> new_map;
-
-//   for (auto const& x : chart_id_map)
-//   {
-//       std::cout << x.first  // string (key)
-//                 // << ':' 
-//                 // << x.second // string's value 
-//                 << std::endl ;
-//   }
-// }
 
 int main( int argc, char** argv ) 
 {
@@ -605,7 +634,7 @@ int main( int argc, char** argv )
   ofs << "\n-------------------------------------\n";
   
   ofs << "Executed at " << std::put_time(std::localtime(&now_c), "%F %T") << std::endl;
-  ofs << "Ran for " << diff.count() << " s" << std::endl;
+  ofs << "Ran for " << (int)diff.count() / 60 << " m "<< (int)diff.count() % 60 << " s" << std::endl;
   ofs << "Input file: " << obj_filename << "\nOutput file: " << out_filename << std::endl;
   ofs << "Vertices: " << vertices.size()/3 << " , faces: " << tris.size()/3 << std::endl; 
   ofs << "Desired Charts: " << chart_threshold << ", active charts: " << active_charts << std::endl;

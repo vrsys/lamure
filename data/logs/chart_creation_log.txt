@@ -45,3 +45,195 @@ Output file: data/charts.obj
 Vertices: 16781 , faces: 33558
 Desired Charts: 40, active charts: 40
 Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 18:47:45
+Ran for 0.669593 s
+Input file: ../../data/bunny.obj
+Output file: data/charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 10, active charts: 69451
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 19:00:14
+Ran for 0.6691 s
+Input file: ../../data/bunny.obj
+Output file: data/charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 20, active charts: 69451
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 19:01:20
+Ran for 0.673726 s
+Input file: ../../data/bunny.obj
+Output file: data/charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 20, active charts: 69451
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 19:02:03
+Ran for 0.676958 s
+Input file: ../../data/bunny.obj
+Output file: data/charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 20, active charts: 69451
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 19:03:02
+Ran for 0.714498 s
+Input file: ../../data/bunny.obj
+Output file: data/charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 20, active charts: 69451
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 19:59:06
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:06:54
+Ran for 6 m 41 s
+Input file: ../../data/bunny.obj
+Output file: data/charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:12:52
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:13:28
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1328
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:16:24
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1328
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:19:19
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1328
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:40:25
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:42:54
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:45:58
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:49:36
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:53:24
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:54:49
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:55:22
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 20:57:28
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 21:06:45
+Ran for 0 m 1 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-10 21:08:54
+Ran for 0 m 1 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+
+saved as /home/hoqe4365/Desktop/lamure/lamure/install/bin/data/chart_demos/nbr_rule_1.obj
+
