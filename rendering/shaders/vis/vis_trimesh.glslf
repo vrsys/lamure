@@ -1,4 +1,5 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
+// Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
 // Virtual Reality and Visualization Research Group 

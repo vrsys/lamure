@@ -255,11 +255,13 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   std::stringstream report;
 
   //calculate areas
+  std::cout << "Calculating face areas...\n";
   std::map<face_descriptor,double> fareas;
   for(face_descriptor fd: faces(P)){
     fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
   }
   //calculate normals of all faces
+  std::cout << "Calculating face normals...\n";
   std::map<face_descriptor,Vector> fnormals;
   std::map<vertex_descriptor,Vector> vnormals;
   CGAL::Polygon_mesh_processing::compute_normals(P,
@@ -272,6 +274,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 
   //each face begins as its own chart
   //add face ids in same loop
+  std::cout << "Creating initial charts...\n";
   std::vector<Chart> charts;
   for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
     fb->id() = charts.size();  
@@ -291,6 +294,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   uint32_t chart_merges = 0;
 
   //create possible join list
+  std::cout << "Creating initial joins...\n";
   std::list<JoinOperation> joins;
   std::list<JoinOperation>::iterator it;
   for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
@@ -316,6 +320,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   joins.sort(sort_joins);
   const double lowest_cost = joins.front().cost;
 
+  std::cout << "Processing join queue...\n";
   while (joins.front().cost < cost_threshold  
         &&  !joins.empty()
         &&  (charts.size() - chart_merges) > chart_threshold){

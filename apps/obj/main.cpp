@@ -99,6 +99,7 @@ void glut_display() {
     scm::math::mat4f model_view_matrix = view_matrix * model_matrix;
 
     shader_->uniform("mvp_matrix", projection_matrix*model_view_matrix);
+    shader_->uniform("model_view_matrix", model_view_matrix);
 
     context_->set_viewport(
             scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(window_width_, window_height_)));
@@ -203,9 +204,9 @@ void init_shader() {
     std::string vertex_source, fragment_source;
 
     if (!scm::io::read_text_file(
-            std::string(LAMURE_SHADERS_DIR) + "/trimesh.glslv", vertex_source) ||
+            std::string(LAMURE_SHADERS_DIR) + "/g_trimesh.glslv", vertex_source) ||
         !scm::io::read_text_file(
-                std::string(LAMURE_SHADERS_DIR) + "/trimesh.glslf", fragment_source)) {
+                std::string(LAMURE_SHADERS_DIR) + "/g_trimesh.glslf", fragment_source)) {
         scm::err() << "error reading shader files" << scm::log::end;
         throw std::runtime_error("Error reading shader files");
     }

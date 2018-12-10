@@ -36,3 +36,12 @@ Cost threshold: 1.79769e+308
 
 saved as /home/hoqe4365/Desktop/lamure/lamure/install/bin/data/chart_demos/dino_2018-12-04 20:25:56.obj
 
+
+-------------------------------------
+Executed at 2018-12-10 11:43:34
+Ran for 127.345 s
+Input file: data/triceratops_copy.obj
+Output file: data/charts.obj
+Vertices: 16781 , faces: 33558
+Desired Charts: 40, active charts: 40
+Cost threshold: 1.79769e+308
