@@ -237,3 +237,75 @@ Cost threshold: 1.79769e+308
 
 saved as /home/hoqe4365/Desktop/lamure/lamure/install/bin/data/chart_demos/nbr_rule_1.obj
 
+
+-------------------------------------
+Executed at 2018-12-11 09:32:55
+Ran for 23 m 37 s
+Input file: data/triceratops_copy.obj
+Output file: data/charts.obj
+Vertices: 16781 , faces: 33558
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-11 09:35:39
+Ran for 0 m 9 s
+Input file: data/triceratops_copy.obj
+Output file: data/charts.obj
+Vertices: 16781 , faces: 33558
+Desired Charts: 100, active charts: 33348
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-11 09:41:31
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1303
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-11 09:45:36
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-11 09:46:02
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-11 09:48:53
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 1303
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-11 09:50:52
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-11 09:58:39
+Ran for 7 m 39 s
+Input file: data/triceratops_copy.obj
+Output file: data/charts.obj
+Vertices: 16781 , faces: 33558
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308

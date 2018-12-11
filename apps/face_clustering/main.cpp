@@ -47,7 +47,6 @@ typedef CGAL::Point_3<Kernel> Point;
 
 typedef CGAL::Polyhedron_3<Kernel,CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
-// typedef CGAL::Dual<Polyhedron> Dual;
 
 typedef Polyhedron::Facet_iterator Facet_iterator;
 typedef Polyhedron::Facet_handle Facet_handle;
@@ -96,7 +95,6 @@ public:
 
     }
 
-   
     // add the polyhedron triangles
     for( int i=0; i<(int)(tris.size()); i+=3 ){
 
@@ -328,8 +326,6 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   int prev_charts_percent = -1;
   int overall_percent = -1;
 
-
-
   joins.sort(sort_joins);
   const double lowest_cost = joins.front().cost;
 
@@ -460,24 +456,14 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       }
     }
 
-
-    //   search for joins that would result in charts with less than 3 corners
-    //     therefore search for joins, where member charts are included in less than 3 joins, not including the shared join
-    // create map of chart ids to a list/map/vector of adjacent charts
-    // populate this on 1 pass through joins
-    // then pass through again and check all merges would leave at least 3 neighbours
     to_erase.clear();
-    std::map<uint32_t, std::map<uint32_t, bool> > neighbour_count;
+    std::vector<std::vector<uint32_t> > neighbour_count (charts.size(), std::vector<uint32_t>(0));
     std::list<JoinOperation>::iterator it2;
     for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-      //for chart 1 , add entry in map for that chart containing id of chart 2
+      //for chart 1 , add entry in vector for that chart containing id of chart 2
       // and vice versa
-      std::map<uint32_t, bool>& c_map_1 = neighbour_count[it2->chart1_id];
-      c_map_1[it2->chart2_id] = true;
-
-      std::map<uint32_t, bool>& c_map_2 = neighbour_count[it2->chart2_id];
-      c_map_2[it2->chart1_id] = true;
-
+      neighbour_count[it2->chart1_id].push_back(it2->chart2_id);
+      neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
     }
 
     uint32_t join_id = 0;
@@ -485,10 +471,20 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       // combined neighbour count of joins' 2 charts should be at least 5
       // they will both contain each other (accounting for 2 neighbours) and require 3 more
 
-      //merge the maps for each chart in the join and count unique neighbours
-      std::map<uint32_t, bool> combined_nbrs (neighbour_count[it2->chart1_id]);
-      combined_nbrs.insert(neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
-      if (combined_nbrs.size() < 5)
+      //merge the vectors for each chart in the join and count unique neighbours
+      std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
+      combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
+
+      //find unique
+      std::sort(combined_nbrs.begin(), combined_nbrs.end());
+      uint32_t unique = 1;
+      for (uint32_t i = 1; i < combined_nbrs.size(); i++){
+        if (combined_nbrs[i] != combined_nbrs [i-1])
+        {
+          unique++;
+        }
+      }
+      if (unique < 5)
       {
         to_erase.push_back(join_id);
       }
