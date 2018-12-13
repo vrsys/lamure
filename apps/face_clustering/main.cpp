@@ -342,8 +342,6 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     } 
 
 
-  // return 1;
-
   // //end test
     percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
     if (percent != prev_charts_percent && percent > overall_percent) {
