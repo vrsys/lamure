@@ -214,24 +214,6 @@ struct Chart
 
 };
 
-double cost_of_join(Chart &c1, Chart &c2){
-
-  const double accum_error_factor = 1.0;
-  const double angle_error_factor = 10.0;
-  const double compactness_factor = 10000.0;
-
-  //define error as angle between normal directions of charts
-  double dot_product = c1.avg_normal * c2.avg_normal;
-  double error = angle_error_factor * acos(dot_product);
-
-  double compactness = Chart::get_compactness_of_merged_charts(c1,c2);
-  
-
-  error += (accum_error_factor * (c1.error + c2.error));
-  error += (compactness_factor * compactness);
-  return error;
-}
-
 struct JoinOperation {
 
   uint32_t chart1_id;
@@ -243,11 +225,30 @@ struct JoinOperation {
   }
   JoinOperation(uint32_t _c1, uint32_t _c2, double _cost) : chart1_id(_c1), chart2_id(_c2), cost(_cost){}
 
+  static double cost_of_join(Chart &c1, Chart &c2){
+
+    const double accum_error_factor = 1.0;
+    const double angle_error_factor = 10.0;
+    const double compactness_factor = 10000.0;
+
+    //define error as angle between normal directions of charts
+    double dot_product = c1.avg_normal * c2.avg_normal;
+    double error = angle_error_factor * acos(dot_product);
+
+    double compactness = Chart::get_compactness_of_merged_charts(c1,c2);
+    
+
+    error += (accum_error_factor * (c1.error + c2.error));
+    error += (compactness_factor * compactness);
+    return error;
+  }
+
+  static bool sort_joins (JoinOperation j1, JoinOperation j2) {
+    return (j1.cost < j2.cost);
+  }
+
 };
 
-bool sort_joins (JoinOperation j1, JoinOperation j2) {
-  return (j1.cost < j2.cost);
-}
 
 void count_faces_in_active_charts(std::vector<Chart> &charts) {
   uint32_t active_faces = 0;
@@ -314,7 +315,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     {
           uint32_t face1 = eb->facet()->id();
           uint32_t face2 = eb->opposite()->facet()->id();
-          JoinOperation join (face1,face2,cost_of_join(charts[face1],charts[face2]));
+          JoinOperation join (face1,face2,JoinOperation::cost_of_join(charts[face1],charts[face2]));
           joins.push_back(join);
     }
   } 
@@ -326,7 +327,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   int prev_charts_percent = -1;
   int overall_percent = -1;
 
-  joins.sort(sort_joins);
+  joins.sort(JoinOperation::sort_joins);
   const double lowest_cost = joins.front().cost;
 
   std::cout << "Processing join queue...\n";
@@ -409,7 +410,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
         }
         else {
           //update cost with new cost
-          it->cost = cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
+          it->cost = JoinOperation::cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
 
           //save this join to be deleted and replaced in correct position after deleting duplicates
           to_replace.push_back(*it);
@@ -432,7 +433,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     // replace joins that were filtered out to be sorted
     if (to_replace.size() > 0)
     {
-      std::sort(to_replace.begin(), to_replace.end(), sort_joins);
+      std::sort(to_replace.begin(), to_replace.end(), JoinOperation::sort_joins);
       std::list<JoinOperation>::iterator it2;
       uint32_t insert_item = 0;
       for (it2 = joins.begin(); it2 != joins.end(); ++it2){
