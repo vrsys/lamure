@@ -27,3 +27,11 @@ Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion
 Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.bvh
 Input file faces: 257757
 Triangle budget: 2000
+
+-------------------------------------
+Executed at 2018-12-17 14:11:07
+Ran for 8 m 30 s526 ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/spacemonkey/Spacemonkey_smooth.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/spacemonkey/Spacemonkey_smooth.bvh
+Input file faces: 22925064
+Triangle budget: 2000
