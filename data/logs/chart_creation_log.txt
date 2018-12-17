@@ -318,3 +318,21 @@ Output file: data/charts.obj
 Vertices: 668 , faces: 1332
 Desired Charts: 10, active charts: 10
 Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-17 16:26:02
+Ran for 0 m 1 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2018-12-17 16:31:05
+Ran for 0 m 1 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308

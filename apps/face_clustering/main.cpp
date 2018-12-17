@@ -121,23 +121,32 @@ std::map<uint32_t, uint32_t> chart_id_map;
 struct Chart
 {
   std::vector<Facet> facets;
+  std::vector<Vector> normals;
+  std::vector<double> areas;
   bool active;
   Vector avg_normal;
   double area;
   double error;
+  double perimeter;
 
-  Chart(const Facet f,const Vector normal,const double _area){
+  Chart(Facet f,const Vector normal,const double _area){
     facets.push_back(f);
+    normals.push_back(normal);
+    areas.push_back(_area);
     active = true;
     area = _area;
     avg_normal = normal;
     error = 0;
+
+    perimeter = get_face_perimeter(f);
   }
 
   //concatenate face lists
   void merge_with(Chart &mc, const double cost_of_join){
 
     facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
+    normals.insert(normals.end(), mc.normals.begin(), mc.normals.end());
+    areas.insert(areas.end(), mc.areas.begin(), mc.areas.end());
 
     Vector n = (avg_normal * area) + (mc.avg_normal * mc.area); //create new chart normal
     avg_normal = n / std::sqrt(n.squared_length()); //normalise normal
@@ -147,62 +156,138 @@ struct Chart
 
   }
 
+
+  // as defined in Garland et al 2001
   static double get_compactness_of_merged_charts(Chart& c1, Chart& c2){
 
-    double area = c1.area + c2.area;
-    std::vector<Facet> combined_facets (c1.facets);
-    combined_facets.insert(combined_facets.end(), c2.facets.begin(), c2.facets.end());    
-    double perimeter = get_perimeter(combined_facets);
 
-    return perimeter / area;
+    double irreg1 = get_irregularity(c1.perimeter, c1.area);
+    double irreg2 = get_irregularity(c2.perimeter, c2.area);
+    double irreg_new = get_irregularity(get_chart_perimeter(c1,c2), c1.area + c2.area);
+
+    double shape_penalty = ( irreg_new - std::max(irreg1, irreg2) ) / irreg_new;
+
+    return shape_penalty;
+  }
+
+    // as defined in Garland et al 2001
+  static double get_irregularity(double perimeter, double area){
+    return (perimeter*perimeter) / (4 * M_PI * area);
+  }
+
+  //adds edge lengths of a face
+  //check functionality for non-manifold edges
+  static double get_face_perimeter(Facet& f){
+
+    Halfedge_facet_circulator he = f.facet_begin();
+    CGAL_assertion( CGAL::circulator_size(he) >= 3);
+    double accum_perimeter = 0;
+
+    //for 3 edges (adjacent faces)
+    do {
+          accum_perimeter += edge_length(he);
+    } while ( ++he != f.facet_begin());
+
+    return accum_perimeter;
   }
 
   //calculate perimeter of chart
-  static double get_perimeter(std::vector<Facet> chart_facets){
-    double accum_perimeter = 0;
+  // associate a perimeter with each cluster
+  // then calculate by adding perimeters and subtractng double shared edges
+  static double get_chart_perimeter(Chart& c1, Chart& c2){
 
+    double perimeter = c1.perimeter + c2.perimeter;
 
+    //for each face in c1
+    for (auto& c1_face : c1.facets){
 
-    //for each face
-    for (auto& face : chart_facets)
-    {
-    
-        Halfedge_facet_circulator he = face.facet_begin();
-        CGAL_assertion( CGAL::circulator_size(he) >= 3);
+      //for each edge
+      Halfedge_facet_circulator he = c1_face.facet_begin();
+      CGAL_assertion( CGAL::circulator_size(he) >= 3);
 
+      do {
+        // check if opposite appears in c2
 
-        //for 3 edges (adjacent faces)
-        do {
-            //check this edge is not a border
-            if ( !(he->is_border()) && !(he->opposite()->is_border()) )
+        //check this edge is not a border
+        if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
+          uint32_t adj_face_id = he->opposite()->facet()->id();
+
+          for (auto& c2_face : c2.facets){
+            if (c2_face.id() == adj_face_id)
             {
-              uint32_t adj_face_id = he->opposite()->facet()->id();
-
-              //check if they are in this chart
-              bool found_in_this_chart = false;
-              for (auto& chart_member : chart_facets){
-                if (chart_member.id() == adj_face_id)
-                {
-                  found_in_this_chart = true;
-                }
-              }
-              
-              //if not, add edge length to perimeter total, record as neighbour
-              if (!found_in_this_chart)
-              {
-                
-                accum_perimeter += edge_length(he);
-              }
+              perimeter -= (2 * edge_length(he));
+              break;
             }
+          }
+        }
 
-        } while ( ++he != face.facet_begin());
-
-        
+      } while ( ++he != c1_face.facet_begin());
     }
 
+    return perimeter;
 
 
-    return accum_perimeter;
+
+    
+    // for (auto& face : chart_facets)
+    // {
+    
+    //     Halfedge_facet_circulator he = face.facet_begin();
+    //     CGAL_assertion( CGAL::circulator_size(he) >= 3);
+
+
+    //     //for 3 edges (adjacent faces)
+    //     do {
+    //         //check this edge is not a border
+    //         if ( !(he->is_border()) && !(he->opposite()->is_border()) )
+    //         {
+    //           uint32_t adj_face_id = he->opposite()->facet()->id();
+
+    //           //check if they are in this chart
+    //           bool found_in_this_chart = false;
+    //           for (auto& chart_member : chart_facets){
+    //             if (chart_member.id() == adj_face_id)
+    //             {
+    //               found_in_this_chart = true;
+    //               break;
+    //             }
+    //           }
+              
+    //           //if not, add edge length to perimeter total, record as neighbour
+    //           if (!found_in_this_chart)
+    //           {
+                
+    //             accum_perimeter += edge_length(he);
+    //           }
+    //         }
+
+    //     } while ( ++he != face.facet_begin());
+
+        
+    // }
+
+
+
+    // return accum_perimeter;
+  }
+
+  static double get_direction_error(Chart& c1, Chart& c2){
+
+    //average error between average normal and individual face normals
+    //can be stored as quadric - next step
+
+    Vector avg_normal = (c1.avg_normal * c1.area) + (c2.avg_normal * c2.area);
+    double e_direction = accum_direction_error_in_chart(c1,avg_normal) + accum_direction_error_in_chart(c2,avg_normal);
+
+    return e_direction / (c1.area + c2.area);
+  }
+  static double accum_direction_error_in_chart(Chart& chart, const Vector avg_normal){
+    double accum_error = 0;
+    for (uint32_t i = 0; i < chart.facets.size(); i++){
+      double error = 1.0 - (avg_normal * chart.normals[i]);
+      accum_error += (error * chart.areas[i]);
+    }
+    return accum_error;
   }
 
   static double edge_length(Halfedge_facet_circulator he){
@@ -229,17 +314,22 @@ struct JoinOperation {
 
     const double accum_error_factor = 1.0;
     const double angle_error_factor = 10.0;
-    const double compactness_factor = 10000.0;
+    const double compactness_factor = 1.0;
+
+    double error = 0;
 
     //define error as angle between normal directions of charts
-    double dot_product = c1.avg_normal * c2.avg_normal;
-    double error = angle_error_factor * acos(dot_product);
+    // double dot_product = c1.avg_normal * c2.avg_normal;
+    // double error = angle_error_factor * acos(dot_product);
 
-    double compactness = Chart::get_compactness_of_merged_charts(c1,c2);
-    
+    double e_direction = Chart::get_direction_error(c1,c2);
 
-    error += (accum_error_factor * (c1.error + c2.error));
-    error += (compactness_factor * compactness);
+    double e_shape = Chart::get_compactness_of_merged_charts(c1,c2);
+
+    error += (e_direction + e_shape);
+
+    // error += (accum_error_factor * (c1.error + c2.error));
+    // error += (compactness_factor * e_shape);
     return error;
   }
 
@@ -567,6 +657,8 @@ int main( int argc, char** argv )
   }
   else {
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
+    std::cout << "Optional: -ch specifies chart threshold (=100)" << std::endl;
+    std::cout << "Optional: -co specifies cost threshold (=double max)" << std::endl;
     return 1;
   }
 
@@ -574,7 +666,7 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-co")) {
     cost_threshold = atof(Utils::getCmdOption(argv, argv + argc, "-co"));
   }
-  uint32_t chart_threshold = 10;
+  uint32_t chart_threshold = 100;
   if (Utils::cmdOptionExists(argv, argv+argc, "-ch")) {
     chart_threshold = atoi(Utils::getCmdOption(argv, argv + argc, "-ch"));
   }
