@@ -7,3 +7,4 @@ install
 cmake-build-debug
 cmake-build-release
 data/bunny.lod
+data/bunny.bvh
