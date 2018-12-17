@@ -111,6 +111,37 @@ public:
     }
 
 };
+
+struct ErrorQuadric {
+
+  std::vector<double> A;
+  Vector b;
+  double c;
+
+  ErrorQuadric() {
+    A = std::vector<double> (5,0);
+    b = Vector(0,0,0);
+    c = 0;
+  }
+
+  ErrorQuadric(Point& p) {
+    A = Utils::calc_symmetric_mat3(p);
+    b = Vector(p.x(), p.y(), p.z());
+    c = 1;
+  }
+
+  ErrorQuadric operator+(const ErrorQuadric& e){
+    ErrorQuadric eq;
+    for (int i = 0; i < 5; ++i)
+    {
+      eq.A.push_back(e.A[i] + A[i]);
+    }
+    eq.b = b + e.b;
+    eq.c = c + e.c;
+
+    return eq;
+  }
+};
   
 
 
@@ -129,6 +160,8 @@ struct Chart
   double error;
   double perimeter;
 
+  ErrorQuadric quad;
+
   Chart(Facet f,const Vector normal,const double _area){
     facets.push_back(f);
     normals.push_back(normal);
@@ -139,6 +172,21 @@ struct Chart
     error = 0;
 
     perimeter = get_face_perimeter(f);
+
+    quad = createQuads(f);
+  }
+
+  //create a combined quadric for vertices
+  ErrorQuadric createQuads(Facet &f){
+
+    ErrorQuadric face_quad;
+    Halfedge_facet_circulator he = f.facet_begin();
+    CGAL_assertion( CGAL::circulator_size(he) >= 3);
+    do {
+      face_quad = face_quad + ErrorQuadric(he->vertex()->point());
+    } while ( ++he != f.facet_begin());
+
+    return face_quad;
   }
 
   //concatenate face lists
@@ -154,9 +202,21 @@ struct Chart
 
     error += (mc.error + cost_of_join);
 
+    quad = quad + mc.quad;
+
   }
 
+  static double get_fit_error(Chart& c1, Chart& c2){
 
+    ErrorQuadric fit_quad = c1.quad + c2.quad;
+
+    //create Z matrix
+
+    //find eigenvalues / eigenvectors
+
+    // sub into E fit equation http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.32.8100&rep=rep1&type=pdf
+
+  }
   // as defined in Garland et al 2001
   static double get_compactness_of_merged_charts(Chart& c1, Chart& c2){
 
@@ -226,49 +286,6 @@ struct Chart
 
     return perimeter;
 
-
-
-    
-    // for (auto& face : chart_facets)
-    // {
-    
-    //     Halfedge_facet_circulator he = face.facet_begin();
-    //     CGAL_assertion( CGAL::circulator_size(he) >= 3);
-
-
-    //     //for 3 edges (adjacent faces)
-    //     do {
-    //         //check this edge is not a border
-    //         if ( !(he->is_border()) && !(he->opposite()->is_border()) )
-    //         {
-    //           uint32_t adj_face_id = he->opposite()->facet()->id();
-
-    //           //check if they are in this chart
-    //           bool found_in_this_chart = false;
-    //           for (auto& chart_member : chart_facets){
-    //             if (chart_member.id() == adj_face_id)
-    //             {
-    //               found_in_this_chart = true;
-    //               break;
-    //             }
-    //           }
-              
-    //           //if not, add edge length to perimeter total, record as neighbour
-    //           if (!found_in_this_chart)
-    //           {
-                
-    //             accum_perimeter += edge_length(he);
-    //           }
-    //         }
-
-    //     } while ( ++he != face.facet_begin());
-
-        
-    // }
-
-
-
-    // return accum_perimeter;
   }
 
   static double get_direction_error(Chart& c1, Chart& c2){
@@ -299,6 +316,8 @@ struct Chart
 
 };
 
+
+
 struct JoinOperation {
 
   uint32_t chart1_id;
@@ -312,9 +331,9 @@ struct JoinOperation {
 
   static double cost_of_join(Chart &c1, Chart &c2){
 
-    const double accum_error_factor = 1.0;
-    const double angle_error_factor = 10.0;
-    const double compactness_factor = 1.0;
+    // const double accum_error_factor = 1.0;
+    // const double angle_error_factor = 10.0;
+    // const double compactness_factor = 1.0;
 
     double error = 0;
 
@@ -322,11 +341,11 @@ struct JoinOperation {
     // double dot_product = c1.avg_normal * c2.avg_normal;
     // double error = angle_error_factor * acos(dot_product);
 
+    double e_fit = Chart::get_fit_error(c1,c2);
     double e_direction = Chart::get_direction_error(c1,c2);
-
     double e_shape = Chart::get_compactness_of_merged_charts(c1,c2);
 
-    error += (e_direction + e_shape);
+    error = e_fit + e_direction + e_shape;
 
     // error += (accum_error_factor * (c1.error + c2.error));
     // error += (compactness_factor * e_shape);
