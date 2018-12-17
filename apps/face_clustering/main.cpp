@@ -558,7 +558,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 int main( int argc, char** argv ) 
 {
 
-  auto start_time = std::chrono::system_clock::now();
+  
 
 
   std::string obj_filename = "dino.obj";
@@ -592,6 +592,8 @@ int main( int argc, char** argv )
     return 1;
   }
   std::cout << "Mesh loaded (" << vertices.size() << " vertices)" << std::endl;
+
+  auto start_time = std::chrono::system_clock::now();
 
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;

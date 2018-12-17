@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <memory>
 
+#include <chrono>
 #include <lamure/mesh/bvh.h>
 #include <cstring>
 
@@ -155,10 +156,15 @@ int32_t main(int argc, char* argv[]) {
 
   std::vector<lamure::mesh::triangle_t> triangles;
 
+
   //load the obj as triangles
   load_obj(obj_filename, triangles);
+  const uint32_t num_faces = triangles.size();
 
   std::cout << "obj loaded" << std::endl;
+
+  auto start_time = std::chrono::system_clock::now();
+
   std::cout << "creating LOD hierarchy..." << std::endl;
 
   auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, triangle_budget);
@@ -172,6 +178,23 @@ int32_t main(int argc, char* argv[]) {
   std::cout << "Lod file written to " << lod_filename << std::endl;
 
   bvh.reset();
+
+
+  //Logging
+  auto time = std::chrono::system_clock::now();
+  std::chrono::duration<double> diff = time - start_time;
+  std::time_t now_c = std::chrono::system_clock::to_time_t(time);
+  std::string log_path = "../../data/logs/bvh_creation_log.txt";
+  std::ofstream ofs;
+  ofs.open (log_path, std::ofstream::out | std::ofstream::app);
+  ofs << "\n-------------------------------------\n";
+  ofs << "Executed at " << std::put_time(std::localtime(&now_c), "%F %T") << std::endl;
+  ofs << "Ran for " << (int)diff.count() / 60 << " m "<< (int)diff.count() % 60 << " s" << (int)(diff.count() * 1000) % 1000 << " ms " << std::endl;
+  ofs << "Input file: " << obj_filename << "\nOutput bvh file: " << bvh_filename << std::endl;
+  ofs << "Input file faces: " << num_faces << std::endl;
+  ofs << "Triangle budget: " << triangle_budget << std::endl;
+  ofs.close();
+  std::cout << "Log written to " << log_path << std::endl;
 
   return 0;
    
