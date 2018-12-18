@@ -38,7 +38,7 @@
 
 #include "Utils.h"
 #include "OBJ_printer.h"
-// #include "OBJ_printer_test.h"
+#include "SymMat3.h"
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 
@@ -114,18 +114,20 @@ public:
 
 struct ErrorQuadric {
 
-  std::vector<double> A;
+  // std::vector<double> A;
+  SymMat3 A;
   Vector b;
   double c;
 
   ErrorQuadric() {
-    A = std::vector<double> (5,0);
+    // A = std::vector<double> (5,0);
     b = Vector(0,0,0);
     c = 0;
   }
 
   ErrorQuadric(Point& p) {
-    A = Utils::calc_symmetric_mat3(p);
+    // A = Utils::calc_symmetric_mat3(p);
+    A = SymMat3(p);
     b = Vector(p.x(), p.y(), p.z());
     c = 1;
   }
@@ -133,9 +135,10 @@ struct ErrorQuadric {
   ErrorQuadric operator+(const ErrorQuadric& e){
     ErrorQuadric eq;
     for (int i = 0; i < 5; ++i)
-    {
-      eq.A.push_back(e.A[i] + A[i]);
-    }
+    // {
+    //   eq.A.push_back(e.A[i] + A[i]);
+    // }
+    eq.A = A + e.A; 
     eq.b = b + e.b;
     eq.c = c + e.c;
 
@@ -157,7 +160,7 @@ struct Chart
   bool active;
   Vector avg_normal;
   double area;
-  double error;
+  // double error;
   double perimeter;
 
   ErrorQuadric quad;
@@ -169,15 +172,15 @@ struct Chart
     active = true;
     area = _area;
     avg_normal = normal;
-    error = 0;
+    // error = 0;
 
     perimeter = get_face_perimeter(f);
 
-    quad = createQuads(f);
+    quad = createQuad(f);
   }
 
   //create a combined quadric for vertices
-  ErrorQuadric createQuads(Facet &f){
+  ErrorQuadric createQuad(Facet &f){
 
     ErrorQuadric face_quad;
     Halfedge_facet_circulator he = f.facet_begin();
@@ -200,7 +203,7 @@ struct Chart
     avg_normal = n / std::sqrt(n.squared_length()); //normalise normal
     area += mc.area;
 
-    error += (mc.error + cost_of_join);
+    // error += (mc.error + cost_of_join);
 
     quad = quad + mc.quad;
 
@@ -293,15 +296,16 @@ struct Chart
     //average error between average normal and individual face normals
     //can be stored as quadric - next step
 
+    //TODO replace avg_normal with plane fit normal
     Vector avg_normal = (c1.avg_normal * c1.area) + (c2.avg_normal * c2.area);
     double e_direction = accum_direction_error_in_chart(c1,avg_normal) + accum_direction_error_in_chart(c2,avg_normal);
 
     return e_direction / (c1.area + c2.area);
   }
-  static double accum_direction_error_in_chart(Chart& chart, const Vector avg_normal){
+  static double accum_direction_error_in_chart(Chart& chart, const Vector plane_normal){
     double accum_error = 0;
     for (uint32_t i = 0; i < chart.facets.size(); i++){
-      double error = 1.0 - (avg_normal * chart.normals[i]);
+      double error = 1.0 - (plane_normal * chart.normals[i]);
       accum_error += (error * chart.areas[i]);
     }
     return accum_error;
