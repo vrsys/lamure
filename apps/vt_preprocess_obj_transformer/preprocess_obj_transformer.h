@@ -9,10 +9,10 @@
 #ifndef LAMURE_PREPROCESSOBJTRANSFORMER_H
 #define LAMURE_PREPROCESSOBJTRANSFORMER_H
 
+#include <lamure/vt/pre/AtlasFile.h>
 
 #include <string>
-
-#include <lamure/vt/pre/AtlasFile.h>
+#include <vector>
 
 using namespace vt::pre;
 

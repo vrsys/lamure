@@ -5,14 +5,18 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <sstream>
-#include <iostream>
-#include <algorithm>
-#include <cstring>
 #include <lamure/vt/pre/Preprocessor.h>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/ooc/TileProvider.h>
 #include <lamure/vt/pre/DeltaECalculator.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <iostream>
+#include <random>
+#include <sstream>
+#include <string>
 #include <thread>
 
 using namespace vt::pre;

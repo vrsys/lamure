@@ -5,10 +5,10 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-
-#include <iostream>
-#include <cmath>
 #include "preprocess_obj_transformer.h"
+
+#include <cmath>
+#include <iostream>
 
 preprocess_obj_transformer::preprocess_obj_transformer(const std::string &obj_file, const std::string &atlas_file) {
     this->set_obj_path(obj_file);
