@@ -38,12 +38,15 @@
 
 #include "Utils.h"
 #include "OBJ_printer.h"
-#include "SymMat3.h"
+#include "SymMat.h"
+
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 
 typedef Kernel::Vector_3 Vector;
 typedef CGAL::Point_3<Kernel> Point;
+
+
 
 typedef CGAL::Polyhedron_3<Kernel,CGAL::Polyhedron_items_with_id_3> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
@@ -115,7 +118,7 @@ public:
 struct ErrorQuadric {
 
   // std::vector<double> A;
-  SymMat3 A;
+  SymMat A;
   Vector b;
   double c;
 
@@ -127,14 +130,14 @@ struct ErrorQuadric {
 
   ErrorQuadric(Point& p) {
     // A = Utils::calc_symmetric_mat3(p);
-    A = SymMat3(p);
+    A = SymMat(p);
     b = Vector(p.x(), p.y(), p.z());
     c = 1;
   }
 
   ErrorQuadric operator+(const ErrorQuadric& e){
     ErrorQuadric eq;
-    for (int i = 0; i < 5; ++i)
+    // for (int i = 0; i < 5; ++i)
     // {
     //   eq.A.push_back(e.A[i] + A[i]);
     // }
