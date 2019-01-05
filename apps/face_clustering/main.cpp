@@ -6,6 +6,7 @@
 #include <numeric>
 #include <chrono>
 #include <limits>
+#include <float.h>
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
@@ -39,6 +40,8 @@
 #include "Utils.h"
 #include "OBJ_printer.h"
 #include "SymMat.h"
+
+#include "eig.h"
 
 
 typedef CGAL::Simple_cartesian<double> Kernel;
@@ -115,21 +118,52 @@ public:
 
 };
 
+// struct ErrorQuadric {
+
+//   // std::vector<double> A;
+//   SymMat A;
+//   Vector b;
+//   double c;
+
+//   ErrorQuadric() {
+//     // A = std::vector<double> (5,0);
+//     b = Vector(0,0,0);
+//     c = 0;
+//   }
+
+//   ErrorQuadric(Point& p) {
+//     // A = Utils::calc_symmetric_mat3(p);
+//     A = SymMat(p);
+//     b = Vector(p.x(), p.y(), p.z());
+//     c = 1;
+//   }
+
+//   ErrorQuadric operator+(const ErrorQuadric& e){
+//     ErrorQuadric eq;
+//     // for (int i = 0; i < 5; ++i)
+//     // {
+//     //   eq.A.push_back(e.A[i] + A[i]);
+//     // }
+//     eq.A = A + e.A; 
+//     eq.b = b + e.b;
+//     eq.c = c + e.c;
+
+//     return eq;
+//   }
+// };
+  
 struct ErrorQuadric {
 
-  // std::vector<double> A;
   SymMat A;
   Vector b;
   double c;
 
   ErrorQuadric() {
-    // A = std::vector<double> (5,0);
     b = Vector(0,0,0);
     c = 0;
   }
 
   ErrorQuadric(Point& p) {
-    // A = Utils::calc_symmetric_mat3(p);
     A = SymMat(p);
     b = Vector(p.x(), p.y(), p.z());
     c = 1;
@@ -137,18 +171,70 @@ struct ErrorQuadric {
 
   ErrorQuadric operator+(const ErrorQuadric& e){
     ErrorQuadric eq;
-    // for (int i = 0; i < 5; ++i)
-    // {
-    //   eq.A.push_back(e.A[i] + A[i]);
-    // }
     eq.A = A + e.A; 
     eq.b = b + e.b;
     eq.c = c + e.c;
 
     return eq;
   }
+
+  //create covariance / 'Z' matrix 
+  // A - ( (b*bT) / c)
+  void get_covariance_matrix(double cm[3][3]) {
+
+    SymMat rhs = SymMat(b) / c;
+    SymMat result = A - rhs;
+    result.to_c_mat3(cm);
+  }
+
+  std::string print(){
+
+    std::stringstream ss;
+    ss << "A:\n" << A.print_mat();
+    ss << "b:\n[" << b.x() << " " << b.y() << " " << b.z() << "]" << std::endl;
+    ss << "c:\n" << c << std::endl;
+    return ss.str();
+  }
 };
-  
+
+//retrieves eigenvector corresponding to lowest eigenvalue
+//which is taken as the normal of the best fitting plane, given an error quadric corresponding to that plane
+void get_best_fit_plane( ErrorQuadric eq, Vector& plane_normal, double& scalar_offset) {
+
+  //get covariance matrix (Z matrix) from error quadric
+  double Z[3][3];
+  eq.get_covariance_matrix(Z);
+
+  //do eigenvalue decomposition
+  double eigenvectors[3][3] = {0};
+  double eigenvalues[3] = {0};
+  eig::eigen_decomposition(Z,eigenvectors,eigenvalues);
+
+  //find min eigenvalue
+  double min_ev = DBL_MAX;
+  int min_loc;
+  for (int i = 0; i < 3; ++i)
+  {
+    if (eigenvalues[i] < min_ev){
+      min_ev = eigenvalues[i];
+      min_loc = i;
+    }
+  }
+
+  plane_normal = Vector(eigenvectors[0][min_loc], eigenvectors[1][min_loc], eigenvectors[2][min_loc]);
+
+  //d is described specified as:  d =  (-nT*b)   /     c
+  scalar_offset = (-plane_normal * eq.b) / eq.c;
+
+}
+
+double get_fit_error( ErrorQuadric& eq, Vector& plane_normal, double scalar_offset ) {
+
+  double e_fit = (plane_normal * (eq.A * plane_normal))
+                  + (2 * (eq.b * (scalar_offset * plane_normal)))
+                  + (eq.c * scalar_offset * scalar_offset);
+  return e_fit;
+}
 
 
 //key: face_id, value: chart_id
@@ -214,13 +300,19 @@ struct Chart
 
   static double get_fit_error(Chart& c1, Chart& c2){
 
+  // sub into E fit equation http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.32.8100&rep=rep1&type=pdf
+
     ErrorQuadric fit_quad = c1.quad + c2.quad;
 
-    //create Z matrix
+    Vector plane_normal;
+    double scalar_offset;
+    get_best_fit_plane( fit_quad, plane_normal, scalar_offset);
 
-    //find eigenvalues / eigenvectors
+    double e_fit = (plane_normal * (fit_quad.A * plane_normal))
+                + (2 * (fit_quad.b * (scalar_offset * plane_normal)))
+                + (fit_quad.c * scalar_offset * scalar_offset);
 
-    // sub into E fit equation http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.32.8100&rep=rep1&type=pdf
+    return e_fit;
 
   }
   // as defined in Garland et al 2001
