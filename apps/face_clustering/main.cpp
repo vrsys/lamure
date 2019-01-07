@@ -118,39 +118,19 @@ public:
 
 };
 
-// struct ErrorQuadric {
+struct CLUSTER_SETTINGS
+{
+  double e_fit_cf;
+  double e_ori_cf;
+  double e_shape_cf;
 
-//   // std::vector<double> A;
-//   SymMat A;
-//   Vector b;
-//   double c;
+  CLUSTER_SETTINGS(double ef, double eo, double es){
+    e_fit_cf = ef;
+    e_ori_cf = eo;
+    e_shape_cf = es;
+  }
+};
 
-//   ErrorQuadric() {
-//     // A = std::vector<double> (5,0);
-//     b = Vector(0,0,0);
-//     c = 0;
-//   }
-
-//   ErrorQuadric(Point& p) {
-//     // A = Utils::calc_symmetric_mat3(p);
-//     A = SymMat(p);
-//     b = Vector(p.x(), p.y(), p.z());
-//     c = 1;
-//   }
-
-//   ErrorQuadric operator+(const ErrorQuadric& e){
-//     ErrorQuadric eq;
-//     // for (int i = 0; i < 5; ++i)
-//     // {
-//     //   eq.A.push_back(e.A[i] + A[i]);
-//     // }
-//     eq.A = A + e.A; 
-//     eq.b = b + e.b;
-//     eq.c = c + e.c;
-
-//     return eq;
-//   }
-// };
   
 struct ErrorQuadric {
 
@@ -163,9 +143,17 @@ struct ErrorQuadric {
     c = 0;
   }
 
+  //for p quad
   ErrorQuadric(Point& p) {
     A = SymMat(p);
     b = Vector(p.x(), p.y(), p.z());
+    c = 1;
+  }
+
+  //for r quad
+  ErrorQuadric( const Vector& v){
+    A = SymMat(v);
+    b = -v;
     c = 1;
   }
 
@@ -228,14 +216,6 @@ void get_best_fit_plane( ErrorQuadric eq, Vector& plane_normal, double& scalar_o
 
 }
 
-double get_fit_error( ErrorQuadric& eq, Vector& plane_normal, double scalar_offset ) {
-
-  double e_fit = (plane_normal * (eq.A * plane_normal))
-                  + (2 * (eq.b * (scalar_offset * plane_normal)))
-                  + (eq.c * scalar_offset * scalar_offset);
-  return e_fit;
-}
-
 
 //key: face_id, value: chart_id
 std::map<uint32_t, uint32_t> chart_id_map;
@@ -247,12 +227,12 @@ struct Chart
   std::vector<Vector> normals;
   std::vector<double> areas;
   bool active;
-  Vector avg_normal;
+  // Vector avg_normal; //redundant?
   double area;
-  // double error;
   double perimeter;
 
-  ErrorQuadric quad;
+  ErrorQuadric P_quad; // point error quad
+  ErrorQuadric R_quad; // orientation error quad
 
   Chart(Facet f,const Vector normal,const double _area){
     facets.push_back(f);
@@ -260,16 +240,16 @@ struct Chart
     areas.push_back(_area);
     active = true;
     area = _area;
-    avg_normal = normal;
-    // error = 0;
+    // avg_normal = normal;
 
     perimeter = get_face_perimeter(f);
 
-    quad = createQuad(f);
+    P_quad = createPQuad(f);
+    R_quad = ErrorQuadric(normal);
   }
 
-  //create a combined quadric for vertices
-  ErrorQuadric createQuad(Facet &f){
+  //create a combined quadric for 3 vertices of a face
+  ErrorQuadric createPQuad(Facet &f){
 
     ErrorQuadric face_quad;
     Halfedge_facet_circulator he = f.facet_begin();
@@ -281,28 +261,29 @@ struct Chart
     return face_quad;
   }
 
-  //concatenate face lists
+
+  //concatenate data from mc (merge chart) on to data from this chart
   void merge_with(Chart &mc, const double cost_of_join){
 
     facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
     normals.insert(normals.end(), mc.normals.begin(), mc.normals.end());
     areas.insert(areas.end(), mc.areas.begin(), mc.areas.end());
 
-    Vector n = (avg_normal * area) + (mc.avg_normal * mc.area); //create new chart normal
-    avg_normal = n / std::sqrt(n.squared_length()); //normalise normal
+    // Vector n = (avg_normal * area) + (mc.avg_normal * mc.area); //create new chart normal
+    // avg_normal = n / std::sqrt(n.squared_length()); //normalise normal
+
     area += mc.area;
 
-    // error += (mc.error + cost_of_join);
-
-    quad = quad + mc.quad;
+    P_quad = P_quad + mc.P_quad;
+    R_quad = R_quad + mc.R_quad;
 
   }
 
-  static double get_fit_error(Chart& c1, Chart& c2){
+  //returns error of points in a joined chart , averga e distance from best fitting plane
+  //returns plane normal for e_dir error term
+  static double get_fit_error(Chart& c1, Chart& c2, Vector& fit_plane_normal){
 
-  // sub into E fit equation http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.32.8100&rep=rep1&type=pdf
-
-    ErrorQuadric fit_quad = c1.quad + c2.quad;
+    ErrorQuadric fit_quad = c1.P_quad + c2.P_quad;
 
     Vector plane_normal;
     double scalar_offset;
@@ -311,6 +292,13 @@ struct Chart
     double e_fit = (plane_normal * (fit_quad.A * plane_normal))
                 + (2 * (fit_quad.b * (scalar_offset * plane_normal)))
                 + (fit_quad.c * scalar_offset * scalar_offset);
+
+
+    e_fit = e_fit / ((c1.facets.size() * 3) + (c2.facets.size() * 3));
+    //divide by number of points in combined chart
+    //TODO does it need to be calculated exactly or just faces * 3 ?
+
+    fit_plane_normal = plane_normal;
 
     return e_fit;
 
@@ -386,16 +374,29 @@ struct Chart
 
   }
 
-  static double get_direction_error(Chart& c1, Chart& c2){
+  static double get_direction_error(Chart& c1, Chart& c2, const Vector plane_normal){
 
     //average error between average normal and individual face normals
     //can be stored as quadric - next step
 
     //TODO replace avg_normal with plane fit normal
-    Vector avg_normal = (c1.avg_normal * c1.area) + (c2.avg_normal * c2.area);
-    double e_direction = accum_direction_error_in_chart(c1,avg_normal) + accum_direction_error_in_chart(c2,avg_normal);
+    // Vector avg_normal = (c1.avg_normal * c1.area) + (c2.avg_normal * c2.area);
+    // double e_direction = accum_direction_error_in_chart(c1,plane_normal) + accum_direction_error_in_chart(c2,plane_normal);
 
-    return e_direction / (c1.area + c2.area);
+    // ErrorQuadric r_quad = c1.R_quad
+
+    double e_direction_c1 = (plane_normal * (c1.R_quad.A * plane_normal))
+                        + (2 * (c1.R_quad.b  * plane_normal))
+                        + c1.R_quad.c;
+
+    double e_direction_c2 = (plane_normal * (c2.R_quad.A * plane_normal))
+                    + (2 * (c2.R_quad.b  * plane_normal))
+                    + c2.R_quad.c;
+
+    double e_direction = ((c1.area * e_direction_c1) + (c2.area * e_direction_c2))
+                        / (c1.area + c2.area); 
+
+    return e_direction;
   }
   static double accum_direction_error_in_chart(Chart& chart, const Vector plane_normal){
     double accum_error = 0;
@@ -428,26 +429,20 @@ struct JoinOperation {
   }
   JoinOperation(uint32_t _c1, uint32_t _c2, double _cost) : chart1_id(_c1), chart2_id(_c2), cost(_cost){}
 
-  static double cost_of_join(Chart &c1, Chart &c2){
+  //calculates cost of joining these 2 charts
+  static double cost_of_join(Chart &c1, Chart &c2 ,CLUSTER_SETTINGS& cluster_settings){
 
-    // const double accum_error_factor = 1.0;
-    // const double angle_error_factor = 10.0;
-    // const double compactness_factor = 1.0;
 
     double error = 0;
 
-    //define error as angle between normal directions of charts
-    // double dot_product = c1.avg_normal * c2.avg_normal;
-    // double error = angle_error_factor * acos(dot_product);
+    Vector fit_plane_normal;
 
-    double e_fit = Chart::get_fit_error(c1,c2);
-    double e_direction = Chart::get_direction_error(c1,c2);
-    double e_shape = Chart::get_compactness_of_merged_charts(c1,c2);
+    double e_fit =       cluster_settings.e_fit_cf *   Chart::get_fit_error(c1,c2, fit_plane_normal);
+    double e_direction = cluster_settings.e_ori_cf *   Chart::get_direction_error(c1,c2,fit_plane_normal); 
+    double e_shape =     cluster_settings.e_shape_cf * Chart::get_compactness_of_merged_charts(c1,c2);
 
     error = e_fit + e_direction + e_shape;
 
-    // error += (accum_error_factor * (c1.error + c2.error));
-    // error += (compactness_factor * e_shape);
     return error;
   }
 
@@ -471,16 +466,16 @@ void count_faces_in_active_charts(std::vector<Chart> &charts) {
 }
 
 uint32_t 
-create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart_threshold){
+create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart_threshold, CLUSTER_SETTINGS cluster_settings){
   std::stringstream report;
 
-  //calculate areas
+  //calculate areas of each face
   std::cout << "Calculating face areas...\n";
   std::map<face_descriptor,double> fareas;
   for(face_descriptor fd: faces(P)){
     fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
   }
-  //calculate normals of all faces
+  //calculate normals of each faces
   std::cout << "Calculating face normals...\n";
   std::map<face_descriptor,Vector> fnormals;
   std::map<vertex_descriptor,Vector> vnormals;
@@ -493,27 +488,26 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   boost::tie(fb_boost, fe_boost) = faces(P);
 
   //each face begins as its own chart
-  //add face ids in same loop
   std::cout << "Creating initial charts...\n";
   std::vector<Chart> charts;
   for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
+    //assign id to face
     fb->id() = charts.size();  
 
-    Vector normal = fnormals[*fb_boost];
-    double area = fareas[*fb_boost];
-
-    Chart c(*fb, normal, area);
+    //init chart instance for face
+    Chart c(*fb, fnormals[*fb_boost], fareas[*fb_boost]);
     charts.push_back(c);
 
     fb_boost++;
   }
 
+  //for reporting and calculating when to stop merging
   const uint32_t initial_charts = charts.size();
   const uint32_t desired_merges = initial_charts - chart_threshold;
   uint32_t chart_merges = 0;
 
-  //create possible join list
-  std::cout << "Creating initial joins...\n";
+  //create possible join list/queue. Each original edge in the mesh becomes a join (if not a boundary edge)
+  std::cout << "Creating initial joins...";
   std::list<JoinOperation> joins;
   std::list<JoinOperation>::iterator it;
   for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
@@ -523,7 +517,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     {
           uint32_t face1 = eb->facet()->id();
           uint32_t face2 = eb->opposite()->facet()->id();
-          JoinOperation join (face1,face2,JoinOperation::cost_of_join(charts[face1],charts[face2]));
+          JoinOperation join (face1,face2,JoinOperation::cost_of_join(charts[face1],charts[face2], cluster_settings));
           joins.push_back(join);
     }
   } 
@@ -538,20 +532,20 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   joins.sort(JoinOperation::sort_joins);
   const double lowest_cost = joins.front().cost;
 
+
+  //execute lowest join cost and update affected joins.  re-sort.
   std::cout << "Processing join queue...\n";
   while (joins.front().cost < cost_threshold  
         &&  !joins.empty()
         &&  (charts.size() - chart_merges) > chart_threshold){
 
+    //reporting-------------
     int percent = (int)(((joins.front().cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
     if (percent != prev_cost_percent && percent > overall_percent) {
       prev_cost_percent = percent;
       overall_percent = percent;
       std::cout << percent << " percent complete\n";
     } 
-
-
-  // //end test
     percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
     if (percent != prev_charts_percent && percent > overall_percent) {
       prev_charts_percent = percent;
@@ -559,29 +553,27 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       std::cout << percent << " percent complete\n";
     }
 
-
     //implement the join with lowest cost
     JoinOperation join_todo = joins.front();
     joins.pop_front();
-
 
     // std::cout << "join cost : " << join_todo.cost << std::endl; 
 
     //merge faces from chart2 into chart 1
     charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id], join_todo.cost);
 
+
+    //DEactivate chart 2
     if (charts[join_todo.chart2_id].active == false)
     {
-      report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl;
+      report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl; // should not happen
       continue;
     }
-
     charts[join_todo.chart2_id].active = false;
     
     int current_item = 0;
     std::list<int> to_erase;
     std::vector<JoinOperation> to_replace;
-    // std::list<int> to_sort;
 
     //update itremaining joins that include either of the merged charts
     for (it = joins.begin(); it != joins.end(); ++it)
@@ -618,7 +610,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
         }
         else {
           //update cost with new cost
-          it->cost = JoinOperation::cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
+          it->cost = JoinOperation::cost_of_join(charts[it->chart1_id], charts[it->chart2_id], cluster_settings);
 
           //save this join to be deleted and replaced in correct position after deleting duplicates
           to_replace.push_back(*it);
@@ -673,39 +665,40 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
     }
 
-    uint32_t join_id = 0;
-    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-      // combined neighbour count of joins' 2 charts should be at least 5
-      // they will both contain each other (accounting for 2 neighbours) and require 3 more
+    // //CHECK that each join would give a chart with at least 3 neighbours
+    // uint32_t join_id = 0;
+    // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+    //   // combined neighbour count of joins' 2 charts should be at least 5
+    //   // they will both contain each other (accounting for 2 neighbours) and require 3 more
 
-      //merge the vectors for each chart in the join and count unique neighbours
-      std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
-      combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
+    //   //merge the vectors for each chart in the join and count unique neighbours
+    //   std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
+    //   combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
 
-      //find unique
-      std::sort(combined_nbrs.begin(), combined_nbrs.end());
-      uint32_t unique = 1;
-      for (uint32_t i = 1; i < combined_nbrs.size(); i++){
-        if (combined_nbrs[i] != combined_nbrs [i-1])
-        {
-          unique++;
-        }
-      }
-      if (unique < 5)
-      {
-        to_erase.push_back(join_id);
-      }
-      join_id++;
-    }
-    //erase joins that would result in less than 3 corners
-    to_erase.sort();
-    num_erased = 0;
-    for (auto id : to_erase) {
-      std::list<JoinOperation>::iterator it2 = joins.begin();
-      std::advance(it2, id - num_erased);
-      joins.erase(it2);
-      num_erased++;
-    }
+    //   //find unique
+    //   std::sort(combined_nbrs.begin(), combined_nbrs.end());
+    //   uint32_t unique = 1;
+    //   for (uint32_t i = 1; i < combined_nbrs.size(); i++){
+    //     if (combined_nbrs[i] != combined_nbrs [i-1])
+    //     {
+    //       unique++;
+    //     }
+    //   }
+    //   if (unique < 5)
+    //   {
+    //     to_erase.push_back(join_id);
+    //   }
+    //   join_id++;
+    // }
+    // //erase joins that would result in less than 3 corners
+    // to_erase.sort();
+    // num_erased = 0;
+    // for (auto id : to_erase) {
+    //   std::list<JoinOperation>::iterator it2 = joins.begin();
+    //   std::advance(it2, id - num_erased);
+    //   joins.erase(it2);
+    //   num_erased++;
+    // }
 
     chart_merges++;
 
@@ -763,6 +756,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 }
 
 
+
 int main( int argc, char** argv ) 
 {
 
@@ -777,6 +771,10 @@ int main( int argc, char** argv )
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
     std::cout << "Optional: -ch specifies chart threshold (=100)" << std::endl;
     std::cout << "Optional: -co specifies cost threshold (=double max)" << std::endl;
+
+    std::cout << "Optional: -ef specifies error fit coefficient (=1)" << std::endl;
+    std::cout << "Optional: -eo specifies error orientation coefficient (=1)" << std::endl;
+    std::cout << "Optional: -es specifies error shape coefficient (=1)" << std::endl;
     return 1;
   }
 
@@ -788,6 +786,19 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-ch")) {
     chart_threshold = atoi(Utils::getCmdOption(argv, argv + argc, "-ch"));
   }
+  double e_fit_cf = 1.0;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-ef")) {
+    e_fit_cf = atof(Utils::getCmdOption(argv, argv + argc, "-ef"));
+  }
+  double e_ori_cf = 1.0;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-eo")) {
+    e_ori_cf = atof(Utils::getCmdOption(argv, argv + argc, "-eo"));
+  }
+  double e_shape_cf = 1.0;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-es")) {
+    e_shape_cf = atof(Utils::getCmdOption(argv, argv + argc, "-es"));
+  }
+  CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf);
 
     //load OBJ into arrays
   std::vector<double> vertices;
@@ -823,7 +834,7 @@ int main( int argc, char** argv )
     std::cout << "mesh is triangulated\n";
   }
 
-  uint32_t active_charts = create_charts(polyMesh, cost_threshold, chart_threshold);
+  uint32_t active_charts = create_charts(polyMesh, cost_threshold, chart_threshold, cluster_settings);
 
 
   std::string out_filename = "data/charts.obj";
@@ -846,7 +857,9 @@ int main( int argc, char** argv )
   ofs << "Vertices: " << vertices.size()/3 << " , faces: " << tris.size()/3 << std::endl; 
   ofs << "Desired Charts: " << chart_threshold << ", active charts: " << active_charts << std::endl;
   ofs << "Cost threshold: " << cost_threshold << std::endl;
-  ofs.close();
+  ofs << "Cluster settings: e_fit: " << cluster_settings.e_fit_cf << ", e_ori: " << cluster_settings.e_ori_cf << ", e_shape" << cluster_settings.e_shape_cf << std::endl;
+
+    ofs.close();
   std::cout << "Log written to " << log_path << std::endl;
 
 

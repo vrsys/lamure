@@ -336,3 +336,68 @@ Output file: data/charts.obj
 Vertices: 668 , faces: 1332
 Desired Charts: 20, active charts: 20
 Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2019-01-07 10:26:49
+Ran for 0 m 3 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2019-01-07 11:08:24
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2019-01-07 11:11:00
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2019-01-07 11:23:40
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2019-01-07 11:27:01
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2019-01-07 11:50:23
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.3
+
+-------------------------------------
+Executed at 2019-01-07 11:53:11
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.7
