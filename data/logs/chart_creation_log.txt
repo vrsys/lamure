@@ -318,3 +318,13 @@ Output file: data/charts.obj
 Vertices: 668 , faces: 1332
 Desired Charts: 10, active charts: 10
 Cost threshold: 1.79769e+308
+
+-------------------------------------
+Executed at 2019-01-08 11:55:19
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 0, e_shape1

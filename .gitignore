@@ -8,3 +8,8 @@ cmake-build-debug
 cmake-build-release
 data/bunny.lod
 data/bunny.bvh
+apps/sandbox_gary/
+data/geometric/
+data/papers/
+data/tinymeshes/
+
