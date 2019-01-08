@@ -9,3 +9,6 @@ cmake-build-release
 data/bunny.lod
 data/papers
 apps/sandbox_gary
+data/geometric
+data/tinymeshes
+

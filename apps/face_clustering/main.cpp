@@ -443,6 +443,8 @@ struct JoinOperation {
 
     error = e_fit + e_direction + e_shape;
 
+    std::cout << "Error: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
+
     return error;
   }
 
