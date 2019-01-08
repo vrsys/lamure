@@ -80,8 +80,8 @@ struct Utils
 	      //   n.insert(n.end(), {nx,ny, nz});
 	      // } 
 	      else if (strcmp(line, "vt") == 0) {
-	        float tx, ty;
-	        fscanf(file, "%f %f\n", &tx, &ty);
+	        double tx, ty;
+	        fscanf(file, "%lf %lf\n", &tx, &ty);
 	        t.insert(t.end(), {tx, ty});
 	      } 
 	      else if (strcmp(line, "f") == 0) {

@@ -96,9 +96,9 @@ public:
 struct OBJ_printer
 {
 	template <class Polyhedron>
-	static void print_polyhedron_wavefront_with_chart_colours( std::ostream& out, const Polyhedron& P, std::map<uint32_t, uint32_t> &chart_id_map, const uint32_t active_charts) {
+	static void print_polyhedron_wavefront_with_charts( std::ostream& out, const Polyhedron& P, std::map<uint32_t, uint32_t> &chart_id_map, const uint32_t active_charts, bool SEPARATE_CHART_FILE) {
 	    File_writer_wavefront_xtnd  writer(out);
-	    generic_print_polyhedron( out, P, writer, chart_id_map, active_charts);
+	    generic_print_polyhedron( out, P, writer, chart_id_map, active_charts, SEPARATE_CHART_FILE);
 	}
 
 	template <class Polyhedron, class Writer>
@@ -108,7 +108,8 @@ struct OBJ_printer
 	                          const Polyhedron& P,
 	                          Writer&           writer,
 	                          std::map<uint32_t, uint32_t> &chart_id_map,
-	                          const uint32_t active_charts) {
+	                          const uint32_t active_charts,
+	                          bool SEPARATE_CHART_FILE) {
 
 		std::cout << "Writing OBJ from polyhedron..." << std::endl;
 
@@ -131,23 +132,24 @@ struct OBJ_printer
 	    }
 
 
-
-
-
-	    //write tex coords
-	    writer.write_tex_coord_header(active_charts);
-	    //for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
-	    for (uint32_t face = 0; face < active_charts; ++face) {
-	        double u = ((1.0/(double)active_charts) * face);
-
-	        writer.write_tex_coord(u,(double)(face % 2));
+	    if (SEPARATE_CHART_FILE)
+	    {
+	    	//write tex coords - actual texture coordinates:
+	    	for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+	        	writer.write_tex_coord( ::CGAL::to_double( vi->point().get_u()),
+	                                	::CGAL::to_double( vi->point().get_v()));
+	    	}
+	    }
+	    else {
+	    	//write tex coords - colours for charts:
+		    writer.write_tex_coord_header(active_charts);
+		    for (uint32_t face = 0; face < active_charts; ++face) {
+		        double u = ((1.0/(double)active_charts) * face);
+		        writer.write_tex_coord(u,(double)(face % 2));
+		    }
 	    }
 
 	    	 //    //calculate normals
-	    // writer.write_normal_header(1);
-	    // writer.write_normal(0.5,0.5,0.5);
-
-
 	    writer.write_normal_header(P.size_of_facets());
 	    typedef CGAL::Simple_cartesian<double> Kernel;
 		typedef typename boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
@@ -185,13 +187,36 @@ struct OBJ_printer
 	        const int id = fi->id();
 	        const int chart_id = chart_id_map[id];
 	        do {
-	            writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id,face_id);
+
+	        	if (SEPARATE_CHART_FILE)
+	        	{
+	            	writer.write_facet_vertex_index( index[ VCI(hc->vertex())], index[ VCI(hc->vertex())],face_id); // for uv coords
+	        	}
+	        	else {
+	        		writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id,face_id); // for chart colours
+	        	}
+
 	            ++hc;
 	        } while( hc != hc_end);
 	        writer.write_facet_end();
 	        face_id++;
 	    }
 	    writer.write_footer();
+
+
+	    if (SEPARATE_CHART_FILE)
+	    {
+	    	std::string chart_filename = "data/chart.chart";
+	    	std::ofstream ocfs( chart_filename );
+
+	    	for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+		        const int id = fi->id();
+		        const int chart_id = chart_id_map[id];
+		        ocfs << chart_id << " ";
+		    }
+		    ocfs.close();
+  			std::cout << "Chart file written to:  " << chart_filename << std::endl;
+	    }
 	}
 
 };
