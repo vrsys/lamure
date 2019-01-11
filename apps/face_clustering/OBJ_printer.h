@@ -137,6 +137,7 @@ struct OBJ_printer
 	    //write tex coords
 	    writer.write_tex_coord_header(active_charts);
 	    //for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+	    //colours for chartsin obj app
 	    for (uint32_t face = 0; face < active_charts; ++face) {
 	        double u = ((1.0/(double)active_charts) * face);
 
