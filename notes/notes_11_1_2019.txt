@@ -1,0 +1,13 @@
+to test direction error term
+
+ - examine paper
+ - implement on small scale in sandbox
+	- for one triangle per chart, then add more triangles
+	- test with case of folded over triangle
+
+ - seems to work on small scale
+
+	- to add to main program, calculate a direction quad at init of chart
+	- then to calculate error, add quads but with area weighting - test this(need to implement element wise multiplication of SymMat?)
+	- normals should be normalised!!
+

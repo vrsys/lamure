@@ -552,7 +552,7 @@ struct JoinOperation {
 
     error = e_fit + e_direction + e_shape;
 
-    // std::cout << "Error: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
+    std::cout << "Error: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
 
     return error;
   }
@@ -624,7 +624,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   uint32_t chart_merges = 0;
 
   //create possible join list/queue. Each original edge in the mesh becomes a join (if not a boundary edge)
-  std::cout << "Creating initial joins...";
+  std::cout << "Creating initial joins...\n";
   std::list<JoinOperation> joins;
   std::list<JoinOperation>::iterator it;
   for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){

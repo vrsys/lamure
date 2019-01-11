@@ -797,3 +797,13 @@ Vertices: 668 , faces: 1332
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 0, e_shape0
+
+-------------------------------------
+Executed at 2019-01-11 21:10:14
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
