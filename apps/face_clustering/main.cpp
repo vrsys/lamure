@@ -44,14 +44,56 @@
 #include "eig.h"
 
 
+
+#define SEPARATE_CHART_FILE true
+
+template <class Refs, class T, class P>
+struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
+    
+  using CGAL::HalfedgeDS_vertex_base<Refs, T, P>::HalfedgeDS_vertex_base;
+
+};
+
+//extended point class
+template <class Traits>
+struct XtndPoint : public Traits::Point_3 {
+
+  XtndPoint() : Traits::Point_3() {}
+
+  XtndPoint(double x, double y, double z) 
+    : Traits::Point_3(x, y, z),
+      texCoord(0.0, 0.0) {}
+
+  XtndPoint(double x, double y, double z, double u, double v ) 
+  : Traits::Point_3(x, y, z),
+    texCoord(u, v) {}
+
+  typedef typename Traits::Vector_2 TexCoord;
+  TexCoord texCoord;
+
+  double get_u () const {return texCoord.hx();}
+  double get_v () const {return texCoord.hy();}
+
+
+};
+
+
+// A new items type using extended vertex
+//TODO change XtndVertex back to original vertex class??
+struct Custom_items : public CGAL::Polyhedron_items_with_id_3 {
+    template <class Refs, class Traits>
+    struct Vertex_wrapper {
+      typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
+    };
+};
+
 typedef CGAL::Simple_cartesian<double> Kernel;
 
 typedef Kernel::Vector_3 Vector;
 typedef CGAL::Point_3<Kernel> Point;
 
 
-
-typedef CGAL::Polyhedron_3<Kernel,CGAL::Polyhedron_items_with_id_3> Polyhedron;
+typedef CGAL::Polyhedron_3<Kernel,Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
 typedef Polyhedron::Facet_iterator Facet_iterator;
@@ -79,14 +121,77 @@ class polyhedron_builder : public CGAL::Modifier_base<HDS> {
 public:
   std::vector<double> &vertices;
   std::vector<int>    &tris;
+  std::vector<double> &tcoords;
+  std::vector<int>    &tindices;
+
+  bool CHECK_VERTICES;
 
   polyhedron_builder( std::vector<double> &_vertices,
-                      std::vector<int> &_tris) 
-                      : vertices(_vertices), tris(_tris) {}
+                      std::vector<int> &_tris,
+                      std::vector<double> &_tcoords,
+                      std::vector<int> &_tindices,
+                      bool _CHECK_VERTICES) 
+                      : vertices(_vertices), tris(_tris), tcoords(_tcoords), tindices(_tindices), CHECK_VERTICES(_CHECK_VERTICES)  {}
 
 
+  //Returns false for error
   void operator()( HDS& hds) {
 
+
+    //if ids of vertex positions and texture coordinates do not match, then they are matched manually
+    //this only selects the first texture coordinate associated with a vertex position - doesn't support multiple tex coords that share a vertex position 
+    bool vertices_match = true;
+    if (CHECK_VERTICES)
+    {
+      //check if vertex indices and tindices are the same
+      if ( (vertices.size()/3) != (tcoords.size() / 2)) {std::cerr << "Input Texture coords not matched with input (different quantities)\n";
+          vertices_match = false;}
+      else {
+        for (uint32_t i = 0; i < tindices.size(); ++i)
+        {
+          if (tindices[i] != tris[i]){
+            std::cerr << "Input Texture coords not matched with input (different indices)\n";
+            vertices_match = false;
+            break;
+          }
+        }
+      }
+    }
+    if (!vertices_match)
+    {
+      //match vertex indexes to texture indexes to create new texture array
+      std::vector<double> matched_tex_coords;
+
+      //for each vertex entry
+      for (uint32_t i = 0; i < (vertices.size() / 3); ++i)
+      {
+        // int vertex_index = i+1;
+
+        //find first use of vertex in tris array
+        for (uint32_t t = 0; t < tris.size(); ++t)
+        {
+          if (tris[t] == (int)i)
+          {
+            int target_face_vertex = t;
+            int matching_tex_coord_idx = tindices[target_face_vertex];
+            matched_tex_coords.push_back(tcoords[matching_tex_coord_idx*2]);
+            matched_tex_coords.push_back(tcoords[(matching_tex_coord_idx*2) + 1]);
+            break;
+          }
+        }
+      }
+
+      tcoords = matched_tex_coords;
+
+      //check each vertex has coords
+      if ((vertices.size()/3) == (tcoords.size() / 2)){
+        std::cout << "matched texture coords with vertices\n";
+      }
+      else {
+        std::cout << "failed to matched texture coords with vertices (" << (vertices.size()/3) << " vertices, " << (tcoords.size() / 2) << " coords)\n";
+      }
+      
+    }
 
     // create a cgal incremental builder
     CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
@@ -95,9 +200,13 @@ public:
     // add the polyhedron vertices
     for( int i=0; i<(int)vertices.size() / 3; ++i ){
 
-      B.add_vertex( Point( vertices[(i*3)], 
+
+
+      B.add_vertex( XtndPoint<Kernel>( vertices[(i*3)], 
                            vertices[(i*3)+1], 
-                           vertices[(i*3)+2]));
+                           vertices[(i*3)+2],
+                            tcoords[i*2],
+                            tcoords[(i*2)+1]));
 
     }
 
@@ -114,7 +223,7 @@ public:
     // finish up the surface
     B.end_surface();
 
-    }
+  }
 
 };
 
@@ -443,7 +552,7 @@ struct JoinOperation {
 
     error = e_fit + e_direction + e_shape;
 
-    std::cout << "Error: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
+    // std::cout << "Error: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
 
     return error;
   }
@@ -499,6 +608,12 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     //init chart instance for face
     Chart c(*fb, fnormals[*fb_boost], fareas[*fb_boost]);
     charts.push_back(c);
+
+
+    // //check uv coords saved
+    // double u = fb->halfedge()->vertex()->point().get_u();
+    // double v = fb->halfedge()->vertex()->point().get_v();
+    // std::cout << "tex coords:  u " << u << ", v " << v << std::endl;
 
     fb_boost++;
   }
@@ -814,13 +929,16 @@ int main( int argc, char** argv )
     std::cout << "didnt find any vertices" << std::endl;
     return 1;
   }
-  std::cout << "Mesh loaded (" << vertices.size() << " vertices)" << std::endl;
+  std::cout << "Mesh loaded (" << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
 
   auto start_time = std::chrono::system_clock::now();
 
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;
-  polyhedron_builder<HalfedgeDS> builder( vertices, tris );
+  bool check_vertices = true;
+  polyhedron_builder<HalfedgeDS> builder( vertices, tris, t_coords, tindices, check_vertices );
+
+
   polyMesh.delegate( builder );
 
   if (polyMesh.is_valid(false)){
@@ -841,7 +959,7 @@ int main( int argc, char** argv )
 
   std::string out_filename = "data/charts.obj";
   std::ofstream ofs( out_filename );
-  OBJ_printer::print_polyhedron_wavefront_with_chart_colours( ofs, polyMesh,chart_id_map, active_charts);
+  OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, SEPARATE_CHART_FILE);
   ofs.close();
   std::cout << "simplified mesh was written to " << out_filename << std::endl;
 

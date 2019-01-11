@@ -4,11 +4,6 @@
 #include <algorithm>
 
 
-// #include <CGAL/Simple_cartesian.h>
-
-// typedef CGAL::Simple_cartesian<double> Kernel;
-// typedef CGAL::Point_3<Kernel> Point;
-
 struct Utils
 {
 	static char* getCmdOption(char ** begin, char ** end, const std::string & option) {
@@ -59,12 +54,6 @@ struct Utils
 	              std::vector<double> &t,
 	              std::vector<int> &tindices ){
 
-	  // std::vector<double> v;
-	  // std::vector<int> vindices;
-	  // std::vector<double> n;
-	  // std::vector<int> nindices;
-	  // std::vector<double> t;
-	  // std::vector<int> tindices;
 
 	  FILE *file = fopen(filename.c_str(), "r");
 
@@ -86,8 +75,8 @@ struct Utils
 	      //   n.insert(n.end(), {nx,ny, nz});
 	      // } 
 	      else if (strcmp(line, "vt") == 0) {
-	        float tx, ty;
-	        fscanf(file, "%f %f\n", &tx, &ty);
+	        double tx, ty;
+	        fscanf(file, "%lf %lf\n", &tx, &ty);
 	        t.insert(t.end(), {tx, ty});
 	      } 
 	      else if (strcmp(line, "f") == 0) {
@@ -117,18 +106,5 @@ struct Utils
 
 	}
 
-	// //returns outer product of v'v, in shortened form
-	// static std::vector<double> calc_symmetric_mat3 (Point vertex){
-	// 	std::vector<double> sym_mat;
-
-	// 	sym_mat.push_back(vertex.x() * vertex.x());
-	// 	sym_mat.push_back(vertex.x() * vertex.y());
-	// 	sym_mat.push_back(vertex.x() * vertex.z());
-	// 	sym_mat.push_back(vertex.y() * vertex.y());
-	// 	sym_mat.push_back(vertex.y()* vertex.z());
-	// 	sym_mat.push_back(vertex.z() * vertex.z());
-
-	// 	return sym_mat;
-	// }
 };
 
