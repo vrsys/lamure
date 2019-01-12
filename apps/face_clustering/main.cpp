@@ -45,7 +45,7 @@
 
 
 
-#define SEPARATE_CHART_FILE true
+#define SEPARATE_CHART_FILE false
 
 template <class Refs, class T, class P>
 struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
@@ -275,6 +275,16 @@ struct ErrorQuadric {
     return eq;
   }
 
+  ErrorQuadric operator*(const double rhs){
+    ErrorQuadric result = *this;
+
+    result.A = result.A * rhs;
+    result.b = result.b * rhs;
+    result.c = result.c * rhs;
+
+    return result;
+  }
+
   //create covariance / 'Z' matrix 
   // A - ( (b*bT) / c)
   void get_covariance_matrix(double cm[3][3]) {
@@ -325,6 +335,8 @@ void get_best_fit_plane( ErrorQuadric eq, Vector& plane_normal, double& scalar_o
 
 }
 
+Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
+
 
 //key: face_id, value: chart_id
 std::map<uint32_t, uint32_t> chart_id_map;
@@ -332,6 +344,7 @@ std::map<uint32_t, uint32_t> chart_id_map;
 // struct to hold a vector of facets that make a chart
 struct Chart
 {
+  uint32_t id;
   std::vector<Facet> facets;
   std::vector<Vector> normals;
   std::vector<double> areas;
@@ -343,18 +356,19 @@ struct Chart
   ErrorQuadric P_quad; // point error quad
   ErrorQuadric R_quad; // orientation error quad
 
-  Chart(Facet f,const Vector normal,const double _area){
+  Chart(uint32_t _id, Facet f,const Vector normal,const double _area){
     facets.push_back(f);
     normals.push_back(normal);
     areas.push_back(_area);
     active = true;
     area = _area;
+    id = _id;
     // avg_normal = normal;
 
     perimeter = get_face_perimeter(f);
 
     P_quad = createPQuad(f);
-    R_quad = ErrorQuadric(normal);
+    R_quad = ErrorQuadric(normalise(normal));
   }
 
   //create a combined quadric for 3 vertices of a face
@@ -378,13 +392,11 @@ struct Chart
     normals.insert(normals.end(), mc.normals.begin(), mc.normals.end());
     areas.insert(areas.end(), mc.areas.begin(), mc.areas.end());
 
-    // Vector n = (avg_normal * area) + (mc.avg_normal * mc.area); //create new chart normal
-    // avg_normal = n / std::sqrt(n.squared_length()); //normalise normal
-
-    area += mc.area;
 
     P_quad = P_quad + mc.P_quad;
-    R_quad = R_quad + mc.R_quad;
+    R_quad = (R_quad*area) + (mc.R_quad*mc.area);
+
+    area += mc.area;
 
   }
 
@@ -483,38 +495,29 @@ struct Chart
 
   }
 
-  static double get_direction_error(Chart& c1, Chart& c2, const Vector plane_normal){
+  static double get_direction_error(Chart& c1, Chart& c2, Vector &plane_normal){
 
-    //average error between average normal and individual face normals
-    //can be stored as quadric - next step
+    ErrorQuadric combinedQuad = (c1.R_quad*c1.area) + (c2.R_quad*c2.area);
+    double e_direction = evaluate_direction_quadric(combinedQuad,plane_normal);
 
-    //TODO replace avg_normal with plane fit normal
-    // Vector avg_normal = (c1.avg_normal * c1.area) + (c2.avg_normal * c2.area);
-    // double e_direction = accum_direction_error_in_chart(c1,plane_normal) + accum_direction_error_in_chart(c2,plane_normal);
-
-    // ErrorQuadric r_quad = c1.R_quad
-
-    double e_direction_c1 = (plane_normal * (c1.R_quad.A * plane_normal))
-                        + (2 * (c1.R_quad.b  * plane_normal))
-                        + c1.R_quad.c;
-
-    double e_direction_c2 = (plane_normal * (c2.R_quad.A * plane_normal))
-                    + (2 * (c2.R_quad.b  * plane_normal))
-                    + c2.R_quad.c;
-
-    double e_direction = ((c1.area * e_direction_c1) + (c2.area * e_direction_c2))
-                        / (c1.area + c2.area); 
-
-    return e_direction;
+    return e_direction / (c1.area + c2.area);
   }
-  static double accum_direction_error_in_chart(Chart& chart, const Vector plane_normal){
-    double accum_error = 0;
-    for (uint32_t i = 0; i < chart.facets.size(); i++){
-      double error = 1.0 - (plane_normal * chart.normals[i]);
-      accum_error += (error * chart.areas[i]);
-    }
-    return accum_error;
+
+  static double evaluate_direction_quadric(ErrorQuadric &eq, Vector &plane_normal){
+
+    return (plane_normal * (eq.A * plane_normal))
+                        + (2 * (eq.b  * plane_normal))
+                        + eq.c;
   }
+
+  // static double accum_direction_error_in_chart(Chart& chart, const Vector plane_normal){
+  //   double accum_error = 0;
+  //   for (uint32_t i = 0; i < chart.facets.size(); i++){
+  //     double error = 1.0 - (plane_normal * chart.normals[i]);
+  //     accum_error += (error * chart.areas[i]);
+  //   }
+  //   return accum_error;
+  // }
 
   static double edge_length(Halfedge_facet_circulator he){
     const Point& p = he->opposite()->vertex()->point();
@@ -552,7 +555,7 @@ struct JoinOperation {
 
     error = e_fit + e_direction + e_shape;
 
-    std::cout << "Error: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
+    std::cout << "Error [" << c1.id << ", " << c2.id << "]: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
 
     return error;
   }
@@ -605,8 +608,10 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     //assign id to face
     fb->id() = charts.size();  
 
+    std::cout << "normal " << charts.size() << ": " << fnormals[*fb_boost] << std::endl;
+
     //init chart instance for face
-    Chart c(*fb, fnormals[*fb_boost], fareas[*fb_boost]);
+    Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
     charts.push_back(c);
 
 

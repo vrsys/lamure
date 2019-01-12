@@ -30,6 +30,8 @@ public:
 
 	Vector operator*(const Vector& rhs) const;
 
+	SymMat operator*(const double rhs) const;
+
 	void to_c_mat3(double cm[3][3]);
 
 	std::string print_mat();

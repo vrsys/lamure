@@ -43,6 +43,16 @@ Vector SymMat::operator*(const Vector& rhs) const {
 	return Vector(x,y,z);
 }
 
+SymMat SymMat::operator*(const double rhs) const{
+
+	SymMat result = *this;
+	for (int i = 0; i < 6; ++i)
+	{
+		result.elements[i] *= rhs;
+	}
+	return result;
+}
+
 
 SymMat::SymMat(){
 
