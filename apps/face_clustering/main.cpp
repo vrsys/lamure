@@ -159,38 +159,47 @@ public:
     }
     if (!vertices_match)
     {
-      //match vertex indexes to texture indexes to create new texture array
-      std::vector<double> matched_tex_coords;
 
-      //for each vertex entry
-      for (uint32_t i = 0; i < (vertices.size() / 3); ++i)
+      //if no incoming coords, fil with 0s
+      if (tcoords.size()==0)
       {
-        // int vertex_index = i+1;
-
-        //find first use of vertex in tris array
-        for (uint32_t t = 0; t < tris.size(); ++t)
+        for (uint32_t i = 0; i < ((vertices.size()/3)*2); ++i)
         {
-          if (tris[t] == (int)i)
-          {
-            int target_face_vertex = t;
-            int matching_tex_coord_idx = tindices[target_face_vertex];
-            matched_tex_coords.push_back(tcoords[matching_tex_coord_idx*2]);
-            matched_tex_coords.push_back(tcoords[(matching_tex_coord_idx*2) + 1]);
-            break;
-          }
+          tcoords.push_back(0);
         }
       }
-
-      tcoords = matched_tex_coords;
-
-      //check each vertex has coords
-      if ((vertices.size()/3) == (tcoords.size() / 2)){
-        std::cout << "matched texture coords with vertices\n";
-      }
       else {
-        std::cout << "failed to matched texture coords with vertices (" << (vertices.size()/3) << " vertices, " << (tcoords.size() / 2) << " coords)\n";
+
+        //match vertex indexes to texture indexes to create new texture array
+        std::vector<double> matched_tex_coords;
+
+        //for each vertex entry
+        for (uint32_t i = 0; i < (vertices.size() / 3); ++i)
+        {
+          //find first use of vertex in tris array
+          for (uint32_t t = 0; t < tris.size(); ++t)
+          {
+            if (tris[t] == (int)i)
+            {
+              int target_face_vertex = t;
+              int matching_tex_coord_idx = tindices[target_face_vertex];
+              matched_tex_coords.push_back(tcoords[matching_tex_coord_idx*2]);
+              matched_tex_coords.push_back(tcoords[(matching_tex_coord_idx*2) + 1]);
+              break;
+            }
+          }
+        }
+
+        tcoords = matched_tex_coords;
+
+        //check each vertex has coords
+        if ((vertices.size()/3) == (tcoords.size() / 2)){
+          std::cout << "matched texture coords with vertices\n";
+        }
+        else {
+          std::cout << "failed to matched texture coords with vertices (" << (vertices.size()/3) << " vertices, " << (tcoords.size() / 2) << " coords)\n";
+        }
       }
-      
     }
 
     // create a cgal incremental builder
@@ -330,6 +339,12 @@ void get_best_fit_plane( ErrorQuadric eq, Vector& plane_normal, double& scalar_o
 
   plane_normal = Vector(eigenvectors[0][min_loc], eigenvectors[1][min_loc], eigenvectors[2][min_loc]);
 
+  // std::cout << "plane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
+  // std::cout << "ev1: " << eigenvectors[0][0] << ", " << eigenvectors[1][0] << ", " << eigenvectors[2][0] << std::endl;
+  // std::cout << "ev2: " << eigenvectors[0][1] << ", " << eigenvectors[1][1] << ", " << eigenvectors[2][1] << std::endl;
+  // std::cout << "ev3: " << eigenvectors[0][2] << ", " << eigenvectors[1][2] << ", " << eigenvectors[2][2] << std::endl;
+
+
   //d is described specified as:  d =  (-nT*b)   /     c
   scalar_offset = (-plane_normal * eq.b) / eq.c;
 
@@ -349,7 +364,7 @@ struct Chart
   std::vector<Vector> normals;
   std::vector<double> areas;
   bool active;
-  // Vector avg_normal; //redundant?
+  Vector avg_normal; 
   double area;
   double perimeter;
 
@@ -363,7 +378,7 @@ struct Chart
     active = true;
     area = _area;
     id = _id;
-    // avg_normal = normal;
+    avg_normal = normal;
 
     perimeter = get_face_perimeter(f);
 
@@ -388,15 +403,26 @@ struct Chart
   //concatenate data from mc (merge chart) on to data from this chart
   void merge_with(Chart &mc, const double cost_of_join){
 
+
+    perimeter = get_chart_perimeter(*this, mc);
+
     facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
     normals.insert(normals.end(), mc.normals.begin(), mc.normals.end());
     areas.insert(areas.end(), mc.areas.begin(), mc.areas.end());
-
 
     P_quad = P_quad + mc.P_quad;
     R_quad = (R_quad*area) + (mc.R_quad*mc.area);
 
     area += mc.area;
+
+    //recalculate average vector
+    Vector v(0,0,0);
+    for (uint32_t i = 0; i < normals.size(); ++i)
+    {
+      v += (normals[i] * areas[i]);
+    }
+    avg_normal = v / area;
+
 
   }
 
@@ -419,7 +445,22 @@ struct Chart
     //divide by number of points in combined chart
     //TODO does it need to be calculated exactly or just faces * 3 ?
 
-    fit_plane_normal = plane_normal;
+    //check against sign of average normal to get sign of plane_normal
+    Vector avg_normal = normalise((c1.avg_normal * c1.area) + (c2.avg_normal * c2.area));
+    double angle_between_vectors = acos(avg_normal * plane_normal);
+
+    // std::cout << "avg normal: " << avg_normal.x() << ", " << avg_normal.y() << ", " << avg_normal.z() << std::endl;
+    // std::cout << "angle between = " << angle_between_vectors << std::endl;
+
+    if (angle_between_vectors > (0.5 * M_PI))
+    {
+      fit_plane_normal = -plane_normal;
+    }
+    else {
+      fit_plane_normal = plane_normal;
+    }
+
+    // std::cout << "plane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
 
     return e_fit;
 
@@ -434,11 +475,18 @@ struct Chart
 
     double shape_penalty = ( irreg_new - std::max(irreg1, irreg2) ) / irreg_new;
 
+    std::cout << "Shape penalty = " << shape_penalty << std::endl;
+
     return shape_penalty;
   }
 
     // as defined in Garland et al 2001
   static double get_irregularity(double perimeter, double area){
+
+    // std::cout << "P = " << perimeter << ", area = " << area << std::endl;
+    // std::cout << "Irreg = " << (perimeter*perimeter) / (4 * M_PI * area) << std::endl;
+
+
     return (perimeter*perimeter) / (4 * M_PI * area);
   }
 
@@ -463,10 +511,16 @@ struct Chart
   // then calculate by adding perimeters and subtractng double shared edges
   static double get_chart_perimeter(Chart& c1, Chart& c2){
 
+    std::cout << "perimeter of charts [" << c1.id << ", " << c2.id << "]" << std::endl;
+
     double perimeter = c1.perimeter + c2.perimeter;
+
+    std::cout << "combined P before processing: " << c1.perimeter << " + " << c2.perimeter << " = " << perimeter << std::endl;
 
     //for each face in c1
     for (auto& c1_face : c1.facets){
+
+      // std::cout << "for face " << c1_face.id() << std::endl;
 
       //for each edge
       Halfedge_facet_circulator he = c1_face.facet_begin();
@@ -479,17 +533,27 @@ struct Chart
         if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
           uint32_t adj_face_id = he->opposite()->facet()->id();
 
+          // std::cout << "found adjacent face: " << adj_face_id << std::endl;
+
           for (auto& c2_face : c2.facets){
             if (c2_face.id() == adj_face_id)
             {
               perimeter -= (2 * edge_length(he));
+
+              // std::cout << "- " << "found in chart " << c2.id << ", subtracted " << (2 * edge_length(he)) << std::endl;
+
               break;
             }
           }
         }
+        else {
+          // std::cout << "border edge\n";
+        }
 
       } while ( ++he != c1_face.facet_begin());
     }
+
+    std::cout << "after = " << perimeter << std::endl;
 
     return perimeter;
 
@@ -497,13 +561,28 @@ struct Chart
 
   static double get_direction_error(Chart& c1, Chart& c2, Vector &plane_normal){
 
+    // std::cout << "----\nplane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
+
+    // std::cout << "eq1:\n" << c1.R_quad.print() << "\neq2:\n" << c2.R_quad.print() << std::endl;
+    // std::cout << "area 1: " << c1.area << " area 2: " << c2.area << std::endl;
+
     ErrorQuadric combinedQuad = (c1.R_quad*c1.area) + (c2.R_quad*c2.area);
+
+    // std::cout << "combined:\n" << combinedQuad.print() << std::endl;
+
     double e_direction = evaluate_direction_quadric(combinedQuad,plane_normal);
+
+    // std::cout << "E direction = " << e_direction << std::endl;
 
     return e_direction / (c1.area + c2.area);
   }
 
   static double evaluate_direction_quadric(ErrorQuadric &eq, Vector &plane_normal){
+
+
+    // std::cout << "Term 1 = " << (plane_normal * (eq.A * plane_normal)) << std::endl;
+    // std::cout << "Term 2 = " <<(2 * (eq.b  * plane_normal))<< std::endl;
+    // std::cout << "Term 3 = " << eq.c << std::endl;
 
     return (plane_normal * (eq.A * plane_normal))
                         + (2 * (eq.b  * plane_normal))
@@ -544,12 +623,17 @@ struct JoinOperation {
   //calculates cost of joining these 2 charts
   static double cost_of_join(Chart &c1, Chart &c2 ,CLUSTER_SETTINGS& cluster_settings){
 
+    std::cout << "-----------------\n";
+
 
     double error = 0;
 
     Vector fit_plane_normal;
 
     double e_fit =       cluster_settings.e_fit_cf *   Chart::get_fit_error(c1,c2, fit_plane_normal);
+
+    fit_plane_normal = normalise(fit_plane_normal);
+
     double e_direction = cluster_settings.e_ori_cf *   Chart::get_direction_error(c1,c2,fit_plane_normal); 
     double e_shape =     cluster_settings.e_shape_cf * Chart::get_compactness_of_merged_charts(c1,c2);
 
@@ -592,10 +676,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   //calculate normals of each faces
   std::cout << "Calculating face normals...\n";
   std::map<face_descriptor,Vector> fnormals;
-  std::map<vertex_descriptor,Vector> vnormals;
-  CGAL::Polygon_mesh_processing::compute_normals(P,
-                                                 boost::make_assoc_property_map(vnormals),
-                                                 boost::make_assoc_property_map(fnormals));
+  CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
 
   //get boost face iterator
   face_iterator fb_boost, fe_boost;
@@ -608,7 +689,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     //assign id to face
     fb->id() = charts.size();  
 
-    std::cout << "normal " << charts.size() << ": " << fnormals[*fb_boost] << std::endl;
+    // std::cout << "normal " << charts.size() << ": " << fnormals[*fb_boost] << std::endl;
 
     //init chart instance for face
     Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
@@ -632,7 +713,12 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
   std::cout << "Creating initial joins...\n";
   std::list<JoinOperation> joins;
   std::list<JoinOperation>::iterator it;
+
+  int edgecount = 0;
+
   for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
+
+    edgecount++;
 
     //only create join if halfedge is not a boundary edge
     if ( !(eb->is_border()) && !(eb->opposite()->is_border()) )
@@ -644,7 +730,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     }
   } 
 
-  std::cout << joins.size() << " joins\n";
+  std::cout << joins.size() << " joins\n" << edgecount << " edges\n";
 
   // join charts until target is reached
   int prev_cost_percent = -1;
@@ -682,6 +768,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     // std::cout << "join cost : " << join_todo.cost << std::endl; 
 
     //merge faces from chart2 into chart 1
+    std::cout << "merging charts " << join_todo.chart1_id << " and " << join_todo.chart2_id << std::endl;
     charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id], join_todo.cost);
 
 
@@ -787,40 +874,40 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
     }
 
-    // //CHECK that each join would give a chart with at least 3 neighbours
-    // uint32_t join_id = 0;
-    // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-    //   // combined neighbour count of joins' 2 charts should be at least 5
-    //   // they will both contain each other (accounting for 2 neighbours) and require 3 more
+    //CHECK that each join would give a chart with at least 3 neighbours
+    uint32_t join_id = 0;
+    for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+      // combined neighbour count of joins' 2 charts should be at least 5
+      // they will both contain each other (accounting for 2 neighbours) and require 3 more
 
-    //   //merge the vectors for each chart in the join and count unique neighbours
-    //   std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
-    //   combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
+      //merge the vectors for each chart in the join and count unique neighbours
+      std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
+      combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
 
-    //   //find unique
-    //   std::sort(combined_nbrs.begin(), combined_nbrs.end());
-    //   uint32_t unique = 1;
-    //   for (uint32_t i = 1; i < combined_nbrs.size(); i++){
-    //     if (combined_nbrs[i] != combined_nbrs [i-1])
-    //     {
-    //       unique++;
-    //     }
-    //   }
-    //   if (unique < 5)
-    //   {
-    //     to_erase.push_back(join_id);
-    //   }
-    //   join_id++;
-    // }
-    // //erase joins that would result in less than 3 corners
-    // to_erase.sort();
-    // num_erased = 0;
-    // for (auto id : to_erase) {
-    //   std::list<JoinOperation>::iterator it2 = joins.begin();
-    //   std::advance(it2, id - num_erased);
-    //   joins.erase(it2);
-    //   num_erased++;
-    // }
+      //find unique
+      std::sort(combined_nbrs.begin(), combined_nbrs.end());
+      uint32_t unique = 1;
+      for (uint32_t i = 1; i < combined_nbrs.size(); i++){
+        if (combined_nbrs[i] != combined_nbrs [i-1])
+        {
+          unique++;
+        }
+      }
+      if (unique < 5)
+      {
+        to_erase.push_back(join_id);
+      }
+      join_id++;
+    }
+    //erase joins that would result in less than 3 corners
+    to_erase.sort();
+    num_erased = 0;
+    for (auto id : to_erase) {
+      std::list<JoinOperation>::iterator it2 = joins.begin();
+      std::advance(it2, id - num_erased);
+      joins.erase(it2);
+      num_erased++;
+    }
 
     chart_merges++;
 
@@ -836,6 +923,9 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 
 
   //reporting//testing
+
+
+  std::cout << "front join cost: " << joins.front().cost << ", num joins: " << joins.size() << "chart threshold: " << chart_threshold << std::endl; 
 
   std::cout << "--------------------\nCharts:\n----------------------\n";
 
