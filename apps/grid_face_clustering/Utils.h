@@ -59,9 +59,14 @@ struct Utils
 	static void load_obj(const std::string& filename, 
 	              std::vector<double> &v, 
 	              std::vector<int> &vindices, 
+	              // std::vector<double> &n, 
+	              // std::vector<int> &nindices, 
 	              std::vector<double> &t,
-	              std::vector<int> &tindices ){
+	              std::vector<int> &tindices,
+	              std::vector<lamure::mesh::triangle_t>& triangles){
 
+
+	  triangles.clear();
 
 	  FILE *file = fopen(filename.c_str(), "r");
 
@@ -109,6 +114,50 @@ struct Utils
 	    // std::cout << "normals: " << n.size()/3 << std::endl;
 	    std::cout << "coords: " << t.size()/2 << std::endl;
 	    std::cout << "faces: " << vindices.size()/3 << std::endl;
+
+
+
+	    triangles.resize(vindices.size()/3);
+
+        for (uint32_t i = 0; i < vindices.size()/3; i++) {
+          lamure::mesh::triangle_t tri;
+          for (uint32_t j = 0; j < 3; ++j) {
+            
+            scm::math::vec3f position(
+                    v[3 * (vindices[3*i+j] - 1)], v[3 * (vindices[3*i+j] - 1) + 1], v[3 * (vindices[3*i+j] - 1) + 2]);
+
+            // scm::math::vec3f normal(
+            //         n[3 * (nindices[3*i+j] - 1)], n[3 * (nindices[3*i+j] - 1) + 1], n[3 * (nindices[3*i+j] - 1) + 2]);
+
+            scm::math::vec2f coord(
+                    t[2 * (tindices[3*i+j] - 1)], t[2 * (tindices[3*i+j] - 1) + 1]);
+
+            
+            switch (j) {
+              case 0:
+              tri.v0_.pos_ =  position;
+              // tri.v0_.nml_ = normal;
+              tri.v0_.tex_ = coord;
+              break;
+
+              case 1:
+              tri.v1_.pos_ =  position;
+              // tri.v1_.nml_ = normal;
+              tri.v1_.tex_ = coord;
+              break;
+
+              case 2:
+              tri.v2_.pos_ =  position;
+              // tri.v2_.nml_ = normal;
+              tri.v2_.tex_ = coord;
+              break;
+
+              default:
+              break;
+            }
+          }
+          triangles[i] = tri;
+        }
 
 	  }
 

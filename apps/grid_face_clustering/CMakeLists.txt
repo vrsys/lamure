@@ -3,7 +3,9 @@
 
 include_directories(${PREPROC_INCLUDE_DIR} 
                     ${COMMON_INCLUDE_DIR}
-                    ${CGAL_INCLUDE_DIR})
+                    ${CGAL_INCLUDE_DIR}
+                    ${REND_INCLUDE_DIR}
+                    ${MESH_PREPROC_INCLUDE_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
 						   ${Boost_INCLUDE_DIR})
@@ -18,6 +20,8 @@ InitApp(${CMAKE_PROJECT_NAME}_grid_face_clustering)
 target_link_libraries(${PROJECT_NAME}
     ${PROJECT_LIBS}
     ${PREPROC_LIBRARY}
+    ${REND_LIBRARY}
+    ${MESH_PREPROC_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
     optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}

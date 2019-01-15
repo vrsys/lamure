@@ -7,6 +7,8 @@
 #include <chrono>
 #include <limits>
 #include <float.h>
+#include <lamure/mesh/bvh.h>
+
 
 #include <CGAL/Polygon_mesh_processing/measure.h>
 
@@ -24,6 +26,7 @@
 #include "polyhedron_builder.h"
 #include "eig.h"
 #include "ClusterCreator.h"
+#include "GridClusterCreator.h"
 
 #include "CGAL_typedefs.h"
 
@@ -32,7 +35,7 @@
 #define SEPARATE_CHART_FILE false
 
 
-Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
+// Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
 
 //key: face_id, value: chart_id
@@ -97,20 +100,28 @@ int main( int argc, char** argv )
   }
   CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf);
 
+
+  std::vector<lamure::mesh::triangle_t> triangles;
+
+
     //load OBJ into arrays
   std::vector<double> vertices;
   std::vector<int> tris;
   std::vector<double> t_coords;
   std::vector<int> tindices;
-  Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices);
+  Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices, triangles);
+
+
+
 
 
   if (vertices.size() == 0 ) {
     std::cout << "didnt find any vertices" << std::endl;
     return 1;
   }
-  std::cout << "Mesh loaded (" << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
+  std::cout << "Mesh loaded (" << triangles.size() << " triangles, " << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
 
+  return 1;
   auto start_time = std::chrono::system_clock::now();
 
   // build a polyhedron from the loaded arrays
@@ -133,6 +144,11 @@ int main( int argc, char** argv )
   else {
     std::cout << "mesh is triangulated\n";
   }
+
+
+  GridClusterCreator::create_grid_clusters(triangles,chart_id_map);
+
+return 1;
 
   uint32_t active_charts = ClusterCreator::create_charts(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
 
