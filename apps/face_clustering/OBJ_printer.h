@@ -30,6 +30,7 @@
 
 
 #include <iostream>
+#include <cstdlib>
 
 
 
@@ -147,8 +148,12 @@ struct OBJ_printer
 	    	//write tex coords - colours for charts:
 	    	writer.write_tex_coord_header(active_charts);
 		    for (uint32_t face = 0; face < active_charts; ++face) {
-		        double u = ((1.0/(double)active_charts) * face);
-		        writer.write_tex_coord(u,(double)(face % 2));
+		        // double u = ((1.0/(double)active_charts) * face);
+		        // writer.write_tex_coord(u,(double)(face % 2));
+		    	int r = rand();
+		        writer.write_tex_coord((r % 1000) / 1000.0 ,(r % 100) / 100.0);
+
+
 		    }
 	    }
 
@@ -207,22 +212,20 @@ struct OBJ_printer
 	    writer.write_footer();
 
 
-	    if (SEPARATE_CHART_FILE)
-	    {
-	    	std::string chart_filename = "data/chart.chart";
-	    	std::ofstream ocfs( chart_filename );
+	    if (!SEPARATE_CHART_FILE)
+			std::cout << "Charts written in OBJ (as colours) in place of texture coordinates\n";
 
-	    	for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
-		        const int id = fi->id();
-		        const int chart_id = chart_id_map[id];
-		        ocfs << chart_id << " ";
-		    }
-		    ocfs.close();
-  			std::cout << "Chart file written to:  " << chart_filename << std::endl;
+	    //write chart file
+	    std::string chart_filename = "data/chart.chart";
+    	std::ofstream ocfs( chart_filename );
+
+    	for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+	        const int id = fi->id();
+	        const int chart_id = chart_id_map[id];
+	        ocfs << chart_id << " ";
 	    }
-	    else {
-	    	std::cout << "Charts written in OBJ (as colours) in place of texture coordinates\n";
-	    }
+	    ocfs.close();
+		std::cout << "Chart file written to:  " << chart_filename << std::endl;
 	}
 
 };

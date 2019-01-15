@@ -368,6 +368,8 @@ struct Chart
   double area;
   double perimeter;
 
+  bool has_border_edge;
+
   ErrorQuadric P_quad; // point error quad
   ErrorQuadric R_quad; // orientation error quad
 
@@ -380,7 +382,9 @@ struct Chart
     id = _id;
     avg_normal = normal;
 
-    perimeter = get_face_perimeter(f);
+    bool found_mesh_border = false;
+    perimeter = get_face_perimeter(f, found_mesh_border);
+    has_border_edge = found_mesh_border;
 
     P_quad = createPQuad(f);
     R_quad = ErrorQuadric(normalise(normal));
@@ -460,6 +464,9 @@ struct Chart
       fit_plane_normal = plane_normal;
     }
 
+    //test - scale by area of new plane
+    // e_fit /= (c1.area + c2.area);
+
     // std::cout << "plane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
 
     return e_fit;
@@ -475,7 +482,10 @@ struct Chart
 
     double shape_penalty = ( irreg_new - std::max(irreg1, irreg2) ) / irreg_new;
 
-    std::cout << "Shape penalty = " << shape_penalty << std::endl;
+    shape_penalty /= (c1.area + c2.area);
+
+
+    // std::cout << "Shape penalty = " << shape_penalty << std::endl;
 
     return shape_penalty;
   }
@@ -492,7 +502,7 @@ struct Chart
 
   //adds edge lengths of a face
   //check functionality for non-manifold edges
-  static double get_face_perimeter(Facet& f){
+  static double get_face_perimeter(Facet& f, bool& found_mesh_border){
 
     Halfedge_facet_circulator he = f.facet_begin();
     CGAL_assertion( CGAL::circulator_size(he) >= 3);
@@ -500,6 +510,12 @@ struct Chart
 
     //for 3 edges (adjacent faces)
     do {
+
+      //check for border
+      if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
+        found_mesh_border = true;
+      }
+
           accum_perimeter += edge_length(he);
     } while ( ++he != f.facet_begin());
 
@@ -511,11 +527,11 @@ struct Chart
   // then calculate by adding perimeters and subtractng double shared edges
   static double get_chart_perimeter(Chart& c1, Chart& c2){
 
-    std::cout << "perimeter of charts [" << c1.id << ", " << c2.id << "]" << std::endl;
+    // std::cout << "perimeter of charts [" << c1.id << ", " << c2.id << "]" << std::endl;
 
     double perimeter = c1.perimeter + c2.perimeter;
 
-    std::cout << "combined P before processing: " << c1.perimeter << " + " << c2.perimeter << " = " << perimeter << std::endl;
+    // std::cout << "combined P before processing: " << c1.perimeter << " + " << c2.perimeter << " = " << perimeter << std::endl;
 
     //for each face in c1
     for (auto& c1_face : c1.facets){
@@ -553,7 +569,7 @@ struct Chart
       } while ( ++he != c1_face.facet_begin());
     }
 
-    std::cout << "after = " << perimeter << std::endl;
+    // std::cout << "after = " << perimeter << std::endl;
 
     return perimeter;
 
@@ -623,7 +639,7 @@ struct JoinOperation {
   //calculates cost of joining these 2 charts
   static double cost_of_join(Chart &c1, Chart &c2 ,CLUSTER_SETTINGS& cluster_settings){
 
-    std::cout << "-----------------\n";
+    // std::cout << "-----------------\n";
 
 
     double error = 0;
@@ -639,7 +655,7 @@ struct JoinOperation {
 
     error = e_fit + e_direction + e_shape;
 
-    std::cout << "Error [" << c1.id << ", " << c2.id << "]: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
+    // std::cout << "Error [" << c1.id << ", " << c2.id << "]: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
 
     return error;
   }
@@ -768,7 +784,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     // std::cout << "join cost : " << join_todo.cost << std::endl; 
 
     //merge faces from chart2 into chart 1
-    std::cout << "merging charts " << join_todo.chart1_id << " and " << join_todo.chart2_id << std::endl;
+    // std::cout << "merging charts " << join_todo.chart1_id << " and " << join_todo.chart2_id << std::endl;
     charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id], join_todo.cost);
 
 
@@ -864,6 +880,9 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       }
     }
 
+#if 0
+    //CHECK that each join would give a chart with at least 3 neighbours
+    //TODO also need to check boundary edges
     to_erase.clear();
     std::vector<std::vector<uint32_t> > neighbour_count (charts.size(), std::vector<uint32_t>(0));
     std::list<JoinOperation>::iterator it2;
@@ -874,7 +893,6 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
     }
 
-    //CHECK that each join would give a chart with at least 3 neighbours
     uint32_t join_id = 0;
     for (it2 = joins.begin(); it2 != joins.end(); ++it2){
       // combined neighbour count of joins' 2 charts should be at least 5
@@ -908,6 +926,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       joins.erase(it2);
       num_erased++;
     }
+#endif
 
     chart_merges++;
 

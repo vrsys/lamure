@@ -867,3 +867,765 @@ Vertices: 5 , faces: 3
 Desired Charts: 2, active charts: 2
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:12:20
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:15:24
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:19:26
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:21:25
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:22:34
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:25:10
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:25:46
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:25:53
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:27:04
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:33:57
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:36:16
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:38:13
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 10:48:17
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:13:49
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:16:29
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:18:50
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:19:52
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:31:44
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_ori.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:35:29
+Ran for 0 m 0 s
+Input file: data/triceratops_2000.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:35:39
+Ran for 0 m 0 s
+Input file: data/triceratops_2000_uv.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:37:18
+Ran for 0 m 0 s
+Input file: data/triceratops_2000_uv.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 11:40:09
+Ran for 0 m 0 s
+Input file: data/triceratops_2000_uv.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 11:48:37
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 11:51:31
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 13:33:21
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 13:35:12
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 0, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 13:35:43
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/charts.obj
+Vertices: 5 , faces: 3
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 0, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 13:37:55
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 0, e_ori: 0, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 13:38:50
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:03:12
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 3
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:04:10
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 3
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:07:37
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 3
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:09:23
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 3
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:14:47
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 3
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:18:22
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 3
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:19:54
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:35:24
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:36:51
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:36:56
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:42:24
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:48:27
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 1, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:48:44
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny4_rect.obj
+Output file: data/charts.obj
+Vertices: 6 , faces: 4
+Desired Charts: 2, active charts: 2
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:49:26
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:54:22
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/cube.obj
+Output file: data/charts.obj
+Vertices: 8 , faces: 12
+Desired Charts: 4, active charts: 4
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:56:30
+Ran for 0 m 0 s
+Input file: ../../data/geometric/sphere_960.obj
+Output file: data/charts.obj
+Vertices: 482 , faces: 960
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 14:57:26
+Ran for 0 m 0 s
+Input file: ../../data/geometric/sphere_960.obj
+Output file: data/charts.obj
+Vertices: 482 , faces: 960
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 14:58:23
+Ran for 0 m 0 s
+Input file: ../../data/geometric/sphere_960.obj
+Output file: data/charts.obj
+Vertices: 482 , faces: 960
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 14:59:12
+Ran for 0 m 0 s
+Input file: ../../data/geometric/sphere_960.obj
+Output file: data/charts.obj
+Vertices: 482 , faces: 960
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 15:00:12
+Ran for 0 m 0 s
+Input file: ../../data/geometric/sphere_960.obj
+Output file: data/charts.obj
+Vertices: 482 , faces: 960
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.1
+
+-------------------------------------
+Executed at 2019-01-14 15:02:23
+Ran for 0 m 0 s
+Input file: ../../data/geometric/sphere_960.obj
+Output file: data/charts.obj
+Vertices: 482 , faces: 960
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.1
+
+-------------------------------------
+Executed at 2019-01-14 15:03:29
+Ran for 0 m 0 s
+Input file: ../../data/geometric/sphere_960.obj
+Output file: data/charts.obj
+Vertices: 482 , faces: 960
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.1
+
+-------------------------------------
+Executed at 2019-01-14 19:51:11
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 19:53:14
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 19:54:13
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.1
+
+-------------------------------------
+Executed at 2019-01-14 19:57:37
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.001
+
+-------------------------------------
+Executed at 2019-01-14 20:00:43
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:04:18
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:05:43
+Ran for 0 m 0 s
+Input file: data/triceratops_2000_uv.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:11:13
+Ran for 0 m 0 s
+Input file: data/triceratops_2000_uv.obj
+Output file: data/charts.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:17:49
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:18:47
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_124.obj
+Output file: data/charts.obj
+Vertices: 64 , faces: 124
+Desired Charts: 10, active charts: 10
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-14 20:37:01
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_14.obj
+Output file: data/charts.obj
+Vertices: 12 , faces: 20
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:41:21
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_14.obj
+Output file: data/charts.obj
+Vertices: 12 , faces: 20
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:52:39
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_14.obj
+Output file: data/charts.obj
+Vertices: 12 , faces: 20
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:55:53
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_36.obj
+Output file: data/charts.obj
+Vertices: 20 , faces: 36
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:57:06
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_36.obj
+Output file: data/charts.obj
+Vertices: 20 , faces: 36
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 20:58:41
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_36.obj
+Output file: data/charts.obj
+Vertices: 20 , faces: 36
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 21:08:17
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_36.obj
+Output file: data/charts.obj
+Vertices: 20 , faces: 36
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 21:12:40
+Ran for 0 m 0 s
+Input file: ../../data/geometric/cylinder_36.obj
+Output file: data/charts.obj
+Vertices: 20 , faces: 36
+Desired Charts: 8, active charts: 8
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-14 22:43:39
+Ran for 86 m 34 s
+Input file: ../../data/bunny.obj
+Output file: data/charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 50, active charts: 464
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-15 09:35:20
+Ran for 0 m 20 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 50, active charts: 93
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-15 09:39:09
+Ran for 0 m 19 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 50, active charts: 102
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0
+
+-------------------------------------
+Executed at 2019-01-15 09:40:53
+Ran for 0 m 1 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-15 09:42:41
+Ran for 0 m 1 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+best results yet. turned off checking for 3 neighbours - gives problems around mesh edges.
+
+
+-------------------------------------
+Executed at 2019-01-15 11:17:19
+Ran for 0 m 20 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 50, active charts: 93
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-15 11:20:20
+Ran for 0 m 1 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
