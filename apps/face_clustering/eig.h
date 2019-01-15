@@ -8,6 +8,9 @@
 
 #define n 3
 
+#ifndef EIGH
+#define EIGH
+
 struct eig
 {
 		
@@ -271,3 +274,6 @@ struct eig
 	// }
 
 };
+
+
+#endif

@@ -40,6 +40,11 @@
 #include "Utils.h"
 #include "OBJ_printer.h"
 #include "SymMat.h"
+#include "cluster_settings.h"
+#include "ErrorQuadric.h"
+#include "Chart.h"
+
+#include "CGAL_typedefs.h"
 
 #include "eig.h"
 
@@ -47,69 +52,69 @@
 
 #define SEPARATE_CHART_FILE false
 
-template <class Refs, class T, class P>
-struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
+// template <class Refs, class T, class P>
+// struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
     
-  using CGAL::HalfedgeDS_vertex_base<Refs, T, P>::HalfedgeDS_vertex_base;
+//   using CGAL::HalfedgeDS_vertex_base<Refs, T, P>::HalfedgeDS_vertex_base;
 
-};
+// };
 
-//extended point class
-template <class Traits>
-struct XtndPoint : public Traits::Point_3 {
+// //extended point class
+// template <class Traits>
+// struct XtndPoint : public Traits::Point_3 {
 
-  XtndPoint() : Traits::Point_3() {}
+//   XtndPoint() : Traits::Point_3() {}
 
-  XtndPoint(double x, double y, double z) 
-    : Traits::Point_3(x, y, z),
-      texCoord(0.0, 0.0) {}
+//   XtndPoint(double x, double y, double z) 
+//     : Traits::Point_3(x, y, z),
+//       texCoord(0.0, 0.0) {}
 
-  XtndPoint(double x, double y, double z, double u, double v ) 
-  : Traits::Point_3(x, y, z),
-    texCoord(u, v) {}
+//   XtndPoint(double x, double y, double z, double u, double v ) 
+//   : Traits::Point_3(x, y, z),
+//     texCoord(u, v) {}
 
-  typedef typename Traits::Vector_2 TexCoord;
-  TexCoord texCoord;
+//   typedef typename Traits::Vector_2 TexCoord;
+//   TexCoord texCoord;
 
-  double get_u () const {return texCoord.hx();}
-  double get_v () const {return texCoord.hy();}
-
-
-};
+//   double get_u () const {return texCoord.hx();}
+//   double get_v () const {return texCoord.hy();}
 
 
-// A new items type using extended vertex
-//TODO change XtndVertex back to original vertex class??
-struct Custom_items : public CGAL::Polyhedron_items_with_id_3 {
-    template <class Refs, class Traits>
-    struct Vertex_wrapper {
-      typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
-    };
-};
-
-typedef CGAL::Simple_cartesian<double> Kernel;
-
-typedef Kernel::Vector_3 Vector;
-typedef CGAL::Point_3<Kernel> Point;
+// };
 
 
-typedef CGAL::Polyhedron_3<Kernel,Custom_items> Polyhedron;
-typedef Polyhedron::HalfedgeDS HalfedgeDS;
+// // A new items type using extended vertex
+// //TODO change XtndVertex back to original vertex class??
+// struct Custom_items : public CGAL::Polyhedron_items_with_id_3 {
+//     template <class Refs, class Traits>
+//     struct Vertex_wrapper {
+//       typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
+//     };
+// };
 
-typedef Polyhedron::Facet_iterator Facet_iterator;
-typedef Polyhedron::Facet_handle Facet_handle;
-typedef Polyhedron::Facet Facet; 
+// typedef CGAL::Simple_cartesian<double> Kernel;
 
-typedef Polyhedron::Halfedge_around_facet_circulator Halfedge_facet_circulator;
-
-
-typedef Polyhedron::Halfedge Halfedge;
-typedef Polyhedron::Edge_iterator Edge_iterator;
+// typedef Kernel::Vector_3 Vector;
+// typedef CGAL::Point_3<Kernel> Point;
 
 
-typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
-typedef boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
-typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
+// typedef CGAL::Polyhedron_3<Kernel,Custom_items> Polyhedron;
+// typedef Polyhedron::HalfedgeDS HalfedgeDS;
+
+// typedef Polyhedron::Facet_iterator Facet_iterator;
+// typedef Polyhedron::Facet_handle Facet_handle;
+// typedef Polyhedron::Facet Facet; 
+
+// typedef Polyhedron::Halfedge_around_facet_circulator Halfedge_facet_circulator;
+
+
+// typedef Polyhedron::Halfedge Halfedge;
+// typedef Polyhedron::Edge_iterator Edge_iterator;
+
+
+// typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
+// typedef boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
+// typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
 
 
 namespace SMS = CGAL::Surface_mesh_simplification ;
@@ -236,119 +241,42 @@ public:
 
 };
 
-struct CLUSTER_SETTINGS
-{
-  double e_fit_cf;
-  double e_ori_cf;
-  double e_shape_cf;
+// //retrieves eigenvector corresponding to lowest eigenvalue
+// //which is taken as the normal of the best fitting plane, given an error quadric corresponding to that plane
+// void get_best_fit_plane( ErrorQuadric eq, Vector& plane_normal, double& scalar_offset) {
 
-  CLUSTER_SETTINGS(double ef, double eo, double es){
-    e_fit_cf = ef;
-    e_ori_cf = eo;
-    e_shape_cf = es;
-  }
-};
+//   //get covariance matrix (Z matrix) from error quadric
+//   double Z[3][3];
+//   eq.get_covariance_matrix(Z);
 
-  
-struct ErrorQuadric {
+//   //do eigenvalue decomposition
+//   double eigenvectors[3][3] = {0};
+//   double eigenvalues[3] = {0};
+//   eig::eigen_decomposition(Z,eigenvectors,eigenvalues);
 
-  SymMat A;
-  Vector b;
-  double c;
+//   //find min eigenvalue
+//   double min_ev = DBL_MAX;
+//   int min_loc;
+//   for (int i = 0; i < 3; ++i)
+//   {
+//     if (eigenvalues[i] < min_ev){
+//       min_ev = eigenvalues[i];
+//       min_loc = i;
+//     }
+//   }
 
-  ErrorQuadric() {
-    b = Vector(0,0,0);
-    c = 0;
-  }
+//   plane_normal = Vector(eigenvectors[0][min_loc], eigenvectors[1][min_loc], eigenvectors[2][min_loc]);
 
-  //for p quad
-  ErrorQuadric(Point& p) {
-    A = SymMat(p);
-    b = Vector(p.x(), p.y(), p.z());
-    c = 1;
-  }
-
-  //for r quad
-  ErrorQuadric( const Vector& v){
-    A = SymMat(v);
-    b = -v;
-    c = 1;
-  }
-
-  ErrorQuadric operator+(const ErrorQuadric& e){
-    ErrorQuadric eq;
-    eq.A = A + e.A; 
-    eq.b = b + e.b;
-    eq.c = c + e.c;
-
-    return eq;
-  }
-
-  ErrorQuadric operator*(const double rhs){
-    ErrorQuadric result = *this;
-
-    result.A = result.A * rhs;
-    result.b = result.b * rhs;
-    result.c = result.c * rhs;
-
-    return result;
-  }
-
-  //create covariance / 'Z' matrix 
-  // A - ( (b*bT) / c)
-  void get_covariance_matrix(double cm[3][3]) {
-
-    SymMat rhs = SymMat(b) / c;
-    SymMat result = A - rhs;
-    result.to_c_mat3(cm);
-  }
-
-  std::string print(){
-
-    std::stringstream ss;
-    ss << "A:\n" << A.print_mat();
-    ss << "b:\n[" << b.x() << " " << b.y() << " " << b.z() << "]" << std::endl;
-    ss << "c:\n" << c << std::endl;
-    return ss.str();
-  }
-};
-
-//retrieves eigenvector corresponding to lowest eigenvalue
-//which is taken as the normal of the best fitting plane, given an error quadric corresponding to that plane
-void get_best_fit_plane( ErrorQuadric eq, Vector& plane_normal, double& scalar_offset) {
-
-  //get covariance matrix (Z matrix) from error quadric
-  double Z[3][3];
-  eq.get_covariance_matrix(Z);
-
-  //do eigenvalue decomposition
-  double eigenvectors[3][3] = {0};
-  double eigenvalues[3] = {0};
-  eig::eigen_decomposition(Z,eigenvectors,eigenvalues);
-
-  //find min eigenvalue
-  double min_ev = DBL_MAX;
-  int min_loc;
-  for (int i = 0; i < 3; ++i)
-  {
-    if (eigenvalues[i] < min_ev){
-      min_ev = eigenvalues[i];
-      min_loc = i;
-    }
-  }
-
-  plane_normal = Vector(eigenvectors[0][min_loc], eigenvectors[1][min_loc], eigenvectors[2][min_loc]);
-
-  // std::cout << "plane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
-  // std::cout << "ev1: " << eigenvectors[0][0] << ", " << eigenvectors[1][0] << ", " << eigenvectors[2][0] << std::endl;
-  // std::cout << "ev2: " << eigenvectors[0][1] << ", " << eigenvectors[1][1] << ", " << eigenvectors[2][1] << std::endl;
-  // std::cout << "ev3: " << eigenvectors[0][2] << ", " << eigenvectors[1][2] << ", " << eigenvectors[2][2] << std::endl;
+//   // std::cout << "plane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
+//   // std::cout << "ev1: " << eigenvectors[0][0] << ", " << eigenvectors[1][0] << ", " << eigenvectors[2][0] << std::endl;
+//   // std::cout << "ev2: " << eigenvectors[0][1] << ", " << eigenvectors[1][1] << ", " << eigenvectors[2][1] << std::endl;
+//   // std::cout << "ev3: " << eigenvectors[0][2] << ", " << eigenvectors[1][2] << ", " << eigenvectors[2][2] << std::endl;
 
 
-  //d is described specified as:  d =  (-nT*b)   /     c
-  scalar_offset = (-plane_normal * eq.b) / eq.c;
+//   //d is described specified as:  d =  (-nT*b)   /     c
+//   scalar_offset = (-plane_normal * eq.b) / eq.c;
 
-}
+// }
 
 Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
@@ -356,6 +284,7 @@ Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 //key: face_id, value: chart_id
 std::map<uint32_t, uint32_t> chart_id_map;
 
+#if 0
 // struct to hold a vector of facets that make a chart
 struct Chart
 {
@@ -605,15 +534,6 @@ struct Chart
                         + eq.c;
   }
 
-  // static double accum_direction_error_in_chart(Chart& chart, const Vector plane_normal){
-  //   double accum_error = 0;
-  //   for (uint32_t i = 0; i < chart.facets.size(); i++){
-  //     double error = 1.0 - (plane_normal * chart.normals[i]);
-  //     accum_error += (error * chart.areas[i]);
-  //   }
-  //   return accum_error;
-  // }
-
   static double edge_length(Halfedge_facet_circulator he){
     const Point& p = he->opposite()->vertex()->point();
     const Point& q = he->vertex()->point();
@@ -623,7 +543,7 @@ struct Chart
 
 };
 
-
+#endif
 
 struct JoinOperation {
 

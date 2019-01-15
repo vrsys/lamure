@@ -4,6 +4,12 @@
 #include <algorithm>
 
 
+#include "CGAL_typedefs.h"
+
+#ifndef UTILSH
+#define UTILSH
+
+
 struct Utils
 {
 	static char* getCmdOption(char ** begin, char ** end, const std::string & option) {
@@ -46,6 +52,8 @@ struct Utils
 	    }
 	  }
 	}
+
+	static Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
 	// load obj function from vt_obj_loader/Utils.h
 	static void load_obj(const std::string& filename, 
@@ -108,3 +116,4 @@ struct Utils
 
 };
 
+#endif

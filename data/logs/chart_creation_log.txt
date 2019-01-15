@@ -1629,3 +1629,33 @@ Vertices: 3354 , faces: 6641
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-15 11:34:35
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/cube.obj
+Output file: data/charts.obj
+Vertices: 8 , faces: 12
+Desired Charts: 4, active charts: 4
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-15 11:45:36
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/cube.obj
+Output file: data/charts.obj
+Vertices: 8 , faces: 12
+Desired Charts: 4, active charts: 4
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-15 11:57:19
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/cube.obj
+Output file: data/charts.obj
+Vertices: 8 , faces: 12
+Desired Charts: 4, active charts: 4
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
