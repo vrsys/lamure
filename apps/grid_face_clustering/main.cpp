@@ -35,6 +35,8 @@
 #define SEPARATE_CHART_FILE false
 
 
+
+
 // Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
 
@@ -43,17 +45,17 @@ std::map<uint32_t, uint32_t> chart_id_map;
 
 
 
-void count_faces_in_active_charts(std::vector<Chart> &charts) {
-  uint32_t active_faces = 0;
-  for (auto& chart : charts)
-  {
-    if (chart.active) 
-    {
-      active_faces += chart.facets.size();
-    }
-  }
-  std::cout << "found " << active_faces << " active faces\n";
-}
+// void count_faces_in_active_charts(std::vector<Chart> &charts) {
+//   uint32_t active_faces = 0;
+//   for (auto& chart : charts)
+//   {
+//     if (chart.active) 
+//     {
+//       active_faces += chart.facets.size();
+//     }
+//   }
+//   std::cout << "found " << active_faces << " active faces\n";
+// }
 
 
 
@@ -103,13 +105,12 @@ int main( int argc, char** argv )
 
   std::vector<lamure::mesh::triangle_t> triangles;
 
-
     //load OBJ into arrays
   std::vector<double> vertices;
   std::vector<int> tris;
   std::vector<double> t_coords;
   std::vector<int> tindices;
-  Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices, triangles);
+  BoundingBoxLimits limits = Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices, triangles);
 
 
 
@@ -121,8 +122,11 @@ int main( int argc, char** argv )
   }
   std::cout << "Mesh loaded (" << triangles.size() << " triangles, " << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
 
-  return 1;
+  
+  //START chart creation ====================================================================================================================
   auto start_time = std::chrono::system_clock::now();
+
+
 
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;
@@ -131,6 +135,15 @@ int main( int argc, char** argv )
 
 
   polyMesh.delegate( builder );
+
+  //give ids to polyMesh
+  // int i=0;
+  // for ( Facet_iterator fb = polyMesh.facets_begin(); fb != polyMesh.facets_end(); ++fb){
+  //   // fb->id() = i++;  
+  //   std::cout << "Face id: " << fb->id() << std::endl;
+  // }
+
+
 
   if (polyMesh.is_valid(false)){
     std::cout << "mesh valid\n"; 
@@ -146,14 +159,17 @@ int main( int argc, char** argv )
   }
 
 
-  GridClusterCreator::create_grid_clusters(triangles,chart_id_map);
 
-return 1;
+  //TODO rewrite to derive charts from CGAL face ids
 
-  uint32_t active_charts = ClusterCreator::create_charts(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
+  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits);
+
+  // ClusterCreator::create_charts(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
 
 
-  std::string out_filename = "data/charts.obj";
+  //END chart creation ====================================================================================================================
+
+  std::string out_filename = "data/charts1.obj";
   std::ofstream ofs( out_filename );
   OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, SEPARATE_CHART_FILE);
   ofs.close();

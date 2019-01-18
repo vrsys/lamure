@@ -109,7 +109,8 @@ public:
     // add the polyhedron triangles
     for( int i=0; i<(int)(tris.size()); i+=3 ){
 
-      B.begin_facet();
+      Facet_handle fh = B.begin_facet();
+      fh->id() = i / 3;
       B.add_vertex_to_facet( tris[i+0] );
       B.add_vertex_to_facet( tris[i+1] );
       B.add_vertex_to_facet( tris[i+2] );

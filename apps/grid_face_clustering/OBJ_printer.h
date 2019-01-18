@@ -101,6 +101,14 @@ struct OBJ_printer
 	static void print_polyhedron_wavefront_with_charts( std::ostream& out, const Polyhedron& P, std::map<uint32_t, uint32_t> &chart_id_map, const uint32_t active_charts, bool SEPARATE_CHART_FILE) {
 	    File_writer_wavefront_xtnd  writer(out);
 	    generic_print_polyhedron( out, P, writer, chart_id_map, active_charts, SEPARATE_CHART_FILE);
+
+	 //      for (auto const& chart : chart_id_map)
+  // {
+  //     std::cout << chart.first  // string (key)
+  //               << ':' 
+  //               << chart.second // string's value 
+  //               << std::endl ;
+  // }
 	}
 
 	template <class Polyhedron, class Writer>
@@ -203,6 +211,7 @@ struct OBJ_printer
 	        	}
 	        	else {
 	        		writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id,face_id); // for chart colours
+	        		std::cout << "chart_id: " << chart_id << std::endl;
 	        	}
 
 	            ++hc;

@@ -32,7 +32,7 @@ struct ClusterCreator
     std::vector<Chart> charts;
     for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
       //assign id to face
-      fb->id() = charts.size();  
+      // fb->id() = charts.size(); 
 
       // std::cout << "normal " << charts.size() << ": " << fnormals[*fb_boost] << std::endl;
 
@@ -48,6 +48,7 @@ struct ClusterCreator
 
       fb_boost++;
     }
+
 
     //for reporting and calculating when to stop merging
     const uint32_t initial_charts = charts.size();

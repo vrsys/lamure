@@ -2,12 +2,20 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <limits>
 
 
 #include "CGAL_typedefs.h"
 
 #ifndef UTILSH
 #define UTILSH
+
+struct BoundingBoxLimits
+{
+  scm::math::vec3f min;
+  scm::math::vec3f max;
+};
+
 
 
 struct Utils
@@ -56,7 +64,7 @@ struct Utils
 	static Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
 	// load obj function from vt_obj_loader/Utils.h
-	static void load_obj(const std::string& filename, 
+	static BoundingBoxLimits load_obj(const std::string& filename, 
 	              std::vector<double> &v, 
 	              std::vector<int> &vindices, 
 	              // std::vector<double> &n, 
@@ -67,6 +75,9 @@ struct Utils
 
 
 	  triangles.clear();
+
+	  scm::math::vec3f min_pos(std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
+	  scm::math::vec3f max_pos(std::numeric_limits<double>::min(),std::numeric_limits<double>::min(),std::numeric_limits<double>::min());
 
 	  FILE *file = fopen(filename.c_str(), "r");
 
@@ -81,6 +92,16 @@ struct Utils
 	        double vx, vy, vz;
 	        fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
 	        v.insert(v.end(), {vx, vy, vz});
+
+	        //compare to find bounding box limits
+	        if (vx > max_pos.x){max_pos.x = vx;}
+	        else if (vx < min_pos.x){min_pos.x = vx;}
+	        if (vy > max_pos.y){max_pos.y = vy;}
+	        else if (vy < min_pos.y){min_pos.y = vy;}
+	        if (vz > max_pos.z){max_pos.z = vz;}
+	        else if (vz < min_pos.z){min_pos.z = vz;}
+
+
 	      } 
 	      // else if (strcmp(line, "vn") == 0) {
 	      //   float nx, ny, nz;
@@ -160,6 +181,12 @@ struct Utils
         }
 
 	  }
+
+	  BoundingBoxLimits bbox;
+	  bbox.min = min_pos;
+	  bbox.max = max_pos;
+
+	  return bbox;
 
 	}
 
