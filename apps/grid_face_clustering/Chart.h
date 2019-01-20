@@ -20,6 +20,8 @@ struct Chart
 
   bool has_border_edge;
 
+  std::set<uint32_t> neighbour_charts;
+
   ErrorQuadric P_quad; // point error quad
   ErrorQuadric R_quad; // orientation error quad
 
@@ -77,7 +79,24 @@ struct Chart
     }
     avg_normal = v / area;
 
+    has_border_edge = has_border_edge | mc.has_border_edge;
 
+    
+    // std::cout << "\nBefore (this):\n";
+    // for (auto nbc : this->neighbour_charts){
+    //   std::cout << nbc << ", ";
+    // }
+    // std::cout << "\nBefore (to merge):\n";
+    // for (auto nbc : mc.neighbour_charts){
+    //   std::cout << nbc << ", ";
+    // }
+
+    neighbour_charts.insert(mc.neighbour_charts.begin(), mc.neighbour_charts.end());
+
+    // std::cout << "\nAfter:\n";
+    // for (auto nbc : this->neighbour_charts){
+    //   std::cout << nbc << ", ";
+    // }
   }
 
   //returns error of points in a joined chart , averga e distance from best fitting plane
@@ -189,7 +208,8 @@ struct Chart
   }
 
   //adds edge lengths of a face
-  //check functionality for non-manifold edges
+  //
+  //also looks out for border edges
   static double get_face_perimeter(Facet& f, bool& found_mesh_border){
 
     Halfedge_facet_circulator he = f.facet_begin();
@@ -200,7 +220,7 @@ struct Chart
     do {
 
       //check for border
-      if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
+      if ( (he->is_border()) || (he->opposite()->is_border()) ){
         found_mesh_border = true;
       }
 
@@ -310,6 +330,35 @@ struct Chart
 
     perimeter = perimeter_accum;
   } 
+
+  void create_neighbour_set(std::map<uint32_t, uint32_t> &chart_id_map){
+
+    //for each face in chart
+    for (uint32_t i = 0; i < this->facets.size(); ++i)
+    {
+      //get id of surrounding faces
+      Halfedge_facet_circulator fc = this->facets[i].facet_begin();
+      do {
+
+        if (!fc->is_border() && !(fc->opposite()->is_border()) ){
+
+          uint32_t nbr_face_id = fc->opposite()->facet()->id();
+          //get chart id of neighbour face
+          uint32_t nbr_chart_id = chart_id_map[nbr_face_id];
+
+          // if chart id of nbr is not this chart, add to set of neighbours
+          if (nbr_chart_id != this->id)
+          {
+            this->neighbour_charts.insert(nbr_chart_id);
+          }
+
+        }
+      } while ( ++fc != this->facets[i].facet_begin());
+
+    }//for faces
+
+    // std::cout << "Chart " << this->id << " has " << this->neighbour_charts.size() << " neighbours\n";
+  }
 
   static double get_direction_error(Chart& c1, Chart& c2, Vector &plane_normal){
 

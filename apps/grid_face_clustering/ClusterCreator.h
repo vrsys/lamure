@@ -13,9 +13,50 @@ struct ClusterCreator
                 std::map<uint32_t, uint32_t> &chart_id_map,
                 uint32_t num_initial_charts){
 
+    std::vector<Chart> charts;
 
+    initialise_charts_from_grid_clusters(P, chart_id_map, charts, num_initial_charts, cluster_settings);
 
-    //calculate areas of each face
+    populate_chart_LUT(charts, chart_id_map);
+
+    // check that existing chart number is not already lower than threshold
+    if (charts.size() <= chart_threshold)
+    {
+      std::cout << "Input to chart clusterer already had number of charts below chart threshold" << std::endl;
+      return charts.size();
+    }
+
+    //recalculate perimeters of charts to ensure they are correct
+    for (auto& chart : charts) {
+      chart.recalculate_perimeter_from_scratch();
+      chart.create_neighbour_set(chart_id_map);
+    } 
+
+    //create join list
+    std::list<JoinOperation> joins;
+    create_join_list_from_chart_vector(charts, joins, cluster_settings, chart_id_map);
+
+    //do the clustering!
+    cluster_faces(charts, joins,cost_threshold,chart_threshold,cluster_settings,chart_id_map);
+
+    uint32_t active_charts =  populate_chart_LUT(charts, chart_id_map);
+
+    //checking - how many charts have border edges?
+    // uint32_t charts_with_borders = 0;
+    // for(auto& chart : charts){if (chart.active && chart.has_border_edge) charts_with_borders++;}
+    // std::cout << charts_with_borders << " of " << active_charts << " charts have borders\n";
+
+    return active_charts;
+  }
+
+  static void
+  initialise_charts_from_grid_clusters(Polyhedron &P, 
+                                       std::map<uint32_t, uint32_t> &chart_id_map,
+                                       std::vector<Chart> &charts,
+                                       uint32_t num_initial_charts,
+                                       CLUSTER_SETTINGS cluster_settings){
+
+        //calculate areas of each face
     std::map<face_descriptor,double> fareas;
     std::map<face_descriptor,Vector> fnormals;
     // calculate_normals_and_areas(P,fnormals,fareas);
@@ -32,15 +73,13 @@ struct ClusterCreator
 
     //build existing charts from chart id map
     std::cout << "Creating charts from grid clusters...\n";
-    std::vector<Chart> charts;
+    // std::vector<Chart> charts;
     // std::set<uint32_t> chart_ids_created;
     std::map<uint32_t, uint32_t> chart_ids_created; //key::chart id, value::location in chart array
     std::map<uint32_t, uint32_t>::iterator it_c;
 
     //for each face
     for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
-
-
 
       uint32_t given_chart_id = chart_id_map[fb->id()];
 
@@ -87,8 +126,7 @@ struct ClusterCreator
         //save for future reference when checking other faces
         chart_id_map[fb->id()] = given_chart_id;
 
- 
-        // given_chart_id = num_initial_charts++;
+
       }
 
       // if chart already exists for that id,  merge this chart into existing (discard merged in chart)
@@ -111,34 +149,6 @@ struct ClusterCreator
 
     std::cout << "Created " << charts.size() << " charts from grid clusters" << std::endl;
 
-    populate_chart_LUT(charts, chart_id_map);
-
-    // check that existing chart number is not already lower than threshold
-    if (charts.size() <= chart_threshold)
-    {
-      std::cout << "Input to chart clusterer already had number of charts below chart threshold" << std::endl;
-      return charts.size();
-    }
-
-    //recalculate perimeters of charts to ensure they are correct
-    for (auto& chart : charts) {chart.recalculate_perimeter_from_scratch();} 
-
-    
-
-
-    //debug -check chart ids
-    // for (auto& chart : charts) {std::cout << "Chart id: " << chart.id << std::endl;} 
-
-    std::list<JoinOperation> joins;
-    create_join_list_from_chart_vector(charts, joins, cluster_settings, chart_id_map);
-
-    cluster_faces(charts, joins,cost_threshold,chart_threshold,cluster_settings);
-
-
-
-
-
-    return populate_chart_LUT(charts, chart_id_map);
   }
 
   static void
@@ -211,7 +221,8 @@ struct ClusterCreator
                 std::list<JoinOperation> &joins,
                 const double cost_threshold, 
                 const uint32_t chart_threshold,
-                CLUSTER_SETTINGS &cluster_settings
+                CLUSTER_SETTINGS &cluster_settings,
+                std::map<uint32_t, uint32_t> &chart_id_map
                 ){
 
 
@@ -271,6 +282,8 @@ struct ClusterCreator
         continue;
       }
       charts[join_todo.chart2_id].active = false;
+
+      populate_chart_LUT(charts, chart_id_map);
       
       int current_item = 0;
       std::list<int> to_erase;
@@ -356,41 +369,66 @@ struct ClusterCreator
         }
       }
 
-  #if 0
+  #if 1
       //CHECK that each join would give a chart with at least 3 neighbours
       //TODO also need to check boundary edges
       to_erase.clear();
-      std::vector<std::vector<uint32_t> > neighbour_count (charts.size(), std::vector<uint32_t>(0));
+      // std::vector<std::vector<uint32_t> > neighbour_count (charts.size(), std::vector<uint32_t>(0));
       std::list<JoinOperation>::iterator it2;
-      for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-        //for chart 1 , add entry in vector for that chart containing id of chart 2
-        // and vice versa
-        neighbour_count[it2->chart1_id].push_back(it2->chart2_id);
-        neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
-      }
+      // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+      //   //for chart 1 , add entry in vector for that chart containing id of chart 2
+      //   // and vice versa
+      //   neighbour_count[it2->chart1_id].push_back(it2->chart2_id);
+      //   neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
+      // }
 
       uint32_t join_id = 0;
       for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+
+        //combined neighbour count of joins' 2 charts should be at least 3,
+        //or 2 when either has a border edge
+
+        uint32_t combined_nbrs = 0;
+
+        Chart& c1 = charts[it2->chart1_id];
+        Chart& c2 = charts[it2->chart2_id];
+
+        if (c1.has_border_edge || c2.has_border_edge)
+        {
+          combined_nbrs++;
+        }
+        combined_nbrs += c1.neighbour_charts.size();
+        combined_nbrs += c2.neighbour_charts.size();
+
+
+        std::cout << "Charts " << c1.id << " and " << c2.id << " have  " << combined_nbrs << " nbrs in total\n";
+
+        if (combined_nbrs < 5)
+        {
+          to_erase.push_back(join_id);
+        }
+
+
         // combined neighbour count of joins' 2 charts should be at least 5
         // they will both contain each other (accounting for 2 neighbours) and require 3 more
 
         //merge the vectors for each chart in the join and count unique neighbours
-        std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
-        combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
+        // std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
+        // combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
 
-        //find unique
-        std::sort(combined_nbrs.begin(), combined_nbrs.end());
-        uint32_t unique = 1;
-        for (uint32_t i = 1; i < combined_nbrs.size(); i++){
-          if (combined_nbrs[i] != combined_nbrs [i-1])
-          {
-            unique++;
-          }
-        }
-        if (unique < 5)
-        {
-          to_erase.push_back(join_id);
-        }
+        // //find unique
+        // std::sort(combined_nbrs.begin(), combined_nbrs.end());
+        // uint32_t unique = 1;
+        // for (uint32_t i = 1; i < combined_nbrs.size(); i++){
+        //   if (combined_nbrs[i] != combined_nbrs [i-1])
+        //   {
+        //     unique++;
+        //   }
+        // }
+        // if (unique < 5)
+        // {
+        //   to_erase.push_back(join_id);
+        // }
         join_id++;
       }
       //erase joins that would result in less than 3 corners
@@ -493,7 +531,7 @@ struct ClusterCreator
     } 
     std::cout << joins.size() << " joins\n" << edgecount << " edges\n";
 
-    cluster_faces(charts, joins, cost_threshold, chart_threshold, cluster_settings);
+    cluster_faces(charts, joins, cost_threshold, chart_threshold, cluster_settings,chart_id_map);
 
     return populate_chart_LUT(charts, chart_id_map);
 
