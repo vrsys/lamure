@@ -1,14 +1,14 @@
 
 typedef scm::math::vec<int, 3> vec3i;
 
-#define CELL_RES 4 // number of cells in longest dimension
 
 struct GridClusterCreator
 {
 
 	static uint32_t create_grid_clusters(Polyhedron &P,
 									 std::map<uint32_t, uint32_t> &chart_id_map,
-									 BoundingBoxLimits limits) {
+									 BoundingBoxLimits limits,
+									 int CELL_RES) {
 
 
 		std::cout <<"Creating initial clusters with grid...\n";

@@ -3,6 +3,8 @@
 //class for running clustering algorithm on Charts
 struct ClusterCreator
 {
+
+  //takes a chart id map that was created by grid/octree clusters, and creates a list of Chart objects
   static uint32_t 
   create_chart_clusters_from_grid_clusters(Polyhedron &P,
                 const double cost_threshold , 
@@ -109,7 +111,7 @@ struct ClusterCreator
 
     std::cout << "Created " << charts.size() << " charts from grid clusters" << std::endl;
 
-
+    populate_chart_LUT(charts, chart_id_map);
 
     // check that existing chart number is not already lower than threshold
     if (charts.size() <= chart_threshold)
@@ -121,87 +123,107 @@ struct ClusterCreator
     //recalculate perimeters of charts to ensure they are correct
     for (auto& chart : charts) {chart.recalculate_perimeter_from_scratch();} 
 
+    
+
+
+    //debug -check chart ids
+    // for (auto& chart : charts) {std::cout << "Chart id: " << chart.id << std::endl;} 
+
+    std::list<JoinOperation> joins;
+    create_join_list_from_chart_vector(charts, joins, cluster_settings, chart_id_map);
+
+    cluster_faces(charts, joins,cost_threshold,chart_threshold,cluster_settings);
+
+
+
+
+
     return populate_chart_LUT(charts, chart_id_map);
+  }
+
+  static void
+  create_join_list_from_chart_vector(std::vector<Chart> &charts, 
+                                     std::list<JoinOperation> &joins,
+                                     CLUSTER_SETTINGS cluster_settings,
+                                     std::map<uint32_t, uint32_t> &chart_id_map){
+
+    std::cout << "Creating joins from chart list...\n";
+
+    std::set<uint32_t> processed_charts;
+    std::set<uint32_t> chart_neighbours;
+
+    //for each chart
+    for (auto& chart : charts)
+    {
+      chart_neighbours.clear();
+
+      // uint32_t this_chart_id = chart.id()
+    // for each face in chart, find neighbours, add to set
+      for (auto& face : chart.facets)
+      {
+        //for each edge
+        Halfedge_facet_circulator fc = face.facet_begin();
+        do {
+          if (!fc->is_border() && !(fc->opposite()->is_border()) )//guard against no neighbour at this edge
+          {
+            //get chart id of neighbour, add to set if it is not this chart
+            uint32_t nbr_face_id = fc->opposite()->facet()->id();
+            uint32_t nbr_chart_id = chart_id_map[nbr_face_id];
+
+            if (nbr_chart_id != chart.id){
+              chart_neighbours.insert(nbr_chart_id);
+            }
+          }
+        } while ( ++fc != face.facet_begin());
+      }
+
+      // std::cout << "found " << chart_neighbours.size() << " unique neighbours for chart " << chart.id << std::endl;
+      // int added_joins = 0;
+
+      //create joins...
+      //if neighbouts have not already been processed, create join between this and neighbour
+      for (auto& nbr_chart_id : chart_neighbours)
+      {
+        //make sure it hasnt been processed already
+        if (processed_charts.find(nbr_chart_id) == processed_charts.end())
+        {
+            // chart ids should be equal to their index in the vector at this point
+            JoinOperation join (chart.id, nbr_chart_id ,JoinOperation::cost_of_join(charts[chart.id],charts[nbr_chart_id], cluster_settings));
+            joins.push_back(join);
+
+            // added_joins++;
+        }
+      }
+
+      // std::cout << "Added " << added_joins << " joins\n";
+
+    //add this chart to set of processed charts, so that it is not considered for new joins
+      processed_charts.insert(chart.id);
+    }
+
+    std::cout << "Created " << joins.size() << " joins\n";
 
   }
 
+  //takes a list of joins and charts, and executes joins until target number of charts/cost threshold is reached
+  static void 
+  cluster_faces(std::vector<Chart> &charts, 
+                std::list<JoinOperation> &joins,
+                const double cost_threshold, 
+                const uint32_t chart_threshold,
+                CLUSTER_SETTINGS &cluster_settings
+                ){
 
-  
-  static uint32_t 
-  create_chart_clusters_from_faces (Polyhedron &P, 
-                const double cost_threshold , 
-                const uint32_t chart_threshold, 
-                CLUSTER_SETTINGS cluster_settings,
-                std::map<uint32_t, uint32_t> &chart_id_map){
 
     std::stringstream report;
+    report << "--------------------\nReport:\n----------------------\n";
 
-    //calculate areas of each face
-    std::cout << "Calculating face areas...\n";
-    std::map<face_descriptor,double> fareas;
-    for(face_descriptor fd: faces(P)){
-      fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
-    }
-    //calculate normals of each faces
-    std::cout << "Calculating face normals...\n";
-    std::map<face_descriptor,Vector> fnormals;
-    CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
-
-    //get boost face iterator
-    face_iterator fb_boost, fe_boost;
-    boost::tie(fb_boost, fe_boost) = faces(P);
-
-    //each face begins as its own chart
-    std::cout << "Creating initial charts...\n";
-    std::vector<Chart> charts;
-    for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
-      //assign id to face
-      // fb->id() = charts.size(); 
-
-      // std::cout << "normal " << charts.size() << ": " << fnormals[*fb_boost] << std::endl;
-
-      //init chart instance for face
-      Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
-      charts.push_back(c);
-
-
-      // //check uv coords saved
-      // double u = fb->halfedge()->vertex()->point().get_u();
-      // double v = fb->halfedge()->vertex()->point().get_v();
-      // std::cout << "tex coords:  u " << u << ", v " << v << std::endl;
-
-      fb_boost++;
-    }
-
+    std::list<JoinOperation>::iterator it;
 
     //for reporting and calculating when to stop merging
     const uint32_t initial_charts = charts.size();
     const uint32_t desired_merges = initial_charts - chart_threshold;
     uint32_t chart_merges = 0;
-
-    //create possible join list/queue. Each original edge in the mesh becomes a join (if not a boundary edge)
-    std::cout << "Creating initial joins...\n";
-    std::list<JoinOperation> joins;
-    std::list<JoinOperation>::iterator it;
-
-    int edgecount = 0;
-
-    for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
-
-      edgecount++;
-
-      //only create join if halfedge is not a boundary edge
-      if ( !(eb->is_border()) && !(eb->opposite()->is_border()) )
-      {
-            uint32_t face1 = eb->facet()->id();
-            uint32_t face2 = eb->opposite()->facet()->id();
-            JoinOperation join (face1,face2,JoinOperation::cost_of_join(charts[face1],charts[face2], cluster_settings));
-            joins.push_back(join);
-      }
-    } 
-
-    std::cout << joins.size() << " joins\n" << edgecount << " edges\n";
-
     // join charts until target is reached
     int prev_cost_percent = -1;
     int prev_charts_percent = -1;
@@ -387,19 +409,6 @@ struct ClusterCreator
       
     }
 
-    // std::cout << "Printing Joins:\n";  
-    // int index = 0;
-    // std::list<JoinOperation>::iterator it2;
-    // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-    //   std::cout << "Join " << ++index << ", cost " << it2->cost << std::endl;
-    // }
-
-
-    //reporting//testing
-
-
-    std::cout << "front join cost: " << joins.front().cost << ", num joins: " << joins.size() << "chart threshold: " << chart_threshold << std::endl; 
-
     std::cout << "--------------------\nCharts:\n----------------------\n";
 
     uint32_t total_faces = 0;
@@ -411,7 +420,6 @@ struct ClusterCreator
         uint32_t num_faces = charts[i].facets.size();
         total_faces += num_faces;
         total_active_charts++;
-        // std::cout << "Chart " << i << " : " << num_faces << " faces" << std::endl;
       }
     }
     std::cout << "Total number of faces in charts = " << total_faces << std::endl;
@@ -420,23 +428,72 @@ struct ClusterCreator
     std::cout << "Total active charts = " << total_active_charts << std::endl;
 
 
-    std::cout << "--------------------\nReport:\n----------------------\n";
     // std::cout << report.str();
+  }
 
-    //populate LUT for face to chart mapping
-    //count charts on the way to apply new chart ids
-    // uint32_t active_charts = 0;
-    // for (uint32_t id = 0; id < charts.size(); ++id) {
-    //   auto& chart = charts[id];
-    //   if (chart.active) {
-    //     for (auto& f : chart.facets) {
-    //       chart_id_map[f.id()] = active_charts;
-    //     }
-    //     active_charts++;
-    //   }
-    // }
 
-    // return active_charts;
+  
+  //takes a polymesh and creates a list of Chart objects, one for each face
+  //and a list of joins between all charts
+  static uint32_t 
+  create_chart_clusters_from_faces (Polyhedron &P, 
+                const double cost_threshold , 
+                const uint32_t chart_threshold, 
+                CLUSTER_SETTINGS cluster_settings,
+                std::map<uint32_t, uint32_t> &chart_id_map){
+
+    std::stringstream report;
+    report << "--------------------\nReport:\n----------------------\n";
+
+    //calculate areas of each face
+    std::cout << "Calculating face areas...\n";
+    std::map<face_descriptor,double> fareas;
+    for(face_descriptor fd: faces(P)){
+      fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
+    }
+    //calculate normals of each faces
+    std::cout << "Calculating face normals...\n";
+    std::map<face_descriptor,Vector> fnormals;
+    CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
+
+    //get boost face iterator
+    face_iterator fb_boost, fe_boost;
+    boost::tie(fb_boost, fe_boost) = faces(P);
+
+    //each face begins as its own chart
+    std::cout << "Creating initial charts...\n";
+    std::vector<Chart> charts;
+    for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
+
+      //init chart instance for face
+      Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
+      charts.push_back(c);
+
+      fb_boost++;
+    }
+    //create possible join list/queue. Each original edge in the mesh becomes a join (if not a boundary edge)
+    std::cout << "Creating initial joins...\n";
+    std::list<JoinOperation> joins;
+    std::list<JoinOperation>::iterator it;
+
+    int edgecount = 0;
+
+    for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
+
+      edgecount++;
+
+      //only create join if halfedge is not a boundary edge
+      if ( !(eb->is_border()) && !(eb->opposite()->is_border()) )
+      {
+            uint32_t face1 = eb->facet()->id();
+            uint32_t face2 = eb->opposite()->facet()->id();
+            JoinOperation join (face1,face2,JoinOperation::cost_of_join(charts[face1],charts[face2], cluster_settings));
+            joins.push_back(join);
+      }
+    } 
+    std::cout << joins.size() << " joins\n" << edgecount << " edges\n";
+
+    cluster_faces(charts, joins, cost_threshold, chart_threshold, cluster_settings);
 
     return populate_chart_LUT(charts, chart_id_map);
 

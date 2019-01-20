@@ -9,7 +9,12 @@ struct JoinOperation {
   JoinOperation(uint32_t _c1, uint32_t _c2) : chart1_id(_c1), chart2_id(_c2){
     cost = 0;
   }
-  JoinOperation(uint32_t _c1, uint32_t _c2, double _cost) : chart1_id(_c1), chart2_id(_c2), cost(_cost){}
+  JoinOperation(uint32_t _c1, uint32_t _c2, double _cost) : chart1_id(_c1), chart2_id(_c2), cost(_cost){
+    if (_c1 == _c2)
+    {
+      std::cerr << "ERROR: Join added between the same chart! (chart " << _c1 << ")\n";
+    }
+  }
 
   //calculates cost of joining these 2 charts
   static double cost_of_join(Chart &c1, Chart &c2 ,CLUSTER_SETTINGS& cluster_settings){

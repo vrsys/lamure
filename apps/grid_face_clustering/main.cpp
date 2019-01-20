@@ -77,6 +77,8 @@ int main( int argc, char** argv )
     std::cout << "Optional: -ef specifies error fit coefficient (=1)" << std::endl;
     std::cout << "Optional: -eo specifies error orientation coefficient (=1)" << std::endl;
     std::cout << "Optional: -es specifies error shape coefficient (=1)" << std::endl;
+
+    std::cout << "Optional: -cc specifies cell resolution for grid splitting, along longest axis (=10)" << std::endl;
     return 1;
   }
 
@@ -100,8 +102,13 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-es")) {
     e_shape_cf = atof(Utils::getCmdOption(argv, argv + argc, "-es"));
   }
+
   CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf);
 
+  int cell_resolution = 10;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-cc")) {
+    cell_resolution = atoi(Utils::getCmdOption(argv, argv + argc, "-cc"));
+  }
 
   std::vector<lamure::mesh::triangle_t> triangles;
 
@@ -159,10 +166,7 @@ int main( int argc, char** argv )
   }
 
 
-
-  //TODO rewrite to derive charts from CGAL face ids
-
-  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits);
+  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution);
 
   std::cout << "Grid clusters: " << active_charts << std::endl;
 
@@ -170,7 +174,7 @@ int main( int argc, char** argv )
 
   std::cout << "After creating chart clusters: " << active_charts << std::endl;
 
-  // ClusterCreator::create_chart_clusters_from_faces(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
+  // uint32_t active_charts =  ClusterCreator::create_chart_clusters_from_faces(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
 
 
   //END chart creation ====================================================================================================================
