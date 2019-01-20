@@ -1869,3 +1869,123 @@ Vertices: 3354 , faces: 6641
 Desired Charts: 100, active charts: 42
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 12:51:59
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 100, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 12:54:57
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 100, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 12:55:24
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 13:35:04
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 100, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 13:43:02
+Ran for 0 m 6 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 13:43:34
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 13:46:28
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 13:48:54
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 42
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 13:59:13
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 42
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 13:59:52
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 51
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 14:01:19
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 42
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-20 14:01:58
+Ran for 0 m 0 s
+Input file: ../../data/bunny10k.obj
+Output file: data/charts1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 20, active charts: 42
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1

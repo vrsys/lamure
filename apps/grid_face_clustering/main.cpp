@@ -164,7 +164,13 @@ int main( int argc, char** argv )
 
   uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits);
 
-  // ClusterCreator::create_charts(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
+  std::cout << "Grid clusters: " << active_charts << std::endl;
+
+  active_charts = ClusterCreator::create_chart_clusters_from_grid_clusters(polyMesh,cost_threshold, chart_threshold, cluster_settings, chart_id_map, active_charts);
+
+  std::cout << "After creating chart clusters: " << active_charts << std::endl;
+
+  // ClusterCreator::create_chart_clusters_from_faces(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
 
 
   //END chart creation ====================================================================================================================

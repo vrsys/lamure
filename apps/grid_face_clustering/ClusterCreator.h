@@ -3,13 +3,137 @@
 //class for running clustering algorithm on Charts
 struct ClusterCreator
 {
+  static uint32_t 
+  create_chart_clusters_from_grid_clusters(Polyhedron &P,
+                const double cost_threshold , 
+                const uint32_t chart_threshold, 
+                CLUSTER_SETTINGS cluster_settings,
+                std::map<uint32_t, uint32_t> &chart_id_map,
+                uint32_t num_initial_charts){
+
+
+
+    //calculate areas of each face
+    std::map<face_descriptor,double> fareas;
+    std::map<face_descriptor,Vector> fnormals;
+    // calculate_normals_and_areas(P,fnormals,fareas);
+    std::cout << "Calculating face areas...\n";
+    for(face_descriptor fd: faces(P)){
+      fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
+    }
+    std::cout << "Calculating face normals...\n";
+    CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
+
+    //get boost face iterator
+    face_iterator fb_boost, fe_boost;
+    boost::tie(fb_boost, fe_boost) = faces(P);
+
+    //build existing charts from chart id map
+    std::cout << "Creating charts from grid clusters...\n";
+    std::vector<Chart> charts;
+    // std::set<uint32_t> chart_ids_created;
+    std::map<uint32_t, uint32_t> chart_ids_created; //key::chart id, value::location in chart array
+    std::map<uint32_t, uint32_t>::iterator it_c;
+
+    //for each face
+    for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
+
+
+
+      uint32_t given_chart_id = chart_id_map[fb->id()];
+
+    //when adding a face, check that it shares at least one boundary with a face in the same chart - otherwise give it a new id
+      Halfedge_facet_circulator fc = fb->facet_begin();
+      bool found_chart_nbr = false;
+      int32_t nbrs[3] = {-1};
+      double edgelengths[3] = {0.0};
+      uint32_t nbr_count = 0;
+      do {
+        if (!fc->is_border() && !(fc->opposite()->is_border()) )//guard against no neighbour at this edge
+        {
+          //get chart id of neighbour, compare with the chart id of this face
+          uint32_t nbr_id = fc->opposite()->facet()->id();
+          uint32_t nbr_chart_id = chart_id_map[nbr_id];
+          if (nbr_chart_id == given_chart_id)
+          {
+            found_chart_nbr = true;
+            break;
+          }
+          //Save neighbour id and edge length
+          nbrs[nbr_count] = nbr_id;
+          edgelengths[nbr_count] = Chart::edge_length(fc);
+        }
+        nbr_count++;
+      } while ( ++fc != fb->facet_begin());
+
+
+      //create chart 
+      Chart new_chart(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
+
+      if (!found_chart_nbr) // determine which neighbour group it should belong to
+      {
+
+        //find longest edge
+        double longest = 0.0;
+        uint32_t longest_id = 0;
+        for (int i = 0; i < 3; ++i)
+        {
+          if((edgelengths[i] > longest) && nbrs[i] > 0){longest_id = i;}
+        }
+        given_chart_id = chart_id_map[nbrs[longest_id]];
+
+        //save for future reference when checking other faces
+        chart_id_map[fb->id()] = given_chart_id;
+
+ 
+        // given_chart_id = num_initial_charts++;
+      }
+
+      // if chart already exists for that id,  merge this chart into existing (discard merged in chart)
+      it_c = chart_ids_created.find(given_chart_id);
+      if (it_c != chart_ids_created.end())
+      {
+        //array location of existing chart
+        uint32_t loc = it_c->second;
+        charts[loc].merge_with(new_chart, JoinOperation::cost_of_join(charts[loc], new_chart, cluster_settings));
+      }
+        //if chart doesnt exist for that chart id, save created chart to chart list
+      else {
+        //add location to map
+        chart_ids_created[given_chart_id] = charts.size();
+        charts.push_back(new_chart);
+      }
+
+      fb_boost++;
+    }
+
+    std::cout << "Created " << charts.size() << " charts from grid clusters" << std::endl;
+
+
+
+    // check that existing chart number is not already lower than threshold
+    if (charts.size() <= chart_threshold)
+    {
+      std::cout << "Input to chart clusterer already had number of charts below chart threshold" << std::endl;
+      return charts.size();
+    }
+
+    //recalculate perimeters of charts to ensure they are correct
+    for (auto& chart : charts) {chart.recalculate_perimeter_from_scratch();} 
+
+    return populate_chart_LUT(charts, chart_id_map);
+
+  }
+
+
   
   static uint32_t 
-  create_charts (Polyhedron &P, 
+  create_chart_clusters_from_faces (Polyhedron &P, 
                 const double cost_threshold , 
                 const uint32_t chart_threshold, 
                 CLUSTER_SETTINGS cluster_settings,
                 std::map<uint32_t, uint32_t> &chart_id_map){
+
     std::stringstream report;
 
     //calculate areas of each face
@@ -301,6 +425,29 @@ struct ClusterCreator
 
     //populate LUT for face to chart mapping
     //count charts on the way to apply new chart ids
+    // uint32_t active_charts = 0;
+    // for (uint32_t id = 0; id < charts.size(); ++id) {
+    //   auto& chart = charts[id];
+    //   if (chart.active) {
+    //     for (auto& f : chart.facets) {
+    //       chart_id_map[f.id()] = active_charts;
+    //     }
+    //     active_charts++;
+    //   }
+    // }
+
+    // return active_charts;
+
+    return populate_chart_LUT(charts, chart_id_map);
+
+  }
+
+  static uint32_t populate_chart_LUT(std::vector<Chart> &charts, std::map<uint32_t, uint32_t> &chart_id_map){
+    
+    chart_id_map.clear();
+
+    //populate LUT for face to chart mapping
+    //count charts on the way to apply new chart ids
     uint32_t active_charts = 0;
     for (uint32_t id = 0; id < charts.size(); ++id) {
       auto& chart = charts[id];
@@ -313,7 +460,6 @@ struct ClusterCreator
     }
 
     return active_charts;
-
   }
 };
 

@@ -211,7 +211,7 @@ struct OBJ_printer
 	        	}
 	        	else {
 	        		writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id,face_id); // for chart colours
-	        		std::cout << "chart_id: " << chart_id << std::endl;
+	        		// std::cout << "chart_id: " << chart_id << std::endl;
 	        	}
 
 	            ++hc;

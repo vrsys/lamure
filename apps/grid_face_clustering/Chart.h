@@ -263,6 +263,54 @@ struct Chart
 
   }
 
+  //recalculates the perimeter of this chart
+  //necessary when charts are built from initial grid groups - charts are not built sequentially
+  void recalculate_perimeter_from_scratch(){
+
+    double perimeter_accum = 0.0;
+
+    //for each face
+    for (uint32_t i = 0; i < facets.size(); ++i)
+    {
+      //for each edge
+      Halfedge_facet_circulator fc = facets[i].facet_begin();
+      do {
+
+        //sum the length of all edges that are borders, or border with another chart
+
+        //if this edge is shared with another face
+        if (!fc->is_border() && !(fc->opposite()->is_border()) )
+        {
+          // std::cout << "non border edge" << std::endl;
+
+          //search for face in this chart
+          uint32_t nbr_id = fc->opposite()->facet()->id();
+          bool found_nbr = false;
+          for (uint32_t j = 0; j < facets.size(); ++j)
+          {
+            // std::cout << "finding nbr" << std::endl;
+
+            if (nbr_id == facets[j].id())
+            {
+              found_nbr = true;
+              break;
+            }
+          }
+          if (!found_nbr) // if neighbour is not in this chart, add edge to perimeter accumulation
+          {
+            perimeter_accum += Chart::edge_length(fc);
+          }
+        }
+        else {
+          // std::cout << "border edge" << std::endl;
+          perimeter_accum += Chart::edge_length(fc);
+        }
+      } while ( ++fc != facets[i].facet_begin());
+    }
+
+    perimeter = perimeter_accum;
+  } 
+
   static double get_direction_error(Chart& c1, Chart& c2, Vector &plane_normal){
 
     // std::cout << "----\nplane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
@@ -303,7 +351,8 @@ struct Chart
   // }
 
   static double edge_length(Halfedge_facet_circulator he){
-    const Point& p = he->opposite()->vertex()->point();
+    // const Point& p = he->opposite()->vertex()->point();
+    const Point& p = he->prev()->vertex()->point();
     const Point& q = he->vertex()->point();
 
     return CGAL::sqrt(CGAL::squared_distance(p, q));
