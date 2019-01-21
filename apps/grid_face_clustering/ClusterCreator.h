@@ -264,10 +264,27 @@ struct ClusterCreator
         std::cout << percent << " percent complete\n";
       }
 
-      //implement the join with lowest cost
+      //implement the join with lowest cost, if it doesn't break 3 nbr rule
+
       JoinOperation join_todo = joins.front();
       joins.pop_front();
 
+#if 1
+      //check amount of neighbours resulting chart would have
+      //take a new join if neighbours are too few
+      while (join_todo.results_in_chart_with_neighbours(charts, chart_id_map) < 3){
+
+        if (joins.empty())
+        {
+          continue;
+        }
+        else {
+          join_todo = joins.front();
+          joins.pop_front();
+        }
+      }
+    
+#endif
       // std::cout << "join cost : " << join_todo.cost << std::endl; 
 
       //merge faces from chart2 into chart 1
@@ -283,7 +300,8 @@ struct ClusterCreator
       }
       charts[join_todo.chart2_id].active = false;
 
-      populate_chart_LUT(charts, chart_id_map);
+
+     // populate_chart_LUT(charts, chart_id_map);
       
       int current_item = 0;
       std::list<int> to_erase;
@@ -369,7 +387,7 @@ struct ClusterCreator
         }
       }
 
-  #if 1
+  #if 0
       //CHECK that each join would give a chart with at least 3 neighbours
       //TODO also need to check boundary edges
       to_erase.clear();

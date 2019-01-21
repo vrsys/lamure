@@ -44,4 +44,22 @@ struct JoinOperation {
     return (j1.cost < j2.cost);
   }
 
+  int results_in_chart_with_neighbours(std::vector<Chart> &charts,
+                                       std::map<uint32_t, uint32_t> &chart_id_map ){
+    Chart &c1 = charts[this->chart1_id];
+    Chart &c2 = charts[this->chart2_id];
+
+    int combined_nbrs = c1.has_border_edge | c2.has_border_edge;
+
+    //get number of neighbours per chart
+    c1.create_neighbour_set(chart_id_map);
+    c2.create_neighbour_set(chart_id_map);
+
+
+    combined_nbrs += c1.neighbour_charts.size();
+    combined_nbrs += c2.neighbour_charts.size();
+
+    return combined_nbrs - 2;
+  }
+
 };
