@@ -98,11 +98,12 @@ public:
 
 
 
-      B.add_vertex( XtndPoint<Kernel>( vertices[(i*3)], 
+      Vertex_handle vh = B.add_vertex( XtndPoint<Kernel>( vertices[(i*3)], 
                            vertices[(i*3)+1], 
                            vertices[(i*3)+2],
                             tcoords[i*2],
                             tcoords[(i*2)+1]));
+      vh->id = i;
 
     }
 

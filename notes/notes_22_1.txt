@@ -1,0 +1,21 @@
+for next week:
+
+
+ - load chart file in mesh_hierarchy app - loader exists already in rectangle packing app
+ - assign each triangle a chart
+ - carry chart ids over into face in polyhedron
+ - ...and back to trinagle_t after simplification :)
+
+ - after simplification of each node, (or at the end when the .lod file is written) write chart id of each face into auxiliary chartlod file:
+	- another list of ints, where each int is associated with a triangle in LOD file
+
+- original OBJ texture coords need to persist through to mesh_hierarchy app, and written into LOD file
+
+
+extension (next week)?
+
+ - info about the projection of triangles on to texture needs to be stored, in order to project original uvs into new texture space
+ - decide which info to write (normal, min max, 
+ - implement projection and overwrite uvs
+
+

@@ -71,7 +71,9 @@ int main( int argc, char** argv )
   }
   else {
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
-    std::cout << "Optional: -ch specifies chart threshold (=100)" << std::endl;
+    std::cout << "Optional: provide an output obj filename using -of <filename.obj>" << std::endl;
+
+    std::cout << "Optional: -ch specifies chart threshold (=0)" << std::endl;
     std::cout << "Optional: -co specifies cost threshold (=double max)" << std::endl;
 
     std::cout << "Optional: -ef specifies error fit coefficient (=1)" << std::endl;
@@ -82,11 +84,16 @@ int main( int argc, char** argv )
     return 1;
   }
 
+  std::string out_filename = "";
+  if (Utils::cmdOptionExists(argv, argv+argc, "-of")) {
+    out_filename = std::string(Utils::getCmdOption(argv, argv + argc, "-of"));
+  }
+
   double cost_threshold = std::numeric_limits<double>::max();
   if (Utils::cmdOptionExists(argv, argv+argc, "-co")) {
     cost_threshold = atof(Utils::getCmdOption(argv, argv + argc, "-co"));
   }
-  uint32_t chart_threshold = 100;
+  uint32_t chart_threshold = 0;
   if (Utils::cmdOptionExists(argv, argv+argc, "-ch")) {
     chart_threshold = atoi(Utils::getCmdOption(argv, argv + argc, "-ch"));
   }
@@ -110,14 +117,14 @@ int main( int argc, char** argv )
     cell_resolution = atoi(Utils::getCmdOption(argv, argv + argc, "-cc"));
   }
 
-  std::vector<lamure::mesh::triangle_t> triangles;
+  // std::vector<lamure::mesh::triangle_t> triangles;
 
     //load OBJ into arrays
   std::vector<double> vertices;
   std::vector<int> tris;
   std::vector<double> t_coords;
   std::vector<int> tindices;
-  BoundingBoxLimits limits = Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices, triangles);
+  BoundingBoxLimits limits = Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices);
 
 
 
@@ -127,7 +134,8 @@ int main( int argc, char** argv )
     std::cout << "didnt find any vertices" << std::endl;
     return 1;
   }
-  std::cout << "Mesh loaded (" << triangles.size() << " triangles, " << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
+  // std::cout << "Mesh loaded (" << triangles.size() << " triangles, " << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
+  std::cout << "Mesh loaded (" << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
 
   
   //START chart creation ====================================================================================================================
@@ -179,11 +187,20 @@ int main( int argc, char** argv )
 
   //END chart creation ====================================================================================================================
 
-  std::string out_filename = "data/charts1.obj";
+  // std::string out_filename = "data/charts1.obj";
+  
+  if (out_filename == "")
+  {
+    std::stringstream ss;
+    ss << "data/charts_cost_" << cost_threshold << ".obj";
+    out_filename = ss.str();
+  }
+
+
   std::ofstream ofs( out_filename );
   OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, SEPARATE_CHART_FILE);
   ofs.close();
-  std::cout << "simplified mesh was written to " << out_filename << std::endl;
+  std::cout << "mesh was written to " << out_filename << std::endl;
 
   //Logging
   auto time = std::chrono::system_clock::now();

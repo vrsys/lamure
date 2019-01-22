@@ -31,7 +31,7 @@ struct GridClusterCreator
 		std::cout << "Cell count: " << cell_count << "\n----------" << std::endl;
 
 		//map to count charts created and give sensible ids at the end of the process
-		std::map<uint32_t, uint32_t> charts_created;
+		std::map<uint32_t, uint32_t> charts_created; //key = location id, value = chart id
 		std::map<uint32_t, uint32_t>::iterator it;
 		int chart_counter = 0;
 
@@ -76,10 +76,49 @@ struct GridClusterCreator
 			chart_id_map[fb->id()] = new_chart_id;
 		}
 
+		correct_split_charts(P,chart_id_map, charts_created.size());
+
 		std::cout << "Created " <<  charts_created.size() << " charts \n"; 
 
 		return charts_created.size();
 
+	}
+
+	static void correct_split_charts(Polyhedron &P,
+									 std::map<uint32_t, uint32_t> &chart_id_map,
+									 uint32_t num_charts_created){
+
+		//TODO check continuity of mesh groups - split charts can occur
+
+		//start from one face, grow cluster by adding its neighbours to set
+		//add their neighbours to the set
+		//ideally all faces will be included in final set
+
+		uint32_t faces_processed = 0;//debug only
+		uint32_t additional_charts = 0;
+
+		for (int chart_id = 0; chart_id < num_charts_created; ++chart_id)
+		{
+			//build group of faces in chart from chart id map
+			std::set<uint32_t> faces;
+			for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
+				if (chart_id_map[fb->id()] == chart_id)
+				{
+					faces.insert(fb->id());
+				}
+			}
+			faces_processed += faces.size();//debug only
+
+			// std::stack<uint32_t> face_stack;
+			
+
+		}
+
+
+		if (P.size_of_facets() != faces_processed)//debug only
+		{
+			std::cout << "WARNING: [correct_split_charts] processed " << faces_processed << " faces, should have processed " << P.size_of_facets() << std::endl;
+		}
 	}
 
 	//convert 3D cell reference to ID number
