@@ -4,6 +4,7 @@
 
 #include <lamure/types.h>
 #include <lamure/mesh/triangle.h>
+#include <lamure/mesh/triangle_chartid.h>
 
 #include <iostream>
 #include <fstream>
@@ -166,16 +167,16 @@ template<class HDS>
 class polyhedron_builder : public CGAL::Modifier_base<HDS> {
 
 public:
-  std::vector<triangle_t> &left_tris_;
-  std::vector<triangle_t> &right_tris_;
+  std::vector<Triangle_Chartid> &left_tris_;
+  std::vector<Triangle_Chartid> &right_tris_;
 
   //how many of the given triangles are added to the final mesh
   //to enable creation of non-manifold meshes 
   double mesh_proportion = 1.0;
 
   polyhedron_builder(
-  	std::vector<triangle_t>& left_child_tris,
-    std::vector<triangle_t>& right_child_tris) 
+  	std::vector<Triangle_Chartid>& left_child_tris,
+    std::vector<Triangle_Chartid>& right_child_tris) 
     : left_tris_(left_child_tris), right_tris_(right_child_tris) {}
 
   void set_mesh_proportion(const double _mp){
@@ -191,7 +192,7 @@ public:
 
     //concatenate triangle sets
     //left_tris_.insert(left_tris_.end(), right_tris_.begin(), right_tris_.end());
-    std::vector<triangle_t> combined_set;
+    std::vector<Triangle_Chartid> combined_set;
     std::copy(left_tris_.begin(), left_tris_.end(), std::back_inserter(combined_set));
     std::copy(right_tris_.begin(), right_tris_.end(), std::back_inserter(combined_set));
 
@@ -234,12 +235,12 @@ public:
   }
 
   //creates indexed triangles list (indexes and vertices) from triangle list
-  void create_indexed_triangle_list(std::vector<lamure::mesh::triangle_t>& input_triangles,
+  void create_indexed_triangle_list(std::vector<lamure::mesh::Triangle_Chartid>& input_triangles,
                                     std::vector<uint32_t>& tris,
                                     std::vector<XtndPoint<Kernel> >& vertices) {
 
     //for each vertex in each triangle
-    for (const lamure::mesh::triangle_t tri : input_triangles){
+    for (const lamure::mesh::Triangle_Chartid tri : input_triangles){
       for (int v = 0; v < 3; ++v)
       {
         //get Point value

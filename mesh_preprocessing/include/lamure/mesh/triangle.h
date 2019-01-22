@@ -3,6 +3,7 @@
 #define LAMURE_MESH_TRIANGLE_H_
 
 #include <lamure/mesh/plane.h>
+// #include <lamure/mesh/triangle_chartid.h>
 
 namespace lamure {
 namespace mesh {
@@ -80,7 +81,6 @@ public:
     vertex v0_;
     vertex v1_;
     vertex v2_;
-    int chart_id;
 
 };
 

@@ -35,7 +35,7 @@ namespace SMS = CGAL::Surface_mesh_simplification ;
 namespace lamure {
 namespace mesh {
 
-bvh::bvh(std::vector<triangle_t>& triangles, uint32_t primitives_per_node)
+bvh::bvh(std::vector<Triangle_Chartid>& triangles, uint32_t primitives_per_node)
 : lamure::ren::bvh() {
 
   fan_factor_ = 2;
@@ -52,7 +52,7 @@ bvh::~bvh() {
 }
 
 
-void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
+void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles) {
 
   //Determine the bounding box of all tris ---root
   vec3f min(std::numeric_limits<float>::max());
@@ -102,7 +102,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
     //Sort all tris (of current node) by their centroid along the longest axis
     std::sort(triangles.begin()+node.begin_, triangles.begin()+node.end_, 
-      [&](const triangle_t& a, const triangle_t& b) {
+      [&](const Triangle_Chartid& a, const Triangle_Chartid& b) {
 
       	if (axis == 0) {
           return a.get_centroid().x < b.get_centroid().x;
@@ -343,7 +343,7 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 
     //if the number of triangles was not divisible by two, add another tri for padding
     while (triangles_map_[node_id].size() < primitives_per_node_) {
-      triangles_map_[node_id].push_back(triangle_t());
+      triangles_map_[node_id].push_back(Triangle_Chartid());
     }
 
   }
@@ -358,9 +358,9 @@ void bvh::create_hierarchy(std::vector<triangle_t>& triangles) {
 }
 
 void bvh::simplify(
-  std::vector<triangle_t>& left_child_tris,
-  std::vector<triangle_t>& right_child_tris,
-  std::vector<triangle_t>& output_tris,
+  std::vector<Triangle_Chartid>& left_child_tris,
+  std::vector<Triangle_Chartid>& right_child_tris,
+  std::vector<Triangle_Chartid>& output_tris,
   bool contrain_edges) {
 
 
@@ -439,7 +439,7 @@ void bvh::simplify(
   for (Polyhedron::Facet_iterator f = polyMesh.facets_begin(); f != polyMesh.facets_end(); ++f) {
     Polyhedron::Halfedge_around_facet_circulator c = f->facet_begin();
 
-    triangle_t tri;
+    Triangle_Chartid tri;
     tri.chart_id = f->chart_id;
 
     for (int i = 0; i < 3; ++i, ++c) {
@@ -480,13 +480,38 @@ void bvh::simplify(
 
 void bvh::write_lod_file(const std::string& lod_filename) {
 
+  //convert triangle map with chart id to trianglke map without chart id
+  std::map<uint32_t, std::vector<triangle_t>> simple_triangles_map;
+  for (auto& tri_list : triangles_map_)
+  {
+    std::vector<triangle_t> tris;
+    for(auto &t : tri_list.second)
+    {
+      lamure::mesh::triangle_t new_tri = t.get_basic_triangle(); 
+      
+      //for testing - replace tex coords with colour derived from chart id
+      double u = std::min(1.0, t.chart_id / 50.0);
+      double v = 0.5 * (t.chart_id % 3);
+
+      new_tri.v0_.tex_.x = u;
+      new_tri.v0_.tex_.y = v;
+      new_tri.v1_.tex_.x = u;
+      new_tri.v1_.tex_.y = v;
+      new_tri.v2_.tex_.x = u;
+      new_tri.v2_.tex_.y = v;
+
+      tris.push_back(new_tri);
+    }
+    simple_triangles_map[tri_list.first] = tris;
+  }
+
   auto lod = std::make_shared<lamure::ren::lod_stream>();
   lod->open_for_writing(lod_filename);
 
   for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
     size_t length_in_bytes = primitives_per_node_*sizeof(vertex);
     size_t start_in_file = node_id*length_in_bytes;
-    lod->write((char*)&triangles_map_[node_id][0], start_in_file, length_in_bytes);
+    lod->write((char*)&simple_triangles_map[node_id][0], start_in_file, length_in_bytes);
   }
 
   lod->close();
@@ -507,7 +532,7 @@ void bvh::write_chart_lod_file(const std::string& chart_lod_filename) {
     }
 
     //for each triangle in node
-    for(triangle_t& t : triangles_map_[node_id]){
+    for(Triangle_Chartid& t : triangles_map_[node_id]){
 
       //write chart id to file
       ofs << t.chart_id << " ";
@@ -516,7 +541,7 @@ void bvh::write_chart_lod_file(const std::string& chart_lod_filename) {
 
   ofs.close();
 
-  std::cout << "chart lod file written to: " << chart_lod_filename << std::endl;
+  // std::cout << "chart lod file written to: " << chart_lod_filename << std::endl;
 
 }
 

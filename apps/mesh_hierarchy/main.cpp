@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <lamure/mesh/bvh.h>
+#include <lamure/mesh/triangle_chartid.h>
 #include <cstring>
 
 
@@ -21,7 +22,7 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
 
 
 //load an .obj file and return all vertices, normals and coords interleaved
-void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& triangles) {
+void load_obj(const std::string& _file, std::vector<lamure::mesh::Triangle_Chartid>& triangles) {
 
     triangles.clear();
 
@@ -80,7 +81,7 @@ void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& t
         triangles.resize(nindices.size()/3);
 
         for (uint32_t i = 0; i < nindices.size()/3; i++) {
-          lamure::mesh::triangle_t tri;
+          lamure::mesh::Triangle_Chartid tri;
           for (uint32_t j = 0; j < 3; ++j) {
             
             scm::math::vec3f position(
@@ -187,7 +188,11 @@ int32_t main(int argc, char* argv[]) {
     return 0;
   }
 
-  std::vector<lamure::mesh::triangle_t> triangles;
+
+  // std::vector<lamure::mesh::triangle_t> triangles;
+  std::vector<lamure::mesh::Triangle_Chartid> triangles;
+  
+  // std::vector<lamure::mesh::Triangle_Chartid> triangles_w_charts;
 
   //load the obj as triangles
   load_obj(obj_filename, triangles);
@@ -195,7 +200,7 @@ int32_t main(int argc, char* argv[]) {
 
   std::cout << "obj loaded" << std::endl;
 
-  //load chart ids for triangles
+  // load chart ids for triangles
   std::vector<int> chart_id_per_triangle;
   int num_charts = load_chart_file(chart_file, chart_id_per_triangle);
   std::cout << "Loaded chart ids for " << chart_id_per_triangle.size() << " triangles, (" << num_charts << " charts) from file: " << chart_file << std::endl;
@@ -210,7 +215,6 @@ int32_t main(int argc, char* argv[]) {
     triangles[i].chart_id = chart_id_per_triangle[i];
   }
 
-  return 0;
 
   auto start_time = std::chrono::system_clock::now();
 
