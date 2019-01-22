@@ -12,6 +12,13 @@ for next week:
 - original OBJ texture coords need to persist through to mesh_hierarchy app, and written into LOD file
 
 
+TO DO:
+
+test UV propogation through grid clustering app
+
+implement UV propogation into mesh_hierarchy app
+
+
 extension (next week)?
 
  - info about the projection of triangles on to texture needs to be stored, in order to project original uvs into new texture space
