@@ -126,6 +126,33 @@ void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& t
 
 }
 
+//returns number of charts
+//assumes charts are numbered sequentially
+int load_chart_file(std::string chart_file, std::vector<int>& chart_id_per_triangle) {
+
+  int num_charts = 0;
+
+  std::ifstream file(chart_file);
+
+  std::string line;
+  while (std::getline(file, line)) {
+    std::stringstream ss(line);
+    std::string chart_id_str;
+
+    while (std::getline(ss, chart_id_str, ' ')) {
+      
+      int chart_id = atoi(chart_id_str.c_str());
+      num_charts = std::max(num_charts, chart_id+1);
+      chart_id_per_triangle.push_back(chart_id);
+
+      // std::cout << chart_id << std::endl;
+    }
+  }
+
+  file.close();
+  return num_charts;
+}
+
 
 int32_t main(int argc, char* argv[]) {
 
@@ -140,6 +167,11 @@ int32_t main(int argc, char* argv[]) {
     terminate = true;
   }
 
+  std::string chart_file = obj_filename.substr(0,obj_filename.length()-3).append(".chart");
+  if (cmd_option_exists(argv, argv+argc, "-cf")) {
+    chart_file = get_cmd_option(argv, argv+argc, "-cf");
+  }
+  
   uint32_t triangle_budget = 1000;
   if (cmd_option_exists(argv, argv+argc, "-t")) {
     triangle_budget = atoi(get_cmd_option(argv, argv+argc, "-t"));
@@ -149,6 +181,7 @@ int32_t main(int argc, char* argv[]) {
     std::cout << "Usage: " << argv[0] << "<flags>\n" <<
       "INFO: " << argv[0] << "\n" <<
       "\t-f: select .obj file\n" << 
+      "\t-cf: select .chart file (default: same name as obj file)\n" << 
       "\t-t: set triangle budget (=1000)\n" << 
       "\n";
     return 0;
@@ -156,12 +189,28 @@ int32_t main(int argc, char* argv[]) {
 
   std::vector<lamure::mesh::triangle_t> triangles;
 
-
   //load the obj as triangles
   load_obj(obj_filename, triangles);
   const uint32_t num_faces = triangles.size();
 
   std::cout << "obj loaded" << std::endl;
+
+  //load chart ids for triangles
+  std::vector<int> chart_id_per_triangle;
+  int num_charts = load_chart_file(chart_file, chart_id_per_triangle);
+  std::cout << "Loaded chart ids for " << chart_id_per_triangle.size() << " triangles, (" << num_charts << " charts) from file: " << chart_file << std::endl;
+
+  if (chart_id_per_triangle.size() < triangles.size())
+  {
+    std::cout << "Error: charts were not found for every triangle\n";
+    return 0; 
+  }
+  for (uint32_t i = 0; i < triangles.size(); ++i)
+  {
+    triangles[i].chart_id = chart_id_per_triangle[i];
+  }
+
+  return 0;
 
   auto start_time = std::chrono::system_clock::now();
 
@@ -176,6 +225,10 @@ int32_t main(int argc, char* argv[]) {
   std::string lod_filename = obj_filename.substr(0, obj_filename.size()-4)+".lod";
   bvh->write_lod_file(lod_filename);
   std::cout << "Lod file written to " << lod_filename << std::endl;
+  
+  std::string lod_chart_filename = obj_filename.substr(0, obj_filename.size()-4)+".lodchart";
+  bvh->write_chart_lod_file(lod_chart_filename);
+  std::cout << "Lod chart file written to " << lod_chart_filename << std::endl;
 
   bvh.reset();
 

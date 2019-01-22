@@ -76,7 +76,8 @@ struct GridClusterCreator
 			chart_id_map[fb->id()] = new_chart_id;
 		}
 
-		correct_split_charts(P,chart_id_map, charts_created.size());
+// TODO complete
+		// correct_split_charts(P,chart_id_map, charts_created.size());
 
 		std::cout << "Created " <<  charts_created.size() << " charts \n"; 
 
@@ -97,7 +98,7 @@ struct GridClusterCreator
 		uint32_t faces_processed = 0;//debug only
 		uint32_t additional_charts = 0;
 
-		for (int chart_id = 0; chart_id < num_charts_created; ++chart_id)
+		for (uint32_t chart_id = 0; chart_id < num_charts_created; ++chart_id)
 		{
 			//build group of faces in chart from chart id map
 			std::set<uint32_t> faces;
@@ -110,6 +111,8 @@ struct GridClusterCreator
 			faces_processed += faces.size();//debug only
 
 			// std::stack<uint32_t> face_stack;
+
+			//TODO complete
 			
 
 		}

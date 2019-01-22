@@ -80,6 +80,7 @@ public:
     vertex v0_;
     vertex v1_;
     vertex v2_;
+    int chart_id;
 
 };
 

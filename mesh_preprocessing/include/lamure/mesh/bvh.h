@@ -20,6 +20,7 @@ public:
   ~bvh();
 
   void write_lod_file(const std::string& lod_filename);
+  void write_chart_lod_file(const std::string& chart_lod_filename);
 
 protected:
 

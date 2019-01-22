@@ -45,6 +45,11 @@ CUSTOM DATA STRUCTURES ===================================================
 
 */
 
+template <class Refs>
+struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
+  int chart_id;
+};
+
 // // //define a new vertex type - inheriting from base type CGAL::HalfedgeDS_vertex_base
 //ref https://doc.cgal.org/4.7/Polyhedron/index.html#title11
 template <class Refs, class T, class P>
@@ -105,14 +110,20 @@ std::ostream& operator << (std::ostream& os, const XtndPoint<Traits> &pnt)
 struct Custom_items : public CGAL::Polyhedron_items_3 {
     template <class Refs, class Traits>
     struct Vertex_wrapper {
-
       typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
+    };
+    template <class Refs, class Traits>
+    struct Face_wrapper {
+      typedef ChartFace<Refs> Face;
     };
 };
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
+
+
+typedef Polyhedron::Facet_handle Facet_handle;
 
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
@@ -197,11 +208,14 @@ public:
     //create faces using vertex index references
     for (uint32_t i = 0; i < tris.size(); i+=3) {
 
-      B.begin_facet();
+      Facet_handle fh = B.begin_facet();
       B.add_vertex_to_facet(tris[i]);
       B.add_vertex_to_facet(tris[i+1]);
       B.add_vertex_to_facet(tris[i+2]);
       B.end_facet();
+
+      //transfer chart id to 
+      fh->chart_id = combined_set[i/3].chart_id;
 
       //printing for debugging edge sharing error
       // if (i == 281 * 3 || i == 545 * 3)

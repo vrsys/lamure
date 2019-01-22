@@ -2439,3 +2439,13 @@ Vertices: 34834 , faces: 69451
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape0.1
+
+-------------------------------------
+Executed at 2019-01-22 14:07:25
+Ran for 0 m 45 s
+Input file: ../../data/bunny.obj
+Output file: data/bunny_ch50_es0.1.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape0.1

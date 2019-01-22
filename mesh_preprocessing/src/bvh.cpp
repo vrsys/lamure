@@ -440,6 +440,7 @@ void bvh::simplify(
     Polyhedron::Halfedge_around_facet_circulator c = f->facet_begin();
 
     triangle_t tri;
+    tri.chart_id = f->chart_id;
 
     for (int i = 0; i < 3; ++i, ++c) {
 
@@ -490,6 +491,32 @@ void bvh::write_lod_file(const std::string& lod_filename) {
 
   lod->close();
 
+}
+
+void bvh::write_chart_lod_file(const std::string& chart_lod_filename) {
+
+  std::ofstream ofs( chart_lod_filename );
+
+  //for each node
+  for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
+
+    //debug only:
+    if (triangles_map_[node_id].size() != primitives_per_node_)
+    {
+      std::cout << "WARNING: [bvh::write_chart_lod_file] triangle list size for node " << node_id << " does not equal primitives_per_node_: " << primitives_per_node_ << std::endl;
+    }
+
+    //for each triangle in node
+    for(triangle_t& t : triangles_map_[node_id]){
+
+      //write chart id to file
+      ofs << t.chart_id << " ";
+    }
+  }
+
+  ofs.close();
+
+  std::cout << "chart lod file written to: " << chart_lod_filename << std::endl;
 
 }
 
