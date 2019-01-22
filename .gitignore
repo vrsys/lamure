@@ -7,3 +7,14 @@ install
 cmake-build-debug
 cmake-build-release
 data/bunny.lod
+data/papers
+apps/sandbox_gary
+data/geometric
+data/tinymeshes
+data/bunny.bvh
+apps/sandbox_gary/
+data/geometric/
+data/papers/
+data/logs/
+data/tinymeshes/
+

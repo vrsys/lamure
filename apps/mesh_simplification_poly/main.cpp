@@ -330,6 +330,8 @@ int main( int argc, char** argv )
   }
   else {
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
+    std::cout << "specify output file name with -o (='data/simplified_mesh.obj')" << std::endl;
+    std::cout << "specify target edges with -e (=1000)" << std::endl;
     return 1;
   }
 
@@ -370,7 +372,7 @@ int main( int argc, char** argv )
 
   // std::cout << builder.get_report() << std::endl;
 
-  if (polyMesh.is_valid(true)){
+  if (polyMesh.is_valid(false)){
     std::cout << "mesh valid\n"; 
   }
 
@@ -383,23 +385,23 @@ int main( int argc, char** argv )
 
 
 
-  int total_lefties = 0;
+  // int total_lefties = 0;
 
-  //test if faces have been stored
-  for( Polyhedron::Facet_iterator fb = polyMesh.facets_begin()
-   , fe = polyMesh.facets_end()
-   ; fb != fe
-   ; ++ fb
-   ) {
+  // //test if faces have been stored
+  // for( Polyhedron::Facet_iterator fb = polyMesh.facets_begin()
+  //  , fe = polyMesh.facets_end()
+  //  ; fb != fe
+  //  ; ++ fb
+  //  ) {
 
-    if (fb->is_in_left_node()){
+  //   if (fb->is_in_left_node()){
 
-      total_lefties++;
-    }
-  }
+  //     total_lefties++;
+  //   }
+  // }
 
   std::cout << "total num faces: " << polyMesh.size_of_facets() << std::endl;
-  std::cout << "total lefties found in built mesh = " << total_lefties << std::endl;
+  // std::cout << "total lefties found in built mesh = " << total_lefties << std::endl;
     
 
   // This is a stop predicate (defines when the algorithm terminates).
@@ -410,42 +412,42 @@ int main( int argc, char** argv )
 
 
   //build property map
-  Face_is_left_map face_is_left_map;
-  Face_is_left_pmap face_is_left_pmap(face_is_left_map);
+  // Face_is_left_map face_is_left_map;
+  // Face_is_left_pmap face_is_left_pmap(face_is_left_map);
 
-  typedef CGAL::Point_3<Kernel> Point;
-  std::vector<Point> centroids;
+  // typedef CGAL::Point_3<Kernel> Point;
+  // std::vector<Point> centroids;
 
   // for each face, associate bools to faces depending on position
-  face_iterator fb, fe;
-  for(boost::tie(fb, fe)=faces(polyMesh); fb!=fe; ++fb){
+  // face_iterator fb, fe;
+  // for(boost::tie(fb, fe)=faces(polyMesh); fb!=fe; ++fb){
 
-    //calculate centroid for each face
-    CGAL::Vertex_around_face_iterator<Polyhedron> vbegin, vend;
-    boost::tie(vbegin, vend) = vertices_around_face(halfedge(*fb, polyMesh), polyMesh);
-    Point p1 = (*vbegin)->point();  ++vbegin;
-    Point p2 = (*vbegin)->point();  ++vbegin;
-    Point p3 = (*vbegin)->point();  ++vbegin;
-    Point centroid = CGAL::centroid(p1,p2,p3);
-    centroids.push_back(centroid);
-  }
+  //   //calculate centroid for each face
+  //   CGAL::Vertex_around_face_iterator<Polyhedron> vbegin, vend;
+  //   boost::tie(vbegin, vend) = vertices_around_face(halfedge(*fb, polyMesh), polyMesh);
+  //   Point p1 = (*vbegin)->point();  ++vbegin;
+  //   Point p2 = (*vbegin)->point();  ++vbegin;
+  //   Point p3 = (*vbegin)->point();  ++vbegin;
+  //   Point centroid = CGAL::centroid(p1,p2,p3);
+  //   centroids.push_back(centroid);
+  // }
   //get average centroid
-  double avg_x = (1.0/centroids.size()) * std::accumulate(centroids.begin(), centroids.end(), 0.0, 
-                                          [](double a, Point b){
-                                            return a + b.x();
-                                          });
+  // double avg_x = (1.0/centroids.size()) * std::accumulate(centroids.begin(), centroids.end(), 0.0, 
+  //                                         [](double a, Point b){
+  //                                           return a + b.x();
+  //                                         });
 
   //fill property map with boolean
-  int index = 0;
-  for(boost::tie(fb, fe)=faces(polyMesh); fb!=fe; ++fb){
-    bool is_left = (centroids[index].x() < avg_x);
-    face_is_left_pmap[*fb] = is_left;
-    index++;
-  }
+  // int index = 0;
+  // for(boost::tie(fb, fe)=faces(polyMesh); fb!=fe; ++fb){
+  //   bool is_left = (centroids[index].x() < avg_x);
+  //   face_is_left_pmap[*fb] = is_left;
+  //   index++;
+  // }
 
 
   // map that defines which edges are protected
-  Border_is_constrained_edge_map bem(polyMesh, face_is_left_pmap);
+  // Border_is_constrained_edge_map bem(polyMesh, face_is_left_pmap);
 
 
   std::cout << "Starting simplification" << std::endl;

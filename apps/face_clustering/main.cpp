@@ -6,31 +6,9 @@
 #include <numeric>
 #include <chrono>
 #include <limits>
-
-#include <CGAL/Simple_cartesian.h>
-#include <CGAL/Polyhedron_3.h>
-#include <CGAL/Polyhedron_items_with_id_3.h>
-
-
-
-#include <CGAL/IO/print_wavefront.h>
-
-// Simplification function
-#include <CGAL/Surface_mesh_simplification/edge_collapse.h>
-#include <CGAL/Surface_mesh.h>
-#include <CGAL/property_map.h>
-
+#include <float.h>
 
 #include <CGAL/Polygon_mesh_processing/measure.h>
-// Stop-condition policy
-#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Count_stop_predicate.h>
-#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Edge_length_cost.h>
-#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Midpoint_placement.h>
-#include <CGAL/Surface_mesh_simplification/Policies/Edge_collapse/Constrained_placement.h>
-
-#include<CGAL/Polyhedron_incremental_builder_3.h>
-
-#include <CGAL/boost/graph/Dual.h>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -38,218 +16,28 @@
 
 #include "Utils.h"
 #include "OBJ_printer.h"
-// #include "OBJ_printer_test.h"
+#include "SymMat.h"
+#include "cluster_settings.h"
+#include "ErrorQuadric.h"
+#include "Chart.h"
+#include "JoinOperation.h"
+#include "polyhedron_builder.h"
+#include "eig.h"
 
-typedef CGAL::Simple_cartesian<double> Kernel;
-
-typedef Kernel::Vector_3 Vector;
-typedef CGAL::Point_3<Kernel> Point;
-
-typedef CGAL::Polyhedron_3<Kernel,CGAL::Polyhedron_items_with_id_3> Polyhedron;
-typedef Polyhedron::HalfedgeDS HalfedgeDS;
-// typedef CGAL::Dual<Polyhedron> Dual;
-
-typedef Polyhedron::Facet_iterator Facet_iterator;
-typedef Polyhedron::Facet_handle Facet_handle;
-typedef Polyhedron::Facet Facet; 
-
-typedef Polyhedron::Halfedge_around_facet_circulator Halfedge_facet_circulator;
+#include "CGAL_typedefs.h"
 
 
-typedef Polyhedron::Halfedge Halfedge;
-typedef Polyhedron::Edge_iterator Edge_iterator;
+
+#define SEPARATE_CHART_FILE false
 
 
-typedef boost::graph_traits<Polyhedron>::vertex_descriptor vertex_descriptor;
-typedef boost::graph_traits<Polyhedron>::face_descriptor   face_descriptor;
-typedef boost::graph_traits<Polyhedron>::face_iterator face_iterator;
-
-
-namespace SMS = CGAL::Surface_mesh_simplification ;
-
-
-template<class HDS>
-class polyhedron_builder : public CGAL::Modifier_base<HDS> {
-
-public:
-  std::vector<double> &vertices;
-  std::vector<int>    &tris;
-
-  polyhedron_builder( std::vector<double> &_vertices,
-                      std::vector<int> &_tris) 
-                      : vertices(_vertices), tris(_tris) {}
-
-
-  void operator()( HDS& hds) {
-
-
-    // create a cgal incremental builder
-    CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
-    B.begin_surface( vertices.size()/3, tris.size()/3 );
-   
-    // add the polyhedron vertices
-    for( int i=0; i<(int)vertices.size() / 3; ++i ){
-
-      B.add_vertex( Point( vertices[(i*3)], 
-                           vertices[(i*3)+1], 
-                           vertices[(i*3)+2]));
-
-    }
-
-   
-    // add the polyhedron triangles
-    for( int i=0; i<(int)(tris.size()); i+=3 ){
-
-      B.begin_facet();
-      B.add_vertex_to_facet( tris[i+0] );
-      B.add_vertex_to_facet( tris[i+1] );
-      B.add_vertex_to_facet( tris[i+2] );
-      B.end_facet();
-    }
-   
-    // finish up the surface
-    B.end_surface();
-
-    }
-
-};
-  
+Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
 
 //key: face_id, value: chart_id
 std::map<uint32_t, uint32_t> chart_id_map;
 
-// struct to hold a vector of facets that make a chart
-struct Chart
-{
-  std::vector<Facet> facets;
-  bool active;
-  Vector avg_normal;
-  double area;
-  double error;
 
-  Chart(const Facet f,const Vector normal,const double _area){
-    facets.push_back(f);
-    active = true;
-    area = _area;
-    avg_normal = normal;
-    error = 0;
-  }
-
-  //concatenate face lists
-  void merge_with(Chart &mc, const double cost_of_join){
-
-    facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
-
-    Vector n = (avg_normal * area) + (mc.avg_normal * mc.area); //create new chart normal
-    avg_normal = n / std::sqrt(n.squared_length()); //normalise normal
-    area += mc.area;
-
-    error += (mc.error + cost_of_join);
-
-  }
-
-  static double get_compactness_of_merged_charts(Chart& c1, Chart& c2){
-
-    double area = c1.area + c2.area;
-    std::vector<Facet> combined_facets (c1.facets);
-    combined_facets.insert(combined_facets.end(), c2.facets.begin(), c2.facets.end());    
-    double perimeter = get_perimeter(combined_facets);
-
-    return perimeter / area;
-  }
-
-  //calculate perimeter of chart
-  static double get_perimeter(std::vector<Facet> chart_facets){
-    double accum_perimeter = 0;
-
-
-
-    //for each face
-    for (auto& face : chart_facets)
-    {
-    
-        Halfedge_facet_circulator he = face.facet_begin();
-        CGAL_assertion( CGAL::circulator_size(he) >= 3);
-
-
-        //for 3 edges (adjacent faces)
-        do {
-            //check this edge is not a border
-            if ( !(he->is_border()) && !(he->opposite()->is_border()) )
-            {
-              uint32_t adj_face_id = he->opposite()->facet()->id();
-
-              //check if they are in this chart
-              bool found_in_this_chart = false;
-              for (auto& chart_member : chart_facets){
-                if (chart_member.id() == adj_face_id)
-                {
-                  found_in_this_chart = true;
-                }
-              }
-              
-              //if not, add edge length to perimeter total, record as neighbour
-              if (!found_in_this_chart)
-              {
-                
-                accum_perimeter += edge_length(he);
-              }
-            }
-
-        } while ( ++he != face.facet_begin());
-
-        
-    }
-
-
-
-    return accum_perimeter;
-  }
-
-  static double edge_length(Halfedge_facet_circulator he){
-    const Point& p = he->opposite()->vertex()->point();
-    const Point& q = he->vertex()->point();
-
-    return CGAL::sqrt(CGAL::squared_distance(p, q));
-  }
-
-};
-
-double cost_of_join(Chart &c1, Chart &c2){
-
-  const double accum_error_factor = 1.0;
-  const double angle_error_factor = 10.0;
-  const double compactness_factor = 10000.0;
-
-  //define error as angle between normal directions of charts
-  double dot_product = c1.avg_normal * c2.avg_normal;
-  double error = angle_error_factor * acos(dot_product);
-
-  double compactness = Chart::get_compactness_of_merged_charts(c1,c2);
-  
-
-  error += (accum_error_factor * (c1.error + c2.error));
-  error += (compactness_factor * compactness);
-  return error;
-}
-
-struct JoinOperation {
-
-  uint32_t chart1_id;
-  uint32_t chart2_id;
-  double cost;
-
-  JoinOperation(uint32_t _c1, uint32_t _c2) : chart1_id(_c1), chart2_id(_c2){
-    cost = 0;
-  }
-  JoinOperation(uint32_t _c1, uint32_t _c2, double _cost) : chart1_id(_c1), chart2_id(_c2), cost(_cost){}
-
-};
-
-bool sort_joins (JoinOperation j1, JoinOperation j2) {
-  return (j1.cost < j2.cost);
-}
 
 void count_faces_in_active_charts(std::vector<Chart> &charts) {
   uint32_t active_faces = 0;
@@ -264,91 +52,96 @@ void count_faces_in_active_charts(std::vector<Chart> &charts) {
 }
 
 uint32_t 
-create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart_threshold){
+create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart_threshold, CLUSTER_SETTINGS cluster_settings){
   std::stringstream report;
 
-  //calculate areas
+  //calculate areas of each face
   std::cout << "Calculating face areas...\n";
   std::map<face_descriptor,double> fareas;
   for(face_descriptor fd: faces(P)){
     fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
   }
-  //calculate normals of all faces
+  //calculate normals of each faces
   std::cout << "Calculating face normals...\n";
   std::map<face_descriptor,Vector> fnormals;
-  std::map<vertex_descriptor,Vector> vnormals;
-  CGAL::Polygon_mesh_processing::compute_normals(P,
-                                                 boost::make_assoc_property_map(vnormals),
-                                                 boost::make_assoc_property_map(fnormals));
+  CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
 
   //get boost face iterator
   face_iterator fb_boost, fe_boost;
   boost::tie(fb_boost, fe_boost) = faces(P);
 
   //each face begins as its own chart
-  //add face ids in same loop
   std::cout << "Creating initial charts...\n";
   std::vector<Chart> charts;
   for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
+    //assign id to face
     fb->id() = charts.size();  
 
-    Vector normal = fnormals[*fb_boost];
-    double area = fareas[*fb_boost];
+    // std::cout << "normal " << charts.size() << ": " << fnormals[*fb_boost] << std::endl;
 
-    Chart c(*fb, normal, area);
+    //init chart instance for face
+    Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
     charts.push_back(c);
+
+
+    // //check uv coords saved
+    // double u = fb->halfedge()->vertex()->point().get_u();
+    // double v = fb->halfedge()->vertex()->point().get_v();
+    // std::cout << "tex coords:  u " << u << ", v " << v << std::endl;
 
     fb_boost++;
   }
 
+  //for reporting and calculating when to stop merging
   const uint32_t initial_charts = charts.size();
   const uint32_t desired_merges = initial_charts - chart_threshold;
   uint32_t chart_merges = 0;
 
-  //create possible join list
+  //create possible join list/queue. Each original edge in the mesh becomes a join (if not a boundary edge)
   std::cout << "Creating initial joins...\n";
   std::list<JoinOperation> joins;
   std::list<JoinOperation>::iterator it;
+
+  int edgecount = 0;
+
   for( Edge_iterator eb = P.edges_begin(), ee = P.edges_end(); eb != ee; ++ eb){
+
+    edgecount++;
 
     //only create join if halfedge is not a boundary edge
     if ( !(eb->is_border()) && !(eb->opposite()->is_border()) )
     {
           uint32_t face1 = eb->facet()->id();
           uint32_t face2 = eb->opposite()->facet()->id();
-          JoinOperation join (face1,face2,cost_of_join(charts[face1],charts[face2]));
+          JoinOperation join (face1,face2,JoinOperation::cost_of_join(charts[face1],charts[face2], cluster_settings));
           joins.push_back(join);
     }
   } 
 
-  std::cout << joins.size() << " joins\n";
+  std::cout << joins.size() << " joins\n" << edgecount << " edges\n";
 
   // join charts until target is reached
   int prev_cost_percent = -1;
   int prev_charts_percent = -1;
   int overall_percent = -1;
 
-
-
-  joins.sort(sort_joins);
+  joins.sort(JoinOperation::sort_joins);
   const double lowest_cost = joins.front().cost;
 
+
+  //execute lowest join cost and update affected joins.  re-sort.
   std::cout << "Processing join queue...\n";
   while (joins.front().cost < cost_threshold  
         &&  !joins.empty()
         &&  (charts.size() - chart_merges) > chart_threshold){
 
+    //reporting-------------
     int percent = (int)(((joins.front().cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
     if (percent != prev_cost_percent && percent > overall_percent) {
       prev_cost_percent = percent;
       overall_percent = percent;
       std::cout << percent << " percent complete\n";
     } 
-
-
-  // return 1;
-
-  // //end test
     percent = (int)(((float)chart_merges / (float)desired_merges) * 100);
     if (percent != prev_charts_percent && percent > overall_percent) {
       prev_charts_percent = percent;
@@ -356,29 +149,28 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       std::cout << percent << " percent complete\n";
     }
 
-
     //implement the join with lowest cost
     JoinOperation join_todo = joins.front();
     joins.pop_front();
 
-
     // std::cout << "join cost : " << join_todo.cost << std::endl; 
 
     //merge faces from chart2 into chart 1
+    // std::cout << "merging charts " << join_todo.chart1_id << " and " << join_todo.chart2_id << std::endl;
     charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id], join_todo.cost);
 
+
+    //DEactivate chart 2
     if (charts[join_todo.chart2_id].active == false)
     {
-      report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl;
+      report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl; // should not happen
       continue;
     }
-
     charts[join_todo.chart2_id].active = false;
     
     int current_item = 0;
     std::list<int> to_erase;
     std::vector<JoinOperation> to_replace;
-    // std::list<int> to_sort;
 
     //update itremaining joins that include either of the merged charts
     for (it = joins.begin(); it != joins.end(); ++it)
@@ -415,7 +207,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
         }
         else {
           //update cost with new cost
-          it->cost = cost_of_join(charts[it->chart1_id], charts[it->chart2_id]);
+          it->cost = JoinOperation::cost_of_join(charts[it->chart1_id], charts[it->chart2_id], cluster_settings);
 
           //save this join to be deleted and replaced in correct position after deleting duplicates
           to_replace.push_back(*it);
@@ -438,7 +230,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
     // replace joins that were filtered out to be sorted
     if (to_replace.size() > 0)
     {
-      std::sort(to_replace.begin(), to_replace.end(), sort_joins);
+      std::sort(to_replace.begin(), to_replace.end(), JoinOperation::sort_joins);
       std::list<JoinOperation>::iterator it2;
       uint32_t insert_item = 0;
       for (it2 = joins.begin(); it2 != joins.end(); ++it2){
@@ -460,24 +252,17 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       }
     }
 
-
-    //   search for joins that would result in charts with less than 3 corners
-    //     therefore search for joins, where member charts are included in less than 3 joins, not including the shared join
-    // create map of chart ids to a list/map/vector of adjacent charts
-    // populate this on 1 pass through joins
-    // then pass through again and check all merges would leave at least 3 neighbours
+#if 0
+    //CHECK that each join would give a chart with at least 3 neighbours
+    //TODO also need to check boundary edges
     to_erase.clear();
-    std::map<uint32_t, std::map<uint32_t, bool> > neighbour_count;
+    std::vector<std::vector<uint32_t> > neighbour_count (charts.size(), std::vector<uint32_t>(0));
     std::list<JoinOperation>::iterator it2;
     for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-      //for chart 1 , add entry in map for that chart containing id of chart 2
+      //for chart 1 , add entry in vector for that chart containing id of chart 2
       // and vice versa
-      std::map<uint32_t, bool>& c_map_1 = neighbour_count[it2->chart1_id];
-      c_map_1[it2->chart2_id] = true;
-
-      std::map<uint32_t, bool>& c_map_2 = neighbour_count[it2->chart2_id];
-      c_map_2[it2->chart1_id] = true;
-
+      neighbour_count[it2->chart1_id].push_back(it2->chart2_id);
+      neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
     }
 
     uint32_t join_id = 0;
@@ -485,10 +270,20 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       // combined neighbour count of joins' 2 charts should be at least 5
       // they will both contain each other (accounting for 2 neighbours) and require 3 more
 
-      //merge the maps for each chart in the join and count unique neighbours
-      std::map<uint32_t, bool> combined_nbrs (neighbour_count[it2->chart1_id]);
-      combined_nbrs.insert(neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
-      if (combined_nbrs.size() < 5)
+      //merge the vectors for each chart in the join and count unique neighbours
+      std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
+      combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
+
+      //find unique
+      std::sort(combined_nbrs.begin(), combined_nbrs.end());
+      uint32_t unique = 1;
+      for (uint32_t i = 1; i < combined_nbrs.size(); i++){
+        if (combined_nbrs[i] != combined_nbrs [i-1])
+        {
+          unique++;
+        }
+      }
+      if (unique < 5)
       {
         to_erase.push_back(join_id);
       }
@@ -503,6 +298,7 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
       joins.erase(it2);
       num_erased++;
     }
+#endif
 
     chart_merges++;
 
@@ -518,6 +314,9 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 
 
   //reporting//testing
+
+
+  std::cout << "front join cost: " << joins.front().cost << ", num joins: " << joins.size() << "chart threshold: " << chart_threshold << std::endl; 
 
   std::cout << "--------------------\nCharts:\n----------------------\n";
 
@@ -560,10 +359,11 @@ create_charts (Polyhedron &P, const double cost_threshold , const uint32_t chart
 }
 
 
+
 int main( int argc, char** argv ) 
 {
 
-  auto start_time = std::chrono::system_clock::now();
+  
 
 
   std::string obj_filename = "dino.obj";
@@ -572,6 +372,12 @@ int main( int argc, char** argv )
   }
   else {
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
+    std::cout << "Optional: -ch specifies chart threshold (=100)" << std::endl;
+    std::cout << "Optional: -co specifies cost threshold (=double max)" << std::endl;
+
+    std::cout << "Optional: -ef specifies error fit coefficient (=1)" << std::endl;
+    std::cout << "Optional: -eo specifies error orientation coefficient (=1)" << std::endl;
+    std::cout << "Optional: -es specifies error shape coefficient (=1)" << std::endl;
     return 1;
   }
 
@@ -579,10 +385,23 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-co")) {
     cost_threshold = atof(Utils::getCmdOption(argv, argv + argc, "-co"));
   }
-  uint32_t chart_threshold = 10;
+  uint32_t chart_threshold = 100;
   if (Utils::cmdOptionExists(argv, argv+argc, "-ch")) {
     chart_threshold = atoi(Utils::getCmdOption(argv, argv + argc, "-ch"));
   }
+  double e_fit_cf = 1.0;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-ef")) {
+    e_fit_cf = atof(Utils::getCmdOption(argv, argv + argc, "-ef"));
+  }
+  double e_ori_cf = 1.0;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-eo")) {
+    e_ori_cf = atof(Utils::getCmdOption(argv, argv + argc, "-eo"));
+  }
+  double e_shape_cf = 1.0;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-es")) {
+    e_shape_cf = atof(Utils::getCmdOption(argv, argv + argc, "-es"));
+  }
+  CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf);
 
     //load OBJ into arrays
   std::vector<double> vertices;
@@ -596,11 +415,16 @@ int main( int argc, char** argv )
     std::cout << "didnt find any vertices" << std::endl;
     return 1;
   }
-  std::cout << "Mesh loaded (" << vertices.size() << " vertices)" << std::endl;
+  std::cout << "Mesh loaded (" << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
+
+  auto start_time = std::chrono::system_clock::now();
 
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;
-  polyhedron_builder<HalfedgeDS> builder( vertices, tris );
+  bool check_vertices = true;
+  polyhedron_builder<HalfedgeDS> builder( vertices, tris, t_coords, tindices, check_vertices );
+
+
   polyMesh.delegate( builder );
 
   if (polyMesh.is_valid(false)){
@@ -616,12 +440,12 @@ int main( int argc, char** argv )
     std::cout << "mesh is triangulated\n";
   }
 
-  uint32_t active_charts = create_charts(polyMesh, cost_threshold, chart_threshold);
+  uint32_t active_charts = create_charts(polyMesh, cost_threshold, chart_threshold, cluster_settings);
 
 
   std::string out_filename = "data/charts.obj";
   std::ofstream ofs( out_filename );
-  OBJ_printer::print_polyhedron_wavefront_with_chart_colours( ofs, polyMesh,chart_id_map, active_charts);
+  OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, SEPARATE_CHART_FILE);
   ofs.close();
   std::cout << "simplified mesh was written to " << out_filename << std::endl;
 
@@ -639,7 +463,9 @@ int main( int argc, char** argv )
   ofs << "Vertices: " << vertices.size()/3 << " , faces: " << tris.size()/3 << std::endl; 
   ofs << "Desired Charts: " << chart_threshold << ", active charts: " << active_charts << std::endl;
   ofs << "Cost threshold: " << cost_threshold << std::endl;
-  ofs.close();
+  ofs << "Cluster settings: e_fit: " << cluster_settings.e_fit_cf << ", e_ori: " << cluster_settings.e_ori_cf << ", e_shape" << cluster_settings.e_shape_cf << std::endl;
+
+    ofs.close();
   std::cout << "Log written to " << log_path << std::endl;
 
 

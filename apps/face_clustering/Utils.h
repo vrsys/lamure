@@ -3,6 +3,13 @@
 #include <sstream>
 #include <algorithm>
 
+
+#include "CGAL_typedefs.h"
+
+#ifndef UTILSH
+#define UTILSH
+
+
 struct Utils
 {
 	static char* getCmdOption(char ** begin, char ** end, const std::string & option) {
@@ -46,6 +53,8 @@ struct Utils
 	  }
 	}
 
+	static Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
+
 	// load obj function from vt_obj_loader/Utils.h
 	static void load_obj(const std::string& filename, 
 	              std::vector<double> &v, 
@@ -53,12 +62,6 @@ struct Utils
 	              std::vector<double> &t,
 	              std::vector<int> &tindices ){
 
-	  // std::vector<double> v;
-	  // std::vector<int> vindices;
-	  // std::vector<double> n;
-	  // std::vector<int> nindices;
-	  // std::vector<double> t;
-	  // std::vector<int> tindices;
 
 	  FILE *file = fopen(filename.c_str(), "r");
 
@@ -80,8 +83,8 @@ struct Utils
 	      //   n.insert(n.end(), {nx,ny, nz});
 	      // } 
 	      else if (strcmp(line, "vt") == 0) {
-	        float tx, ty;
-	        fscanf(file, "%f %f\n", &tx, &ty);
+	        double tx, ty;
+	        fscanf(file, "%lf %lf\n", &tx, &ty);
 	        t.insert(t.end(), {tx, ty});
 	      } 
 	      else if (strcmp(line, "f") == 0) {
@@ -111,5 +114,6 @@ struct Utils
 
 	}
 
-
 };
+
+#endif

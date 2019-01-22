@@ -1,0 +1,37 @@
+
+-------------------------------------
+Executed at 2018-12-17 11:32:54
+Ran for 0 m 0 s
+Input file: ../../data/bunny.obj
+Output bvh file: ../../data/bunny.bvh
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2018-12-17 11:34:53
+Ran for 0 m 0 s936ms 
+Input file: ../../data/bunny.obj
+Output bvh file: ../../data/bunny.bvh
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2018-12-17 11:37:06
+Ran for 0 m 3 s488ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.bvh
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2018-12-17 11:39:12
+Ran for 0 m 3 s420 ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.bvh
+Input file faces: 257757
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2018-12-17 14:11:07
+Ran for 8 m 30 s526 ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/spacemonkey/Spacemonkey_smooth.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/spacemonkey/Spacemonkey_smooth.bvh
+Input file faces: 22925064
+Triangle budget: 2000
