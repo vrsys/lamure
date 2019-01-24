@@ -93,7 +93,8 @@ public:
     CGAL::Polyhedron_incremental_builder_3<HDS> B( hds, true);
     B.begin_surface( vertices.size()/3, tris.size()/3 );
    
-    // add the polyhedron vertices
+    // add the polyhedron 
+    std::cout << "Polyhedron builder: adding vertices\n";
     for( int i=0; i<(int)vertices.size() / 3; ++i ){
 
 
@@ -108,6 +109,7 @@ public:
     }
 
     // add the polyhedron triangles
+    std::cout << "Polyhedron builder: adding faces\n";
     for( int i=0; i<(int)(tris.size()); i+=3 ){ 
 
       Facet_handle fh = B.begin_facet();
@@ -126,6 +128,7 @@ public:
     }
    
     // finish up the surface
+    std::cout << "Polyhedron builder: ending surface\n";
     B.end_surface();
 
   }

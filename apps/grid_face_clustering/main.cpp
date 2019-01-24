@@ -32,7 +32,7 @@
 
 
 
-#define SEPARATE_CHART_FILE false
+#define SEPARATE_CHART_FILE true
 
 
 
@@ -147,17 +147,7 @@ int main( int argc, char** argv )
   Polyhedron polyMesh;
   bool check_vertices = true;
   polyhedron_builder<HalfedgeDS> builder( vertices, tris, t_coords, tindices, check_vertices );
-
-
   polyMesh.delegate( builder );
-
-  //give ids to polyMesh
-  // int i=0;
-  // for ( Facet_iterator fb = polyMesh.facets_begin(); fb != polyMesh.facets_end(); ++fb){
-  //   // fb->id() = i++;  
-  //   std::cout << "Face id: " << fb->id() << std::endl;
-  // }
-
 
 
   if (polyMesh.is_valid(false)){

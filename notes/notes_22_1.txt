@@ -14,10 +14,9 @@ for next week:
 
 TO DO:
 
-test UV propogation through grid clustering app
 
-implement UV propogation into mesh_hierarchy app
 
+investigate: grid clusterer flipping normals? calculating normals incorrectly? tested with tiny3.obj
 
 extension (next week)?
 
@@ -26,3 +25,21 @@ extension (next week)?
  - implement projection and overwrite uvs
 
 
+DONE:
+
+ - implemented chart propogation through mesh_hierarchy app into new chart lod file
+	- tested by overriding UVs of triangles at every mesh level according to chart
+	- didn't throroughly test writing of new file 
+
+ - implemented UV propogation through face clustering app by extending face
+ - tested with small mesh
+
+ - checked loading of UVs into mesh_hierarchy app
+ - they should propogate through (at leaf level) because triangles are copied directly into the node-triangle map at that level
+
+ - tested propogation of UV through face-clustering with cactus mesh
+
+
+meshes to test with :
+/opt/3d_models/animals/horse/horse.obj
+/opt/3d_models/street/cactus/

@@ -191,8 +191,6 @@ int32_t main(int argc, char* argv[]) {
 
   // std::vector<lamure::mesh::triangle_t> triangles;
   std::vector<lamure::mesh::Triangle_Chartid> triangles;
-  
-  // std::vector<lamure::mesh::Triangle_Chartid> triangles_w_charts;
 
   //load the obj as triangles
   load_obj(obj_filename, triangles);
@@ -200,16 +198,24 @@ int32_t main(int argc, char* argv[]) {
 
   std::cout << "obj loaded" << std::endl;
 
+  //checking UV propogation
+  //   for (auto& tri : triangles)
+  // {
+  //   std::cout << tri.to_string() << std::endl;
+  // }
+  // return 0;
+
   // load chart ids for triangles
   std::vector<int> chart_id_per_triangle;
   int num_charts = load_chart_file(chart_file, chart_id_per_triangle);
   std::cout << "Loaded chart ids for " << chart_id_per_triangle.size() << " triangles, (" << num_charts << " charts) from file: " << chart_file << std::endl;
-
+  //check compatibility of chart and obj file
   if (chart_id_per_triangle.size() < triangles.size())
   {
     std::cout << "Error: charts were not found for every triangle\n";
     return 0; 
   }
+  //assign chart ids to triangle vector
   for (uint32_t i = 0; i < triangles.size(); ++i)
   {
     triangles[i].chart_id = chart_id_per_triangle[i];

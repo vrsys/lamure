@@ -482,14 +482,17 @@ void bvh::write_lod_file(const std::string& lod_filename) {
 
   //convert triangle map with chart id to trianglke map without chart id
   std::map<uint32_t, std::vector<triangle_t>> simple_triangles_map;
-  for (auto& tri_list : triangles_map_)
+
+  for (auto& node_tri_list : triangles_map_) // for each node
   {
-    std::vector<triangle_t> tris;
-    for(auto &t : tri_list.second)
+    std::vector<triangle_t> tris;//container for new tris
+
+    for(auto &t : node_tri_list.second)//for each triangle
     {
       lamure::mesh::triangle_t new_tri = t.get_basic_triangle(); 
-      
-      //for testing - replace tex coords with colour derived from chart id
+
+#if 0 
+//for testing - replace tex coords with colour derived from chart id
       double u = std::min(1.0, t.chart_id / 50.0);
       double v = 0.5 * (t.chart_id % 3);
 
@@ -499,10 +502,11 @@ void bvh::write_lod_file(const std::string& lod_filename) {
       new_tri.v1_.tex_.y = v;
       new_tri.v2_.tex_.x = u;
       new_tri.v2_.tex_.y = v;
+#endif
 
       tris.push_back(new_tri);
     }
-    simple_triangles_map[tri_list.first] = tris;
+    simple_triangles_map[node_tri_list.first] = tris;
   }
 
   auto lod = std::make_shared<lamure::ren::lod_stream>();

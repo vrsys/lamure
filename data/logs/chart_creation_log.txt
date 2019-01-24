@@ -2449,3 +2449,33 @@ Vertices: 34834 , faces: 69451
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape0.1
+
+-------------------------------------
+Executed at 2019-01-24 20:03:34
+Ran for 0 m 0 s
+Input file: ../../data/tinymeshes/tiny3.obj
+Output file: data/tiny3test.obj
+Vertices: 5 , faces: 3
+Desired Charts: 1, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-24 21:13:07
+Ran for 0 m 2 s
+Input file: /opt/3d_models/street/cactus.obj
+Output file: data/cactus_test.obj
+Vertices: 17352 , faces: 34560
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-24 21:13:51
+Ran for 0 m 12 s
+Input file: /opt/3d_models/street/cactus.obj
+Output file: data/cactus_test.obj
+Vertices: 17352 , faces: 34560
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
