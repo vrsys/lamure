@@ -14,7 +14,7 @@ for next week:
 
 TO DO:
 
-
+test broken charts
 
 investigate: grid clusterer flipping normals? calculating normals incorrectly? tested with tiny3.obj
 
@@ -38,6 +38,8 @@ DONE:
  - they should propogate through (at leaf level) because triangles are copied directly into the node-triangle map at that level
 
  - tested propogation of UV through face-clustering with cactus mesh
+
+ - implemented chart correctino for broken charts. TEST!
 
 
 meshes to test with :
