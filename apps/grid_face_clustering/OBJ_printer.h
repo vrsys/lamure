@@ -172,6 +172,8 @@ struct OBJ_printer
 
 
 		    }
+		    //debug
+		    writer.write_tex_coord(0.0,0.0);
 	    }
 
 	    	 //    //calculate normals
@@ -208,7 +210,7 @@ struct OBJ_printer
 	        writer.write_facet_begin( n);
 
 	        const int id = fi->id();
-	        const int chart_id = chart_id_map[id];
+	        int chart_id = chart_id_map[id];
 	        int edge = 0;
 	        do {
 
@@ -218,6 +220,13 @@ struct OBJ_printer
 	            	writer.write_facet_vertex_index( index[ VCI(hc->vertex())], (face_id*3)+edge ,face_id); // for uv coords
 	        	}
 	        	else {
+
+	        		//debug 
+	        		if (chart_id == 99999)
+	        		{
+	        			chart_id = active_charts;
+	        		}
+
 	        		writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id,face_id); // for chart colours
 	        		// std::cout << "chart_id: " << chart_id << std::endl;
 	        	}
