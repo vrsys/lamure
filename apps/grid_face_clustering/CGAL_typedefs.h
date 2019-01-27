@@ -6,10 +6,34 @@
 #ifndef CGAL_TYPEDEFSH
 #define CGAL_TYPEDEFSH
 
+template <class Refs, class Traits>
+struct UVFace : public CGAL::HalfedgeDS_face_base<Refs> {
+
+  typedef typename Traits::Vector_2 TexCoord;
+  TexCoord t_coords[3];
+
+  int face_id;
+
+  int& id() {return face_id;}
+  int id() const {return face_id;}
+
+  void add_tex_coords(TexCoord tc0, TexCoord tc1, TexCoord tc2){
+    //add the tex coords in clockwise order when looking in -Z (right handed coord system)
+    t_coords[0] = tc0;
+    t_coords[1] = tc1;
+    t_coords[2] = tc2;
+  }
+};
+
 template <class Refs, class T, class P>
 struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
+// struct XtndVertex : public CGAL::HalfedgeDS_vertex_max_base_with_id<Refs, T, P>  {
     
   using CGAL::HalfedgeDS_vertex_base<Refs, T, P>::HalfedgeDS_vertex_base;
+  // using CGAL::HalfedgeDS_vertex_max_base_with_id<Refs, T, P>::HalfedgeDS_vertex_max_base_with_id;
+
+  uint32_t id;
+  // uint32_t& id() {return &id;}
 
 };
 
@@ -43,12 +67,20 @@ struct Custom_items : public CGAL::Polyhedron_items_with_id_3 {
     template <class Refs, class Traits>
     struct Vertex_wrapper {
       typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
+      // typedef CGA:HalfedgeDS_vertex_max_base_with_id<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
+    };
+
+    template <class Refs, class Traits>
+    struct Face_wrapper {
+      typedef UVFace<Refs, Traits> Face;
     };
 };
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 
 typedef Kernel::Vector_3 Vector;
+typedef Kernel::Vector_2 TexCoord;
+
 typedef CGAL::Point_3<Kernel> Point;
 
 
@@ -58,6 +90,8 @@ typedef Polyhedron::HalfedgeDS HalfedgeDS;
 typedef Polyhedron::Facet_iterator Facet_iterator;
 typedef Polyhedron::Facet_handle Facet_handle;
 typedef Polyhedron::Facet Facet; 
+
+typedef Polyhedron::Vertex_handle Vertex_handle;
 
 typedef Polyhedron::Halfedge_around_facet_circulator Halfedge_facet_circulator;
 

@@ -8,7 +8,7 @@ namespace mesh {
 triangle_t::triangle_t()
 : v0_{vec3f(0.0f), vec3f(0.0f), vec2f(0.f)},
   v1_{vec3f(0.0f), vec3f(0.0f), vec2f(0.f)},
-  v2_{vec3f(0.0f), vec3f(0.0f), vec2f(0.f)} {
+  v2_{vec3f(0.0f), vec3f(0.0f), vec2f(0.f)}{
 
 }
 

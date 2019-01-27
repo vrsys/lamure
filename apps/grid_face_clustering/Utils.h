@@ -70,11 +70,10 @@ struct Utils
 	              // std::vector<double> &n, 
 	              // std::vector<int> &nindices, 
 	              std::vector<double> &t,
-	              std::vector<int> &tindices,
-	              std::vector<lamure::mesh::triangle_t>& triangles){
+	              std::vector<int> &tindices){
 
 
-	  triangles.clear();
+	  // triangles.clear();
 
 	  scm::math::vec3f min_pos(std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
 	  scm::math::vec3f max_pos(std::numeric_limits<double>::min(),std::numeric_limits<double>::min(),std::numeric_limits<double>::min());
@@ -138,47 +137,47 @@ struct Utils
 
 
 
-	    triangles.resize(vindices.size()/3);
+	  //   triangles.resize(vindices.size()/3);
 
-        for (uint32_t i = 0; i < vindices.size()/3; i++) {
-          lamure::mesh::triangle_t tri;
-          for (uint32_t j = 0; j < 3; ++j) {
+   //      for (uint32_t i = 0; i < vindices.size()/3; i++) {
+   //        lamure::mesh::triangle_t tri;
+   //        for (uint32_t j = 0; j < 3; ++j) {
             
-            scm::math::vec3f position(
-                    v[3 * (vindices[3*i+j] - 1)], v[3 * (vindices[3*i+j] - 1) + 1], v[3 * (vindices[3*i+j] - 1) + 2]);
+   //          scm::math::vec3f position(
+   //                  v[3 * (vindices[3*i+j] - 1)], v[3 * (vindices[3*i+j] - 1) + 1], v[3 * (vindices[3*i+j] - 1) + 2]);
 
-            // scm::math::vec3f normal(
-            //         n[3 * (nindices[3*i+j] - 1)], n[3 * (nindices[3*i+j] - 1) + 1], n[3 * (nindices[3*i+j] - 1) + 2]);
+   //          // scm::math::vec3f normal(
+   //          //         n[3 * (nindices[3*i+j] - 1)], n[3 * (nindices[3*i+j] - 1) + 1], n[3 * (nindices[3*i+j] - 1) + 2]);
 
-            scm::math::vec2f coord(
-                    t[2 * (tindices[3*i+j] - 1)], t[2 * (tindices[3*i+j] - 1) + 1]);
+   //          scm::math::vec2f coord(
+   //                  t[2 * (tindices[3*i+j] - 1)], t[2 * (tindices[3*i+j] - 1) + 1]);
 
             
-            switch (j) {
-              case 0:
-              tri.v0_.pos_ =  position;
-              // tri.v0_.nml_ = normal;
-              tri.v0_.tex_ = coord;
-              break;
+   //          switch (j) {
+   //            case 0:
+   //            tri.v0_.pos_ =  position;
+   //            // tri.v0_.nml_ = normal;
+   //            tri.v0_.tex_ = coord;
+   //            break;
 
-              case 1:
-              tri.v1_.pos_ =  position;
-              // tri.v1_.nml_ = normal;
-              tri.v1_.tex_ = coord;
-              break;
+   //            case 1:
+   //            tri.v1_.pos_ =  position;
+   //            // tri.v1_.nml_ = normal;
+   //            tri.v1_.tex_ = coord;
+   //            break;
 
-              case 2:
-              tri.v2_.pos_ =  position;
-              // tri.v2_.nml_ = normal;
-              tri.v2_.tex_ = coord;
-              break;
+   //            case 2:
+   //            tri.v2_.pos_ =  position;
+   //            // tri.v2_.nml_ = normal;
+   //            tri.v2_.tex_ = coord;
+   //            break;
 
-              default:
-              break;
-            }
-          }
-          triangles[i] = tri;
-        }
+   //            default:
+   //            break;
+   //          }
+   //        }
+   //        triangles[i] = tri;
+   //      }
 
 	  }
 

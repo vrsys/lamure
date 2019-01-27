@@ -478,6 +478,7 @@ struct ClusterCreator
         total_active_charts++;
       }
     }
+    if (!joins.empty()) {std::cout << "Cost of cheapest un-executed join: " << joins.front().cost << std::endl;}
     std::cout << "Total number of faces in charts = " << total_faces << std::endl;
     std::cout << "Initial charts = " << charts.size() << std::endl;
     std::cout << "Total number merges = " << chart_merges << std::endl;

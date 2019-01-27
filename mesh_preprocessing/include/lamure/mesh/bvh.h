@@ -4,6 +4,7 @@
 
 #include <lamure/types.h>
 #include <lamure/mesh/triangle.h>
+#include <lamure/mesh/triangle_chartid.h>
 #include <lamure/ren/bvh.h>
 
 #include <map>
@@ -16,10 +17,11 @@ namespace mesh {
 
 class bvh : public lamure::ren::bvh {
 public:
-  bvh(std::vector<triangle_t>& triangles, uint32_t primitives_per_node);
+  bvh(std::vector<Triangle_Chartid>& triangles, uint32_t primitives_per_node);
   ~bvh();
 
   void write_lod_file(const std::string& lod_filename);
+  void write_chart_lod_file(const std::string& chart_lod_filename);
 
 protected:
 
@@ -32,18 +34,18 @@ protected:
     uint64_t end_; //last triangle
   };
 
-  void create_hierarchy(std::vector<triangle_t>& triangles);
+  void create_hierarchy(std::vector<Triangle_Chartid>& triangles);
   
 
   void simplify(
-    std::vector<triangle_t>& left_child_tris,
-    std::vector<triangle_t>& right_child_tris,
-    std::vector<triangle_t>& output_tris,
+    std::vector<Triangle_Chartid>& left_child_tris,
+    std::vector<Triangle_Chartid>& right_child_tris,
+    std::vector<Triangle_Chartid>& output_tris,
     bool contrain_edges);
 
 
   //node_id -> triangles
-  std::map<uint32_t, std::vector<triangle_t>> triangles_map_;
+  std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;
 
 };
 

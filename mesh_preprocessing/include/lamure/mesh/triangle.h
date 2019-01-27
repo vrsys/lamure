@@ -3,6 +3,7 @@
 #define LAMURE_MESH_TRIANGLE_H_
 
 #include <lamure/mesh/plane.h>
+// #include <lamure/mesh/triangle_chartid.h>
 
 namespace lamure {
 namespace mesh {
@@ -75,6 +76,29 @@ public:
         }
         vertex v;
         return v;
+    }
+
+    std::string to_string() {
+        std::stringstream ss;
+
+        ss << "--V0--\n";
+        ss << "pos: " << v0_.pos_ << std::endl;
+        ss << "nml: " << v0_.nml_ << std::endl;
+        ss << "tex: " << v0_.tex_ << std::endl;
+
+        ss << "--V1--\n";
+
+        ss << "pos: " << v1_.pos_ << std::endl;
+        ss << "nml: " << v1_.nml_ << std::endl;
+        ss << "tex: " << v1_.tex_ << std::endl;
+
+        ss << "--V2--\n";
+
+        ss << "pos: " << v2_.pos_ << std::endl;
+        ss << "nml: " << v2_.nml_ << std::endl;
+        ss << "tex: " << v2_.tex_ << std::endl;
+
+        return ss.str();
     }
 
     vertex v0_;

@@ -11,6 +11,7 @@ struct Chart
 {
   uint32_t id;
   std::vector<Facet> facets;
+  std::vector<bool> facets_are_inner_facets;
   std::vector<Vector> normals;
   std::vector<double> areas;
   bool active;
@@ -27,6 +28,8 @@ struct Chart
 
   Chart(uint32_t _id, Facet f,const Vector normal,const double _area){
     facets.push_back(f);
+    facets_are_inner_facets.resize(facets.size(), false);
+
     normals.push_back(normal);
     areas.push_back(_area);
     active = true;
@@ -63,6 +66,7 @@ struct Chart
     perimeter = get_chart_perimeter(*this, mc);
 
     facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
+    facets_are_inner_facets.insert(facets_are_inner_facets.end(), mc.facets_are_inner_facets.begin(), mc.facets_are_inner_facets.end());
     normals.insert(normals.end(), mc.normals.begin(), mc.normals.end());
     areas.insert(areas.end(), mc.areas.begin(), mc.areas.end());
 
@@ -233,6 +237,7 @@ struct Chart
   //calculate perimeter of chart
   // associate a perimeter with each cluster
   // then calculate by adding perimeters and subtractng double shared edges
+  //TODO update to make use of list of which faces are inner faces
   static double get_chart_perimeter(Chart& c1, Chart& c2){
 
     // std::cout << "perimeter of charts [" << c1.id << ", " << c2.id << "]" << std::endl;
@@ -242,39 +247,46 @@ struct Chart
     // std::cout << "combined P before processing: " << c1.perimeter << " + " << c2.perimeter << " = " << perimeter << std::endl;
 
     //for each face in c1
-    for (auto& c1_face : c1.facets){
+    // for (auto& c1_face : c1.facets){
+    for (uint32_t f1 = 0; f1 < c1.facets.size(); ++f1)
+    {
+      if (!(c1.facets_are_inner_facets[f1]))
+      {
 
-      // std::cout << "for face " << c1_face.id() << std::endl;
+        // std::cout << "for face " << c1_face.id() << std::endl;
 
-      //for each edge
-      Halfedge_facet_circulator he = c1_face.facet_begin();
-      CGAL_assertion( CGAL::circulator_size(he) >= 3);
+        //for each edge
+        Halfedge_facet_circulator he = c1.facets[f1].facet_begin();
+        CGAL_assertion( CGAL::circulator_size(he) >= 3);
 
-      do {
-        // check if opposite appears in c2
+        do {
+          // check if opposite appears in c2
 
-        //check this edge is not a border
-        if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
-          uint32_t adj_face_id = he->opposite()->facet()->id();
+          //check this edge is not a border
+          if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
+            uint32_t adj_face_id = he->opposite()->facet()->id();
 
-          // std::cout << "found adjacent face: " << adj_face_id << std::endl;
+            // std::cout << "found adjacent face: " << adj_face_id << std::endl;
 
-          for (auto& c2_face : c2.facets){
-            if (c2_face.id() == adj_face_id)
-            {
-              perimeter -= (2 * edge_length(he));
-
-              // std::cout << "- " << "found in chart " << c2.id << ", subtracted " << (2 * edge_length(he)) << std::endl;
-
-              break;
+            // for (auto& c2_face : c2.facets){
+            for (uint32_t f2 = 0; f2 < c2.facets.size(); ++f2){
+              if (!(c2.facets_are_inner_facets[f2]))
+              {
+                if (c2.facets[f2].id() == adj_face_id)
+                {
+                  perimeter -= (2 * edge_length(he));
+                  break;
+                }
+              }
             }
           }
-        }
-        else {
-          // std::cout << "border edge\n";
-        }
+          // else {
+          //   // std::cout << "border edge\n";
+          // }
 
-      } while ( ++he != c1_face.facet_begin());
+        } while ( ++he != c1.facets[f1].facet_begin());
+
+      }
     }
 
     // std::cout << "after = " << perimeter << std::endl;
@@ -294,6 +306,8 @@ struct Chart
     {
       //for each edge
       Halfedge_facet_circulator fc = facets[i].facet_begin();
+      bool inner_face = true; //set face as an inner face, unless any of its neighbours are not in this chart
+
       do {
 
         //sum the length of all edges that are borders, or border with another chart
@@ -319,6 +333,7 @@ struct Chart
           if (!found_nbr) // if neighbour is not in this chart, add edge to perimeter accumulation
           {
             perimeter_accum += Chart::edge_length(fc);
+            inner_face = false;
           }
         }
         else {
@@ -326,8 +341,10 @@ struct Chart
           perimeter_accum += Chart::edge_length(fc);
         }
       } while ( ++fc != facets[i].facet_begin());
-    }
 
+      facets_are_inner_facets[i] = inner_face;
+    }
+    
     perimeter = perimeter_accum;
   } 
 
@@ -336,24 +353,35 @@ struct Chart
     //for each face in chart
     for (uint32_t i = 0; i < this->facets.size(); ++i)
     {
-      //get id of surrounding faces
-      Halfedge_facet_circulator fc = this->facets[i].facet_begin();
-      do {
 
-        if (!fc->is_border() && !(fc->opposite()->is_border()) ){
+      //if face is not an inner face
+      if (!(this->facets_are_inner_facets[i]))
+      {
+        //get id of surrounding faces
+        Halfedge_facet_circulator fc = this->facets[i].facet_begin();
+        bool found_nbr_chart = false;
+        do {
 
-          uint32_t nbr_face_id = fc->opposite()->facet()->id();
-          //get chart id of neighbour face
-          uint32_t nbr_chart_id = chart_id_map[nbr_face_id];
+          if (!fc->is_border() && !(fc->opposite()->is_border()) ){
 
-          // if chart id of nbr is not this chart, add to set of neighbours
-          if (nbr_chart_id != this->id)
-          {
-            this->neighbour_charts.insert(nbr_chart_id);
+            uint32_t nbr_face_id = fc->opposite()->facet()->id();
+            //get chart id of neighbour face
+            uint32_t nbr_chart_id = chart_id_map[nbr_face_id];
+
+            // if chart id of nbr is not this chart, add to set of neighbours
+            if (nbr_chart_id != this->id)
+            {
+              this->neighbour_charts.insert(nbr_chart_id);
+              found_nbr_chart = true;
+            }
+
           }
+        } while ( ++fc != this->facets[i].facet_begin());
 
-        }
-      } while ( ++fc != this->facets[i].facet_begin());
+        //if a neighbour was found, this is not an inner chart, and vice versa
+        this->facets_are_inner_facets[i] = !found_nbr_chart;
+
+      }
 
     }//for faces
 

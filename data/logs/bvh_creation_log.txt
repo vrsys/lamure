@@ -35,3 +35,43 @@ Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/spacemonkey/Sp
 Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/spacemonkey/Spacemonkey_smooth.bvh
 Input file faces: 22925064
 Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-01-22 16:39:59
+Ran for 0 m 0 s965 ms 
+Input file: data/bunny_ch50_es0.1.obj
+Output bvh file: data/bunny_ch50_es0.1.bvh
+Input file faces: 69451
+Triangle budget: 1000
+
+-------------------------------------
+Executed at 2019-01-22 16:54:11
+Ran for 0 m 0 s967 ms 
+Input file: data/mesh_h_test/bunny.obj
+Output bvh file: data/mesh_h_test/bunny.bvh
+Input file faces: 69451
+Triangle budget: 1000
+
+-------------------------------------
+Executed at 2019-01-22 18:12:36
+Ran for 0 m 0 s975 ms 
+Input file: data/mesh_h_test/bunny.obj
+Output bvh file: data/mesh_h_test/bunny.bvh
+Input file faces: 69451
+Triangle budget: 1000
+
+-------------------------------------
+Executed at 2019-01-22 18:14:09
+Ran for 0 m 0 s981 ms 
+Input file: data/mesh_h_test/bunny.obj
+Output bvh file: data/mesh_h_test/bunny.bvh
+Input file faces: 69451
+Triangle budget: 1000
+
+-------------------------------------
+Executed at 2019-01-22 18:36:42
+Ran for 0 m 0 s966 ms 
+Input file: data/mesh_h_test/bunny.obj
+Output bvh file: data/mesh_h_test/bunny.bvh
+Input file faces: 69451
+Triangle budget: 1000

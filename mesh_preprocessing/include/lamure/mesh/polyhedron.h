@@ -4,6 +4,7 @@
 
 #include <lamure/types.h>
 #include <lamure/mesh/triangle.h>
+#include <lamure/mesh/triangle_chartid.h>
 
 #include <iostream>
 #include <fstream>
@@ -44,6 +45,11 @@ namespace mesh {
 CUSTOM DATA STRUCTURES ===================================================
 
 */
+
+template <class Refs>
+struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
+  int chart_id;
+};
 
 // // //define a new vertex type - inheriting from base type CGAL::HalfedgeDS_vertex_base
 //ref https://doc.cgal.org/4.7/Polyhedron/index.html#title11
@@ -105,14 +111,20 @@ std::ostream& operator << (std::ostream& os, const XtndPoint<Traits> &pnt)
 struct Custom_items : public CGAL::Polyhedron_items_3 {
     template <class Refs, class Traits>
     struct Vertex_wrapper {
-
       typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
+    };
+    template <class Refs, class Traits>
+    struct Face_wrapper {
+      typedef ChartFace<Refs> Face;
     };
 };
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
+
+
+typedef Polyhedron::Facet_handle Facet_handle;
 
 namespace SMS = CGAL::Surface_mesh_simplification ;
 
@@ -155,16 +167,16 @@ template<class HDS>
 class polyhedron_builder : public CGAL::Modifier_base<HDS> {
 
 public:
-  std::vector<triangle_t> &left_tris_;
-  std::vector<triangle_t> &right_tris_;
+  std::vector<Triangle_Chartid> &left_tris_;
+  std::vector<Triangle_Chartid> &right_tris_;
 
   //how many of the given triangles are added to the final mesh
   //to enable creation of non-manifold meshes 
   double mesh_proportion = 1.0;
 
   polyhedron_builder(
-  	std::vector<triangle_t>& left_child_tris,
-    std::vector<triangle_t>& right_child_tris) 
+  	std::vector<Triangle_Chartid>& left_child_tris,
+    std::vector<Triangle_Chartid>& right_child_tris) 
     : left_tris_(left_child_tris), right_tris_(right_child_tris) {}
 
   void set_mesh_proportion(const double _mp){
@@ -180,7 +192,7 @@ public:
 
     //concatenate triangle sets
     //left_tris_.insert(left_tris_.end(), right_tris_.begin(), right_tris_.end());
-    std::vector<triangle_t> combined_set;
+    std::vector<Triangle_Chartid> combined_set;
     std::copy(left_tris_.begin(), left_tris_.end(), std::back_inserter(combined_set));
     std::copy(right_tris_.begin(), right_tris_.end(), std::back_inserter(combined_set));
 
@@ -197,11 +209,14 @@ public:
     //create faces using vertex index references
     for (uint32_t i = 0; i < tris.size(); i+=3) {
 
-      B.begin_facet();
+      Facet_handle fh = B.begin_facet();
       B.add_vertex_to_facet(tris[i]);
       B.add_vertex_to_facet(tris[i+1]);
       B.add_vertex_to_facet(tris[i+2]);
       B.end_facet();
+
+      //transfer chart id to 
+      fh->chart_id = combined_set[i/3].chart_id;
 
       //printing for debugging edge sharing error
       // if (i == 281 * 3 || i == 545 * 3)
@@ -220,12 +235,12 @@ public:
   }
 
   //creates indexed triangles list (indexes and vertices) from triangle list
-  void create_indexed_triangle_list(std::vector<lamure::mesh::triangle_t>& input_triangles,
+  void create_indexed_triangle_list(std::vector<lamure::mesh::Triangle_Chartid>& input_triangles,
                                     std::vector<uint32_t>& tris,
                                     std::vector<XtndPoint<Kernel> >& vertices) {
 
     //for each vertex in each triangle
-    for (const lamure::mesh::triangle_t tri : input_triangles){
+    for (const lamure::mesh::Triangle_Chartid tri : input_triangles){
       for (int v = 0; v < 3; ++v)
       {
         //get Point value

@@ -147,10 +147,18 @@ struct OBJ_printer
 	    if (SEPARATE_CHART_FILE)
 	    {
 	    	//write tex coords - actual texture coordinates:
-			writer.write_tex_coord_header(P.size_of_vertices());
-	    	for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
-	        	writer.write_tex_coord( ::CGAL::to_double( vi->point().get_u()),
-	                                	::CGAL::to_double( vi->point().get_v()));
+			// writer.write_tex_coord_header(P.size_of_vertices());
+	  //   	for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
+	  //       	writer.write_tex_coord( ::CGAL::to_double( vi->point().get_u()),
+	  //                               	::CGAL::to_double( vi->point().get_v()));
+	  //   	}
+
+	    	writer.write_tex_coord_header(P.size_of_facets() * 3);
+	    	//for each face, write tex coords
+	    	for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+	    		writer.write_tex_coord(fi->t_coords[0].x(), fi->t_coords[0].y());
+	    		writer.write_tex_coord(fi->t_coords[1].x(), fi->t_coords[1].y());
+	    		writer.write_tex_coord(fi->t_coords[2].x(), fi->t_coords[2].y());
 	    	}
 	    }
 	    else {
@@ -164,6 +172,8 @@ struct OBJ_printer
 
 
 		    }
+		    //debug
+		    writer.write_tex_coord(0.0,0.0);
 	    }
 
 	    	 //    //calculate normals
@@ -193,8 +203,6 @@ struct OBJ_printer
 	    int32_t face_id = 0;
 	    for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
 
-
-
 	        HFCC hc = fi->facet_begin();
 	        HFCC hc_end = hc;
 	        std::size_t n = circulator_size( hc);
@@ -202,19 +210,29 @@ struct OBJ_printer
 	        writer.write_facet_begin( n);
 
 	        const int id = fi->id();
-	        const int chart_id = chart_id_map[id];
+	        int chart_id = chart_id_map[id];
+	        int edge = 0;
 	        do {
 
 	        	if (SEPARATE_CHART_FILE)
 	        	{
-	            	writer.write_facet_vertex_index( index[ VCI(hc->vertex())], index[ VCI(hc->vertex())],face_id); // for uv coords
+	            	// writer.write_facet_vertex_index( index[ VCI(hc->vertex())], index[ VCI(hc->vertex())],face_id); // for uv coords
+	            	writer.write_facet_vertex_index( index[ VCI(hc->vertex())], (face_id*3)+edge ,face_id); // for uv coords
 	        	}
 	        	else {
+
+	        		//debug 
+	        		if (chart_id == 99999)
+	        		{
+	        			chart_id = active_charts;
+	        		}
+
 	        		writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id,face_id); // for chart colours
 	        		// std::cout << "chart_id: " << chart_id << std::endl;
 	        	}
 
 	            ++hc;
+	            edge++;
 	        } while( hc != hc_end);
 	        writer.write_facet_end();
 	        face_id++;
