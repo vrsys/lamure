@@ -2769,3 +2769,33 @@ Vertices: 130157 , faces: 257757
 Desired Charts: 100, active charts: 100
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-28 18:25:16
+Ran for 0 m 54 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-28 18:31:14
+Ran for 1 m 1 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-28 18:44:46
+Ran for 0 m 57 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
