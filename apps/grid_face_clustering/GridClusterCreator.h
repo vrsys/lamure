@@ -77,7 +77,6 @@ struct GridClusterCreator
 			chart_id_map[fb->id()] = new_chart_id;
 		}
 
-#if 1
 		uint32_t charts_added = correct_split_charts(P,chart_id_map, charts_created.size());
 		std::cout << "correct_split_charts method added " << charts_added << " Charts" << std::endl;
 
@@ -85,9 +84,7 @@ struct GridClusterCreator
 
 		return charts_created.size() + charts_added;
 
-#else 
-		return charts_created.size();
-#endif
+
 
 	}
 
@@ -245,5 +242,7 @@ struct GridClusterCreator
 	static int location_to_id(vec3i& loc, vec3i& cell_count){
 		return loc.x + (loc.y * cell_count.x) + (loc.z * (cell_count.x * cell_count.y));
 	}
+
+
 
 };
