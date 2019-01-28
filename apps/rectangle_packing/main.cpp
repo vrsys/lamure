@@ -37,10 +37,12 @@ struct rectangle{
 };
 
 struct projection_info {
+  scm::math::vec3f proj_centroid;
   scm::math::vec3f proj_normal;
   scm::math::vec3f proj_world_up;
 
-  scm::math::vec2f tex_offset;
+  rectangle tex_space_rect;
+  scm::math::vec2f tex_coord_offset;
 };
 
 struct chart_t {
@@ -466,7 +468,8 @@ void project(std::vector<chart_t>& charts, std::vector<triangle_t>& triangles) {
       world_up = scm::math::vec3f(0.f, 0.f, 1.f);
     }
 
-    //record projection normal and world up
+    //record centroid, projection normal and world up for rendering from texture later on
+    chart.projection.proj_centroid = centroid;
     chart.projection.proj_normal = avg_normal;
     chart.projection.proj_world_up = world_up;
 
@@ -517,6 +520,10 @@ void project(std::vector<chart_t>& charts, std::vector<triangle_t>& triangles) {
       chart.rect_.max_.x = std::max(chart.rect_.max_.x, tri.v2_.new_coord_.x);
       chart.rect_.max_.y = std::max(chart.rect_.max_.y, tri.v2_.new_coord_.y);
     }
+
+    //record offset for rendering from texture
+    chart.projection.tex_coord_offset.x = chart.rect_.min_.x;
+    chart.projection.tex_coord_offset.y = chart.rect_.min_.y;
 
     chart.rect_.max_.x -= chart.rect_.min_.x;
     chart.rect_.max_.y -= chart.rect_.min_.y;
@@ -714,6 +721,18 @@ static void glut_timer(int32_t _e) {
 
 void write_projection_info_file(std::vector<chart_t>& charts, std::string outfile_name){
 
+
+  //for testing
+  // for (uint32_t i = 0; i < charts.size(); ++i)
+  // {
+  //   projection_info proj = charts[i].projection;
+  //   std::cout << "Proj centroid = [" << proj.proj_centroid.x << ", " << proj.proj_centroid.y << ", " << proj.proj_centroid.z << "]\n";
+  //   std::cout << "Proj normal = [" << proj.proj_normal.x << ", " << proj.proj_normal.y << ", " << proj.proj_normal.z << "]\n";
+  //   std::cout << "Proj world up = [" << proj.proj_world_up.x << ", " << proj.proj_world_up.y << ", " << proj.proj_world_up.z << "]\n"; 
+    
+  //   std::cout << "Tex coord offset = [" << proj.tex_coord_offset.x << ", " << proj.tex_coord_offset.y << "]" << std::endl;
+  // }
+
   std::ofstream ofs( outfile_name, std::ios::binary);
 
   //write number of charts
@@ -815,6 +834,7 @@ int main(int argc, char **argv) {
   //apply rectangles
   for (const auto& rect : rects) {
     charts[rect.id_].rect_ = rect;
+    charts[rect.id_].projection.tex_space_rect = rect;//save for rendering from texture later on
   }
 
   //apply new coordinates and pack tris

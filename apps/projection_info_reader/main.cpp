@@ -21,10 +21,12 @@ struct rectangle{
 };
 
 struct projection_info {
+  scm::math::vec3f proj_centroid;
   scm::math::vec3f proj_normal;
   scm::math::vec3f proj_world_up;
 
-  scm::math::vec2f tex_offset;
+  rectangle tex_space_rect;
+  scm::math::vec2f tex_coord_offset;
 };
 
 
@@ -49,12 +51,17 @@ int main(int argc, char **argv) {
   input_file.read((char*)&chart_projections, sizeof(chart_projections));
   input_file.close();
 
-  for (uint32_t i = 0; i < num_charts; ++i)
-  {
-    projection_info proj = chart_projections[i];
-    std::cout << "Proj normal = [" << proj.proj_normal.x << ", " << proj.proj_normal.y << ", " << proj.proj_normal.z << "]\n";
-    std::cout << "Proj world up = [" << proj.proj_world_up.x << ", " << proj.proj_world_up.y << ", " << proj.proj_world_up.z << "]\n"; 
-  }
+//testing
+  // for (uint32_t i = 0; i < num_charts; ++i)
+  // {
+  //   projection_info proj = chart_projections[i];
+
+  //   std::cout << "Proj centroid = [" << proj.proj_centroid.x << ", " << proj.proj_centroid.y << ", " << proj.proj_centroid.z << "]\n";
+  //   std::cout << "Proj normal = [" << proj.proj_normal.x << ", " << proj.proj_normal.y << ", " << proj.proj_normal.z << "]\n";
+  //   std::cout << "Proj world up = [" << proj.proj_world_up.x << ", " << proj.proj_world_up.y << ", " << proj.proj_world_up.z << "]\n"; 
+    
+  //   std::cout << "Tex coord offset = [" << proj.tex_coord_offset.x << ", " << proj.tex_coord_offset.y << "]" << std::endl;
+  // }
 
 
 
