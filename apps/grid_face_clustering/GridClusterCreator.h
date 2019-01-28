@@ -127,7 +127,7 @@ struct GridClusterCreator
 			std::stack<Facet_handle> faces_to_process;
 			std::set<uint32_t> processed_faces;
 
-			uint32_t additional_charts_for_this_chart = 0;
+			int32_t additional_charts_for_this_chart = -1;
 
 			//pick first face in chart faces
 			//get neighbours 
@@ -136,6 +136,8 @@ struct GridClusterCreator
 			//if stack is empty, and not all chart faces have been processed, then create repeat process from a different starting point
 
 			while (processed_faces.size() < chart_faces.size()){
+
+				additional_charts_for_this_chart++;
 
 				//get starting face
 				//must not be in processed faces, but must be in faces
@@ -164,10 +166,19 @@ struct GridClusterCreator
 				//loop to find all connected faces of starting face
 				while (!faces_to_process.empty()){
 
-					//get and remove top node
+					//get and remove top node, make sure it is not already processed
 					Facet_handle top_node = faces_to_process.top();
 					faces_to_process.pop();
 					uint32_t top_node_id = top_node->id();
+
+					// std::cout << "Processing face: " << top_node_id << std::endl;
+
+					if (processed_faces.find(top_node_id) != processed_faces.end()){
+						// std::cout << "top node already processed\n";
+						continue;
+					}
+
+
 
 					//add new chart id if necessary for this face
 					//if this is found on the first pass, no action needed
@@ -191,6 +202,8 @@ struct GridClusterCreator
 						    Facet_handle nbr_facet = he->opposite()->facet(); 
 						    uint32_t nbr_facet_id = nbr_facet->id();
 
+						    // std::cout << " - found neighbour " << nbr_facet_id << std::endl;
+
 						    //if this neighbour appears in chart faces...
 						    if (chart_faces.find(nbr_facet_id) != chart_faces.end())
 						    {
@@ -199,6 +212,7 @@ struct GridClusterCreator
 						    	{
 						    		//then add to stack to process later
 						    		faces_to_process.push(nbr_facet);
+
 						    	}
 						    }
 				    	}
@@ -209,8 +223,6 @@ struct GridClusterCreator
 
 				} // end faces_to_process while
 
-
-				additional_charts_for_this_chart++;
 
 			}//end chart while
 			

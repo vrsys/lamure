@@ -186,17 +186,19 @@ struct Chart
   // as defined in Garland et al 2001
   static double get_compactness_of_merged_charts(Chart& c1, Chart& c2){
 
-
     double irreg1 = get_irregularity(c1.perimeter, c1.area);
     double irreg2 = get_irregularity(c2.perimeter, c2.area);
     double irreg_new = get_irregularity(get_chart_perimeter(c1,c2), c1.area + c2.area);
 
-    double shape_penalty = ( irreg_new - std::max(irreg1, irreg2) ) / irreg_new;
+    //as described in the paper:
+    // double shape_penalty = ( irreg_new - std::max(irreg1, irreg2) ) / irreg_new;
+    
+    //possible edit
 
+    double shape_penalty = irreg_new - (irreg1 + irreg2);
+
+    //correction for area
     shape_penalty /= (c1.area + c2.area);
-
-
-    // std::cout << "Shape penalty = " << shape_penalty << std::endl;
 
     return shape_penalty;
   }
