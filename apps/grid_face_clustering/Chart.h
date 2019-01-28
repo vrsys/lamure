@@ -403,6 +403,10 @@ struct Chart
 
     double e_direction = evaluate_direction_quadric(combinedQuad,plane_normal);
 
+    if (std::isnan(e_direction))
+    {
+      std::cout << "E direction = " << e_direction << std::endl;
+    }
     // std::cout << "E direction = " << e_direction << std::endl;
 
     return e_direction / (c1.area + c2.area);

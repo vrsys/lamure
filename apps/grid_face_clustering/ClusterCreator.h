@@ -68,7 +68,7 @@ struct ClusterCreator
     //debugging
     std::cout << "Checking areas...\n";
     for (auto const& fd : fareas){
-      if (fd.second == 0 )
+      if (fd.second == 0 || std::isnan(fd.second) )
       {
         std::cout << "Face " << fd.first->id() << " has area " << fd.second << std::endl;
       }

@@ -99,7 +99,8 @@ public:
 
 
 
-      Vertex_handle vh = B.add_vertex( XtndPoint<Kernel>( vertices[(i*3)], 
+      Vertex_handle vh = B.add_vertex( XtndPoint<Kernel>( 
+                           vertices[(i*3)], 
                            vertices[(i*3)+1], 
                            vertices[(i*3)+2],
                             tcoords[i*2],
@@ -110,27 +111,55 @@ public:
 
     // add the polyhedron triangles
     std::cout << "Polyhedron builder: adding faces\n";
+    uint32_t face_count = 0;
+    uint32_t degenerate_faces = 0;
     for( int i=0; i<(int)(tris.size()); i+=3 ){ 
 
-      Facet_handle fh = B.begin_facet();
-      fh->id() = i / 3;
 
-      //add tex coords
-      TexCoord tc1 ( tcoords[ tindices[i+0]*2 ] , tcoords[ (tindices[i+0]*2)+1 ] );
-      TexCoord tc2 ( tcoords[ tindices[i+1]*2 ] , tcoords[ (tindices[i+1]*2)+1 ] );
-      TexCoord tc3 ( tcoords[ tindices[i+2]*2 ] , tcoords[ (tindices[i+2]*2)+1 ] );
-      fh->add_tex_coords(tc1,tc2,tc3);
+      //check for degenerate faces:
+      bool degenerate = is_face_degenerate(
+                  Point( vertices[(tris[i+0]) * 3], vertices[((tris[i+0]) * 3) + 1], vertices[((tris[i+0]) * 3) + 2] ),
+                  Point( vertices[(tris[i+1]) * 3], vertices[((tris[i+1]) * 3) + 1], vertices[((tris[i+1]) * 3) + 2] ),
+                  Point( vertices[(tris[i+2]) * 3], vertices[((tris[i+2]) * 3) + 1], vertices[((tris[i+2]) * 3) + 2] )
+                  );
 
-      B.add_vertex_to_facet( tris[i+0] );
-      B.add_vertex_to_facet( tris[i+1] );
-      B.add_vertex_to_facet( tris[i+2] );
-      B.end_facet();
+      if(!degenerate){
+
+        Facet_handle fh = B.begin_facet();
+        // fh->id() = i / 3;
+        fh->id() = face_count++;
+
+        //add tex coords
+        TexCoord tc1 ( tcoords[ tindices[i+0]*2 ] , tcoords[ (tindices[i+0]*2)+1 ] );
+        TexCoord tc2 ( tcoords[ tindices[i+1]*2 ] , tcoords[ (tindices[i+1]*2)+1 ] );
+        TexCoord tc3 ( tcoords[ tindices[i+2]*2 ] , tcoords[ (tindices[i+2]*2)+1 ] );
+        fh->add_tex_coords(tc1,tc2,tc3);
+
+        B.add_vertex_to_facet( tris[i+0] );
+        B.add_vertex_to_facet( tris[i+1] );
+        B.add_vertex_to_facet( tris[i+2] );
+        B.end_facet();
+      }
+      else {
+        degenerate_faces++;
+      }
+
     }
    
     // finish up the surface
     std::cout << "Polyhedron builder: ending surface\n";
+    std::cout << "Discarded " << degenerate_faces << " degenerate faces\n";
+    std::cout << "---------------------------------------------\n";
     B.end_surface();
 
+  }
+
+  bool is_face_degenerate(Point v1, Point v2, Point v3){
+    if (v1 == v2 || v1 == v3 || v2 == v3)
+    {
+      return true;
+    }
+    return false;
   }
 
 };
