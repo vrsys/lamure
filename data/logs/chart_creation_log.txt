@@ -2659,3 +2659,63 @@ Vertices: 34834 , faces: 69451
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-28 12:10:07
+Ran for 14 m 2 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 1243
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape1
+
+-------------------------------------
+Executed at 2019-01-28 13:54:16
+Ran for 14 m 28 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 1243
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-28 14:15:17
+Ran for 14 m 47 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 1243
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-28 14:40:14
+Ran for 14 m 33 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 1243
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-28 15:02:20
+Ran for 3 m 54 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_all.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 100, active charts: 290
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-28 15:36:42
+Ran for 0 m 0 s
+Input file: data/triceratops_2000_uv.obj
+Output file: data/triceratops_chtd.obj
+Vertices: 668 , faces: 1332
+Desired Charts: 20, active charts: 20
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1

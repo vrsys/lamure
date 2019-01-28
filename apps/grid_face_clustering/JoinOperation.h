@@ -21,6 +21,10 @@ struct JoinOperation {
 
     // std::cout << "-----------------\n";
 
+    if(c1.area == 0)
+      std::cout << "Chart has 0 area: " << c1.id << std::endl;
+    else if(c2.area == 0)
+      std::cout << "Chart has 0 area: " << c2.id << std::endl;
 
     double error = 0;
 
@@ -35,7 +39,10 @@ struct JoinOperation {
 
     error = e_fit + e_direction + e_shape;
 
-    // std::cout << "Error [" << c1.id << ", " << c2.id << "]: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
+    if (std::isnan(error))
+    {
+      std::cout << "Nan error [" << c1.id << ", " << c2.id << "]: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
+    }
 
     return error;
   }

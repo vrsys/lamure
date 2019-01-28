@@ -32,7 +32,7 @@
 
 
 
-#define SEPARATE_CHART_FILE false
+#define SEPARATE_CHART_FILE true
 
 
 
@@ -206,7 +206,7 @@ int main( int argc, char** argv )
   ofs << "Vertices: " << vertices.size()/3 << " , faces: " << tris.size()/3 << std::endl; 
   ofs << "Desired Charts: " << chart_threshold << ", active charts: " << active_charts << std::endl;
   ofs << "Cost threshold: " << cost_threshold << std::endl;
-  ofs << "Cluster settings: e_fit: " << cluster_settings.e_fit_cf << ", e_ori: " << cluster_settings.e_ori_cf << ", e_shape" << cluster_settings.e_shape_cf << std::endl;
+  ofs << "Cluster settings: e_fit: " << cluster_settings.e_fit_cf << ", e_ori: " << cluster_settings.e_ori_cf << ", e_shape: " << cluster_settings.e_shape_cf << std::endl;
 
     ofs.close();
   std::cout << "Log written to " << log_path << std::endl;

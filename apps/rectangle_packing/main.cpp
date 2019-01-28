@@ -36,12 +36,21 @@ struct rectangle{
   bool flipped_;
 };
 
+struct projection_info {
+  scm::math::vec3f proj_normal;
+  scm::math::vec3f proj_world_up;
+
+  scm::math::vec2f tex_offset;
+};
+
 struct chart_t {
   int id_;
   std::vector<int> triangle_ids_;
   rectangle rect_;
+  projection_info projection;
 };
 
+ 
 
 int window_width_ = 1024;
 int window_height_ = 1024;
@@ -333,7 +342,9 @@ void load_obj(const std::string& _file, std::vector<triangle_t>& triangles) {
 
 scm::math::vec2f project_to_plane(
   const scm::math::vec3f& v, scm::math::vec3f& plane_normal, 
-  const scm::math::vec3f& centroid) {
+  const scm::math::vec3f& centroid,
+  const scm::math::vec3f& world_up
+  ) {
 
   scm::math::vec3f v_minus_p(
     v.x - centroid.x,
@@ -342,11 +353,12 @@ scm::math::vec2f project_to_plane(
 
   //determine tangential coordinate frame before projection
 
-  plane_normal = scm::math::normalize(plane_normal);
-  scm::math::vec3f world_up(0.f, 1.f, 0.f);
-  if (std::abs(scm::math::dot(world_up, plane_normal)) > 0.8f) {
-    world_up = scm::math::vec3f(0.f, 0.f, 1.f);
-  }
+  //commented out because calculation of world up and normalisation of plane_normal is now done before calling this function
+  // plane_normal = scm::math::normalize(plane_normal);
+  // scm::math::vec3f world_up(0.f, 1.f, 0.f);
+  // if (std::abs(scm::math::dot(world_up, plane_normal)) > 0.8f) {
+  //   world_up = scm::math::vec3f(0.f, 0.f, 1.f);
+  // }
 
   auto plane_right = scm::math::cross(plane_normal, world_up);
   plane_right = scm::math::normalize(plane_right);
@@ -445,14 +457,27 @@ void project(std::vector<chart_t>& charts, std::vector<triangle_t>& triangles) {
     std::cout << "  avg_n: (" << avg_normal.x << " " << avg_normal.y << " " << avg_normal.z << ")" << std::endl;
     std::cout << "  centr: (" << centroid.x << " " << centroid.y << " " << centroid.z << ")" << std::endl;
 
+
+
+
+    avg_normal = scm::math::normalize(avg_normal);
+    scm::math::vec3f world_up(0.f, 1.f, 0.f);
+    if (std::abs(scm::math::dot(world_up, avg_normal)) > 0.8f) {
+      world_up = scm::math::vec3f(0.f, 0.f, 1.f);
+    }
+
+    //record projection normal and world up
+    chart.projection.proj_normal = avg_normal;
+    chart.projection.proj_world_up = world_up;
+
     //project all vertices into that plane
     for (int i = 0; i < chart.triangle_ids_.size(); ++i) {
       int tri_id = chart.triangle_ids_[i];
       triangle_t& tri = triangles[tri_id];
 
-      scm::math::vec2f projected_v0 = project_to_plane(tri.v0_.pos_, avg_normal, centroid);
-      scm::math::vec2f projected_v1 = project_to_plane(tri.v1_.pos_, avg_normal, centroid);
-      scm::math::vec2f projected_v2 = project_to_plane(tri.v2_.pos_, avg_normal, centroid);
+      scm::math::vec2f projected_v0 = project_to_plane(tri.v0_.pos_, avg_normal, centroid, world_up);
+      scm::math::vec2f projected_v1 = project_to_plane(tri.v1_.pos_, avg_normal, centroid, world_up);
+      scm::math::vec2f projected_v2 = project_to_plane(tri.v2_.pos_, avg_normal, centroid, world_up);
 
       tri.v0_.new_coord_ = projected_v0;
       tri.v1_.new_coord_ = projected_v1;
@@ -687,6 +712,25 @@ static void glut_timer(int32_t _e) {
   elapsed_ms_ += 16;
 }
 
+void write_projection_info_file(std::vector<chart_t>& charts, std::string outfile_name){
+
+  std::ofstream ofs( outfile_name, std::ios::binary);
+
+  //write number of charts
+  uint32_t num_charts = charts.size();
+  ofs.write((char*) &num_charts, sizeof(num_charts));
+
+
+  for (auto& chart : charts)
+  {
+    ofs.write((char*) &(chart.projection), sizeof(projection_info));
+  }
+
+  ofs.close();
+
+  std::cout << "Wrote projection file to " << outfile_name << std::endl;
+}
+
 
 
 
@@ -709,9 +753,13 @@ int main(int argc, char **argv) {
   //std::string obj_file = "test_mesh_1.obj";
   //std::string chart_file = "test_mesh_1.chart";
 
-  std::string obj_file = "triceratops_1332.obj";
-  std::string chart_file = "triceratops_1332.chart";
-  std::string texture_file = "xiaoguai.png";
+  // std::string obj_file = "triceratops_1332.obj";
+  // std::string chart_file = "triceratops_1332.chart";
+  // std::string texture_file = "xiaoguai.png";
+
+  std::string obj_file = "data/triceratops_chtd.obj";
+  std::string chart_file = "data/chart.chart";
+  std::string texture_file = "data/paper.png";
 
   //load the obj
   std::vector<triangle_t> triangles;
@@ -848,6 +896,10 @@ int main(int argc, char **argv) {
     } 
   }
 
+
+  //write a file for chart projection info
+  write_projection_info_file(charts, "data/chart.chartproj");
+
   //load the texture png file
   texture_ = load_image(texture_file);
 
@@ -882,6 +934,8 @@ int main(int argc, char **argv) {
 
   //start the main loop (which mainly calls the glutDisplayFunc)
   glutMainLoop();
+
+
 
 
 

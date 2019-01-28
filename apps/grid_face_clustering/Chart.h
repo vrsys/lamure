@@ -266,7 +266,7 @@ struct Chart
 
           //check this edge is not a border
           if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
-            uint32_t adj_face_id = he->opposite()->facet()->id();
+            int32_t adj_face_id = he->opposite()->facet()->id();
 
             // std::cout << "found adjacent face: " << adj_face_id << std::endl;
 

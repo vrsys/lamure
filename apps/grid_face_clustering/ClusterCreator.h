@@ -64,6 +64,16 @@ struct ClusterCreator
     for(face_descriptor fd: faces(P)){
       fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
     }
+
+    //debugging
+    std::cout << "Checking areas...\n";
+    for (auto const& fd : fareas){
+      if (fd.second == 0 )
+      {
+        std::cout << "Face " << fd.first->id() << " has area " << fd.second << std::endl;
+      }
+    }
+
     std::cout << "Calculating face normals...\n";
     CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
 
@@ -478,7 +488,13 @@ struct ClusterCreator
         total_active_charts++;
       }
     }
-    if (!joins.empty()) {std::cout << "Cost of cheapest un-executed join: " << joins.front().cost << std::endl;}
+    if (!joins.empty()) {
+      std::cout << "joins remaining: " << joins.size() << std::endl;
+      std::cout << "Cost of cheapest un-executed join: " << joins.front().cost << std::endl;
+    }
+    else {
+      std::cout << "join list empty" << std::endl;
+    }
     std::cout << "Total number of faces in charts = " << total_faces << std::endl;
     std::cout << "Initial charts = " << charts.size() << std::endl;
     std::cout << "Total number merges = " << chart_merges << std::endl;
