@@ -60,7 +60,8 @@ struct GridClusterCreator
 	static uint32_t create_grid_clusters(Polyhedron &P,
 									 std::map<uint32_t, uint32_t> &chart_id_map,
 									 BoundingBoxLimits limits,
-									 int CELL_RES) {
+									 int CELL_RES,
+									 CLUSTER_SETTINGS cluster_settings) {
 
 
 		std::cout <<"Creating initial clusters with grid...\n";
@@ -123,6 +124,8 @@ struct GridClusterCreator
 			}
 		}
 
+		std::cout << "Charts created by counter : " << chart_counter << std::endl;
+
 		//for all triangles, swap location id for chart id
 		for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
 			int old_chart_id = chart_id_map[fb->id()];
@@ -136,11 +139,12 @@ struct GridClusterCreator
 		uint32_t total_grid_charts = charts_created.size() + charts_added;
 		std::cout << "Created " <<   total_grid_charts << " charts in total \n"; 
 
-		uint32_t total_charts = split_charts(P, chart_id_map, centroids);
+		uint32_t total_charts = split_charts(P, chart_id_map, centroids, cluster_settings);
 		std::cout << "Chart splitting added " << total_charts - total_grid_charts << "Charts\n";
 		return total_charts;
 
 		// return total_grid_charts;
+		// return charts_created.size();
 
 
 
@@ -306,7 +310,8 @@ struct GridClusterCreator
 	//return total number of charts
 	static uint32_t split_charts(Polyhedron &P,
 									 std::map<uint32_t, uint32_t> &chart_id_map,
-									 std::vector<Point> centroids){
+									 std::vector<Point> centroids,
+									 CLUSTER_SETTINGS cluster_settings){
 
 		std::cout << "Started Chart splitting...\n";
 
@@ -351,6 +356,8 @@ struct GridClusterCreator
 
 			fb_boost++;
 		}
+
+		std::cout << "Chart splitting: added " << clusters_to_process.size() << " to stack for processing\n";
 
 		//process the stack until all nodes processed
 		while (!clusters_to_process.empty()){
@@ -404,11 +411,13 @@ struct GridClusterCreator
 				variance += angle_diff;
 			} 
 			variance /= cluster.triangles.size();
+			variance /= total_area;
 
 			//decide whether to split this cluster further:
 			std::cout << "chart " << cluster_id << ", variance = " << variance << std::endl;
-			double VAR_THRES = 0.01;
-			if (variance > VAR_THRES)
+
+			// const double VAR_THRES = 0.001;
+			if (variance > cluster_settings.chart_split_threshold)
 			{
 				//create new nodes by dividing the node into 8
 
@@ -452,7 +461,7 @@ struct GridClusterCreator
 						chart_clusters.insert(std::pair<uint32_t,Cluster>(chart_count + i, new_clusters[i]));
 						clusters_to_process.push(chart_count + i);
 
-						std::cout << "Adding cluster " << chart_count+i << " with depth " << new_clusters[i].depth << std::endl;
+						// std::cout << "Adding cluster " << chart_count+i << " with depth " << new_clusters[i].depth << std::endl;
 					}
 				}
 

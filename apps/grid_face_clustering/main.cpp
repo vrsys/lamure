@@ -81,6 +81,8 @@ int main( int argc, char** argv )
     std::cout << "Optional: -es specifies error shape coefficient (=1)" << std::endl;
 
     std::cout << "Optional: -cc specifies cell resolution for grid splitting, along longest axis (=10)" << std::endl;
+
+    std::cout << "Optional: -ct specifies threshold for grid chart splitting by normal variance (=0.001)" << std::endl;
     return 1;
   }
 
@@ -109,8 +111,12 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-es")) {
     e_shape_cf = atof(Utils::getCmdOption(argv, argv + argc, "-es"));
   }
+  double cst = 0.001;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-ct")) {
+    cst = atof(Utils::getCmdOption(argv, argv + argc, "-ct"));
+  }
 
-  CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf);
+  CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf, cst);
 
   int cell_resolution = 10;
   if (Utils::cmdOptionExists(argv, argv+argc, "-cc")) {
@@ -164,7 +170,7 @@ int main( int argc, char** argv )
   }
 
 
-  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution);
+  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution, cluster_settings);
 
   std::cout << "Grid clusters: " << active_charts << std::endl;
 

@@ -231,9 +231,9 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     centroid.y /= (float)(chart.all_triangle_ids_.size()*3);
     centroid.z /= (float)(chart.all_triangle_ids_.size()*3);
 
-    std::cout << "chart id " << chart_id << ", num tris: " << chart.all_triangle_ids_.size() << std::endl;
-    std::cout << "  avg_n: (" << avg_normal.x << " " << avg_normal.y << " " << avg_normal.z << ")" << std::endl;
-    std::cout << "  centr: (" << centroid.x << " " << centroid.y << " " << centroid.z << ")" << std::endl;
+    // std::cout << "chart id " << chart_id << ", num tris: " << chart.all_triangle_ids_.size() << std::endl;
+    // std::cout << "  avg_n: (" << avg_normal.x << " " << avg_normal.y << " " << avg_normal.z << ")" << std::endl;
+    // std::cout << "  centr: (" << centroid.x << " " << centroid.y << " " << centroid.z << ")" << std::endl;
 
 
 
@@ -263,9 +263,9 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
       tri.v1_.new_coord_ = projected_v1;
       tri.v2_.new_coord_ = projected_v2;
 
-      std::cout << "tri_id " << tri_id << " projected v0: (" << projected_v0.x << " " << projected_v0.y << ")" << std::endl;
-      std::cout << "tri_id " << tri_id << " projected v1: (" << projected_v1.x << " " << projected_v1.y << ")" << std::endl;
-      std::cout << "tri_id " << tri_id << " projected v2: (" << projected_v2.x << " " << projected_v2.y << ")" << std::endl;
+      // std::cout << "tri_id " << tri_id << " projected v0: (" << projected_v0.x << " " << projected_v0.y << ")" << std::endl;
+      // std::cout << "tri_id " << tri_id << " projected v1: (" << projected_v1.x << " " << projected_v1.y << ")" << std::endl;
+      // std::cout << "tri_id " << tri_id << " projected v2: (" << projected_v2.x << " " << projected_v2.y << ")" << std::endl;
 
     }
 
@@ -323,9 +323,9 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
       tri.v2_.new_coord_.x -= chart.rect_.min_.x;
       tri.v2_.new_coord_.y -= chart.rect_.min_.y;
 
-      std::cout << "tri_id " << tri_id << " projected v0: (" << tri.v0_.new_coord_.x << " " << tri.v0_.new_coord_.y << ")" << std::endl;
-      std::cout << "tri_id " << tri_id << " projected v1: (" << tri.v1_.new_coord_.x << " " << tri.v1_.new_coord_.y << ")" << std::endl;
-      std::cout << "tri_id " << tri_id << " projected v2: (" << tri.v2_.new_coord_.x << " " << tri.v2_.new_coord_.y << ")" << std::endl;
+      // std::cout << "tri_id " << tri_id << " projected v0: (" << tri.v0_.new_coord_.x << " " << tri.v0_.new_coord_.y << ")" << std::endl;
+      // std::cout << "tri_id " << tri_id << " projected v1: (" << tri.v1_.new_coord_.x << " " << tri.v1_.new_coord_.y << ")" << std::endl;
+      // std::cout << "tri_id " << tri_id << " projected v2: (" << tri.v2_.new_coord_.x << " " << tri.v2_.new_coord_.y << ")" << std::endl;
 
     }
 
@@ -355,8 +355,8 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     chart.rect_.max_.x /= largest_max;
     chart.rect_.max_.y /= largest_max;
 
-    std::cout << "chart " << chart_id << " rect min: " << chart.rect_.min_.x << ", " << chart.rect_.min_.y << std::endl;
-    std::cout << "chart " << chart_id << " rect max: " << chart.rect_.max_.x << ", " << chart.rect_.max_.y << std::endl;
+    // std::cout << "chart " << chart_id << " rect min: " << chart.rect_.min_.x << ", " << chart.rect_.min_.y << std::endl;
+    // std::cout << "chart " << chart_id << " rect max: " << chart.rect_.max_.x << ", " << chart.rect_.max_.y << std::endl;
 
   }
 }
@@ -472,8 +472,8 @@ rectangle pack(std::vector<rectangle>& input) {
   //print the result
   for (int i=0; i< input.size(); i++){
     auto& rect = input[i];
-    std::cout<< "rectangle["<< rect.id_<< "]"<<"  min("<< rect.min_.x<<" ,"<< rect.min_.y<<")"<<std::endl;
-    std::cout<< "rectangle["<< rect.id_<< "]"<<"  max("<< rect.max_.x<< " ,"<<rect.max_.y<<")"<<std::endl;
+    // std::cout<< "rectangle["<< rect.id_<< "]"<<"  min("<< rect.min_.x<<" ,"<< rect.min_.y<<")"<<std::endl;
+    // std::cout<< "rectangle["<< rect.id_<< "]"<<"  max("<< rect.max_.x<< " ,"<<rect.max_.y<<")"<<std::endl;
   }
 
 
@@ -859,6 +859,8 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
+
     project(charts, triangles);
 
 
@@ -902,14 +904,14 @@ int main(int argc, char *argv[]) {
     for (auto tri_id : chart.all_triangle_ids_) {
 
 
-      std::cout << "before v0: " << triangles[tri_id].v0_.new_coord_.x 
-       << " " << triangles[tri_id].v0_.new_coord_.y << std::endl;
+      // std::cout << "before v0: " << triangles[tri_id].v0_.new_coord_.x 
+      //  << " " << triangles[tri_id].v0_.new_coord_.y << std::endl;
 
-      std::cout << "before v1: " << triangles[tri_id].v1_.new_coord_.x 
-       << " " << triangles[tri_id].v1_.new_coord_.y << std::endl;
+      // std::cout << "before v1: " << triangles[tri_id].v1_.new_coord_.x 
+      //  << " " << triangles[tri_id].v1_.new_coord_.y << std::endl;
 
-       std::cout << "before v2: " << triangles[tri_id].v2_.new_coord_.x 
-       << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
+      //  std::cout << "before v2: " << triangles[tri_id].v2_.new_coord_.x 
+      //  << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
 
 
        if (rect.flipped_) {
@@ -934,9 +936,9 @@ int main(int argc, char *argv[]) {
       triangles[tri_id].v2_.new_coord_.x *= scale;
       triangles[tri_id].v2_.new_coord_.y *= scale;
 
-      std::cout << "min to add x " << rect.min_.x << std::endl;
-      std::cout << "min to add y " << rect.min_.y << std::endl;
-      std::cout << "image size " << image.max_.x << std::endl;
+      // std::cout << "min to add x " << rect.min_.x << std::endl;
+      // std::cout << "min to add y " << rect.min_.y << std::endl;
+      // std::cout << "image size " << image.max_.x << std::endl;
  
       triangles[tri_id].v0_.new_coord_.x += rect.min_.x;
       triangles[tri_id].v0_.new_coord_.y += rect.min_.y;
@@ -952,14 +954,14 @@ int main(int argc, char *argv[]) {
       triangles[tri_id].v2_.new_coord_.x /= image.max_.x;
       triangles[tri_id].v2_.new_coord_.y /= image.max_.x;
 
-      std::cout << "v0: " << triangles[tri_id].v0_.new_coord_.x 
-       << " " << triangles[tri_id].v0_.new_coord_.y << std::endl;
+      // std::cout << "v0: " << triangles[tri_id].v0_.new_coord_.x 
+      //  << " " << triangles[tri_id].v0_.new_coord_.y << std::endl;
 
-       std::cout << "v1: " << triangles[tri_id].v1_.new_coord_.x 
-       << " " << triangles[tri_id].v1_.new_coord_.y << std::endl;
+      //  std::cout << "v1: " << triangles[tri_id].v1_.new_coord_.x 
+      //  << " " << triangles[tri_id].v1_.new_coord_.y << std::endl;
 
-       std::cout << "v2: " << triangles[tri_id].v2_.new_coord_.x 
-       << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
+      //  std::cout << "v2: " << triangles[tri_id].v2_.new_coord_.x 
+      //  << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
 
        to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
        to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});

@@ -43,6 +43,10 @@ struct Chart
 
     P_quad = createPQuad(f);
     R_quad = ErrorQuadric(Utils::normalise(normal));
+
+
+
+    // std::cout << "Chart " << id << ", normal: " << normal << std::endl;
   }
 
   //create a combined quadric for 3 vertices of a face
@@ -62,6 +66,11 @@ struct Chart
   //concatenate data from mc (merge chart) on to data from this chart
   void merge_with(Chart &mc, const double cost_of_join){
 
+    // if (id == 30522)
+    // {
+    //   std::cout << "Area: " << area << ", normal: " << avg_normal << "\n R_quad:\n" << R_quad.print() << std::endl;
+    // }
+
 
     perimeter = get_chart_perimeter(*this, mc);
 
@@ -72,6 +81,9 @@ struct Chart
 
     P_quad = P_quad + mc.P_quad;
     R_quad = (R_quad*area) + (mc.R_quad*mc.area);
+
+    //correct for size?
+    R_quad = R_quad * (1.0 / (area + mc.area));
 
     area += mc.area;
 
@@ -405,7 +417,9 @@ struct Chart
 
     if (std::isnan(e_direction))
     {
-      std::cout << "E direction = " << e_direction << std::endl;
+      // std::cout << "E direction = " << e_direction <<  ", Plane normal = " << plane_normal << std::endl;
+      // std::cout << "r quad 1 = \n" << c1.R_quad.print() << std::endl;
+      // std::cout << "r quad 1 = \n" << c2.R_quad.print() << std::endl;
     }
     // std::cout << "E direction = " << e_direction << std::endl;
 
