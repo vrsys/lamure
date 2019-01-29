@@ -133,11 +133,14 @@ struct GridClusterCreator
 		uint32_t charts_added = correct_split_charts(P,chart_id_map, charts_created.size());
 		std::cout << "correct_split_charts method added " << charts_added << " Charts" << std::endl;
 
-		std::cout << "Created " <<  charts_created.size() + charts_added << " charts in total \n"; 
+		uint32_t total_grid_charts = charts_created.size() + charts_added;
+		std::cout << "Created " <<   total_grid_charts << " charts in total \n"; 
 
-		split_charts(P, chart_id_map, centroids);
+		uint32_t total_charts = split_charts(P, chart_id_map, centroids);
+		std::cout << "Chart splitting added " << total_charts - total_grid_charts << "Charts\n";
+		return total_charts;
 
-		return charts_created.size() + charts_added;
+		// return total_grid_charts;
 
 
 
@@ -308,14 +311,14 @@ struct GridClusterCreator
 		std::cout << "Started Chart splitting...\n";
 
 
-		//calculate areas, normals, and centroids of each face
+		//calculate areas and normals of each face
 	    std::map<face_descriptor,double> fareas;
 	    std::map<face_descriptor,Vector> fnormals;
 	    for(face_descriptor fd: faces(P)){
 	      fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
 	    }
 	    CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
-	    //get boost face iterator
+	    //create boost face iterator
 	    face_iterator fb_boost, fe_boost;
 	    boost::tie(fb_boost, fe_boost) = faces(P);
 
@@ -325,7 +328,6 @@ struct GridClusterCreator
 		uint32_t chart_count = 0;
 
 		//sort charts into clusters
-		// for(uint32_t tri : chart_id_map){
 		for(uint32_t i = 0; i < P.size_of_facets(); i++){
 
 			uint32_t tri_id = i;
@@ -337,7 +339,6 @@ struct GridClusterCreator
 			cluster_it = chart_clusters.find(chart_id);
 			if (cluster_it != chart_clusters.end())
 			{
-				// Cluster &c = chart_clusters[chart_id];
 				Cluster &c = cluster_it->second;
 				c.add_face(tri_id, fareas[*fb_boost], fnormals[*fb_boost], centroids[i]);
 			}
@@ -351,17 +352,18 @@ struct GridClusterCreator
 			fb_boost++;
 		}
 
-		//process the stack
+		//process the stack until all nodes processed
 		while (!clusters_to_process.empty()){
 
 			const int MAX_DEPTH = 5;
 
+			// pop cluster id from top
 			uint32_t cluster_id = clusters_to_process.top();
 			clusters_to_process.pop();
 
 			Cluster cluster = chart_clusters[cluster_id];
 
-			if (cluster.triangles.size() == 0)//debug
+			if (cluster.triangles.size() == 0)//debug only
 			{
 				std::cout << "cluster " << cluster_id << "has no triangles\n";
 				continue;
@@ -378,21 +380,20 @@ struct GridClusterCreator
 			//calculated weighted average normal
 			for (uint32_t i = 0; i < cluster.triangles.size(); ++i)
 			{
-				
 				total_area += cluster.areas[i];
 				avg_normal += (cluster.areas[i] * cluster.normals[i]); 
 			}
 			// avg_normal /= total_area;
 			avg_normal = Utils::normalise(avg_normal);
 
-			if (total_area == 0.0)//debug()
+			if (total_area == 0.0)//debug only
 			{
 				std::cout << "cluster " << cluster_id << "has no area\n";
 				continue;
 			}
 
-			//calculate weighted standard deviation from average normal
-			double std_dev = 0.0;
+			//calculate weighted variance from average normal
+			double variance = 0.0;
 			for (uint32_t i = 0; i < cluster.triangles.size(); ++i){
 
 				//calc angle diff from avg_normal
@@ -400,14 +401,14 @@ struct GridClusterCreator
 				dot = std::max(-1.0, std::min(1.0,dot));
 				double angle_diff = acos(dot);
 				angle_diff = std::abs(angle_diff) * cluster.areas[i];
-				std_dev += angle_diff;
+				variance += angle_diff;
 			} 
-			std_dev /= cluster.triangles.size();
+			variance /= cluster.triangles.size();
 
 			//decide whether to split this cluster further:
-			std::cout << "chart " << cluster_id << ", SD = " << std_dev << std::endl;
-			double SD_THRES = 0.00001;
-			if (std_dev > SD_THRES)
+			std::cout << "chart " << cluster_id << ", variance = " << variance << std::endl;
+			double VAR_THRES = 0.01;
+			if (variance > VAR_THRES)
 			{
 				//create new nodes by dividing the node into 8
 
@@ -417,18 +418,18 @@ struct GridClusterCreator
 				//distribute triangles between 8 new clusters
 				for (uint32_t i = 0; i < cluster.triangles.size(); ++i)
 				{
-					int x = 0, y = 0, z = 0;
-
 					const Point& centroid = cluster.centroids[i];
 
+					//determine 3D index
+					int x = 0, y = 0, z = 0;
 					if (centroid.x() > midpoint.x()) {x = 1;}
 					if (centroid.y() > midpoint.y()) {y = 1;}
 					if (centroid.z() > midpoint.z()) {z = 1;}
-
 					vec3i loc = vec3i(x,y,z);
 					vec3i cell_count = vec3i(2,2,2);
 					const int cell_id =  location_to_id(loc, cell_count);
 
+					//add face to cluster with that index
 					new_clusters[cell_id].add_face(
 						cluster.triangles[i],
 						cluster.areas[i],
@@ -443,9 +444,16 @@ struct GridClusterCreator
 				//add new clusters to stack, with appropriate ids
 				for (int i = 0; i < 8; ++i)
 				{
-					new_clusters[i].depth = cluster.depth + 1;
-					chart_clusters.insert(std::pair<uint32_t,Cluster>(chart_count + i, new_clusters[i]));
-					clusters_to_process.push(chart_count + i);
+
+					//check that they have faces
+					if (new_clusters[i].triangles.size() > 0)
+					{
+						new_clusters[i].depth = cluster.depth + 1;
+						chart_clusters.insert(std::pair<uint32_t,Cluster>(chart_count + i, new_clusters[i]));
+						clusters_to_process.push(chart_count + i);
+
+						std::cout << "Adding cluster " << chart_count+i << " with depth " << new_clusters[i].depth << std::endl;
+					}
 				}
 
 				//update total number of charts
@@ -459,12 +467,11 @@ struct GridClusterCreator
 		//update chart id map 
 		std::map<uint32_t, uint32_t> tidy_id_map; //key: old chart id, value: new chart id
 
-		//go through chart id map
-		// std::map<uint32_t, uint32_t>::iterator m_it;
+		//go through chart id map and count active charts, put into tidy id map
 		chart_count = 0;
 		for (auto& face : chart_id_map){
 			uint32_t chart_id = face.second;
-			//if not in map, add and assign new id
+			//if not in tidy map, add and assign new id
 			if (tidy_id_map.find(chart_id) == tidy_id_map.end())
 			{
 				tidy_id_map[chart_id] = chart_count++;

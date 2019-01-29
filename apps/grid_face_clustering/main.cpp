@@ -172,8 +172,6 @@ int main( int argc, char** argv )
 
   std::cout << "After creating chart clusters: " << active_charts << std::endl;
 
-  // uint32_t active_charts =  ClusterCreator::create_chart_clusters_from_faces(polyMesh, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
-
 
   //END chart creation ====================================================================================================================
 

@@ -2799,3 +2799,123 @@ Vertices: 130157 , faces: 257757
 Desired Charts: 100, active charts: 100
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:28:39
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 6624
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:34:19
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 6624
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:36:13
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_without.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 350
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:38:26
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 55
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:38:54
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_without.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 55
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:39:21
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 6632
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:40:05
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 6641
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:40:48
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 6545
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:41:21
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 5626
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:41:53
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_1.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 661
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:44:29
+Ran for 0 m 2 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_whole.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 0, active charts: 1
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-01-29 09:44:40
+Ran for 0 m 0 s
+Input file: data/bunny10.obj
+Output file: data/octree_test_whole.obj
+Vertices: 3354 , faces: 6641
+Desired Charts: 30, active charts: 30
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
