@@ -98,7 +98,7 @@ public:
     for( int i=0; i<(int)vertices.size() / 3; ++i ){
 
 
-
+      //TODO remove tcoords from here - not needed
       Vertex_handle vh = B.add_vertex( XtndPoint<Kernel>( 
                            vertices[(i*3)], 
                            vertices[(i*3)+1], 

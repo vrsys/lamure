@@ -14,11 +14,12 @@ struct UVFace : public CGAL::HalfedgeDS_face_base<Refs> {
 
   int face_id;
 
+  //provide id accessors to keep track of faces
   int& id() {return face_id;}
   int id() const {return face_id;}
 
+  //save tex coords, assume order is the same as the added order of vertices
   void add_tex_coords(TexCoord tc0, TexCoord tc1, TexCoord tc2){
-    //add the tex coords in clockwise order when looking in -Z (right handed coord system)
     t_coords[0] = tc0;
     t_coords[1] = tc1;
     t_coords[2] = tc2;

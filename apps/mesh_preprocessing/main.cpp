@@ -204,6 +204,8 @@ int main(int argc, char *argv[]) {
     //-determine the chart projection plane based on these original tris
     //-perform the projection for all triangle_ids_ 
     //-perform rectangle packing
+    // (determine required new texture size by picking representative triangles
+    //  and compute the size in the original texture atlas)
     //-then texture rendering
 
 
