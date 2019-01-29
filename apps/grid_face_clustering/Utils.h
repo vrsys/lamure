@@ -63,6 +63,14 @@ struct Utils
 
 	static Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
+	static Point midpoint(Point p1, Point p2){
+		return Point(
+			((p1.x() + p2.x()) / 2.0),
+			((p1.y() + p2.y()) / 2.0),
+			((p1.z() + p2.z()) / 2.0)
+			);
+	}
+
 	// load obj function from vt_obj_loader/Utils.h
 	static BoundingBoxLimits load_obj(const std::string& filename, 
 	              std::vector<double> &v, 
