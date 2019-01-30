@@ -483,6 +483,8 @@ void bvh::write_lod_file(const std::string& lod_filename) {
   //convert triangle map with chart id to trianglke map without chart id
   std::map<uint32_t, std::vector<triangle_t>> simple_triangles_map;
 
+
+
   for (auto& node_tri_list : triangles_map_) // for each node
   {
     std::vector<triangle_t> tris;//container for new tris
@@ -509,8 +511,10 @@ void bvh::write_lod_file(const std::string& lod_filename) {
     simple_triangles_map[node_tri_list.first] = tris;
   }
 
+
   auto lod = std::make_shared<lamure::ren::lod_stream>();
   lod->open_for_writing(lod_filename);
+
 
   for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
     size_t length_in_bytes = primitives_per_node_*sizeof(vertex);
@@ -518,7 +522,24 @@ void bvh::write_lod_file(const std::string& lod_filename) {
     lod->write((char*)&simple_triangles_map[node_id][0], start_in_file, length_in_bytes);
   }
 
+
   lod->close();
+
+  std::cout << "completed lod file" << std::endl;
+
+// debug 
+  std::ofstream debug_ofs("data/tex_hunting/on_mesh_hier_save2.txt");
+  int total_tris = 0;
+  for (auto& tri_list : simple_triangles_map){
+    for (auto& tri : tri_list.second){
+      total_tris++;
+      debug_ofs << tri.v0_.tex_ << std::endl;
+      debug_ofs << tri.v1_.tex_ << std::endl;
+      debug_ofs << tri.v2_.tex_ << std::endl;
+    }
+  }
+  debug_ofs << "total tris: " << total_tris << std::endl;
+  debug_ofs.close();
 
 }
 

@@ -803,7 +803,7 @@ int main(int argc, char *argv[]) {
             //find out if this triangle intersects the chart box
             if (chart.box_.contains(v)) {
               int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+(vertex_id/3);
-              chart.all_triangle_ids_.insert(lod_tri_id);
+              // chart.all_triangle_ids_.insert(lod_tri_id);
             }
           }
         }
@@ -812,7 +812,8 @@ int main(int argc, char *argv[]) {
           
           if (chart_id == chart_id_per_triangle[leaf_id*(vertices_per_node/3)+tri_id]) {
             int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+tri_id;
-            chart.original_triangle_ids_.insert(lod_tri_id); 
+            // chart.original_triangle_ids_.insert(lod_tri_id);
+            chart.all_triangle_ids_.insert(lod_tri_id);
           }
         }
       }
@@ -831,13 +832,23 @@ int main(int argc, char *argv[]) {
 
     std::cout << "tris per node " << vertices_per_node/3 << std::endl;
 
-
+    //Debug 
+    int total_vs = 0;
+    std::ofstream ofs("data/tex_hunting/after_mesh_prepro_load2.txt");
 
     std::vector<triangle> triangles;
     for (uint32_t leaf_id = first_leaf; leaf_id < first_leaf+num_leafs; ++leaf_id) {
 
       lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
         (vertices_per_node * size_of_vertex));
+
+
+
+      for (auto v : vertices){
+        total_vs++;
+        ofs << v.c_x_ << ", " << v.c_y_ << std::endl;
+      }
+
 
       for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
 
@@ -858,6 +869,11 @@ int main(int argc, char *argv[]) {
         triangles.push_back(tri);
       }
     }
+
+    ofs << "total tris: " << total_vs / 3 << std::endl;
+    ofs.close();
+
+
 
     std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
 

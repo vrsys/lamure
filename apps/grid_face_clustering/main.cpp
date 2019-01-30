@@ -32,7 +32,7 @@
 
 
 
-#define SEPARATE_CHART_FILE false
+#define SEPARATE_CHART_FILE true
 
 
 
