@@ -46,9 +46,19 @@ CUSTOM DATA STRUCTURES ===================================================
 
 */
 
-template <class Refs>
+template <class Refs, class Traits>
 struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
   int chart_id;
+
+  typedef typename Traits::Vector_2 TexCoord;
+  TexCoord t_coords[3];
+
+  //save tex coords, assume order is the same as the added order of vertices
+  void add_tex_coords(TexCoord tc0, TexCoord tc1, TexCoord tc2){
+    t_coords[0] = tc0;
+    t_coords[1] = tc1;
+    t_coords[2] = tc2;
+  }
 };
 
 // // //define a new vertex type - inheriting from base type CGAL::HalfedgeDS_vertex_base
@@ -115,11 +125,12 @@ struct Custom_items : public CGAL::Polyhedron_items_3 {
     };
     template <class Refs, class Traits>
     struct Face_wrapper {
-      typedef ChartFace<Refs> Face;
+      typedef ChartFace<Refs, Traits> Face;
     };
 };
 
 typedef CGAL::Simple_cartesian<double> Kernel;
+typedef Kernel::Vector_2 TexCoord;
 typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
@@ -210,6 +221,13 @@ public:
     for (uint32_t i = 0; i < tris.size(); i+=3) {
 
       Facet_handle fh = B.begin_facet();
+
+      //add tex coords to face
+      TexCoord tc0 (combined_set[i/3].v0_.tex_.x, combined_set[i/3].v0_.tex_.y);
+      TexCoord tc1 (combined_set[i/3].v1_.tex_.x, combined_set[i/3].v1_.tex_.y);
+      TexCoord tc2 (combined_set[i/3].v2_.tex_.x, combined_set[i/3].v2_.tex_.y);
+      fh->add_tex_coords(tc0,tc1,tc2);
+
       B.add_vertex_to_facet(tris[i]);
       B.add_vertex_to_facet(tris[i+1]);
       B.add_vertex_to_facet(tris[i+2]);
@@ -218,14 +236,6 @@ public:
       //transfer chart id to 
       fh->chart_id = combined_set[i/3].chart_id;
 
-      //printing for debugging edge sharing error
-      // if (i == 281 * 3 || i == 545 * 3)
-      // {
-      //   std::cout << "Vertx " << i/3 << " : \n" 
-      //     << tris[i] << " : " << vertices[tris[i]] << std::endl 
-      //     << tris[i+1] << " : " << vertices[tris[i+1]] << std::endl 
-      //     << tris[i+2] << " : " << vertices[tris[i+2]] << std::endl; 
-      // }
     }
 
 

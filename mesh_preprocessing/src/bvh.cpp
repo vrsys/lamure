@@ -444,6 +444,9 @@ void bvh::simplify(
 
     for (int i = 0; i < 3; ++i, ++c) {
 
+      //TODO take care of / generate normals
+      //maybe generate because per face normals will be rendered incorrect during simplification
+
       switch (i) {
         case 0:
         tri.v0_.pos_ = vec3f(
@@ -453,6 +456,9 @@ void bvh::simplify(
         tri.v0_.tex_ = vec2f(
           c->vertex()->point().get_u(),
           c->vertex()->point().get_v());
+        // tri.v0_.tex_ = vec2f(
+        //   c->facet()->t_coords[0].x(),
+        //   c->facet()->t_coords[0].y());
         break;
 
         case 1: 
@@ -463,6 +469,9 @@ void bvh::simplify(
         tri.v1_.tex_ = vec2f(
           c->vertex()->point().get_u(),
           c->vertex()->point().get_v());
+        // tri.v1_.tex_ = vec2f(
+        //   c->facet()->t_coords[1].x(),
+        //   c->facet()->t_coords[1].y());
         break;
 
         case 2: 
@@ -473,6 +482,9 @@ void bvh::simplify(
         tri.v2_.tex_ = vec2f(
           c->vertex()->point().get_u(),
           c->vertex()->point().get_v());
+        // tri.v2_.tex_ = vec2f(
+        //   c->facet()->t_coords[2].x(),
+        //   c->facet()->t_coords[2].y());
         break;
 
         default: break;
@@ -562,9 +574,9 @@ void bvh::write_chart_lod_file(const std::string& chart_lod_filename) {
   for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
 
     //debug only:
-    if (triangles_map_[node_id].size() != primitives_per_node_)
+    if (triangles_map_[node_id].size() != (primitives_per_node_ / 3))
     {
-      std::cout << "WARNING: [bvh::write_chart_lod_file] triangle list size for node " << node_id << " does not equal primitives_per_node_: " << primitives_per_node_ << std::endl;
+      std::cout << "WARNING: [bvh::write_chart_lod_file] triangle list size for node " << node_id << " is " << triangles_map_[node_id].size() << ", does not equal primitives_per_node_: " << primitives_per_node_ << std::endl;
     }
 
     //for each triangle in node

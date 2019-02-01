@@ -51,6 +51,8 @@ struct projection_info {
 
   rectangle tex_space_rect;
   scm::math::vec2f tex_coord_offset;
+
+  float scale_factor;
 };
 
 struct chart {
@@ -309,6 +311,10 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     //update largest chart
     largest_max = std::max(largest_max, chart.rect_.max_.x);
     largest_max = std::max(largest_max, chart.rect_.max_.y);
+
+    //record scaling factor
+    chart.projection.scale_factor = largest_max;
+
 
     // shift projected coordinates to min = 0
     //for (int i = 0; i < chart.all_triangle_ids_.size(); ++i) {
@@ -575,6 +581,9 @@ GLint compile_shader(const std::string& _src, GLint _shader_type) {
 //compile and link the shader programs
 void make_shader_program() {
 
+  //locates vertices at new uv position on screen
+  //passes old uvs in order to read from the texture 
+  
   std::string vertex_shader_src = "#version 420\n\
     layout (location = 0) in vec2 vertex_old_coord;\n\
     layout (location = 1) in vec2 vertex_new_coord;\n\
@@ -670,7 +679,8 @@ void glut_display() {
 
   save_image("data/mesh_prepro_result.png", frame_buffer_);
 
-  exit(0);
+  exit(1);
+
 
   glutSwapBuffers();
 }
@@ -740,18 +750,20 @@ int main(int argc, char *argv[]) {
     }
 
 
-    //compute the bounding box
+    //compute the bounding box of all triangles in a chart
     size_t vertices_per_node = bvh->get_primitives_per_node();
     size_t size_of_vertex = bvh->get_size_of_primitive();
     
     std::vector<lamure::ren::dataset::serialized_vertex> vertices;
     vertices.resize(vertices_per_node);
 
+    //for each node in lod
     for (int node_id = 0; node_id < bvh->get_num_nodes(); node_id++) {
       
       lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
         (vertices_per_node * size_of_vertex));
 
+      //for every vertex
       for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
         int chart_id = chart_id_per_triangle[node_id*(vertices_per_node/3)+vertex_id/3];
 
@@ -778,6 +790,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    //compare all triangles with chart bounding boxes
     uint32_t first_leaf = bvh->get_first_node_id_of_depth(bvh->get_depth()-1);
     uint32_t num_leafs = bvh->get_length_of_depth(bvh->get_depth()-1);
 
@@ -791,6 +804,7 @@ int main(int argc, char *argv[]) {
           scm::math::vec3d(bvh->get_bounding_boxes()[leaf_id].min_vertex()),
           scm::math::vec3d(bvh->get_bounding_boxes()[leaf_id].max_vertex()));
 
+        //broad check that the leaf and chart intersect before checking individual triangles
         if (chart.box_.intersects(leaf_box)) {
 
           lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
@@ -804,10 +818,14 @@ int main(int argc, char *argv[]) {
             if (chart.box_.contains(v)) {
               int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+(vertex_id/3);
               // chart.all_triangle_ids_.insert(lod_tri_id);
+
+              //is it ok to add the same triangle multiple times?
             }
           }
         }
 
+        //get tri id and then chart id from lodchart list
+        //if chart is this chart, add to approriate tri list
         for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
           
           if (chart_id == chart_id_per_triangle[leaf_id*(vertices_per_node/3)+tri_id]) {
@@ -820,7 +838,7 @@ int main(int argc, char *argv[]) {
       
     }
 
-
+    //report chart parameters
     for (int chart_id = 0; chart_id < num_charts; ++chart_id) {
       auto& chart = charts[chart_id];
       std::cout << "chart id " << chart_id << std::endl;
@@ -836,19 +854,18 @@ int main(int argc, char *argv[]) {
     int total_vs = 0;
     std::ofstream ofs("data/tex_hunting/after_mesh_prepro_load2.txt");
 
+    //for each leaf triangle in lod, build a triangle struct from serialised vertices
     std::vector<triangle> triangles;
     for (uint32_t leaf_id = first_leaf; leaf_id < first_leaf+num_leafs; ++leaf_id) {
 
       lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
         (vertices_per_node * size_of_vertex));
 
-
-
+      //debug - print all vertices to file
       for (auto v : vertices){
         total_vs++;
         ofs << v.c_x_ << ", " << v.c_y_ << std::endl;
       }
-
 
       for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
 
@@ -865,20 +882,18 @@ int main(int argc, char *argv[]) {
         tri.v2_.nml_ = scm::math::vec3f(vertices[tri_id*3+2].n_x_, vertices[tri_id*3+2].n_y_, vertices[tri_id*3+2].n_z_);
         tri.v2_.old_coord_ = scm::math::vec2f(vertices[tri_id*3+2].c_x_, vertices[tri_id*3+2].c_y_);
 
-
         triangles.push_back(tri);
       }
     }
 
+    //debug only
     ofs << "total tris: " << total_vs / 3 << std::endl;
     ofs.close();
-
 
 
     std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
 
     project(charts, triangles);
-
 
     std::cout << "running rectangle packing" << std::endl;
 
@@ -986,6 +1001,73 @@ int main(int argc, char *argv[]) {
   }
 
 
+
+
+    //replacing texture coordinates in LOD file
+  std::cout << "replacing tex coords for inner nodes..." << std::endl;
+  std::string out_lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.lod";
+  std::shared_ptr<lamure::ren::lod_stream> lod_out = std::make_shared<lamure::ren::lod_stream>();
+  lod_out->open_for_writing(out_lod_filename);
+ 
+  for (uint32_t node_id = 0; node_id < first_leaf; ++node_id) { //loops only inner nodes
+
+    //load the node
+    lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
+      (vertices_per_node * size_of_vertex));
+
+    //for each vertex
+    for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+
+      auto& vertex = vertices[vertex_id];
+      const int lod_tri_id = (node_id)*(vertices_per_node/3)+(vertex_id/3);
+      const int chart_id = chart_id_per_triangle[lod_tri_id];
+      //access projection info for the relevant chart
+
+      if (chart_id != -1){
+
+        auto& proj_info = charts[chart_id].projection;
+
+      //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
+        scm::math::vec3f original_v (vertex.v_x_, vertex.v_y_, vertex.v_z_);
+        scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
+        
+        //correct by offset (so that min uv coord = 0) 
+        projected_v -= proj_info.tex_coord_offset;
+        //apply normalisation factor
+        projected_v /= proj_info.scale_factor;
+        //apply offset to correct rectangle
+        projected_v += proj_info.tex_space_rect.min_;
+
+        //TODO check projection and offsetting
+
+        //replace existing coords
+        vertex.c_x_ = projected_v.x;
+        vertex.c_y_ = projected_v.y;
+      }
+    }
+    //afterwards, write the node to new file
+    lod_out->write((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
+      (vertices_per_node * size_of_vertex));
+  }
+
+  //for all leaf nodes, we will just write the entire triangles array to disk (which stores all leaf triangles)
+  lod_out->write((char*)&triangles[0], first_leaf*vertices_per_node*size_of_vertex,
+    3 * size_of_vertex * triangles.size());
+
+  lod_out->close();
+  lod_out.reset();
+  lod->close();
+  lod.reset();
+
+  std::cout << "OUTPUT updated lod file: " << out_lod_filename << std::endl;
+
+  //write output bvh
+  std::string out_bvh_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.bvh";
+  bvh->write_bvh_file(out_bvh_filename);
+  bvh.reset();
+  std::cout << "OUTPUT updated bvh file: " << out_bvh_filename << std::endl;
+
+
   //write a file for chart projection info
   write_projection_info_file(charts, "data/chart.chartproj");
 
@@ -1024,6 +1106,10 @@ int main(int argc, char *argv[]) {
 
 
 
+
+
+
+
     //TODO:
     //-determine the chart projection plane based on these original tris
     //-perform the projection for all triangle_ids_ 
@@ -1032,11 +1118,10 @@ int main(int argc, char *argv[]) {
     //  and compute the size in the original texture atlas)
     //-then texture rendering
 
-
-
-    bvh.reset();
-    lod->close();
-    lod.reset();
+  
+  // bvh.reset();
+  // lod->close();
+  // lod.reset();
 
     return 0;
 }
