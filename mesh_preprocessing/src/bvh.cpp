@@ -450,6 +450,9 @@ void bvh::simplify(
           c->vertex()->point()[0],
           c->vertex()->point()[1],
           c->vertex()->point()[2]);
+        tri.v0_.tex_ = vec2f(
+          c->vertex()->point().get_u(),
+          c->vertex()->point().get_v());
         break;
 
         case 1: 
@@ -457,6 +460,9 @@ void bvh::simplify(
           c->vertex()->point()[0],
           c->vertex()->point()[1],
           c->vertex()->point()[2]);
+        tri.v1_.tex_ = vec2f(
+          c->vertex()->point().get_u(),
+          c->vertex()->point().get_v());
         break;
 
         case 2: 
@@ -464,6 +470,9 @@ void bvh::simplify(
           c->vertex()->point()[0],
           c->vertex()->point()[1],
           c->vertex()->point()[2]);
+        tri.v2_.tex_ = vec2f(
+          c->vertex()->point().get_u(),
+          c->vertex()->point().get_v());
         break;
 
         default: break;
@@ -528,7 +537,8 @@ void bvh::write_lod_file(const std::string& lod_filename) {
   std::cout << "completed lod file" << std::endl;
 
 // debug 
-  std::ofstream debug_ofs("data/tex_hunting/on_mesh_hier_save2.txt");
+  std::string of_path = "data/tex_hunting/on_mesh_hier_save2.txt";
+  std::ofstream debug_ofs(of_path);
   int total_tris = 0;
   for (auto& tri_list : simple_triangles_map){
     for (auto& tri : tri_list.second){
@@ -539,6 +549,7 @@ void bvh::write_lod_file(const std::string& lod_filename) {
     }
   }
   debug_ofs << "total tris: " << total_tris << std::endl;
+  std::cout << "debug file written to " << of_path << std::endl;
   debug_ofs.close();
 
 }

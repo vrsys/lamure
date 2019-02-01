@@ -499,7 +499,7 @@ rectangle pack(std::vector<rectangle>& input) {
     }
   }
 
-  save_image("texture.png", image, texture.max_.x, texture.max_.y);
+  save_image("data/mesh_prepro_texture.png", image, texture.max_.x, texture.max_.y);
 
   return texture;
 }
@@ -668,7 +668,7 @@ void glut_display() {
 
   //frame_buffer_->draw(0);
 
-  save_image("result.png", frame_buffer_);
+  save_image("data/mesh_prepro_result.png", frame_buffer_);
 
   exit(0);
 

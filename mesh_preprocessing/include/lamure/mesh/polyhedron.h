@@ -244,7 +244,12 @@ public:
       for (int v = 0; v < 3; ++v)
       {
         //get Point value
-        const XtndPoint<Kernel> tri_pnt = XtndPoint<Kernel>(tri.getVertex(v).pos_.x, tri.getVertex(v).pos_.y, tri.getVertex(v).pos_.z);
+        const XtndPoint<Kernel> tri_pnt = XtndPoint<Kernel>(
+                tri.getVertex(v).pos_.x, 
+                tri.getVertex(v).pos_.y, 
+                tri.getVertex(v).pos_.z,
+                tri.getVertex(v).tex_.x,
+                tri.getVertex(v).tex_.y);
 
         //compare point with all previous vertices
         //go backwards, neighbours are more likely to be added at the end of the list

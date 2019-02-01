@@ -131,3 +131,19 @@ Input file: data/for_uv_test/zebra.obj
 Output bvh file: data/for_uv_test/zebra.bvh
 Input file faces: 40310
 Triangle budget: 1000
+
+-------------------------------------
+Executed at 2019-02-01 09:31:27
+Ran for 0 m 1 s66 ms 
+Input file: data/for_uv_test/zebra.obj
+Output bvh file: data/for_uv_test/zebra.bvh
+Input file faces: 40310
+Triangle budget: 1000
+
+-------------------------------------
+Executed at 2019-02-01 09:34:01
+Ran for 0 m 1 s42 ms 
+Input file: data/for_uv_test/zebra.obj
+Output bvh file: data/for_uv_test/zebra.bvh
+Input file faces: 40310
+Triangle budget: 1000
