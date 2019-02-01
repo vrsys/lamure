@@ -127,6 +127,9 @@ scm::gl::sampler_state_ptr vt_filter_nearest_;
 
 scm::gl::texture_2d_ptr bg_texture_;
 
+std::string lod_mesh_texture_path_ = "";
+scm::gl::texture_2d_ptr lod_mesh_texture_;
+
 struct resource {
   uint64_t num_primitives_ {0};
   scm::gl::buffer_ptr buffer_;
@@ -268,7 +271,7 @@ struct settings {
   std::map<uint32_t, std::string> aux_;
   std::string selection_ {""};
   float max_radius_ {std::numeric_limits<float>::max()};
-
+  int color_rendering_mode {0};
 };
 
 settings settings_;
@@ -1205,6 +1208,14 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         }
         if (settings_.show_radius_deviation_) {
           shader->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
+        }
+
+
+        if("" != lod_mesh_texture_path_) {
+          context_->bind_texture(lod_mesh_texture_, filter_linear_, 10);
+          shader->uniform_sampler("in_mesh_color_texture", 10);
+
+          shader->uniform("color_rendering_mode", settings_.color_rendering_mode);
         }
 
         context_->apply();
@@ -2280,6 +2291,12 @@ class EventHandler {
         case GLFW_KEY_ESCAPE:
           glfwSetWindowShouldClose(glfw_window, GL_TRUE);
           break;
+        case GLFW_KEY_T:
+        {
+          int const NUM_COLOR_MODES = 2;
+          settings_.color_rendering_mode = (settings_.color_rendering_mode + 1) % NUM_COLOR_MODES;
+          break;
+        }
         default:
           glut_keyboard((uint8_t)key, 0, 0);
           break;
@@ -2868,6 +2885,11 @@ void init() {
     bg_texture_ = tl.load_texture_2d(*device_, settings_.background_image_, true, false);
   }
 
+  if("" != lod_mesh_texture_path_) {
+    scm::gl::texture_loader tl;
+    lod_mesh_texture_ = tl.load_texture_2d(*device_, lod_mesh_texture_path_, true, false);
+    std::cout << "Loaded LOD mesh texture: " << lod_mesh_texture_path_ << "\n";
+  }
 
 
 }
@@ -3217,8 +3239,13 @@ int main(int argc, char *argv[])
 {
     
   std::string vis_file = "";
-  if (argc == 2) {
+
+  if (argc >= 2) {
     vis_file = std::string(argv[1]);
+    //parse path to LOD mesh texture
+    if(argc > 2) {
+      lod_mesh_texture_path_ = std::string(argv[2]);
+    }
   }
   else {
     std::cout << "Usage: " << argv[0] << " <vis_file.vis>" << std::endl;

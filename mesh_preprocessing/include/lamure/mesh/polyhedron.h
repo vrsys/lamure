@@ -46,11 +46,15 @@ CUSTOM DATA STRUCTURES ===================================================
 
 */
 
+typedef CGAL::Simple_cartesian<double> Kernel;
+typedef Kernel::Vector_2 TexCoord;
+typedef Kernel::Vector_3 Vec3;
+
 template <class Refs, class Traits>
 struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
   int chart_id;
 
-  typedef typename Traits::Vector_2 TexCoord;
+  // typedef typename Traits::Vector_2 TexCoord;
   TexCoord t_coords[3];
 
   //save tex coords, assume order is the same as the added order of vertices
@@ -70,6 +74,12 @@ struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
 
 };
 
+struct UV_Candidate {
+  TexCoord tex_;
+  Vec3 v_prev;
+  Vec3 v_next;
+};
+
 //extended point class
 template <class Traits>
 struct XtndPoint : public Traits::Point_3 {
@@ -86,11 +96,17 @@ struct XtndPoint : public Traits::Point_3 {
   : Traits::Point_3(x, y, z),
     texCoord(u, v) {}
 
-  typedef typename Traits::Vector_2 TexCoord;
+  // typedef typename Traits::Vector_2 TexCoord;
   TexCoord texCoord;
 
   double get_u () const {return texCoord.hx();}
   double get_v () const {return texCoord.hy();}
+
+  std::vector<UV_Candidate> uv_candidates;
+
+  void add_uv_candidate(UV_Candidate uvc){
+    uv_candidates.push_back(uvc);
+  }
 
 
   static bool float_safe_equals(Point p1, Point p2){
@@ -129,8 +145,7 @@ struct Custom_items : public CGAL::Polyhedron_items_3 {
     };
 };
 
-typedef CGAL::Simple_cartesian<double> Kernel;
-typedef Kernel::Vector_2 TexCoord;
+
 typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
 
@@ -282,7 +297,20 @@ public:
         tris.push_back(vertex_id);
       }
     }
+
+    // assign_vertex_candidates(input_triangles, tris, vertices);
   }
+
+  // void assign_vertex_candidates(std::vector<lamure::mesh::Triangle_Chartid>& input_triangles,
+  //                                   std::vector<uint32_t>& tris,
+  //                                   std::vector<XtndPoint<Kernel> >& vertices) {
+  //   //for all vertex indices of triangles
+  //   for (int i = 0; i < tris.size(); i++){
+
+  //     //get uv and edge directions from that input_triangle
+  //     auto& 
+  //   }
+  // }
 
 };
 

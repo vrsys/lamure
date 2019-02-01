@@ -13,6 +13,16 @@ layout (location = 0) out vec4 out_color;
 
 uniform mat4 model_view_matrix;
 
+layout(binding  = 10) uniform sampler2D in_mesh_color_texture;
+
+
+/*
+  color_rendering_mode == 0 -> color coded uvs
+  color_rendering_mode == 1 -> texture color
+*/
+
+uniform int color_rendering_mode = 0;
+
 in vertex_data {
     vec4 position;
     vec4 normal;
@@ -29,9 +39,15 @@ void main() {
   vec3 nv = normalize((n*inverse(model_view_matrix)).xyz);
 
 
-  vec3 color = vec3(nv.x*0.5+0.5, nv.y*0.5+0.5, nv.z*0.5+0.5);
+  vec3 color = vec3(0.0);
+  //color = vec3(nv.x*0.5+0.5, nv.y*0.5+0.5, nv.z*0.5+0.5);
   //to test charting
-  //vec3 color = vec3(vertex_in.coord.x, vertex_in.coord.y, 0.5);
+  if(0 == color_rendering_mode) {
+    color = vec3(vertex_in.coord.x, vertex_in.coord.y, 0.5);
+  } else {
+    color = texture2D(in_mesh_color_texture, vertex_in.coord.xy).rgb;
+  }
+  
 
   OPTIONAL_BEGIN
     vec4 pos_es = model_view_matrix * vec4(vertex_in.position.xyz, 1.0f);
