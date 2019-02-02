@@ -546,6 +546,9 @@ void bvh::write_lod_file(const std::string& lod_filename) {
 
   lod->close();
 
+  std::cout << "lod file written with " << num_nodes_ << " nodes\n";
+  std::cout << primitives_per_node_ <<  " vertices per node\n";
+  std::cout << "vertex size = " << sizeof(vertex) << std::endl;
   std::cout << "completed lod file" << std::endl;
 
 // debug 

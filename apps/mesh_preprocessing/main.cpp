@@ -757,6 +757,11 @@ int main(int argc, char *argv[]) {
     std::vector<lamure::ren::dataset::serialized_vertex> vertices;
     vertices.resize(vertices_per_node);
 
+    std::cout << "lod file read with " << bvh->get_num_nodes() << " nodes\n";
+    std::cout << vertices_per_node <<  " vertices per node\n";
+    std::cout << "vertex size = " << size_of_vertex << std::endl;
+
+
     //for each node in lod
     for (int node_id = 0; node_id < bvh->get_num_nodes(); node_id++) {
       
@@ -851,8 +856,8 @@ int main(int argc, char *argv[]) {
     std::cout << "tris per node " << vertices_per_node/3 << std::endl;
 
     //Debug 
-    int total_vs = 0;
-    std::ofstream ofs("data/tex_hunting/after_mesh_prepro_load2.txt");
+    // int total_vs = 0;
+    // std::ofstream ofs("data/tex_hunting/after_mesh_prepro_load2.txt");
 
     //for each leaf triangle in lod, build a triangle struct from serialised vertices
     std::vector<triangle> triangles;
@@ -861,11 +866,7 @@ int main(int argc, char *argv[]) {
       lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
         (vertices_per_node * size_of_vertex));
 
-      //debug - print all vertices to file
-      for (auto v : vertices){
-        total_vs++;
-        ofs << v.c_x_ << ", " << v.c_y_ << std::endl;
-      }
+
 
       for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
 
@@ -886,9 +887,9 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    //debug only
-    ofs << "total tris: " << total_vs / 3 << std::endl;
-    ofs.close();
+    // //debug only
+    // ofs << "total tris: " << total_vs / 3 << std::endl;
+    // ofs.close();
 
 
     std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
@@ -1003,56 +1004,97 @@ int main(int argc, char *argv[]) {
 
 
 
+
     //replacing texture coordinates in LOD file
   std::cout << "replacing tex coords for inner nodes..." << std::endl;
   std::string out_lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.lod";
   std::shared_ptr<lamure::ren::lod_stream> lod_out = std::make_shared<lamure::ren::lod_stream>();
   lod_out->open_for_writing(out_lod_filename);
  
-  for (uint32_t node_id = 0; node_id < first_leaf; ++node_id) { //loops only inner nodes
+  for (uint32_t node_id = 0; node_id < bvh->get_num_nodes(); ++node_id) { //loops only inner nodes
 
     //load the node
     lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
       (vertices_per_node * size_of_vertex));
 
-    //for each vertex
-    for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+          //debug - print all vertices to file
+      // for (auto v : vertices){
+      //   total_vs++;
+      //   ofs << v.c_x_ << ", " << v.c_y_ << std::endl;
+      // }
 
-      auto& vertex = vertices[vertex_id];
-      const int lod_tri_id = (node_id)*(vertices_per_node/3)+(vertex_id/3);
-      const int chart_id = chart_id_per_triangle[lod_tri_id];
-      //access projection info for the relevant chart
+    //if leaf node, just replace tex coord from corresponding triangle
+    if (node_id >= first_leaf && node_id < (first_leaf+num_leafs) ){
+      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+        const int tri_id = ((node_id - first_leaf)*(vertices_per_node/3))+(vertex_id/3);
 
-      if (chart_id != -1){
+        switch (vertex_id % 3) {
+          case 0:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v0_.new_coord_.x;
+            vertices[vertex_id].c_y_ = triangles[tri_id].v0_.new_coord_.y;
+            break;
+          }
+          case 1:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v1_.new_coord_.x;
+            vertices[vertex_id].c_y_ = triangles[tri_id].v1_.new_coord_.y;
+            break;
+          }
+          case 2:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v2_.new_coord_.x;
+            vertices[vertex_id].c_y_ = triangles[tri_id].v2_.new_coord_.y;
+            break;
+          }
+          default:
+          break;
+        }
 
-        auto& proj_info = charts[chart_id].projection;
+      }
 
-      //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
-        scm::math::vec3f original_v (vertex.v_x_, vertex.v_y_, vertex.v_z_);
-        scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
-        
-        //correct by offset (so that min uv coord = 0) 
-        projected_v -= proj_info.tex_coord_offset;
-        //apply normalisation factor
-        projected_v /= proj_info.scale_factor;
-        //apply offset to correct rectangle
-        projected_v += proj_info.tex_space_rect.min_;
+    }
 
-        //TODO check projection and offsetting
+    //if inner node, project vertices onto plane to get tex coords 
+    else
+    {
+      //for each vertex
+      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
 
-        //replace existing coords
-        vertex.c_x_ = projected_v.x;
-        vertex.c_y_ = projected_v.y;
+        auto& vertex = vertices[vertex_id];
+        const int lod_tri_id = (node_id)*(vertices_per_node/3)+(vertex_id/3);
+        const int chart_id = chart_id_per_triangle[lod_tri_id];
+        //access projection info for the relevant chart
+
+        if (chart_id != -1){
+
+          auto& proj_info = charts[chart_id].projection;
+
+        //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
+          scm::math::vec3f original_v (vertex.v_x_, vertex.v_y_, vertex.v_z_);
+          scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
+          
+          //correct by offset (so that min uv coord = 0) 
+          projected_v -= proj_info.tex_coord_offset;
+          //apply normalisation factor
+          projected_v /= proj_info.scale_factor;
+          //apply offset to correct rectangle
+          projected_v += proj_info.tex_space_rect.min_;
+
+          //TODO check projection and offsetting
+
+          //replace existing coords
+          vertex.c_x_ = projected_v.x;
+          vertex.c_y_ = projected_v.y;
+        }
       }
     }
+
+
     //afterwards, write the node to new file
     lod_out->write((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
       (vertices_per_node * size_of_vertex));
   }
-
-  //for all leaf nodes, we will just write the entire triangles array to disk (which stores all leaf triangles)
-  lod_out->write((char*)&triangles[0], first_leaf*vertices_per_node*size_of_vertex,
-    3 * size_of_vertex * triangles.size());
 
   lod_out->close();
   lod_out.reset();
