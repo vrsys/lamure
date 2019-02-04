@@ -237,24 +237,22 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     // std::cout << "  avg_n: (" << avg_normal.x << " " << avg_normal.y << " " << avg_normal.z << ")" << std::endl;
     // std::cout << "  centr: (" << centroid.x << " " << centroid.y << " " << centroid.z << ")" << std::endl;
 
-
-
-
     avg_normal = scm::math::normalize(avg_normal);
+    
+    //compute world up vector
     scm::math::vec3f world_up(0.f, 1.f, 0.f);
     if (std::abs(scm::math::dot(world_up, avg_normal)) > 0.8f) {
       world_up = scm::math::vec3f(0.f, 0.f, 1.f);
     }
 
-    //record centroid, projection normal and world up for rendering from texture later on
+    //record centroid, projection normal and world up for calculating inner triangle UVs later on
     chart.projection.proj_centroid = centroid;
     chart.projection.proj_normal = avg_normal;
     chart.projection.proj_world_up = world_up;
 
     //project all vertices into that plane
-    //for (int i = 0; i < chart.all_triangle_ids_.size(); ++i) {
     for (auto tri_id : chart.all_triangle_ids_) {
-      //int tri_id = chart.triangle_ids_[i];
+
       triangle& tri = triangles[tri_id];
 
       scm::math::vec2f projected_v0 = project_to_plane(tri.v0_.pos_, avg_normal, centroid, world_up);
@@ -305,6 +303,7 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     chart.projection.tex_coord_offset.x = chart.rect_.min_.x;
     chart.projection.tex_coord_offset.y = chart.rect_.min_.y;
 
+    //shift min to the origin
     chart.rect_.max_.x -= chart.rect_.min_.x;
     chart.rect_.max_.y -= chart.rect_.min_.y;
 
@@ -312,13 +311,10 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     largest_max = std::max(largest_max, chart.rect_.max_.x);
     largest_max = std::max(largest_max, chart.rect_.max_.y);
 
-    //record scaling factor
-    chart.projection.scale_factor = largest_max;
+
 
 
     // shift projected coordinates to min = 0
-    //for (int i = 0; i < chart.all_triangle_ids_.size(); ++i) {
-      //int tri_id = chart.triangle_ids_[i];
     for (auto tri_id : chart.all_triangle_ids_) {
       triangle& tri = triangles[tri_id];
 
@@ -345,8 +341,6 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     chart& chart = charts[chart_id];
     
     // normalize largest_max to 1
-    //for (int i = 0; i < chart.triangle_ids_.size(); ++i) {
-      //int tri_id = chart.triangle_ids_[i];
     for (auto tri_id : chart.all_triangle_ids_) {
       triangle& tri = triangles[tri_id];
 
@@ -407,7 +401,7 @@ bool sort_by_height (rectangle i, rectangle j){
 rectangle pack(std::vector<rectangle>& input) {
 
   //make sure all rectangles stand on the shorter side
-  for(int i=0; i< input.size(); i++){
+  for(uint32_t i=0; i< input.size(); i++){
     auto& rect=input[i];
     if ((rect.max_.x-rect.min_.x) > (rect.max_.y - rect.min_.y)){
       float temp = rect.max_.y;
@@ -482,7 +476,7 @@ rectangle pack(std::vector<rectangle>& input) {
     // std::cout<< "rectangle["<< rect.id_<< "]"<<"  max("<< rect.max_.x<< " ,"<<rect.max_.y<<")"<<std::endl;
   }
 
-
+  //output test image for rectangle packing
   std::vector<unsigned char> image;
   image.resize(texture.max_.x*texture.max_.y*4);
   for (int i = 0; i < image.size()/4; ++i) {
@@ -504,7 +498,6 @@ rectangle pack(std::vector<rectangle>& input) {
       }
     }
   }
-
   save_image("data/mesh_prepro_texture.png", image, texture.max_.x, texture.max_.y);
 
   return texture;
@@ -796,8 +789,12 @@ int main(int argc, char *argv[]) {
     }
 
     //compare all triangles with chart bounding boxes
-    uint32_t first_leaf = bvh->get_first_node_id_of_depth(bvh->get_depth()-1);
-    uint32_t num_leafs = bvh->get_length_of_depth(bvh->get_depth()-1);
+    // uint32_t first_leaf = bvh->get_first_node_id_of_depth(bvh->get_depth()-1);
+    // uint32_t num_leafs = bvh->get_length_of_depth(bvh->get_depth()-1);
+
+
+    uint32_t first_leaf = bvh->get_first_node_id_of_depth(bvh->get_depth());
+    uint32_t num_leafs = bvh->get_length_of_depth(bvh->get_depth());
 
     for (int chart_id = 0; chart_id < num_charts; ++chart_id) {
 
@@ -830,7 +827,7 @@ int main(int argc, char *argv[]) {
         }
 
         //get tri id and then chart id from lodchart list
-        //if chart is this chart, add to approriate tri list
+        //if chart is this chart, add to appropriate tri list
         for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
           
           if (chart_id == chart_id_per_triangle[leaf_id*(vertices_per_node/3)+tri_id]) {
@@ -866,8 +863,6 @@ int main(int argc, char *argv[]) {
       lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
         (vertices_per_node * size_of_vertex));
 
-
-
       for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
 
         triangle tri;
@@ -898,7 +893,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "running rectangle packing" << std::endl;
 
-    float scale = 400.f;
+    const float scale = 400.f;
 
     //scale the rectangles
     std::vector<rectangle> rects;
@@ -916,13 +911,140 @@ int main(int argc, char *argv[]) {
     //apply rectangles
     for (const auto& rect : rects) {
       charts[rect.id_].rect_ = rect;
+
       charts[rect.id_].projection.tex_space_rect = rect;//save for rendering from texture later on
+      charts[rect.id_].projection.scale_factor = scale;
     }
 
 
 
-  //apply new coordinates and pack tris
 
+    //replacing texture coordinates in LOD file
+  std::cout << "replacing tex coords for inner nodes..." << std::endl;
+  std::string out_lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.lod";
+  std::shared_ptr<lamure::ren::lod_stream> lod_out = std::make_shared<lamure::ren::lod_stream>();
+  lod_out->open_for_writing(out_lod_filename);
+
+      //Debug 
+    int total_vs = 0;
+    std::ofstream ofs("data/tex_hunting/final_leaf_tex_coords.txt");
+
+    std::cout << "bvh ddepth = " << bvh->get_depth();
+ 
+  for (uint32_t node_id = 0; node_id < bvh->get_num_nodes(); ++node_id) { //loops only inner nodes
+
+    //load the node
+    lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
+      (vertices_per_node * size_of_vertex));
+
+
+
+    //if leaf node, just replace tex coord from corresponding triangle
+    if (node_id >= first_leaf && node_id < (first_leaf+num_leafs) ){
+
+      // std::cout << "depth of 'leaf node' = " << bvh->get_depth_of_node(node_id) << std::endl;
+
+      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+        const int tri_id = ((node_id - first_leaf)*(vertices_per_node/3))+(vertex_id/3);
+
+        switch (vertex_id % 3) {
+          case 0:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v0_.new_coord_.x;
+            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v0_.new_coord_.y;
+            break;
+          }
+          case 1:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v1_.new_coord_.x;
+            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v1_.new_coord_.y;
+            break;
+          }
+          case 2:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v2_.new_coord_.x;
+            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v2_.new_coord_.y;
+            break;
+          }
+          default:
+          break;
+        }
+
+      }
+
+                //debug - print all vertices to file
+      for (auto v : vertices){
+        total_vs++;
+        ofs << v.c_x_ << ", " << v.c_y_ << std::endl;
+      }
+
+    }
+
+    //if inner node, project vertices onto plane to get tex coords 
+    else
+    {
+
+      // std::cout << "depth of non leaf node = " << bvh->get_depth_of_node(node_id) << std::endl;
+
+
+      //for each vertex
+      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+
+        auto& vertex = vertices[vertex_id];
+        const int lod_tri_id = (node_id)*(vertices_per_node/3)+(vertex_id/3);
+        const int chart_id = chart_id_per_triangle[lod_tri_id];
+        //access projection info for the relevant chart
+
+        if (chart_id != -1){
+
+          auto& proj_info = charts[chart_id].projection;
+
+        //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
+          scm::math::vec3f original_v (vertex.v_x_, vertex.v_y_, vertex.v_z_);
+          scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
+          
+          //correct by offset (so that min uv coord = 0) 
+          projected_v -= proj_info.tex_coord_offset;
+          //apply normalisation factor
+          projected_v /= proj_info.scale_factor;
+          //apply offset to correct rectangle
+          projected_v += proj_info.tex_space_rect.min_;
+
+          //TODO check projection and offsetting
+
+          //replace existing coords
+          vertex.c_x_ = projected_v.x;
+          vertex.c_y_ = projected_v.y;  
+
+        }
+      }
+    }
+
+
+    //afterwards, write the node to new file
+    lod_out->write((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
+      (vertices_per_node * size_of_vertex));
+  }
+
+      // //debug only
+    ofs << "total tris: " << total_vs / 3 << std::endl;
+    ofs.close();
+
+  lod_out->close();
+  lod_out.reset();
+  lod->close();
+  lod.reset();
+
+  std::cout << "OUTPUT updated lod file: " << out_lod_filename << std::endl;
+
+  //write output bvh
+  std::string out_bvh_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.bvh";
+  bvh->write_bvh_file(out_bvh_filename);
+  bvh.reset();
+  std::cout << "OUTPUT updated bvh file: " << out_bvh_filename << std::endl;
+
+
+  //apply new coordinates and pack tris
 
   //pack tris
   std::vector<blit_vertex> to_upload;
@@ -1003,111 +1125,6 @@ int main(int argc, char *argv[]) {
 
 
 
-
-
-    //replacing texture coordinates in LOD file
-  std::cout << "replacing tex coords for inner nodes..." << std::endl;
-  std::string out_lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.lod";
-  std::shared_ptr<lamure::ren::lod_stream> lod_out = std::make_shared<lamure::ren::lod_stream>();
-  lod_out->open_for_writing(out_lod_filename);
- 
-  for (uint32_t node_id = 0; node_id < bvh->get_num_nodes(); ++node_id) { //loops only inner nodes
-
-    //load the node
-    lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
-      (vertices_per_node * size_of_vertex));
-
-          //debug - print all vertices to file
-      // for (auto v : vertices){
-      //   total_vs++;
-      //   ofs << v.c_x_ << ", " << v.c_y_ << std::endl;
-      // }
-
-    //if leaf node, just replace tex coord from corresponding triangle
-    if (node_id >= first_leaf && node_id < (first_leaf+num_leafs) ){
-      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
-        const int tri_id = ((node_id - first_leaf)*(vertices_per_node/3))+(vertex_id/3);
-
-        switch (vertex_id % 3) {
-          case 0:
-          {
-            vertices[vertex_id].c_x_ = triangles[tri_id].v0_.new_coord_.x;
-            vertices[vertex_id].c_y_ = triangles[tri_id].v0_.new_coord_.y;
-            break;
-          }
-          case 1:
-          {
-            vertices[vertex_id].c_x_ = triangles[tri_id].v1_.new_coord_.x;
-            vertices[vertex_id].c_y_ = triangles[tri_id].v1_.new_coord_.y;
-            break;
-          }
-          case 2:
-          {
-            vertices[vertex_id].c_x_ = triangles[tri_id].v2_.new_coord_.x;
-            vertices[vertex_id].c_y_ = triangles[tri_id].v2_.new_coord_.y;
-            break;
-          }
-          default:
-          break;
-        }
-
-      }
-
-    }
-
-    //if inner node, project vertices onto plane to get tex coords 
-    else
-    {
-      //for each vertex
-      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
-
-        auto& vertex = vertices[vertex_id];
-        const int lod_tri_id = (node_id)*(vertices_per_node/3)+(vertex_id/3);
-        const int chart_id = chart_id_per_triangle[lod_tri_id];
-        //access projection info for the relevant chart
-
-        if (chart_id != -1){
-
-          auto& proj_info = charts[chart_id].projection;
-
-        //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
-          scm::math::vec3f original_v (vertex.v_x_, vertex.v_y_, vertex.v_z_);
-          scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
-          
-          //correct by offset (so that min uv coord = 0) 
-          projected_v -= proj_info.tex_coord_offset;
-          //apply normalisation factor
-          projected_v /= proj_info.scale_factor;
-          //apply offset to correct rectangle
-          projected_v += proj_info.tex_space_rect.min_;
-
-          //TODO check projection and offsetting
-
-          //replace existing coords
-          vertex.c_x_ = projected_v.x;
-          vertex.c_y_ = projected_v.y;
-        }
-      }
-    }
-
-
-    //afterwards, write the node to new file
-    lod_out->write((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
-      (vertices_per_node * size_of_vertex));
-  }
-
-  lod_out->close();
-  lod_out.reset();
-  lod->close();
-  lod.reset();
-
-  std::cout << "OUTPUT updated lod file: " << out_lod_filename << std::endl;
-
-  //write output bvh
-  std::string out_bvh_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.bvh";
-  bvh->write_bvh_file(out_bvh_filename);
-  bvh.reset();
-  std::cout << "OUTPUT updated bvh file: " << out_bvh_filename << std::endl;
 
 
   //write a file for chart projection info
