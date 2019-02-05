@@ -52,7 +52,7 @@ struct projection_info {
   rectangle tex_space_rect;
   scm::math::vec2f tex_coord_offset;
 
-  float scale_factor;
+  float largest_max;
 };
 
 struct chart {
@@ -117,8 +117,6 @@ int load_chart_file(std::string chart_file, std::vector<int>& chart_id_per_trian
       int chart_id = atoi(chart_id_str.c_str());
       num_charts = std::max(num_charts, chart_id+1);
       chart_id_per_triangle.push_back(chart_id);
-
-      //std::cout << chart_id << std::endl;
     }
   }
 
@@ -158,15 +156,6 @@ scm::math::vec2f project_to_plane(
     v.y - centroid.y,
     v.z - centroid.z);
 
-  //determine tangential coordinate frame before projection
-
-  //commented out because calculation of world up and normalisation of plane_normal is now done before calling this function
-  // plane_normal = scm::math::normalize(plane_normal);
-  // scm::math::vec3f world_up(0.f, 1.f, 0.f);
-  // if (std::abs(scm::math::dot(world_up, plane_normal)) > 0.8f) {
-  //   world_up = scm::math::vec3f(0.f, 0.f, 1.f);
-  // }
-
   auto plane_right = scm::math::cross(plane_normal, world_up);
   plane_right = scm::math::normalize(plane_right);
   auto plane_up = scm::math::cross(plane_normal, plane_right);
@@ -187,17 +176,19 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
   //keep a record of the largest chart edge
   float largest_max = 0.f;
 
+
+  std::cout << "Projecting to plane:\n";
+
   //iterate all charts
-  for (int chart_id = 0; chart_id < charts.size(); ++chart_id) {
+  for (uint32_t chart_id = 0; chart_id < charts.size(); ++chart_id) {
     chart& chart = charts[chart_id];
 
     scm::math::vec3f avg_normal(0.f, 0.f, 0.f);
     scm::math::vec3f centroid(0.f, 0.f, 0.f);
 
     // compute average normal and centroid
-    //for (int i = 0; i < chart.all_triangle_ids_.size(); ++i) {
     for (auto tri_id : chart.all_triangle_ids_) {
-      //int tri_id = chart.all_triangle_ids_[i];
+
       triangle& tri = triangles[tri_id];
 
       avg_normal.x += tri.v0_.nml_.x;
@@ -250,6 +241,7 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     chart.projection.proj_normal = avg_normal;
     chart.projection.proj_world_up = world_up;
 
+
     //project all vertices into that plane
     for (auto tri_id : chart.all_triangle_ids_) {
 
@@ -279,8 +271,6 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     chart.rect_.max_.y = std::numeric_limits<float>::lowest();
 
     //compute the bounding rectangle for each chart
-    //for (int i = 0; i < chart.triangle_ids_.size(); ++i) {
-      //int tri_id = chart.triangle_ids_[i];
     for (auto tri_id : chart.all_triangle_ids_) {
       triangle& tri = triangles[tri_id];
 
@@ -334,9 +324,13 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     chart.rect_.min_.x = 0.f;
     chart.rect_.min_.y = 0.f;
 
+
+    // std::cout << "chart " << chart_id << " rect min: " << chart.rect_.min_.x << ", " << chart.rect_.min_.y << std::endl;
+    // std::cout << "chart " << chart_id << " rect max: " << chart.rect_.max_.x << ", " << chart.rect_.max_.y << std::endl;
+
   }
 
-  // normalize charts but keep relative size
+  std::cout << "normalize charts but keep relative size:\n";
   for (int chart_id = 0; chart_id < charts.size(); ++chart_id) {
     chart& chart = charts[chart_id];
     
@@ -354,6 +348,8 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
 
     chart.rect_.max_.x /= largest_max;
     chart.rect_.max_.y /= largest_max;
+
+    chart.projection.largest_max = largest_max;
 
     // std::cout << "chart " << chart_id << " rect min: " << chart.rect_.min_.x << ", " << chart.rect_.min_.y << std::endl;
     // std::cout << "chart " << chart_id << " rect max: " << chart.rect_.max_.x << ", " << chart.rect_.max_.y << std::endl;
@@ -426,7 +422,7 @@ rectangle pack(std::vector<rectangle>& input) {
 
   //compute the average height of all rects
   float sum = 0.f;
-  for (int i=0; i<input.size(); i++){
+  for (uint32_t i=0; i<input.size(); i++){
     sum+= input[i].max_.y-input[i].min_.y; 
   }
   float average_height = sum/((float)input.size());
@@ -472,8 +468,8 @@ rectangle pack(std::vector<rectangle>& input) {
   //print the result
   for (int i=0; i< input.size(); i++){
     auto& rect = input[i];
-    // std::cout<< "rectangle["<< rect.id_<< "]"<<"  min("<< rect.min_.x<<" ,"<< rect.min_.y<<")"<<std::endl;
-    // std::cout<< "rectangle["<< rect.id_<< "]"<<"  max("<< rect.max_.x<< " ,"<<rect.max_.y<<")"<<std::endl;
+    std::cout<< "rectangle["<< rect.id_<< "]"<<"  min("<< rect.min_.x<<" ,"<< rect.min_.y<<")"<<std::endl;
+    std::cout<< "rectangle["<< rect.id_<< "]"<<"  max("<< rect.max_.x<< " ,"<<rect.max_.y<<")"<<std::endl;
   }
 
   //output test image for rectangle packing
@@ -504,36 +500,24 @@ rectangle pack(std::vector<rectangle>& input) {
 }
 
 
-void write_projection_info_file(std::vector<chart>& charts, std::string outfile_name){
+// void write_projection_info_file(std::vector<chart>& charts, std::string outfile_name){
+
+//   std::ofstream ofs( outfile_name, std::ios::binary);
+
+//   //write number of charts
+//   uint32_t num_charts = charts.size();
+//   ofs.write((char*) &num_charts, sizeof(num_charts));
 
 
-  //for testing
-  // for (uint32_t i = 0; i < charts.size(); ++i)
-  // {
-  //   projection_info proj = charts[i].projection;
-  //   std::cout << "Proj centroid = [" << proj.proj_centroid.x << ", " << proj.proj_centroid.y << ", " << proj.proj_centroid.z << "]\n";
-  //   std::cout << "Proj normal = [" << proj.proj_normal.x << ", " << proj.proj_normal.y << ", " << proj.proj_normal.z << "]\n";
-  //   std::cout << "Proj world up = [" << proj.proj_world_up.x << ", " << proj.proj_world_up.y << ", " << proj.proj_world_up.z << "]\n"; 
-    
-  //   std::cout << "Tex coord offset = [" << proj.tex_coord_offset.x << ", " << proj.tex_coord_offset.y << "]" << std::endl;
-  // }
+//   for (auto& chart : charts)
+//   {
+//     ofs.write((char*) &(chart.projection), sizeof(projection_info));
+//   }
 
-  std::ofstream ofs( outfile_name, std::ios::binary);
+//   ofs.close();
 
-  //write number of charts
-  uint32_t num_charts = charts.size();
-  ofs.write((char*) &num_charts, sizeof(num_charts));
-
-
-  for (auto& chart : charts)
-  {
-    ofs.write((char*) &(chart.projection), sizeof(projection_info));
-  }
-
-  ofs.close();
-
-  std::cout << "Wrote projection file to " << outfile_name << std::endl;
-}
+//   std::cout << "Wrote projection file to " << outfile_name << std::endl;
+// }
 
 
 //subroutine for error-checking during shader compilation
@@ -756,7 +740,7 @@ int main(int argc, char *argv[]) {
 
 
     //for each node in lod
-    for (int node_id = 0; node_id < bvh->get_num_nodes(); node_id++) {
+    for (uint32_t node_id = 0; node_id < bvh->get_num_nodes(); node_id++) {
       
       lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
         (vertices_per_node * size_of_vertex));
@@ -789,10 +773,6 @@ int main(int argc, char *argv[]) {
     }
 
     //compare all triangles with chart bounding boxes
-    // uint32_t first_leaf = bvh->get_first_node_id_of_depth(bvh->get_depth()-1);
-    // uint32_t num_leafs = bvh->get_length_of_depth(bvh->get_depth()-1);
-
-
     uint32_t first_leaf = bvh->get_first_node_id_of_depth(bvh->get_depth());
     uint32_t num_leafs = bvh->get_length_of_depth(bvh->get_depth());
 
@@ -806,25 +786,26 @@ int main(int argc, char *argv[]) {
           scm::math::vec3d(bvh->get_bounding_boxes()[leaf_id].min_vertex()),
           scm::math::vec3d(bvh->get_bounding_boxes()[leaf_id].max_vertex()));
 
-        //broad check that the leaf and chart intersect before checking individual triangles
-        if (chart.box_.intersects(leaf_box)) {
+        //disabled - adding any triangles that intersect chart projection
+        // //broad check that the leaf and chart intersect before checking individual triangles
+        // if (chart.box_.intersects(leaf_box)) {
 
-          lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
-            (vertices_per_node * size_of_vertex));
+        //   lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
+        //     (vertices_per_node * size_of_vertex));
 
-          for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
-            const auto& vertex = vertices[vertex_id];
-            scm::math::vec3d v(vertex.v_x_, vertex.v_y_, vertex.v_z_);
+        //   for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+        //     const auto& vertex = vertices[vertex_id];
+        //     scm::math::vec3d v(vertex.v_x_, vertex.v_y_, vertex.v_z_);
 
-            //find out if this triangle intersects the chart box
-            if (chart.box_.contains(v)) {
-              int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+(vertex_id/3);
-              // chart.all_triangle_ids_.insert(lod_tri_id);
+        //     //find out if this triangle intersects the chart box
+        //     if (chart.box_.contains(v)) {
+        //       int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+(vertex_id/3);
+        //       // chart.all_triangle_ids_.insert(lod_tri_id);
 
-              //is it ok to add the same triangle multiple times?
-            }
-          }
-        }
+        //       //is it ok to add the same triangle multiple times?
+        //     }
+        //   }
+        // }
 
         //get tri id and then chart id from lodchart list
         //if chart is this chart, add to appropriate tri list
@@ -832,7 +813,6 @@ int main(int argc, char *argv[]) {
           
           if (chart_id == chart_id_per_triangle[leaf_id*(vertices_per_node/3)+tri_id]) {
             int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+tri_id;
-            // chart.original_triangle_ids_.insert(lod_tri_id);
             chart.all_triangle_ids_.insert(lod_tri_id);
           }
         }
@@ -852,9 +832,6 @@ int main(int argc, char *argv[]) {
 
     std::cout << "tris per node " << vertices_per_node/3 << std::endl;
 
-    //Debug 
-    // int total_vs = 0;
-    // std::ofstream ofs("data/tex_hunting/after_mesh_prepro_load2.txt");
 
     //for each leaf triangle in lod, build a triangle struct from serialised vertices
     std::vector<triangle> triangles;
@@ -882,11 +859,6 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // //debug only
-    // ofs << "total tris: " << total_vs / 3 << std::endl;
-    // ofs.close();
-
-
     std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
 
     project(charts, triangles);
@@ -913,135 +885,10 @@ int main(int argc, char *argv[]) {
       charts[rect.id_].rect_ = rect;
 
       charts[rect.id_].projection.tex_space_rect = rect;//save for rendering from texture later on
-      charts[rect.id_].projection.scale_factor = scale;
     }
 
 
 
-
-    //replacing texture coordinates in LOD file
-  std::cout << "replacing tex coords for inner nodes..." << std::endl;
-  std::string out_lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.lod";
-  std::shared_ptr<lamure::ren::lod_stream> lod_out = std::make_shared<lamure::ren::lod_stream>();
-  lod_out->open_for_writing(out_lod_filename);
-
-      //Debug 
-    int total_vs = 0;
-    std::ofstream ofs("data/tex_hunting/final_leaf_tex_coords.txt");
-
-    std::cout << "bvh ddepth = " << bvh->get_depth();
- 
-  for (uint32_t node_id = 0; node_id < bvh->get_num_nodes(); ++node_id) { //loops only inner nodes
-
-    //load the node
-    lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
-      (vertices_per_node * size_of_vertex));
-
-
-
-    //if leaf node, just replace tex coord from corresponding triangle
-    if (node_id >= first_leaf && node_id < (first_leaf+num_leafs) ){
-
-      // std::cout << "depth of 'leaf node' = " << bvh->get_depth_of_node(node_id) << std::endl;
-
-      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
-        const int tri_id = ((node_id - first_leaf)*(vertices_per_node/3))+(vertex_id/3);
-
-        switch (vertex_id % 3) {
-          case 0:
-          {
-            vertices[vertex_id].c_x_ = triangles[tri_id].v0_.new_coord_.x;
-            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v0_.new_coord_.y;
-            break;
-          }
-          case 1:
-          {
-            vertices[vertex_id].c_x_ = triangles[tri_id].v1_.new_coord_.x;
-            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v1_.new_coord_.y;
-            break;
-          }
-          case 2:
-          {
-            vertices[vertex_id].c_x_ = triangles[tri_id].v2_.new_coord_.x;
-            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v2_.new_coord_.y;
-            break;
-          }
-          default:
-          break;
-        }
-
-      }
-
-                //debug - print all vertices to file
-      for (auto v : vertices){
-        total_vs++;
-        ofs << v.c_x_ << ", " << v.c_y_ << std::endl;
-      }
-
-    }
-
-    //if inner node, project vertices onto plane to get tex coords 
-    else
-    {
-
-      // std::cout << "depth of non leaf node = " << bvh->get_depth_of_node(node_id) << std::endl;
-
-
-      //for each vertex
-      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
-
-        auto& vertex = vertices[vertex_id];
-        const int lod_tri_id = (node_id)*(vertices_per_node/3)+(vertex_id/3);
-        const int chart_id = chart_id_per_triangle[lod_tri_id];
-        //access projection info for the relevant chart
-
-        if (chart_id != -1){
-
-          auto& proj_info = charts[chart_id].projection;
-
-        //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
-          scm::math::vec3f original_v (vertex.v_x_, vertex.v_y_, vertex.v_z_);
-          scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
-          
-          //correct by offset (so that min uv coord = 0) 
-          projected_v -= proj_info.tex_coord_offset;
-          //apply normalisation factor
-          projected_v /= proj_info.scale_factor;
-          //apply offset to correct rectangle
-          projected_v += proj_info.tex_space_rect.min_;
-
-          //TODO check projection and offsetting
-
-          //replace existing coords
-          vertex.c_x_ = projected_v.x;
-          vertex.c_y_ = projected_v.y;  
-
-        }
-      }
-    }
-
-
-    //afterwards, write the node to new file
-    lod_out->write((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
-      (vertices_per_node * size_of_vertex));
-  }
-
-      // //debug only
-    ofs << "total tris: " << total_vs / 3 << std::endl;
-    ofs.close();
-
-  lod_out->close();
-  lod_out.reset();
-  lod->close();
-  lod.reset();
-
-  std::cout << "OUTPUT updated lod file: " << out_lod_filename << std::endl;
-
-  //write output bvh
-  std::string out_bvh_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.bvh";
-  bvh->write_bvh_file(out_bvh_filename);
-  bvh.reset();
-  std::cout << "OUTPUT updated bvh file: " << out_bvh_filename << std::endl;
 
 
   //apply new coordinates and pack tris
@@ -1053,8 +900,6 @@ int main(int argc, char *argv[]) {
     chart& chart = charts[chart_id];
     rectangle& rect = chart.rect_;
 
-    //for (int i = 0; i < chart.triangle_ids_.size(); ++i) {
-      //int tri_id = chart.triangle_ids_[i];
     for (auto tri_id : chart.all_triangle_ids_) {
 
 
@@ -1124,15 +969,118 @@ int main(int argc, char *argv[]) {
   }
 
 
+    //replacing texture coordinates in LOD file
+  std::cout << "replacing tex coords for inner nodes..." << std::endl;
+  std::string out_lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.lod";
+  std::shared_ptr<lamure::ren::lod_stream> lod_out = std::make_shared<lamure::ren::lod_stream>();
+  lod_out->open_for_writing(out_lod_filename);
+ 
+  for (uint32_t node_id = 0; node_id < bvh->get_num_nodes(); ++node_id) { //loops only inner nodes
 
+    //load the node
+    lod->read((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
+      (vertices_per_node * size_of_vertex));
 
+    //if leaf node, just replace tex coord from corresponding triangle
+    if (node_id >= first_leaf && node_id < (first_leaf+num_leafs) ){
 
-  //write a file for chart projection info
-  write_projection_info_file(charts, "data/chart.chartproj");
+      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+        const int tri_id = ((node_id - first_leaf)*(vertices_per_node/3))+(vertex_id/3);
+
+        switch (vertex_id % 3) {
+          case 0:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v0_.new_coord_.x;
+            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v0_.new_coord_.y;
+            break;
+          }
+          case 1:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v1_.new_coord_.x;
+            vertices[vertex_id].c_y_ = 1.0 -  triangles[tri_id].v1_.new_coord_.y;
+            break;
+          }
+          case 2:
+          {
+            vertices[vertex_id].c_x_ = triangles[tri_id].v2_.new_coord_.x;
+            vertices[vertex_id].c_y_ = 1.0 - triangles[tri_id].v2_.new_coord_.y;
+            break;
+          }
+          default:
+          break;
+        }
+
+      }
+    }
+
+    // if inner node, project vertices onto plane to get tex coords 
+    else
+    {
+      //for each vertex
+      for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+
+        auto& vertex = vertices[vertex_id];
+        const int lod_tri_id = (node_id)*(vertices_per_node/3)+(vertex_id/3);
+        const int chart_id = chart_id_per_triangle[lod_tri_id];
+        //access projection info for the relevant chart
+
+        if (chart_id != -1){
+
+          auto& proj_info = charts[chart_id].projection;
+          rectangle& rect = charts[chart_id].rect_;
+
+           //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
+          scm::math::vec3f original_v (vertex.v_x_, vertex.v_y_, vertex.v_z_);
+          scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
+          
+          //correct by offset (so that min uv coord = 0) 
+          projected_v -= proj_info.tex_coord_offset;
+          //apply normalisation factor
+          projected_v /= proj_info.largest_max;
+          //flip if needed
+          if (rect.flipped_)
+          {
+            float temp = projected_v.x;
+            projected_v.x = projected_v.y;
+            projected_v.y = temp;
+          }
+          //scale
+          projected_v *= scale;
+          //offset position in texture
+          projected_v += rect.min_;
+          //scale down to normalised image space
+          projected_v /= image.max_;
+          //flip y coord
+          projected_v.y = 1.0 - projected_v.y; 
+
+          //replace existing coords in vertex array
+          vertex.c_x_ = projected_v.x;
+          vertex.c_y_ = projected_v.y;  
+
+        }
+      }
+    }
+    //afterwards, write the node to new file
+    lod_out->write((char*)&vertices[0], (vertices_per_node*node_id*size_of_vertex),
+      (vertices_per_node * size_of_vertex));
+  }
+
+  lod_out->close();
+  lod_out.reset();
+  lod->close();
+  lod.reset();
+
+  std::cout << "OUTPUT updated lod file: " << out_lod_filename << std::endl;
+
+  //write output bvh
+  std::string out_bvh_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.bvh";
+  bvh->write_bvh_file(out_bvh_filename);
+  bvh.reset();
+  std::cout << "OUTPUT updated bvh file: " << out_bvh_filename << std::endl;
+
 
   //load the texture png file
   texture_ = load_image(texture_filename);
-
 
   frame_buffer_ = std::make_shared<frame_buffer_t>(1, window_width_, window_height_, GL_RGBA, GL_LINEAR);
 
@@ -1159,28 +1107,6 @@ int main(int argc, char *argv[]) {
 
   //start the main loop (which mainly calls the glutDisplayFunc)
   glutMainLoop();
-
-
-
-
-
-
-
-
-
-
-    //TODO:
-    //-determine the chart projection plane based on these original tris
-    //-perform the projection for all triangle_ids_ 
-    //-perform rectangle packing
-    // (determine required new texture size by picking representative triangles
-    //  and compute the size in the original texture atlas)
-    //-then texture rendering
-
-  
-  // bvh.reset();
-  // lod->close();
-  // lod.reset();
 
     return 0;
 }
