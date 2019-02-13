@@ -263,6 +263,7 @@ struct settings {
   std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
   std::map<uint32_t, std::vector<lamure::prov::aux::view>> views_;
   std::map<uint32_t, std::string> aux_;
+  std::map<uint32_t, std::string> textures_;
   std::string selection_ {""};
   float max_radius_ {std::numeric_limits<float>::max()};
 
@@ -369,6 +370,10 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             else if (key == "aux") {
               settings.aux_[address] = value;
               std::cout << "found aux data for model id " << address << std::endl;
+            }
+            else if (key == "tex") {
+              settings.textures_[address] = value;
+              std::cout << "found texture for model id " << address << std::endl;
             }
             else {
               std::cout << "unrecognized key: " << key << std::endl;
@@ -1048,6 +1053,11 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
     vis_line_shader_->uniform("projection_matrix", projection_matrix);
     
     for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+
+      if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
+        continue;
+      }
+
       if (selection_.selected_model_ != -1) {
         model_id = selection_.selected_model_;
       }
@@ -1142,6 +1152,11 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
   rendered_nodes_ = 0;
 
   for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
+    
+    if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
+      continue;
+    }
+
     if (selection_.selected_model_ != -1) {
       model_id = selection_.selected_model_;
     }
@@ -1304,6 +1319,7 @@ bool read_shader(std::string const& path_string,
 
 
 void glut_display() {
+
   if (rendering_) {
     return;
   }
@@ -1326,6 +1342,11 @@ void glut_display() {
   lamure::context_t context_id = controller->deduce_context_id(0);
   
   for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id) {
+
+    if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
+      continue;
+    }
+
     lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
 
     cuts->send_transform(context_id, m_id, scm::math::mat4f(model_transformations_[m_id]));
@@ -1974,6 +1995,11 @@ void create_aux_resources() {
 
   //create bvh representation
   for (uint32_t model_id = 0; model_id < num_models_; ++model_id) {
+    
+    if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
+      continue;
+    }
+
     const auto& bounding_boxes = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes();
 
     resource bvh_line_resource;
@@ -2476,14 +2502,24 @@ void init_render_states() {
 
 void init_camera() {
 
-  auto root_bb = lamure::ren::model_database::get_instance()->get_model(0)->get_bvh()->get_bounding_boxes()[0];
-  auto root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
-  auto root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
-  scm::math::vec3f center = (root_bb_min + root_bb_max) / 2.f;
+  scm::math::vec3f root_bb_min(-1.f, -1.f, -1.f);
+  scm::math::vec3f root_bb_max(1.f, 1.f, 1.f);
+  scm::math::vec3f center(0.f, 0.f, 0.f);
+
+  if (num_models_ > 0 
+    && settings_.models_[0].substr(settings_.models_[0].size()-3) == "bvh") {
+
+    auto root_bb = lamure::ren::model_database::get_instance()->get_model(0)->get_bvh()->get_bounding_boxes()[0];
+    root_bb_min = scm::math::mat4f(model_transformations_[0]) * root_bb.min_vertex();
+    root_bb_max = scm::math::mat4f(model_transformations_[0]) * root_bb.max_vertex();
+    center = (root_bb_min + root_bb_max) / 2.f;
+
+  }
 
   camera_ = new lamure::ren::camera(0,
                                     make_look_at_matrix(center + scm::math::vec3f(0.f, 0.1f, -0.01f), center, scm::math::vec3f(0.f, 1.f, 0.f)),
                                     length(root_bb_max-root_bb_min), false, false);
+  
   camera_->set_dolly_sens_(settings_.travel_speed_);
 
   if (settings_.use_view_tf_) {
@@ -3256,8 +3292,11 @@ int main(int argc, char *argv[])
   
   num_models_ = 0;
   for (const auto& input_file : settings_.models_) {
-    lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
-    model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
+    //check extension
+    if (input_file.substr(input_file.size()-3) == "bvh") {
+      lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
+      model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
+    }
     ++num_models_;
   }
 
