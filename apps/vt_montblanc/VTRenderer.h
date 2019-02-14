@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -40,9 +40,9 @@ class VTRenderer
     ~VTRenderer();
 
     void render(uint32_t color_data_id, uint16_t view_id, uint16_t context_id);
-    void update_view(uint16_t view_id, uint32_t width, uint32_t height,float scale, const scm::math::mat4f &view_matrix);
+    void update_view(uint16_t view_id, uint32_t width, uint32_t height, float scale, const scm::math::mat4f &view_matrix);
 
-    void add_data(uint64_t cut_id, uint32_t data_id);
+    void add_data(uint64_t cut_id, uint32_t context_id, uint32_t data_id);
     void add_view(uint16_t view_id, uint32_t width, uint32_t height, float scale);
     void add_context(uint16_t context_id);
 
@@ -59,10 +59,8 @@ class VTRenderer
 
     void enable_hierarchy(bool enable);
 
-private:
+  private:
     CutUpdate *_cut_update;
-
-    scm::shared_ptr<scm::core> _scm_core;
 
     scm::shared_ptr<scm::gl::render_device> _device;
     scm::gl::depth_stencil_state_ptr _dstate_less;
@@ -78,7 +76,7 @@ private:
 
     struct debug_cut
     {
-        debug_cut(){}
+        debug_cut() {}
 
         std::string _string_cut, _string_index;
     };

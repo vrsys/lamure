@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -10,18 +10,14 @@
 
 namespace vt
 {
-CutUpdate::CutUpdate() : _dispatch_lock(), _dispatch_time()
+CutUpdate::CutUpdate() : _dispatch_time()
 {
     _freeze_dispatch.store(false);
 
     _should_stop.store(false);
-    _new_feedback.store(false);
 
     _config = &VTConfig::get_instance();
     _cut_db = &CutDatabase::get_instance();
-
-    _feedback_lod_buffer = new int32_t[_cut_db->get_size_mem_interleaved()];
-    _feedback_count_buffer = new uint32_t[_cut_db->get_size_mem_interleaved()];
 }
 
 CutUpdate::~CutUpdate() {}
@@ -29,21 +25,25 @@ CutUpdate::~CutUpdate() {}
 void CutUpdate::start()
 {
     _cut_db->get_tile_provider()->start((size_t)VTConfig::get_instance().get_size_ram_cache() * 1024 * 1024);
-    _worker = std::thread(&CutUpdate::run, this);
+
+    for(uint32_t context_id : (*_cut_db->get_context_set()))
+    {
+        _context_feedbacks[context_id] = new ContextFeedback(context_id, this);
+    }
 }
 
-void CutUpdate::run()
+void CutUpdate::run(ContextFeedback *_context_feedback)
 {
     while(!_should_stop.load())
     {
-        std::unique_lock<std::mutex> lk(_dispatch_lock, std::defer_lock);
-        if(_new_feedback.load())
+        std::unique_lock<std::mutex> lk(_context_feedback->_feedback_dispatch_lock, std::defer_lock);
+        if(_context_feedback->_feedback_new.load())
         {
-            dispatch();
+            dispatch_context(_context_feedback->_id);
         }
-        _new_feedback.store(false);
+        _context_feedback->_feedback_new.store(false);
 
-        while(!_cv.wait_for(lk, std::chrono::milliseconds(100), [this] { return _new_feedback.load(); }))
+        while(!_context_feedback->_feedback_cv.wait_for(lk, std::chrono::milliseconds(100), [&]() -> bool { return _context_feedback->_feedback_new.load(); }))
         {
             if(_should_stop.load())
             {
@@ -53,12 +53,17 @@ void CutUpdate::run()
     }
 }
 
-void CutUpdate::dispatch()
+void CutUpdate::dispatch_context(uint32_t context_id)
 {
     if(_freeze_dispatch.load())
     {
         for(cut_map_entry_type cut_entry : (*_cut_db->get_cut_map()))
         {
+            if(Cut::get_context_id(cut_entry.first) != context_id)
+            {
+                continue;
+            }
+
             Cut *cut = _cut_db->start_writing_cut(cut_entry.first);
 
             cut->get_back()->get_mem_slots_updated().clear();
@@ -84,13 +89,19 @@ void CutUpdate::dispatch()
 
     for(cut_map_entry_type cut_entry : (*_cut_db->get_cut_map()))
     {
+        if(Cut::get_context_id(cut_entry.first) != context_id)
+        {
+            continue;
+        }
+
         id_set_type collapse_to;
         id_set_type split;
         id_set_type keep;
 
         Cut *cut = _cut_db->start_writing_cut(cut_entry.first);
 
-        if (cut->get_atlas()->getDepth() < 1) {
+        if(cut->get_atlas()->getDepth() < 1)
+        {
             std::cout << "tree is too flat" << std::endl;
             exit(1);
         }
@@ -139,55 +150,54 @@ void CutUpdate::dispatch()
             uint16_t tile_depth = QuadTree::get_depth_of_node(*iter);
             uint16_t max_depth = cut->get_atlas()->getDepth() - 1;
 
-
             if(check_all_siblings_in_cut(*iter, cut->get_back()->get_cut()))
             {
-
                 bool allow_collapse = true;
 
-                if ((*iter % 4) == 1) {
+                if((*iter % 4) == 1)
+                {
+                    id_type parent_id = QuadTree::get_parent_id(*iter);
 
-                  id_type parent_id = QuadTree::get_parent_id(*iter);
-        
-                  for (int32_t c = 0; c < 4; ++c) {
-                    //id_type sibling_id = *(iter+c);
-                    id_type sibling_id = QuadTree::get_child_id(parent_id, c);
-                    if (sibling_id == 0) {
-                      allow_collapse = false;
-                      break;
+                    for(int32_t c = 0; c < 4; ++c)
+                    {
+                        // id_type sibling_id = *(iter+c);
+                        id_type sibling_id = QuadTree::get_child_id(parent_id, c);
+                        if(sibling_id == 0)
+                        {
+                            allow_collapse = false;
+                            break;
+                        }
+
+                        // else check fb of all siblings < current_level
+                        mem_slot_type *sibling_mem_slot = write_mem_slot_for_id(cut, sibling_id);
+                        if(_context_feedbacks[context_id]->_feedback_lod_buffer[sibling_mem_slot->position] >= tile_depth)
+                        {
+                            allow_collapse = false;
+                            break;
+                        }
                     }
 
-                    //else check fb of all siblings < current_level
-                    mem_slot_type *sibling_mem_slot = write_mem_slot_for_id(cut, sibling_id);
-                    if (_feedback_lod_buffer[sibling_mem_slot->position] >= tile_depth) {
-                      allow_collapse = false;
-                      break;
+                    if(allow_collapse)
+                    {
+                        // collapse 1, skip others
+                        collapse_to.insert(parent_id);
+                        std::advance(iter, 4);
+                        continue;
                     }
-                  }
-
-                  if (allow_collapse) {
-                    //collapse 1, skip others
-                    collapse_to.insert(parent_id);
-                    std::advance(iter, 4);
-                    continue;
-                  }
-                
                 }
 
                 mem_slot_type *mem_slot = write_mem_slot_for_id(cut, *iter);
-                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
+                if(_context_feedbacks[context_id]->_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
                 {
-                  split.insert(*iter);
-                  split_counter++;
+                    split.insert(*iter);
+                    split_counter++;
                 }
                 else
                 {
-                  keep.insert(*iter);
+                    keep.insert(*iter);
                 }
 
                 iter++;
-
-
             }
             else
             {
@@ -198,7 +208,7 @@ void CutUpdate::dispatch()
                     throw std::runtime_error("Node " + std::to_string(tile_id) + " not found in memory slots");
                 }
 
-                if(_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
+                if(_context_feedbacks[context_id]->_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
                 {
                     split.insert(tile_id);
                     split_counter++;
@@ -414,15 +424,15 @@ mem_slot_type *CutUpdate::write_mem_slot_for_id(Cut *cut, id_type tile_id)
 
     return _cut_db->write_mem_slot_at((*mem_slot_iter).second);
 }
-void CutUpdate::feedback(int32_t *buf_lod, uint32_t *buf_count)
+void CutUpdate::feedback(uint32_t context_id, int32_t *buf_lod, uint32_t *buf_count)
 {
-    if(_dispatch_lock.try_lock())
+    if(_context_feedbacks[context_id]->_feedback_dispatch_lock.try_lock())
     {
-        std::copy(buf_lod, buf_lod + _cut_db->get_size_mem_interleaved(), _feedback_lod_buffer);
-        std::copy(buf_count, buf_count + _cut_db->get_size_mem_interleaved(), _feedback_count_buffer);
-        _new_feedback.store(true);
-        _dispatch_lock.unlock();
-        _cv.notify_one();
+        std::copy(buf_lod, buf_lod + _cut_db->get_size_mem_interleaved(), _context_feedbacks[context_id]->_feedback_lod_buffer);
+        std::copy(buf_count, buf_count + _cut_db->get_size_mem_interleaved(), _context_feedbacks[context_id]->_feedback_count_buffer);
+        _context_feedbacks[context_id]->_feedback_new.store(true);
+        _context_feedbacks[context_id]->_feedback_dispatch_lock.unlock();
+        _context_feedbacks[context_id]->_feedback_cv.notify_one();
     }
 }
 
@@ -430,9 +440,17 @@ void CutUpdate::stop()
 {
     _cut_db->get_tile_provider()->stop();
     _should_stop.store(true);
-    _new_feedback.store(true);
-    _cv.notify_one();
-    _worker.join();
+
+    for(uint32_t context_id : (*_cut_db->get_context_set()))
+    {
+        _context_feedbacks[context_id]->_feedback_new.store(true);
+        _context_feedbacks[context_id]->_feedback_cv.notify_one();
+        _context_feedbacks[context_id]->_feedback_worker.join();
+
+        delete _context_feedbacks[context_id];
+    }
+
+    _context_feedbacks.clear();
 }
 bool CutUpdate::check_all_siblings_in_cut(id_type tile_id, const cut_type &cut)
 {

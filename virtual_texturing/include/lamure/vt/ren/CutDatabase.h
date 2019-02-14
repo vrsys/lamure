@@ -54,6 +54,8 @@ class CutDatabase : DoubleBuffer<mem_slots_type>
     void stop_reading_cut(uint64_t cut_id);
 
     cut_map_type *get_cut_map();
+    view_set_type *get_view_set();
+    context_set_type *get_context_set();
 
     ooc::TileProvider *get_tile_provider() const;
 

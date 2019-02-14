@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -84,7 +84,7 @@ mem_slot_type *CutDatabase::read_mem_slot_at(size_t position)
 void CutDatabase::deliver() { _front->assign(_back->begin(), _back->end()); }
 Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 {
-    //std::cout << "start_writing_cut" << std::endl;
+    // std::cout << "start_writing_cut" << std::endl;
 
     std::unique_lock<std::mutex> lk(_write_lock);
 
@@ -102,7 +102,7 @@ Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 }
 void CutDatabase::stop_writing_cut(uint64_t cut_id)
 {
-    //std::cout << "stop_writing_cut" << std::endl;
+    // std::cout << "stop_writing_cut" << std::endl;
 
     std::unique_lock<std::mutex> lk(_write_lock);
 
@@ -119,7 +119,7 @@ void CutDatabase::stop_writing_cut(uint64_t cut_id)
 }
 Cut *CutDatabase::start_reading_cut(uint64_t cut_id)
 {
-    //std::cout << "start_reading_cut" << std::endl;
+    // std::cout << "start_reading_cut" << std::endl;
 
     std::unique_lock<std::mutex> lk(_read_lock);
 
@@ -143,7 +143,7 @@ Cut *CutDatabase::start_reading_cut(uint64_t cut_id)
 }
 void CutDatabase::stop_reading_cut(uint64_t cut_id)
 {
-    //std::cout << "stop_reading_cut" << std::endl;
+    // std::cout << "stop_reading_cut" << std::endl;
 
     std::unique_lock<std::mutex> lk(_read_lock);
 
@@ -213,20 +213,10 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
 }
 
 ooc::TileProvider *CutDatabase::get_tile_provider() const { return _tile_provider; }
-void CutDatabase::start_writing()
-{
-    DoubleBuffer::start_writing();
-}
-void CutDatabase::stop_writing()
-{
-    DoubleBuffer::stop_writing();
-}
-void CutDatabase::start_reading()
-{
-    DoubleBuffer::start_reading();
-}
-void CutDatabase::stop_reading()
-{
-    DoubleBuffer::stop_reading();
-}
+void CutDatabase::start_writing() { DoubleBuffer::start_writing(); }
+void CutDatabase::stop_writing() { DoubleBuffer::stop_writing(); }
+void CutDatabase::start_reading() { DoubleBuffer::start_reading(); }
+void CutDatabase::stop_reading() { DoubleBuffer::stop_reading(); }
+view_set_type *CutDatabase::get_view_set() { return &_view_set; }
+context_set_type *CutDatabase::get_context_set() { return &_context_set; }
 }
