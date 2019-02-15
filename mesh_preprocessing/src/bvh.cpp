@@ -499,6 +499,11 @@ void bvh::simplify(
 
 }
 
+void bvh::merge_similar_border_edges(Polyhedron& P,
+                                    std::vector<Triangle_Chartid>& left_child_tris,
+                                    std::vector<Triangle_Chartid>& right_child_tris
+                                    )
+
 void bvh::write_lod_file(const std::string& lod_filename) {
 
   //convert triangle map with chart id to trianglke map without chart id

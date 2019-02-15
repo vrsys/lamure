@@ -1,0 +1,14 @@
+Edge merging:
+
+Analyse all edges, find pairs of edges with most similar directions - rank in a queue
+
+ - build polymesh - add ids to edges, and create a map from edge id to triangle id and vertex start and end
+ - find out which edges are borders
+ - build a vertex/list of merges - ids of 2 edges involved, and angle difference
+ - sort vertex/list
+
+
+
+execute a given number of merges - derived from "triangle budget:constrained edges" ratio
+ - in triangle list (not polymesh) remove shared vertex, thereby merging two adjacent triangles in the triangles vector
+ - queue should update on each execution, to recalculating adjacent edges (there should only be 2 per merge) with a new angle

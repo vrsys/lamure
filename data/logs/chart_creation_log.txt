@@ -3289,3 +3289,13 @@ Vertices: 20157 , faces: 40310
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 10, e_shape: 1
+
+-------------------------------------
+Executed at 2019-02-15 14:08:49
+Ran for 1 m 40 s
+Input file: data/test_edge_merging/bunny.obj
+Output file: data/test_edge_merging/bunny_charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
