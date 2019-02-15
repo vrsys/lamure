@@ -43,7 +43,7 @@ class VTRenderer
     void render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t context_id, bool exocentric, bool enable_hierarchical, int vis);
     void update_view(uint16_t view_id, uint32_t width, uint32_t height, float scale, const scm::math::mat4f &view_matrix);
 
-    void add_data(uint64_t cut_id, uint32_t data_id);
+    void add_data(uint64_t cut_id, uint32_t context_id, uint32_t data_id);
     void add_view(uint16_t view_id, uint32_t width, uint32_t height, float scale);
     void add_context(uint16_t context_id);
 
@@ -57,8 +57,6 @@ class VTRenderer
     void clear_buffers(uint16_t context_id);
 private:
     CutUpdate *_cut_update;
-
-    scm::shared_ptr<scm::core> _scm_core;
 
     scm::shared_ptr<scm::gl::render_device> _device;
     scm::gl::depth_stencil_state_ptr _dstate_less;
