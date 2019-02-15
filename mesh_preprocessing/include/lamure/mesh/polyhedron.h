@@ -53,6 +53,7 @@ typedef Kernel::Vector_3 Vec3;
 template <class Refs, class Traits>
 struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
   int chart_id;
+  int face_id;
 
   // typedef typename Traits::Vector_2 TexCoord;
   TexCoord t_coords[3];
@@ -148,7 +149,7 @@ struct Custom_items : public CGAL::Polyhedron_items_3 {
 
 typedef CGAL::Polyhedron_3<Kernel, Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;
-
+typedef Polyhedron::Halfedge_handle Edge_handle;
 
 typedef Polyhedron::Facet_handle Facet_handle;
 
@@ -242,6 +243,9 @@ public:
       TexCoord tc1 (combined_set[i/3].v1_.tex_.x, combined_set[i/3].v1_.tex_.y);
       TexCoord tc2 (combined_set[i/3].v2_.tex_.x, combined_set[i/3].v2_.tex_.y);
       fh->add_tex_coords(tc0,tc1,tc2);
+
+      //add face id that is position of triangle in input triangle list
+      fh->face_id = i/3;
 
       B.add_vertex_to_facet(tris[i]);
       B.add_vertex_to_facet(tris[i+1]);
