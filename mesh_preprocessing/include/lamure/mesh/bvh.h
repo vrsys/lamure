@@ -48,8 +48,7 @@ protected:
   Vec3 normalise(Vec3 v);
 
   void merge_similar_border_edges(Polyhedron& P,
-                                  std::vector<Triangle_Chartid>& left_child_tris,
-                                  std::vector<Triangle_Chartid>& right_child_tris);
+                                  std::vector<Triangle_Chartid>& tri_list);
 
   //node_id -> triangles
   std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;

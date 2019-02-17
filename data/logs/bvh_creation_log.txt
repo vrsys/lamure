@@ -331,3 +331,11 @@ Input file: data/test_edge_merging/lion/lion_charts.obj
 Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
 Input file faces: 257703
 Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:46:33
+Ran for 0 m 3 s697 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
