@@ -211,3 +211,11 @@ Input file: data/test_edge_merging/bunny_charts.obj
 Output bvh file: data/test_edge_merging/bunny_charts.bvh
 Input file faces: 69451
 Triangle budget: 1000
+
+-------------------------------------
+Executed at 2019-02-17 16:06:29
+Ran for 0 m 0 s984 ms 
+Input file: data/bunny.obj
+Output bvh file: data/bunny.bvh
+Input file faces: 69451
+Triangle budget: 2000

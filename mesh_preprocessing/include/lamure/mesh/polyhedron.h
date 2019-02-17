@@ -239,13 +239,13 @@ public:
       Facet_handle fh = B.begin_facet();
 
       //add tex coords to face
-      TexCoord tc0 (combined_set[i/3].v0_.tex_.x, combined_set[i/3].v0_.tex_.y);
-      TexCoord tc1 (combined_set[i/3].v1_.tex_.x, combined_set[i/3].v1_.tex_.y);
-      TexCoord tc2 (combined_set[i/3].v2_.tex_.x, combined_set[i/3].v2_.tex_.y);
-      fh->add_tex_coords(tc0,tc1,tc2);
+      // TexCoord tc0 (combined_set[i/3].v0_.tex_.x, combined_set[i/3].v0_.tex_.y);
+      // TexCoord tc1 (combined_set[i/3].v1_.tex_.x, combined_set[i/3].v1_.tex_.y);
+      // TexCoord tc2 (combined_set[i/3].v2_.tex_.x, combined_set[i/3].v2_.tex_.y);
+      // fh->add_tex_coords(tc0,tc1,tc2);
 
       //add face id that is position of triangle in input triangle list
-      fh->face_id = i/3;
+      // fh->face_id = i/3;
 
       B.add_vertex_to_facet(tris[i]);
       B.add_vertex_to_facet(tris[i+1]);
