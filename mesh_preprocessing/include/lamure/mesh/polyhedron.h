@@ -194,17 +194,16 @@ template<class HDS>
 class polyhedron_builder : public CGAL::Modifier_base<HDS> {
 
 public:
-  std::vector<Triangle_Chartid> &left_tris_;
-  std::vector<Triangle_Chartid> &right_tris_;
+  std::vector<Triangle_Chartid> &combined_set;
 
   //how many of the given triangles are added to the final mesh
   //to enable creation of non-manifold meshes 
   double mesh_proportion = 1.0;
 
+
   polyhedron_builder(
-  	std::vector<Triangle_Chartid>& left_child_tris,
-    std::vector<Triangle_Chartid>& right_child_tris) 
-    : left_tris_(left_child_tris), right_tris_(right_child_tris) {}
+    std::vector<Triangle_Chartid>& _combined_set) 
+    : combined_set(_combined_set){}
 
   void set_mesh_proportion(const double _mp){
     mesh_proportion = _mp;
@@ -214,14 +213,9 @@ public:
  
     // create a cgal incremental builder
     CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
-    uint32_t num_tris = left_tris_.size()+right_tris_.size();
+    uint32_t num_tris = combined_set.size();
     B.begin_surface(3*num_tris, num_tris);
 
-    //concatenate triangle sets
-    //left_tris_.insert(left_tris_.end(), right_tris_.begin(), right_tris_.end());
-    std::vector<Triangle_Chartid> combined_set;
-    std::copy(left_tris_.begin(), left_tris_.end(), std::back_inserter(combined_set));
-    std::copy(right_tris_.begin(), right_tris_.end(), std::back_inserter(combined_set));
 
     //create indexed vertex list
     std::vector<XtndPoint<Kernel> > vertices;
@@ -233,32 +227,18 @@ public:
       B.add_vertex(vertices[i]);
     }
 
+
     //create faces using vertex index references
     for (uint32_t i = 0; i < tris.size(); i+=3) {
 
-      Facet_handle fh = B.begin_facet();
-
-      //add tex coords to face
-      // TexCoord tc0 (combined_set[i/3].v0_.tex_.x, combined_set[i/3].v0_.tex_.y);
-      // TexCoord tc1 (combined_set[i/3].v1_.tex_.x, combined_set[i/3].v1_.tex_.y);
-      // TexCoord tc2 (combined_set[i/3].v2_.tex_.x, combined_set[i/3].v2_.tex_.y);
-      // fh->add_tex_coords(tc0,tc1,tc2);
-
-      //add face id that is position of triangle in input triangle list
-      // fh->face_id = i/3;
-
+      B.begin_facet();
       B.add_vertex_to_facet(tris[i]);
       B.add_vertex_to_facet(tris[i+1]);
       B.add_vertex_to_facet(tris[i+2]);
       B.end_facet();
 
-      //transfer chart id to 
-      fh->chart_id = combined_set[i/3].chart_id;
 
     }
-
-
-    //std::cout << "all vertices and faces added" << std::endl;
 
     B.end_surface();
   }

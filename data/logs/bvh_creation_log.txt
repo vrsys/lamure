@@ -219,3 +219,115 @@ Input file: data/bunny.obj
 Output bvh file: data/bunny.bvh
 Input file faces: 69451
 Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 17:16:16
+Ran for 0 m 3 s762 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 17:25:04
+Ran for 0 m 3 s694 ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.bvh
+Input file faces: 257757
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 17:31:22
+Ran for 0 m 3 s746 ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.bvh
+Input file faces: 257757
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 17:31:33
+Ran for 0 m 3 s703 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 17:36:22
+Ran for 0 m 3 s705 ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.bvh
+Input file faces: 257757
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 17:36:29
+Ran for 0 m 3 s674 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 17:56:32
+Ran for 0 m 3 s747 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:04:47
+Ran for 0 m 3 s672 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:10:52
+Ran for 0 m 3 s699 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:16:22
+Ran for 0 m 3 s659 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:20:35
+Ran for 0 m 3 s679 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:21:09
+Ran for 0 m 3 s594 ms 
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output bvh file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.bvh
+Input file faces: 257757
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:22:05
+Ran for 0 m 3 s710 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
+
+-------------------------------------
+Executed at 2019-02-17 18:27:11
+Ran for 0 m 3 s652 ms 
+Input file: data/test_edge_merging/lion/lion_charts.obj
+Output bvh file: data/test_edge_merging/lion/lion_charts.bvh
+Input file faces: 257703
+Triangle budget: 2000
