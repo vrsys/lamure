@@ -3289,3 +3289,33 @@ Vertices: 20157 , faces: 40310
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 10, e_shape: 1
+
+-------------------------------------
+Executed at 2019-02-15 14:08:49
+Ran for 1 m 40 s
+Input file: data/test_edge_merging/bunny.obj
+Output file: data/test_edge_merging/bunny_charts.obj
+Vertices: 34834 , faces: 69451
+Desired Charts: 100, active charts: 100
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-02-15 15:35:02
+Ran for 0 m 31 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/charts_cost_1.79769e+308.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 1000, active charts: 1000
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-02-15 15:44:36
+Ran for 0 m 31 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/test_edge_merging/lion/lion_charts.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 1000, active charts: 1000
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1

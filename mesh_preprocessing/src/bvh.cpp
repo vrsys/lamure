@@ -363,14 +363,17 @@ void bvh::simplify(
   std::vector<Triangle_Chartid>& output_tris,
   bool contrain_edges) {
 
-
-  //std::cout << "left tris : " << left_child_tris.size() << std::endl;
-  //std::cout << "right tris : " << right_child_tris.size() << std::endl;  
+  //concatenate tri sets
+  std::vector<Triangle_Chartid> combined_set;
+  std::copy(left_child_tris.begin(), left_child_tris.end(), std::back_inserter(combined_set));
+  std::copy(right_child_tris.begin(), right_child_tris.end(), std::back_inserter(combined_set));
 
   //create a mesh from vectors
   Polyhedron polyMesh;
-  polyhedron_builder<HalfedgeDS> builder(left_child_tris, right_child_tris);
+  polyhedron_builder<HalfedgeDS> builder(combined_set);
   polyMesh.delegate(builder);
+
+  // merge_similar_border_edges(polyMesh,left_child_tris, right_child_tris);
 
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
     
@@ -378,6 +381,24 @@ void bvh::simplify(
   else {
     std::cout << "WARNING! Triangle mesh invalid!" << std::endl;
     return;
+  }
+
+  //if mesh is valid, add some info about the faces
+  uint32_t i = 0;
+  for (Polyhedron::Facet_iterator f = polyMesh.facets_begin(); f != polyMesh.facets_end(); ++f) {
+
+    //add tex coords to face
+    TexCoord tc0 (combined_set[i].v0_.tex_.x, combined_set[i].v0_.tex_.y);
+    TexCoord tc1 (combined_set[i].v1_.tex_.x, combined_set[i].v1_.tex_.y);
+    TexCoord tc2 (combined_set[i].v2_.tex_.x, combined_set[i].v2_.tex_.y);
+    f->add_tex_coords(tc0,tc1,tc2);
+
+    // add face id that is position of triangle in input triangle list
+    f->face_id = i;      
+    //transfer chart id too
+    f->chart_id = combined_set[i].chart_id;
+
+    i++;
   }
 
   //simplify the two input sets of tris into output_tris
@@ -498,6 +519,67 @@ void bvh::simplify(
 
 
 }
+
+
+
+// work in progress
+// Vec3 bvh::normalise(Vec3 v) {return v / std::sqrt(v.squared_length());}
+
+// void bvh::merge_similar_border_edges(Polyhedron& P,
+//                                     std::vector<Triangle_Chartid>& left_child_tris,
+//                                     std::vector<Triangle_Chartid>& right_child_tris
+//                                     ){
+
+//   struct Edge_merge_candidate
+//   {
+//     Edge_handle edge1;
+//     Edge_handle edge2;
+//     double cost;
+//   };
+
+//   std::list<Edge_merge_candidate> merge_cs;
+
+//   for ( Polyhedron::Halfedge_iterator  ei = P.halfedges_begin(); ei != P.halfedges_end(); ++ei) {
+
+//     if(ei->is_border()){
+      
+//       Edge_merge_candidate mc;
+//       mc.edge1 = ei;
+
+//       //find next border edge
+//       Polyhedron::Halfedge_around_vertex_circulator he,end; 
+//       he = end = ei->vertex()->vertex_begin();
+//       do {
+//         if(he->is_border()){
+//           mc.edge2 = he;
+//           break;
+//         }
+//       } while (++he != end);
+
+//       //check that continuing edge was found
+//       if (he == end)
+//       {
+//         std::cout << "No continuing edge found\n";
+//         continue;
+//       }
+
+//       //calculate cost (angle difference)
+//       Vec3 v1 = normalise(mc.edge1->vertex()->point() - mc.edge1->prev()->vertex()->point());
+//       Vec3 v2 = normalise(mc.edge2->vertex()->point() - mc.edge2->prev()->vertex()->point());
+
+//       double dot = v1 * v2;
+//       dot = std::max(-1.0, std::min(1.0,dot));
+//       mc.cost = acos(dot);
+
+//       merge_cs.push_back(mc);
+
+//     }
+//   }
+
+//   std::cout << "Found " << merge_cs.size() << " border edge merge candidates\n";
+// }
+
+
 
 void bvh::write_lod_file(const std::string& lod_filename) {
 

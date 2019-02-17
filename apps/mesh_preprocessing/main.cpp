@@ -618,7 +618,8 @@ void glut_display() {
 
   //set the viewport, background color, and reset default framebuffer
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
-  glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+  // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+  glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   //use the shader program we created

@@ -214,6 +214,12 @@ int32_t main(int argc, char* argv[]) {
   {
     std::cout << "Error: charts were not found for every triangle\n";
     return 0; 
+
+    //to debug loading problem
+    // std::cout << "adding arbitrary extra charts\n";
+    // while (chart_id_per_triangle.size() < triangles.size()){
+    //   chart_id_per_triangle.push_back(0);
+    // }
   }
   //assign chart ids to triangle vector
   for (uint32_t i = 0; i < triangles.size(); ++i)

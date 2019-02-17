@@ -7,6 +7,8 @@
 #include <lamure/mesh/triangle_chartid.h>
 #include <lamure/ren/bvh.h>
 
+#include <lamure/mesh/polyhedron.h>
+
 #include <map>
 #include <vector>
 
@@ -43,6 +45,11 @@ protected:
     std::vector<Triangle_Chartid>& output_tris,
     bool contrain_edges);
 
+  Vec3 normalise(Vec3 v);
+
+  void merge_similar_border_edges(Polyhedron& P,
+                                  std::vector<Triangle_Chartid>& left_child_tris,
+                                  std::vector<Triangle_Chartid>& right_child_tris);
 
   //node_id -> triangles
   std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;
