@@ -447,15 +447,15 @@ int main(int argc, char *argv[])
 
         vtrenderer->collect_feedback(primary_context_id);
 #ifndef NDEBUG
-        vtrenderer->extract_debug_cut(data_world_map_id, view_id, primary_context_id);
-        vtrenderer->extract_debug_cut(data_moon_map_id, view_id, primary_context_id);
-        vtrenderer->extract_debug_context(primary_context_id);
+        vtrenderer->extract_debug_cut(cut_map_id);
+        vtrenderer->extract_debug_cut(cut_map_elevation_id);
+        vtrenderer->extract_debug_cut_context(cut_map_id);
 
         ImGui_ImplGlfwGL3_NewFrame();
 
-        vtrenderer->render_debug_cut(data_world_map_id, view_id, primary_context_id);
-        vtrenderer->render_debug_cut(data_moon_map_id, view_id, primary_context_id);
-        vtrenderer->render_debug_context(primary_context_id);
+        vtrenderer->render_debug_cut(cut_map_id);
+        vtrenderer->render_debug_cut(cut_map_elevation_id);
+        vtrenderer->render_debug_context(cut_map_id);
 
         ImGui::Render();
 #endif

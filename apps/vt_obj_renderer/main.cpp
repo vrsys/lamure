@@ -104,6 +104,11 @@ void apply_cut_update() {
     auto *cut_db = &vt::CutDatabase::get_instance();
 
     for (vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map())) {
+        if(vt::Cut::get_context_id(cut_entry.first) != vt_.context_id_)
+        {
+            continue;
+        }
+
         vt::Cut *cut = cut_db->start_reading_cut(cut_entry.first);
 
         if (!cut->is_drawn()) {
@@ -114,7 +119,7 @@ void apply_cut_update() {
         std::set<uint16_t> updated_levels;
 
         for (auto position_slot_updated : cut->get_front()->get_mem_slots_updated()) {
-            const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second);
+            const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, vt_.context_id_);
 
             if (mem_slot_updated == nullptr || !mem_slot_updated->updated
                 || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr) {
@@ -155,7 +160,7 @@ void apply_cut_update() {
 
 
         for (auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared()) {
-            const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second);
+            const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, vt_.context_id_);
 
             if (mem_slot_cleared == nullptr) {
                 std::cerr << "Mem slot at " << position_slot_cleared.second << " is null" << std::endl;

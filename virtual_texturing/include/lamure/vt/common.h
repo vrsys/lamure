@@ -13,8 +13,13 @@
 #include <lamure/config.h>
 #include <map>
 #include <set>
+#include <condition_variable>
 #include <thread>
 #include <vector>
+#include <atomic>
+#include <fstream>
+#include <unordered_map>
+#include <mutex>
 
 namespace vt
 {
@@ -34,13 +39,13 @@ typedef std::vector<mem_slot_type> mem_slots_type;
 typedef std::map<id_type, size_t> mem_slots_index_type;
 
 class ContextFeedback;
-typedef std::map<uint32_t, ContextFeedback *> context_feedback_map_type;
+typedef std::map<uint16_t, ContextFeedback *> context_feedback_map_type;
 
 typedef std::map<uint32_t, const std::string> dataset_map_type;
 typedef std::pair<uint32_t, const std::string> dataset_map_entry_type;
 
 typedef std::set<uint16_t> view_set_type;
-typedef std::set<uint64_t> context_set_type;
+typedef std::set<uint16_t> context_set_type;
 
 class Cut;
 typedef std::map<uint64_t, Cut *> cut_map_type;

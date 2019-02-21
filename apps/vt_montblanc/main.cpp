@@ -9,14 +9,9 @@
 #include "imgui_impl_glfw_gl3.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <atomic>
-#include <condition_variable>
-#include <fstream>
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
-#include <queue>
-#include <unordered_map>
 
 char *get_cmd_option(char **begin, char **end, const std::string &option)
 {
@@ -501,8 +496,8 @@ int main(int argc, char *argv[])
 
                 vtrenderer_primary->collect_feedback(primary_context_id);
 #ifndef NDEBUG
-                vtrenderer_primary->extract_debug_cut(data_world_map_id, primary_view_id, primary_context_id);
-                vtrenderer_primary->extract_debug_context(primary_context_id);
+                vtrenderer_primary->extract_debug_cut(primary_cut_map_id);
+                vtrenderer_primary->extract_debug_cut_context(primary_cut_map_id);
 
                 ImGui_ImplGlfwGL3_NewFrame();
 
@@ -526,8 +521,8 @@ int main(int argc, char *argv[])
 
                 vtrenderer_secondary->collect_feedback(secondary_context_id);
 #ifndef NDEBUG
-                vtrenderer_secondary->extract_debug_cut(data_world_map_id, secondary_view_id, secondary_context_id);
-                vtrenderer_secondary->extract_debug_context(secondary_context_id);
+                vtrenderer_secondary->extract_debug_cut(secondary_cut_map_id);
+                vtrenderer_secondary->extract_debug_cut_context(secondary_cut_map_id);
 
                 ImGui_ImplGlfwGL3_NewFrame();
 
