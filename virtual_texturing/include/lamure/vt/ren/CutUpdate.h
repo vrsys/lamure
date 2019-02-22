@@ -53,17 +53,17 @@ class CutUpdate
     std::atomic<bool> _freeze_dispatch;
 
     void run(ContextFeedback *_context_feedback);
-    void dispatch_context(uint32_t context_id);
+    void dispatch_context(uint16_t context_id);
 
-    bool collapse_to_id(Cut *cut, id_type tile_id);
-    bool split_id(Cut *cut, id_type tile_id);
-    bool keep_id(Cut *cut, id_type tile_id);
+    bool collapse_to_id(Cut *cut, id_type tile_id, uint16_t context_id);
+    bool split_id(Cut *cut, id_type tile_id, uint16_t context_id);
+    bool keep_id(Cut *cut, id_type tile_id, uint16_t context_id);
 
-    bool add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_ptr);
-    mem_slot_type *write_mem_slot_for_id(Cut *cut, id_type tile_id);
+    bool add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_ptr, uint16_t context_id);
+    mem_slot_type *write_mem_slot_for_id(Cut *cut, id_type tile_id, uint16_t context_id);
 
     bool check_all_siblings_in_cut(id_type tile_id, const cut_type &cut);
-    void remove_from_indexed_memory(Cut *cut, id_type tile_id);
+    void remove_from_indexed_memory(Cut *cut, id_type tile_id, uint16_t context_id);
 };
 
 class ContextFeedback

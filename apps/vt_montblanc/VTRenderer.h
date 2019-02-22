@@ -46,8 +46,8 @@ class VTRenderer
     void add_view(uint16_t view_id, uint32_t width, uint32_t height, float scale);
     void add_context(uint16_t context_id);
 
-    void extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id);
-    void extract_debug_context(uint16_t context_id);
+    void extract_debug_cut(uint64_t cut_id);
+    void extract_debug_cut_context(uint64_t cut_id);
 
     void render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id);
     void render_debug_context(uint16_t context_id);

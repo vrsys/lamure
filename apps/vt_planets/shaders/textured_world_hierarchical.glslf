@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -98,8 +98,8 @@ void update_feedback(int feedback_value, uvec4 base_offset)
 {
     uint one_d_feedback_ssbo_index = base_offset.x + base_offset.y * physical_texture_dim.x + base_offset.z * physical_texture_dim.x * physical_texture_dim.y;
 
-    atomicMax(out_lod_feedback_values[one_d_feedback_ssbo_index], feedback_value);
-    atomicAdd(out_count_feedback_values[one_d_feedback_ssbo_index], 1);
+    int prev = out_lod_feedback_values[one_d_feedback_ssbo_index];
+    out_lod_feedback_values[one_d_feedback_ssbo_index] = max(prev, feedback_value);
 }
 
 /*
@@ -261,8 +261,11 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
         c = mix_colors(positions, desired_level, texture_coordinates, mix_ratio);
     }
 
-    int feedback_value = desired_level;
-    update_feedback(feedback_value, positions.child_idx);
+    if( int(gl_FragCoord.x) % 64 == 0 && int(gl_FragCoord.y) % 64 == 0 )
+    {
+        int feedback_value = desired_level;
+        update_feedback(feedback_value, positions.child_idx);
+    }
 
     return c;
 }
