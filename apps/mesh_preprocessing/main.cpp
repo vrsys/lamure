@@ -618,8 +618,7 @@ void glut_display() {
 
   //set the viewport, background color, and reset default framebuffer
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
-  // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-  glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   //use the shader program we created
@@ -748,10 +747,9 @@ int main(int argc, char *argv[]) {
 
       //for every vertex
       for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+
         int chart_id = chart_id_per_triangle[node_id*(vertices_per_node/3)+vertex_id/3];
-
         auto& chart = charts[chart_id];
-
 
         const auto& vertex = vertices[vertex_id];
         scm::math::vec3d v(vertex.v_x_, vertex.v_y_, vertex.v_z_);

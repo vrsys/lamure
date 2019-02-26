@@ -1,0 +1,18 @@
+Notes from today's meeting:
+
+
+
+steps towards solving current problems (priority order):
+
+ - adjust background colour of texture renedered by mesh_preprocessing app to (1,0,1) to support development of dilation app
+
+ - extend mesh_prepro to allow multiple rendering from multiple textures - consult anton about tool for this
+
+ - adjust sizes of rectangles in rectangle packing process to ensure that each chart is transferred to the final texture at the same (or larger) size (pixels per triangle). 
+	
+	- use distance between vertices of triangles, compare with texture space distance between vertices
+	- overall size of final output texture may need to be increased - heuristic for this?
+
+ - Look at why holes are forming in coarser LOD hierarchy levels - is it because triangles are being thrown away? Or another reason?
+
+ - Use an absolute clustering method to provide an initial estimate for charts - as suggested by anton (feature space of centroid and normal, for example)
