@@ -196,7 +196,7 @@ void collect_feedback() {
     memcpy(vt_.feedback_count_cpu_buffer_, feedback_count, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
     context_->sync();
 
-    vt_.cut_update_->feedback(vt_.feedback_lod_cpu_buffer_, vt_.feedback_count_cpu_buffer_);
+    vt_.cut_update_->feedback(vt_.context_id_, vt_.feedback_lod_cpu_buffer_, vt_.feedback_count_cpu_buffer_);
 
     context_->unmap_buffer(vt_.feedback_count_storage_);
     context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);

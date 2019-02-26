@@ -7,6 +7,8 @@
 
 #include <lamure/vt/pre/DeltaECalculator.h>
 
+#include <cmath>
+
 namespace vt {
     namespace pre {
         DeltaECalculator::DeltaECalculator(const char *fileName) : AtlasFile(fileName) {

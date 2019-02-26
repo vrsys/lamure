@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -13,7 +13,9 @@
 #include <lamure/config.h>
 #include <map>
 #include <set>
+#include <thread>
 #include <vector>
+
 namespace vt
 {
 typedef uint64_t id_type;
@@ -30,6 +32,9 @@ struct mem_slot_type
 
 typedef std::vector<mem_slot_type> mem_slots_type;
 typedef std::map<id_type, size_t> mem_slots_index_type;
+
+class ContextFeedback;
+typedef std::map<uint32_t, ContextFeedback *> context_feedback_map_type;
 
 typedef std::map<uint32_t, const std::string> dataset_map_type;
 typedef std::pair<uint32_t, const std::string> dataset_map_entry_type;
