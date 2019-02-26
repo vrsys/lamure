@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -16,27 +16,42 @@
 namespace vt
 {
 class VTContext;
-class CutDatabase : DoubleBuffer<mem_slots_type>
+class SyncStructure
+{
+  public:
+    SyncStructure() : _read_lock(), _write_lock(), _read_write_lock(), _is_written(false), _is_read(false), _read_write_cv() {}
+    ~SyncStructure() = default;
+
+    std::atomic<bool> _is_written, _is_read;
+    std::mutex _read_lock, _write_lock, _read_write_lock;
+    std::condition_variable _read_write_cv;
+};
+class StateStructure : public DoubleBuffer<mem_slots_type>
+{
+  public:
+    StateStructure(mem_slots_type *front, mem_slots_type *back) : DoubleBuffer<mem_slots_type>(front, back) {}
+    ~StateStructure() = default;
+
+    void deliver() override { _front->assign(_back->begin(), _back->end()); }
+};
+class CutDatabase
 {
   public:
     static CutDatabase &get_instance()
     {
-        mem_slots_type *front = new mem_slots_type();
-        mem_slots_type *back = new mem_slots_type();
-
-        static CutDatabase instance(front, back);
+        static CutDatabase instance;
         return instance;
     }
     CutDatabase(CutDatabase const &) = delete;
     void operator=(CutDatabase const &) = delete;
 
   public:
-    ~CutDatabase() override {}
+    ~CutDatabase();
 
-    size_t get_available_memory();
-    mem_slot_type *get_free_mem_slot();
-    mem_slot_type *write_mem_slot_at(size_t position);
-    mem_slot_type *read_mem_slot_at(size_t position);
+    size_t get_available_memory(uint16_t context_id);
+    mem_slot_type *get_free_mem_slot(uint16_t context_id);
+    mem_slot_type *write_mem_slot_at(size_t position, uint16_t context_id);
+    mem_slot_type *read_mem_slot_at(size_t position, uint16_t context_id);
 
     size_t get_size_mem_x() const { return _size_mem_x; }
     size_t get_size_mem_y() const { return _size_mem_y; }
@@ -60,16 +75,9 @@ class CutDatabase : DoubleBuffer<mem_slots_type>
     ooc::TileProvider *get_tile_provider() const;
 
   protected:
-    CutDatabase(mem_slots_type *front, mem_slots_type *back);
-
-    void deliver() override;
+    CutDatabase();
 
   private:
-    void start_writing() override;
-    void stop_writing() override;
-    void start_reading() override;
-    void stop_reading() override;
-
     size_t _size_mem_x;
     size_t _size_mem_y;
     size_t _size_mem_interleaved;
@@ -81,11 +89,8 @@ class CutDatabase : DoubleBuffer<mem_slots_type>
 
     ooc::TileProvider *_tile_provider;
 
-    std::atomic<bool> _is_written, _is_read;
-
-    std::mutex _read_lock, _write_lock, _read_write_lock;
-
-    std::condition_variable _read_write_cv;
+    std::map<uint16_t, SyncStructure *> _context_sync_map;
+    std::map<uint16_t, StateStructure *> _context_state_map;
 };
 }
 
