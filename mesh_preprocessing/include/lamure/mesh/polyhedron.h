@@ -49,6 +49,7 @@ CUSTOM DATA STRUCTURES ===================================================
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef Kernel::Vector_2 TexCoord;
 typedef Kernel::Vector_3 Vec3;
+typedef Kernel::Point_3 Point;
 
 template <class Refs, class Traits>
 struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
@@ -64,6 +65,12 @@ struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
     t_coords[1] = tc1;
     t_coords[2] = tc2;
   }
+};
+
+//declare a halfedge which also includes an id
+template<class Refs>
+struct Edge_with_id : public CGAL::HalfedgeDS_halfedge_base<Refs> {
+  int edge_id;
 };
 
 // // //define a new vertex type - inheriting from base type CGAL::HalfedgeDS_vertex_base
@@ -140,6 +147,12 @@ struct Custom_items : public CGAL::Polyhedron_items_3 {
     struct Vertex_wrapper {
       typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
     };
+
+    template < class Refs, class Traits>
+    struct Halfedge_wrapper {
+    typedef Edge_with_id<Refs> Halfedge;
+    };
+
     template <class Refs, class Traits>
     struct Face_wrapper {
       typedef ChartFace<Refs, Traits> Face;
