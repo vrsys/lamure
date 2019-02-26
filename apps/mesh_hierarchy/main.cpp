@@ -8,6 +8,7 @@
 #include <cstring>
 
 
+
 char* get_cmd_option(char** begin, char** end, const std::string& option) {
   char** it = std::find(begin, end, option);
   if (it != end && ++it != end) {
@@ -268,3 +269,4 @@ int32_t main(int argc, char* argv[]) {
   return 0;
    
 }
+

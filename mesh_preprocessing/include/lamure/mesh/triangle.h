@@ -78,6 +78,19 @@ public:
         return v;
     }
 
+    void setVertex(const int vertex_id, vertex new_vertex) {
+        switch (vertex_id){
+            case 0: v0_ = new_vertex;
+            break;
+            case 1: v1_ = new_vertex;
+            break;
+            case 2: v2_ = new_vertex;
+            break;
+            default:
+            break;
+        }
+    }
+
     std::string to_string() {
         std::stringstream ss;
 

@@ -373,7 +373,7 @@ void bvh::simplify(
   polyhedron_builder<HalfedgeDS> builder(combined_set);
   polyMesh.delegate(builder);
 
-  // merge_similar_border_edges(polyMesh,left_child_tris, right_child_tris);
+  merge_similar_border_edges(polyMesh, combined_set);
 
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
     
@@ -522,62 +522,63 @@ void bvh::simplify(
 
 
 
-// work in progress
-// Vec3 bvh::normalise(Vec3 v) {return v / std::sqrt(v.squared_length());}
+Vec3 bvh::normalise(Vec3 v) {return v / std::sqrt(v.squared_length());}
 
-// void bvh::merge_similar_border_edges(Polyhedron& P,
-//                                     std::vector<Triangle_Chartid>& left_child_tris,
-//                                     std::vector<Triangle_Chartid>& right_child_tris
-//                                     ){
+void bvh::merge_similar_border_edges(Polyhedron& P,
+                                    std::vector<Triangle_Chartid>& tri_list
+                                    ){
 
-//   struct Edge_merge_candidate
-//   {
-//     Edge_handle edge1;
-//     Edge_handle edge2;
-//     double cost;
-//   };
+  struct Edge_merge_candidate
+  {
+    Edge_handle edge1;
+    Edge_handle edge2;
+    double cost;
+  };
 
-//   std::list<Edge_merge_candidate> merge_cs;
+  //build list of possible edge merges
+  std::list<Edge_merge_candidate> merge_cs;
 
-//   for ( Polyhedron::Halfedge_iterator  ei = P.halfedges_begin(); ei != P.halfedges_end(); ++ei) {
+  //check every edge in mesh, determine if it is a border edge
+  for ( Polyhedron::Halfedge_iterator  ei = P.halfedges_begin(); ei != P.halfedges_end(); ++ei) {
 
-//     if(ei->is_border()){
+    if(ei->is_border()){
       
-//       Edge_merge_candidate mc;
-//       mc.edge1 = ei;
+      Edge_merge_candidate mc;
+      mc.edge1 = ei;
 
-//       //find next border edge
-//       Polyhedron::Halfedge_around_vertex_circulator he,end; 
-//       he = end = ei->vertex()->vertex_begin();
-//       do {
-//         if(he->is_border()){
-//           mc.edge2 = he;
-//           break;
-//         }
-//       } while (++he != end);
+      //find next border edge
+      Polyhedron::Halfedge_around_vertex_circulator he,end; 
+      he = end = ei->vertex()->vertex_begin();
+      do {
+        if(he->is_border()){
+          mc.edge2 = he;
+          break;
+        }
+      } while (++he != end);
 
-//       //check that continuing edge was found
-//       if (he == end)
-//       {
-//         std::cout << "No continuing edge found\n";
-//         continue;
-//       }
+      //check that continuing edge was found
+      if (he == end)
+      {
+        std::cout << "No continuing edge found\n";
+        continue;
+      }
 
-//       //calculate cost (angle difference)
-//       Vec3 v1 = normalise(mc.edge1->vertex()->point() - mc.edge1->prev()->vertex()->point());
-//       Vec3 v2 = normalise(mc.edge2->vertex()->point() - mc.edge2->prev()->vertex()->point());
+      //calculate cost (angle difference)
+      Vec3 v1 = normalise(mc.edge1->vertex()->point() - mc.edge1->prev()->vertex()->point());
+      Vec3 v2 = normalise(mc.edge2->vertex()->point() - mc.edge2->prev()->vertex()->point());
 
-//       double dot = v1 * v2;
-//       dot = std::max(-1.0, std::min(1.0,dot));
-//       mc.cost = acos(dot);
+      double dot = v1 * v2;
+      dot = std::max(-1.0, std::min(1.0,dot));
+      mc.cost = acos(dot);
 
-//       merge_cs.push_back(mc);
+      merge_cs.push_back(mc);
 
-//     }
-//   }
+    }
+  }
 
-//   std::cout << "Found " << merge_cs.size() << " border edge merge candidates\n";
-// }
+  std::cout << "Found " << merge_cs.size() << " border edge merge candidates in mesh with " << P.size_of_facets() << " faces\n";
+  std::cout << "Ratio = " << (double)(merge_cs.size())/P.size_of_facets() << std::endl;
+}
 
 
 
