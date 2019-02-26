@@ -62,7 +62,6 @@ public:
         vec3r n = vec3r(v0_.nml_ + v1_.nml_ + v2_.nml_) * (1.0 / 3.0);
         return lamure::mesh::plane_t(n, vec3r(v0_.pos_));
     }
-<<<<<<< HEAD
 
     const vertex getVertex(const int vertex_id) const {
         switch (vertex_id){
@@ -115,47 +114,6 @@ public:
         return ss.str();
     }
 
-=======
-
-    const vertex getVertex(const int vertex_id) const {
-        switch (vertex_id){
-            case 0: return v0_;
-            break;
-            case 1: return v1_;
-            break;
-            case 2: return v2_;
-            break;
-            default:
-            break;
-        }
-        vertex v;
-        return v;
-    }
-
-    std::string to_string() {
-        std::stringstream ss;
-
-        ss << "--V0--\n";
-        ss << "pos: " << v0_.pos_ << std::endl;
-        ss << "nml: " << v0_.nml_ << std::endl;
-        ss << "tex: " << v0_.tex_ << std::endl;
-
-        ss << "--V1--\n";
-
-        ss << "pos: " << v1_.pos_ << std::endl;
-        ss << "nml: " << v1_.nml_ << std::endl;
-        ss << "tex: " << v1_.tex_ << std::endl;
-
-        ss << "--V2--\n";
-
-        ss << "pos: " << v2_.pos_ << std::endl;
-        ss << "nml: " << v2_.nml_ << std::endl;
-        ss << "tex: " << v2_.tex_ << std::endl;
-
-        return ss.str();
-    }
-
->>>>>>> upstream/master
     vertex v0_;
     vertex v1_;
     vertex v2_;
