@@ -62,6 +62,8 @@ struct chart {
   std::set<int> all_triangle_ids_;
   std::set<int> original_triangle_ids_;
   projection_info projection;
+  double real_to_tex_ratio_old;
+  double real_to_tex_ratio_new;
 };
 
 
@@ -663,6 +665,44 @@ void glut_display() {
 }
 
 
+//calculates a per-chart ratio of 3D space to texture space
+void calculate_chart_tex_space_sizes(bool USE_ORIGINAL_TEX_COORDS, std::vector<chart>& charts, std::vector<triangle>& triangles){
+
+  //for all charts
+  for(auto& chart : charts){
+
+    double real_tex_ratio = 0.0;
+
+    //for all triangles
+    for (auto& tri_id : chart.all_triangle_ids_)
+    {
+      auto& tri = triangles[tri_id];
+      double real_length = scm::math::length(tri.v0_.pos_ - tri.v1_.pos_);
+
+      double tex_length;
+      if (USE_ORIGINAL_TEX_COORDS)
+      {
+        tex_length = scm::math::length(tri.v0_.old_coord_ - tri.v2_.old_coord_);
+      }
+      else {
+        tex_length = scm::math::length(tri.v0_.new_coord_ - tri.v2_.new_coord_);
+      }
+
+      real_tex_ratio += (real_length / tex_length);
+    }
+
+    if (USE_ORIGINAL_TEX_COORDS)
+    {
+      chart.real_to_tex_ratio_old = real_tex_ratio / chart.all_triangle_ids_.size();
+    }
+    else {
+      chart.real_to_tex_ratio_new = real_tex_ratio / chart.all_triangle_ids_.size();
+    }
+  }
+
+}
+
+
 int main(int argc, char *argv[]) {
     
 
@@ -819,6 +859,9 @@ int main(int argc, char *argv[]) {
       
     }
 
+
+
+
     //report chart parameters
     for (int chart_id = 0; chart_id < num_charts; ++chart_id) {
       auto& chart = charts[chart_id];
@@ -860,7 +903,22 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
 
+
+    //for each chart, calculate relative size of real space to original tex space
+    calculate_chart_tex_space_sizes(true, charts, triangles);
+
     project(charts, triangles);
+
+    //for each chart, calculate relative size of real space to new tex space
+    calculate_chart_tex_space_sizes(false, charts, triangles);
+
+    for (auto& chart : charts)
+    {
+      std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
+      std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+    }
+
+    return 0;
 
     std::cout << "running rectangle packing" << std::endl;
 
