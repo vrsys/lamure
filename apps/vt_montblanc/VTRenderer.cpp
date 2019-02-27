@@ -272,7 +272,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         for(auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
         {
-            const mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second);
+            const mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, context_id);
 
             if(mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
             {
@@ -299,7 +299,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         for(auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared())
         {
-            const mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second);
+            const mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, context_id);
 
             if(mem_slot_cleared == nullptr)
             {
@@ -379,11 +379,9 @@ VTRenderer::~VTRenderer()
 
     _device.reset();
 }
-void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::extract_debug_cut(uint64_t cut_id)
 {
     CutDatabase *cut_db = &CutDatabase::get_instance();
-
-    uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
 
     cut_db->start_reading_cut(cut_id);
 
@@ -433,11 +431,13 @@ void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t 
 
     cut_db->stop_reading_cut(cut_id);
 }
-void VTRenderer::extract_debug_context(uint16_t context_id)
+void VTRenderer::extract_debug_cut_context(uint64_t cut_id)
 {
     CutDatabase *cut_db = &CutDatabase::get_instance();
 
-    cut_db->start_reading_cut(0);
+    cut_db->start_reading_cut(cut_id);
+
+    uint16_t context_id = Cut::get_context_id(cut_id);
 
     if(_ctxt_debug_outputs[context_id] == nullptr)
     {
@@ -456,7 +456,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
         {
             for(size_t x = 0; x < cut_db->get_size_mem_x(); ++x)
             {
-                mem_slot_type *mem_slot = cut_db->read_mem_slot_at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y());
+                mem_slot_type *mem_slot = cut_db->read_mem_slot_at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y(), context_id);
 
                 if(!(*mem_slot).locked)
                 {
@@ -473,7 +473,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
         stream_mem_slots << std::endl;
     }
     _ctxt_debug_outputs[context_id]->_string_mem_slots = stream_mem_slots.str();
-    _ctxt_debug_outputs[context_id]->_mem_slots_busy = ((float)cut_db->get_size_mem_interleaved() - cut_db->get_available_memory()) / (float)cut_db->get_size_mem_interleaved();
+    _ctxt_debug_outputs[context_id]->_mem_slots_busy = ((float)cut_db->get_size_mem_interleaved() - cut_db->get_available_memory(context_id)) / (float)cut_db->get_size_mem_interleaved();
 
     std::stringstream stream_feedback;
     size_t phys_tex_tile_width = VTConfig::get_instance().get_phys_tex_tile_width();
@@ -502,7 +502,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
     _ctxt_debug_outputs[context_id]->_times_apply.push_back(_apply_time);
     _ctxt_debug_outputs[context_id]->_times_apply.pop_front();
 
-    cut_db->stop_reading_cut(0);
+    cut_db->stop_reading_cut(cut_id);
 }
 void VTRenderer::render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
 {
