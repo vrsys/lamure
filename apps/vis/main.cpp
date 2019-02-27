@@ -3284,7 +3284,7 @@ int main(int argc, char *argv[])
     }
   }
   else {
-    std::cout << "Usage: " << argv[0] << " <vis_file.vis>" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <vis_file.vis> <lod_mesh_texture_path (optional)>" << std::endl;
     std::cout << "\tHELP: to render a single model use:" << std::endl;
     std::cout << "\techo <input_file.bvh> > default.vis && " << argv[0] << " default.vis" << std::endl;
     return 0;

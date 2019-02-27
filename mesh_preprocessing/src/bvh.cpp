@@ -246,7 +246,10 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles) {
         true);
 
       if (triangles_map_[node_id].size() > primitives_per_node_) {
+
         //simplify without constraint
+        std::cout << "simplifying node " << node_id << " without constraint\n";
+
         triangles_map_[node_id].clear();
         simplify(
           triangles_map_[left_child],
@@ -373,13 +376,14 @@ void bvh::simplify(
   polyhedron_builder<HalfedgeDS> builder(combined_set);
   polyMesh.delegate(builder);
 
-  merge_similar_border_edges(polyMesh, combined_set);
+  // this function has a development - not merged yet (27/2/19):
+  // merge_similar_border_edges(polyMesh, combined_set);
 
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
     
   }
   else {
-    std::cout << "WARNING! Triangle mesh invalid!" << std::endl;
+    std::cout << "WARNING! Triangle mesh invalid! (No triangles saved for this node)" << std::endl;
     return;
   }
 
@@ -404,16 +408,18 @@ void bvh::simplify(
   //simplify the two input sets of tris into output_tris
 
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
-  SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
+
+  //simplification with borders constrained
+  Border_is_constrained_edge_map bem(polyMesh);
+
+  typedef SMS::Bounded_normal_change_placement<SMS::LindstromTurk_placement<Polyhedron> > Placement;
   
 
   if (contrain_edges) {
 
-    //simplification with borders constrained
-    Border_is_constrained_edge_map bem(polyMesh);
 
-    typedef SMS::Bounded_normal_change_placement<SMS::LindstromTurk_placement<Polyhedron> > Placement;
-    
+    SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
+
     SMS::edge_collapse
              (polyMesh
              ,stop
@@ -429,7 +435,11 @@ void bvh::simplify(
   } 
   else {
 
+
+
     //without border constraint    
+
+    SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
     SMS::edge_collapse
               (polyMesh
               ,stop
@@ -439,6 +449,21 @@ void bvh::simplify(
                                  //.get_cost (SMS::LindstromTurk_cost<Polyhedron>())
                                  .get_placement(SMS::Midpoint_placement<Polyhedron>())
               );
+
+    //with only border constraints
+    // SMS::Count_ratio_stop_predicate<Polyhedron> stop(0);
+    // SMS::edge_collapse
+    //      (polyMesh
+    //      ,stop
+    //       ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+    //                         .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+    //                         .edge_is_constrained_map(bem)
+    //                         // .get_placement(Placement(bem))
+    //                         // .get_cost (SMS::Edge_length_cost <Polyhedron>())
+    //                         // .get_placement(SMS::Midpoint_placement<Polyhedron>())
+    //                         .get_cost (SMS::LindstromTurk_cost<Polyhedron>())
+    //                         .get_placement(Placement())
+    //      );
 
   }
 

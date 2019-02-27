@@ -3319,3 +3319,13 @@ Vertices: 130157 , faces: 257757
 Desired Charts: 1000, active charts: 1000
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-02-27 19:49:11
+Ran for 0 m 49 s
+Input file: /mnt/terabytes_of_textures/output_sensitive_rendering/lion_250k/lion.obj
+Output file: data/lion_test_21_1/lion_charts_2.obj
+Vertices: 130157 , faces: 257757
+Desired Charts: 200, active charts: 200
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
