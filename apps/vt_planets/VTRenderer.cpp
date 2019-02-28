@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -27,7 +27,6 @@ VTRenderer::VTRenderer() : _data_resources(), _ctxt_resources(), _view_resources
 void VTRenderer::init()
 {
     choreography_scale = 0.3f;
-    _scm_core.reset(new scm::core(0, nullptr));
     _device.reset(new scm::gl::render_device());
 
     std::string fs_vt_color, vx_vt_elevation, fs_vt_color_debug;
@@ -93,7 +92,7 @@ void VTRenderer::init()
     }
 }
 
-void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
+void VTRenderer::add_data(uint64_t cut_id, uint32_t context_id, uint32_t data_id)
 {
     using namespace scm::math;
     using namespace scm::gl;
@@ -108,7 +107,7 @@ void VTRenderer::add_data(uint64_t cut_id, uint32_t data_id)
 
         auto index_texture_level_ptr = _device->create_texture_2d(vec2ui(size_index_texture, size_index_texture), FORMAT_RGBA_8UI);
 
-        _device->main_context()->clear_image_data(index_texture_level_ptr, 0, FORMAT_RGBA_8UI, 0);
+        _ctxt_resources[context_id]->_render_context->clear_image_data(index_texture_level_ptr, 0, FORMAT_RGBA_8UI, 0);
         resource->_index_hierarchy.emplace_back(index_texture_level_ptr);
 
         level++;
@@ -134,8 +133,7 @@ void VTRenderer::add_context(uint16_t context_id)
 
     ctxt_resource *resource = new ctxt_resource();
 
-    // TODO: create auxiliary contexts
-    resource->_render_context = _device->main_context();
+    resource->_render_context = _device->create_context();
     resource->_physical_texture_dimension = vec2ui(VTConfig::get_instance().get_phys_tex_tile_width(), VTConfig::get_instance().get_phys_tex_tile_width());
 
     vec2ui physical_texture_size = vec2ui(VTConfig::get_instance().get_phys_tex_px_width(), VTConfig::get_instance().get_phys_tex_px_width());
@@ -168,6 +166,9 @@ void VTRenderer::clear_buffers(uint16_t context_id)
     using namespace scm::math;
     using namespace scm::gl;
 
+    context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
+    context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
+
     _ctxt_resources[context_id]->_render_context->set_default_frame_buffer();
 
     _ctxt_resources[context_id]->_render_context->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(0.f, 0.f, 0.f, 1.0f));
@@ -195,7 +196,7 @@ void VTRenderer::render_earth(uint32_t earth_color_id, uint32_t earth_elevation_
     {
         std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
         mat4f model_matrix = mat4f::identity() * make_rotation(90.f, 1.f, 0.f, 0.f) * make_rotation(-90.f, 0.f, 0.f, 1.f) * make_scale(0.17529f, 0.17529f, 0.17529f);
-        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count()*choreography_scale);
+        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count() * choreography_scale);
         mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * choreography_matrix * model_matrix;
 
         _shader_vt->uniform("model_view_matrix", model_view_matrix);
@@ -214,7 +215,7 @@ void VTRenderer::render_earth(uint32_t earth_color_id, uint32_t earth_elevation_
     _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
     _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
     _shader_vt->uniform("enable_displacement", 1);
-    
+
     for(uint32_t i = 0; i < _data_resources[earth_color_id]->_index_hierarchy.size(); ++i)
     {
         std::string texture_string = "hierarchical_idx_textures";
@@ -288,7 +289,7 @@ void VTRenderer::render_moon(uint32_t moon_data_id, uint16_t view_id, uint16_t c
         std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
         mat4f model_matrix =
             mat4f::identity() * make_translation(0.0f, 1.0f, 0.0f) * make_rotation(90.f, 1.f, 0.f, 0.f) * make_rotation(-90.f, 0.f, 0.f, 1.f) * make_scale(0.04422f, 0.04422f, 0.04422f);
-        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count()*choreography_scale);
+        mat4f choreography_matrix = get_choreograpy((float)elapsed_seconds.count() * choreography_scale);
         mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * choreography_matrix * model_matrix;
 
         _shader_vt->uniform("model_view_matrix", model_view_matrix);
@@ -361,6 +362,9 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     using namespace scm::math;
     using namespace scm::gl;
 
+    context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
+    context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
+
     int32_t *feedback_lod = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, ACCESS_READ_ONLY);
     memcpy(_ctxt_resources[context_id]->_feedback_lod_cpu_buffer, feedback_lod, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
     _ctxt_resources[context_id]->_render_context->sync();
@@ -372,7 +376,7 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     memcpy(_ctxt_resources[context_id]->_feedback_count_cpu_buffer, feedback_count, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
     _ctxt_resources[context_id]->_render_context->sync();
 
-    _cut_update->feedback(_ctxt_resources[context_id]->_feedback_lod_cpu_buffer, _ctxt_resources[context_id]->_feedback_count_cpu_buffer);
+    _cut_update->feedback(context_id, _ctxt_resources[context_id]->_feedback_lod_cpu_buffer, _ctxt_resources[context_id]->_feedback_count_cpu_buffer);
 
     _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_count_storage);
     _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_count_storage, FORMAT_R_32UI, nullptr);
@@ -386,6 +390,11 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
     for(cut_map_entry_type cut_entry : (*cut_db->get_cut_map()))
     {
+        if(Cut::get_context_id(cut_entry.first) != context_id)
+        {
+            continue;
+        }
+
         Cut *cut = cut_db->start_reading_cut(cut_entry.first);
 
         if(!cut->is_drawn())
@@ -398,7 +407,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         for(auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
         {
-            const mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second);
+            const mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, context_id);
 
             if(mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
             {
@@ -425,7 +434,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         for(auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared())
         {
-            const mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second);
+            const mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, context_id);
 
             if(mem_slot_cleared == nullptr)
             {
@@ -504,13 +513,10 @@ VTRenderer::~VTRenderer()
     _ms_no_cull.reset();
 
     _device.reset();
-    _scm_core.reset();
 }
-void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::extract_debug_cut(uint64_t cut_id)
 {
     CutDatabase *cut_db = &CutDatabase::get_instance();
-
-    uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
 
     cut_db->start_reading_cut(cut_id);
 
@@ -560,11 +566,13 @@ void VTRenderer::extract_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t 
 
     cut_db->stop_reading_cut(cut_id);
 }
-void VTRenderer::extract_debug_context(uint16_t context_id)
+void VTRenderer::extract_debug_cut_context(uint64_t cut_id)
 {
     CutDatabase *cut_db = &CutDatabase::get_instance();
 
-    cut_db->start_reading_cut(0);
+    cut_db->start_reading_cut(cut_id);
+
+    uint16_t context_id = Cut::get_context_id(cut_id);
 
     if(_ctxt_debug_outputs[context_id] == nullptr)
     {
@@ -583,7 +591,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
         {
             for(size_t x = 0; x < cut_db->get_size_mem_x(); ++x)
             {
-                mem_slot_type *mem_slot = cut_db->read_mem_slot_at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y());
+                mem_slot_type *mem_slot = cut_db->read_mem_slot_at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y(), context_id);
 
                 if(!(*mem_slot).locked)
                 {
@@ -600,7 +608,7 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
         stream_mem_slots << std::endl;
     }
     _ctxt_debug_outputs[context_id]->_string_mem_slots = stream_mem_slots.str();
-    _ctxt_debug_outputs[context_id]->_mem_slots_busy = ((float)cut_db->get_size_mem_interleaved() - cut_db->get_available_memory()) / (float)cut_db->get_size_mem_interleaved();
+    _ctxt_debug_outputs[context_id]->_mem_slots_busy = ((float)cut_db->get_size_mem_interleaved() - cut_db->get_available_memory(context_id)) / (float)cut_db->get_size_mem_interleaved();
 
     std::stringstream stream_feedback;
     size_t phys_tex_tile_width = VTConfig::get_instance().get_phys_tex_tile_width();
@@ -629,13 +637,15 @@ void VTRenderer::extract_debug_context(uint16_t context_id)
     _ctxt_debug_outputs[context_id]->_times_apply.push_back(_apply_time);
     _ctxt_debug_outputs[context_id]->_times_apply.pop_front();
 
-    cut_db->stop_reading_cut(0);
+    cut_db->stop_reading_cut(cut_id);
 }
-void VTRenderer::render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
+void VTRenderer::render_debug_cut(uint64_t cut_id)
 {
-    uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
-
     ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
+
+    uint32_t data_id = Cut::get_dataset_id(cut_id);
+    uint16_t view_id = Cut::get_view_id(cut_id);
+    uint16_t context_id = Cut::get_context_id(cut_id);
 
     if(!ImGui::Begin(("Dataset: " + std::to_string(data_id) + ", view: " + std::to_string(view_id) + ", context: " + std::to_string(context_id)).c_str()))
     {
@@ -653,8 +663,10 @@ void VTRenderer::render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t c
 
     ImGui::End();
 }
-void VTRenderer::render_debug_context(uint16_t context_id)
+void VTRenderer::render_debug_context(uint64_t cut_id)
 {
+    uint16_t context_id = Cut::get_context_id(cut_id);
+
     ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
 
     if(!ImGui::Begin(("Context")))
