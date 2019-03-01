@@ -664,9 +664,28 @@ void glut_display() {
   glutSwapBuffers();
 }
 
+//returns a city block distance between 2 texture coordinates, given a width and height of the texture
+int calc_city_block_length(scm::math::vec2f coord1, scm::math::vec2f coord2, int tex_width, int tex_height){
+
+  scm::math::vec2i real_coord1(std::floor(coord1.x * tex_width), std::floor(coord1.y * tex_height));
+  scm::math::vec2i real_coord2(std::floor(coord2.x * tex_width), std::floor(coord2.y * tex_height));
+
+  return std::abs(real_coord1.x - real_coord2.x) + std::abs(real_coord1.y - real_coord2.y); 
+}
 
 //calculates a per-chart ratio of 3D space to texture space
-void calculate_chart_tex_space_sizes(bool USE_ORIGINAL_TEX_COORDS, std::vector<chart>& charts, std::vector<triangle>& triangles){
+//ratio is number of pixels for 1 unit in real space
+enum PixelResolutionCalculationType { USE_OLD_COORDS, USE_NEW_COORDS};
+void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::vector<chart>& charts, std::vector<triangle>& triangles, int tex_width, int tex_height){
+
+
+
+  if (type == USE_OLD_COORDS){
+    std::cout << "Calculating pixel sizes with old coords" << std::endl;
+  }
+  else {
+    std::cout << "Calculating pixel sizes with new coords" << std::endl;
+  }
 
   //for all charts
   for(auto& chart : charts){
@@ -679,19 +698,19 @@ void calculate_chart_tex_space_sizes(bool USE_ORIGINAL_TEX_COORDS, std::vector<c
       auto& tri = triangles[tri_id];
       double real_length = scm::math::length(tri.v0_.pos_ - tri.v1_.pos_);
 
+      //calculate lengths as cityblock distances 
       double tex_length;
-      if (USE_ORIGINAL_TEX_COORDS)
+      if (type == USE_OLD_COORDS)
       {
-        tex_length = scm::math::length(tri.v0_.old_coord_ - tri.v2_.old_coord_);
+        tex_length = calc_city_block_length(tri.v0_.old_coord_, tri.v1_.old_coord_, tex_width, tex_height);
       }
       else {
-        tex_length = scm::math::length(tri.v0_.new_coord_ - tri.v2_.new_coord_);
+        tex_length = calc_city_block_length(tri.v0_.new_coord_, tri.v1_.new_coord_, tex_width, tex_height);
       }
-
-      real_tex_ratio += (real_length / tex_length);
+      real_tex_ratio += (tex_length / real_length);
     }
 
-    if (USE_ORIGINAL_TEX_COORDS)
+    if (type == USE_OLD_COORDS)
     {
       chart.real_to_tex_ratio_old = real_tex_ratio / chart.all_triangle_ids_.size();
     }
@@ -748,6 +767,9 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<lamure::ren::lod_stream> lod = std::make_shared<lamure::ren::lod_stream>();
     lod->open(lod_filename);
     std::cout << "lod file loaded." << std::endl;
+
+    //load the texture png file
+    texture_ = load_image(texture_filename);
 
     
     std::vector<chart> charts;
@@ -905,20 +927,11 @@ int main(int argc, char *argv[]) {
 
 
     //for each chart, calculate relative size of real space to original tex space
-    calculate_chart_tex_space_sizes(true, charts, triangles);
+    calculate_chart_tex_space_sizes(USE_OLD_COORDS, charts, triangles, texture_->get_width(), texture_->get_height());
 
     project(charts, triangles);
 
-    //for each chart, calculate relative size of real space to new tex space
-    calculate_chart_tex_space_sizes(false, charts, triangles);
 
-    for (auto& chart : charts)
-    {
-      std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
-      std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
-    }
-
-    return 0;
 
     std::cout << "running rectangle packing" << std::endl;
 
@@ -1024,6 +1037,18 @@ int main(int argc, char *argv[]) {
        to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
     } 
   }
+
+
+  //for each chart, calculate relative size of real space to new tex space
+  calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, texture_->get_width(), texture_->get_height());
+
+
+  for (auto& chart : charts)
+  {
+    std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
+    std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+  }
+
 
 
     //replacing texture coordinates in LOD file
@@ -1135,9 +1160,6 @@ int main(int argc, char *argv[]) {
   bvh.reset();
   std::cout << "OUTPUT updated bvh file: " << out_bvh_filename << std::endl;
 
-
-  //load the texture png file
-  texture_ = load_image(texture_filename);
 
   frame_buffer_ = std::make_shared<frame_buffer_t>(1, window_width_, window_height_, GL_RGBA, GL_LINEAR);
 
