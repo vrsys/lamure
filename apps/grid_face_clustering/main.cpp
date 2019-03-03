@@ -71,7 +71,6 @@ int main( int argc, char** argv )
   }
   else {
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
-    std::cout << "Optional: provide an output obj filename using -of <filename.obj>" << std::endl;
 
     std::cout << "Optional: -ch specifies chart threshold (=0)" << std::endl;
     std::cout << "Optional: -co specifies cost threshold (=double max)" << std::endl;
@@ -84,11 +83,6 @@ int main( int argc, char** argv )
 
     std::cout << "Optional: -ct specifies threshold for grid chart splitting by normal variance (=0.001)" << std::endl;
     return 1;
-  }
-
-  std::string out_filename = "";
-  if (Utils::cmdOptionExists(argv, argv+argc, "-of")) {
-    out_filename = std::string(Utils::getCmdOption(argv, argv + argc, "-of"));
   }
 
   double cost_threshold = std::numeric_limits<double>::max();
@@ -181,18 +175,12 @@ int main( int argc, char** argv )
 
   //END chart creation ====================================================================================================================
 
-  // std::string out_filename = "data/charts1.obj";
-  
-  if (out_filename == "")
-  {
-    std::stringstream ss;
-    ss << "data/charts_cost_" << cost_threshold << ".obj";
-    out_filename = ss.str();
-  }
 
 
+  std::string out_filename = obj_filename.substr(0,obj_filename.size()-4) + "_charts.obj";
+  std::string chart_filename = obj_filename.substr(0,obj_filename.size()-4) + "_charts.chart";
   std::ofstream ofs( out_filename );
-  OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, SEPARATE_CHART_FILE);
+  OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, SEPARATE_CHART_FILE, chart_filename);
   ofs.close();
   std::cout << "mesh was written to " << out_filename << std::endl;
 

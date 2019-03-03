@@ -79,6 +79,8 @@ std::shared_ptr<texture_t> texture_; //contains GPU image
 
 std::shared_ptr<frame_buffer_t> frame_buffer_; //contains resulting image
 
+std::string outfile_name = "tex_out.png";
+
 
 struct blit_vertex {
   scm::math::vec2f old_coord_;
@@ -654,7 +656,8 @@ void glut_display() {
 
   //frame_buffer_->draw(0);
 
-  save_image("data/mesh_prepro_result.png", frame_buffer_);
+  // save_image("data/mesh_prepro_result.png", frame_buffer_);
+  save_image(outfile_name, frame_buffer_);
 
   exit(1);
 
@@ -855,6 +858,8 @@ int main(int argc, char *argv[]) {
         tri.v2_.old_coord_ = scm::math::vec2f(vertices[tri_id*3+2].c_x_, vertices[tri_id*3+2].c_y_);
 
         triangles.push_back(tri);
+
+
       }
     }
 
@@ -1080,6 +1085,9 @@ int main(int argc, char *argv[]) {
 
   //load the texture png file
   texture_ = load_image(texture_filename);
+
+  //save name for new texture
+  outfile_name = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.png";
 
   frame_buffer_ = std::make_shared<frame_buffer_t>(1, window_width_, window_height_, GL_RGBA, GL_LINEAR);
 
