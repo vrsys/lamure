@@ -31,6 +31,7 @@
 #include <lamure/prov/3rd_party/exif.h>
 
 #include <algorithm>
+#include <vector>
 
 using std::string;
 

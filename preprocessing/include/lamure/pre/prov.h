@@ -14,6 +14,7 @@
 #include <fstream>
 #include <memory>
 #include <vector>
+#include <sstream>
 
 namespace lamure
 {

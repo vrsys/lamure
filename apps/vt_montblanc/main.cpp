@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -9,14 +9,9 @@
 #include "imgui_impl_glfw_gl3.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <atomic>
-#include <condition_variable>
-#include <fstream>
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/ren/CutDatabase.h>
 #include <lamure/vt/ren/CutUpdate.h>
-#include <queue>
-#include <unordered_map>
 
 char *get_cmd_option(char **begin, char **end, const std::string &option)
 {
@@ -69,13 +64,12 @@ std::list<Window *> _windows;
 Window *_current_context = nullptr;
 vt::CutUpdate *_cut_update = nullptr;
 
+scm::shared_ptr<scm::core> _scm_core;
+
 class EventHandler
 {
   private:
-    static float calculate_factor(float scale)
-    {
-        return -1.0f/109.0f * scale * scale + 1081.0f/10900.0f * scale + 0.01f;
-    }
+    static float calculate_factor(float scale) { return -1.0f / 109.0f * scale * scale + 1081.0f / 10900.0f * scale + 0.01f; }
 
   public:
     static void on_error(int _err_code, const char *err_msg) { throw std::runtime_error(err_msg); }
@@ -90,86 +84,94 @@ class EventHandler
         Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
         switch(key)
         {
-            case GLFW_KEY_ESCAPE:
-                std::cout << "should close" << std::endl;
-                glfwSetWindowShouldClose(glfw_window, GL_TRUE);
-                exit(0);
-                break;
-            case GLFW_KEY_P:
-                if (action == GLFW_PRESS) {
-                    _cut_update->toggle_freeze_dispatch();
-                }
-                break;
-            case GLFW_KEY_RIGHT:
-                if (action != GLFW_RELEASE) {
-                    float factor = -calculate_factor(window->_scale);
-                    window->_trackball_manipulator.translation(factor, 0.0f);
-                }
-                break;
-            case GLFW_KEY_LEFT:
-                if (action != GLFW_RELEASE) {
-                    float factor = calculate_factor(window->_scale);
-                    window->_trackball_manipulator.translation(factor, 0.0f);
-                }
-                break;
-            case GLFW_KEY_UP:
-                if (action != GLFW_RELEASE) {
-                    float factor = -calculate_factor(window->_scale);
-                    window->_trackball_manipulator.translation(0.0f, factor);
-                }
-                break;
-            case GLFW_KEY_DOWN:
-                if (action != GLFW_RELEASE) {
-                    float factor = calculate_factor(window->_scale);
-                    window->_trackball_manipulator.translation(0.0f, factor);
-                }
-                break;
-            case GLFW_KEY_W:
-                window->_trackball_manipulator.dolly(-0.001f);
-                break;
-            case GLFW_KEY_S:
-                window->_trackball_manipulator.dolly(0.001f);
-                break;
-            case GLFW_KEY_A:
-                window->_trackball_manipulator.translation(0.0001f, 0.0f);
-                break;
-            case GLFW_KEY_D:
-                window->_trackball_manipulator.translation(-0.0001f, 0.0f);
-                break;
-            case GLFW_KEY_1:
+        case GLFW_KEY_ESCAPE:
+            std::cout << "should close" << std::endl;
+            glfwSetWindowShouldClose(glfw_window, GL_TRUE);
+            exit(0);
+            break;
+        case GLFW_KEY_P:
+            if(action == GLFW_PRESS)
+            {
+                _cut_update->toggle_freeze_dispatch();
+            }
+            break;
+        case GLFW_KEY_RIGHT:
+            if(action != GLFW_RELEASE)
+            {
+                float factor = -calculate_factor(window->_scale);
+                window->_trackball_manipulator.translation(factor, 0.0f);
+            }
+            break;
+        case GLFW_KEY_LEFT:
+            if(action != GLFW_RELEASE)
+            {
+                float factor = calculate_factor(window->_scale);
+                window->_trackball_manipulator.translation(factor, 0.0f);
+            }
+            break;
+        case GLFW_KEY_UP:
+            if(action != GLFW_RELEASE)
+            {
+                float factor = -calculate_factor(window->_scale);
+                window->_trackball_manipulator.translation(0.0f, factor);
+            }
+            break;
+        case GLFW_KEY_DOWN:
+            if(action != GLFW_RELEASE)
+            {
+                float factor = calculate_factor(window->_scale);
+                window->_trackball_manipulator.translation(0.0f, factor);
+            }
+            break;
+        case GLFW_KEY_W:
+            window->_trackball_manipulator.dolly(-0.001f);
+            break;
+        case GLFW_KEY_S:
+            window->_trackball_manipulator.dolly(0.001f);
+            break;
+        case GLFW_KEY_A:
+            window->_trackball_manipulator.translation(0.0001f, 0.0f);
+            break;
+        case GLFW_KEY_D:
+            window->_trackball_manipulator.translation(-0.0001f, 0.0f);
+            break;
+        case GLFW_KEY_1:
+            window->_toggle_visualization = 0;
+            break;
+        case GLFW_KEY_2:
+            window->_toggle_visualization = 1;
+            break;
+        case GLFW_KEY_3:
+            window->_toggle_visualization = 2;
+            break;
+        case GLFW_KEY_SPACE:
+            if(action == GLFW_PRESS)
+            {
+                window->_toggle_visualization = (window->_toggle_visualization + 1) % 3;
+            }
+            break;
+        case GLFW_KEY_H:
+            if(action == GLFW_PRESS)
+            {
+                window->_enable_hierarchy = !window->_enable_hierarchy;
+            }
+            break;
+        case GLFW_KEY_R:
+            if(action == GLFW_PRESS)
+            {
+                window->_trackball_manipulator.dolly(-2.5f);
+                window->_trackball_manipulator.transform_matrix(scm::math::mat4f::identity());
+                window->_trackball_manipulator.dolly(2.5f);
+
+                window->_ref_rot_x = 0.0f;
+                window->_ref_rot_y = 0.0f;
+
+                window->_scale = 0.16f;
+
                 window->_toggle_visualization = 0;
-                break;
-            case GLFW_KEY_2:
-                window->_toggle_visualization = 1;
-                break;
-            case GLFW_KEY_3:
-                window->_toggle_visualization = 2;
-                break;
-            case GLFW_KEY_SPACE:
-                if (action == GLFW_PRESS) {
-                    window->_toggle_visualization = (window->_toggle_visualization + 1) % 3;
-                }
-                break;
-            case GLFW_KEY_H:
-                if (action == GLFW_PRESS) {
-                    window->_enable_hierarchy = !window->_enable_hierarchy;
-                }
-                break;
-            case GLFW_KEY_R:
-                if (action == GLFW_PRESS) {
-                    window->_trackball_manipulator.dolly(-2.5f);
-                    window->_trackball_manipulator.transform_matrix(scm::math::mat4f::identity());
-                    window->_trackball_manipulator.dolly(2.5f);
-
-                    window->_ref_rot_x = 0.0f;
-                    window->_ref_rot_y = 0.0f;
-
-                    window->_scale = 0.16f;
-
-                    window->_toggle_visualization = 0;
-                    window->_enable_hierarchy = true;
-                }
-                break;
+                window->_enable_hierarchy = true;
+            }
+            break;
         }
 
 #ifndef NDEBUG
@@ -227,17 +229,20 @@ class EventHandler
             float lf_pos_x = window->lf_pos_x;
             float lf_pos_y = window->lf_pos_y;
 
-            if (lf_pos_x == -1 && lf_pos_y == -1) {
+            if(lf_pos_x == -1 && lf_pos_y == -1)
+            {
                 window->lf_pos_x = (float)xpos;
                 window->lf_pos_y = (float)ypos;
-            } else {
-                float diff_x =  (float) (xpos - lf_pos_x) / window->_width  * calculate_factor(window->_scale) * 85;
-                float diff_y = -(float) (ypos - lf_pos_y) / window->_height * calculate_factor(window->_scale) * 85;
+            }
+            else
+            {
+                float diff_x = (float)(xpos - lf_pos_x) / window->_width * calculate_factor(window->_scale) * 85;
+                float diff_y = -(float)(ypos - lf_pos_y) / window->_height * calculate_factor(window->_scale) * 85;
 
                 window->_trackball_manipulator.translation(diff_x, diff_y);
 
-                window->lf_pos_x = (float) xpos;
-                window->lf_pos_y = (float) ypos;
+                window->lf_pos_x = (float)xpos;
+                window->lf_pos_y = (float)ypos;
             }
         }
         break;
@@ -318,13 +323,13 @@ Window *create_window(unsigned int width, unsigned int height, const std::string
 
     make_context_current(new_window);
 
-    glfwSetKeyCallback         (new_window->_glfw_window, &EventHandler::on_window_key_press);
-    glfwSetCharCallback        (new_window->_glfw_window, &EventHandler::on_window_char);
-    glfwSetMouseButtonCallback (new_window->_glfw_window, &EventHandler::on_window_button_press);
-    glfwSetCursorPosCallback   (new_window->_glfw_window, &EventHandler::on_window_move_cursor);
-    glfwSetScrollCallback      (new_window->_glfw_window, &EventHandler::on_window_scroll);
-    glfwSetCursorEnterCallback (new_window->_glfw_window, &EventHandler::on_window_enter);
-    glfwSetWindowSizeCallback  (new_window->_glfw_window, &EventHandler::on_window_resize);
+    glfwSetKeyCallback(new_window->_glfw_window, &EventHandler::on_window_key_press);
+    glfwSetCharCallback(new_window->_glfw_window, &EventHandler::on_window_char);
+    glfwSetMouseButtonCallback(new_window->_glfw_window, &EventHandler::on_window_button_press);
+    glfwSetCursorPosCallback(new_window->_glfw_window, &EventHandler::on_window_move_cursor);
+    glfwSetScrollCallback(new_window->_glfw_window, &EventHandler::on_window_scroll);
+    glfwSetCursorEnterCallback(new_window->_glfw_window, &EventHandler::on_window_enter);
+    glfwSetWindowSizeCallback(new_window->_glfw_window, &EventHandler::on_window_resize);
 
     glfwSetWindowUserPointer(new_window->_glfw_window, new_window);
 
@@ -396,17 +401,29 @@ int main(int argc, char *argv[])
     vt::VTConfig::CONFIG_PATH = "/mnt/terabytes_of_textures/FINAL_DEMO_DATA/configuration_montblanc_demo.ini";
     vt::VTConfig::get_instance().define_size_physical_texture(128, 8192);
 
-    uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset(
-            "/mnt/terabytes_of_textures/montblanc/montblanc_w1202116_h304384.atlas");
+    uint32_t data_world_map_id = vt::CutDatabase::get_instance().register_dataset("/mnt/terabytes_of_textures/montblanc/montblanc_w1202116_h304384.atlas");
 
-    uint16_t view_id = vt::CutDatabase::get_instance().register_view();
+    /// Secondary view
+
+    uint16_t secondary_view_id = vt::CutDatabase::get_instance().register_view();
+    uint16_t secondary_context_id = vt::CutDatabase::get_instance().register_context();
+
+    uint64_t secondary_cut_map_id = vt::CutDatabase::get_instance().register_cut(data_world_map_id, secondary_view_id, secondary_context_id);
+
+    /// Primary view
+
+    uint16_t primary_view_id = vt::CutDatabase::get_instance().register_view();
     uint16_t primary_context_id = vt::CutDatabase::get_instance().register_context();
 
-    uint64_t cut_map_id = vt::CutDatabase::get_instance().register_cut(data_world_map_id, view_id, primary_context_id);
+    uint64_t primary_cut_map_id = vt::CutDatabase::get_instance().register_cut(data_world_map_id, primary_view_id, primary_context_id);
+
+    /// CutUpdate
 
     // Registration of resources has to happen before cut update start
     _cut_update = &vt::CutUpdate::get_instance();
     _cut_update->start();
+
+    /// GLFW
 
     glfwSetErrorCallback(EventHandler::on_error);
 
@@ -415,23 +432,43 @@ int main(int argc, char *argv[])
         std::runtime_error("GLFW initialisation failed");
     }
 
-    Window *primary_window = create_window(1920, 1080, "First", nullptr, nullptr);
+    /// Schism core
 
-    make_context_current(primary_window);
+    _scm_core.reset(new scm::core(0, nullptr));
 
+    /// Secondary window renderer
+
+    Window *secondary_window = create_window(1920, 1080, "Second", nullptr, nullptr);
+    make_context_current(secondary_window);
     glfwSwapInterval(1);
 
-    auto *vtrenderer = new vt::VTRenderer(_cut_update);
+    auto *vtrenderer_secondary = new vt::VTRenderer(_cut_update);
 
-    vtrenderer->add_data(cut_map_id, data_world_map_id);
-    vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
-    vtrenderer->add_context(primary_context_id);
+    vtrenderer_secondary->add_context(secondary_context_id);
+    vtrenderer_secondary->add_data(secondary_cut_map_id, secondary_context_id, data_world_map_id);
+    vtrenderer_secondary->add_view(secondary_view_id, secondary_window->_width, secondary_window->_height, secondary_window->_scale);
+
+    /// Primary window renderer
+
+    Window *primary_window = create_window(1920, 1080, "First", nullptr, nullptr);
+    make_context_current(primary_window);
+    glfwSwapInterval(1);
+
+    auto *vtrenderer_primary = new vt::VTRenderer(_cut_update);
+
+    vtrenderer_primary->add_context(primary_context_id);
+    vtrenderer_primary->add_data(primary_cut_map_id, primary_context_id, data_world_map_id);
+    vtrenderer_primary->add_view(primary_view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
 
 #ifndef NDEBUG
     glewExperimental = GL_TRUE;
 
     glewInit();
 
+    make_context_current(secondary_window);
+    ImGui_ImplGlfwGL3_Init(secondary_window->_glfw_window, false);
+
+    make_context_current(primary_window);
     ImGui_ImplGlfwGL3_Init(primary_window->_glfw_window, false);
 
     glEnable(GL_DEBUG_OUTPUT);
@@ -448,36 +485,52 @@ int main(int argc, char *argv[])
 
             if(window == primary_window)
             {
-                vtrenderer->toggle_visualization(window->_toggle_visualization);
-                vtrenderer->enable_hierarchy(window->_enable_hierarchy);
+                vtrenderer_primary->toggle_visualization(window->_toggle_visualization);
+                vtrenderer_primary->enable_hierarchy(window->_enable_hierarchy);
 
-                vtrenderer->update_view(view_id,
-                                        window->_width, window->_height,
-                                        window->_scale,
-                                        window->_trackball_manipulator.transform_matrix());
+                vtrenderer_primary->update_view(primary_view_id, window->_width, window->_height, window->_scale, window->_trackball_manipulator.transform_matrix());
 
-                vtrenderer->clear_buffers(primary_context_id);
+                vtrenderer_primary->clear_buffers(primary_context_id);
 
-                vtrenderer->render(data_world_map_id, view_id, primary_context_id);
+                vtrenderer_primary->render(data_world_map_id, primary_view_id, primary_context_id);
 
-                vtrenderer->collect_feedback(primary_context_id);
+                vtrenderer_primary->collect_feedback(primary_context_id);
 #ifndef NDEBUG
-                vtrenderer->extract_debug_cut(data_world_map_id, view_id, primary_context_id);
-                //vtrenderer->extract_debug_cut(data_world_elevation_id, view_id, primary_context_id);
-                vtrenderer->extract_debug_context(primary_context_id);
+                vtrenderer_primary->extract_debug_cut(primary_cut_map_id);
+                vtrenderer_primary->extract_debug_cut_context(primary_cut_map_id);
 
                 ImGui_ImplGlfwGL3_NewFrame();
 
-                vtrenderer->render_debug_cut(data_world_map_id, view_id, primary_context_id);
-                //vtrenderer->render_debug_cut(data_world_elevation_id, view_id, primary_context_id);
-                vtrenderer->render_debug_context(primary_context_id);
+                vtrenderer_primary->render_debug_cut(data_world_map_id, primary_view_id, primary_context_id);
+                vtrenderer_primary->render_debug_context(primary_context_id);
 
                 ImGui::Render();
 #endif
             }
-            else
+
+            if(window == secondary_window)
             {
-                // TODO
+                vtrenderer_secondary->toggle_visualization(window->_toggle_visualization);
+                vtrenderer_secondary->enable_hierarchy(window->_enable_hierarchy);
+
+                vtrenderer_secondary->update_view(secondary_view_id, window->_width, window->_height, window->_scale, window->_trackball_manipulator.transform_matrix());
+
+                vtrenderer_secondary->clear_buffers(secondary_context_id);
+
+                vtrenderer_secondary->render(data_world_map_id, secondary_view_id, secondary_context_id);
+
+                vtrenderer_secondary->collect_feedback(secondary_context_id);
+#ifndef NDEBUG
+                vtrenderer_secondary->extract_debug_cut(secondary_cut_map_id);
+                vtrenderer_secondary->extract_debug_cut_context(secondary_cut_map_id);
+
+                ImGui_ImplGlfwGL3_NewFrame();
+
+                vtrenderer_secondary->render_debug_cut(data_world_map_id, secondary_view_id, secondary_context_id);
+                vtrenderer_secondary->render_debug_context(secondary_context_id);
+
+                ImGui::Render();
+#endif
             }
 
             glfwSwapBuffers(window->_glfw_window);
@@ -485,6 +538,8 @@ int main(int argc, char *argv[])
     }
 
     _cut_update->stop();
+
+    _scm_core.reset();
 
     return EXIT_SUCCESS;
 }

@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -344,9 +344,12 @@ struct benchmark_entry
 };
 
 std::vector<benchmark_entry> benchmark_entries;
+scm::shared_ptr<scm::core> _scm_core;
 
 int main(int argc, char *argv[])
 {
+    _scm_core.reset(new scm::core(0, nullptr));
+
     vt::VTConfig::CONFIG_PATH = "config_demo_do_not_modify.ini";
     vt::VTConfig::get_instance().define_size_physical_texture(64, 8192);
 
@@ -386,12 +389,12 @@ int main(int argc, char *argv[])
 
     auto *vtrenderer = new vt::VTRenderer();
 
-    vtrenderer->add_data(cut_map_id, data_world_map_id);
-    vtrenderer->add_data(cut_map_elevation_id, data_world_elevation_map_id);
-    vtrenderer->add_data(cut_moon_id, data_moon_map_id);
-
     vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
+
+    vtrenderer->add_data(cut_map_id, primary_context_id, data_world_map_id);
+    vtrenderer->add_data(cut_map_elevation_id, primary_context_id, data_world_elevation_map_id);
+    vtrenderer->add_data(cut_moon_id, primary_context_id, data_moon_map_id);
 
 #ifndef NDEBUG
     glewExperimental = GL_TRUE;
@@ -432,36 +435,27 @@ int main(int argc, char *argv[])
 
         if(primary_window->_dataset == Window::Dataset::COLOR)
         {
-            vtrenderer->render_earth(data_world_map_id,
-                                     data_world_elevation_map_id,
-                                     view_id,
-                                     primary_context_id,
-                                     primary_window->_interaction == Window::Interaction::EARTH,
-                                     primary_window->_enable_hierarchical,
-                                     primary_window->_vis);
+            vtrenderer->render_earth(data_world_map_id, data_world_elevation_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH,
+                                     primary_window->_enable_hierarchical, primary_window->_vis);
         }
         else
         {
-            vtrenderer->render_earth(data_world_elevation_map_id,
-                                     data_world_elevation_map_id,
-                                     view_id, primary_context_id,
-                                     primary_window->_interaction == Window::Interaction::EARTH,
-                                     primary_window->_enable_hierarchical,
-                                     primary_window->_vis);
+            vtrenderer->render_earth(data_world_elevation_map_id, data_world_elevation_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH,
+                                     primary_window->_enable_hierarchical, primary_window->_vis);
         }
         vtrenderer->render_moon(data_moon_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::MOON, primary_window->_enable_hierarchical, primary_window->_vis);
 
         vtrenderer->collect_feedback(primary_context_id);
 #ifndef NDEBUG
-        vtrenderer->extract_debug_cut(data_world_map_id, view_id, primary_context_id);
-        vtrenderer->extract_debug_cut(data_moon_map_id, view_id, primary_context_id);
-        vtrenderer->extract_debug_context(primary_context_id);
+        vtrenderer->extract_debug_cut(cut_map_id);
+        vtrenderer->extract_debug_cut(cut_map_elevation_id);
+        vtrenderer->extract_debug_cut_context(cut_map_id);
 
         ImGui_ImplGlfwGL3_NewFrame();
 
-        vtrenderer->render_debug_cut(data_world_map_id, view_id, primary_context_id);
-        vtrenderer->render_debug_cut(data_moon_map_id, view_id, primary_context_id);
-        vtrenderer->render_debug_context(primary_context_id);
+        vtrenderer->render_debug_cut(cut_map_id);
+        vtrenderer->render_debug_cut(cut_map_elevation_id);
+        vtrenderer->render_debug_context(cut_map_id);
 
         ImGui::Render();
 #endif

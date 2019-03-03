@@ -5,24 +5,27 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#include <iostream>
-#include <algorithm>
-#include <FreeImage.h>
-#include <vector>
-#include <dirent.h>
-#include <string.h>
-#include <fstream>
-#include <algorithm>
-#include <string>
-#include <sys/types.h>
-#include <list>
-#include <string.h>
-#include <FreeImage.h>
+
+
+//external relative
 #include "GuillotineBinPack.h"
 #include "MaxRectsBinPack.h"
-#include <dirent.h>
 #include "GuillotineBinPack.h"
 
+//external std search paths
+#include <dirent.h>
+#include <FreeImage.h>
+#include <sys/types.h>
+
+//c standard headers
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <string>
+#include <vector>
 
 
 using namespace std;
