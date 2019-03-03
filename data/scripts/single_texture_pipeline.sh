@@ -83,6 +83,8 @@ VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.png"
 
 
+#TODO - dilate new texture here 
+
 
 
 #create vis file and run vis app
