@@ -5,6 +5,7 @@
 #include <lamure/types.h>
 #include <lamure/mesh/triangle.h>
 #include <lamure/mesh/triangle_chartid.h>
+#include <lamure/mesh/edge_merger.h>
 #include <lamure/ren/bvh.h>
 
 #include <lamure/mesh/polyhedron.h>
