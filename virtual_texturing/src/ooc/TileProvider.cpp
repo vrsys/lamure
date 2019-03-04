@@ -11,7 +11,7 @@ namespace vt
 {
 namespace ooc
 {
-TileProvider::TileProvider()
+TileProvider::TileProvider() : _resourcesLock(), _cacheLock()
 {
     _cache = nullptr;
     _tileByteSize = 0;
@@ -80,6 +80,8 @@ pre::AtlasFile* TileProvider::loadResource(const char* fileName)
 
 TileCacheSlot* TileProvider::getTile(pre::AtlasFile* resource, id_type tile_id, priority_type priority, uint16_t context_id)
 {
+    std::lock_guard<std::mutex> lock(_cacheLock);
+
     if(_cache == nullptr)
     {
         throw std::runtime_error("Trying to get Tile before starting TileProvider.");
@@ -92,7 +94,7 @@ TileCacheSlot* TileProvider::getTile(pre::AtlasFile* resource, id_type tile_id, 
         return slot;
     }
 
-    auto req = _requests_map.getRequest(resource, tile_id);
+    auto req = _requestsMap.getRequest(resource, tile_id);
 
     if(req != nullptr)
     {
@@ -108,7 +110,7 @@ TileCacheSlot* TileProvider::getTile(pre::AtlasFile* resource, id_type tile_id, 
     req->setId(tile_id);
     req->setPriority(priority);
 
-    _requests_map.insertRequest(req);
+    _requestsMap.insertRequest(req);
 
     _loader.request(req);
 
@@ -117,12 +119,18 @@ TileCacheSlot* TileProvider::getTile(pre::AtlasFile* resource, id_type tile_id, 
 
 void TileProvider::stop() { _loader.stop(); }
 
-void TileProvider::print() { _cache->print(); }
+void TileProvider::print()
+{
+    std::lock_guard<std::mutex> lock(_cacheLock);
+    _cache->print();
+}
 
-bool TileProvider::wait(std::chrono::milliseconds maxTime) { return _requests_map.waitUntilEmpty(maxTime); }
+bool TileProvider::wait(std::chrono::milliseconds maxTime) { return _requestsMap.waitUntilEmpty(maxTime); }
 
 void TileProvider::ungetTile(pre::AtlasFile* resource, id_type tile_id, uint16_t context_id)
 {
+    std::lock_guard<std::mutex> lock(_cacheLock);
+
     if(_cache == nullptr)
     {
         throw std::runtime_error("Trying to unget Tile before starting TileProvider.");

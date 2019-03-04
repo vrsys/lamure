@@ -23,7 +23,7 @@ class TileRequestMap : public Observer
 {
   protected:
     std::map<std::pair<pre::AtlasFile*, uint64_t>, TileRequest*> _map;
-    std::mutex _map_lock;
+    std::mutex _mapLock;
 
     std::condition_variable _allRequestsProcessed;
 

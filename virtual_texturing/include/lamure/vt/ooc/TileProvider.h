@@ -28,8 +28,10 @@ class TileProvider
   protected:
     std::mutex _resourcesLock;
     std::set<pre::AtlasFile*> _resources;
-    TileRequestMap _requests_map;
+    TileRequestMap _requestsMap;
     TileLoader _loader;
+
+    std::mutex _cacheLock;
     TileCache* _cache;
 
     pre::Bitmap::PIXEL_FORMAT _pxFormat;

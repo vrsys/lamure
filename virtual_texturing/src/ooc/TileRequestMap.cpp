@@ -23,7 +23,7 @@ TileRequestMap::~TileRequestMap()
 
 TileRequest* TileRequestMap::getRequest(pre::AtlasFile* resource, uint64_t tile_id)
 {
-    std::lock_guard<std::mutex> lock(_map_lock);
+    std::lock_guard<std::mutex> lock(_mapLock);
 
     auto iter = _map.find(std::make_pair(resource, tile_id));
 
@@ -37,7 +37,7 @@ TileRequest* TileRequestMap::getRequest(pre::AtlasFile* resource, uint64_t tile_
 
 bool TileRequestMap::insertRequest(TileRequest* req)
 {
-    std::lock_guard<std::mutex> lock(_map_lock);
+    std::lock_guard<std::mutex> lock(_mapLock);
 
     auto resource = req->getResource();
     auto id = req->getId();
@@ -60,7 +60,7 @@ void TileRequestMap::inform(event_type event, Observable* observable)
     bool empty;
 
     {
-        std::unique_lock<std::mutex> lock(_map_lock);
+        std::unique_lock<std::mutex> lock(_mapLock);
         auto req = (TileRequest*)observable;
         _map.erase(std::make_pair(req->getResource(), req->getId()));
         delete req;
@@ -76,7 +76,7 @@ void TileRequestMap::inform(event_type event, Observable* observable)
 
 bool TileRequestMap::waitUntilEmpty(std::chrono::milliseconds maxTime)
 {
-    std::unique_lock<std::mutex> lock(_map_lock);
+    std::unique_lock<std::mutex> lock(_mapLock);
 
     if(_map.empty())
     {
