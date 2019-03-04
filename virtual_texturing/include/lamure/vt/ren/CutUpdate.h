@@ -21,21 +21,21 @@ class CutUpdate
 {
   public:
     friend class ContextFeedback;
-    static CutUpdate &get_instance()
+    static CutUpdate& get_instance()
     {
         static CutUpdate instance;
         return instance;
     }
-    CutUpdate(CutUpdate const &) = delete;
-    void operator=(CutUpdate const &) = delete;
+    CutUpdate(CutUpdate const&) = delete;
+    void operator=(CutUpdate const&) = delete;
 
     ~CutUpdate();
 
     void start();
     void stop();
 
-    void feedback(uint32_t context_id, int32_t *buf_lod, uint32_t *buf_count);
-    const float &get_dispatch_time() const;
+    void feedback(uint32_t context_id, int32_t* buf_lod, uint32_t* buf_count);
+    const float& get_dispatch_time() const;
 
     void toggle_freeze_dispatch();
 
@@ -44,26 +44,26 @@ class CutUpdate
 
     context_feedback_map_type _context_feedbacks;
 
-    VTConfig *_config;
-    CutDatabase *_cut_db;
+    VTConfig* _config;
+    CutDatabase* _cut_db;
 
     float _dispatch_time;
 
     std::atomic<bool> _should_stop;
     std::atomic<bool> _freeze_dispatch;
 
-    void run(ContextFeedback *_context_feedback);
+    void run(ContextFeedback* _context_feedback);
     void dispatch_context(uint16_t context_id);
 
-    bool collapse_to_id(Cut *cut, id_type tile_id, uint16_t context_id);
-    bool split_id(Cut *cut, id_type tile_id, uint16_t context_id);
-    bool keep_id(Cut *cut, id_type tile_id, uint16_t context_id);
+    bool collapse_to_id(Cut* cut, id_type tile_id, uint16_t context_id);
+    bool split_id(Cut* cut, id_type tile_id, uint16_t context_id);
+    bool keep_id(Cut* cut, id_type tile_id, uint16_t context_id);
 
-    bool add_to_indexed_memory(Cut *cut, id_type tile_id, uint8_t *tile_ptr, uint16_t context_id);
-    mem_slot_type *write_mem_slot_for_id(Cut *cut, id_type tile_id, uint16_t context_id);
+    bool add_to_indexed_memory(Cut* cut, id_type tile_id, uint8_t* tile_ptr, uint16_t context_id);
+    mem_slot_type* write_mem_slot_for_id(Cut* cut, id_type tile_id, uint16_t context_id);
 
-    bool check_all_siblings_in_cut(id_type tile_id, const cut_type &cut);
-    void remove_from_indexed_memory(Cut *cut, id_type tile_id, uint16_t context_id);
+    bool check_all_siblings_in_cut(id_type tile_id, const cut_type& cut);
+    void remove_from_indexed_memory(Cut* cut, id_type tile_id, uint16_t context_id);
 };
 
 class ContextFeedback
@@ -71,7 +71,7 @@ class ContextFeedback
   public:
     friend class CutUpdate;
 
-    ContextFeedback(uint32_t id, CutUpdate * cut_update) : _feedback_dispatch_lock(), _feedback_cv()
+    ContextFeedback(uint16_t id, CutUpdate* cut_update) : _feedback_dispatch_lock(), _feedback_cv(), _feedback_new()
     {
         _id = id;
 
@@ -83,7 +83,8 @@ class ContextFeedback
         _feedback_worker = std::thread(&CutUpdate::run, cut_update, this);
     }
 
-    ~ContextFeedback(){
+    ~ContextFeedback()
+    {
         _feedback_worker.join();
 
         delete _feedback_lod_buffer;
@@ -91,16 +92,16 @@ class ContextFeedback
     }
 
   private:
-    uint32_t _id;
+    uint16_t _id;
 
     std::atomic<bool> _feedback_new;
     std::mutex _feedback_dispatch_lock;
     std::condition_variable _feedback_cv;
     std::thread _feedback_worker;
 
-    int32_t *_feedback_lod_buffer;
-    uint32_t *_feedback_count_buffer;
+    int32_t* _feedback_lod_buffer;
+    uint32_t* _feedback_count_buffer;
 };
-}
+} // namespace vt
 
 #endif // LAMURE_CUTUPDATE_H

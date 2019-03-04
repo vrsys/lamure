@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -17,7 +17,7 @@ template <typename T>
 class DoubleBuffer
 {
   public:
-    explicit DoubleBuffer(T *front, T *back)
+    explicit DoubleBuffer(T* front, T* back)
     {
         _front = front;
         _back = back;
@@ -25,8 +25,8 @@ class DoubleBuffer
     }
     virtual ~DoubleBuffer(){};
 
-    T *get_front() { return _front; }
-    T *get_back() { return _back; }
+    T* get_front() { return _front; }
+    T* get_back() { return _back; }
 
     virtual void start_writing() { _back_lock.lock(); }
     virtual void stop_writing()
@@ -71,6 +71,6 @@ class DoubleBuffer
     std::mutex _front_lock, _back_lock;
     bool _new_data;
 };
-}
+} // namespace vt
 
 #endif // LAMURE_DOUBLEBUFFER_H

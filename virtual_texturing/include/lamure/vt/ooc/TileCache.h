@@ -1,120 +1,123 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
 #ifndef VT_OOC_TILECACHE_H
 #define VT_OOC_TILECACHE_H
 
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
-#include <mutex>
 #include <iostream>
 #include <lamure/vt/pre/AtlasFile.h>
-#include <queue>
 #include <map>
-#include <condition_variable>
+#include <mutex>
+#include <queue>
 
-namespace vt {
-    namespace ooc {
-        class TileCache;
+namespace vt
+{
+namespace ooc
+{
+class TileCache;
 
-        class TileCacheSlot {
-        public:
-            enum STATE{
-                FREE = 1,
-                WRITING,
-                READING,
-                OCCUPIED
-            };
+class TileCacheSlot
+{
+  public:
+    enum STATE
+    {
+        FREE = 1,
+        WRITING = 2, // locked for writing
+        READING = 3, // locked for reading
+        OCCUPIED = 4
+    };
 
-        protected:
-            STATE _state;
-            uint8_t *_buffer;
-            size_t _size;
-            size_t _id;
-            std::mutex _lock;
-            //assoc_data_type _assocData;
+  protected:
+    STATE _state;
+    uint8_t* _buffer;
+    size_t _size;
+    size_t _id;
+    uint32_t _context_reference;
 
-            pre::AtlasFile *_resource;
-            uint64_t _tileId;
+    pre::AtlasFile* _resource;
+    uint64_t _tileId;
 
-            TileCache *_cache;
+    TileCache* _cache;
 
-        public:
-            TileCacheSlot();
+  public:
+    TileCacheSlot();
+    ~TileCacheSlot();
 
-            ~TileCacheSlot();
+    bool compareState(STATE state);
 
-            bool hasState(STATE state);
+    void setTileId(uint64_t tileId);
 
-            void setTileId(uint64_t tileId);
+    uint64_t getTileId();
 
-            uint64_t getTileId();
+    void setCache(TileCache* cache);
 
-            void setCache(TileCache *cache);
+    void setState(STATE state);
 
-            void setState(STATE state);
+    void setId(size_t id);
 
-            void setId(size_t id);
+    size_t getId();
 
-            size_t getId();
+    void setBuffer(uint8_t* buffer);
 
-            void setBuffer(uint8_t *buffer);
+    uint8_t* getBuffer();
 
-            uint8_t *getBuffer();
+    void setSize(size_t size);
 
-            void setSize(size_t size);
+    size_t getSize();
 
-            size_t getSize();
+    void setResource(pre::AtlasFile* res);
 
-            void setResource(pre::AtlasFile* res);
+    pre::AtlasFile* getResource();
 
-            pre::AtlasFile *getResource();
+    void addContextReference(uint16_t context_id);
+    void removeContextReference(uint16_t context_id);
+    uint16_t getContextReferenceCount();
+    void removeAllContextReferences();
+};
 
-            void removeFromIDS();
-        };
+class TileCache
+{
+  protected:
+    typedef TileCacheSlot slot_type;
 
-        class TileCache {
-        protected:
-            typedef TileCacheSlot slot_type;
+    size_t _tileByteSize;
+    size_t _slotCount;
 
-            size_t _tileByteSize;
-            size_t _slotCount;
-            uint8_t *_buffer;
-            slot_type *_slots;
-            std::mutex *_locks;
+    std::mutex* _locks;
+    uint8_t* _buffer;
+    slot_type* _slots;
 
-            std::mutex _lruLock;
-            std::condition_variable _lruCondVar;
-            std::queue<TileCacheSlot*> _lru;
+    std::mutex _lruLock;
+    std::condition_variable _lruRepopulationCV;
+    std::queue<TileCacheSlot*> _lru;
 
-            std::mutex _idsLock;
-            std::map<std::pair<pre::AtlasFile *, uint64_t>, slot_type *> _ids;
+    std::mutex _idsLock;
+    std::map<std::pair<pre::AtlasFile*, uint64_t>, slot_type*> _ids;
 
-            uint64_t _loaded = 0;
+  public:
+    TileCache(size_t tileByteSize, size_t slotCount);
+    ~TileCache();
 
-        public:
-            uint64_t tiles_loaded();
+    slot_type* requestSlotForReading(pre::AtlasFile* resource, uint64_t tile_id, uint16_t context_id);
+    slot_type* requestSlotForWriting();
 
-            TileCache(size_t tileByteSize, size_t slotCount);
+    void removeContextReferenceFromReadId(pre::AtlasFile* resource, uint64_t tile_id, uint16_t context_id);
 
-            slot_type *readSlotById(pre::AtlasFile *resource, uint64_t id);
+    void registerOccupiedId(pre::AtlasFile* resource, uint64_t tile_id, slot_type* slot);
+    void unregisterOccupiedId(pre::AtlasFile* resource, uint64_t tile_id);
 
-            slot_type *writeSlot(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
+    void waitUntilLRURepopulation(std::chrono::milliseconds maxTime = std::chrono::milliseconds::zero());
 
-            void setSlotReady(slot_type *slot);
+    void print();
+};
+} // namespace ooc
+} // namespace vt
 
-            void unregisterId(pre::AtlasFile *resource, uint64_t id);
-
-            ~TileCache();
-
-            void print();
-        };
-    }
-}
-
-
-#endif //TILE_PROVIDER_TILECACHE_H
+#endif // TILE_PROVIDER_TILECACHE_H

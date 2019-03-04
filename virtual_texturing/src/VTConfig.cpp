@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -12,9 +12,9 @@ namespace vt
 {
 std::string vt::VTConfig::CONFIG_PATH;
 
-void VTConfig::read_config(const char *path_config)
+void VTConfig::read_config(const char* path_config)
 {
-    CSimpleIniA *ini_config = new CSimpleIniA(true, false, false);
+    CSimpleIniA* ini_config = new CSimpleIniA(true, false, false);
 
     if(ini_config->LoadFile(path_config) < 0)
     {
@@ -71,7 +71,7 @@ uint16_t VTConfig::get_byte_stride() const
 
     return _byte_stride;
 }
-const VTConfig::FORMAT_TEXTURE VTConfig::which_texture_format(const char *_texture_format)
+const VTConfig::FORMAT_TEXTURE VTConfig::which_texture_format(const char* _texture_format)
 {
     if(strcmp(_texture_format, TEXTURE_FORMAT_RGBA8) == 0)
     {
@@ -88,7 +88,5 @@ const VTConfig::FORMAT_TEXTURE VTConfig::which_texture_format(const char *_textu
     throw std::runtime_error("Unknown texture format");
 }
 
-    uint32_t VTConfig::get_size_ram_cache() const {
-        return _size_ram_cache;
-    }
-}
+uint32_t VTConfig::get_size_ram_cache() const { return _size_ram_cache; }
+} // namespace vt
