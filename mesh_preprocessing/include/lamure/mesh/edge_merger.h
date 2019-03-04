@@ -78,10 +78,21 @@ public:
 
 	  std::cout << "Searching " << P.size_of_halfedges() << " halfedges for merge candidates\n";
 
+	  //to keep track of constraints
+	  int borders = 0;
+	  int blocked_same_tri = 0;
+	  int blocked_no_adjacent_face = 0;
+	  int continuing_edge_error = 0;
+	  int at_least_1_edge = 0;
+
+
 	  //check every edge in mesh, determine if it is a border edge
 	  for ( lamure::mesh::Polyhedron::Halfedge_iterator  ei = P.halfedges_begin(); ei != P.halfedges_end(); ++ei) {
 
 	    if(ei->is_border()){
+
+	      borders++;
+
 	      Edge_merge_candidate mc;
 	      mc.edge1 = ei;
 
@@ -92,6 +103,7 @@ public:
 	      lamure::mesh::Polyhedron::Halfedge_around_vertex_circulator he,end;
 	      he = end = ei->vertex()->vertex_begin();
 	      do {
+	      	// std::cout << "edge id " << ei->edge_id << std::endl;
 
 	        //if this halfedge is a border and not the starting edge
 	        if(he->is_border()  &&  (he->edge_id != ei->edge_id)){
@@ -106,6 +118,7 @@ public:
 	          else { //if its the first, save it
 	            edge2_candidate = he;
 	            found = true;
+	            at_least_1_edge++;
 	          }
 	        }
 
@@ -134,6 +147,7 @@ public:
 	      else //jump to next edge without adding to edge merge list
 	      {
 	        // std::cout << "No continuing edge or too many continuing edges found\n";
+	        continuing_edge_error++;
 	        continue;
 	      }
 
@@ -154,10 +168,12 @@ public:
 
 	      if (mc.face1_id == mc.face2_id)
 	      {
+	      	blocked_same_tri++;
 	        // std::cout << "edges of the same triangle found, not adding to merge list\n";
 	      }
 	      else if (!faces_are_neighbours(P, mc.edge1->opposite()->facet(), mc.edge2->opposite()->facet())){
 	        // std::cout << "Faces of edges are not adjacent and cannot be easily merged. Not adding to merge list\n";
+	        blocked_no_adjacent_face++;
 	      }
 	      else {
 	        merge_cs.push_back(mc);
@@ -169,6 +185,9 @@ public:
 	  double edge_face_ratio = (double)(merge_cs.size())/P.size_of_facets();
 
 	  std::cout << "Found " << merge_cs.size() << " border edge merge candidates in mesh with " << P.size_of_facets() << " faces\n";
+	  std::cout << borders << " borders\n";
+	  std::cout << blocked_same_tri <<  " shared a face, " << blocked_no_adjacent_face << "  did not have adjacent faces, " << continuing_edge_error 
+	  	<< " had continuing edge problem ( " << at_least_1_edge << " had at least 1 edge)\n"; 
 	  // std::cout << "Ratio = " << edge_face_ratio << std::endl;
 
 
@@ -186,13 +205,15 @@ public:
 	    auto& merge = merge_cs.front();
 	    merge_cs.pop_front();
 
-	    // std::cout << "Executing merge " << merges_executed << " [" << merge.edge1->edge_id << ", " << merge.edge2->edge_id << "]" << "\n";
+	    std::cout << "Executing merge " << merges_executed << " [" << merge.edge1->edge_id << ", " << merge.edge2->edge_id << "] faces [" << merge.face1_id << ", " << merge.face2_id << "]" << "\n";
 
 	    //get triangles to merge
 	    std::map<int, lamure::mesh::vertex> new_tri_vertices;
 	    auto& tri1 = tri_list[merge.face1_id];
 	    auto& tri2 = tri_list[merge.face2_id];
 	    lamure::mesh::Point doomed_vertex = merge.edge1->vertex()->point();
+
+	    std::cout << "got tris\n";
 
 	    //add vertices from tri 1, if they are not doomed
 	    for (int i = 0; i < 3; ++i)
@@ -249,8 +270,11 @@ public:
 	    //adjust old triangle to set as unused
 	    tri2.chart_id = -1;
 
+	    std::cout << "created triangle " << " [" << merge.edge1->edge_id << ", " << merge.edge2->edge_id << "]" << "\n";
+
+
 	    //update remaining merge candidates
-	    for (auto mc = merge_cs.begin(); mc != merge_cs.end(); mc++){
+	    for (auto mc = merge_cs.begin(); mc != merge_cs.end();){
 
 	      //point references to removed face to remaining face
 	      if(mc->face1_id == merge.face2_id ){
@@ -263,9 +287,15 @@ public:
 	      if (mc->face2_id == mc->face1_id)
 	      {
 	        // std::cout << "Error: 2 faces for merge have the same id\n";
-	        merge_cs.erase(mc);
+	        mc = merge_cs.erase(mc);
+	      }
+	      else {
+	      	mc++;
 	      }
 	    }
+
+	    std::cout << "done merge " << " [" << merge.edge1->edge_id << ", " << merge.edge2->edge_id << "]" << "\n";
+
 
 	    merges_executed++;
 	  }//end while loop

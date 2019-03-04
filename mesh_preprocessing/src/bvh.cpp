@@ -238,6 +238,7 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles) {
 
       //std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
 
+      std::cout << "simplifying node " << node_id << " with constraint\n";
       //try simplification with edge constraint
       simplify(
         triangles_map_[left_child],
@@ -376,13 +377,7 @@ void bvh::simplify(
   polyhedron_builder<HalfedgeDS> builder(combined_set);
   polyMesh.delegate(builder);
 
-  if (!contrain_edges) {
-    int target_merges = combined_set.size() / 2;
-    edge_merger::merge_similar_border_edges(polyMesh, combined_set, target_merges);
-  }
-
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
-    
   }
   else {
     std::cout << "WARNING! Triangle mesh invalid! (No triangles saved for this node)" << std::endl;
@@ -406,8 +401,31 @@ void bvh::simplify(
 
     i++;
   }
+  i = 0;
+  for (lamure::mesh::Polyhedron::Halfedge_iterator e = polyMesh.edges_begin(); e != polyMesh.edges_end(); ++e) {
+    e->edge_id = i;
+    i++;
+  }
 
-  //simplify the two input sets of tris into output_tris
+  // // try to merge edges - still hunting cause of seg fault 
+  // if (!contrain_edges) {
+  //   int target_merges = combined_set.size() / 2;
+  //   edge_merger::merge_similar_border_edges(polyMesh, combined_set, target_merges);
+
+  //   //rebuild polymesh
+  //   polyMesh.clear();
+  //   std::cout << "Rebuilding mesh with " << combined_set.size() << " triangles \n";
+  //   lamure::mesh::polyhedron_builder<lamure::mesh::HalfedgeDS> rebuilder(combined_set);
+  //   polyMesh.delegate(rebuilder);
+
+  //   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
+  //   }
+  //   else {
+  //     std::cout << "WARNING! Rebuilt triangle mesh invalid! (No triangles saved for this node)" << std::endl;
+  //     return;
+  //   }
+  // }
+
 
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
 

@@ -826,15 +826,16 @@ int main(int argc, char *argv[]) {
       
     }
 
-    //report chart parameters
-    for (int chart_id = 0; chart_id < num_charts; ++chart_id) {
-      auto& chart = charts[chart_id];
-      std::cout << "chart id " << chart_id << std::endl;
-      std::cout << "box min " << chart.box_.min() << std::endl;
-      std::cout << "box max " << chart.box_.max() << std::endl;
-      std::cout << "original triangles " << chart.original_triangle_ids_.size() << std::endl;
-      std::cout << "all triangles " << chart.all_triangle_ids_.size() << std::endl;
-    }
+
+    // //report chart parameters
+    // for (int chart_id = 0; chart_id < num_charts; ++chart_id) {
+    //   auto& chart = charts[chart_id];
+    //   std::cout << "chart id " << chart_id << std::endl;
+    //   std::cout << "box min " << chart.box_.min() << std::endl;
+    //   std::cout << "box max " << chart.box_.max() << std::endl;
+    //   std::cout << "original triangles " << chart.original_triangle_ids_.size() << std::endl;
+    //   std::cout << "all triangles " << chart.all_triangle_ids_.size() << std::endl;
+    // }
 
     std::cout << "tris per node " << vertices_per_node/3 << std::endl;
 
