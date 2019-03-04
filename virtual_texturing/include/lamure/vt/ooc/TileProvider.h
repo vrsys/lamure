@@ -44,10 +44,10 @@ class TileProvider
 
     void start(size_t maxMemSize);
 
-    pre::AtlasFile* loadResource(const char *fileName);
+    pre::AtlasFile* loadResource(const char* fileName);
 
     TileCacheSlot* getTile(pre::AtlasFile* resource, id_type id, priority_type priority, uint16_t context_id);
-    void ungetTile(pre::AtlasFile *resource, id_type id, uint16_t context_id);
+    void ungetTile(pre::AtlasFile* resource, id_type id, uint16_t context_id);
 
     void stop();
 
