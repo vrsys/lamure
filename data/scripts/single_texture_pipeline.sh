@@ -4,9 +4,23 @@
 LAM_DIR="/home/hoqe4365/Desktop/lamure/lamure/"
 cd $LAM_DIR
 
-#input files
-SRC_OBJPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra.obj"
-SRC_PNGPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra-atlas-flip.png"
+echo "detected $# arguments"
+
+
+if [[ $# != 2 ]]; then
+	#input files
+	SRC_OBJPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra.obj"
+	SRC_PNGPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra-atlas-flip.png"
+else 
+
+	SRC_OBJPATH=$1
+	SRC_PNGPATH=$2
+fi
+
+echo "using files $SRC_OBJPATH and $SRC_PNGPATH"
+
+
+
 
 
 # Absolute path to this script
@@ -38,9 +52,9 @@ echo "----------------------------------------------------"
 echo "Running chart creation with file $OBJPATH"
 echo "----------------------------------------------------"
 
-CHART_THRES=100
+CHART_THRES=200
 CELL_RES=10
-NORMAL_VARIANCE_THRESHOLD=0.001
+NORMAL_VARIANCE_THRESHOLD=0.002
 
 ./install/bin/lamure_grid_face_clustering -f $OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
 

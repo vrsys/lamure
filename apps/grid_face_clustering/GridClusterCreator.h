@@ -414,7 +414,7 @@ struct GridClusterCreator
 			variance /= total_area;
 
 			//decide whether to split this cluster further:
-			std::cout << "chart " << cluster_id << ", variance = " << variance << std::endl;
+			// std::cout << "chart " << cluster_id << ", variance = " << variance << std::endl;
 
 			// const double VAR_THRES = 0.001;
 			if (variance > cluster_settings.chart_split_threshold)

@@ -76,6 +76,8 @@ public:
 	  //build list of possible edge merges
 	  std::list<Edge_merge_candidate> merge_cs;
 
+	  std::cout << "Searching " << P.size_of_halfedges() << " halfedges for merge candidates\n";
+
 	  //check every edge in mesh, determine if it is a border edge
 	  for ( lamure::mesh::Polyhedron::Halfedge_iterator  ei = P.halfedges_begin(); ei != P.halfedges_end(); ++ei) {
 

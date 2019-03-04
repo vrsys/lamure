@@ -467,6 +467,8 @@ rectangle pack(std::vector<rectangle>& input) {
 
   //done
 
+#if 0
+
   //print the result
   for (int i=0; i< input.size(); i++){
     auto& rect = input[i];
@@ -497,6 +499,8 @@ rectangle pack(std::vector<rectangle>& input) {
     }
   }
   save_image("data/mesh_prepro_texture.png", image, texture.max_.x, texture.max_.y);
+
+#endif
 
   return texture;
 }
