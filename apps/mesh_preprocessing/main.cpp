@@ -662,7 +662,6 @@ void glut_display() {
 
   //frame_buffer_->draw(0);
 
-  // save_image("data/mesh_prepro_result.png", frame_buffer_);
   save_image(outfile_name, frame_buffer_);
 
   exit(1);
@@ -686,7 +685,6 @@ enum PixelResolutionCalculationType { USE_OLD_COORDS, USE_NEW_COORDS};
 void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::vector<chart>& charts, std::vector<triangle>& triangles, int tex_width, int tex_height){
 
 
-
   if (type == USE_OLD_COORDS){
     std::cout << "Calculating pixel sizes with old coords" << std::endl;
   }
@@ -702,6 +700,7 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::v
     //for all triangles
     for (auto& tri_id : chart.all_triangle_ids_)
     {
+      //sample length  between vertices 0 and 1
       auto& tri = triangles[tri_id];
       double real_length = scm::math::length(tri.v0_.pos_ - tri.v1_.pos_);
 
@@ -726,6 +725,24 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::v
     }
   }
 
+}
+
+//checks if at least a given percentage of charts have at least as many pixels now as they did in the original texture
+bool is_output_texture_big_enough(std::vector<chart>& charts, double target_percentage_charts_with_enough_pixels){
+  int charts_w_enough_pixels = 0;
+
+  for (auto& chart : charts)
+  {
+    if (chart.real_to_tex_ratio_new >= chart.real_to_tex_ratio_old){
+      charts_w_enough_pixels++;
+    }
+  }
+
+  const double percentage_big_enough = (double)charts_w_enough_pixels / charts.size();
+
+  std::cout << "Percentage of charts big enough = " << percentage_big_enough << std::endl;
+
+  return (percentage_big_enough > target_percentage_charts_with_enough_pixels);
 }
 
 
@@ -776,7 +793,10 @@ int main(int argc, char *argv[]) {
     std::cout << "lod file loaded." << std::endl;
 
     //load the texture png file
-    // texture_ = load_image(texture_filename);
+    texture_ = load_image(texture_filename);
+    //set output window size as the same as input size to start with
+    window_width_ = texture_->get_width();
+    window_height_ = texture_->get_height();
 
     
     std::vector<chart> charts;
@@ -1046,16 +1066,32 @@ int main(int argc, char *argv[]) {
     } 
   }
 
+  
 
   //for each chart, calculate relative size of real space to new tex space
-  calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, texture_->get_width(), texture_->get_height());
+  calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
 
+  //double texture size up to 8k if a given percentage of charts do not have enough pixels
+  const double target_percentage_charts_with_enough_pixels = 0.9;
+  while (!is_output_texture_big_enough(charts, target_percentage_charts_with_enough_pixels)) {
 
-  for (auto& chart : charts)
-  {
-    std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
-    std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+    window_width_  *= 2;
+    window_height_ *= 2;
+
+    std::cout << "Not enough pixels! Texture increased to " << window_width_ << " x " << window_height_ << std::endl;
+
+    calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
+
+    //limit texture size
+    if (std::max(window_width_, window_height_) >= 8192){continue;}
   }
+
+  //print pixel ratios per chart
+  // for (auto& chart : charts)
+  // {
+  //   std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
+  //   std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+  // }
 
 
 
@@ -1168,9 +1204,6 @@ int main(int argc, char *argv[]) {
   bvh.reset();
   std::cout << "OUTPUT updated bvh file: " << out_bvh_filename << std::endl;
 
-
-  //load the texture png file
-  texture_ = load_image(texture_filename);
 
   //save name for new texture
   outfile_name = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.png";
