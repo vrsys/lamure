@@ -62,6 +62,7 @@ NORMAL_VARIANCE_THRESHOLD=0.002
 
 
 #create hierarchy
+# create LOD hierarchy and simplify nodes
 echo "----------------------------------------------------"
 echo "Creating LOD hierarchy"
 echo "----------------------------------------------------"
@@ -97,8 +98,12 @@ VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.png"
 
 
-#TODO - dilate new texture here 
-
+#dilate new texture to avoid cracks 
+NUM_DILATIONS=20
+for dilation_iteration in `seq 1 "$NUM_DILATIONS"`;
+do
+  ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $FINAL_TEX_PATH
+done
 
 
 #create vis file and run vis app

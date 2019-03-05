@@ -1,0 +1,25 @@
+
+For next week:
+
+ - Update triangle size measure - use euclidian area and convert to (float) pixel value
+ - look into UV problem with zebra (normals?)
+ - update clustering method to optimise and allow parallelisation
+ - add dilation to single_tex_pipeline
+
+
+ - UPDATE CLUSTERING:
+
+to improve speed of clustering algorithm, independent of grid clustering:
+
+ - Use pointers to a vector of join operations to avoid copying lots of data
+ - After each merge use INVERSE INDEX to identify affected join operations (pointers to JOs) and add these to a vector. Recalculation of the error for each merge could then be parallelised 
+ - inverse indexing - via 2 ints for affected charts
+
+
+
+ - UPDATE TRIANGLE MEASURE
+
+dont use city block, use area
+use average of averages rather than 90% system
+
+
