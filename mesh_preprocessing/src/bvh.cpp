@@ -238,7 +238,7 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles) {
 
       //std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
 
-      std::cout << "simplifying node " << node_id << " with constraint\n";
+      // std::cout << "simplifying node " << node_id << " with constraint\n";
       //try simplification with edge constraint
       simplify(
         triangles_map_[left_child],

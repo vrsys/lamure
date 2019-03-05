@@ -398,7 +398,7 @@ bool sort_by_height (rectangle i, rectangle j){
   return i_smaller_j;
 }
 
-rectangle pack(std::vector<rectangle>& input) {
+rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
 
   //make sure all rectangles stand on the shorter side
   for(uint32_t i=0; i< input.size(); i++){
@@ -432,7 +432,8 @@ rectangle pack(std::vector<rectangle>& input) {
   float average_height = sum/((float)input.size());
 
   //heuristically take half
-  dim *= 0.9f;
+  // dim *= 0.9f;
+  dim *= scale_factor;
   
 
   rectangle texture{scm::math::vec2f(0,0), scm::math::vec2f((int)((dim+1)*average_height),(int)((dim+1)*average_height)),0};
@@ -459,11 +460,18 @@ rectangle pack(std::vector<rectangle>& input) {
     rect.min_.x= offset_x;
     offset_x+= rect.max_.x - rect.min_.x;
 
-
-  rect.max_.y = offset_y + (rect.max_.y - rect.min_.y);
-  rect.min_.y = offset_y;
+    rect.max_.y = offset_y + (rect.max_.y - rect.min_.y);
+    rect.min_.y = offset_y;
   
+    if (rect.max_.y > texture.max_.y)
+    {
+      std::cout << "Rect " << i << " doesn't fit on texture\n";
 
+      //recursive call until all texture fits on
+      std::cout << "Repacking....(" << scale_factor*1.1 << ")\n";
+      return pack(input, scale_factor * 1.1);
+
+    }
 
   }
 
