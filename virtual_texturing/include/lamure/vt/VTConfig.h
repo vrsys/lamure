@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -29,16 +29,16 @@ class VTConfig
 
     static std::string CONFIG_PATH;
 
-    static VTConfig &get_instance()
+    static VTConfig& get_instance()
     {
         static VTConfig instance(CONFIG_PATH.c_str());
         return instance;
     }
 
-    VTConfig(VTConfig const &) = delete;
-    void operator=(VTConfig const &) = delete;
+    VTConfig(VTConfig const&) = delete;
+    void operator=(VTConfig const&) = delete;
 
-    static const FORMAT_TEXTURE which_texture_format(const char *_texture_format);
+    static const FORMAT_TEXTURE which_texture_format(const char* _texture_format);
 
     uint16_t get_byte_stride() const;
 
@@ -67,31 +67,31 @@ class VTConfig
     uint16_t get_phys_tex_layers() const;
 
   private:
-    VTConfig(const char *path_config) { read_config(path_config); }
+    VTConfig(const char* path_config) { read_config(path_config); }
 
     // Sections
-    static constexpr const char *TEXTURE_MANAGEMENT = "TEXTURE_MANAGEMENT";
-    static constexpr const char *DEBUG = "DEBUG";
+    static constexpr const char* TEXTURE_MANAGEMENT = "TEXTURE_MANAGEMENT";
+    static constexpr const char* DEBUG = "DEBUG";
 
     // Texture management fields
-    static constexpr const char *TILE_SIZE = "TILE_SIZE";
-    static constexpr const char *TILE_PADDING = "TILE_PADDING";
-    static constexpr const char *PHYSICAL_SIZE_MB = "PHYSICAL_SIZE_MB";
-    static constexpr const char *PHYSICAL_UPDATE_THROUGHPUT_MB = "PHYSICAL_UPDATE_THROUGHPUT_MB";
-    static constexpr const char *RAM_CACHE_SIZE_MB = "RAM_CACHE_SIZE_MB";
+    static constexpr const char* TILE_SIZE = "TILE_SIZE";
+    static constexpr const char* TILE_PADDING = "TILE_PADDING";
+    static constexpr const char* PHYSICAL_SIZE_MB = "PHYSICAL_SIZE_MB";
+    static constexpr const char* PHYSICAL_UPDATE_THROUGHPUT_MB = "PHYSICAL_UPDATE_THROUGHPUT_MB";
+    static constexpr const char* RAM_CACHE_SIZE_MB = "RAM_CACHE_SIZE_MB";
 
-    static constexpr const char *TEXTURE_FORMAT = "TEXTURE_FORMAT";
-    static constexpr const char *TEXTURE_FORMAT_RGBA8 = "RGBA8";
-    static constexpr const char *TEXTURE_FORMAT_RGB8 = "RGB8";
-    static constexpr const char *TEXTURE_FORMAT_R8 = "R8";
+    static constexpr const char* TEXTURE_FORMAT = "TEXTURE_FORMAT";
+    static constexpr const char* TEXTURE_FORMAT_RGBA8 = "RGBA8";
+    static constexpr const char* TEXTURE_FORMAT_RGB8 = "RGB8";
+    static constexpr const char* TEXTURE_FORMAT_R8 = "R8";
 
     // Debug fields
-    static constexpr const char *VERBOSE = "VERBOSE";
+    static constexpr const char* VERBOSE = "VERBOSE";
 
-    static constexpr const char *UNDEF = "UNDEF";
+    static constexpr const char* UNDEF = "UNDEF";
 
   private:
-    void read_config(const char *path_config);
+    void read_config(const char* path_config);
 
     uint16_t _size_tile;
     uint16_t _size_padding;
@@ -106,6 +106,6 @@ class VTConfig
     uint32_t _phys_tex_tile_width;
     uint16_t _phys_tex_layers;
 };
-}
+} // namespace vt
 
 #endif // LAMURE_VTCONFIG_H

@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -42,7 +42,7 @@ const uint16_t QuadTree::calculate_depth(size_t dim, size_t tile_size)
 
 const size_t QuadTree::get_tiles_per_row(uint32_t depth) { return (size_t)pow(2, depth); }
 
-void QuadTree::get_pos_by_id(id_type node_id, uint_fast32_t &x, uint_fast32_t&y)
+void QuadTree::get_pos_by_id(id_type node_id, uint_fast32_t& x, uint_fast32_t& y)
 {
     uint16_t depth = QuadTree::get_depth_of_node(node_id);
     id_type first_id = QuadTree::get_first_node_id_of_depth(depth);
@@ -51,4 +51,4 @@ void QuadTree::get_pos_by_id(id_type node_id, uint_fast32_t &x, uint_fast32_t&y)
 
     morton2D_64_decode(id_in_depth, x, y);
 }
-}
+} // namespace vt

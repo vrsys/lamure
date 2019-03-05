@@ -1,11 +1,15 @@
 ﻿---
 AlwaysBreakTemplateDeclarations: 'true'
+BinPackArguments: 'false'
+BinPackParameters: 'false'
 BreakBeforeBraces: Allman
 ColumnLimit: '200'
+DerivePointerAlignment: 'false'
 IndentWidth: '4'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
 Language: Cpp
 MaxEmptyLinesToKeep: '1'
+PointerAlignment: Left
 SpaceBeforeAssignmentOperators: 'true'
 SpaceBeforeParens: Never
 SpacesInAngles: 'false'
@@ -13,3 +17,5 @@ SpacesInCStyleCastParentheses: 'false'
 SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
 UseTab: Never
+
+...

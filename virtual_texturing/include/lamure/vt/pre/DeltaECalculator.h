@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -16,14 +16,17 @@
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/pre/OffsetIndex.h>
 
-namespace vt {
-    namespace pre {
-        class DeltaECalculator : public AtlasFile {
-        public:
-            explicit DeltaECalculator(const char *fileName);
-            void calculate(size_t maxMemory);
-        };
-    }
-}
+namespace vt
+{
+namespace pre
+{
+class DeltaECalculator : public AtlasFile
+{
+  public:
+    explicit DeltaECalculator(const char* fileName);
+    void calculate(size_t maxMemory);
+};
+} // namespace pre
+} // namespace vt
 
-#endif //TILE_PROVIDER_DELTAECALCULATOR_H
+#endif // TILE_PROVIDER_DELTAECALCULATOR_H
