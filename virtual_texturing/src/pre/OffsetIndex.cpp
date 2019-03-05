@@ -32,6 +32,8 @@ size_t OffsetIndex::_idToIdx(uint64_t id)
 
 OffsetIndex::OffsetIndex(size_t size, AtlasFile::LAYOUT layout) : Index<uint64_t>(size + 1) { _layout = layout; }
 
+OffsetIndex::~OffsetIndex() {}
+
 bool OffsetIndex::exists(uint64_t id) { return (_data[_idToIdx(id)] & EXISTS_BIT) != 0; }
 
 size_t OffsetIndex::getOffset(uint64_t id) { return _data[_idToIdx(id)] & ~EXISTS_BIT; }

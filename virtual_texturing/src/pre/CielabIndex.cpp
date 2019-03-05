@@ -24,6 +24,7 @@ float CielabIndex::_convert(uint32_t val)
 }
 
 CielabIndex::CielabIndex(size_t size) : Index<uint32_t>(size) {}
+CielabIndex::~CielabIndex() {}
 
 float CielabIndex::getCielabValue(uint64_t id) { return _convert(this->_data[id]); }
 

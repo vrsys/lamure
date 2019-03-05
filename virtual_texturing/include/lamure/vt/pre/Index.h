@@ -55,6 +55,8 @@ class Index
         _data = new val_type[size];
     }
 
+    ~Index() { delete[] _data; }
+
     val_type getValue(uint64_t idx) { return _data[idx]; }
 
     void writeToFile(std::fstream& file)

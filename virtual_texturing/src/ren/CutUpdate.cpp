@@ -449,11 +449,20 @@ void CutUpdate::stop()
 
     for(uint32_t context_id : (*_cut_db->get_context_set()))
     {
-        _context_feedbacks[context_id]->_feedback_new.store(true);
-        _context_feedbacks[context_id]->_feedback_cv.notify_one();
-        _context_feedbacks[context_id]->_feedback_worker.join();
+        auto iter = _context_feedbacks.find(context_id);
 
-        delete _context_feedbacks[context_id];
+        if(iter == _context_feedbacks.end())
+        {
+            continue;
+        }
+
+        iter->second->_feedback_new.store(true);
+        iter->second->_feedback_cv.notify_one();
+
+        auto cf = iter->second;
+        _context_feedbacks.erase(iter);
+
+        delete cf; // destructor joins threads
     }
 
     _context_feedbacks.clear();

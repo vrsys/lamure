@@ -85,10 +85,13 @@ class ContextFeedback
 
     ~ContextFeedback()
     {
-        _feedback_worker.join();
+        if(_feedback_worker.joinable())
+        {
+            _feedback_worker.join();
+        }
 
-        delete _feedback_lod_buffer;
-        delete _feedback_count_buffer;
+        delete[] _feedback_lod_buffer;
+        delete[] _feedback_count_buffer;
     }
 
   private:

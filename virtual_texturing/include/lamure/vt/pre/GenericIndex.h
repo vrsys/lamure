@@ -84,6 +84,8 @@ class GenericIndex
         }
     }
 
+    ~GenericIndex() { delete[] _index; };
+
     uint64_t getOffset(uint64_t id) const
     {
         if(id >= _indexSize)

@@ -68,7 +68,10 @@ void HeapProcessor::writeTo(TileCache* cache) { _cache = cache; }
 void HeapProcessor::stop()
 {
     _running = false;
-    _thread->join();
+    if(_thread->joinable())
+    {
+        _thread->join();
+    }
 }
 
 } // namespace ooc

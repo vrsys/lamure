@@ -23,7 +23,9 @@ class OffsetIndex : public Index<uint64_t>
     size_t _idToIdx(uint64_t id);
 
   public:
-    explicit OffsetIndex(size_t size, AtlasFile::LAYOUT layout);
+    OffsetIndex(size_t size, AtlasFile::LAYOUT layout);
+    ~OffsetIndex();
+
     bool exists(uint64_t id);
     size_t getOffset(uint64_t id);
     size_t getLength(uint64_t id);

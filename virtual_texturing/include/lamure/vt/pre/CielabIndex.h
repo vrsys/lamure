@@ -22,6 +22,8 @@ class CielabIndex : public Index<uint32_t>
 
   public:
     CielabIndex(size_t size);
+    ~CielabIndex();
+
     float getCielabValue(uint64_t id);
     void set(uint64_t id, float cielabValue);
 };
