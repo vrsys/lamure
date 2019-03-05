@@ -98,9 +98,15 @@ public:
 struct OBJ_printer
 {
 	template <class Polyhedron>
-	static void print_polyhedron_wavefront_with_charts( std::ostream& out, const Polyhedron& P, std::map<uint32_t, uint32_t> &chart_id_map, const uint32_t active_charts, bool SEPARATE_CHART_FILE) {
+	static void print_polyhedron_wavefront_with_charts( std::ostream& out, 
+														const Polyhedron& P, 
+														std::map<uint32_t, uint32_t> &chart_id_map, 
+														const uint32_t active_charts, 
+														bool SEPARATE_CHART_FILE,
+														std::string chart_filename) {
+
 	    File_writer_wavefront_xtnd  writer(out);
-	    generic_print_polyhedron( out, P, writer, chart_id_map, active_charts, SEPARATE_CHART_FILE);
+	    generic_print_polyhedron( out, P, writer, chart_id_map, active_charts, SEPARATE_CHART_FILE, chart_filename);
 
 	 //      for (auto const& chart : chart_id_map)
   // {
@@ -119,7 +125,8 @@ struct OBJ_printer
 	                          Writer&           writer,
 	                          std::map<uint32_t, uint32_t> &chart_id_map,
 	                          const uint32_t active_charts,
-	                          bool SEPARATE_CHART_FILE) {
+	                          bool SEPARATE_CHART_FILE,
+							  std::string chart_filename) {
 
 		std::cout << "Writing OBJ from polyhedron..." << std::endl;
 
@@ -244,7 +251,6 @@ struct OBJ_printer
 			std::cout << "Charts written in OBJ (as colours) in place of texture coordinates\n";
 
 	    //write chart file
-	    std::string chart_filename = "data/chart.chart";
     	std::ofstream ocfs( chart_filename );
 
     	for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {

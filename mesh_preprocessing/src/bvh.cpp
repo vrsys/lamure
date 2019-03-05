@@ -238,6 +238,7 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles) {
 
       //std::cout << "simplifying nodes " << left_child << " " << right_child << " into " << node_id << std::endl;
 
+      std::cout << "simplifying node " << node_id << " with constraint\n";
       //try simplification with edge constraint
       simplify(
         triangles_map_[left_child],
@@ -246,7 +247,10 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles) {
         true);
 
       if (triangles_map_[node_id].size() > primitives_per_node_) {
+
         //simplify without constraint
+        std::cout << "simplifying node " << node_id << " without constraint\n";
+
         triangles_map_[node_id].clear();
         simplify(
           triangles_map_[left_child],
@@ -373,13 +377,10 @@ void bvh::simplify(
   polyhedron_builder<HalfedgeDS> builder(combined_set);
   polyMesh.delegate(builder);
 
-  merge_similar_border_edges(polyMesh, combined_set);
-
   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
-    
   }
   else {
-    std::cout << "WARNING! Triangle mesh invalid!" << std::endl;
+    std::cout << "WARNING! Triangle mesh invalid! (No triangles saved for this node)" << std::endl;
     return;
   }
 
@@ -400,20 +401,45 @@ void bvh::simplify(
 
     i++;
   }
+  i = 0;
+  for (lamure::mesh::Polyhedron::Halfedge_iterator e = polyMesh.edges_begin(); e != polyMesh.edges_end(); ++e) {
+    e->edge_id = i;
+    i++;
+  }
 
-  //simplify the two input sets of tris into output_tris
+  // // try to merge edges - still hunting cause of seg fault 
+  // if (!contrain_edges) {
+  //   int target_merges = combined_set.size() / 2;
+  //   edge_merger::merge_similar_border_edges(polyMesh, combined_set, target_merges);
+
+  //   //rebuild polymesh
+  //   polyMesh.clear();
+  //   std::cout << "Rebuilding mesh with " << combined_set.size() << " triangles \n";
+  //   lamure::mesh::polyhedron_builder<lamure::mesh::HalfedgeDS> rebuilder(combined_set);
+  //   polyMesh.delegate(rebuilder);
+
+  //   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
+  //   }
+  //   else {
+  //     std::cout << "WARNING! Rebuilt triangle mesh invalid! (No triangles saved for this node)" << std::endl;
+  //     return;
+  //   }
+  // }
+
 
   //SMS::Count_stop_predicate<Polyhedron> stop(50);
-  SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
+
+  //simplification with borders constrained
+  Border_is_constrained_edge_map bem(polyMesh);
+
+  typedef SMS::Bounded_normal_change_placement<SMS::LindstromTurk_placement<Polyhedron> > Placement;
   
 
   if (contrain_edges) {
 
-    //simplification with borders constrained
-    Border_is_constrained_edge_map bem(polyMesh);
 
-    typedef SMS::Bounded_normal_change_placement<SMS::LindstromTurk_placement<Polyhedron> > Placement;
-    
+    SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
+
     SMS::edge_collapse
              (polyMesh
              ,stop
@@ -429,7 +455,11 @@ void bvh::simplify(
   } 
   else {
 
+
+
     //without border constraint    
+
+    SMS::Count_ratio_stop_predicate<Polyhedron> stop(0.5f);
     SMS::edge_collapse
               (polyMesh
               ,stop
@@ -439,6 +469,21 @@ void bvh::simplify(
                                  //.get_cost (SMS::LindstromTurk_cost<Polyhedron>())
                                  .get_placement(SMS::Midpoint_placement<Polyhedron>())
               );
+
+    //with only border constraints
+    // SMS::Count_ratio_stop_predicate<Polyhedron> stop(0);
+    // SMS::edge_collapse
+    //      (polyMesh
+    //      ,stop
+    //       ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
+    //                         .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
+    //                         .edge_is_constrained_map(bem)
+    //                         // .get_placement(Placement(bem))
+    //                         // .get_cost (SMS::Edge_length_cost <Polyhedron>())
+    //                         // .get_placement(SMS::Midpoint_placement<Polyhedron>())
+    //                         .get_cost (SMS::LindstromTurk_cost<Polyhedron>())
+    //                         .get_placement(Placement())
+    //      );
 
   }
 
@@ -521,64 +566,6 @@ void bvh::simplify(
 }
 
 
-
-Vec3 bvh::normalise(Vec3 v) {return v / std::sqrt(v.squared_length());}
-
-void bvh::merge_similar_border_edges(Polyhedron& P,
-                                    std::vector<Triangle_Chartid>& tri_list
-                                    ){
-
-  struct Edge_merge_candidate
-  {
-    Edge_handle edge1;
-    Edge_handle edge2;
-    double cost;
-  };
-
-  //build list of possible edge merges
-  std::list<Edge_merge_candidate> merge_cs;
-
-  //check every edge in mesh, determine if it is a border edge
-  for ( Polyhedron::Halfedge_iterator  ei = P.halfedges_begin(); ei != P.halfedges_end(); ++ei) {
-
-    if(ei->is_border()){
-      
-      Edge_merge_candidate mc;
-      mc.edge1 = ei;
-
-      //find next border edge
-      Polyhedron::Halfedge_around_vertex_circulator he,end; 
-      he = end = ei->vertex()->vertex_begin();
-      do {
-        if(he->is_border()){
-          mc.edge2 = he;
-          break;
-        }
-      } while (++he != end);
-
-      //check that continuing edge was found
-      if (he == end)
-      {
-        std::cout << "No continuing edge found\n";
-        continue;
-      }
-
-      //calculate cost (angle difference)
-      Vec3 v1 = normalise(mc.edge1->vertex()->point() - mc.edge1->prev()->vertex()->point());
-      Vec3 v2 = normalise(mc.edge2->vertex()->point() - mc.edge2->prev()->vertex()->point());
-
-      double dot = v1 * v2;
-      dot = std::max(-1.0, std::min(1.0,dot));
-      mc.cost = acos(dot);
-
-      merge_cs.push_back(mc);
-
-    }
-  }
-
-  std::cout << "Found " << merge_cs.size() << " border edge merge candidates in mesh with " << P.size_of_facets() << " faces\n";
-  std::cout << "Ratio = " << (double)(merge_cs.size())/P.size_of_facets() << std::endl;
-}
 
 
 

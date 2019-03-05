@@ -8,7 +8,7 @@
 #include <lamure/vt/ren/CutDatabase.h>
 namespace vt
 {
-CutDatabase::CutDatabase(mem_slots_type *front, mem_slots_type *back) : DoubleBuffer<mem_slots_type>(front, back), _read_lock(), _write_lock(), _read_write_lock()
+CutDatabase::CutDatabase() : _context_sync_map()
 {
     VTConfig *config = &VTConfig::get_instance();
 
@@ -16,18 +16,20 @@ CutDatabase::CutDatabase(mem_slots_type *front, mem_slots_type *back) : DoubleBu
     _size_mem_y = config->get_phys_tex_tile_width();
     _size_mem_interleaved = _size_mem_x * _size_mem_y * config->get_phys_tex_layers();
 
-    for(size_t i = 0; i < _size_mem_interleaved; i++)
-    {
-        _front->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
-        _back->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
-    }
-
     _cut_map = cut_map_type();
     _tile_provider = new ooc::TileProvider();
 }
-size_t CutDatabase::get_available_memory()
+CutDatabase::~CutDatabase()
 {
-    size_t available_memory = _back->size();
+    for(uint16_t context : _context_set)
+    {
+        delete _context_sync_map[context];
+        delete _context_state_map[context];
+    }
+}
+size_t CutDatabase::get_available_memory(uint16_t context_id)
+{
+    size_t available_memory = _context_state_map[context_id]->get_back()->size();
     for(cut_map_entry_type cut_entry : _cut_map)
     {
         available_memory -= cut_entry.second->get_back()->get_mem_slots_locked().size();
@@ -35,9 +37,9 @@ size_t CutDatabase::get_available_memory()
 
     return available_memory;
 }
-mem_slot_type *CutDatabase::get_free_mem_slot()
+mem_slot_type *CutDatabase::get_free_mem_slot(uint16_t context_id)
 {
-    for(auto mem_iter = _back->begin(); mem_iter != _back->end(); mem_iter++) // NOLINT
+    for(auto mem_iter = _context_state_map[context_id]->get_back()->begin(); mem_iter != _context_state_map[context_id]->get_back()->end(); mem_iter++) // NOLINT
     {
         if(!(*mem_iter).locked)
         {
@@ -47,54 +49,55 @@ mem_slot_type *CutDatabase::get_free_mem_slot()
 
     throw std::runtime_error("out of mem slots");
 }
-mem_slot_type *CutDatabase::write_mem_slot_at(size_t position)
+mem_slot_type *CutDatabase::write_mem_slot_at(size_t position, uint16_t context_id)
 {
-    std::unique_lock<std::mutex> lk(_write_lock);
+    std::unique_lock<std::mutex> lk(_context_sync_map[context_id]->_write_lock);
 
     if(position >= _size_mem_interleaved)
     {
         throw std::runtime_error("Write request to interleaved memory position: " + std::to_string(position) + ", interleaved memory size is: " + std::to_string(_size_mem_interleaved));
     }
 
-    if(!_is_written.load())
+    if(!_context_sync_map[context_id]->_is_written.load())
     {
         throw std::runtime_error("Unsanctioned write request to interleaved memory position: " + std::to_string(position));
     }
 
-    return &get_back()->at(position);
+    return &_context_state_map[context_id]->get_back()->at(position);
 }
-mem_slot_type *CutDatabase::read_mem_slot_at(size_t position)
+mem_slot_type *CutDatabase::read_mem_slot_at(size_t position, uint16_t context_id)
 {
     // std::cout << "read_mem_slot_at" << std::endl;
 
-    std::unique_lock<std::mutex> lk(_read_lock);
+    std::unique_lock<std::mutex> lk(_context_sync_map[context_id]->_read_lock);
 
     if(position >= _size_mem_interleaved)
     {
         throw std::runtime_error("Read request to position: " + std::to_string(position) + ", interleaved memory size is: " + std::to_string(_size_mem_interleaved));
     }
 
-    if(!_is_read.load())
+    if(!_context_sync_map[context_id]->_is_read.load())
     {
         throw std::runtime_error("Unsanctioned read request to interleaved memory position: " + std::to_string(position));
     }
 
-    return &get_front()->at(position);
+    return &_context_state_map[context_id]->get_front()->at(position);
 }
-void CutDatabase::deliver() { _front->assign(_back->begin(), _back->end()); }
 Cut *CutDatabase::start_writing_cut(uint64_t cut_id)
 {
     // std::cout << "start_writing_cut" << std::endl;
 
-    std::unique_lock<std::mutex> lk(_write_lock);
+    uint16_t context_id = Cut::get_context_id(cut_id);
 
-    if(_is_written.load())
+    std::unique_lock<std::mutex> lk(_context_sync_map[context_id]->_write_lock);
+
+    if(_context_sync_map[context_id]->_is_written.load())
     {
         throw std::runtime_error("Memory write access corruption");
     }
-    _is_written.store(true);
+    _context_sync_map[context_id]->_is_written.store(true);
 
-    start_writing();
+    _context_state_map[context_id]->start_writing();
     Cut *requested_cut = _cut_map[cut_id];
     requested_cut->start_writing();
 
@@ -104,38 +107,42 @@ void CutDatabase::stop_writing_cut(uint64_t cut_id)
 {
     // std::cout << "stop_writing_cut" << std::endl;
 
-    std::unique_lock<std::mutex> lk(_write_lock);
+    uint16_t context_id = Cut::get_context_id(cut_id);
+
+    std::unique_lock<std::mutex> lk(_context_sync_map[context_id]->_write_lock);
 
     _cut_map[cut_id]->stop_writing();
-    stop_writing();
+    _context_state_map[context_id]->stop_writing();
 
-    if(!_is_written.load())
+    if(!_context_sync_map[context_id]->_is_written.load())
     {
         throw std::runtime_error("Memory write access corruption");
     }
-    _is_written.store(false);
+    _context_sync_map[context_id]->_is_written.store(false);
 
-    _read_write_cv.notify_one();
+    _context_sync_map[context_id]->_read_write_cv.notify_one();
 }
 Cut *CutDatabase::start_reading_cut(uint64_t cut_id)
 {
     // std::cout << "start_reading_cut" << std::endl;
 
-    std::unique_lock<std::mutex> lk(_read_lock);
+    uint16_t context_id = Cut::get_context_id(cut_id);
 
-    if(_is_read.load())
+    std::unique_lock<std::mutex> lk(_context_sync_map[context_id]->_read_lock);
+
+    if(_context_sync_map[context_id]->_is_read.load())
     {
         throw std::runtime_error("Memory read access corruption");
     }
 
-    std::unique_lock<std::mutex> cv_lk(_read_write_lock);
-    _read_write_cv.wait(cv_lk, [this] { return !_is_written.load(); });
+    std::unique_lock<std::mutex> cv_lk(_context_sync_map[context_id]->_read_write_lock);
+    _context_sync_map[context_id]->_read_write_cv.wait(cv_lk, [&]() -> bool { return !_context_sync_map[context_id]->_is_written.load(); });
 
-    _is_read.store(true);
+    _context_sync_map[context_id]->_is_read.store(true);
 
     // std::cout << "start_reading_cut: is being read" << std::endl;
 
-    start_reading();
+    _context_state_map[context_id]->start_reading();
     Cut *requested_cut = _cut_map[cut_id];
     requested_cut->start_reading();
 
@@ -145,16 +152,18 @@ void CutDatabase::stop_reading_cut(uint64_t cut_id)
 {
     // std::cout << "stop_reading_cut" << std::endl;
 
-    std::unique_lock<std::mutex> lk(_read_lock);
+    uint16_t context_id = Cut::get_context_id(cut_id);
 
-    stop_reading();
+    std::unique_lock<std::mutex> lk(_context_sync_map[context_id]->_read_lock);
+
+    _context_state_map[context_id]->stop_reading();
     _cut_map[cut_id]->stop_reading();
 
-    if(!_is_read.load())
+    if(!_context_sync_map[context_id]->_is_read.load())
     {
         throw std::runtime_error("Memory read access corruption");
     }
-    _is_read.store(false);
+    _context_sync_map[context_id]->_is_read.store(false);
 
     // std::cout << "stop_reading_cut: is not being read any longer" << std::endl;
 }
@@ -184,6 +193,20 @@ uint16_t CutDatabase::register_context()
 {
     uint16_t id = (uint16_t)_context_set.size();
     _context_set.emplace(id);
+
+    _context_sync_map.insert({id, new SyncStructure()});
+
+    mem_slots_type *front = new mem_slots_type();
+    mem_slots_type *back = new mem_slots_type();
+
+    for(size_t i = 0; i < _size_mem_interleaved; i++)
+    {
+        front->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
+        back->emplace_back(mem_slot_type{i, UINT64_MAX, nullptr, false, false});
+    }
+
+    _context_state_map.insert({id, new StateStructure(front, back)});
+
     return id;
 }
 uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16_t context_id)
@@ -213,10 +236,6 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
 }
 
 ooc::TileProvider *CutDatabase::get_tile_provider() const { return _tile_provider; }
-void CutDatabase::start_writing() { DoubleBuffer::start_writing(); }
-void CutDatabase::stop_writing() { DoubleBuffer::stop_writing(); }
-void CutDatabase::start_reading() { DoubleBuffer::start_reading(); }
-void CutDatabase::stop_reading() { DoubleBuffer::stop_reading(); }
 view_set_type *CutDatabase::get_view_set() { return &_view_set; }
 context_set_type *CutDatabase::get_context_set() { return &_context_set; }
 }

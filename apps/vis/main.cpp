@@ -748,7 +748,7 @@ void apply_vt_cut_update() {
     std::set<uint16_t> updated_levels;
 
     for (auto position_slot_updated : cut->get_front()->get_mem_slots_updated()) {
-      const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second);
+      const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, vt_.context_id_);
 
       if (mem_slot_updated == nullptr || !mem_slot_updated->updated
           || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr) {
@@ -789,7 +789,7 @@ void apply_vt_cut_update() {
 
 
     for (auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared()) {
-      const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second);
+      const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, vt_.context_id_);
 
       if (mem_slot_cleared == nullptr) {
         std::cerr << "Mem slot at " << position_slot_cleared.second << " is null" << std::endl;
@@ -3284,7 +3284,7 @@ int main(int argc, char *argv[])
     }
   }
   else {
-    std::cout << "Usage: " << argv[0] << " <vis_file.vis>" << std::endl;
+    std::cout << "Usage: " << argv[0] << " <vis_file.vis> <lod_mesh_texture_path (optional)>" << std::endl;
     std::cout << "\tHELP: to render a single model use:" << std::endl;
     std::cout << "\techo <input_file.bvh> > default.vis && " << argv[0] << " default.vis" << std::endl;
     return 0;
