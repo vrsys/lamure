@@ -505,6 +505,20 @@ void VTRenderer::update_physical_texture_blockwise(uint16_t context_id, const ui
 
 VTRenderer::~VTRenderer()
 {
+    for(auto res : _ctxt_resources){
+        delete res.second->_feedback_lod_cpu_buffer;
+        delete res.second->_feedback_count_cpu_buffer;
+        delete res.second;
+    }
+
+    for(auto res : _view_resources){
+        delete res.second;
+    }
+
+    for(auto res : _data_resources){
+        delete res.second;
+    }
+
     _shader_vt.reset();
 
     _filter_nearest.reset();

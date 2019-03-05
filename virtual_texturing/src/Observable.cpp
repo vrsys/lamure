@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -9,13 +9,13 @@
 
 namespace vt
 {
-void Observable::observe(event_type event, Observer *observer)
+void Observable::observe(event_type event, Observer* observer)
 {
     auto eventIter = _events.find(event);
 
     if(eventIter == _events.end())
     {
-        eventIter = _events.insert(std::pair<event_type, std::set<Observer *>>(event, std::set<Observer *>())).first;
+        eventIter = _events.insert(std::pair<event_type, std::set<Observer*>>(event, std::set<Observer*>())).first;
     }
 
     auto observerSet = eventIter->second;
@@ -30,7 +30,7 @@ void Observable::observe(event_type event, Observer *observer)
     eventIter->second.insert(observer);
 }
 
-void Observable::unobserve(event_type event, Observer *observer)
+void Observable::unobserve(event_type event, Observer* observer)
 {
     auto eventIter = _events.find(event);
 
@@ -54,7 +54,7 @@ void Observable::unobserve(event_type event, Observer *observer)
 
 void Observable::inform(event_type event)
 {
-    Observer **observers;
+    Observer** observers;
     size_t len;
 
     {
@@ -66,11 +66,11 @@ void Observable::inform(event_type event)
         }
 
         len = iter->second.size();
-        observers = new Observer *[len];
+        observers = new Observer*[len];
 
         size_t i = 0;
 
-        for(Observer *ptr : iter->second)
+        for(Observer* ptr : iter->second)
         {
             observers[i++] = ptr;
         }
@@ -83,4 +83,4 @@ void Observable::inform(event_type event)
 
     delete observers;
 }
-}
+} // namespace vt

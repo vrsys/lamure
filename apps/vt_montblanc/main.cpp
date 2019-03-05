@@ -87,7 +87,6 @@ class EventHandler
         case GLFW_KEY_ESCAPE:
             std::cout << "should close" << std::endl;
             glfwSetWindowShouldClose(glfw_window, GL_TRUE);
-            exit(0);
             break;
         case GLFW_KEY_P:
             if(action == GLFW_PRESS)
@@ -345,30 +344,15 @@ bool should_close()
     if(_windows.empty())
         return true;
 
-    std::list<Window *> to_delete;
     for(const auto &window : _windows)
     {
         if(glfwWindowShouldClose(window->_glfw_window))
         {
-            to_delete.push_back(window);
+            return true;
         }
     }
 
-    if(!to_delete.empty())
-    {
-        for(auto &window : to_delete)
-        {
-            ImGui_ImplGlfwGL3_Shutdown();
-
-            glfwDestroyWindow(window->_glfw_window);
-
-            delete window;
-
-            _windows.remove(window);
-        }
-    }
-
-    return _windows.empty();
+    return false;
 }
 
 void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *param)
@@ -535,6 +519,18 @@ int main(int argc, char *argv[])
 
             glfwSwapBuffers(window->_glfw_window);
         }
+    }
+
+    for(auto &window : _windows)
+    {
+        make_context_current(window);
+        ImGui_ImplGlfwGL3_Shutdown();
+    }
+
+    for(auto &window : _windows)
+    {
+        make_context_current(window);
+        glfwDestroyWindow(window->_glfw_window);
     }
 
     _cut_update->stop();
