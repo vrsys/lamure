@@ -1,8 +1,12 @@
 #!/bin/bash
 
 #lamure directory
-LAM_DIR="/home/hoqe4365/Desktop/lamure/lamure/"
+LAM_DIR="../.."
 cd $LAM_DIR
+
+LAM_DIR=$PWD
+
+mkdir data/regression
 
 echo "detected $# arguments"
 
@@ -56,7 +60,7 @@ CHART_THRES=200
 CELL_RES=10
 NORMAL_VARIANCE_THRESHOLD=0.002
 
-./install/bin/lamure_grid_face_clustering -f $OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
+`./install/bin/lamure_grid_face_clustering -f ${OBJPATH} -ch ${CHART_THRES} -cc ${CELL_RES} -ct ${NORMAL_VARIANCE_THRESHOLD}`
 
 
 
