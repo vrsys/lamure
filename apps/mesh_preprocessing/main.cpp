@@ -400,6 +400,14 @@ bool sort_by_height (rectangle i, rectangle j){
 
 rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
 
+  if (input.size() == 0)
+  {
+    std::cout << "WARNING: no rectangles received in pack() function" << std::endl; 
+    return rectangle {scm::math::vec2f(0,0), scm::math::vec2f(0,0),1,0};
+  }
+
+  std::vector<rectangle> starting_rects = input;
+
   //make sure all rectangles stand on the shorter side
   for(uint32_t i=0; i< input.size(); i++){
     auto& rect=input[i];
@@ -427,21 +435,37 @@ rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
   //compute the average height of all rects
   float sum = 0.f;
   for (uint32_t i=0; i<input.size(); i++){
-    sum+= input[i].max_.y-input[i].min_.y; 
+
+    float height = input[i].max_.y-input[i].min_.y;
+    if (height < 0){
+      std::cout << "WARNING: rect [" << i << "] invalid height in pack(): " << height << std::endl;
+      //TODO remove offending rectangle?
+      continue;
+    }
+    sum+= (height); 
   }
+
   float average_height = sum/((float)input.size());
+
+
+  if (average_height <= 0)
+  {
+    std::cout << "WARNING: average height error" << std::endl; 
+    return rectangle {scm::math::vec2f(0,0), scm::math::vec2f(0,0),1,0};
+  }
 
   //heuristically take half
   // dim *= 0.9f;
   dim *= scale_factor;
   
 
-  rectangle texture{scm::math::vec2f(0,0), scm::math::vec2f((int)((dim+1)*average_height),(int)((dim+1)*average_height)),0};
+  // rectangle texture{scm::math::vec2f(0,0), scm::math::vec2f((int)((dim+1)*average_height),(int)((dim+1)*average_height)),0};
 
-  std::cout << "texture size: " << texture.max_.x << " " << texture.max_.y<< std::endl;
+  rectangle texture{scm::math::vec2f(0,0), scm::math::vec2f((int)((dim)*average_height),(int)((dim)*average_height)),0};
+
+  std::cout << "texture size: " << texture.max_.x << " x " << texture.max_.y<< std::endl;
 
   
-
   //pack the rects
   int offset_x =0;
   int offset_y =0;
@@ -465,11 +489,15 @@ rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
   
     if (rect.max_.y > texture.max_.y)
     {
-      std::cout << "Rect " << i << " doesn't fit on texture\n";
+      std::cout << "rect max y = " << rect.max_.y << ", tex max y = " << texture.max_.y << std::endl;
+      std::cout << "Rect " << i << "(" << rect.max_.x - rect.min_.x << " x " << rect.max_.y - rect.min_.y << ") doesn't fit on texture\n";
 
-      //recursive call until all texture fits on
+      //recursive call until all rectangles fir on texture
       std::cout << "Repacking....(" << scale_factor*1.1 << ")\n";
-      return pack(input, scale_factor * 1.1);
+      rectangle rtn_tex_rect = pack(starting_rects, scale_factor * 1.1);
+      input = starting_rects;
+
+      return rtn_tex_rect;
 
     }
 
@@ -679,19 +707,25 @@ void glut_display() {
 }
 
 //returns a city block distance between 2 texture coordinates, given a width and height of the texture
-int calc_city_block_length(scm::math::vec2f coord1, scm::math::vec2f coord2, int tex_width, int tex_height){
+// int calc_city_block_length(scm::math::vec2f coord1, scm::math::vec2f coord2, int tex_width, int tex_height){
 
-  scm::math::vec2i real_coord1(std::floor(coord1.x * tex_width), std::floor(coord1.y * tex_height));
-  scm::math::vec2i real_coord2(std::floor(coord2.x * tex_width), std::floor(coord2.y * tex_height));
+//   scm::math::vec2i real_coord1(std::floor(coord1.x * tex_width), std::floor(coord1.y * tex_height));
+//   scm::math::vec2i real_coord2(std::floor(coord2.x * tex_width), std::floor(coord2.y * tex_height));
 
-  return std::abs(real_coord1.x - real_coord2.x) + std::abs(real_coord1.y - real_coord2.y); 
+//   return std::abs(real_coord1.x - real_coord2.x) + std::abs(real_coord1.y - real_coord2.y); 
+// }
+
+double get_area_of_triangle(scm::math::vec2f v0, scm::math::vec2f v1, scm::math::vec2f v2){
+
+  return 0.5 * scm::math::length(scm::math::cross(scm::math::vec3f(v1-v0,0.0), scm::math::vec3f(v2-v0,0.0)));
 }
 
-//calculates a per-chart ratio of 3D space to texture space
-//ratio is number of pixels for 1 unit in real space
+//calculates average pixels per triangle for each chart, given a texture size
+// use first argument to determine whether measurement should use old or new tex coords
 enum PixelResolutionCalculationType { USE_OLD_COORDS, USE_NEW_COORDS};
 void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::vector<chart>& charts, std::vector<triangle>& triangles, int tex_width, int tex_height){
 
+  double pixel_area = (1.0 / tex_width) * (1.0 / tex_height);
 
   if (type == USE_OLD_COORDS){
     std::cout << "Calculating pixel sizes with old coords" << std::endl;
@@ -703,33 +737,35 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::v
   //for all charts
   for(auto& chart : charts){
 
-    double real_tex_ratio = 0.0;
+    double pixels = 0.0;
 
     //for all triangles
     for (auto& tri_id : chart.all_triangle_ids_)
     {
       //sample length  between vertices 0 and 1
       auto& tri = triangles[tri_id];
-      double real_length = scm::math::length(tri.v0_.pos_ - tri.v1_.pos_);
 
-      //calculate lengths as cityblock distances 
-      double tex_length;
+      //calculate areas in texture space
+      double tri_area;
       if (type == USE_OLD_COORDS)
       {
-        tex_length = calc_city_block_length(tri.v0_.old_coord_, tri.v1_.old_coord_, tex_width, tex_height);
+        tri_area = get_area_of_triangle(tri.v0_.old_coord_, tri.v1_.old_coord_, tri.v2_.old_coord_);
       }
       else {
-        tex_length = calc_city_block_length(tri.v0_.new_coord_, tri.v1_.new_coord_, tex_width, tex_height);
+        tri_area = get_area_of_triangle(tri.v0_.new_coord_, tri.v1_.new_coord_, tri.v2_.new_coord_);
       }
-      real_tex_ratio += (tex_length / real_length);
+
+      pixels += (tri_area / pixel_area);
     }
+
+    double pixels_per_tri = pixels / chart.all_triangle_ids_.size();
 
     if (type == USE_OLD_COORDS)
     {
-      chart.real_to_tex_ratio_old = real_tex_ratio / chart.all_triangle_ids_.size();
+      chart.real_to_tex_ratio_old = pixels_per_tri;
     }
     else {
-      chart.real_to_tex_ratio_new = real_tex_ratio / chart.all_triangle_ids_.size();
+      chart.real_to_tex_ratio_new = pixels_per_tri;
     }
   }
 
@@ -750,7 +786,7 @@ bool is_output_texture_big_enough(std::vector<chart>& charts, double target_perc
 
   std::cout << "Percentage of charts big enough = " << percentage_big_enough << std::endl;
 
-  return (percentage_big_enough > target_percentage_charts_with_enough_pixels);
+  return (percentage_big_enough >= target_percentage_charts_with_enough_pixels);
 }
 
 
@@ -1079,8 +1115,15 @@ int main(int argc, char *argv[]) {
   //for each chart, calculate relative size of real space to new tex space
   calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
 
+    //print pixel ratios per chart
+  for (auto& chart : charts)
+  {
+    std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
+    std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+  }
+
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
-  const double target_percentage_charts_with_enough_pixels = 0.9;
+  const double target_percentage_charts_with_enough_pixels = 1.0;
   while (!is_output_texture_big_enough(charts, target_percentage_charts_with_enough_pixels)) {
 
     window_width_  *= 2;
@@ -1091,15 +1134,10 @@ int main(int argc, char *argv[]) {
     calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
 
     //limit texture size
-    if (std::max(window_width_, window_height_) >= 8192){continue;}
+    if (std::max(window_width_, window_height_) >= 8192){break;}
   }
 
-  //print pixel ratios per chart
-  // for (auto& chart : charts)
-  // {
-  //   std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
-  //   std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
-  // }
+
 
 
 

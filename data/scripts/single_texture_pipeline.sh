@@ -6,14 +6,14 @@ cd $LAM_DIR
 
 LAM_DIR=$PWD
 
-mkdir data/regression
+mkdir cddata/regression
 
 echo "detected $# arguments"
 
 
 if [[ $# != 2 ]]; then
 	#input files
-	SRC_OBJPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra.obj"
+	SRC_OBJPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra_small.obj"
 	SRC_PNGPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra-atlas-flip.png"
 else 
 
@@ -60,7 +60,8 @@ CHART_THRES=200
 CELL_RES=10
 NORMAL_VARIANCE_THRESHOLD=0.002
 
-`./install/bin/lamure_grid_face_clustering -f ${OBJPATH} -ch ${CHART_THRES} -cc ${CELL_RES} -ct ${NORMAL_VARIANCE_THRESHOLD}`
+# `./install/bin/lamure_grid_face_clustering -f ${OBJPATH} -ch ${CHART_THRES} -cc ${CELL_RES} -ct ${NORMAL_VARIANCE_THRESHOLD}`
+./install/bin/lamure_grid_face_clustering -f ${OBJPATH} -ch ${CHART_THRES} -cc ${CELL_RES} -ct ${NORMAL_VARIANCE_THRESHOLD}
 
 
 
@@ -103,7 +104,7 @@ FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.png"
 
 
 #dilate new texture to avoid cracks 
-NUM_DILATIONS=20
+NUM_DILATIONS=4
 for dilation_iteration in `seq 1 "$NUM_DILATIONS"`;
 do
   ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $FINAL_TEX_PATH

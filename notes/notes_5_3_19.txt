@@ -1,10 +1,14 @@
 
 For next week:
 
- - Update triangle size measure - use euclidian area and convert to (float) pixel value
- - look into UV problem with zebra (normals?)
+ - Update triangle size measure - use euclidian area and convert to (float) pixel value - DONE
+ - look into UV problem with zebra (normals?) - is 'solved' by scaling down zebra model. Is there a problem with the vis app and very large models? test with some others. 
+	- big lion shows some similar artefacts, also causes problems with rectangle packing app.
  - update clustering method to optimise and allow parallelisation
- - add dilation to single_tex_pipeline
+ - add dilation to single_tex_pipeline - DONE
+
+ - testing - try to run Nordportal through pipeline
+ - finish multi-texture pipeline script
 
 
  - UPDATE CLUSTERING:

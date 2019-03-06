@@ -40,13 +40,14 @@ void main() {
 
 
   vec3 color = vec3(0.0);
-  //color = vec3(nv.x*0.5+0.5, nv.y*0.5+0.5, nv.z*0.5+0.5);
-  //to test charting
   if(0 == color_rendering_mode) {
     color = vec3(vertex_in.coord.x, vertex_in.coord.y, 0.5);
   } else {
     color = texture2D(in_mesh_color_texture, vertex_in.coord.xy).rgb;
   }
+
+  //to show normals
+  //color = vec3(n.x*0.5+0.5, n.y*0.5+0.5, n.z*0.5+0.5);
   
 
   OPTIONAL_BEGIN
