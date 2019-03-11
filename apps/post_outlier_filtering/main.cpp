@@ -122,10 +122,6 @@ int main(int argc, char *argv[]) {
 
     size_t size_of_node = (uint64_t)bvh->get_primitives_per_node() * sizeof(lamure::ren::dataset::serialized_surfel);
 
-
-    //std::vector<quantized_surfel> qz_surfels(bvh->get_primitives_per_node());
-
-    lamure::node_t first_leaf = bvh->get_first_node_id_of_depth(depth);
     lamure::node_t num_leafs = bvh->get_length_of_depth(depth);
 
     std::vector<surfel>           surfels(bvh->get_primitives_per_node() * num_leafs);
@@ -135,11 +131,7 @@ int main(int argc, char *argv[]) {
     out_stream.close();
 
     uint64_t num_surfels_excluded = 0;
-    
-
-    auto const& bvh_bounding_boxes = bvh->get_bounding_boxes();
-
-
+  
     std::ios::openmode mode = std::ios::out | std::ios::binary;
     out_stream.open(out_filtered_lod_file, mode);
 
@@ -181,54 +173,9 @@ int main(int argc, char *argv[]) {
       node_offset += nodes_in_current_level;
     }
 
-/*    for (lamure::node_t node_idx = 0; node_idx < first_leaf + num_leafs; ++node_idx) {
-      if(node_idx % 1000 == 0)
-      std::cout << "Starting with: " << node_idx << "\r";
-      std::cout.flush();
-      auto const& avg_surfel_radius = bvh->get_avg_primitive_extent(node_idx);
-      auto max_radius_deviation = bvh->get_max_surfel_radius_deviation(node_idx);
-
-        
-      in_access->read((char*)&surfels[0], node_idx * size_of_node, size_of_node);
-
-      //recompute max_radius_deviation if it was not set (in order to be able to compress bvhs prev v1.1)
-      if( 0.0 == max_radius_deviation ) {
-        float max_radius = 0.0f;
-        float min_radius = std::numeric_limits<float>::max();
-
-        for ( auto const& current_surfel : surfels) {
-          //quantized_surfel qz_surfel;
-          //const surfel& current_surfel = surfels[surfel_idx];
-
-          if( 0.0 < current_surfel.size ) {
-            max_radius = std::max(max_radius, current_surfel.size);
-            min_radius = std::min(min_radius, current_surfel.size);
-          }
-
-        }
-
-        max_radius_deviation = std::max( std::fabs(max_radius - avg_surfel_radius), std::fabs( avg_surfel_radius - min_radius )  );
-        bvh->set_max_surfel_radius_deviation(node_idx, max_radius_deviation);
-      }
-
-      #pragma omp parallel for
-      for (unsigned int i = 0; i < bvh->get_primitives_per_node(); ++i) {
-          //quantized_surfel qz_surfel;
-          surfel& s = surfels[i];
-
-          if(s.size > avg_surfel_radius * radius_deviation_to_avg_radius_per_level) {
-            s.size = 0;
-            ++num_surfels_excluded;
-          }
-
-      }
-      out_stream.write((char*) &surfels[0], bvh->get_primitives_per_node() * sizeof(surfel) );
-    }*/
     out_stream.close();
 
        
-
-
     bvh->set_size_of_primitive( sizeof(lamure::ren::dataset::serialized_surfel) );
     bvh->set_primitive(lamure::ren::bvh::primitive_type::POINTCLOUD);
 
