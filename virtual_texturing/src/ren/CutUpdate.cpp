@@ -21,10 +21,9 @@ CutUpdate::CutUpdate() : _dispatch_time()
 }
 
 CutUpdate::~CutUpdate() { stop(); }
-
 void CutUpdate::start()
 {
-    _cut_db->get_tile_provider()->start((size_t)VTConfig::get_instance().get_size_ram_cache() * 1024 * 1024);
+    _cut_db->warm_up_cache();
 
     for(uint16_t context_id : (*_cut_db->get_context_set()))
     {
@@ -43,7 +42,7 @@ void CutUpdate::run(ContextFeedback* _context_feedback)
         }
         _context_feedback->_feedback_new.store(false);
 
-        while(!_context_feedback->_feedback_cv.wait_for(lk, std::chrono::milliseconds(100), [&]() -> bool { return _context_feedback->_feedback_new.load(); }))
+        while(!_context_feedback->_feedback_cv.wait_for(lk, std::chrono::milliseconds(16), [&]() -> bool { return _context_feedback->_feedback_new.load(); }))
         {
             if(_should_stop.load())
             {
@@ -74,8 +73,9 @@ void CutUpdate::dispatch_context(uint16_t context_id)
     }
 
     // std::cout << "\ndispatch() BEGIN" << std::endl;
-
+#ifndef NDEBUG
     auto start = std::chrono::high_resolution_clock::now();
+#endif
 
     uint32_t texels_per_tile = _config->get_size_tile() * _config->get_size_tile();
     uint32_t throughput = _config->get_size_physical_update_throughput();
@@ -134,6 +134,13 @@ void CutUpdate::dispatch_context(uint16_t context_id)
 
             cut->set_drawn(true);
 
+            auto allocated_slot_index = &_context_feedbacks[context_id]->get_allocated_slot_index();
+
+            for(auto position_slot_locked : cut->get_back()->get_mem_slots_locked())
+            {
+                allocated_slot_index->insert((uint32_t)position_slot_locked.second);
+            }
+
             _cut_db->stop_writing_cut(cut_entry.first);
 
             continue;
@@ -170,7 +177,8 @@ void CutUpdate::dispatch_context(uint16_t context_id)
 
                         // else check fb of all siblings < current_level
                         mem_slot_type* sibling_mem_slot = write_mem_slot_for_id(cut, sibling_id, context_id);
-                        if(_context_feedbacks[context_id]->_feedback_lod_buffer[sibling_mem_slot->position] >= tile_depth)
+                        uint32_t compact_position = _context_feedbacks[context_id]->get_compact_position((uint32_t)sibling_mem_slot->position);
+                        if(_context_feedbacks[context_id]->_feedback_lod_buffer[compact_position] >= tile_depth)
                         {
                             allow_collapse = false;
                             break;
@@ -187,7 +195,8 @@ void CutUpdate::dispatch_context(uint16_t context_id)
                 }
 
                 mem_slot_type* mem_slot = write_mem_slot_for_id(cut, *iter, context_id);
-                if(_context_feedbacks[context_id]->_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
+                uint32_t compact_position = _context_feedbacks[context_id]->get_compact_position((uint32_t)mem_slot->position);
+                if(_context_feedbacks[context_id]->_feedback_lod_buffer[compact_position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
                 {
                     split.insert(*iter);
                     split_counter++;
@@ -208,7 +217,8 @@ void CutUpdate::dispatch_context(uint16_t context_id)
                     throw std::runtime_error("Node " + std::to_string(tile_id) + " not found in memory slots");
                 }
 
-                if(_context_feedbacks[context_id]->_feedback_lod_buffer[mem_slot->position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
+                uint32_t compact_position = _context_feedbacks[context_id]->get_compact_position((uint32_t)mem_slot->position);
+                if(_context_feedbacks[context_id]->_feedback_lod_buffer[compact_position] > tile_depth && tile_depth < max_depth && split_counter < split_budget)
                 {
                     split.insert(tile_id);
                     split_counter++;
@@ -278,11 +288,25 @@ void CutUpdate::dispatch_context(uint16_t context_id)
 
         cut->get_back()->get_cut().swap(cut_desired);
 
+        auto allocated_slot_index = &_context_feedbacks[context_id]->get_allocated_slot_index();
+
+        for(auto position_slot_locked : cut->get_back()->get_mem_slots_locked())
+        {
+            allocated_slot_index->insert((uint32_t)position_slot_locked.second);
+        }
+
+        for(auto position_slot_cleared : cut->get_back()->get_mem_slots_cleared())
+        {
+            allocated_slot_index->erase((uint32_t)position_slot_cleared.second);
+        }
+
         _cut_db->stop_writing_cut(cut_entry.first);
     }
 
+#ifndef NDEBUG
     auto end = std::chrono::high_resolution_clock::now();
     _dispatch_time = std::chrono::duration<float, std::milli>(end - start).count();
+#endif
 
     // std::cout << "dispatch() END" << std::endl;
 }
@@ -431,12 +455,15 @@ mem_slot_type* CutUpdate::write_mem_slot_for_id(Cut* cut, id_type tile_id, uint1
 
     return _cut_db->write_mem_slot_at((*mem_slot_iter).second, context_id);
 }
+bool CutUpdate::can_accept_feedback(uint32_t context_id) { return !_context_feedbacks[context_id]->_feedback_new.load() && !_should_stop.load(); }
 void CutUpdate::feedback(uint32_t context_id, int32_t* buf_lod, uint32_t* buf_count)
 {
     if(_context_feedbacks[context_id]->_feedback_dispatch_lock.try_lock())
     {
         std::copy(buf_lod, buf_lod + _cut_db->get_size_mem_interleaved(), _context_feedbacks[context_id]->_feedback_lod_buffer);
+#ifdef RASTERIZATION_COUNT
         std::copy(buf_count, buf_count + _cut_db->get_size_mem_interleaved(), _context_feedbacks[context_id]->_feedback_count_buffer);
+#endif
         _context_feedbacks[context_id]->_feedback_new.store(true);
         _context_feedbacks[context_id]->_feedback_dispatch_lock.unlock();
         _context_feedbacks[context_id]->_feedback_cv.notify_one();
@@ -447,27 +474,12 @@ void CutUpdate::stop()
 {
     _should_stop.store(true);
 
-    for(uint32_t context_id : (*_cut_db->get_context_set()))
+    for(auto cf : _context_feedbacks)
     {
-        auto iter = _context_feedbacks.find(context_id);
-
-        if(iter == _context_feedbacks.end())
-        {
-            continue;
-        }
-
-        iter->second->_feedback_new.store(true);
-        iter->second->_feedback_cv.notify_one();
-
-        auto cf = iter->second;
-        _context_feedbacks.erase(iter);
-
-        delete cf; // destructor joins threads
+        delete cf.second; // destructor joins threads
     }
 
     _context_feedbacks.clear();
-
-    _cut_db->get_tile_provider()->stop();
 }
 bool CutUpdate::check_all_siblings_in_cut(id_type tile_id, const cut_type& cut)
 {
@@ -519,4 +531,5 @@ void CutUpdate::remove_from_indexed_memory(Cut* cut, id_type tile_id, uint16_t c
 
     cut->get_back()->get_mem_slots_cleared()[tile_id] = mem_slot->position;
 }
+ContextFeedback* CutUpdate::get_context_feedback(uint16_t context_id) { return _context_feedbacks[context_id]; }
 } // namespace vt

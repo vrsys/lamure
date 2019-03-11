@@ -21,6 +21,8 @@
 #include <unordered_map>
 #include <mutex>
 
+// #define RASTERIZATION_COUNT
+
 namespace vt
 {
 typedef uint64_t id_type;

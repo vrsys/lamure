@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -26,7 +26,13 @@ uniform int enable_displacement;
 
 layout(binding = 17) uniform sampler2DArray physical_texture_array;
 
+uniform bool enable_feedback;
 layout(std430, binding = 0) buffer out_lod_feedback { int out_lod_feedback_values[]; };
+layout(std430, binding = 2) buffer in_feedback_inv_index { uint in_feedback_inv_index_values[]; };
+
+#ifdef RASTERIZATION_COUNT
+layout(std430, binding = 1) buffer out_count_feedback { uint out_count_feedback_values[]; };
+#endif
 
 layout(binding = 18) uniform usampler2D hierarchical_idx_textures_elevation[16];
 
@@ -73,8 +79,13 @@ vec4 get_physical_texture_color(uvec4 index_quadruple, vec2 texture_sampling_coo
 void update_feedback(int feedback_value, uvec4 base_offset)
 {
     uint one_d_feedback_ssbo_index = base_offset.x + base_offset.y * physical_texture_dim.x + base_offset.z * physical_texture_dim.x * physical_texture_dim.y;
+    uint compact_position = in_feedback_inv_index_values[one_d_feedback_ssbo_index];
 
-    atomicMax(out_lod_feedback_values[one_d_feedback_ssbo_index], feedback_value);
+    uint prev = out_lod_feedback_values[compact_position];
+    if(prev < feedback_value)
+    {
+        out_lod_feedback_values[compact_position] = feedback_value;
+    }
 }
 
 vec4 mix_colors(idx_tex_positions positions, int desired_level, vec2 texture_coordinates, float mix_ratio)
@@ -100,6 +111,50 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
     }
     else
     {
+        uvec4 idx_child_pos = texture(hierarchical_idx_textures_elevation[desired_level], texture_coordinates).rgba;
+
+        if(idx_child_pos.w == 1u)
+        {
+            uvec4 idx_parent_pos = texture(hierarchical_idx_textures_elevation[desired_level - 1], texture_coordinates).rgba;
+            positions = idx_tex_positions(desired_level - 1, idx_parent_pos, desired_level, idx_child_pos);
+        }
+        else
+        {
+            /// Binary-like search for maximum available depth
+            int left = 0;
+            int right = desired_level;
+            while(left < right)
+            {
+                int i = (left + right) / 2;
+
+                uvec4 idx_child_pos = texture(hierarchical_idx_textures_elevation[i], texture_coordinates).rgba;
+
+                if(i == 0)
+                {
+                    positions = idx_tex_positions(0, idx_child_pos, 0, idx_child_pos);
+                    break;
+                }
+
+                if(idx_child_pos.w == 1u)
+                {
+                    if(right - i == 1)
+                    {
+                        uvec4 idx_parent_pos = texture(hierarchical_idx_textures_elevation[i - 1], texture_coordinates).rgba;
+                        positions = idx_tex_positions(i - 1, idx_parent_pos, i, idx_child_pos);
+                        break;
+                    }
+
+                    left = min(i, desired_level);
+                }
+                else
+                {
+                    right = max(i, 0);
+                }
+            }
+        }
+
+        /*
+
         // Go from desired tree level downwards to root until a loaded tile is found
         for(int i = desired_level; i >= 0; --i)
         {
@@ -122,13 +177,17 @@ vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
                 break;
             }
         }
+
+        */
     }
 
     vec4 c;
     c = mix_colors(positions, desired_level, texture_coordinates, mix_ratio);
 
-    int feedback_value = desired_level;
-    update_feedback(feedback_value, positions.child_idx);
+    if(enable_feedback)
+    {
+        update_feedback(desired_level, positions.child_idx);
+    }
 
     return c;
 }
@@ -149,8 +208,9 @@ void main()
 
     float normalized_elevation = (elevation.r - 0.5) * 2.0;
 
-    if (1 == enable_displacement) {
-      displacement = 0.0125 * vec4(in_normal, 0.0) * normalized_elevation;
+    if(1 == enable_displacement)
+    {
+        displacement = 0.0125 * vec4(in_normal, 0.0) * normalized_elevation;
     }
 
     gl_Position = projection_matrix * model_view_matrix * (vec4(in_position, 1.0) + displacement);

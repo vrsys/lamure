@@ -44,12 +44,13 @@ std::string atlas_file_;
 input input_;
 vt_info vt_;
 
-lamure::ren::camera *camera_ = nullptr;
+lamure::ren::camera* camera_ = nullptr;
 
 scm::shared_ptr<scm::gl::render_device> device_;
 scm::shared_ptr<scm::gl::render_context> context_;
 
 scm::gl::program_ptr vt_shader_;
+scm::gl::program_ptr vt_shader_feedback_;
 
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
@@ -65,7 +66,7 @@ scm::gl::sampler_state_ptr filter_nearest_;
 
 scm::shared_ptr<scm::gl::wavefront_obj_geometry> obj_;
 
-void check_cmd_options(int argc, char *argv[])
+void check_cmd_options(int argc, char* argv[])
 {
     bool terminate = false;
 
@@ -100,15 +101,59 @@ void check_cmd_options(int argc, char *argv[])
 
 void clear_buffer()
 {
+    using namespace scm::math;
+    using namespace scm::gl;
+
+    context_state_objects_guard csg(context_);
+    context_texture_units_guard tug(context_);
+
     context_->set_default_frame_buffer();
     context_->clear_default_color_buffer(scm::gl::FRAMEBUFFER_BACK, scm::math::vec4f(.2f, .2f, .2f, 1.0f));
     context_->clear_default_depth_stencil_buffer();
     context_->apply();
 }
 
+void update_feedback_layout()
+{
+    auto allocated_slots = &vt_.cut_update_->get_context_feedback(vt_.context_id_)->get_allocated_slot_index();
+
+    if(allocated_slots->size() == 0)
+    {
+        return;
+    }
+
+    std::vector<uint32_t> output(allocated_slots->size());
+    std::copy(allocated_slots->begin(), allocated_slots->end(), output.begin());
+
+    using namespace scm::math;
+    using namespace scm::gl;
+
+    context_state_objects_guard csg(context_);
+    context_vertex_input_guard cvg(context_);
+
+    auto mapped_index = (uint32_t*)context_->map_buffer_range(vt_.feedback_index_vb_, 0, output.size() * sizeof(uint32_t), ACCESS_WRITE_ONLY);
+    memcpy(&mapped_index[0], &output[0], output.size() * sizeof(uint32_t));
+    context_->unmap_buffer(vt_.feedback_index_vb_);
+
+    context_->clear_buffer_data(vt_.feedback_inv_index_, FORMAT_R_32UI, nullptr);
+    context_->sync();
+
+    context_->bind_storage_buffer(vt_.feedback_inv_index_, 2);
+    context_->bind_index_buffer(vt_.feedback_index_ib_, PRIMITIVE_POINT_LIST, TYPE_UINT);
+    context_->bind_vertex_array(vt_.feedback_vao_);
+    context_->apply();
+
+    vt_shader_feedback_->uniform("feedback_index_size", (const unsigned int)allocated_slots->size());
+    context_->bind_program(vt_shader_feedback_);
+
+    context_->apply();
+
+    context_->draw_elements((const unsigned int)allocated_slots->size());
+}
+
 void apply_cut_update()
 {
-    auto *cut_db = &vt::CutDatabase::get_instance();
+    auto* cut_db = &vt::CutDatabase::get_instance();
 
     for(vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map()))
     {
@@ -117,7 +162,7 @@ void apply_cut_update()
             continue;
         }
 
-        vt::Cut *cut = cut_db->start_reading_cut(cut_entry.first);
+        vt::Cut* cut = cut_db->start_reading_cut(cut_entry.first);
 
         if(!cut->is_drawn())
         {
@@ -129,7 +174,7 @@ void apply_cut_update()
 
         for(auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
         {
-            const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, vt_.context_id_);
+            const vt::mem_slot_type* mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, vt_.context_id_);
 
             if(mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
             {
@@ -169,7 +214,7 @@ void apply_cut_update()
 
         for(auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared())
         {
-            const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, vt_.context_id_);
+            const vt::mem_slot_type* mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, vt_.context_id_);
 
             if(mem_slot_cleared == nullptr)
             {
@@ -187,8 +232,8 @@ void apply_cut_update()
             scm::math::vec3ui origin = scm::math::vec3ui(0, 0, 0);
             scm::math::vec3ui dimensions = scm::math::vec3ui(size_index_texture, size_index_texture, 1);
 
-            context_->update_sub_texture(vt_.index_texture_hierarchy_.at(updated_level), scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI,
-                                         cut->get_front()->get_index(updated_level));
+            context_->update_sub_texture(
+                vt_.index_texture_hierarchy_.at(updated_level), scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI, cut->get_front()->get_index(updated_level));
         }
 
         cut_db->stop_reading_cut(cut_entry.first);
@@ -199,14 +244,26 @@ void apply_cut_update()
 
 void collect_feedback()
 {
-    int32_t *feedback_lod = (int32_t *)context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
+    context_->apply();
+
+    using namespace scm::math;
+    using namespace scm::gl;
+
+    context_state_objects_guard csg(context_);
+    context_vertex_input_guard cvg(context_);
+
+    memset(vt_.feedback_lod_cpu_buffer_, 0, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
+
+    int32_t* feedback_lod = (int32_t*)context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
     memcpy(vt_.feedback_lod_cpu_buffer_, feedback_lod, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
     context_->sync();
 
     context_->unmap_buffer(vt_.feedback_lod_storage_);
     context_->clear_buffer_data(vt_.feedback_lod_storage_, scm::gl::FORMAT_R_32I, nullptr);
+#ifdef RASTERIZATION_COUNT
+    memset(vt_.feedback_count_cpu_buffer_, 0, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
 
-    uint32_t *feedback_count = (uint32_t *)context_->map_buffer(vt_.feedback_count_storage_, scm::gl::ACCESS_READ_ONLY);
+    uint32_t* feedback_count = (uint32_t*)context_->map_buffer(vt_.feedback_count_storage_, scm::gl::ACCESS_READ_ONLY);
     memcpy(vt_.feedback_count_cpu_buffer_, feedback_count, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
     context_->sync();
 
@@ -214,10 +271,25 @@ void collect_feedback()
 
     context_->unmap_buffer(vt_.feedback_count_storage_);
     context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);
+#else
+    context_->sync();
+    vt_.cut_update_->feedback(vt_.context_id_, vt_.feedback_lod_cpu_buffer_, nullptr);
+#endif
 }
 
 void glut_display()
 {
+    context_->apply();
+
+    bool feedback_enabled = vt_.cut_update_->can_accept_feedback(vt_.context_id_);
+
+    if(feedback_enabled)
+    {
+        update_feedback_layout();
+    }
+
+    vt_shader_->uniform("enable_feedback", feedback_enabled);
+
     clear_buffer();
 
     // render
@@ -251,6 +323,12 @@ void glut_display()
 
     vt_shader_->uniform("physical_texture_array", 17);
 
+    using namespace scm::gl;
+
+    context_state_objects_guard csg(context_);
+    context_texture_units_guard tug(context_);
+    context_framebuffer_guard fbg(context_);
+
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(window_width_, window_height_)));
 
     context_->set_depth_stencil_state(depth_state_less_);
@@ -270,7 +348,10 @@ void glut_display()
     context_->bind_texture(vt_.physical_texture_, filter_linear_, 17);
 
     context_->bind_storage_buffer(vt_.feedback_lod_storage_, 0);
+    context_->bind_storage_buffer(vt_.feedback_inv_index_, 2);
+#ifdef RASTERIZATION_COUNT
     context_->bind_storage_buffer(vt_.feedback_count_storage_, 1);
+#endif
 
     context_->apply();
 
@@ -278,7 +359,10 @@ void glut_display()
 
     context_->sync();
 
-    collect_feedback();
+    if(feedback_enabled)
+    {
+        collect_feedback();
+    }
 
     glutSwapBuffers();
 }
@@ -377,12 +461,13 @@ void glut_mouse(int32_t button, int32_t state, int32_t x, int32_t y)
 
 void glut_idle() { glutPostRedisplay(); }
 
-void glut_close() {
+void glut_close()
+{
     // Cut update termination - important
     vt::CutUpdate::get_instance().stop();
 }
 
-void init_glut(int &argc, char *argv[])
+void init_glut(int& argc, char* argv[])
 {
     glutInit(&argc, argv);
     glutInitContextVersion(4, 4);
@@ -408,8 +493,8 @@ void init_vt_database()
     vt::VTConfig::CONFIG_PATH = atlas_file_.substr(0, atlas_file_.size() - 5) + "ini";
 
     vt::VTConfig::get_instance().define_size_physical_texture(128, 8192);
-    vt_.texture_id_ = vt::CutDatabase::get_instance().register_dataset(atlas_file_);
     vt_.context_id_ = vt::CutDatabase::get_instance().register_context();
+    vt_.texture_id_ = vt::CutDatabase::get_instance().register_dataset(atlas_file_);
     vt_.view_id_ = vt::CutDatabase::get_instance().register_view();
     vt_.cut_id_ = vt::CutDatabase::get_instance().register_cut(vt_.texture_id_, vt_.view_id_, vt_.context_id_);
     vt_.cut_update_ = &vt::CutUpdate::get_instance();
@@ -418,10 +503,11 @@ void init_vt_database()
 
 void init_shader()
 {
-    std::string fs_vt_color, vs_vt;
+    std::string fs_vt_color, vs_vt, vs_vt_feedback;
 
     if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_vt) ||
-       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical.glslf", fs_vt_color))
+       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical.glslf", fs_vt_color) ||
+       !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_inv_index_generation.glslv", vs_vt_feedback))
     {
         scm::err() << "error reading shader files" << scm::log::end;
         throw std::runtime_error("Error reading shader files");
@@ -432,6 +518,14 @@ void init_shader()
     vt_shader_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vs_vt))(device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, fs_vt_color)));
 
     if(!vt_shader_)
+    {
+        scm::err() << "error creating shader program" << scm::log::end;
+        throw std::runtime_error("Error creating shader program");
+    }
+
+    vt_shader_feedback_ = device_->create_program(boost::assign::list_of(device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vs_vt_feedback)));
+
+    if(!vt_shader_feedback_)
     {
         scm::err() << "error creating shader program" << scm::log::end;
         throw std::runtime_error("Error creating shader program");
@@ -473,6 +567,8 @@ void init_vt_system()
 
     // add_context
     context_ = device_->main_context();
+    context_->apply();
+
     vt_.physical_texture_size_ = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_tile_width(), vt::VTConfig::get_instance().get_phys_tex_tile_width());
 
     auto physical_texture_size = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_px_width(), vt::VTConfig::get_instance().get_phys_tex_px_width());
@@ -482,22 +578,41 @@ void init_vt_system()
     vt_.size_feedback_ = vt::VTConfig::get_instance().get_phys_tex_tile_width() * vt::VTConfig::get_instance().get_phys_tex_tile_width() * vt::VTConfig::get_instance().get_phys_tex_layers();
 
     vt_.feedback_lod_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
+#ifdef RASTERIZATION_COUNT
     vt_.feedback_count_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
-
+#endif
     vt_.feedback_lod_cpu_buffer_ = new int32_t[vt_.size_feedback_];
+#ifdef RASTERIZATION_COUNT
     vt_.feedback_count_cpu_buffer_ = new uint32_t[vt_.size_feedback_];
+#endif
+
+    using namespace scm::gl;
+
+    std::vector<uint32_t> slot_indices(vt_.size_feedback_);
+    std::iota(slot_indices.begin(), slot_indices.end(), 0);
+
+    vt_.feedback_index_ib_ = device_->create_buffer(BIND_INDEX_BUFFER, USAGE_STATIC_DRAW, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI), &slot_indices[0]);
+    vt_.feedback_index_vb_ = device_->create_buffer(BIND_VERTEX_BUFFER, USAGE_DYNAMIC_DRAW, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI), 0);
+    vt_.feedback_vao_ = device_->create_vertex_array(vertex_format(0, 0, TYPE_UINT, size_of_format(FORMAT_R_32UI)), boost::assign::list_of(vt_.feedback_index_vb_), vt_shader_feedback_);
+    vt_.feedback_lod_storage_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32I));
+#ifdef RASTERIZATION_COUNT
+    vt_.feedback_count_storage_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI));
+#endif
+    vt_.feedback_inv_index_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI));
 
     for(size_t i = 0; i < vt_.size_feedback_; ++i)
     {
         vt_.feedback_lod_cpu_buffer_[i] = 0;
+#ifdef RASTERIZATION_COUNT
         vt_.feedback_count_cpu_buffer_[i] = 0;
+#endif
     }
 }
 
-void init_camera(const vector<vertex> &vertices)
+void init_camera(const vector<vertex>& vertices)
 {
     scm::math::vec3f center(0.0);
-    for(const auto &v : vertices)
+    for(const auto& v : vertices)
     {
         center += v.position_;
     }
@@ -510,7 +625,7 @@ void init_camera(const vector<vertex> &vertices)
     camera_->set_projection_matrix(30.f, float(window_width_) / float(window_height_), 0.01f, 100.f);
 }
 
-int32_t main(int argc, char *argv[])
+int32_t main(int argc, char* argv[])
 {
     check_cmd_options(argc, argv);
 

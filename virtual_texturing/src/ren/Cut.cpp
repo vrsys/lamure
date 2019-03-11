@@ -52,24 +52,29 @@ CutState::~CutState()
     {
         delete index_buffer;
     }
+
+    _mem_slots_locked.clear();
+    _mem_slots_updated.clear();
+    _mem_slots_cleared.clear();
 }
 cut_type& CutState::get_cut() { return _cut; }
 uint8_t* CutState::get_index(uint16_t level) { return _index_buffers.at(level); }
 mem_slots_index_type& CutState::get_mem_slots_cleared() { return _mem_slots_cleared; }
 mem_slots_index_type& CutState::get_mem_slots_updated() { return _mem_slots_updated; }
 mem_slots_index_type& CutState::get_mem_slots_locked() { return _mem_slots_locked; }
-Cut::Cut(pre::AtlasFile* atlas, CutState* front, CutState* back) : DoubleBuffer<CutState>(front, back)
+Cut::Cut(uint64_t id, pre::AtlasFile* atlas, CutState* front, CutState* back) : DoubleBuffer<CutState>(front, back)
 {
+    _id = id;
     _atlas = atlas;
     _drawn = false;
 }
 void Cut::deliver() { _front->accept((*_back)); }
-Cut& Cut::init_cut(pre::AtlasFile* atlas)
+Cut& Cut::init_cut(uint64_t id, pre::AtlasFile* atlas)
 {
     CutState* front_state = new CutState((uint16_t)atlas->getDepth());
     CutState* back_state = new CutState((uint16_t)atlas->getDepth());
 
-    Cut* cut = new Cut(atlas, front_state, back_state);
+    Cut* cut = new Cut(id, atlas, front_state, back_state);
     return *cut;
 }
 pre::AtlasFile* Cut::get_atlas() const { return _atlas; }
@@ -78,4 +83,5 @@ void Cut::set_drawn(bool drawn) { _drawn = drawn; }
 uint32_t Cut::get_dataset_id(uint64_t cut_id) { return (uint32_t)(cut_id >> 32); }
 uint16_t Cut::get_view_id(uint64_t cut_id) { return (uint16_t)(cut_id >> 16); }
 uint16_t Cut::get_context_id(uint64_t cut_id) { return (uint16_t)cut_id; }
+uint64_t Cut::get_id() { return _id; }
 } // namespace vt

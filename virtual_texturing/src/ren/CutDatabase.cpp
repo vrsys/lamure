@@ -23,11 +23,46 @@ CutDatabase::~CutDatabase()
 {
     _tile_provider->stop();
 
+    delete _tile_provider;
+
     for(uint16_t context : _context_set)
     {
         delete _context_sync_map[context];
         delete _context_state_map[context];
     }
+
+    for(auto cut_entry : _cut_map)
+    {
+        delete cut_entry.second;
+    }
+}
+void CutDatabase::warm_up_cache()
+{
+    _tile_provider->start((size_t)VTConfig::get_instance().get_size_ram_cache() * 1024 * 1024);
+
+    for(auto cut_entry : _cut_map)
+    {
+        auto cut = cut_entry.second;
+        auto atlas = cut->get_atlas();
+
+        if(atlas->getDepth() < 1)
+        {
+            return;
+        }
+
+        for(uint32_t depth = 0; depth < atlas->getDepth() && depth < 5; depth++)
+        {
+            auto first = QuadTree::get_first_node_id_of_depth(depth);
+            auto length = QuadTree::get_length_of_depth(depth);
+
+            for(uint64_t tile_id = first; tile_id < first + length; tile_id++)
+            {
+                _tile_provider->getTile(atlas, tile_id, 50, Cut::get_context_id(cut->get_id()));
+            }
+        }
+    }
+
+    _tile_provider->wait(std::chrono::milliseconds(10000));
 }
 size_t CutDatabase::get_available_memory(uint16_t context_id)
 {
@@ -232,9 +267,9 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
         throw std::runtime_error("Requested context id not registered");
     }
 
-    Cut* cut = &Cut::init_cut(_tile_provider->loadResource(_dataset_map[dataset_id].c_str()));
-
     uint64_t id = ((uint64_t)dataset_id) << 32 | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
+
+    Cut* cut = &Cut::init_cut(id, _tile_provider->loadResource(_dataset_map[dataset_id].c_str()));
 
     _cut_map.insert(cut_map_entry_type(id, cut));
 

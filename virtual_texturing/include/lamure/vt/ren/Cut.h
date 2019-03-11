@@ -39,13 +39,15 @@ class CutState
 class Cut : public DoubleBuffer<CutState>
 {
   public:
-    static Cut& init_cut(pre::AtlasFile* atlas);
+    static Cut& init_cut(uint64_t id, pre::AtlasFile* atlas);
     ~Cut() override{};
 
     pre::AtlasFile* get_atlas() const;
 
     bool is_drawn() const;
     void set_drawn(bool _drawn);
+
+    uint64_t get_id();
 
     static uint32_t get_dataset_id(uint64_t cut_id);
     static uint16_t get_view_id(uint64_t cut_id);
@@ -55,8 +57,9 @@ class Cut : public DoubleBuffer<CutState>
     void deliver() override;
 
   private:
-    Cut(pre::AtlasFile* atlas, CutState* front, CutState* back);
+    Cut(uint64_t id, pre::AtlasFile* atlas, CutState* front, CutState* back);
 
+    uint64_t _id;
     pre::AtlasFile* _atlas;
     bool _drawn;
 };
