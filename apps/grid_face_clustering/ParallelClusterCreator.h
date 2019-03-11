@@ -1,129 +1,84 @@
 
 
 //class for running clustering algorithm on Charts
-struct ClusterCreator
+struct ParallelClusterCreator
 {
 
-  //takes a chart id map that was created by grid/octree clusters, and creates a list of Chart objects
-  static uint32_t 
-  create_chart_clusters_from_grid_clusters(Polyhedron &P,
-                const double cost_threshold , 
-                const uint32_t chart_threshold, 
-                CLUSTER_SETTINGS cluster_settings,
-                std::map<uint32_t, uint32_t> &chart_id_map,
-                uint32_t num_initial_charts){
+  static uint32_t create_charts(std::map<uint32_t, uint32_t> &chart_id_map, 
+                                Polyhedron &P){
 
-    std::vector<Chart> charts;
-
-    initialise_charts_from_grid_clusters(P, chart_id_map, charts, num_initial_charts, cluster_settings);
-
-    populate_chart_LUT(charts, chart_id_map);
-
-    // check that existing chart number is not already lower than threshold
-    if (charts.size() <= chart_threshold)
+    if (chart_id_map.size() == 0)
     {
-      std::cout << "Input to chart clusterer already had number of charts below chart threshold" << std::endl;
-      return charts.size();
+      std::cout << "Creating charts from scratch\n";
+    }
+    else {
+      std::cout << "TODO: create charts from chart id map\n";
+      return chart_id_map.size();
     }
 
-    //recalculate perimeters of charts to ensure they are correct
-    for (auto& chart : charts) {
-      chart.recalculate_perimeter_from_scratch();
-      chart.create_neighbour_set(chart_id_map);
-    } 
+    //create charts
+    std::vector<Chart> charts;
+    create_initial_charts(charts, P);
 
-    //create join list
-    std::list<JoinOperation> joins;
-    create_join_list_from_chart_vector(charts, joins, cluster_settings, chart_id_map);
+    //populate lookup table to allow quicker determination of whether faces are neighbours when making joins
+    populate_chart_LUT(charts, chart_id_map);
 
-    //do the clustering!
-    cluster_faces(charts, joins,cost_threshold,chart_threshold,cluster_settings,chart_id_map);
+    //create join bank vector and queue
+    std::vector<JoinOperation> joins;
+    std::list<JoinOperation*> join_queue;
+    create_joins_from_chart_vector(charts, joins, join_queue, cluster_settings, chart_id_map);
 
-    uint32_t active_charts =  populate_chart_LUT(charts, chart_id_map);
 
-    //checking - how many charts have border edges?
-    // uint32_t charts_with_borders = 0;
-    // for(auto& chart : charts){if (chart.active && chart.has_border_edge) charts_with_borders++;}
-    // std::cout << charts_with_borders << " of " << active_charts << " charts have borders\n";
 
-    return active_charts;
+
+
+
+
+
+
+    //todo return active charts
+    return 0;
   }
 
-  //given a chart_id_map, fill a list of chart objects which describe initial clustering state
-  static void
-  initialise_charts_from_grid_clusters(Polyhedron &P, 
-                                       std::map<uint32_t, uint32_t> &chart_id_map,
-                                       std::vector<Chart> &charts,
-                                       uint32_t num_initial_charts,
-                                       CLUSTER_SETTINGS cluster_settings){
+  //builds a chart list where each face of a polyhedron is 1 chart 
+  static void 
+  create_initial_charts(std::vector<Chart> &charts, 
+                        Polyhedron &P){
 
-        //calculate areas of each face
-    std::map<face_descriptor,double> fareas;
-    std::map<face_descriptor,Vector> fnormals;
-    // calculate_normals_and_areas(P,fnormals,fareas);
+    //calculate areas of each face
     std::cout << "Calculating face areas...\n";
+    std::map<face_descriptor,double> fareas;
     for(face_descriptor fd: faces(P)){
       fareas[fd] = CGAL::Polygon_mesh_processing::face_area  (fd,P);
     }
-
-    //debugging
-    std::cout << "Checking areas...\n";
-    for (auto const& fd : fareas){
-      if (fd.second == 0 || std::isnan(fd.second) )
-      {
-        std::cout << "Face " << fd.first->id() << " has area " << fd.second << std::endl;
-      }
-    }
-
+    //calculate normals of each faces
     std::cout << "Calculating face normals...\n";
+    std::map<face_descriptor,Vector> fnormals;
     CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
 
     //get boost face iterator
     face_iterator fb_boost, fe_boost;
     boost::tie(fb_boost, fe_boost) = faces(P);
 
-    //build existing charts from chart id map
-    std::cout << "Creating charts from grid clusters...\n";
-    // std::vector<Chart> charts;
-    // std::set<uint32_t> chart_ids_created;
-    std::map<uint32_t, uint32_t> chart_ids_created; //key::chart id, value::location in chart array
-    std::map<uint32_t, uint32_t>::iterator it_c;
-
-
-    //for each face
+    //each face begins as its own chart
+    std::cout << "Creating initial charts...";
     for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
 
-      uint32_t given_chart_id = chart_id_map[fb->id()];
-
-      //create chart 
-      Chart new_chart(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
-
-      // if chart already exists for that id,  merge this chart into existing (discard merged in chart)
-      it_c = chart_ids_created.find(given_chart_id);
-      if (it_c != chart_ids_created.end())
-      {
-        //array location of existing chart
-        uint32_t loc = it_c->second;
-        charts[loc].merge_with(new_chart, JoinOperation::cost_of_join(charts[loc], new_chart, cluster_settings));
-      }
-        //if chart doesnt exist for that chart id, save created chart to chart list
-      else {
-        //add location to map
-        chart_ids_created[given_chart_id] = charts.size();
-        charts.push_back(new_chart);
-      }
+      //init chart instance for face
+      Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
+      charts.push_back(c);
 
       fb_boost++;
+    }
 
-    }//end for each face
-
-    std::cout << "Created " << charts.size() << " charts from grid clusters" << std::endl;
+    std::cout << "..." << charts.size() << " charts.\n";
 
   }
 
   static void
-  create_join_list_from_chart_vector(std::vector<Chart> &charts, 
-                                     std::list<JoinOperation> &joins,
+  create_joins_from_chart_vector(std::vector<Chart> &charts, 
+                                     std::vector<JoinOperation> &joins,
+                                     std::list<JoinOperation*> &join_queue,
                                      CLUSTER_SETTINGS cluster_settings,
                                      std::map<uint32_t, uint32_t> &chart_id_map){
 
@@ -137,8 +92,7 @@ struct ClusterCreator
     {
       chart_neighbours.clear();
 
-      // uint32_t this_chart_id = chart.id()
-    // for each face in chart, find neighbours, add to set
+    // for each face in chart, find neighbours, add to chart_neighbours set
       for (auto& face : chart.facets)
       {
         //for each edge
@@ -157,11 +111,9 @@ struct ClusterCreator
         } while ( ++fc != face.facet_begin());
       }
 
-      // std::cout << "found " << chart_neighbours.size() << " unique neighbours for chart " << chart.id << std::endl;
-      // int added_joins = 0;
 
       //create joins...
-      //if neighbouts have not already been processed, create join between this and neighbour
+      //if neighbours have not already been processed, create join between this and neighbour
       for (auto& nbr_chart_id : chart_neighbours)
       {
         //make sure it hasnt been processed already
@@ -170,27 +122,29 @@ struct ClusterCreator
             // chart ids should be equal to their index in the vector at this point
             JoinOperation join (chart.id, nbr_chart_id ,JoinOperation::cost_of_join(charts[chart.id],charts[nbr_chart_id], cluster_settings));
             joins.push_back(join);
-
-            //TODO don't add duplicate joins - where charts share many edges
-
-            // added_joins++;
         }
       }
 
-      // std::cout << "Added " << added_joins << " joins\n";
-
     //add this chart to set of processed charts, so that it is not considered for new joins
       processed_charts.insert(chart.id);
-    }
+
+    } // end for each chart
 
     std::cout << "Created " << joins.size() << " joins\n";
+
+    //add pointers of joins in bank to queue
+    for(int i = 0; i < joins.size(); i++){
+      join_queue.push_back( &(joins[i]) );
+    }
+
 
   }
 
   //takes a list of joins and charts, and executes joins until target number of charts/cost threshold is reached
   static void 
   cluster_faces(std::vector<Chart> &charts, 
-                std::list<JoinOperation> &joins,
+                std::vector<JoinOperation> &joins,
+                std::list<JoinOperation*> &join_queue,
                 const double cost_threshold, 
                 const uint32_t chart_threshold,
                 CLUSTER_SETTINGS &cluster_settings,
@@ -198,8 +152,8 @@ struct ClusterCreator
                 ){
 
 
-    std::stringstream report;
-    report << "--------------------\nReport:\n----------------------\n";
+    // std::stringstream report;
+    // report << "--------------------\nReport:\n----------------------\n";
 
     std::list<JoinOperation>::iterator it;
 
@@ -212,18 +166,22 @@ struct ClusterCreator
     int prev_charts_percent = -1;
     int overall_percent = -1;
 
-    joins.sort(JoinOperation::sort_joins);
-    const double lowest_cost = joins.front().cost;
+    //key chart position (in chart vector) :: value - list of pointers to join operations that reference this chart
+    std::map<uint32_t, std::vector<JoinOperation*> > chart_to_join_inverse_index;
+    populate_inverse_index(chart_to_join_inverse_index, charts, joins);
+
+    join_queue.sort(JoinOperation::sort_joins);
+    const double lowest_cost = join_queue.front()->cost;
 
 
     //execute lowest join cost and update affected joins.  re-sort.
     std::cout << "Processing join queue...\n";
-    while (joins.front().cost < cost_threshold  
-          &&  !joins.empty()
+    while (join_queue.front()->cost < cost_threshold  
+          &&  !join_queue.empty()
           &&  (charts.size() - chart_merges) > chart_threshold){
 
       //reporting-------------
-      int percent = (int)(((joins.front().cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
+      int percent = (int)(((join_queue.front()->cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
       if (percent != prev_cost_percent && percent > overall_percent) {
         prev_cost_percent = percent;
         overall_percent = percent;
@@ -238,21 +196,21 @@ struct ClusterCreator
 
       //implement the join with lowest cost, if it doesn't break 3 nbr rule
 
-      JoinOperation join_todo = joins.front();
-      joins.pop_front();
+      JoinOperation join_todo = *(join_queue.front());
+      join_queue.pop_front();
 
 #if 1
       //check amount of neighbours resulting chart would have
       //take a new join if neighbours are too few
       while (join_todo.results_in_chart_with_neighbours(charts, chart_id_map) < 3){
 
-        if (joins.empty())
+        if (join_queue.empty())
         {
           continue;
         }
         else {
-          join_todo = joins.front();
-          joins.pop_front();
+          join_todo = *(join_queue.front());
+          join_queue.pop_front();
         }
       }
     
@@ -270,171 +228,122 @@ struct ClusterCreator
         report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl; // should not happen
         continue;
       }
+      //DEactivate chart 2
       charts[join_todo.chart2_id].active = false;
 
 
      // populate_chart_LUT(charts, chart_id_map);
+
+      //todo keep list to update
       
       int current_item = 0;
       std::list<int> to_erase;
-      std::vector<JoinOperation> to_replace;
+      std::vector<JoinOperation*> to_replace;
+      std::vector<JoinOperation*> to_recalculate_error;
 
-      //update itremaining joins that include either of the merged charts
-      for (it = joins.begin(); it != joins.end(); ++it)
+      //update remaining joins that include either of the merged charts
+
+      //TODO use inverse index to retrieve the joins that need to be updated
+      for (it = join_queue.begin(); it != join_queue.end(); ++it)
       {
         //if join is affected, update references and cost
-        if (it->chart1_id == join_todo.chart1_id 
-           || it->chart1_id == join_todo.chart2_id 
-           || it->chart2_id == join_todo.chart1_id 
-           || it->chart2_id == join_todo.chart2_id )
+        if (  (*it)->chart1_id == join_todo.chart1_id 
+           || (*it)->chart1_id == join_todo.chart2_id 
+           || (*it)->chart2_id == join_todo.chart1_id 
+           || (*it)->chart2_id == join_todo.chart2_id )
         {
 
           //eliminate references to joined chart 2 (it is no longer active)
           // by pointing them to chart 1
-          if (it->chart1_id == join_todo.chart2_id){
-            it->chart1_id = join_todo.chart1_id;
+          if ( (*it)->chart1_id == join_todo.chart2_id){
+            (*it)->chart1_id = join_todo.chart1_id;
           }
-          if (it->chart2_id == join_todo.chart2_id){
-            it->chart2_id = join_todo.chart1_id; 
+          if ( (*it)->chart2_id == join_todo.chart2_id){
+            (*it)->chart2_id = join_todo.chart1_id; 
           }
 
           //search for duplicates
-          if ((it->chart1_id == join_todo.chart1_id && it->chart2_id == join_todo.chart2_id) 
-            || (it->chart2_id == join_todo.chart1_id && it->chart1_id == join_todo.chart2_id) ){
-            report << "duplicate found : c1 = " << it->chart1_id << ", c2 = " << it->chart2_id << std::endl; 
+          if ( ((*it)->chart1_id == join_todo.chart1_id && (*it)->chart2_id == join_todo.chart2_id) 
+            || ((*it)->chart2_id == join_todo.chart1_id && (*it)->chart1_id == join_todo.chart2_id) ){
+            // report << "duplicate found : c1 = " << it->chart1_id << ", c2 = " << it->chart2_id << std::endl; 
 
+            //set inactive
+            (*it)->active = false;
+            //Add to list for deletion later (so indeces are not invalidated)
             to_erase.push_back(current_item);
           }
           //check for joins within a chart
-          else if (it->chart1_id == it->chart2_id)
+          else if ( (*it)->chart1_id == (*it)->chart2_id)
           {
-            report << "Join found within a chart: " << it->chart1_id << std::endl;
+            report << "Join found within a chart: " << (*it)->chart1_id << std::endl;
+
+            //set inactive
+            (*it)->active = false;
+
             to_erase.push_back(current_item);
             
           }
           else {
-            //update cost with new cost
-            it->cost = JoinOperation::cost_of_join(charts[it->chart1_id], charts[it->chart2_id], cluster_settings);
+
+            //add (pointer of JO) to vector to be updated
+            to_recalculate_error.push_back(*it);
 
             //save this join to be deleted and replaced in correct position after deleting duplicates
-            to_replace.push_back(*it);
             to_erase.push_back(current_item);
           }
         }
         current_item++;
       }
 
-      //adjust ID to be deleted to account for previously deleted items
+      //erase all elements that need to be erased (either no longer needed or will be recalculated)
       to_erase.sort();
       int num_erased = 0;
       for (auto id : to_erase) {
-        std::list<JoinOperation>::iterator it2 = joins.begin();
+        std::list<JoinOperation*>::iterator it2 = join_queue.begin();
+        // adjust ID to be deleted to account for previously deleted items
         std::advance(it2, id - num_erased);
-        joins.erase(it2);
+        join_queue.erase(it2);
         num_erased++;
       }
 
+      //recalculate error for joins that need to be updated
+      //TODO parallelise this part
+      for (auto join_ptr : to_recalculate_error){
+
+        join_ptr->cost = JoinOperation::cost_of_join(charts[join_ptr->chart1_id], charts[join_ptr->chart2_id], cluster_settings);
+      }
+
       // replace joins that were filtered out to be sorted
-      if (to_replace.size() > 0)
+      if (to_recalculate_error.size() > 0)
       {
-        std::sort(to_replace.begin(), to_replace.end(), JoinOperation::sort_joins);
-        std::list<JoinOperation>::iterator it2;
+        std::sort(to_recalculate_error.begin(), to_recalculate_error.end(), JoinOperation::sort_joins);
+        std::list<JoinOperation*>::iterator it2;
         uint32_t insert_item = 0;
-        for (it2 = joins.begin(); it2 != joins.end(); ++it2){
+        for (it2 = join_queue.begin(); it2 != join_queue.end(); ++it2){
+
           //insert items while join list item has bigger cost than element to be inserted
-          while (it2->cost > to_replace[insert_item].cost
-                && insert_item < to_replace.size()){
-            joins.insert(it2, to_replace[insert_item]);
+          while ( (*it2)->cost > to_recalculate_error[insert_item]->cost
+                && insert_item < to_recalculate_error.size()){
+
+            join_queue.insert((*it2), to_recalculate_error[insert_item]);
             insert_item++;
           }
           //if all items are in place, we are done
-          if (insert_item >= to_replace.size())
+          if (insert_item >= to_recalculate_error.size())
           {
             break;
           }
         }
-        //add any remaining items
-        for (uint32_t i = insert_item; i < to_replace.size(); i++){
-          joins.push_back(to_replace[i]);
+        //add any remaining items to end of queue
+        for (uint32_t i = insert_item; i < to_recalculate_error.size(); i++){
+          join_queue.push_back(to_recalculate_error[i]);
         }
       }
 
-  #if 0
-      //CHECK that each join would give a chart with at least 3 neighbours
-      //TODO also need to check boundary edges
-      to_erase.clear();
-      // std::vector<std::vector<uint32_t> > neighbour_count (charts.size(), std::vector<uint32_t>(0));
-      std::list<JoinOperation>::iterator it2;
-      // for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-      //   //for chart 1 , add entry in vector for that chart containing id of chart 2
-      //   // and vice versa
-      //   neighbour_count[it2->chart1_id].push_back(it2->chart2_id);
-      //   neighbour_count[it2->chart2_id].push_back(it2->chart1_id);
-      // }
-
-      uint32_t join_id = 0;
-      for (it2 = joins.begin(); it2 != joins.end(); ++it2){
-
-        //combined neighbour count of joins' 2 charts should be at least 3,
-        //or 2 when either has a border edge
-
-        uint32_t combined_nbrs = 0;
-
-        Chart& c1 = charts[it2->chart1_id];
-        Chart& c2 = charts[it2->chart2_id];
-
-        if (c1.has_border_edge || c2.has_border_edge)
-        {
-          combined_nbrs++;
-        }
-        combined_nbrs += c1.neighbour_charts.size();
-        combined_nbrs += c2.neighbour_charts.size();
-
-
-        std::cout << "Charts " << c1.id << " and " << c2.id << " have  " << combined_nbrs << " nbrs in total\n";
-
-        if (combined_nbrs < 5)
-        {
-          to_erase.push_back(join_id);
-        }
-
-
-        // combined neighbour count of joins' 2 charts should be at least 5
-        // they will both contain each other (accounting for 2 neighbours) and require 3 more
-
-        //merge the vectors for each chart in the join and count unique neighbours
-        // std::vector<uint32_t> combined_nbrs (neighbour_count[it2->chart1_id]);
-        // combined_nbrs.insert(combined_nbrs.end(), neighbour_count[it2->chart2_id].begin(), neighbour_count[it2->chart2_id].end());
-
-        // //find unique
-        // std::sort(combined_nbrs.begin(), combined_nbrs.end());
-        // uint32_t unique = 1;
-        // for (uint32_t i = 1; i < combined_nbrs.size(); i++){
-        //   if (combined_nbrs[i] != combined_nbrs [i-1])
-        //   {
-        //     unique++;
-        //   }
-        // }
-        // if (unique < 5)
-        // {
-        //   to_erase.push_back(join_id);
-        // }
-        join_id++;
-      }
-      //erase joins that would result in less than 3 corners
-      to_erase.sort();
-      num_erased = 0;
-      for (auto id : to_erase) {
-        std::list<JoinOperation>::iterator it2 = joins.begin();
-        std::advance(it2, id - num_erased);
-        joins.erase(it2);
-        num_erased++;
-      }
-  #endif
+      //TODO update inverse index
 
       chart_merges++;
 
-      
     }
 
     std::cout << "--------------------\nCharts:\n----------------------\n";
@@ -450,9 +359,9 @@ struct ClusterCreator
         total_active_charts++;
       }
     }
-    if (!joins.empty()) {
-      std::cout << "joins remaining: " << joins.size() << std::endl;
-      std::cout << "Cost of cheapest un-executed join: " << joins.front().cost << std::endl;
+    if (!join_queue.empty()) {
+      std::cout << "joins remaining: " << join_queue.size() << std::endl;
+      std::cout << "Cost of cheapest un-executed join: " << join_queue.front().cost << std::endl;
     }
     else {
       std::cout << "join list empty" << std::endl;
@@ -465,6 +374,8 @@ struct ClusterCreator
 
     // std::cout << report.str();
   }
+
+
 
 
   
@@ -534,6 +445,7 @@ struct ClusterCreator
 
   }
 
+  //fill chart_id_map from chart vector
   static uint32_t populate_chart_LUT(std::vector<Chart> &charts, std::map<uint32_t, uint32_t> &chart_id_map){
     
     chart_id_map.clear();
@@ -553,5 +465,44 @@ struct ClusterCreator
 
     return active_charts;
   }
+
+  //fills inverse index linking each chart with joins that reference it
+  static void populate_inverse_index( std::map<uint32_t, std::vector<JoinOperation*> > &chart_to_join_inverse_index,
+                                      std::vector<Chart> &charts,
+                                      std::vector<JoinOperation> &joins){
+
+
+
+    if (charts.size() == 0)
+    {
+      std::cout << "WARNING: no charts received in populate_inverse_index \n";
+      return; 
+    }    
+    if (joins.size() == 0)
+    {
+      std::cout << "WARNING: no joins received in populate_inverse_index \n";
+      return; 
+    }
+
+    if (chart_to_join_inverse_index.size() == 0)
+    {
+      std::cout << "building inverse index from scratch\n";
+
+      //initialise map?
+      // for (int i = 0; i < charts.size())
+    }
+
+    //for each join, add a pointer to the list for each relevant chart
+    for (int i = 0; i < joins.size(); i++){
+
+      chart_to_join_inverse_index[joins[i].chart1_id].push_back( &(joins[i]) );
+      chart_to_join_inverse_index[joins[i].chart2_id].push_back( &(joins[i]) );
+    }
+
+
+
+
+  }
+
 };
 

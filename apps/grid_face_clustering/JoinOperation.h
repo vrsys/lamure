@@ -6,6 +6,8 @@ struct JoinOperation {
   uint32_t chart2_id;
   double cost;
 
+  bool active = true;
+
   JoinOperation(uint32_t _c1, uint32_t _c2) : chart1_id(_c1), chart2_id(_c2){
     cost = 0;
   }
