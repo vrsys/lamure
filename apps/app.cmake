@@ -28,6 +28,10 @@ macro(InitApp APP_NAME)
       LIBRARY DESTINATION lib
       ARCHIVE DESTINATION lib
       )
+
+      file(GLOB SCRIPT_FILES . ${PROJECT_SOURCE_DIR}/*.sh)
+
+      install(PROGRAMS ${SCRIPT_FILES} DESTINATION bin)
   endif(MSVC)
 endmacro()
 
