@@ -53,6 +53,10 @@ struct JoinOperation {
     return (j1.cost < j2.cost);
   }
 
+  static bool sort_join_ptrs (JoinOperation* j1, JoinOperation* j2) {
+    return (j1->cost < j2->cost);
+  }
+
   int results_in_chart_with_neighbours(std::vector<Chart> &charts,
                                        std::map<uint32_t, uint32_t> &chart_id_map ){
     Chart &c1 = charts[this->chart1_id];

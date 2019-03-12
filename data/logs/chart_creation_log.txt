@@ -3339,3 +3339,13 @@ Vertices: 20157 , faces: 40310
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-12 11:43:29
+Ran for 0 m 0 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 20157 , faces: 40310
+Desired Charts: 100, active charts: 0
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1

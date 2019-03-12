@@ -27,6 +27,7 @@
 #include "eig.h"
 #include "ClusterCreator.h"
 #include "GridClusterCreator.h"
+#include "ParallelClusterCreator.h"
 
 #include "CGAL_typedefs.h"
 
@@ -167,7 +168,7 @@ int main( int argc, char** argv )
 
 #if 1
   //skip grid clustering and go straight to "from scratch" clustering
-  uint32_t active_charts = ParallelClusterCreator::create_charts(chart_id_map);
+  uint32_t active_charts = ParallelClusterCreator::create_charts(chart_id_map, polyMesh, cost_threshold, chart_threshold, cluster_settings);
 
 
 #else

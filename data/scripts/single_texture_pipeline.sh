@@ -24,13 +24,6 @@ fi
 echo "using files $SRC_OBJPATH and $SRC_PNGPATH"
 
 
-
-
-
-# Absolute path to this script
-SCRIPT=$(readlink -f "$0")
-SCRIPTPATH=$(dirname "$SCRIPT")
-
 #create folder for regression test
 C_DATE=`date`
 C_DATE=${C_DATE// /_}

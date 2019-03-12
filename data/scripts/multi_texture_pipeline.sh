@@ -4,12 +4,14 @@ echo "RUNNING MULTI TEXTURE PIPELINE"
 echo "----------------------------------------------------"
 
 #lamure directory
-LAM_DIR="/home/hoqe4365/Desktop/lamure/lamure/"
+LAM_DIR="../.."
 cd $LAM_DIR
+
+LAM_DIR=$PWD
 
 
 if [[ $# != 1 ]]; then
-	#input directory
+	#input directory for multi texture obj
 	SRC_DIR="/mnt/terabytes_of_textures/output_sensitive_rendering/nordportal/1k_test/"
 else 
 	SRC_DIR=$1
@@ -19,22 +21,17 @@ echo "using directory $SRC_DIR"
 
 
 
-
-# Absolute path to this script
-# SCRIPT=$(readlink -f "$0")
-# SCRIPTPATH=$(dirname "$SCRIPT")
-
 #create folder for regression test
 C_DATE=`date`
 C_DATE=${C_DATE// /_}
 C_DATE=${C_DATE//:/_}
-REGR_DIR="$LAM_DIR/data/regression/$C_DATE/"
-echo "creating folder $REGR_DIR"
-mkdir "$REGR_DIR"
+REGR_DIR="${LAM_DIR}/data/regression/${C_DATE}/"
+echo "creating folder ${REGR_DIR}"
+mkdir "${REGR_DIR}"
 
 
 #copy input files to regression folder
-cp -a /$SRC_DIR/. $REGR_DIR
+cp -a /${SRC_DIR}/. ${REGR_DIR}
 
 
 
@@ -54,17 +51,48 @@ echo "----------------------------------------------------"
 
 SCALE=1
 
-#output texture name
-# cd $REGR_DIR
-OBJPATH=find $REGR_DIR -type f -name \*.obj
-
-echo $OBJPATH
-
-# cd $LAM_DIR
-
-./install/bin/lamure_vt_atlas_compiler -d $REGR_DIR -s $SCALE -o /mnt/terabytes_of_textures/output_sensitive_rendering/nordportal/1k_test/Nordportal_comp.png
+cd $REGR_DIR
 
 
+
+for OBJPATH in ${REGR_DIR}/*.obj; do
+
+	#do stuff
+	echo $OBJPATH
+done
+
+exit 1
+
+
+OBJPATH=find . -name \*.obj
+# OBJPATH=find . -name '\*.obj'
+
+cd $LAM_DIR
+
+PNGPATH="${OBJPATH:0:${#OBJPATH}-4}_comp.png"
+
+
+
+echo "obj path: ${OBJPATH}"
+echo "png path: ${PNGPATH}"
+
+exit 1
+# echo $PNGPATH
+
+./install/bin/lamure_vt_atlas_compiler -d ${REGR_DIR} -s ${SCALE} -o ${PNGPATH}
+
+
+
+
+#adjust texture coordinates in obj
+echo "----------------------------------------------------"
+echo "Updating OBJ texture coordinates"
+echo "----------------------------------------------------"
+
+
+LOGPATH="${PNGPATH:0:${#PNGPATH}-3}.log"
+
+./install/bin/lamure_obj_texture_atlas_modifier -obj ${OBJPATH} -log ${LOGPATH} -tex ${PNGPATH}
 
 
 
