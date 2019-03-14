@@ -57,7 +57,7 @@ void CutDatabase::warm_up_cache()
 
             for(uint64_t tile_id = first; tile_id < first + length; tile_id++)
             {
-                _tile_provider->getTile(atlas, tile_id, 50, Cut::get_context_id(cut->get_id()));
+                _tile_provider->getTile(atlas, tile_id, 0.f, Cut::get_context_id(cut->get_id()));
             }
         }
     }
@@ -270,6 +270,12 @@ uint64_t CutDatabase::register_cut(uint32_t dataset_id, uint16_t view_id, uint16
     uint64_t id = ((uint64_t)dataset_id) << 32 | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
 
     Cut* cut = &Cut::init_cut(id, _tile_provider->loadResource(_dataset_map[dataset_id].c_str()));
+
+    if(cut->get_atlas()->getDepth() < 1)
+    {
+        std::cout << "tree is too flat" << std::endl;
+        exit(1);
+    }
 
     _cut_map.insert(cut_map_entry_type(id, cut));
 

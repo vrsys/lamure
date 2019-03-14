@@ -229,7 +229,7 @@ vec4 illustrate_level(float lambda, idx_tex_positions positions)
 vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
 {
     float mix_ratio = fract(lambda);
-    int desired_level = int(ceil(lambda));
+    int desired_level = min(int(ceil(lambda)), int(max_level));
 
     idx_tex_positions positions;
 

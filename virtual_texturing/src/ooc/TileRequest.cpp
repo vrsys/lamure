@@ -30,5 +30,7 @@ void TileRequest::erase() { this->inform(0); }
 void TileRequest::abort() { _aborted = true; }
 
 bool TileRequest::isAborted() { return _aborted; }
+void TileRequest::setPriority(priority_type priority) { _priority = priority; }
+priority_type TileRequest::getPriority() { return _priority; }
 } // namespace ooc
 } // namespace vt

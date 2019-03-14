@@ -74,17 +74,16 @@ void VTRenderer::add_context(uint16_t context_id)
 
     ctxt_res* res = new ctxt_res();
 
-    res->_device.reset(new scm::gl::render_device());
+    res->_device.reset(new render_device());
     res->_render_context = res->_device->create_context();
 
     res->_render_context->apply();
 
-    res->_obj.reset(new scm::gl::wavefront_obj_geometry(res->_device, std::string(LAMURE_PRIMITIVES_DIR) + "/montblanc_1202116x304384.obj"));
+    res->_obj.reset(new wavefront_obj_geometry(res->_device, std::string(LAMURE_PRIMITIVES_DIR) + "/montblanc_1202116x304384.obj"));
 
     std::string fs_vt_color, vs_vt, vs_vt_feedback;
 
     {
-        using namespace scm::gl;
         using namespace boost::assign;
 
         if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_vt) ||
@@ -272,7 +271,7 @@ void VTRenderer::collect_feedback(uint16_t context_id)
     memset(_ctxt_res[context_id]->_feedback_lod_cpu_buffer, 0, _ctxt_res[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
 
     int32_t* feedback_lod = (int32_t*)_ctxt_res[context_id]->_render_context->map_buffer(_ctxt_res[context_id]->_feedback_lod_storage, ACCESS_READ_ONLY);
-    memcpy(_ctxt_res[context_id]->_feedback_lod_cpu_buffer, feedback_lod, _cut_update->get_context_feedback(context_id)->get_allocated_slot_index().size() * size_of_format(FORMAT_R_32UI));
+    memcpy(_ctxt_res[context_id]->_feedback_lod_cpu_buffer, feedback_lod, _cut_update->get_context_feedback(context_id)->get_allocated_slot_index().size() * size_of_format(FORMAT_R_32I));
     _ctxt_res[context_id]->_render_context->sync();
 
     _ctxt_res[context_id]->_render_context->unmap_buffer(_ctxt_res[context_id]->_feedback_lod_storage);
@@ -680,7 +679,7 @@ void VTRenderer::update_feedback_layout(uint16_t context_id)
 {
     auto allocated_slots = &_cut_update->get_context_feedback(context_id)->get_allocated_slot_index();
 
-    if(allocated_slots->size() == 0)
+    if(allocated_slots->empty())
     {
         return;
     }

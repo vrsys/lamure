@@ -15,8 +15,6 @@
 
 namespace vt
 {
-typedef std::set<id_type> id_set_type;
-
 class CutUpdate
 {
   public:
@@ -46,11 +44,13 @@ class CutUpdate
     CutUpdate();
 
     context_feedback_map_type _context_feedbacks;
+    cut_decision_map_type _cut_decisions;
 
     VTConfig* _config;
     CutDatabase* _cut_db;
 
     float _dispatch_time;
+    uint32_t _precomputed_split_budget_throughput;
 
     std::atomic<bool> _should_stop;
     std::atomic<bool> _freeze_dispatch;
@@ -59,7 +59,7 @@ class CutUpdate
     void dispatch_context(uint16_t context_id);
 
     bool collapse_to_id(Cut* cut, id_type tile_id, uint16_t context_id);
-    bool split_id(Cut* cut, id_type tile_id, uint16_t context_id);
+    bool split_id(Cut *cut, prioritized_tile tile, uint16_t context_id);
     bool keep_id(Cut* cut, id_type tile_id, uint16_t context_id);
 
     bool add_to_indexed_memory(Cut* cut, id_type tile_id, uint8_t* tile_ptr, uint16_t context_id);
@@ -67,6 +67,20 @@ class CutUpdate
 
     bool check_all_siblings_in_cut(id_type tile_id, const cut_type& cut);
     void remove_from_indexed_memory(Cut* cut, id_type tile_id, uint16_t context_id);
+};
+
+class CutDecision
+{
+  public:
+    friend class CutUpdate;
+
+    CutDecision() : collapse_to(), split(), keep() {}
+    ~CutDecision() {}
+
+  private:
+    id_set_type collapse_to;
+    prioritized_tile_set_type split;
+    id_set_type keep;
 };
 
 class ContextFeedback
