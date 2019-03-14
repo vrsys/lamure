@@ -100,13 +100,12 @@ struct Utils
 	        fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
 
 	        	        //scaling for zebra
-	        // vx *= 0.01;
-	        // vy *= 0.01;
-	        // vz *= 0.01;
+	        vx *= 0.01;
+	        vy *= 0.01;
+	        vz *= 0.01;
 
 
 	        v.insert(v.end(), {vx, vy, vz});
-
 
 
 	        //compare to find bounding box limits

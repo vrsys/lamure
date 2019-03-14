@@ -1,4 +1,4 @@
-
+#include <memory>
 
 //class for running clustering algorithm on Charts
 struct ParallelClusterCreator
@@ -28,7 +28,7 @@ struct ParallelClusterCreator
 
     //create join bank vector and queue
     std::vector<JoinOperation> joins;
-    std::list<JoinOperation*> join_queue;
+    std::list< std::shared_ptr<JoinOperation> > join_queue;
     create_joins_from_chart_vector(charts, joins, join_queue, cluster_settings, chart_id_map);
 
 
@@ -36,12 +36,7 @@ struct ParallelClusterCreator
     cluster_faces(charts,joins,join_queue, cost_threshold, chart_threshold,cluster_settings, chart_id_map);
 
 
-
-
-
-
-    //todo return active charts
-    return 0;
+    return populate_chart_LUT(charts, chart_id_map);;
   }
 
   //builds a chart list where each face of a polyhedron is 1 chart 
@@ -82,7 +77,7 @@ struct ParallelClusterCreator
   static void
   create_joins_from_chart_vector(std::vector<Chart> &charts, 
                                      std::vector<JoinOperation> &joins,
-                                     std::list<JoinOperation*> &join_queue,
+                                     std::list< std::shared_ptr<JoinOperation> > &join_queue,
                                      CLUSTER_SETTINGS cluster_settings,
                                      std::map<uint32_t, uint32_t> &chart_id_map){
 
@@ -137,8 +132,8 @@ struct ParallelClusterCreator
     std::cout << joins.size() << " joins\n";
 
     //add pointers of joins in bank to queue
-    for(int i = 0; i < joins.size(); i++){
-      join_queue.push_back( &(joins[i]) );
+    for(uint32_t i = 0; i < joins.size(); i++){
+      join_queue.push_back( std::make_shared<JoinOperation>( joins[i] ));
     }
 
 
@@ -148,7 +143,7 @@ struct ParallelClusterCreator
   static void 
   cluster_faces(std::vector<Chart> &charts, 
                 std::vector<JoinOperation> &joins,
-                std::list<JoinOperation*> &join_queue,
+                std::list< std::shared_ptr<JoinOperation> >& join_queue,
                 const double cost_threshold, 
                 const uint32_t chart_threshold,
                 CLUSTER_SETTINGS &cluster_settings,
@@ -160,7 +155,7 @@ struct ParallelClusterCreator
     // std::stringstream report;
     // report << "--------------------\nReport:\n----------------------\n";
 
-    std::list<JoinOperation*>::iterator it;
+    std::list< std::shared_ptr<JoinOperation> >::iterator it;
 
     //for reporting and calculating when to stop merging
     const uint32_t initial_charts = charts.size();
@@ -172,7 +167,7 @@ struct ParallelClusterCreator
     int overall_percent = -1;
 
     //key chart position (in chart vector) :: value - list of pointers to join operations that reference this chart
-    std::map<uint32_t, std::vector<JoinOperation*> > chart_to_join_inverse_index;
+    std::map<uint32_t, std::vector<std::shared_ptr<JoinOperation> > > chart_to_join_inverse_index;
     populate_inverse_index(chart_to_join_inverse_index, charts, joins);
 
     join_queue.sort(JoinOperation::sort_join_ptrs);
@@ -186,6 +181,8 @@ struct ParallelClusterCreator
           &&  (charts.size() - chart_merges) > chart_threshold){
 
       // std::cout << "getting next join\n";
+
+
 
       //reporting-------------
       int percent = (int)(((join_queue.front()->cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
@@ -206,72 +203,142 @@ struct ParallelClusterCreator
       JoinOperation join_todo = *(join_queue.front());
       join_queue.pop_front();
 
-#if 1
-      //check amount of neighbours resulting chart would have
-      //take a new join if neighbours are too few
-      while (join_todo.results_in_chart_with_neighbours(charts, chart_id_map) < 3){
-
-        if (join_queue.empty())
-        {
-          continue;
-        }
-        else {
-          join_todo = *(join_queue.front());
-          join_queue.pop_front();
-        }
+      //guard against inactive joins
+      if (!join_todo.active)
+      {
+        continue;
       }
-    
-#endif
+      //check amount of neighbours resulting chart would have. if too few, skip to next one
+      if (join_todo.results_in_chart_with_neighbours(charts, chart_id_map) < 3)
+      {
+        continue;
+      }
+
+
       // std::cout << "join cost : " << join_todo.cost << std::endl; 
 
       //merge faces from chart2 into chart 1
       // std::cout << "merging charts " << join_todo.chart1_id << " and " << join_todo.chart2_id << std::endl;
-      charts[join_todo.chart1_id].merge_with(charts[join_todo.chart2_id], join_todo.cost);
+      charts[join_todo.get_chart1_id()].merge_with(charts[join_todo.get_chart2_id()], join_todo.cost);
 
 
       //DEactivate chart 2
-      if (charts[join_todo.chart2_id].active == false)
+      if (charts[join_todo.get_chart2_id()].active == false)
       {
         // report << "chart " << join_todo.chart2_id << " was already inactive at merge " << chart_merges << std::endl; // should not happen
         continue;
       }
       //DEactivate chart 2
-      charts[join_todo.chart2_id].active = false;
+      charts[join_todo.get_chart2_id()].active = false;
 
 
-     // populate_chart_LUT(charts, chart_id_map);
+      //--------------------------------------------------------------
+      //update remaining joins that include either of the merged charts
+      //--------------------------------------------------------------
 
-      //todo keep list to update
-      
+      // use inverse index to retrieve the joins that need to be updated
+
+      std::cout << "merging affected joins\n";
+
+      //merge affected join lists from 2 charts involved (from chart 2 to 1)
+      std::vector<std::shared_ptr<JoinOperation>>& affected_joins = chart_to_join_inverse_index[join_todo.get_chart1_id()];
+      affected_joins.insert( 
+        affected_joins.end() , 
+        chart_to_join_inverse_index[join_todo.get_chart2_id()].begin(),
+        chart_to_join_inverse_index[join_todo.get_chart2_id()].end());
+
+      std::cout << "merged: " << affected_joins.size() << "\n";
+
+      std::list<uint32_t> indices_to_remove;
+      //for each affected join, update or add to list for removal
+      for (uint32_t i = 0; i < affected_joins.size(); i++){
+
+        std::shared_ptr<JoinOperation> join_op = affected_joins[i];
+
+        //replace expired chart and sorts chart ids
+        join_op->replace_id_with(join_todo.get_chart2_id(), join_todo.get_chart1_id());
+
+        //check if this join is within a chart now - add to removal list
+        if (join_op->get_chart1_id() == join_op-> get_chart2_id())
+        {
+          indices_to_remove.push_back(i);
+          join_op->active = false;
+        }
+      }
+
+
+      std::cout << "to remove: " << indices_to_remove.size() << "\n";
+
+      //remove those not needed any more
+      indices_to_remove.sort();
+      int num_removed = 0;
+      for (auto id : indices_to_remove) {
+        std::vector< std::shared_ptr<JoinOperation> >::iterator it2 = affected_joins.begin();
+        // adjust ID to be deleted to account for previously deleted items
+        std::advance(it2, id - num_removed);
+        affected_joins.erase(it2);
+        num_removed++;
+      }
+
+      std::cout << "after removing: " << affected_joins.size() << "\n";
+
+
+      //remove duplicates in affected joins
+      std::unique(affected_joins.begin(), affected_joins.end(), JoinOperation::compare);
+      std::cout << "after removing duplicates: " << affected_joins.size() << "\n";
+      //recalculate costs for what is left
+      for (uint32_t i = 0; i < affected_joins.size(); i++){
+        std::cout << "join " << i << std::endl;
+        // std::shared_ptr<JoinOperation> join_op = affected_joins[i];
+        auto join_op = affected_joins[i];
+
+        //TODO problem here somewhere!!!
+
+        std::cout << "got join " << i << std::endl;
+        join_op->cost = 1.0;
+        // join_op->cost = JoinOperation::cost_of_join(charts[join_op->get_chart1_id()], charts[join_op->get_chart2_id()], cluster_settings);
+
+        std::cout << "costed join " << i << std::endl;
+      }
+
+      std::cout << "updated\n";
+
+
+      //resort join queue
+      join_queue.sort(JoinOperation::sort_join_ptrs);
+
+
+      std::cout << "sorted\n";
+
+#if 0
+
+      //old method of updating join list
+
       int current_item = 0;
       std::list<int> to_erase;
-      std::vector<JoinOperation*> to_replace;
-      std::vector<JoinOperation*> to_recalculate_error;
+      std::vector<std::shared_ptr<JoinOperation> > to_recalculate_error;
 
-      //update remaining joins that include either of the merged charts
-
-      //TODO use inverse index to retrieve the joins that need to be updated
       for (it = join_queue.begin(); it != join_queue.end(); ++it)
       {
         //if join is affected, update references and cost
-        if (  (*it)->chart1_id == join_todo.chart1_id 
-           || (*it)->chart1_id == join_todo.chart2_id 
-           || (*it)->chart2_id == join_todo.chart1_id 
-           || (*it)->chart2_id == join_todo.chart2_id )
+        if (  (*it)->get_chart1_id() == join_todo.get_chart1_id() 
+           || (*it)->get_chart1_id() == join_todo.get_chart2_id() 
+           || (*it)->get_chart2_id() == join_todo.get_chart1_id() 
+           || (*it)->get_chart2_id() == join_todo.get_chart2_id() )
         {
 
           //eliminate references to joined chart 2 (it is no longer active)
           // by pointing them to chart 1
-          if ( (*it)->chart1_id == join_todo.chart2_id){
-            (*it)->chart1_id = join_todo.chart1_id;
+          if ( (*it)->get_chart1_id() == join_todo.get_chart2_id()){
+            (*it)->set_chart1_id( join_todo.get_chart1_id() );
           }
-          if ( (*it)->chart2_id == join_todo.chart2_id){
-            (*it)->chart2_id = join_todo.chart1_id; 
+          if ( (*it)->get_chart2_id() == join_todo.get_chart2_id()){
+            (*it)->set_chart2_id( join_todo.get_chart1_id() ); 
           }
 
           //search for duplicates
-          if ( ((*it)->chart1_id == join_todo.chart1_id && (*it)->chart2_id == join_todo.chart2_id) 
-            || ((*it)->chart2_id == join_todo.chart1_id && (*it)->chart1_id == join_todo.chart2_id) ){
+          if ( ((*it)->get_chart1_id() == join_todo.get_chart1_id() && (*it)->get_chart2_id() == join_todo.get_chart2_id()) 
+            || ((*it)->get_chart2_id() == join_todo.get_chart1_id() && (*it)->get_chart1_id() == join_todo.get_chart2_id()) ){
             // report << "duplicate found : c1 = " << it->chart1_id << ", c2 = " << it->chart2_id << std::endl; 
 
             //set inactive
@@ -280,7 +347,7 @@ struct ParallelClusterCreator
             to_erase.push_back(current_item);
           }
           //check for joins within a chart
-          else if ( (*it)->chart1_id == (*it)->chart2_id)
+          else if ( (*it)->get_chart1_id() == (*it)->get_chart2_id())
           {
             // report << "Join found within a chart: " << (*it)->chart1_id << std::endl;
 
@@ -308,7 +375,7 @@ struct ParallelClusterCreator
       to_erase.sort();
       int num_erased = 0;
       for (auto id : to_erase) {
-        std::list<JoinOperation*>::iterator it2 = join_queue.begin();
+        std::list< std::shared_ptr<JoinOperation> >::iterator it2 = join_queue.begin();
         // adjust ID to be deleted to account for previously deleted items
         std::advance(it2, id - num_erased);
         join_queue.erase(it2);
@@ -321,7 +388,7 @@ struct ParallelClusterCreator
       //TODO parallelise this part
       for (auto join_ptr : to_recalculate_error){
 
-        join_ptr->cost = JoinOperation::cost_of_join(charts[join_ptr->chart1_id], charts[join_ptr->chart2_id], cluster_settings);
+        join_ptr->cost = JoinOperation::cost_of_join(charts[join_ptr->get_chart1_id()], charts[join_ptr->get_chart2_id()], cluster_settings);
       }
 
       // std::cout << "replacing " << to_recalculate_error.size() << "\n";
@@ -330,7 +397,7 @@ struct ParallelClusterCreator
       if (to_recalculate_error.size() > 0)
       {
         std::sort(to_recalculate_error.begin(), to_recalculate_error.end(), JoinOperation::sort_join_ptrs);
-        std::list<JoinOperation*>::iterator it2;
+        std::list< std::shared_ptr<JoinOperation> >::iterator it2;
         uint32_t insert_item = 0;
         for (it2 = join_queue.begin(); it2 != join_queue.end(); ++it2){
 
@@ -363,8 +430,8 @@ struct ParallelClusterCreator
       }
 
       // std::cout << "done \n";
+#endif
 
-      //TODO update inverse index
 
       chart_merges++;
 
@@ -491,7 +558,7 @@ struct ParallelClusterCreator
   }
 
   //fills inverse index linking each chart with joins that reference it
-  static void populate_inverse_index( std::map<uint32_t, std::vector<JoinOperation*> > &chart_to_join_inverse_index,
+  static void populate_inverse_index( std::map<uint32_t, std::vector<std::shared_ptr<JoinOperation> > > &chart_to_join_inverse_index,
                                       std::vector<Chart> &charts,
                                       std::vector<JoinOperation> &joins){
 
@@ -499,32 +566,41 @@ struct ParallelClusterCreator
 
     if (charts.size() == 0)
     {
-      std::cout << "WARNING: no charts received in populate_inverse_index \n";
+      std::cout << "WARNING: no charts received in populate_inverse_index() \n";
       return; 
     }    
     if (joins.size() == 0)
     {
-      std::cout << "WARNING: no joins received in populate_inverse_index \n";
+      std::cout << "WARNING: no joins received in populate_inverse_index() \n";
       return; 
     }
 
     if (chart_to_join_inverse_index.size() == 0)
     {
-      std::cout << "building inverse index from scratch\n";
+      std::cout << "building inverse index from scratch...";
 
       //initialise map?
       // for (int i = 0; i < charts.size())
     }
 
     //for each join, add a pointer to the list for each relevant chart
-    for (int i = 0; i < joins.size(); i++){
+    for (uint32_t i = 0; i < joins.size(); i++){
 
-      chart_to_join_inverse_index[joins[i].chart1_id].push_back( &(joins[i]) );
-      chart_to_join_inverse_index[joins[i].chart2_id].push_back( &(joins[i]) );
+      // chart_to_join_inverse_index[joins[i].get_chart1_id()].push_back( &(joins[i]) );
+      // chart_to_join_inverse_index[joins[i].get_chart2_id()].push_back( &(joins[i]) );
+
+      chart_to_join_inverse_index[joins[i].get_chart1_id()].push_back( std::make_shared<JoinOperation>( joins[i] ) );
+      chart_to_join_inverse_index[joins[i].get_chart2_id()].push_back( std::make_shared<JoinOperation>( joins[i] ) );
+
     }
 
+    std::cout << "Inverse index populated with " << chart_to_join_inverse_index.size() << " entries\n";
 
-
+    //debug only - checking inverse index was created correctly
+    // for(auto& entry : chart_to_join_inverse_index){
+    //   if(entry.second.size() == 0)
+    //     std::cout << "Chart with no joins: " << entry.first << std::endl;
+    // }
 
   }
 
