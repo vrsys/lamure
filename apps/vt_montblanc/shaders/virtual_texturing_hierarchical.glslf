@@ -35,18 +35,23 @@ layout(location = 0) out vec4 out_color;
 
 struct idx_tex_positions
 {
-    int parent_lvl;
+    uint parent_lvl;
     uvec4 parent_idx;
-    int child_lvl;
+    uint child_lvl;
     uvec4 child_idx;
 };
 
 /*
  * Estimation of the requiered Level-of-Detail.
  */
-float dxdy()
+float dxdy(uvec4 index_quadruple, vec2 texture_sampling_coordinates, uint current_level)
 {
-    vec2 c = texture_coord * tile_size;
+    uint tile_occupation_exponent = max_level - current_level;
+    uint occupied_index_pixel_per_dimension = uint(1 << tile_occupation_exponent);
+    uvec2 base_xy_offset = index_quadruple.xy;
+    vec2 physical_tile_ratio_xy = fract(texture_sampling_coordinates * (1 << max_level) / vec2(occupied_index_pixel_per_dimension));
+
+    vec2 c = physical_tile_ratio_xy * tile_size;
 
     float dFdxCx = dFdx(c.x);
     float dFdxCy = dFdx(c.y);
@@ -58,7 +63,7 @@ float dxdy()
 
     float lambda = log2(rho);
 
-    return lambda;
+    return lambda - current_level;
 }
 
 /*
@@ -226,90 +231,83 @@ vec4 illustrate_level(float lambda, idx_tex_positions positions)
  * Look at the hierarchy levels 3 (parent) and 4 (child). If the child is loaded (child_idx.w == 1) then save the
  * index positions from the parent and the child node; otherwise, check the levels above.
  */
-vec4 traverse_idx_hierarchy(float lambda, vec2 texture_coordinates)
+vec4 traverse_idx_hierarchy(vec2 texture_coordinates)
 {
-    float mix_ratio = fract(lambda);
-    int desired_level = min(int(ceil(lambda)), int(max_level));
-
     idx_tex_positions positions;
 
-    // Desired level can be negative when the dxdy-fct requests a coarser representation as of the root tile size
-    if(desired_level <= 0)
+    uvec4 idx_child_pos = texture(hierarchical_idx_textures[max_level], texture_coordinates).rgba;
+
+    if(idx_child_pos.w == 1u)
     {
-        uvec4 idx_pos = texture(hierarchical_idx_textures[0], texture_coordinates).rgba;
-        positions = idx_tex_positions(0, idx_pos, 0, idx_pos);
+        uvec4 idx_parent_pos = texture(hierarchical_idx_textures[max_level - 1], texture_coordinates).rgba;
+        positions = idx_tex_positions(max_level - 1, idx_parent_pos, max_level, idx_child_pos);
     }
     else
     {
-        uvec4 idx_child_pos = texture(hierarchical_idx_textures[desired_level], texture_coordinates).rgba;
-
-        if(idx_child_pos.w == 1u)
+        /// Binary-like search for maximum available depth
+        int left = 0;
+        int right = int(max_level);
+        while(left < right)
         {
-            uvec4 idx_parent_pos = texture(hierarchical_idx_textures[desired_level - 1], texture_coordinates).rgba;
-            positions = idx_tex_positions(desired_level - 1, idx_parent_pos, desired_level, idx_child_pos);
-        }
-        else
-        {
-            /// Binary-like search for maximum available depth
-            int left = 0;
-            int right = desired_level;
-            while(left < right)
-            {
-                int i = (left + right) / 2;
+            int i = (left + right) / 2;
 
-                uvec4 idx_child_pos = texture(hierarchical_idx_textures[i], texture_coordinates).rgba;
-
-                if(i == 0)
-                {
-                    positions = idx_tex_positions(0, idx_child_pos, 0, idx_child_pos);
-                    break;
-                }
-
-                if(idx_child_pos.w == 1u)
-                {
-                    if(right - i == 1)
-                    {
-                        uvec4 idx_parent_pos = texture(hierarchical_idx_textures[i - 1], texture_coordinates).rgba;
-                        positions = idx_tex_positions(i - 1, idx_parent_pos, i, idx_child_pos);
-                        break;
-                    }
-
-                    left = min(i, desired_level);
-                }
-                else
-                {
-                    right = max(i, 0);
-                }
-            }
-        }
-
-        /*
-
-        // Go from desired tree level downwards to root until a loaded tile is found
-        for(int i = desired_level; i >= 0; --i)
-        {
             uvec4 idx_child_pos = texture(hierarchical_idx_textures[i], texture_coordinates).rgba;
 
-            // check if the requested tile is loaded and if we are not at the root level
-            // enables to mix (linearly interpolate) between hierarchy levels
-            if(idx_child_pos.w == 1 && i >= 1)
-            {
-                uvec4 idx_parent_pos = texture(hierarchical_idx_textures[i - 1], texture_coordinates).rgba;
-                positions = idx_tex_positions(i - 1, idx_parent_pos, i, idx_child_pos);
-                break;
-            }
-
-            // we are down to the root level: we cannot take the parent node from the root node;
-            // therefore, we use the root node as child as well as parent for mixing
-            else if(idx_child_pos.w == 1 && i == 0)
+            if(i == 0)
             {
                 positions = idx_tex_positions(0, idx_child_pos, 0, idx_child_pos);
                 break;
             }
+
+            if(idx_child_pos.w == 1u)
+            {
+                if(right - i == 1)
+                {
+                    uvec4 idx_parent_pos = texture(hierarchical_idx_textures[i - 1], texture_coordinates).rgba;
+                    positions = idx_tex_positions(i - 1, idx_parent_pos, i, idx_child_pos);
+                    break;
+                }
+
+                left = min(i, int(max_level));
+            }
+            else
+            {
+                right = max(i, 0);
+            }
+        }
+    }
+
+    /*
+
+    // Go from desired tree level downwards to root until a loaded tile is found
+    for(int i = desired_level; i >= 0; --i)
+    {
+        uvec4 idx_child_pos = texture(hierarchical_idx_textures[i], texture_coordinates).rgba;
+
+        // check if the requested tile is loaded and if we are not at the root level
+        // enables to mix (linearly interpolate) between hierarchy levels
+        if(idx_child_pos.w == 1 && i >= 1)
+        {
+            uvec4 idx_parent_pos = texture(hierarchical_idx_textures[i - 1], texture_coordinates).rgba;
+            positions = idx_tex_positions(i - 1, idx_parent_pos, i, idx_child_pos);
+            break;
         }
 
-        */
+        // we are down to the root level: we cannot take the parent node from the root node;
+        // therefore, we use the root node as child as well as parent for mixing
+        else if(idx_child_pos.w == 1 && i == 0)
+        {
+            positions = idx_tex_positions(0, idx_child_pos, 0, idx_child_pos);
+            break;
+        }
     }
+
+    */
+
+    float lambda = -dxdy(positions.child_idx, texture_coordinates, positions.child_lvl);
+
+    float mix_ratio = fract(lambda);
+    int desired_level = int(ceil(lambda));
 
     vec4 c;
     if(toggle_visualization == 1 || toggle_visualization == 2)
@@ -338,6 +336,5 @@ void main()
     vec2 texture_coordinates = vec2(texture_coord);
     texture_coordinates.y = 1.0 - texture_coordinates.y;
 
-    float lambda = -dxdy();
-    out_color = traverse_idx_hierarchy(lambda, texture_coordinates);
+    out_color = traverse_idx_hierarchy(texture_coordinates);
 }
