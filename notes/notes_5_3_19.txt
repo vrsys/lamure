@@ -42,7 +42,7 @@ Changes to clustering algorithm:
  - when executing a join, create a new chart number
 	- in inverse index map, combine JOs for merged charts into a new vector, sort and call unique (need equivalence function) to remove doubles
 	- how to deal with JOs in inverse index that still point to old charts?
-		- when
+
 
 
 Finish multi texture pipeline script  
@@ -64,6 +64,15 @@ sorting is too long!
 join queue as vector:
 sorting the problem still
  = too long
+
+original method, shared pointers, join queue is vector:
+ = 0 m 45 sec
+
+original method, shared pointers, join queue is list:
+ = 2 m 
+
+original method, shared pointers, join queue is vector, to erase list is vector:
+ = 0 m 45 sec
 
 
 
