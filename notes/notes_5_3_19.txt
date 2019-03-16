@@ -57,6 +57,13 @@ with join queue as pointers to vector of joins. lookup of affected joins with a 
 join queue replaced with shared pointers:
  = 1 m 51 s
 
+using inverse index and manually sorting join queue (join queue (a list) and original join vector both shared ptrs):
+sorting is too long!
+ = too long
+
+join queue as vector:
+sorting the problem still
+ = too long
 
 
 

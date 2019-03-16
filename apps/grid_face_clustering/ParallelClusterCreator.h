@@ -28,7 +28,7 @@ struct ParallelClusterCreator
 
     //create join bank vector and queue
     std::vector<std::shared_ptr<JoinOperation> > joins;
-    std::list< std::shared_ptr<JoinOperation> > join_queue;
+    std::vector< std::shared_ptr<JoinOperation> > join_queue;
     create_joins_from_chart_vector(charts, joins, join_queue, cluster_settings, chart_id_map);
 
 
@@ -77,7 +77,7 @@ struct ParallelClusterCreator
   static void
   create_joins_from_chart_vector(std::vector<Chart> &charts, 
                                      std::vector<std::shared_ptr<JoinOperation> > &joins,
-                                     std::list< std::shared_ptr<JoinOperation> > &join_queue,
+                                     std::vector< std::shared_ptr<JoinOperation> > &join_queue,
                                      CLUSTER_SETTINGS cluster_settings,
                                      std::map<uint32_t, uint32_t> &chart_id_map){
 
@@ -143,7 +143,7 @@ struct ParallelClusterCreator
   static void 
   cluster_faces(std::vector<Chart> &charts, 
                 std::vector<std::shared_ptr<JoinOperation> > &joins,
-                std::list< std::shared_ptr<JoinOperation> >& join_queue,
+                std::vector< std::shared_ptr<JoinOperation> >& join_queue,
                 const double cost_threshold, 
                 const uint32_t chart_threshold,
                 CLUSTER_SETTINGS &cluster_settings,
@@ -170,7 +170,8 @@ struct ParallelClusterCreator
     std::map<uint32_t, std::vector<std::shared_ptr<JoinOperation> > > chart_to_join_inverse_index;
     populate_inverse_index(chart_to_join_inverse_index, charts, joins);
 
-    join_queue.sort(JoinOperation::sort_join_ptrs);
+    // join_queue.sort(JoinOperation::sort_join_ptrs);
+    std::sort(join_queue.begin(),join_queue.end(), JoinOperation::sort_join_ptrs);
     const double lowest_cost = join_queue.front()->cost;
 
 
@@ -201,7 +202,9 @@ struct ParallelClusterCreator
       //implement the join with lowest cost, if it doesn't break 3 nbr rule
 
       JoinOperation join_todo = *(join_queue.front());
-      join_queue.pop_front();
+
+      // join_queue.pop_front();
+      join_queue.erase(join_queue.begin());
 
       //guard against inactive joins
       if (!join_todo.active)
@@ -288,7 +291,7 @@ struct ParallelClusterCreator
       affected_joins.resize( std::distance(affected_joins.begin(),new_end_of_array) ); 
 
       // std::cout << "after removing duplicates: " << affected_joins.size() << "\n";
-      
+
       //recalculate costs for what is left
       for (uint32_t i = 0; i < affected_joins.size(); i++){
         // std::cout << "join " << i << std::endl;
@@ -306,7 +309,7 @@ struct ParallelClusterCreator
 
 
       //resort join queue
-      join_queue.sort(JoinOperation::sort_join_ptrs);
+      std::sort(join_queue.begin(),join_queue.end(), JoinOperation::sort_join_ptrs);
 
 
       // std::cout << "sorted\n";
