@@ -1,5 +1,7 @@
 #include <memory>
 
+#include <omp.h>
+
 //class for running clustering algorithm on Charts
 struct ParallelClusterCreator
 {
@@ -180,9 +182,6 @@ struct ParallelClusterCreator
           &&  !join_queue.empty()
           &&  (charts.size() - chart_merges) > chart_threshold){
 
-      // std::cout << "getting next join\n";
-
-
 
       //reporting-------------
       int percent = (int)(((join_queue.front()->cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
@@ -198,11 +197,8 @@ struct ParallelClusterCreator
         std::cout << percent << " percent complete\n";
       }
 
-      //implement the join with lowest cost, if it doesn't break 3 nbr rule
 
       JoinOperation join_todo = *(join_queue.front());
-
-      // join_queue.pop_front();
       join_queue.erase(join_queue.begin());
 
       //guard against inactive joins
@@ -216,8 +212,6 @@ struct ParallelClusterCreator
         continue;
       }
 
-
-      // std::cout << "join cost : " << join_todo.cost << std::endl; 
 
       //merge faces from chart2 into chart 1
       // std::cout << "merging charts " << join_todo.chart1_id << " and " << join_todo.chart2_id << std::endl;
@@ -238,11 +232,12 @@ struct ParallelClusterCreator
       //update remaining joins that include either of the merged charts
       //--------------------------------------------------------------
 
-      // use inverse index to retrieve the joins that need to be updated
 
-      // std::cout << "merging affected joins\n";
 
 #if 0
+
+      // use inverse index to retrieve the joins that need to be updated
+
       //merge affected join lists from 2 charts involved (from chart 2 to 1)
       std::vector<std::shared_ptr<JoinOperation>>& affected_joins = chart_to_join_inverse_index[join_todo.get_chart1_id()];
       affected_joins.insert( 
@@ -315,71 +310,85 @@ struct ParallelClusterCreator
       // std::cout << "sorted\n";
 
 #else
+              //old method of updating join list
 
-      //old method of updating join list
 
-      int current_item = 0;
-      std::vector<int> to_erase;
-      std::vector<std::shared_ptr<JoinOperation> > to_recalculate_error;
+      std::vector<int> to_erase_merged;
+      std::vector<std::shared_ptr<JoinOperation> > to_recalculate_error_merged;
 
-      for (it = join_queue.begin(); it != join_queue.end(); ++it)
+      #pragma omp declare reduction (merge : std::vector<int> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+      #pragma omp declare reduction (merge : std::vector< std::shared_ptr<JoinOperation> > : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+
+      //find affected joins and add to list for erase/update
+      #pragma omp parallel for reduction(merge: to_erase_merged,to_recalculate_error_merged)
+      for(uint32_t j = 0; j < join_queue.size(); j++)
       {
+
         //if join is affected, update references and cost
-        if (  (*it)->get_chart1_id() == join_todo.get_chart1_id() 
-           || (*it)->get_chart1_id() == join_todo.get_chart2_id() 
-           || (*it)->get_chart2_id() == join_todo.get_chart1_id() 
-           || (*it)->get_chart2_id() == join_todo.get_chart2_id() )
+        if (  join_queue[j]->get_chart1_id() == join_todo.get_chart1_id() 
+           || join_queue[j]->get_chart1_id() == join_todo.get_chart2_id() 
+           || join_queue[j]->get_chart2_id() == join_todo.get_chart1_id() 
+           || join_queue[j]->get_chart2_id() == join_todo.get_chart2_id() )
         {
 
           //eliminate references to joined chart 2 (it is no longer active)
           // by pointing them to chart 1
-          if ( (*it)->get_chart1_id() == join_todo.get_chart2_id()){
-            (*it)->set_chart1_id( join_todo.get_chart1_id() );
+          if ( join_queue[j]->get_chart1_id() == join_todo.get_chart2_id()){
+            join_queue[j]->set_chart1_id( join_todo.get_chart1_id() );
           }
-          if ( (*it)->get_chart2_id() == join_todo.get_chart2_id()){
-            (*it)->set_chart2_id( join_todo.get_chart1_id() ); 
+          if ( join_queue[j]->get_chart2_id() == join_todo.get_chart2_id()){
+            join_queue[j]->set_chart2_id( join_todo.get_chart1_id() ); 
           }
 
+          //save this join to be deleted (and replaced in queue if necessary)
+          // to_erase[omp_get_thread_num()].push_back(j);
+          to_erase_merged.push_back(j);
+
+
           //search for duplicates
-          if ( ((*it)->get_chart1_id() == join_todo.get_chart1_id() && (*it)->get_chart2_id() == join_todo.get_chart2_id()) 
-            || ((*it)->get_chart2_id() == join_todo.get_chart1_id() && (*it)->get_chart1_id() == join_todo.get_chart2_id()) ){
+          if ( join_queue[j]->get_chart1_id() == join_todo.get_chart1_id() 
+            && join_queue[j]->get_chart2_id() == join_todo.get_chart2_id() ){
             // report << "duplicate found : c1 = " << it->chart1_id << ", c2 = " << it->chart2_id << std::endl; 
 
             //set inactive
-            (*it)->active = false;
-            //Add to list for deletion later (so indeces are not invalidated)
-            to_erase.push_back(current_item);
+            join_queue[j]->active = false;
           }
           //check for joins within a chart
-          else if ( (*it)->get_chart1_id() == (*it)->get_chart2_id())
+          else if ( join_queue[j]->get_chart1_id() == join_queue[j]->get_chart2_id())
           {
-            // report << "Join found within a chart: " << (*it)->chart1_id << std::endl;
+            // report << "Join found within a chart: " << join_queue[j]->chart1_id << std::endl;
 
             //set inactive
-            (*it)->active = false;
+            join_queue[j]->active = false;
 
-            to_erase.push_back(current_item);
             
           }
           else {
 
             //add (pointer of JO) to vector to be updated
-            to_recalculate_error.push_back(*it);
-
-            //save this join to be deleted and replaced in correct position after deleting duplicates
-            to_erase.push_back(current_item);
+            // to_recalculate_error[omp_get_thread_num()].push_back(join_queue[j]);
+            to_recalculate_error_merged.push_back(join_queue[j]);
           }
         }
-        current_item++;
       }
 
-      // std::cout << "erasing\n";
+      //merge parallel vectors
+
+      // std::vector<int> to_erase_merged;
+      // std::vector<std::shared_ptr<JoinOperation> > to_recalculate_error_merged;
+      // for (uint32_t i = 0; i < to_erase.size(); ++i)
+      // {
+      //   std::copy(to_erase[i].begin(), to_erase[i].end(), std::back_inserter(to_erase_merged));
+      // }
+      // for (uint32_t i = 0; i < to_recalculate_error.size(); ++i)
+      // {
+      //   std::copy(to_recalculate_error[i].begin(), to_recalculate_error[i].end(), std::back_inserter(to_recalculate_error_merged));
+      // }
 
       //erase all elements that need to be erased (either no longer needed or will be recalculated)
-      // to_erase.sort();
-      std::sort(to_erase.begin(), to_erase.end());
+      std::sort(to_erase_merged.begin(), to_erase_merged.end());
       int num_erased = 0;
-      for (auto id : to_erase) {
+      for (auto id : to_erase_merged) {
         std::vector< std::shared_ptr<JoinOperation> >::iterator it2 = join_queue.begin();
         // adjust ID to be deleted to account for previously deleted items
         std::advance(it2, id - num_erased);
@@ -387,56 +396,41 @@ struct ParallelClusterCreator
         num_erased++;
       }
 
-      // std::cout << "recalculating\n";
-
       //recalculate error for joins that need to be updated
-      //TODO parallelise this part
-      for (auto join_ptr : to_recalculate_error){
-
+      #pragma omp parallel for 
+      for(uint32_t j = 0; j < to_recalculate_error_merged.size(); j++){
+        std::shared_ptr<JoinOperation> join_ptr ( to_recalculate_error_merged[j] );
         join_ptr->cost = JoinOperation::cost_of_join(charts[join_ptr->get_chart1_id()], charts[join_ptr->get_chart2_id()], cluster_settings);
       }
 
-      // std::cout << "replacing " << to_recalculate_error.size() << "\n";
-
       // replace joins that were filtered out to be sorted
-      if (to_recalculate_error.size() > 0)
+      if (to_recalculate_error_merged.size() > 0)
       {
-        std::sort(to_recalculate_error.begin(), to_recalculate_error.end(), JoinOperation::sort_join_ptrs);
+        std::sort(to_recalculate_error_merged.begin(), to_recalculate_error_merged.end(), JoinOperation::sort_join_ptrs);
         std::vector< std::shared_ptr<JoinOperation> >::iterator it2;
         uint32_t insert_item = 0;
         for (it2 = join_queue.begin(); it2 != join_queue.end(); ++it2){
 
           //insert items while join list item has bigger cost than element to be inserted
-          while ( insert_item < to_recalculate_error.size() && 
-                  (*it2)->cost > to_recalculate_error[insert_item]->cost){
+          while ( insert_item < to_recalculate_error_merged.size() && 
+                  (*it2)->cost > to_recalculate_error_merged[insert_item]->cost){
 
-            // std::cout << "inserting " << insert_item << std::endl;
-
-            join_queue.insert(it2, to_recalculate_error[insert_item]);
-
-
-            // std::cout << "inserted " << insert_item <<  " of " << to_recalculate_error.size() << std::endl;
-
+            join_queue.insert(it2, to_recalculate_error_merged[insert_item]);
             insert_item++;
           }
           //if all items are in place, we are done
-          if (insert_item >= to_recalculate_error.size())
+          if (insert_item >= to_recalculate_error_merged.size())
           {
-            // std::cout << "done iserting\n";
             break;
           }
         }
-
-        // std::cout << "adding leftovers\n";
         //add any remaining items to end of queue
-        for (uint32_t i = insert_item; i < to_recalculate_error.size(); i++){
-          join_queue.push_back(to_recalculate_error[i]);
+        for (uint32_t i = insert_item; i < to_recalculate_error_merged.size(); i++){
+          join_queue.push_back(to_recalculate_error_merged[i]);
         }
       }
 
-      // std::cout << "done \n";
 #endif
-
 
       chart_merges++;
 

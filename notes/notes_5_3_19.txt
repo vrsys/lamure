@@ -74,6 +74,11 @@ original method, shared pointers, join queue is list:
 original method, shared pointers, join queue is vector, to erase list is vector:
  = 0 m 45 sec
 
+parallel cost recalculation:
+ = 0 m 44 sec
+
+parallelised join search and cost calculation:
+ = 0 m 40 sec
 
 
 

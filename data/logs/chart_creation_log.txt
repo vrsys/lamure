@@ -3469,3 +3469,153 @@ Vertices: 21305 , faces: 40310
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 16:51:56
+Ran for 0 m 45 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:00:35
+Ran for 0 m 44 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:11:45
+Ran for 1 m 22 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:17:43
+Ran for 0 m 46 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:20:24
+Ran for 0 m 57 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:23:29
+Ran for 0 m 59 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:26:11
+Ran for 0 m 49 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:29:52
+Ran for 1 m 19 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:38:27
+Ran for 1 m 14 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:40:12
+Ran for 1 m 21 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:41:27
+Ran for 0 m 48 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 17:50:59
+Ran for 0 m 44 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 18:14:33
+Ran for 0 m 43 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 18:26:48
+Ran for 0 m 40 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-16 18:31:12
+Ran for 0 m 40 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 50, active charts: 50
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
