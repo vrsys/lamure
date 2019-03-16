@@ -78,21 +78,19 @@ public:
 
     Vector fit_plane_normal;
 
-    std::cout << "-----------------\n";
-
     double e_fit =       cluster_settings.e_fit_cf *   Chart::get_fit_error(c1,c2, fit_plane_normal);
 
-    std::cout << "e_fit " << e_fit;
+    // std::cout << "e_fit " << e_fit;
 
     fit_plane_normal = Utils::normalise(fit_plane_normal);
 
     double e_direction = cluster_settings.e_ori_cf *   Chart::get_direction_error(c1,c2,fit_plane_normal); 
 
-    std::cout << "e_direction " << e_direction;
+    // std::cout << "e_direction " << e_direction;
 
     double e_shape =     cluster_settings.e_shape_cf * Chart::get_compactness_of_merged_charts(c1,c2);
 
-    std::cout << "e_shape " << e_shape << std::endl;
+    // std::cout << "e_shape " << e_shape << std::endl;
 
     error = e_fit + e_direction + e_shape;
 

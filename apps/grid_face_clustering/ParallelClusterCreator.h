@@ -27,7 +27,7 @@ struct ParallelClusterCreator
     populate_chart_LUT(charts, chart_id_map);
 
     //create join bank vector and queue
-    std::vector<JoinOperation> joins;
+    std::vector<std::shared_ptr<JoinOperation> > joins;
     std::list< std::shared_ptr<JoinOperation> > join_queue;
     create_joins_from_chart_vector(charts, joins, join_queue, cluster_settings, chart_id_map);
 
@@ -76,7 +76,7 @@ struct ParallelClusterCreator
 
   static void
   create_joins_from_chart_vector(std::vector<Chart> &charts, 
-                                     std::vector<JoinOperation> &joins,
+                                     std::vector<std::shared_ptr<JoinOperation> > &joins,
                                      std::list< std::shared_ptr<JoinOperation> > &join_queue,
                                      CLUSTER_SETTINGS cluster_settings,
                                      std::map<uint32_t, uint32_t> &chart_id_map){
@@ -120,7 +120,7 @@ struct ParallelClusterCreator
         {
             // chart ids should be equal to their index in the vector at this point
             JoinOperation join (chart.id, nbr_chart_id ,JoinOperation::cost_of_join(charts[chart.id],charts[nbr_chart_id], cluster_settings));
-            joins.push_back(join);
+            joins.push_back( std::make_shared<JoinOperation>(join));
         }
       }
 
@@ -133,7 +133,7 @@ struct ParallelClusterCreator
 
     //add pointers of joins in bank to queue
     for(uint32_t i = 0; i < joins.size(); i++){
-      join_queue.push_back( std::make_shared<JoinOperation>( joins[i] ));
+      join_queue.push_back( std::shared_ptr<JoinOperation>( joins[i] ));
     }
 
 
@@ -142,7 +142,7 @@ struct ParallelClusterCreator
   //takes a list of joins and charts, and executes joins until target number of charts/cost threshold is reached
   static void 
   cluster_faces(std::vector<Chart> &charts, 
-                std::vector<JoinOperation> &joins,
+                std::vector<std::shared_ptr<JoinOperation> > &joins,
                 std::list< std::shared_ptr<JoinOperation> >& join_queue,
                 const double cost_threshold, 
                 const uint32_t chart_threshold,
@@ -238,7 +238,7 @@ struct ParallelClusterCreator
 
       // use inverse index to retrieve the joins that need to be updated
 
-      std::cout << "merging affected joins\n";
+      // std::cout << "merging affected joins\n";
 
       //merge affected join lists from 2 charts involved (from chart 2 to 1)
       std::vector<std::shared_ptr<JoinOperation>>& affected_joins = chart_to_join_inverse_index[join_todo.get_chart1_id()];
@@ -247,13 +247,14 @@ struct ParallelClusterCreator
         chart_to_join_inverse_index[join_todo.get_chart2_id()].begin(),
         chart_to_join_inverse_index[join_todo.get_chart2_id()].end());
 
-      std::cout << "merged: " << affected_joins.size() << "\n";
+      // std::cout << "merged: " << affected_joins.size() << "\n";
 
       std::list<uint32_t> indices_to_remove;
       //for each affected join, update or add to list for removal
       for (uint32_t i = 0; i < affected_joins.size(); i++){
 
-        std::shared_ptr<JoinOperation> join_op = affected_joins[i];
+        // std::shared_ptr<JoinOperation> join_op = affected_joins[i];
+        std::shared_ptr<JoinOperation> join_op ( affected_joins[i] );
 
         //replace expired chart and sorts chart ids
         join_op->replace_id_with(join_todo.get_chart2_id(), join_todo.get_chart1_id());
@@ -267,7 +268,7 @@ struct ParallelClusterCreator
       }
 
 
-      std::cout << "to remove: " << indices_to_remove.size() << "\n";
+      // std::cout << "to remove: " << indices_to_remove.size() << "\n";
 
       //remove those not needed any more
       indices_to_remove.sort();
@@ -280,35 +281,35 @@ struct ParallelClusterCreator
         num_removed++;
       }
 
-      std::cout << "after removing: " << affected_joins.size() << "\n";
-
+      // std::cout << "after removing: " << affected_joins.size() << "\n";
 
       //remove duplicates in affected joins
-      std::unique(affected_joins.begin(), affected_joins.end(), JoinOperation::compare);
-      std::cout << "after removing duplicates: " << affected_joins.size() << "\n";
+      auto new_end_of_array = std::unique(affected_joins.begin(), affected_joins.end(), JoinOperation::compare);
+      affected_joins.resize( std::distance(affected_joins.begin(),new_end_of_array) ); 
+
+      // std::cout << "after removing duplicates: " << affected_joins.size() << "\n";
+      
       //recalculate costs for what is left
       for (uint32_t i = 0; i < affected_joins.size(); i++){
-        std::cout << "join " << i << std::endl;
-        // std::shared_ptr<JoinOperation> join_op = affected_joins[i];
-        auto join_op = affected_joins[i];
+        // std::cout << "join " << i << std::endl;
 
-        //TODO problem here somewhere!!!
+        std::shared_ptr<JoinOperation> join_op ( affected_joins[i] );
 
-        std::cout << "got join " << i << std::endl;
-        join_op->cost = 1.0;
-        // join_op->cost = JoinOperation::cost_of_join(charts[join_op->get_chart1_id()], charts[join_op->get_chart2_id()], cluster_settings);
 
-        std::cout << "costed join " << i << std::endl;
+        // std::cout << "got join " << i << std::endl;
+        join_op->cost = JoinOperation::cost_of_join(charts[join_op->get_chart1_id()], charts[join_op->get_chart2_id()], cluster_settings);
+
+        // std::cout << "costed join " << i << std::endl;
       }
 
-      std::cout << "updated\n";
+      // std::cout << "updated\n";
 
 
       //resort join queue
       join_queue.sort(JoinOperation::sort_join_ptrs);
 
 
-      std::cout << "sorted\n";
+      // std::cout << "sorted\n";
 
 #if 0
 
@@ -560,7 +561,7 @@ struct ParallelClusterCreator
   //fills inverse index linking each chart with joins that reference it
   static void populate_inverse_index( std::map<uint32_t, std::vector<std::shared_ptr<JoinOperation> > > &chart_to_join_inverse_index,
                                       std::vector<Chart> &charts,
-                                      std::vector<JoinOperation> &joins){
+                                      std::vector<std::shared_ptr<JoinOperation> > &joins){
 
 
 
@@ -589,8 +590,8 @@ struct ParallelClusterCreator
       // chart_to_join_inverse_index[joins[i].get_chart1_id()].push_back( &(joins[i]) );
       // chart_to_join_inverse_index[joins[i].get_chart2_id()].push_back( &(joins[i]) );
 
-      chart_to_join_inverse_index[joins[i].get_chart1_id()].push_back( std::make_shared<JoinOperation>( joins[i] ) );
-      chart_to_join_inverse_index[joins[i].get_chart2_id()].push_back( std::make_shared<JoinOperation>( joins[i] ) );
+      chart_to_join_inverse_index[joins[i]->get_chart1_id()].push_back( std::shared_ptr<JoinOperation>( joins[i] ) );
+      chart_to_join_inverse_index[joins[i]->get_chart2_id()].push_back( std::shared_ptr<JoinOperation>( joins[i] ) );
 
     }
 
