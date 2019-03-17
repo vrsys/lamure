@@ -33,16 +33,15 @@ mkdir "${REGR_DIR}"
 #copy input files to regression folder
 cp -a /${SRC_DIR}/. ${REGR_DIR}
 
+#get path to obj file
+for OBJS in ${REGR_DIR}/*.obj; do
+	OBJPATH=$OBJS
+	echo $OBJPATH
+done
+JPGPATH="${OBJPATH:0:${#OBJPATH}-4}_comp.jpg"
 
-
-# cp $SRC_OBJPATH $REGR_DIR
-# cp $SRC_PNGPATH $REGR_DIR
-
-# #get copies of files
-# OBJPATH="$REGR_DIR/$(basename $SRC_OBJPATH)"
-# PNGPATH="$REGR_DIR/$(basename $SRC_PNGPATH)"
-
-
+# echo "obj path: ${OBJPATH}"
+# echo "jpg path: ${JPGPATH}"
 
 #create compiled texture
 echo "----------------------------------------------------"
@@ -50,37 +49,12 @@ echo "Compiling texture in folder $REGR_DIR"
 echo "----------------------------------------------------"
 
 SCALE=1
+./install/bin/lamure_vt_atlas_compiler -d ${REGR_DIR} -s ${SCALE} -o ${JPGPATH}
 
-cd $REGR_DIR
+#convert texture to png
+mogrify -format png ${JPGPATH}
 
-
-
-for OBJPATH in ${REGR_DIR}/*.obj; do
-
-	#do stuff
-	echo $OBJPATH
-done
-
-exit 1
-
-
-OBJPATH=find . -name \*.obj
-# OBJPATH=find . -name '\*.obj'
-
-cd $LAM_DIR
-
-PNGPATH="${OBJPATH:0:${#OBJPATH}-4}_comp.png"
-
-
-
-echo "obj path: ${OBJPATH}"
-echo "png path: ${PNGPATH}"
-
-exit 1
-# echo $PNGPATH
-
-./install/bin/lamure_vt_atlas_compiler -d ${REGR_DIR} -s ${SCALE} -o ${PNGPATH}
-
+PNGPATH="${JPGPATH:0:${#JPGPATH}-3}png"
 
 
 
@@ -90,11 +64,13 @@ echo "Updating OBJ texture coordinates"
 echo "----------------------------------------------------"
 
 
-LOGPATH="${PNGPATH:0:${#PNGPATH}-3}.log"
+LOGPATH="${PNGPATH:0:${#PNGPATH}-4}.log"
+echo "log path: ${LOGPATH}"
 
 ./install/bin/lamure_obj_texture_atlas_modifier -obj ${OBJPATH} -log ${LOGPATH} -tex ${PNGPATH}
 
-
+#update OBJ path
+OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_w_atlas.obj"
 
 #create charts
 echo "----------------------------------------------------"
