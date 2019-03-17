@@ -621,6 +621,7 @@ int32_t main(int argc, char *argv[]) {
   mtl_out_file << "newmtl atlas" << std::endl;
   mtl_out_file << "Ka 1.0 1.0 1.0\nKd 1.0 1.0 1.0\nKs 0.0 0.0 0.0\nd 1.0\nNs 0.0\nillum 0\n";
   mtl_out_file << "map_Kd " << texture_filename << std::endl;
+  mtl_out_file.close();
 
   
   return 0;

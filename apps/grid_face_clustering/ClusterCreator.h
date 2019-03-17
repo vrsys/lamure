@@ -94,49 +94,9 @@ struct ClusterCreator
 
       uint32_t given_chart_id = chart_id_map[fb->id()];
 
-    // //when adding a face, check that it shares at least one boundary with a face in the same chart - otherwise give it a new id
-    //   Halfedge_facet_circulator fc = fb->facet_begin();
-    //   bool found_chart_nbr = false;
-    //   int32_t nbrs[3] = {-1};
-    //   double edgelengths[3] = {0.0};
-    //   uint32_t nbr_count = 0;
-    //   do {
-    //     if (!fc->is_border() && !(fc->opposite()->is_border()) )//guard against no neighbour at this edge
-    //     {
-    //       //get chart id of neighbour, compare with the chart id of this face
-    //       uint32_t nbr_id = fc->opposite()->facet()->id();
-    //       uint32_t nbr_chart_id = chart_id_map[nbr_id];
-    //       if (nbr_chart_id == given_chart_id)
-    //       {
-    //         found_chart_nbr = true;
-    //         break;
-    //       }
-    //       //Save neighbour id and edge length
-    //       nbrs[nbr_count] = nbr_id;
-    //       edgelengths[nbr_count] = Chart::edge_length(fc);
-    //     }
-    //     nbr_count++;
-    //   } while ( ++fc != fb->facet_begin());
-
 
       //create chart 
       Chart new_chart(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
-
-      // if (!found_chart_nbr) // determine which neighbour group it should belong to
-      // {
-
-      //   //find longest edge
-      //   double longest = 0.0;
-      //   uint32_t longest_id = 0;
-      //   for (int i = 0; i < 3; ++i)
-      //   {
-      //     if((edgelengths[i] > longest) && nbrs[i] > 0){longest_id = i;}
-      //   }
-      //   given_chart_id = chart_id_map[nbrs[longest_id]];
-
-      //   //save for future reference when checking other faces
-      //   chart_id_map[fb->id()] = given_chart_id;
-      // }
 
       // if chart already exists for that id,  merge this chart into existing (discard merged in chart)
       it_c = chart_ids_created.find(given_chart_id);
