@@ -57,6 +57,15 @@ struct Cluster
 struct GridClusterCreator
 {
 
+  	//creates clusters using a grid
+  	//params:
+  	// - empty chart map
+  	// - bounding box of model
+  	// - number of cells to split into along longest axis
+  	// - cluster settings from input args
+  	//
+  	// applies post processing steps to give different chart numbers to non-continous chart regions
+  	// and to split charts by normal deviation within them
 	static uint32_t create_grid_clusters(Polyhedron &P,
 									 std::map<uint32_t, uint32_t> &chart_id_map,
 									 BoundingBoxLimits limits,

@@ -27,6 +27,7 @@
 #include "eig.h"
 #include "ClusterCreator.h"
 #include "GridClusterCreator.h"
+#include "ParallelClusterCreator.h"
 
 #include "CGAL_typedefs.h"
 
@@ -40,8 +41,6 @@
 // Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
 
-//key: face_id, value: chart_id
-std::map<uint32_t, uint32_t> chart_id_map;
 
 
 
@@ -80,8 +79,9 @@ int main( int argc, char** argv )
     std::cout << "Optional: -es specifies error shape coefficient (=1)" << std::endl;
 
     std::cout << "Optional: -cc specifies cell resolution for grid splitting, along longest axis (=10)" << std::endl;
-
     std::cout << "Optional: -ct specifies threshold for grid chart splitting by normal variance (=0.001)" << std::endl;
+
+    std::cout << "Optional: -debug writes charts to obj file, as colours that override texture coordinates (=false)" << std::endl;
     return 1;
   }
 
@@ -116,6 +116,10 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-cc")) {
     cell_resolution = atoi(Utils::getCmdOption(argv, argv + argc, "-cc"));
   }
+
+  if (Utils::cmdOptionExists(argv, argv+argc, "-debug")) {
+    cluster_settings.write_charts_as_textures = true;
+  } 
 
   // std::vector<lamure::mesh::triangle_t> triangles;
 
@@ -163,14 +167,33 @@ int main( int argc, char** argv )
     std::cout << "mesh is triangulated\n";
   }
 
+  
+  //key: face_id, value: chart_id
+  std::map<uint32_t, uint32_t> chart_id_map;
 
-  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution, cluster_settings);
+#if 1
+  //skip grid clustering and go straight to "from scratch" clustering
+  uint32_t active_charts = ParallelClusterCreator::create_charts(chart_id_map, polyMesh, cost_threshold, chart_threshold, cluster_settings);
 
-  std::cout << "Grid clusters: " << active_charts << std::endl;
 
-  active_charts = ClusterCreator::create_chart_clusters_from_grid_clusters(polyMesh,cost_threshold, chart_threshold, cluster_settings, chart_id_map, active_charts);
+#else
+  //do grid clustering
+
+  //creates clusters, starting using a grid
+  // uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution, cluster_settings);
+
+  // std::cout << "Grid clusters: " << active_charts << std::endl;
+
+  //builds chart_id_map into a set of initial charts, calculates possible joins between them,
+  //and executes joins until given threshold is reached
+  // active_charts = ClusterCreator::create_chart_clusters_from_grid_clusters(polyMesh,cost_threshold, chart_threshold, cluster_settings, chart_id_map, active_charts);
+
+  uint32_t active_charts = ClusterCreator::create_chart_clusters_from_faces (polyMesh, cost_threshold , chart_threshold, cluster_settings, chart_id_map);
+
+#endif
 
   std::cout << "After creating chart clusters: " << active_charts << std::endl;
+
 
 
   //END chart creation ====================================================================================================================
@@ -180,7 +203,7 @@ int main( int argc, char** argv )
   std::string out_filename = obj_filename.substr(0,obj_filename.size()-4) + "_charts.obj";
   std::string chart_filename = obj_filename.substr(0,obj_filename.size()-4) + "_charts.chart";
   std::ofstream ofs( out_filename );
-  OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, SEPARATE_CHART_FILE, chart_filename);
+  OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, !cluster_settings.write_charts_as_textures, chart_filename);
   ofs.close();
   std::cout << "mesh was written to " << out_filename << std::endl;
 

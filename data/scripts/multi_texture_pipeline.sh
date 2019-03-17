@@ -51,12 +51,11 @@ echo "----------------------------------------------------"
 SCALE=1
 ./install/bin/lamure_vt_atlas_compiler -d ${REGR_DIR} -s ${SCALE} -o ${JPGPATH}
 
+
 #convert texture to png
 mogrify -format png ${JPGPATH}
 
 PNGPATH="${JPGPATH:0:${#JPGPATH}-3}png"
-
-
 
 #adjust texture coordinates in obj
 echo "----------------------------------------------------"
