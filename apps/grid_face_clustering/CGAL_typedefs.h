@@ -6,6 +6,16 @@
 #ifndef CGAL_TYPEDEFSH
 #define CGAL_TYPEDEFSH
 
+
+
+typedef CGAL::Simple_cartesian<double> Kernel;
+
+typedef Kernel::Vector_3 Vector;
+typedef Kernel::Vector_2 TexCoord;
+
+typedef CGAL::Point_3<Kernel> Point;
+
+
 template <class Refs, class Traits>
 struct UVFace : public CGAL::HalfedgeDS_face_base<Refs> {
 
@@ -58,6 +68,18 @@ struct XtndPoint : public Traits::Point_3 {
   double get_u () const {return texCoord.hx();}
   double get_v () const {return texCoord.hy();}
 
+  static bool float_safe_equals(Point p1, Point p2){
+    double eps = std::numeric_limits<double>::epsilon();
+    // double eps = 0.0000001;
+
+    if (std::abs(p1.x() - p2.x()) > eps
+      || std::abs(p1.y() - p2.y()) > eps
+      || std::abs(p1.z() - p2.z()) > eps)
+    {
+      return false;
+    }
+    return true;
+  }
 
 };
 
@@ -76,14 +98,6 @@ struct Custom_items : public CGAL::Polyhedron_items_with_id_3 {
       typedef UVFace<Refs, Traits> Face;
     };
 };
-
-typedef CGAL::Simple_cartesian<double> Kernel;
-
-typedef Kernel::Vector_3 Vector;
-typedef Kernel::Vector_2 TexCoord;
-
-typedef CGAL::Point_3<Kernel> Point;
-
 
 typedef CGAL::Polyhedron_3<Kernel,Custom_items> Polyhedron;
 typedef Polyhedron::HalfedgeDS HalfedgeDS;

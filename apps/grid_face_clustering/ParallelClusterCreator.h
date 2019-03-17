@@ -12,24 +12,46 @@ struct ParallelClusterCreator
                                 const uint32_t chart_threshold,
                                 CLUSTER_SETTINGS cluster_settings){
 
+
+    std::vector<Chart> charts;
+
     if (chart_id_map.size() == 0)
     {
       std::cout << "Creating charts from individual faces\n";
+
+      //create charts
+      create_initial_charts(charts, P);
+
+      //populate lookup table to allow quicker determination of whether faces are neighbours when making joins
+      populate_chart_LUT(charts, chart_id_map);
+
     }
     else {
       std::cout << "TODO: create charts from chart id map\n";
-      return chart_id_map.size();
+
+      ClusterCreator::initialise_charts_from_grid_clusters(P, chart_id_map, charts, cluster_settings);
+
+      populate_chart_LUT(charts, chart_id_map);
+
+      // check that existing chart number is not already lower than threshold
+      if (charts.size() <= chart_threshold)
+      {
+        std::cout << "Input to chart clusterer already had number of charts below chart threshold" << std::endl;
+        return charts.size();
+      }
+
+      //recalculate perimeters of charts to ensure they are correct
+      for (auto& chart : charts) {
+        chart.recalculate_perimeter_from_scratch();
+        chart.create_neighbour_set(chart_id_map);
+      } 
+
+
+      // return chart_id_map.size();
     }
 
-    //create charts
-    std::vector<Chart> charts;
-    create_initial_charts(charts, P);
-
-    //populate lookup table to allow quicker determination of whether faces are neighbours when making joins
-    populate_chart_LUT(charts, chart_id_map);
 
     //create join bank vector and queue
-    // std::vector<std::shared_ptr<JoinOperation> > joins;
     std::vector< std::shared_ptr<JoinOperation> > join_queue;
     create_joins_from_chart_vector(charts, join_queue, cluster_settings, chart_id_map);
 
@@ -93,6 +115,8 @@ struct ParallelClusterCreator
     {
       chart_neighbours.clear();
 
+
+
     // for each face in chart, find neighbours, add to chart_neighbours set
       for (auto& face : chart.facets)
       {
@@ -101,6 +125,7 @@ struct ParallelClusterCreator
         do {
           if (!fc->is_border() && !(fc->opposite()->is_border()) )//guard against no neighbour at this edge
           {
+
             //get chart id of neighbour, add to set if it is not this chart
             uint32_t nbr_face_id = fc->opposite()->facet()->id();
             uint32_t nbr_chart_id = chart_id_map[nbr_face_id];
@@ -111,6 +136,7 @@ struct ParallelClusterCreator
           }
         } while ( ++fc != face.facet_begin());
       }
+
 
 
       //create joins...
@@ -133,12 +159,6 @@ struct ParallelClusterCreator
 
     std::cout << join_queue.size() << " joins\n";
 
-    //add pointers of joins in bank to queue
-    // for(uint32_t i = 0; i < joins.size(); i++){
-    //   join_queue.push_back( std::shared_ptr<JoinOperation>( joins[i] ));
-    // }
-
-
   }
 
   //takes a list of joins and charts, and executes joins until target number of charts/cost threshold is reached
@@ -151,6 +171,11 @@ struct ParallelClusterCreator
                 CLUSTER_SETTINGS &cluster_settings,
                 std::map<uint32_t, uint32_t> &chart_id_map
                 ){
+
+    if (join_queue.empty())
+    {
+      std::cout << "ERROR: join_queue is empty - no joins possible" << std::endl;
+    }
 
     std::cout << "Clustering faces...." << std::endl;
 

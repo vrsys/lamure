@@ -44,8 +44,23 @@ Changes to clustering algorithm:
 	- how to deal with JOs in inverse index that still point to old charts?
 
 
+Finish multi texture pipeline script - done
 
-Finish multi texture pipeline script  
+
+ - error occurs with nordportal dataset - no faces join each other, every edge is a border. OBJ read error?
+	- only happens with rewritten obj (from lamure_obj_texture_atlas_modifier)
+	- need to tell CGAL which vertices are shared (use function from mesh_hierarchy input) - done
+
+//////////////////////////////////////////////////////
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////
+
 
 
 times: with zebra (original size, shrunk on obj load), to 50 charts, debug flag:
@@ -83,6 +98,7 @@ parallelised join search and cost calculation:
 
 
 
+Lion (250k faces): around 18 minutes 
 
 
 

@@ -37,7 +37,6 @@
 
 
 
-
 // Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
 
 
@@ -180,15 +179,15 @@ int main( int argc, char** argv )
   //do grid clustering
 
   //creates clusters, starting using a grid
-  // uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution, cluster_settings);
+  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution, cluster_settings);
 
-  // std::cout << "Grid clusters: " << active_charts << std::endl;
+  std::cout << "Grid clusters: " << active_charts << std::endl;
 
   //builds chart_id_map into a set of initial charts, calculates possible joins between them,
   //and executes joins until given threshold is reached
-  // active_charts = ClusterCreator::create_chart_clusters_from_grid_clusters(polyMesh,cost_threshold, chart_threshold, cluster_settings, chart_id_map, active_charts);
+  active_charts = ClusterCreator::create_chart_clusters_from_grid_clusters(polyMesh,cost_threshold, chart_threshold, cluster_settings, chart_id_map, active_charts);
 
-  uint32_t active_charts = ClusterCreator::create_chart_clusters_from_faces (polyMesh, cost_threshold , chart_threshold, cluster_settings, chart_id_map);
+  // uint32_t active_charts = ClusterCreator::create_chart_clusters_from_faces (polyMesh, cost_threshold , chart_threshold, cluster_settings, chart_id_map);
 
 #endif
 

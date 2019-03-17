@@ -15,7 +15,7 @@ struct ClusterCreator
 
     std::vector<Chart> charts;
 
-    initialise_charts_from_grid_clusters(P, chart_id_map, charts, num_initial_charts, cluster_settings);
+    initialise_charts_from_grid_clusters(P, chart_id_map, charts, cluster_settings);
 
     populate_chart_LUT(charts, chart_id_map);
 
@@ -54,7 +54,6 @@ struct ClusterCreator
   initialise_charts_from_grid_clusters(Polyhedron &P, 
                                        std::map<uint32_t, uint32_t> &chart_id_map,
                                        std::vector<Chart> &charts,
-                                       uint32_t num_initial_charts,
                                        CLUSTER_SETTINGS cluster_settings){
 
         //calculate areas of each face
