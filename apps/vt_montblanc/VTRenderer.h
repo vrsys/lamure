@@ -52,7 +52,6 @@ class VTRenderer
     void render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id);
     void render_debug_context(uint16_t context_id);
 
-    void collect_feedback(uint16_t context_id);
     void clear_buffers(uint16_t context_id);
 
     void toggle_visualization(int toggle);
@@ -61,16 +60,6 @@ class VTRenderer
 
   private:
     CutUpdate *_cut_update;
-
-    scm::shared_ptr<scm::gl::render_device> _device;
-    scm::gl::depth_stencil_state_ptr _dstate_less;
-    scm::gl::sampler_state_ptr _filter_nearest;
-    scm::gl::sampler_state_ptr _filter_linear;
-    scm::gl::rasterizer_state_ptr _ms_no_cull, _ms_cull;
-    scm::gl::blend_state_ptr _blend_state;
-
-    scm::gl::program_ptr _shader_vt;
-    scm::shared_ptr<scm::gl::wavefront_obj_geometry> _obj;
 
     float _apply_time;
 
@@ -97,12 +86,12 @@ class VTRenderer
         float _mem_slots_busy;
     };
 
-    struct data_resource
+    struct data_res
     {
         std::vector<scm::gl::texture_2d_ptr> _index_hierarchy;
     };
 
-    struct ctxt_resource
+    struct ctxt_res
     {
         scm::shared_ptr<scm::gl::render_context> _render_context;
         scm::gl::texture_2d_ptr _physical_texture;
@@ -110,12 +99,30 @@ class VTRenderer
 
         size_t _size_feedback;
         int32_t *_feedback_lod_cpu_buffer;
+#ifdef RASTERIZATION_COUNT
         uint32_t *_feedback_count_cpu_buffer;
+#endif
+        scm::gl::buffer_ptr _feedback_index_ib;
+        scm::gl::buffer_ptr _feedback_index_vb;
+        scm::gl::vertex_array_ptr _feedback_vao;
+        scm::gl::buffer_ptr _feedback_inv_index;
         scm::gl::buffer_ptr _feedback_lod_storage;
+#ifdef RASTERIZATION_COUNT
         scm::gl::buffer_ptr _feedback_count_storage;
+#endif
+
+        scm::gl::depth_stencil_state_ptr _dstate_less;
+        scm::gl::sampler_state_ptr _filter_nearest;
+        scm::gl::sampler_state_ptr _filter_linear;
+        scm::gl::rasterizer_state_ptr _ms_no_cull, _ms_cull;
+        scm::gl::blend_state_ptr _blend_state;
+
+        scm::shared_ptr<scm::gl::render_device> _device;
+        scm::gl::program_ptr _shader_vt, _shader_vt_feedback;
+        scm::shared_ptr<scm::gl::wavefront_obj_geometry> _obj;
     };
 
-    struct view_resource
+    struct view_res
     {
         uint32_t _width, _height;
         float _scale;
@@ -126,14 +133,16 @@ class VTRenderer
     void init();
 
     void apply_cut_update(uint16_t context_id);
+    void update_feedback_layout(uint16_t context_id);
+    void collect_feedback(uint16_t context_id);
     void update_index_texture(uint32_t data_id, uint16_t context_id, uint16_t level, const uint8_t *buf_cpu);
     void update_physical_texture_blockwise(uint16_t context_id, const uint8_t *buf_texel, size_t slot_position);
 
     scm::gl::data_format get_tex_format();
 
-    std::map<uint32_t, data_resource *> _data_resources;
-    std::map<uint16_t, ctxt_resource *> _ctxt_resources;
-    std::map<uint16_t, view_resource *> _view_resources;
+    std::map<uint32_t, data_res *> _data_res;
+    std::map<uint16_t, ctxt_res *> _ctxt_res;
+    std::map<uint16_t, view_res *> _view_res;
     std::map<uint64_t, debug_cut *> _cut_debug_outputs;
     std::map<uint64_t, debug_context *> _ctxt_debug_outputs;
 

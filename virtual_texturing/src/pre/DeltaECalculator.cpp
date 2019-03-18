@@ -9,6 +9,8 @@
 
 #include <cmath>
 
+#define DELTA_E_CALCULATOR_LOG_PROGRESS
+
 namespace vt
 {
 namespace pre
