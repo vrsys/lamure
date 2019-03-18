@@ -1,0 +1,11 @@
+To do:
+
+
+ - get a version of nordportal to run through the pipeline
+	- flip combined texture?
+
+ - revise chart splitting system
+ - consider normalisation of error metrics
+
+ - dilation - something from last repo could be reused?
+

@@ -1,5 +1,21 @@
 #!/bin/bash
 
+############################
+# user settings
+############################
+# charting:
+CHART_THRES=200
+CELL_RES=30
+NORMAL_VARIANCE_THRESHOLD=0.01
+
+# hierarchy creation
+TRI_BUDGET=1000
+
+#dilations
+NUM_DILATIONS=0
+
+############################
+
 echo "RUNNING MULTI TEXTURE PIPELINE"
 echo "----------------------------------------------------"
 
@@ -76,14 +92,7 @@ echo "----------------------------------------------------"
 echo "Running chart creation with file $OBJPATH"
 echo "----------------------------------------------------"
 
-CHART_THRES=200
-CELL_RES=10
-NORMAL_VARIANCE_THRESHOLD=0.002
-
 ./install/bin/lamure_grid_face_clustering -f $OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
-
-
-
 
 #create hierarchy
 echo "----------------------------------------------------"
@@ -119,9 +128,6 @@ echo "using png file $PNGPATH"
 FINAL_BVH_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.bvh"
 VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.png"
-
-
-#TODO - dilate new texture here 
 
 
 
@@ -145,13 +151,10 @@ CHARTFILE_PATH="${CHART_OBJPATH:0:${#CHART_OBJPATH}-4}.chart"
 echo "using obj file $CHART_OBJPATH"
 echo "using chart file $CHARTFILE_PATH"
 
-TRI_BUDGET="1000"
 ./install/bin/lamure_mesh_hierarchy -f $CHART_OBJPATH -cf $CHARTFILE_PATH -t $TRI_BUDGET
 
 BVH_PATH="${CHART_OBJPATH:0:${#CHART_OBJPATH}-4}.bvh"
 LODCHART_PATH="${CHART_OBJPATH:0:${#CHART_OBJPATH}-4}.lodchart"
-
-
 
 
 #create texture and LOD file with updated coordinates
@@ -170,14 +173,19 @@ VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.png"
 
 
+echo "----------------------------------------------------"
+echo "Dilation"
+echo "----------------------------------------------------"
 #dilate new texture to avoid cracks 
-NUM_DILATIONS=4
 for dilation_iteration in `seq 1 "$NUM_DILATIONS"`;
 do
   ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $FINAL_TEX_PATH
 done
 
 
+echo "----------------------------------------------------"
+echo "Visualising"
+echo "----------------------------------------------------"
 
 #create vis file and run vis app
 touch $VIS_PATH

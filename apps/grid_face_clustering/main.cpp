@@ -33,35 +33,9 @@
 
 
 
-#define SEPARATE_CHART_FILE true
-
-
-
-// Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
-
-
-
-
-
-// void count_faces_in_active_charts(std::vector<Chart> &charts) {
-//   uint32_t active_faces = 0;
-//   for (auto& chart : charts)
-//   {
-//     if (chart.active) 
-//     {
-//       active_faces += chart.facets.size();
-//     }
-//   }
-//   std::cout << "found " << active_faces << " active faces\n";
-// }
-
-
 
 int main( int argc, char** argv ) 
 {
-
-  
-
 
   std::string obj_filename = "dino.obj";
   if (Utils::cmdOptionExists(argv, argv+argc, "-f")) {
@@ -77,7 +51,7 @@ int main( int argc, char** argv )
     std::cout << "Optional: -eo specifies error orientation coefficient (=1)" << std::endl;
     std::cout << "Optional: -es specifies error shape coefficient (=1)" << std::endl;
 
-    std::cout << "Optional: -cc specifies cell resolution for grid splitting, along longest axis (=10)" << std::endl;
+    std::cout << "Optional: -cc specifies cell resolution for grid splitting, along longest axis. When 0, no cell splitting is used. (=0)" << std::endl;
     std::cout << "Optional: -ct specifies threshold for grid chart splitting by normal variance (=0.001)" << std::endl;
 
     std::cout << "Optional: -debug writes charts to obj file, as colours that override texture coordinates (=false)" << std::endl;
@@ -111,7 +85,7 @@ int main( int argc, char** argv )
 
   CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf, cst);
 
-  int cell_resolution = 10;
+  int cell_resolution = 0;
   if (Utils::cmdOptionExists(argv, argv+argc, "-cc")) {
     cell_resolution = atoi(Utils::getCmdOption(argv, argv + argc, "-cc"));
   }
@@ -120,7 +94,6 @@ int main( int argc, char** argv )
     cluster_settings.write_charts_as_textures = true;
   } 
 
-  // std::vector<lamure::mesh::triangle_t> triangles;
 
     //load OBJ into arrays
   std::vector<double> vertices;
@@ -128,9 +101,6 @@ int main( int argc, char** argv )
   std::vector<double> t_coords;
   std::vector<int> tindices;
   BoundingBoxLimits limits = Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices);
-
-
-
 
 
   if (vertices.size() == 0 ) {
@@ -169,28 +139,20 @@ int main( int argc, char** argv )
   
   //key: face_id, value: chart_id
   std::map<uint32_t, uint32_t> chart_id_map;
+  uint32_t active_charts;
 
-#if 1
-  //skip grid clustering and go straight to "from scratch" clustering
-  uint32_t active_charts = ParallelClusterCreator::create_charts(chart_id_map, polyMesh, cost_threshold, chart_threshold, cluster_settings);
+  if (cell_resolution > 0)
+  {
+    //do grid clustering
 
+    //creates clusters, starting using an arbitrary grid
+    active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution, cluster_settings);
 
-#else
-  //do grid clustering
+    std::cout << "Grid clusters: " << active_charts << std::endl;
 
-  //creates clusters, starting using a grid
-  uint32_t active_charts = GridClusterCreator::create_grid_clusters(polyMesh,chart_id_map, limits,cell_resolution, cluster_settings);
+  }
 
-  std::cout << "Grid clusters: " << active_charts << std::endl;
-
-  //builds chart_id_map into a set of initial charts, calculates possible joins between them,
-  //and executes joins until given threshold is reached
-  active_charts = ClusterCreator::create_chart_clusters_from_grid_clusters(polyMesh,cost_threshold, chart_threshold, cluster_settings, chart_id_map, active_charts);
-
-  // uint32_t active_charts = ClusterCreator::create_chart_clusters_from_faces (polyMesh, cost_threshold , chart_threshold, cluster_settings, chart_id_map);
-
-#endif
-
+  active_charts = ParallelClusterCreator::create_charts(chart_id_map, polyMesh, cost_threshold, chart_threshold, cluster_settings);
   std::cout << "After creating chart clusters: " << active_charts << std::endl;
 
 
@@ -213,7 +175,6 @@ int main( int argc, char** argv )
   std::string log_path = "../../data/logs/chart_creation_log.txt";
   ofs.open (log_path, std::ofstream::out | std::ofstream::app);
   ofs << "\n-------------------------------------\n";
-  
   ofs << "Executed at " << std::put_time(std::localtime(&now_c), "%F %T") << std::endl;
   ofs << "Ran for " << (int)diff.count() / 60 << " m "<< (int)diff.count() % 60 << " s" << std::endl;
   ofs << "Input file: " << obj_filename << "\nOutput file: " << out_filename << std::endl;
@@ -222,7 +183,7 @@ int main( int argc, char** argv )
   ofs << "Cost threshold: " << cost_threshold << std::endl;
   ofs << "Cluster settings: e_fit: " << cluster_settings.e_fit_cf << ", e_ori: " << cluster_settings.e_ori_cf << ", e_shape: " << cluster_settings.e_shape_cf << std::endl;
 
-    ofs.close();
+  ofs.close();
   std::cout << "Log written to " << log_path << std::endl;
 
 

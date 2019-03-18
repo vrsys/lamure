@@ -31,11 +31,9 @@ struct Cluster
 		add_face(tri, area, normal, centroid);
 
 		depth = 0;
-
-
 	}
 
-	void add_face(uint32_t tri, double area,Vector normal, Point centroid){
+	void add_face(uint32_t tri, double area, Vector normal, Point centroid){
 		triangles.push_back(tri);
 		areas.push_back(area);
 		normals.push_back(normal);
@@ -165,8 +163,6 @@ struct GridClusterCreator
 	static uint32_t correct_split_charts(Polyhedron &P,
 									 std::map<uint32_t, uint32_t> &chart_id_map,
 									 uint32_t num_charts_created){
-
-		//TODO check continuity of mesh groups - split charts can occur
 
 		//start from one face, grow cluster by adding its neighbours to set
 		//add their neighbours to the set
@@ -318,6 +314,8 @@ struct GridClusterCreator
 
 	//splits charts recursively by an error metric
 	//return total number of charts
+	//
+	//aims to avoid non-planar initial chartsthat may result from grid-initialisation
 	static uint32_t split_charts(Polyhedron &P,
 									 std::map<uint32_t, uint32_t> &chart_id_map,
 									 std::vector<Point> centroids,

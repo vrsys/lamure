@@ -27,8 +27,8 @@ struct ParallelClusterCreator
 
     }
     else {
-      std::cout << "TODO: create charts from chart id map\n";
 
+      std::cout << "Creating charts from grid based initial splitting\n";
       ClusterCreator::initialise_charts_from_grid_clusters(P, chart_id_map, charts, cluster_settings);
 
       populate_chart_LUT(charts, chart_id_map);

@@ -129,6 +129,13 @@ public:
 
           Facet_handle fh = B.begin_facet();
           fh->id() = face_count++;
+
+                    //add tex coords 
+          TexCoord tc1 ( vertices_indexed[tris_indexed[i]].get_u() , vertices_indexed[tris_indexed[i]].get_v() );
+          TexCoord tc2 ( vertices_indexed[tris_indexed[i+1]].get_u() , vertices_indexed[tris_indexed[i+1]].get_v() );
+          TexCoord tc3 ( vertices_indexed[tris_indexed[i+2]].get_u() , vertices_indexed[tris_indexed[i+2]].get_v() );
+          fh->add_tex_coords(tc1,tc2,tc3);
+
           B.add_vertex_to_facet(tris_indexed[i]);
           B.add_vertex_to_facet(tris_indexed[i+1]);
           B.add_vertex_to_facet(tris_indexed[i+2]);
@@ -178,7 +185,7 @@ public:
           Facet_handle fh = B.begin_facet();
           fh->id() = face_count++;
 
-          //add tex coords - needed any more?
+          //add tex coords 
           TexCoord tc1 ( tcoords[ tindices[i+0]*2 ] , tcoords[ (tindices[i+0]*2)+1 ] );
           TexCoord tc2 ( tcoords[ tindices[i+1]*2 ] , tcoords[ (tindices[i+1]*2)+1 ] );
           TexCoord tc3 ( tcoords[ tindices[i+2]*2 ] , tcoords[ (tindices[i+2]*2)+1 ] );

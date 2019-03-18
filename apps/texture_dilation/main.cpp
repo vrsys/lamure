@@ -572,6 +572,8 @@ int main(int argc, char **argv) {
   //load the texture png file
   load_image(in_undilated_texture_file);
 
+  std::cout << "Loaded image for dilation.\n";
+
 
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);

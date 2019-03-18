@@ -659,11 +659,11 @@ void glut_display() {
 
   frame_buffer_->enable();
 
-
   //set the viewport, background color, and reset default framebuffer
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
   glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
   //use the shader program we created
   glUseProgram(shader_program_);
@@ -679,11 +679,13 @@ void glut_display() {
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
 
+
   //get texture location
   int slot = 0;
   glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
   glActiveTexture(GL_TEXTURE0 + slot);
   texture_->enable(slot);
+
 
   //draw triangles from the currently bound buffer
   glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
@@ -692,13 +694,15 @@ void glut_display() {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glUseProgram(0);
 
+
   texture_->disable();
 
   frame_buffer_->disable();
 
-  //frame_buffer_->draw(0);
 
   save_image(outfile_name, frame_buffer_);
+
+  std::cout << " image saved\n";
 
   exit(1);
 
@@ -1115,16 +1119,21 @@ int main(int argc, char *argv[]) {
   //for each chart, calculate relative size of real space to new tex space
   calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
 
-    //print pixel ratios per chart
-  for (auto& chart : charts)
-  {
-    std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
-    std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
-  }
+  //   //print pixel ratios per chart
+  // for (auto& chart : charts)
+  // {
+  //   std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
+  //   std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+  // }
 
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
   const double target_percentage_charts_with_enough_pixels = 1.0;
   while (!is_output_texture_big_enough(charts, target_percentage_charts_with_enough_pixels)) {
+
+    //limit texture size
+    if (std::max(window_width_, window_height_) >= 8192){
+      break;
+    }
 
     window_width_  *= 2;
     window_height_ *= 2;
@@ -1133,8 +1142,7 @@ int main(int argc, char *argv[]) {
 
     calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
 
-    //limit texture size
-    if (std::max(window_width_, window_height_) >= 8192){break;}
+
   }
 
 
