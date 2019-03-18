@@ -484,27 +484,29 @@ void bvh::get_descendant_nodes(const node_id_type node, std::vector<node_id_type
     }
 }
 
-std::vector<std::pair<surfel_id_t, real>> bvh::get_nearest_neighbours(const surfel_id_t target_surfel, const uint32_t number_of_neighbours, const bool do_local_search) const
+std::vector<std::pair<surfel_id_t, real>> bvh::get_nearest_neighbours(surfel_id_t const target_surfel, uint32_t const number_of_neighbours, bool const do_local_search) const
 {
     node_id_type current_node = target_surfel.node_idx;
     std::unordered_set<size_t> processed_nodes;
     vec3r center = nodes_[target_surfel.node_idx].mem_array().read_surfel_ref(target_surfel.surfel_idx).pos();
 
     std::vector<std::pair<surfel_id_t, real>> candidates;
-    real max_candidate_distance = std::numeric_limits<real>::infinity();
+    real max_candidate_distance = std::numeric_limits<real>::max();
 
     // check own node
     for(size_t i = 0; i < nodes_[current_node].mem_array().length(); ++i)
     {
         if(i != target_surfel.surfel_idx)
         {
-            const surfel &current_surfel = nodes_[current_node].mem_array().read_surfel_ref(i);
+            surfel const& current_surfel = nodes_[current_node].mem_array().read_surfel_ref(i);
             real distance_to_center = scm::math::length_sqr(center - current_surfel.pos());
 
             if(candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
             {
-                if(candidates.size() == number_of_neighbours)
+                // we found a neighbor which is closer than our most distant neighbor 
+                if(candidates.size() == number_of_neighbours) {
                     candidates.pop_back();
+                }
 
                 candidates.emplace_back(surfel_id_t{current_node, i}, distance_to_center);
 
@@ -556,8 +558,10 @@ std::vector<std::pair<surfel_id_t, real>> bvh::get_nearest_neighbours(const surf
 
                         if(candidates.size() < number_of_neighbours || (distance_to_center < max_candidate_distance))
                         {
-                            if(candidates.size() == number_of_neighbours)
+                            // we found a neighbor which is closer than our most distant neighbor 
+                            if(candidates.size() == number_of_neighbours) {
                                 candidates.pop_back();
+                            }
 
                             candidates.emplace_back(surfel_id_t{adjacent_node, i}, distance_to_center);
 
@@ -1318,7 +1322,7 @@ void bvh::thread_remove_outlier_jobs(const uint32_t start_marker, const uint32_t
 
             if(nearest_neighbour_vector.size())
             {
-                for(auto const &nearest_neighbour_pair : nearest_neighbour_vector)
+                for(auto const& nearest_neighbour_pair : nearest_neighbour_vector)
                 {
                     avg_dist += nearest_neighbour_pair.second;
                 }
@@ -1629,19 +1633,22 @@ surfel_vector bvh::remove_outliers_statistically(uint32_t num_outliers, uint16_t
 
     for(uint32_t thread_idx = 0; thread_idx < num_threads; ++thread_idx)
     {
-        threads.push_back(std::thread(&bvh::thread_remove_outlier_jobs, this, first_leaf_, nodes_.size(), num_outliers, num_neighbours, std::ref(intermediate_outliers[thread_idx])));
+        //start thread to remove outliers on subset of surfels
+        threads.push_back(std::thread(&bvh::thread_remove_outlier_jobs, this, 
+                                       first_leaf_, nodes_.size(), num_outliers, num_neighbours, 
+                                       std::ref(intermediate_outliers[thread_idx])));
     }
 
-    for(auto &thread : threads)
+    for(auto& thread : threads)
     {
         thread.join();
     }
 
     std::vector<std::pair<surfel_id_t, real>> final_outliers;
 
-    for(auto const &ve : intermediate_outliers)
+    for(auto const& ve : intermediate_outliers)
     {
-        for(auto const &element : ve)
+        for(auto const& element : ve)
         {
             bool insert_element = false;
             if(final_outliers.size() < num_outliers)
@@ -1694,7 +1701,9 @@ surfel_vector bvh::remove_outliers_statistically(uint32_t num_outliers, uint16_t
         {
             if(outlier_ids.end() == outlier_ids.find(surfel_id_t(node_idx, surfel_idx)))
             {
-                cleaned_surfels.emplace_back(current_node->mem_array().read_surfel(surfel_idx));
+                auto current_untranslated_surfel = current_node->mem_array().read_surfel(surfel_idx);
+                current_untranslated_surfel.pos() = current_untranslated_surfel.pos() + translation_;
+                cleaned_surfels.emplace_back(current_untranslated_surfel);
             }
         }
     }
