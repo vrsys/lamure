@@ -64,7 +64,7 @@ echo "----------------------------------------------------"
 echo "Compiling texture in folder $REGR_DIR"
 echo "----------------------------------------------------"
 
-SCALE=1
+SCALE=0.3
 ./install/bin/lamure_vt_atlas_compiler -d ${REGR_DIR} -s ${SCALE} -o ${JPGPATH}
 
 

@@ -659,6 +659,18 @@ void glut_display() {
 
   frame_buffer_->enable();
 
+  //for num textures
+   
+   //gather all tris (vertices) correspond to current texture in avector
+   
+   //upload this vector to GPU (vertex_buffer_)
+  //  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+  //glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload[0], GL_STATIC_DRAW);
+  //glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+      //load the texture png file corresp. to the current loop iteration
+    //texture_ = load_image(texture_filename);
+
   //set the viewport, background color, and reset default framebuffer
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
   glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
@@ -684,6 +696,8 @@ void glut_display() {
   int slot = 0;
   glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
   glActiveTexture(GL_TEXTURE0 + slot);
+  
+  //here, enable the current texture
   texture_->enable(slot);
 
 
@@ -696,6 +710,8 @@ void glut_display() {
 
 
   texture_->disable();
+
+  //end of your loop
 
   frame_buffer_->disable();
 
