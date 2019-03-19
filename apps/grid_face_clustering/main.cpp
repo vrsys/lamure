@@ -94,13 +94,14 @@ int main( int argc, char** argv )
     cluster_settings.write_charts_as_textures = true;
   } 
 
+  std::vector<std::string> materials;
 
     //load OBJ into arrays
   std::vector<double> vertices;
   std::vector<int> tris;
   std::vector<double> t_coords;
   std::vector<int> tindices;
-  BoundingBoxLimits limits = Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices);
+  BoundingBoxLimits limits = Utils::load_obj( obj_filename, vertices, tris, t_coords, tindices, materials);
 
 
   if (vertices.size() == 0 ) {
@@ -109,6 +110,27 @@ int main( int argc, char** argv )
   }
   // std::cout << "Mesh loaded (" << triangles.size() << " triangles, " << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
   std::cout << "Mesh loaded (" << vertices.size() / 3 << " vertices, " << tris.size() / 3 << " faces, " << t_coords.size() / 2 << " tex coords)" << std::endl;
+
+
+  std::cout << "loading mtl..." << std::endl;
+  std::string mtl_filename = obj_filename.substr(0, obj_filename.size()-4)+".mtl";
+  std::map<std::string, std::string> material_map;
+  bool load_mtl_success = Utils::load_mtl(mtl_filename, material_map);
+
+  //create face to texture id (implicit id = face, value = texture id)
+  std::vector<int> face_textures;
+  if (load_mtl_success)
+  {
+    for (uint32_t i = 0; i < tris.size() / 3; ++i)
+    {
+      // todo find the texture id for this face and add to list
+    }
+
+  }
+  else {
+    //default texture ids of 0 for every face
+    face_textures.resize(tris.size() / 3);
+  }
 
   
   //START chart creation ====================================================================================================================
