@@ -7,11 +7,7 @@ To do:
  - revise chart splitting system
  - consider normalisation of error metrics
 
- - dilation - something from last repo could be reused?
-
-
-
-
+ - "Creating charts from grid clusters..." parallelisable?
 
 
 Priorities for final 2 weeks of project:

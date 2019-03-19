@@ -34,31 +34,6 @@
 #include <cstdlib>
 
 
-
-// class CGAL_EXPORT File_writer_wavefront_xtnd {
-//     std::ostream*  m_out;
-//     std::size_t    m_facets;
-// public:
-//     std::ostream& out() const { return *m_out; }
-//     void write_header( std::ostream& out,
-//                        std::size_t vertices,
-//                        std::size_t halfedges,
-//                        std::size_t facets);
-//     void write_footer() const {
-//         out() << "\n# End of Wavefront obj format #" << std::endl;
-//     }
-//     void write_vertex( const double& x, const double& y, const double& z) {
-//         out() << "v " << x << ' ' << y << ' ' << z << '\n';
-//     }
-//     void write_facet_header() {
-//         out() << "\n# " << m_facets << " facets\n";
-//         out() << "# ------------------------------------------\n\n";
-//     }
-//     void write_facet_begin( std::size_t)            { out() << "f "; }
-//     void write_facet_vertex_index( std::size_t idx) { out() << ' ' << idx+1; }
-//     void write_facet_end()                          { out() << '\n'; }
-// };
-
 class File_writer_wavefront_xtnd : public CGAL::File_writer_wavefront {
 public:
 
@@ -88,8 +63,6 @@ public:
 
     void write_facet_vertex_index( std::size_t idx, int tex_idx, int normal_idx) {
     	out << ' ' << idx+1 << "/" << tex_idx+1 << "/" << normal_idx+1; 
-    	// out << ' ' << idx+1 << "/" << tex_idx+1; 
-    	// out() << ' ' << idx+1; 
     }
 
 };
@@ -108,17 +81,9 @@ struct OBJ_printer
 	    File_writer_wavefront_xtnd  writer(out);
 	    generic_print_polyhedron( out, P, writer, chart_id_map, active_charts, SEPARATE_CHART_FILE, chart_filename);
 
-	 //      for (auto const& chart : chart_id_map)
-  // {
-  //     std::cout << chart.first  // string (key)
-  //               << ':' 
-  //               << chart.second // string's value 
-  //               << std::endl ;
-  // }
 	}
 
 	template <class Polyhedron, class Writer>
-	// template <class Polyhedron>
 	static void
 	generic_print_polyhedron( std::ostream&     out, 
 	                          const Polyhedron& P,
@@ -153,13 +118,6 @@ struct OBJ_printer
 
 	    if (SEPARATE_CHART_FILE)
 	    {
-	    	//write tex coords - actual texture coordinates:
-			// writer.write_tex_coord_header(P.size_of_vertices());
-	  //   	for( VCI vi = P.vertices_begin(); vi != P.vertices_end(); ++vi) {
-	  //       	writer.write_tex_coord( ::CGAL::to_double( vi->point().get_u()),
-	  //                               	::CGAL::to_double( vi->point().get_v()));
-	  //   	}
-
 	    	writer.write_tex_coord_header(P.size_of_facets() * 3);
 	    	//for each face, write tex coords
 	    	for( FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
@@ -228,14 +186,10 @@ struct OBJ_printer
 	        	}
 	        	else {
 
-	        		//debug 
-	        		if (chart_id == 99999)
-	        		{
-	        			chart_id = active_charts;
-	        		}
-
 	        		writer.write_facet_vertex_index( index[ VCI(hc->vertex())], chart_id,face_id); // for chart colours
-	        		// std::cout << "chart_id: " << chart_id << std::endl;
+
+	        		//to check texture index loading.and carry-through
+	        		// writer.write_facet_vertex_index( index[ VCI(hc->vertex())], fi->tex_id, face_id);
 	        	}
 
 	            ++hc;

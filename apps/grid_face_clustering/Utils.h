@@ -170,7 +170,7 @@ struct Utils
 
 	}
 
-	static bool load_mtl(const std::string& mtl_filename, std::map<std::string, std::string>& material_map) {
+	static bool load_mtl(const std::string& mtl_filename, std::map<std::string, std::pair<std::string, int> >& material_map) {
 
 	    //parse .mtl file
 	    std::cout << "loading .mtl file ..." << std::endl;
@@ -181,6 +181,7 @@ struct Utils
 	    }
 
 	    std::string current_material = "";
+	    int material_index = 0;
 
 	    std::string line;
 	    while (std::getline(mtl_file, line)) {
@@ -193,14 +194,17 @@ struct Utils
 	          boost::trim(current_material);
 	          current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
 	          std::cout << "found: " << current_material << std::endl;
-	          material_map[current_material] = "";
+	          material_map[current_material] = std::make_pair("",-1);
 	        }
 	        else if (line.substr(0, 6) == "map_Kd") {
+
 	          std::string current_texture = line.substr(7);
 	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
 	          boost::trim(current_texture);
-	          std::cout << current_material << " -> " << current_texture << std::endl;
-	          material_map[current_material] =  current_texture;
+	          
+	          std::cout << current_material << " -> " << current_texture << ", " << material_index << std::endl;
+	          material_map[current_material] =  std::make_pair(current_texture, material_index);
+	          material_index++;
 	        }
 	      }
 	    
@@ -210,6 +214,17 @@ struct Utils
 
 	    return true;
 
+	}
+
+	//writes the texture id of each face of a polyhedron into a text file
+	static void write_tex_id_file(Polyhedron &P, std::string tex_file_name) {
+		//write chart file
+	    std::ofstream ocfs( tex_file_name );
+		for( Facet_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {    
+	        ocfs << fi->tex_id << " ";
+		}
+		ocfs.close();
+		std::cout << "Texture id per face file written to:  " << tex_file_name << std::endl;
 	}
 
 };

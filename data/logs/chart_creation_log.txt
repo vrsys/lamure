@@ -3659,3 +3659,73 @@ Vertices: 21305 , faces: 40310
 Desired Charts: 50, active charts: 50
 Cost threshold: 1.79769e+308
 Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-19 15:17:14
+Ran for 0 m 2 s
+Input file: data/cluster_update/zebra.obj
+Output file: data/cluster_update/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 200, active charts: 43
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-19 15:22:21
+Ran for 0 m 2 s
+Input file: data/adding_tex_ids/zebra.obj
+Output file: data/adding_tex_ids/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 200, active charts: 43
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-19 15:34:02
+Ran for 0 m 49 s
+Input file: data/adding_tex_ids/nordportal/Nordportal.obj
+Output file: data/adding_tex_ids/nordportal/Nordportal_charts.obj
+Vertices: 253540 , faces: 500000
+Desired Charts: 200, active charts: 200
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-19 16:27:45
+Ran for 0 m 1 s
+Input file: data/adding_tex_ids/zebra/zebra.obj
+Output file: data/adding_tex_ids/zebra/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 200, active charts: 43
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-19 16:28:15
+Ran for 0 m 2 s
+Input file: data/adding_tex_ids/zebra/zebra.obj
+Output file: data/adding_tex_ids/zebra/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 200, active charts: 43
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-19 16:28:35
+Ran for 0 m 2 s
+Input file: data/adding_tex_ids/zebra/zebra.obj
+Output file: data/adding_tex_ids/zebra/zebra_charts.obj
+Vertices: 21305 , faces: 40310
+Desired Charts: 200, active charts: 43
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1
+
+-------------------------------------
+Executed at 2019-03-19 17:07:43
+Ran for 0 m 48 s
+Input file: data/adding_tex_ids/nordportal/Nordportal.obj
+Output file: data/adding_tex_ids/nordportal/Nordportal_charts.obj
+Vertices: 253540 , faces: 500000
+Desired Charts: 200, active charts: 200
+Cost threshold: 1.79769e+308
+Cluster settings: e_fit: 1, e_ori: 1, e_shape: 1

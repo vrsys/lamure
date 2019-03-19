@@ -114,23 +114,26 @@ int main( int argc, char** argv )
 
   std::cout << "loading mtl..." << std::endl;
   std::string mtl_filename = obj_filename.substr(0, obj_filename.size()-4)+".mtl";
-  std::map<std::string, std::string> material_map;
+  std::map<std::string, std::pair<std::string, int> > material_map;
   bool load_mtl_success = Utils::load_mtl(mtl_filename, material_map);
 
-  //create face to texture id (implicit id = face, value = texture id)
+  //create face to texture id vector (implicit id = face, value = texture id)
+  if (materials.size() != 0 && materials.size() != tris.size() / 3)
+  {
+    std::cout << "WARNING: incorrect amount of materials found, given number of incoming triangles.\nTriangles will be rendered from first texture by default\n";
+  }
   std::vector<int> face_textures;
   if (load_mtl_success)
   {
     for (uint32_t i = 0; i < tris.size() / 3; ++i)
     {
       // todo find the texture id for this face and add to list
+      std::string mat = materials[i];
+      int mat_index = material_map[mat].second;
+      face_textures.push_back(mat_index);
     }
+  }
 
-  }
-  else {
-    //default texture ids of 0 for every face
-    face_textures.resize(tris.size() / 3);
-  }
 
   
   //START chart creation ====================================================================================================================
@@ -141,7 +144,7 @@ int main( int argc, char** argv )
   // build a polyhedron from the loaded arrays
   Polyhedron polyMesh;
   bool check_vertices = true;
-  polyhedron_builder<HalfedgeDS> builder( vertices, tris, t_coords, tindices, check_vertices );
+  polyhedron_builder<HalfedgeDS> builder( vertices, tris, t_coords, tindices, check_vertices, face_textures );
   polyMesh.delegate( builder );
 
 
@@ -207,6 +210,14 @@ int main( int argc, char** argv )
 
   ofs.close();
   std::cout << "Log written to " << log_path << std::endl;
+
+  //write tex id file if necessary
+  if (face_textures.size() > 0){
+    std::string tex_file_name = out_filename.substr(0,out_filename.size()-4) + ".texid";
+    Utils::write_tex_id_file(polyMesh, tex_file_name);
+  }
+  
+
 
 
 
