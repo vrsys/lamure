@@ -2,7 +2,7 @@ To do:
 
 
  - get a version of nordportal to run through the pipeline
-	- flip combined texture?
+	- flip combined texture? - done
 
  - revise chart splitting system
  - consider normalisation of error metrics

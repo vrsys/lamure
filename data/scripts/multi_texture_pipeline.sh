@@ -73,6 +73,10 @@ mogrify -format png ${JPGPATH}
 
 PNGPATH="${JPGPATH:0:${#JPGPATH}-3}png"
 
+echo "Flipping texture image"
+mogrify -flip ${PNGPATH}
+
+
 #adjust texture coordinates in obj
 echo "----------------------------------------------------"
 echo "Updating OBJ texture coordinates"

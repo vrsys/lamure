@@ -30,7 +30,7 @@ echo "detected $# arguments"
 if [[ $# != 2 ]]; then
 	#input files
 	SRC_OBJPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra_small.obj"
-	SRC_PNGPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra-atlas-flip.png"
+	SRC_PNGPATH="/home/hoqe4365/Desktop/lamure/lamure/install/bin/data/zebra/zebra-atlas.png"
 else 
 
 	SRC_OBJPATH=$1
@@ -57,6 +57,8 @@ cp $SRC_PNGPATH $REGR_DIR
 OBJPATH="$REGR_DIR/$(basename $SRC_OBJPATH)"
 PNGPATH="$REGR_DIR/$(basename $SRC_PNGPATH)"
 
+echo "Flipping texture image"
+mogrify -flip ${PNGPATH}
 
 #create charts
 echo "----------------------------------------------------"
