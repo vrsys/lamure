@@ -21,6 +21,7 @@
 #include "lodepng.h"
 #include "texture.h"
 #include "frame_buffer.h"
+#include "Utils.h"
 
 
 struct vertex {
@@ -34,6 +35,7 @@ struct triangle {
   vertex v0_;
   vertex v1_;
   vertex v2_;
+  int tex_id;
 };
 
 struct rectangle {
@@ -73,6 +75,8 @@ int window_height_ = 1024;
 
 int elapsed_ms_ = 0;
 int num_vertices_ = 0;
+
+std::vector<GLuint> vertex_buffers_;
 
 
 GLuint shader_program_; //contains GPU-code
@@ -131,6 +135,62 @@ int load_chart_file(std::string chart_file, std::vector<int>& chart_id_per_trian
 }
 
 
+//reads an ".lodtexid" file into a vector, returns number of textures (highest texture id + 1)
+int load_tex_id_file(std::string tex_id_file_name, std::vector<int>& tex_id_per_triangle){
+
+  int num_textures = 0;
+
+  std::ifstream file(tex_id_file_name);
+
+  if(!file.good()){
+    std::cout << "No texture ID file was found ( searched for " << tex_id_file_name << ")\n";
+    return 0;
+  }
+  std::cout << "Found texture ids in file: " << tex_id_file_name << std::endl;
+
+  std::string line;
+  while (std::getline(file, line)) {
+    std::stringstream ss(line);
+    std::string tex_id_str;
+
+    while (std::getline(ss, tex_id_str, ' ')) {
+      
+      int tex_id = atoi(tex_id_str.c_str());
+      num_textures = std::max(num_textures, tex_id+1);
+      tex_id_per_triangle.push_back(tex_id);
+    }
+  }
+
+  file.close();
+  return num_textures;
+}
+
+
+//gets texture ids from file
+//applies texture ids to triangle vector
+int 
+load_tex_ids(std::string tex_id_file_name, std::vector<triangle>& triangles, int first_leaf_tri_offset){
+    
+    std::vector<int> tex_id_per_triangle;
+    int num_textures = load_tex_id_file(tex_id_file_name, tex_id_per_triangle);
+    std::cout << "Found " << num_textures << " input textures" << std::endl;
+    //apply texture ids to triangles
+    if (tex_id_per_triangle.size() > 0)
+    {
+      std::cout << "Attempting to apply tex ids to triangles..." << std::endl;
+      if (tex_id_per_triangle.size() != triangles.size())
+      {
+        std::cout << "Warning: some triangles did not have texture ids. They will be rendered from the first texture loaded\n";
+
+        std::cout << "Triangles: " << triangles.size() << " input tex ids: " << tex_id_per_triangle.size() << std::endl;
+      }
+      for (uint32_t i = 0; i < std::min(tex_id_per_triangle.size() - first_leaf_tri_offset, triangles.size()); ++i){
+        triangles[i].tex_id = tex_id_per_triangle[i + first_leaf_tri_offset];
+      }
+    }
+
+    return num_textures;
+}
 
 std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   std::vector<unsigned char> img;
@@ -1018,6 +1078,27 @@ int main(int argc, char *argv[]) {
     std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
 
 
+    //load texture ids and apply to triangles
+    std::string tex_id_file_name = bvh_filename.substr(0,bvh_filename.length()-4).append(".lodtexid");
+    int first_leaf_triangle_id = first_leaf * (vertices_per_node / 3);
+    int num_textures = load_tex_ids(tex_id_file_name, triangles, first_leaf_triangle_id);
+
+    if (num_textures > 0)
+    {
+      //load mtl to get texture paths
+      std::cout << "loading mtl..." << std::endl;
+      std::string mtl_filename = bvh_filename.substr(0, bvh_filename.size()-11) + ".mtl"; //remove "_charts.bvh" suffix from bvh name 
+      std::vector<std::string> texture_paths;
+      bool load_mtl_success = Utils::load_tex_paths_from_mtl(mtl_filename, texture_paths);
+
+      if (texture_paths.size() < num_textures)
+      {
+        std::cout << "WARNING: not enough textures were found in the material file";
+        num_textures = texture_paths.size();
+      }
+    }
+
+
     //for each chart, calculate relative size of real space to original tex space
     calculate_chart_tex_space_sizes(USE_OLD_COORDS, charts, triangles, texture_->get_width(), texture_->get_height());
 
@@ -1056,6 +1137,10 @@ int main(int argc, char *argv[]) {
   //apply new coordinates and pack tris
 
   //pack tris
+
+  //use 2D array to account for different textures (if no textures were found, make sure it has at least one row)
+  std::vector<std::vector<blit_vertex> > to_upload_per_texture (std::max(num_textures,1));
+
   std::vector<blit_vertex> to_upload;
 
   for (int chart_id = 0; chart_id < charts.size(); ++chart_id) {
@@ -1124,9 +1209,16 @@ int main(int argc, char *argv[]) {
       //  std::cout << "v2: " << triangles[tri_id].v2_.new_coord_.x 
       //  << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
 
-       to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
-       to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
-       to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+      to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
+      to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
+      to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+
+      //pack to 2D upload array
+      //limit texture id to number of textures that were found
+      int texture_id = std::min( triangles[tri_id].tex_id , num_textures );
+      to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
+      to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
+      to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
     } 
   }
 
@@ -1282,6 +1374,7 @@ int main(int argc, char *argv[]) {
 
   //fill the vertex buffer
   num_vertices_ = to_upload.size();
+  // num_vertices_ = to_upload_per_texture[0].size();
 
   //create a vertex buffer and populate it with our data
   glGenBuffers(1, &vertex_buffer_);
