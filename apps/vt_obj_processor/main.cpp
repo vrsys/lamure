@@ -248,11 +248,13 @@ void load_mtl(const std::string& mtl_filename, std::map<std::string, std::string
         if (line.substr(0, 6) == "newmtl") {
           current_material = line.substr(7);
           current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
+          current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
           material_map[current_material] = "";
         }
         else if (line.substr(0, 6) == "map_Kd") {
           std::string current_texture = line.substr(7);
           current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
+          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\r'), current_texture.end());
           std::cout << current_material << " -> " << current_texture << std::endl;
           material_map[current_material] =  current_texture;
         }
@@ -467,43 +469,46 @@ int32_t main(int argc, char *argv[]) {
 
   
   std::cout << "writing obj..." << std::endl;
-  std::string obj_out_filename = obj_filename.substr(0, obj_filename.size()-4)+"_vt.obj";
 
+  std::string obj_out_filename = obj_filename.substr(0, obj_filename.size()-4)+"_vt.obj";
   std::ofstream obj_out_file(obj_out_filename.c_str());
 
-  obj_out_file << "mtllib atlas.mtl" << std::endl;
+  std::stringstream obj_out_str;
+  obj_out_str << "mtllib atlas.mtl" << std::endl;
 
   //write v
   for (const auto& tri : triangles) {
-    obj_out_file << "v " << tri.v0_.pos_.x << " " << tri.v0_.pos_.y << " " << tri.v0_.pos_.z << std::endl;
-    obj_out_file << "v " << tri.v1_.pos_.x << " " << tri.v1_.pos_.y << " " << tri.v1_.pos_.z << std::endl;
-    obj_out_file << "v " << tri.v2_.pos_.x << " " << tri.v2_.pos_.y << " " << tri.v2_.pos_.z << std::endl;
+    obj_out_str << "v " << tri.v0_.pos_.x << " " << tri.v0_.pos_.y << " " << tri.v0_.pos_.z << std::endl;
+    obj_out_str << "v " << tri.v1_.pos_.x << " " << tri.v1_.pos_.y << " " << tri.v1_.pos_.z << std::endl;
+    obj_out_str << "v " << tri.v2_.pos_.x << " " << tri.v2_.pos_.y << " " << tri.v2_.pos_.z << std::endl;
   }
 
   //write vn
   for (const auto& tri : triangles) {
-    obj_out_file << "vn " << tri.v0_.nml_.x << " " << tri.v0_.nml_.y << " " << tri.v0_.nml_.z << std::endl;
-    obj_out_file << "vn " << tri.v1_.nml_.x << " " << tri.v1_.nml_.y << " " << tri.v1_.nml_.z << std::endl;
-    obj_out_file << "vn " << tri.v2_.nml_.x << " " << tri.v2_.nml_.y << " " << tri.v2_.nml_.z << std::endl;
+    obj_out_str << "vn " << tri.v0_.nml_.x << " " << tri.v0_.nml_.y << " " << tri.v0_.nml_.z << std::endl;
+    obj_out_str << "vn " << tri.v1_.nml_.x << " " << tri.v1_.nml_.y << " " << tri.v1_.nml_.z << std::endl;
+    obj_out_str << "vn " << tri.v2_.nml_.x << " " << tri.v2_.nml_.y << " " << tri.v2_.nml_.z << std::endl;
   }
 
   //write vt
   for (const auto& tri : triangles) {
-    obj_out_file << "vt " << tri.v0_.tex_.x << " " << tri.v0_.tex_.y << std::endl;
-    obj_out_file << "vt " << tri.v1_.tex_.x << " " << tri.v1_.tex_.y << std::endl;
-    obj_out_file << "vt " << tri.v2_.tex_.x << " " << tri.v2_.tex_.y << std::endl;
+    obj_out_str << "vt " << tri.v0_.tex_.x << " " << tri.v0_.tex_.y << std::endl;
+    obj_out_str << "vt " << tri.v1_.tex_.x << " " << tri.v1_.tex_.y << std::endl;
+    obj_out_str << "vt " << tri.v2_.tex_.x << " " << tri.v2_.tex_.y << std::endl;
   }
 
-  obj_out_file << "g vt_mesh" << std::endl;
-  obj_out_file << "usemtl atlas" << std::endl;
+  obj_out_str << "g vt_mesh" << std::endl;
+  obj_out_str << "usemtl atlas" << std::endl;
 
   //write f
   for (uint32_t i = 0; i < triangles.size(); ++i) {
-    obj_out_file << "f " << i*3+1 << "/" << i*3+1 << "/" << i*3+1;
-    obj_out_file << " " << i*3+2 << "/" << i*3+2 << "/" << i*3+2;
-    obj_out_file << " " << i*3+3 << "/" << i*3+3 << "/" << i*3+3 << std::endl;
+    obj_out_str << "f " << i*3+1 << "/" << i*3+1 << "/" << i*3+1;
+    obj_out_str << " " << i*3+2 << "/" << i*3+2 << "/" << i*3+2;
+    obj_out_str << " " << i*3+3 << "/" << i*3+3 << "/" << i*3+3 << std::endl;
 
   }
+
+  obj_out_file << obj_out_str.str();
 
   obj_out_file.close();
   std::cout << "obj written to " << obj_out_filename << std::endl;
