@@ -29,15 +29,15 @@ struct ParallelClusterCreator
     else {
 
       std::cout << "Creating charts from grid based initial splitting\n";
-      ClusterCreator::initialise_charts_from_grid_clusters(P, chart_id_map, charts, cluster_settings);
+      uint32_t num_charts = ClusterCreator::initialise_charts_from_grid_clusters(P, chart_id_map, charts, cluster_settings, chart_threshold);
 
-      populate_chart_LUT(charts, chart_id_map);
+      // populate_chart_LUT(charts, chart_id_map);
 
       // check that existing chart number is not already lower than threshold
-      if (charts.size() <= chart_threshold)
+      if (num_charts <= chart_threshold)
       {
         std::cout << "Input to chart clusterer already had number of charts below chart threshold" << std::endl;
-        return charts.size();
+        return num_charts;
       }
 
       //recalculate perimeters of charts to ensure they are correct
@@ -240,7 +240,9 @@ struct ParallelClusterCreator
 
       //merge faces from chart2 into chart 1
       // std::cout << "merging charts " << join_todo.chart1_id << " and " << join_todo.chart2_id << std::endl;
-      charts[join_todo.get_chart1_id()].merge_with(charts[join_todo.get_chart2_id()], join_todo.cost);
+
+      // charts[join_todo.get_chart1_id()].merge_with(charts[join_todo.get_chart2_id()], join_todo.cost);
+      charts[join_todo.get_chart1_id()].merge_with(charts[join_todo.get_chart2_id()]);
 
 
       //DEactivate chart 2

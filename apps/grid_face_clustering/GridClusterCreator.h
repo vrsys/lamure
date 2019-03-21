@@ -148,7 +148,7 @@ struct GridClusterCreator
 		std::cout << "Created " <<   total_grid_charts << " charts in total \n"; 
 
 		uint32_t total_charts = split_charts(P, chart_id_map, centroids, cluster_settings);
-		std::cout << "Chart splitting added " << total_charts - total_grid_charts << "Charts\n";
+		std::cout << "Chart splitting added " << total_charts - total_grid_charts << " charts\n";
 		return total_charts;
 
 		// return total_grid_charts;

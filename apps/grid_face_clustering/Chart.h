@@ -26,6 +26,8 @@ struct Chart
   ErrorQuadric P_quad; // point error quad
   ErrorQuadric R_quad; // orientation error quad
 
+  Chart(){}
+
   Chart(uint32_t _id, Facet f,const Vector normal,const double _area){
     facets.push_back(f);
     facets_are_inner_facets.resize(facets.size(), false);
@@ -64,13 +66,8 @@ struct Chart
 
 
   //concatenate data from mc (merge chart) on to data from this chart
-  void merge_with(Chart &mc, const double cost_of_join){
-
-    // if (id == 30522)
-    // {
-    //   std::cout << "Area: " << area << ", normal: " << avg_normal << "\n R_quad:\n" << R_quad.print() << std::endl;
-    // }
-
+  // void merge_with(Chart &mc, const double cost_of_join){
+  void merge_with(Chart &mc){
 
     perimeter = get_chart_perimeter(*this, mc);
 
@@ -97,22 +94,45 @@ struct Chart
 
     has_border_edge = has_border_edge | mc.has_border_edge;
 
-    
-    // std::cout << "\nBefore (this):\n";
-    // for (auto nbc : this->neighbour_charts){
-    //   std::cout << nbc << ", ";
-    // }
-    // std::cout << "\nBefore (to merge):\n";
-    // for (auto nbc : mc.neighbour_charts){
-    //   std::cout << nbc << ", ";
-    // }
+    neighbour_charts.insert(mc.neighbour_charts.begin(), mc.neighbour_charts.end());
+
+  }
+
+  // merges data from another chart
+  // BUT does not calculate perimeter, or average vector
+  //call "update_after_quick_merge" to update these variables
+  // useful when merging a known quantity of faces
+  void quick_merge_with(Chart &mc){
+
+    facets.insert(facets.end(), mc.facets.begin(), mc.facets.end());
+    facets_are_inner_facets.insert(facets_are_inner_facets.end(), mc.facets_are_inner_facets.begin(), mc.facets_are_inner_facets.end());
+    normals.insert(normals.end(), mc.normals.begin(), mc.normals.end());
+    areas.insert(areas.end(), mc.areas.begin(), mc.areas.end());
+
+    P_quad = P_quad + mc.P_quad;
+    R_quad = (R_quad*area) + (mc.R_quad*mc.area);
+
+    //correct for size?
+    R_quad = R_quad * (1.0 / (area + mc.area));
+
+    area += mc.area;
+
+    has_border_edge = has_border_edge | mc.has_border_edge;
 
     neighbour_charts.insert(mc.neighbour_charts.begin(), mc.neighbour_charts.end());
 
-    // std::cout << "\nAfter:\n";
-    // for (auto nbc : this->neighbour_charts){
-    //   std::cout << nbc << ", ";
-    // }
+  }
+  //see function "quick_merge_with()" above
+  void update_after_quick_merge(){
+    //recalculate average vector
+    Vector v(0,0,0);
+    for (uint32_t i = 0; i < normals.size(); ++i)
+    {
+      v += (normals[i] * areas[i]);
+    }
+    avg_normal = v / area;
+
+    recalculate_perimeter_from_scratch();
   }
 
   //returns error of points in a joined chart , averga e distance from best fitting plane
@@ -453,6 +473,10 @@ struct Chart
     const Point& q = he->vertex()->point();
 
     return CGAL::sqrt(CGAL::squared_distance(p, q));
+  }
+
+  static bool sort_by_id(Chart c1, Chart c2){
+    return (c1.id < c2.id);
   }
 
 };
