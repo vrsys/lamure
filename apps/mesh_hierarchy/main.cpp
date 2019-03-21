@@ -253,7 +253,7 @@ int32_t main(int argc, char* argv[]) {
   }
 
 
-  //try to load texture ids
+  //try to load texture ids for each triangle
   std::vector<int> tex_id_per_triangle;
   std::string tex_id_file_name = obj_filename.substr(0,obj_filename.length()-3).append("texid");
   int num_textures = load_tex_id_file(tex_id_file_name, tex_id_per_triangle);
@@ -266,7 +266,7 @@ int32_t main(int argc, char* argv[]) {
     {
       std::cout << "Warning: some triangles did not have texture ids. They will be rendered from the first texture loaded\n";
     }
-    for (uint32_t i = 0; i < triangles.size(); ++i){
+    for (uint32_t i = 0; i < std::min(triangles.size(), tex_id_per_triangle.size()); ++i){
       triangles[i].tex_id = tex_id_per_triangle[i];
     }
   }

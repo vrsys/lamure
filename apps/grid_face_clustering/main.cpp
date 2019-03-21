@@ -97,6 +97,7 @@ int main( int argc, char** argv )
   std::vector<std::string> materials;
 
     //load OBJ into arrays
+  std::cout << "loading obj..." << std::endl;
   std::vector<double> vertices;
   std::vector<int> tris;
   std::vector<double> t_coords;

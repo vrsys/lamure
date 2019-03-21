@@ -89,6 +89,13 @@ struct ClusterCreator
     std::map<uint32_t, uint32_t>::iterator it_c;
 
 
+    //alternative:
+
+    //create vector of vectors, each chart has a vector of face ids
+    // then creation of each chart can be parallelised once vactors are created
+    // add new chart method where chart is built from a list of faces rather than incrementally
+
+
     //for each face
     for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
 

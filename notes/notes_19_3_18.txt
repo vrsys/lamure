@@ -9,6 +9,14 @@ To do:
 
  - "Creating charts from grid clusters..." parallelisable?
 
+    //alternative:
+
+    //create vector of vectors, each chart has a vector of face ids
+    // then creation of each chart can be parallelised once vactors are created
+    // add new chart method where chart is built from a list of faces rather than incrementally
+
+
+
 
 Priorities for final 2 weeks of project:
 
@@ -38,6 +46,8 @@ Organisational:
 Multiple input textures
 
 When reading first chart file, form an index of textures images, and save the index for each face.
+
+ - TODO check 
 
 in mesh preprocessing render function, loop for each texture:
  - load texture, bind 
