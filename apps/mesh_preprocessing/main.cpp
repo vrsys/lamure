@@ -68,6 +68,11 @@ struct chart {
   double real_to_tex_ratio_new;
 };
 
+struct blit_vertex {
+  scm::math::vec2f old_coord_;
+  scm::math::vec2f new_coord_;
+};
+
 
 
 int window_width_ = 1024;
@@ -76,7 +81,9 @@ int window_height_ = 1024;
 int elapsed_ms_ = 0;
 int num_vertices_ = 0;
 
-std::vector<GLuint> vertex_buffers_;
+// std::vector<GLuint> vertex_buffers_;
+
+std::vector<std::vector<blit_vertex> > to_upload_per_texture;
 
 
 GLuint shader_program_; //contains GPU-code
@@ -88,10 +95,7 @@ std::shared_ptr<frame_buffer_t> frame_buffer_; //contains resulting image
 std::string outfile_name = "tex_out.png";
 
 
-struct blit_vertex {
-  scm::math::vec2f old_coord_;
-  scm::math::vec2f new_coord_;
-};
+
 
 
 
@@ -200,7 +204,7 @@ std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   if (tex_error) {
     std::cout << "unable to load image file " << filepath << std::endl;
   }
-  std::cout << "image " << filepath << " loaded" << std::endl;
+  else {std::cout << "image " << filepath << " loaded" << std::endl;}
 
   auto texture = std::make_shared<texture_t>(width, height, GL_LINEAR);
   texture->set_pixels(&img[0]);
@@ -719,59 +723,59 @@ void glut_display() {
 
   frame_buffer_->enable();
 
-  //for num textures
-   
-   //gather all tris (vertices) correspond to current texture in avector
-   
-   //upload this vector to GPU (vertex_buffer_)
-  //  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-  //glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload[0], GL_STATIC_DRAW);
-  //glBindBuffer(GL_ARRAY_BUFFER, 0);
+  //for each textures
+  // for (int i = 0; i < to_upload_per_texture.size(); ++i)
+  // {
 
-      //load the texture png file corresp. to the current loop iteration
-    //texture_ = load_image(texture_filename);
+     //upload this vector to GPU (vertex_buffer_)
+    //  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+    //glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload_per_texture[i][0], GL_STATIC_DRAW);
+    //glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-  //set the viewport, background color, and reset default framebuffer
-  glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
-  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //load the texture png file corresp. to the current loop iteration
+      //texture_ = load_image(texture_filename);
 
-
-  //use the shader program we created
-  glUseProgram(shader_program_);
-
-  //bind the VBO of the model such that the next draw call will render with these vertices
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+    //set the viewport, background color, and reset default framebuffer
+    glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
+    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-  //define the layout of the vertex buffer:
-  //setup 2 attributes per vertex (2x texture coord)
-  glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
+    //use the shader program we created
+    glUseProgram(shader_program_);
+
+    //bind the VBO of the model such that the next draw call will render with these vertices
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
 
 
-  //get texture location
-  int slot = 0;
-  glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
-  glActiveTexture(GL_TEXTURE0 + slot);
-  
-  //here, enable the current texture
-  texture_->enable(slot);
+    //define the layout of the vertex buffer:
+    //setup 2 attributes per vertex (2x texture coord)
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
 
 
-  //draw triangles from the currently bound buffer
-  glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
+    //get texture location
+    int slot = 0;
+    glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
+    glActiveTexture(GL_TEXTURE0 + slot);
+    
+    //here, enable the current texture
+    texture_->enable(slot);
 
-  //unbind, unuse
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glUseProgram(0);
+
+    //draw triangles from the currently bound buffer
+    glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
+
+    //unbind, unuse
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glUseProgram(0);
 
 
-  texture_->disable();
+    texture_->disable();
 
-  //end of your loop
+  // }//end for each texture
 
   frame_buffer_->disable();
 
@@ -893,17 +897,25 @@ int main(int argc, char *argv[]) {
       std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>" << std::endl <<
          "INFO: bvh_leaf_extractor " << std::endl <<
          "\t-f: selects .bvh input file" << std::endl <<
-         "\t-c: selects .lodchart input file" << std::endl <<
-         "\t-t: selects .png texture input file" << std::endl <<
+         "\t-c: selects .lodchart input file (default = <bvhname>.lodchart)" << std::endl <<
+         "\t-t: selects .png texture input file (default = <bvhname>.png)" << std::endl <<
          std::endl;
       return 0;
     }
 
     std::string bvh_filename = std::string(get_cmd_option(argv, argv + argc, "-f"));
-    std::string chart_lod_filename = std::string(get_cmd_option(argv, argv + argc, "-c"));
-    std::string texture_filename = std::string(get_cmd_option(argv, argv + argc, "-t"));
+    std::string lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + ".lod";
 
-    std::string lod_filename = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
+    std::string chart_lod_filename = bvh_filename.substr(0,bvh_filename.length()-4).append(".lodchart");
+    if (cmd_option_exists(argv, argv+argc, "-c")) {
+      chart_lod_filename = get_cmd_option(argv, argv+argc, "-c");
+    }
+
+    std::string texture_filename = bvh_filename.substr(0,bvh_filename.length()-4).append(".png");
+    if (cmd_option_exists(argv, argv+argc, "-t")) {
+      texture_filename = get_cmd_option(argv, argv+argc, "-t");
+    }
+
 
     std::vector<int> chart_id_per_triangle;
     int num_charts = load_chart_file(chart_lod_filename, chart_id_per_triangle);
@@ -1098,6 +1110,10 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    //todo
+    //check existence (as png) and sizes of each texture
+    //use sizes when calculating texture space sizes in function below
+
 
     //for each chart, calculate relative size of real space to original tex space
     calculate_chart_tex_space_sizes(USE_OLD_COORDS, charts, triangles, texture_->get_width(), texture_->get_height());
@@ -1139,7 +1155,7 @@ int main(int argc, char *argv[]) {
   //pack tris
 
   //use 2D array to account for different textures (if no textures were found, make sure it has at least one row)
-  std::vector<std::vector<blit_vertex> > to_upload_per_texture (std::max(num_textures,1));
+  to_upload_per_texture.resize(std::max(num_textures,1));
 
   std::vector<blit_vertex> to_upload;
 
