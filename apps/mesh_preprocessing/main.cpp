@@ -143,6 +143,7 @@ int load_chart_file(std::string chart_file, std::vector<int>& chart_id_per_trian
 
 
 //reads an ".lodtexid" file into a vector, returns number of textures (highest texture id + 1)
+// if ".lodtexid" file is not found, returns 0
 int load_tex_id_file(std::string tex_id_file_name, std::vector<int>& tex_id_per_triangle){
 
   int num_textures = 0;
@@ -175,6 +176,7 @@ int load_tex_id_file(std::string tex_id_file_name, std::vector<int>& tex_id_per_
 
 //gets texture ids from file
 //applies texture ids to triangle vector
+// returns number of textures found (if multiple textures exist) or 0 if no texture lod file is found
 int 
 load_tex_ids(std::string tex_id_file_name, std::vector<triangle>& triangles, int first_leaf_tri_offset){
     
@@ -803,9 +805,16 @@ double get_area_of_triangle(scm::math::vec2f v0, scm::math::vec2f v1, scm::math:
 //calculates average pixels per triangle for each chart, given a texture size
 // use first argument to determine whether measurement should use old or new tex coords
 enum PixelResolutionCalculationType { USE_OLD_COORDS, USE_NEW_COORDS};
-void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::vector<chart>& charts, std::vector<triangle>& triangles, int tex_width, int tex_height){
+void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, 
+                                     std::vector<chart>& charts, 
+                                     std::vector<triangle>& triangles, 
+                                     std::vector<scm::math::vec2i> texture_dimensions){
 
-  double pixel_area = (1.0 / tex_width) * (1.0 / tex_height);
+  //calculate pixel area for each dimension recieved
+  std::vector<double> pixel_areas;
+  for (auto& tex_size : texture_dimensions){
+    pixel_areas.push_back( (1.0 / tex_size.x) * (1.0 / tex_size.y) );
+  }
 
   if (type == USE_OLD_COORDS){
     std::cout << "Calculating pixel sizes with old coords" << std::endl;
@@ -824,18 +833,23 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::v
     {
       //sample length  between vertices 0 and 1
       auto& tri = triangles[tri_id];
+      uint32_t texture_id = tri.tex_id;
 
       //calculate areas in texture space
-      double tri_area;
+      double tri_area, tri_pixels;
       if (type == USE_OLD_COORDS)
       {
         tri_area = get_area_of_triangle(tri.v0_.old_coord_, tri.v1_.old_coord_, tri.v2_.old_coord_);
+        //if we are calculating size of tris on input textures, we should use the appropiate pixel area 
+        tri_pixels = tri_area / pixel_areas[texture_id];
       }
       else {
         tri_area = get_area_of_triangle(tri.v0_.new_coord_, tri.v1_.new_coord_, tri.v2_.new_coord_);
+        //if we are calculating size of tris on output textures,pixel area is constant 
+        tri_pixels = tri_area / pixel_areas[0];
       }
 
-      pixels += (tri_area / pixel_area);
+      pixels += tri_pixels;
     }
 
     double pixels_per_tri = pixels / chart.all_triangle_ids_.size();
@@ -864,7 +878,7 @@ bool is_output_texture_big_enough(std::vector<chart>& charts, double target_perc
 
   const double percentage_big_enough = (double)charts_w_enough_pixels / charts.size();
 
-  std::cout << "Percentage of charts big enough = " << percentage_big_enough << std::endl;
+  std::cout << "Percentage of charts big enough  = " << percentage_big_enough << std::endl;
 
   return (percentage_big_enough >= target_percentage_charts_with_enough_pixels);
 }
@@ -924,12 +938,9 @@ int main(int argc, char *argv[]) {
     lod->open(lod_filename);
     std::cout << "lod file loaded." << std::endl;
 
-    //load the texture png file
-    texture_ = load_image(texture_filename);
-    //set output window size as the same as input size to start with
-    window_width_ = texture_->get_width();
-    window_height_ = texture_->get_height();
-
+    //default (minimum) output texture size
+    window_width_ = 1024;
+    window_height_ = 1024;
     
     std::vector<chart> charts;
     //initially, lets compile the charts
@@ -1090,13 +1101,15 @@ int main(int argc, char *argv[]) {
     std::string tex_id_file_name = bvh_filename.substr(0,bvh_filename.length()-4).append(".lodtexid");
     int first_leaf_triangle_id = first_leaf * (vertices_per_node / 3);
     int num_textures = load_tex_ids(tex_id_file_name, triangles, first_leaf_triangle_id);
+    std::vector<scm::math::vec2i> texture_dimensions;
 
+    // if multiple input textures were found
     if (num_textures > 0)
     {
       //load mtl to get texture paths
       std::cout << "loading mtl..." << std::endl;
       std::string mtl_filename = bvh_filename.substr(0, bvh_filename.size()-11) + ".mtl"; //remove "_charts.bvh" suffix from bvh name 
-      std::vector<scm::math::vec2i> texture_dimensions;
+      
       bool load_mtl_success = Utils::load_tex_paths_from_mtl(mtl_filename, texture_paths);
 
       if (texture_paths.size() < num_textures)
@@ -1122,8 +1135,25 @@ int main(int argc, char *argv[]) {
           texture_dimensions.push_back(Utils::get_png_dimensions(texture_paths[i]));
           std::cout << "Texture: (" << texture_dimensions[i].x << "x" << texture_dimensions[i].y << ") " << texture_paths[i] << std::endl;
         }
-
       }
+    }
+    //if only one texture was found
+    else {
+      num_textures = 1;
+      //check existence as a png
+      bool file_good = true;
+      if(!boost::filesystem::exists(texture_filename)) {file_good = false;}
+      if(!boost::algorithm::ends_with(texture_filename, ".png")) {file_good = false;}
+
+      if (!file_good)
+      {
+        std::cout << "ERROR: Input texture file was not found (path: " << texture_filename << ")\n";
+        return 0;
+      }
+      //if file is good, add info about path and size to texture info arrays
+      texture_paths.push_back(texture_filename);
+      texture_dimensions.push_back(Utils::get_png_dimensions(texture_filename));
+
     }
 
     //todo
@@ -1131,7 +1161,7 @@ int main(int argc, char *argv[]) {
 
 
     //for each chart, calculate relative size of real space to original tex space
-    calculate_chart_tex_space_sizes(USE_OLD_COORDS, charts, triangles, texture_->get_width(), texture_->get_height());
+    calculate_chart_tex_space_sizes(USE_OLD_COORDS, charts, triangles, texture_dimensions);
 
     project(charts, triangles);
 
@@ -1256,21 +1286,23 @@ int main(int argc, char *argv[]) {
   
 
   //for each chart, calculate relative size of real space to new tex space
-  calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
+  calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, std::vector<scm::math::vec2i>{scm::math::vec2i(window_width_, window_height_)});
 
-  //   //print pixel ratios per chart
-  // for (auto& chart : charts)
-  // {
-  //   std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
-  //   std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
-  // }
+    //print pixel ratios per chart
+  for (auto& chart : charts)
+  {
+    std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
+    std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+  }
 
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
   const double target_percentage_charts_with_enough_pixels = 1.0;
+  std::cout << "Testing texture size of " << window_width_ << " x " << window_height_ << std::endl;
   while (!is_output_texture_big_enough(charts, target_percentage_charts_with_enough_pixels)) {
 
     //limit texture size
     if (std::max(window_width_, window_height_) >= 8192){
+      std::cout << "Max testure size reached\n";
       break;
     }
 
@@ -1279,8 +1311,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Not enough pixels! Texture increased to " << window_width_ << " x " << window_height_ << std::endl;
 
-    calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
-
+    calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, std::vector<scm::math::vec2i>{scm::math::vec2i(window_width_, window_height_)});
 
   }
 
