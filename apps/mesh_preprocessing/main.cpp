@@ -21,6 +21,7 @@
 #include "lodepng.h"
 #include "texture.h"
 #include "frame_buffer.h"
+#include "Utils.h"
 
 
 struct vertex {
@@ -34,6 +35,7 @@ struct triangle {
   vertex v0_;
   vertex v1_;
   vertex v2_;
+  int tex_id;
 };
 
 struct rectangle {
@@ -66,6 +68,11 @@ struct chart {
   double real_to_tex_ratio_new;
 };
 
+struct blit_vertex {
+  scm::math::vec2f old_coord_;
+  scm::math::vec2f new_coord_;
+};
+
 
 
 int window_width_ = 1024;
@@ -73,6 +80,13 @@ int window_height_ = 1024;
 
 int elapsed_ms_ = 0;
 int num_vertices_ = 0;
+
+// std::vector<GLuint> vertex_buffers_;
+
+std::vector<std::string> texture_paths;
+
+std::vector<blit_vertex> to_upload;
+std::vector<std::vector<blit_vertex> > to_upload_per_texture;
 
 
 GLuint shader_program_; //contains GPU-code
@@ -84,10 +98,7 @@ std::shared_ptr<frame_buffer_t> frame_buffer_; //contains resulting image
 std::string outfile_name = "tex_out.png";
 
 
-struct blit_vertex {
-  scm::math::vec2f old_coord_;
-  scm::math::vec2f new_coord_;
-};
+
 
 
 
@@ -131,6 +142,64 @@ int load_chart_file(std::string chart_file, std::vector<int>& chart_id_per_trian
 }
 
 
+//reads an ".lodtexid" file into a vector, returns number of textures (highest texture id + 1)
+// if ".lodtexid" file is not found, returns 0
+int load_tex_id_file(std::string tex_id_file_name, std::vector<int>& tex_id_per_triangle){
+
+  int num_textures = 0;
+
+  std::ifstream file(tex_id_file_name);
+
+  if(!file.good()){
+    std::cout << "No texture ID file was found ( searched for " << tex_id_file_name << ")\n";
+    return 0;
+  }
+  std::cout << "Found texture ids in file: " << tex_id_file_name << std::endl;
+
+  std::string line;
+  while (std::getline(file, line)) {
+    std::stringstream ss(line);
+    std::string tex_id_str;
+
+    while (std::getline(ss, tex_id_str, ' ')) {
+      
+      int tex_id = atoi(tex_id_str.c_str());
+      num_textures = std::max(num_textures, tex_id+1);
+      tex_id_per_triangle.push_back(tex_id);
+    }
+  }
+
+  file.close();
+  return num_textures;
+}
+
+
+//gets texture ids from file
+//applies texture ids to triangle vector
+// returns number of textures found (if multiple textures exist) or 0 if no texture lod file is found
+int 
+load_tex_ids(std::string tex_id_file_name, std::vector<triangle>& triangles, int first_leaf_tri_offset){
+    
+    std::vector<int> tex_id_per_triangle;
+    int num_textures = load_tex_id_file(tex_id_file_name, tex_id_per_triangle);
+    std::cout << "Found " << num_textures << " input textures" << std::endl;
+    //apply texture ids to triangles
+    if (tex_id_per_triangle.size() > 0)
+    {
+      std::cout << "Attempting to apply tex ids to triangles..." << std::endl;
+      if (tex_id_per_triangle.size() != triangles.size())
+      {
+        std::cout << "Warning: some triangles did not have texture ids. They will be rendered from the first texture loaded\n";
+
+        std::cout << "Triangles: " << triangles.size() << " input tex ids: " << tex_id_per_triangle.size() << std::endl;
+      }
+      for (uint32_t i = 0; i < std::min(tex_id_per_triangle.size() - first_leaf_tri_offset, triangles.size()); ++i){
+        triangles[i].tex_id = tex_id_per_triangle[i + first_leaf_tri_offset];
+      }
+    }
+
+    return num_textures;
+}
 
 std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   std::vector<unsigned char> img;
@@ -140,7 +209,7 @@ std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   if (tex_error) {
     std::cout << "unable to load image file " << filepath << std::endl;
   }
-  std::cout << "image " << filepath << " loaded" << std::endl;
+  else {std::cout << "image " << filepath << " loaded" << std::endl;}
 
   auto texture = std::make_shared<texture_t>(width, height, GL_LINEAR);
   texture->set_pixels(&img[0]);
@@ -659,81 +728,81 @@ void glut_display() {
 
   frame_buffer_->enable();
 
-  //for num textures
-   
-   //gather all tris (vertices) correspond to current texture in avector
-   
-   //upload this vector to GPU (vertex_buffer_)
-  //  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-  //glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload[0], GL_STATIC_DRAW);
-  //glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-      //load the texture png file corresp. to the current loop iteration
-    //texture_ = load_image(texture_filename);
-
-  //set the viewport, background color, and reset default framebuffer
+  //set the viewport size
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
+
+  //set background colour
   glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  //create a vertex buffer 
+  glGenBuffers(1, &vertex_buffer_);
 
-  //use the shader program we created
-  glUseProgram(shader_program_);
+  // for each texture
+  for (uint32_t i = 0; i < to_upload_per_texture.size(); ++i)
+  {
+    
+    num_vertices_ = to_upload_per_texture[i].size();
 
-  //bind the VBO of the model such that the next draw call will render with these vertices
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+    if (num_vertices_ == 0)
+    {
+      std::cout << "Nothing to render for texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
+      continue;
+    }
 
+    std::cout << "Rendering from texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
 
-  //define the layout of the vertex buffer:
-  //setup 2 attributes per vertex (2x texture coord)
-  glEnableVertexAttribArray(0);
-  glEnableVertexAttribArray(1);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
-
-
-  //get texture location
-  int slot = 0;
-  glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
-  glActiveTexture(GL_TEXTURE0 + slot);
-  
-  //here, enable the current texture
-  texture_->enable(slot);
+    //upload this vector to GPU (vertex_buffer_)
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+    glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload_per_texture[i][0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
-  //draw triangles from the currently bound buffer
-  glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
+    //load the texture png file corresp. to the current loop iteration
+    texture_ = load_image(texture_paths[i]);
 
-  //unbind, unuse
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
-  glUseProgram(0);
+    //use the shader program we created
+    glUseProgram(shader_program_);
+
+    //bind the VBO of the model such that the next draw call will render with these vertices
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+
+    //define the layout of the vertex buffer:
+    //setup 2 attributes per vertex (2x texture coord)
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
+
+    //get texture location
+    int slot = 0;
+    glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
+    glActiveTexture(GL_TEXTURE0 + slot);
+    
+    //here, enable the current texture
+    texture_->enable(slot);
+
+    //draw triangles from the currently bound buffer
+    glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
+
+    //unbind, unuse
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glUseProgram(0);
+
+    texture_->disable();
 
 
-  texture_->disable();
-
-  //end of your loop
+  }//end for each texture
 
   frame_buffer_->disable();
 
-
   save_image(outfile_name, frame_buffer_);
 
-  std::cout << " image saved\n";
-
   exit(1);
-
 
   glutSwapBuffers();
 }
 
-//returns a city block distance between 2 texture coordinates, given a width and height of the texture
-// int calc_city_block_length(scm::math::vec2f coord1, scm::math::vec2f coord2, int tex_width, int tex_height){
-
-//   scm::math::vec2i real_coord1(std::floor(coord1.x * tex_width), std::floor(coord1.y * tex_height));
-//   scm::math::vec2i real_coord2(std::floor(coord2.x * tex_width), std::floor(coord2.y * tex_height));
-
-//   return std::abs(real_coord1.x - real_coord2.x) + std::abs(real_coord1.y - real_coord2.y); 
-// }
 
 double get_area_of_triangle(scm::math::vec2f v0, scm::math::vec2f v1, scm::math::vec2f v2){
 
@@ -743,15 +812,22 @@ double get_area_of_triangle(scm::math::vec2f v0, scm::math::vec2f v1, scm::math:
 //calculates average pixels per triangle for each chart, given a texture size
 // use first argument to determine whether measurement should use old or new tex coords
 enum PixelResolutionCalculationType { USE_OLD_COORDS, USE_NEW_COORDS};
-void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::vector<chart>& charts, std::vector<triangle>& triangles, int tex_width, int tex_height){
+void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, 
+                                     std::vector<chart>& charts, 
+                                     std::vector<triangle>& triangles, 
+                                     std::vector<scm::math::vec2i> texture_dimensions){
 
-  double pixel_area = (1.0 / tex_width) * (1.0 / tex_height);
+  //calculate pixel area for each dimension recieved
+  std::vector<double> pixel_areas;
+  for (auto& tex_size : texture_dimensions){
+    pixel_areas.push_back( (1.0 / tex_size.x) * (1.0 / tex_size.y) );
+  }
 
   if (type == USE_OLD_COORDS){
-    std::cout << "Calculating pixel sizes with old coords" << std::endl;
+    std::cout << "Calculating pixel sizes with old coords...";
   }
   else {
-    std::cout << "Calculating pixel sizes with new coords" << std::endl;
+    std::cout << "Calculating pixel sizes with new coords...";
   }
 
   //for all charts
@@ -762,20 +838,32 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::v
     //for all triangles
     for (auto& tri_id : chart.all_triangle_ids_)
     {
+
+
       //sample length  between vertices 0 and 1
       auto& tri = triangles[tri_id];
 
+      int texture_id = tri.tex_id;
+
+      //check this texture is error free
+      if (texture_id == -1){continue;}
+
+
       //calculate areas in texture space
-      double tri_area;
+      double tri_area, tri_pixels;
       if (type == USE_OLD_COORDS)
       {
         tri_area = get_area_of_triangle(tri.v0_.old_coord_, tri.v1_.old_coord_, tri.v2_.old_coord_);
+        //if we are calculating size of tris on input textures, we should use the appropiate pixel area 
+        tri_pixels = tri_area / pixel_areas[texture_id];
       }
       else {
         tri_area = get_area_of_triangle(tri.v0_.new_coord_, tri.v1_.new_coord_, tri.v2_.new_coord_);
+        //if we are calculating size of tris on output textures,pixel area is constant 
+        tri_pixels = tri_area / pixel_areas[0];
       }
 
-      pixels += (tri_area / pixel_area);
+      pixels += tri_pixels;
     }
 
     double pixels_per_tri = pixels / chart.all_triangle_ids_.size();
@@ -788,6 +876,8 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type, std::v
       chart.real_to_tex_ratio_new = pixels_per_tri;
     }
   }
+
+  std::cout << "done\n";
 
 }
 
@@ -804,7 +894,7 @@ bool is_output_texture_big_enough(std::vector<chart>& charts, double target_perc
 
   const double percentage_big_enough = (double)charts_w_enough_pixels / charts.size();
 
-  std::cout << "Percentage of charts big enough = " << percentage_big_enough << std::endl;
+  std::cout << "Percentage of charts big enough  = " << percentage_big_enough << std::endl;
 
   return (percentage_big_enough >= target_percentage_charts_with_enough_pixels);
 }
@@ -833,21 +923,29 @@ int main(int argc, char *argv[]) {
       std::cout << "Usage: " << argv[0] << "<flags> -f <input_file>" << std::endl <<
          "INFO: bvh_leaf_extractor " << std::endl <<
          "\t-f: selects .bvh input file" << std::endl <<
-         "\t-c: selects .lodchart input file" << std::endl <<
-         "\t-t: selects .png texture input file" << std::endl <<
+         "\t-c: selects .lodchart input file (default = <bvhname>.lodchart)" << std::endl <<
+         "\t-t: selects .png texture input file (default = <bvhname>.png)" << std::endl <<
          std::endl;
       return 0;
     }
 
     std::string bvh_filename = std::string(get_cmd_option(argv, argv + argc, "-f"));
-    std::string chart_lod_filename = std::string(get_cmd_option(argv, argv + argc, "-c"));
-    std::string texture_filename = std::string(get_cmd_option(argv, argv + argc, "-t"));
+    std::string lod_filename = bvh_filename.substr(0, bvh_filename.size()-4) + ".lod";
 
-    std::string lod_filename = bvh_filename.substr(0, bvh_filename.size()-3) + "lod";
+    std::string chart_lod_filename = bvh_filename.substr(0,bvh_filename.length()-4).append(".lodchart");
+    if (cmd_option_exists(argv, argv+argc, "-c")) {
+      chart_lod_filename = get_cmd_option(argv, argv+argc, "-c");
+    }
+
+    std::string texture_filename = bvh_filename.substr(0,bvh_filename.length()-4).append(".png");
+    if (cmd_option_exists(argv, argv+argc, "-t")) {
+      texture_filename = get_cmd_option(argv, argv+argc, "-t");
+    }
+
 
     std::vector<int> chart_id_per_triangle;
     int num_charts = load_chart_file(chart_lod_filename, chart_id_per_triangle);
-    std::cout << "lodchart file lodaded." << std::endl;
+    std::cout << "lodchart file loaded." << std::endl;
 
     std::shared_ptr<lamure::ren::bvh> bvh = std::make_shared<lamure::ren::bvh>(bvh_filename);
     std::cout << "bvh file loaded." << std::endl;
@@ -856,12 +954,9 @@ int main(int argc, char *argv[]) {
     lod->open(lod_filename);
     std::cout << "lod file loaded." << std::endl;
 
-    //load the texture png file
-    texture_ = load_image(texture_filename);
-    //set output window size as the same as input size to start with
-    window_width_ = texture_->get_width();
-    window_height_ = texture_->get_height();
-
+    //default (minimum) output texture size
+    window_width_ = 1024;
+    window_height_ = 1024;
     
     std::vector<chart> charts;
     //initially, lets compile the charts
@@ -1018,8 +1113,69 @@ int main(int argc, char *argv[]) {
     std::cout << "Created list of " << triangles.size() << " leaf level triangles\n";
 
 
+    //load texture ids and apply to triangles
+    std::string tex_id_file_name = bvh_filename.substr(0,bvh_filename.length()-4).append(".lodtexid");
+    int first_leaf_triangle_id = first_leaf * (vertices_per_node / 3);
+    int num_textures = load_tex_ids(tex_id_file_name, triangles, first_leaf_triangle_id);
+    std::vector<scm::math::vec2i> texture_dimensions;
+
+    // if multiple input textures were found
+    if (num_textures > 0)
+    {
+      //load mtl to get texture paths
+      std::cout << "loading mtl..." << std::endl;
+      std::string mtl_filename = bvh_filename.substr(0, bvh_filename.size()-11) + ".mtl"; //remove "_charts.bvh" suffix from bvh name 
+      
+      std::vector<int> missing_textures = Utils::load_tex_paths_from_mtl(mtl_filename, texture_paths, texture_dimensions);
+
+      if (texture_paths.size() < num_textures)
+      {
+        std::cout << "WARNING: not enough textures were found in the material file\n";
+        num_textures = texture_paths.size();
+      }
+
+      //Replace missing texture ids with -1 in triangle list
+      if (missing_textures.size() > 0)
+      {
+        for (auto& tri : triangles)
+        {
+          for (int i = 0; i < missing_textures.size(); ++i)
+          {
+            if (tri.tex_id == missing_textures[i])
+            {
+              tri.tex_id = -1;
+              break;
+            }
+          }
+        }
+      }
+
+    }
+    //if only one texture was found
+    else {
+      num_textures = 1;
+      //check existence as a png
+      bool file_good = true;
+      if(!boost::filesystem::exists(texture_filename)) {file_good = false;}
+      if(!boost::algorithm::ends_with(texture_filename, ".png")) {file_good = false;}
+
+      if (!file_good)
+      {
+        std::cout << "ERROR: Input texture file was not found (path: " << texture_filename << ")\n";
+        return 0;
+      }
+      //if file is good, add info about path and size to texture info arrays
+      texture_paths.push_back(texture_filename);
+      texture_dimensions.push_back(Utils::get_png_dimensions(texture_filename));
+
+    }
+
+    //todo
+    //use sizes when calculating texture space sizes in function below
+
+
     //for each chart, calculate relative size of real space to original tex space
-    calculate_chart_tex_space_sizes(USE_OLD_COORDS, charts, triangles, texture_->get_width(), texture_->get_height());
+    calculate_chart_tex_space_sizes(USE_OLD_COORDS, charts, triangles, texture_dimensions);
 
     project(charts, triangles);
 
@@ -1056,7 +1212,11 @@ int main(int argc, char *argv[]) {
   //apply new coordinates and pack tris
 
   //pack tris
-  std::vector<blit_vertex> to_upload;
+
+  //use 2D array to account for different textures (if no textures were found, make sure it has at least one row)
+  to_upload_per_texture.resize(std::max(num_textures,1));
+
+  
 
   for (int chart_id = 0; chart_id < charts.size(); ++chart_id) {
     chart& chart = charts[chart_id];
@@ -1124,16 +1284,27 @@ int main(int argc, char *argv[]) {
       //  std::cout << "v2: " << triangles[tri_id].v2_.new_coord_.x 
       //  << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
 
-       to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
-       to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
-       to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+      to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
+      to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
+      to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+
+      //pack to 2D upload array
+      //limit texture id to number of textures that were found
+      int texture_id = std::min( triangles[tri_id].tex_id , num_textures );
+      if (texture_id != -1)
+      {
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+      }
+
     } 
   }
 
   
 
   //for each chart, calculate relative size of real space to new tex space
-  calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
+  calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, std::vector<scm::math::vec2i>{scm::math::vec2i(window_width_, window_height_)});
 
   //   //print pixel ratios per chart
   // for (auto& chart : charts)
@@ -1144,10 +1315,12 @@ int main(int argc, char *argv[]) {
 
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
   const double target_percentage_charts_with_enough_pixels = 1.0;
+  std::cout << "Testing texture size of " << window_width_ << " x " << window_height_ << std::endl;
   while (!is_output_texture_big_enough(charts, target_percentage_charts_with_enough_pixels)) {
 
     //limit texture size
     if (std::max(window_width_, window_height_) >= 8192){
+      std::cout << "Max testure size reached\n";
       break;
     }
 
@@ -1156,8 +1329,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Not enough pixels! Texture increased to " << window_width_ << " x " << window_height_ << std::endl;
 
-    calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, window_width_, window_height_);
-
+    calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, std::vector<scm::math::vec2i>{scm::math::vec2i(window_width_, window_height_)});
 
   }
 
@@ -1278,16 +1450,8 @@ int main(int argc, char *argv[]) {
   //save name for new texture
   outfile_name = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.png";
 
+  //create output frame buffer
   frame_buffer_ = std::make_shared<frame_buffer_t>(1, window_width_, window_height_, GL_RGBA, GL_LINEAR);
-
-  //fill the vertex buffer
-  num_vertices_ = to_upload.size();
-
-  //create a vertex buffer and populate it with our data
-  glGenBuffers(1, &vertex_buffer_);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-  glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload[0], GL_STATIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   //create shaders
   make_shader_program();

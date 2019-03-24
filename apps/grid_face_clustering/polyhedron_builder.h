@@ -13,12 +13,20 @@ public:
 
   bool CHECK_VERTICES;
 
+  std::vector<int> &face_textures;
+
   polyhedron_builder( std::vector<double> &_vertices,
                       std::vector<int> &_tris,
                       std::vector<double> &_tcoords,
                       std::vector<int> &_tindices,
-                      bool _CHECK_VERTICES) 
-                      : vertices(_vertices), tris(_tris), tcoords(_tcoords), tindices(_tindices), CHECK_VERTICES(_CHECK_VERTICES)  {}
+                      bool _CHECK_VERTICES,
+                      std::vector<int> &_face_textures) 
+                      : vertices(_vertices), 
+                        tris(_tris), 
+                        tcoords(_tcoords), 
+                        tindices(_tindices), 
+                        CHECK_VERTICES(_CHECK_VERTICES), 
+                        face_textures(_face_textures)  {}
 
 
   //Returns false for error
@@ -136,6 +144,12 @@ public:
           TexCoord tc3 ( vertices_indexed[tris_indexed[i+2]].get_u() , vertices_indexed[tris_indexed[i+2]].get_v() );
           fh->add_tex_coords(tc1,tc2,tc3);
 
+          //Add texture id for face
+          if (face_textures.size() > 0)
+          {
+            fh->tex_id = face_textures[i/3];
+          }
+
           B.add_vertex_to_facet(tris_indexed[i]);
           B.add_vertex_to_facet(tris_indexed[i+1]);
           B.add_vertex_to_facet(tris_indexed[i+2]);
@@ -190,6 +204,12 @@ public:
           TexCoord tc2 ( tcoords[ tindices[i+1]*2 ] , tcoords[ (tindices[i+1]*2)+1 ] );
           TexCoord tc3 ( tcoords[ tindices[i+2]*2 ] , tcoords[ (tindices[i+2]*2)+1 ] );
           fh->add_tex_coords(tc1,tc2,tc3);
+
+          //Add texture id for face
+          if (face_textures.size() > 0)
+          {
+            fh->tex_id = face_textures[i/3];
+          }
 
           B.add_vertex_to_facet( tris[i+0] );
           B.add_vertex_to_facet( tris[i+1] );

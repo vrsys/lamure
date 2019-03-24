@@ -155,6 +155,36 @@ int load_chart_file(std::string chart_file, std::vector<int>& chart_id_per_trian
   return num_charts;
 }
 
+int load_tex_id_file(std::string tex_id_file_name, std::vector<int>& tex_id_per_triangle){
+
+  int num_textures = 0;
+
+  std::ifstream file(tex_id_file_name);
+
+  if(!file.good()){
+    std::cout << "No texture ID file was found ( searched for " << tex_id_file_name << ")\n";
+    return 0;
+  }
+  std::cout << "Found texture ids in file: " << tex_id_file_name << std::endl;
+
+  std::string line;
+  while (std::getline(file, line)) {
+    std::stringstream ss(line);
+    std::string tex_id_str;
+
+    while (std::getline(ss, tex_id_str, ' ')) {
+      
+      int tex_id = atoi(tex_id_str.c_str());
+      num_textures = std::max(num_textures, tex_id+1);
+      tex_id_per_triangle.push_back(tex_id);
+    }
+  }
+
+  file.close();
+  return num_textures;
+}
+
+
 
 int32_t main(int argc, char* argv[]) {
 
@@ -169,7 +199,7 @@ int32_t main(int argc, char* argv[]) {
     terminate = true;
   }
 
-  std::string chart_file = obj_filename.substr(0,obj_filename.length()-3).append(".chart");
+  std::string chart_file = obj_filename.substr(0,obj_filename.length()-4).append(".chart");
   if (cmd_option_exists(argv, argv+argc, "-cf")) {
     chart_file = get_cmd_option(argv, argv+argc, "-cf");
   }
@@ -214,13 +244,7 @@ int32_t main(int argc, char* argv[]) {
   if (chart_id_per_triangle.size() < triangles.size())
   {
     std::cout << "Error: charts were not found for every triangle\n";
-    return 0; 
-
-    //to debug loading problem
-    // std::cout << "adding arbitrary extra charts\n";
-    // while (chart_id_per_triangle.size() < triangles.size()){
-    //   chart_id_per_triangle.push_back(0);
-    // }
+    return 0;
   }
   //assign chart ids to triangle vector
   for (uint32_t i = 0; i < triangles.size(); ++i)
@@ -228,6 +252,24 @@ int32_t main(int argc, char* argv[]) {
     triangles[i].chart_id = chart_id_per_triangle[i];
   }
 
+
+  //try to load texture ids for each triangle
+  std::vector<int> tex_id_per_triangle;
+  std::string tex_id_file_name = obj_filename.substr(0,obj_filename.length()-3).append("texid");
+  int num_textures = load_tex_id_file(tex_id_file_name, tex_id_per_triangle);
+  std::cout << "Found " << num_textures << " input textures" << std::endl;
+  //apply texture ids to triangles
+  if (tex_id_per_triangle.size() > 0)
+  {
+    std::cout << "Attempting to apply tex ids to triangles..." << std::endl;
+    if (tex_id_per_triangle.size() != triangles.size())
+    {
+      std::cout << "Warning: some triangles did not have texture ids. They will be rendered from the first texture loaded\n";
+    }
+    for (uint32_t i = 0; i < std::min(triangles.size(), tex_id_per_triangle.size()); ++i){
+      triangles[i].tex_id = tex_id_per_triangle[i];
+    }
+  }
 
   auto start_time = std::chrono::system_clock::now();
 
@@ -246,6 +288,14 @@ int32_t main(int argc, char* argv[]) {
   std::string lod_chart_filename = obj_filename.substr(0, obj_filename.size()-4)+".lodchart";
   bvh->write_chart_lod_file(lod_chart_filename);
   std::cout << "Lod chart file written to " << lod_chart_filename << std::endl;
+
+  //write lod tex id file if necessary 
+  if (tex_id_per_triangle.size() > 0)
+  {
+    std::string lod_tex_id_filename = obj_filename.substr(0, obj_filename.size()-4)+".lodtexid";
+    bvh->write_lod_tex_id_file(lod_tex_id_filename);
+    std::cout << "Lod tex id file written to " << lod_tex_id_filename << std::endl;
+  }
 
   bvh.reset();
 

@@ -75,13 +75,9 @@ struct Utils
 	static BoundingBoxLimits load_obj(const std::string& filename, 
 	              std::vector<double> &v, 
 	              std::vector<int> &vindices, 
-	              // std::vector<double> &n, 
-	              // std::vector<int> &nindices, 
 	              std::vector<double> &t,
-	              std::vector<int> &tindices){
-
-
-	  // triangles.clear();
+	              std::vector<int> &tindices,
+	              std::vector<std::string> &materials){
 
 	  scm::math::vec3f min_pos(std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
 	  scm::math::vec3f max_pos(std::numeric_limits<double>::min(),std::numeric_limits<double>::min(),std::numeric_limits<double>::min());
@@ -90,12 +86,23 @@ struct Utils
 
 	  if (0 != file) {
 
+
+        std::string current_material = "";
+
 	    while (true) {
 	      char line[128];
 	      int32_t l = fscanf(file, "%s", line);
 
 	      if (l == EOF) break;
-	      if (strcmp(line, "v") == 0) {
+	      if (strcmp(line, "usemtl") == 0) {
+	        char name[128];
+	        fscanf(file, "%s\n", name);
+	        current_material = std::string(name);
+	        current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
+	        boost::trim(current_material);
+	        std::cout << "obj switch material: " << current_material << std::endl;
+	      }
+	      else if (strcmp(line, "v") == 0) {
 	        double vx, vy, vz;
 	        fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
 
@@ -141,6 +148,8 @@ struct Utils
 	        vindices.insert(vindices.end(), {index[0]-1, index[1]-1, index[2]-1});
 	        tindices.insert(tindices.end(), {coord[0]-1, coord[1]-1, coord[2]-1});
 	        // nindices.insert(nindices.end(), {normal[0]-1, normal[1]-1, normal[2]-1});
+
+	        materials.push_back(current_material);
 	      }
 	    }
 
@@ -151,50 +160,6 @@ struct Utils
 	    std::cout << "coords: " << t.size()/2 << std::endl;
 	    std::cout << "faces: " << vindices.size()/3 << std::endl;
 
-
-
-	  //   triangles.resize(vindices.size()/3);
-
-   //      for (uint32_t i = 0; i < vindices.size()/3; i++) {
-   //        lamure::mesh::triangle_t tri;
-   //        for (uint32_t j = 0; j < 3; ++j) {
-            
-   //          scm::math::vec3f position(
-   //                  v[3 * (vindices[3*i+j] - 1)], v[3 * (vindices[3*i+j] - 1) + 1], v[3 * (vindices[3*i+j] - 1) + 2]);
-
-   //          // scm::math::vec3f normal(
-   //          //         n[3 * (nindices[3*i+j] - 1)], n[3 * (nindices[3*i+j] - 1) + 1], n[3 * (nindices[3*i+j] - 1) + 2]);
-
-   //          scm::math::vec2f coord(
-   //                  t[2 * (tindices[3*i+j] - 1)], t[2 * (tindices[3*i+j] - 1) + 1]);
-
-            
-   //          switch (j) {
-   //            case 0:
-   //            tri.v0_.pos_ =  position;
-   //            // tri.v0_.nml_ = normal;
-   //            tri.v0_.tex_ = coord;
-   //            break;
-
-   //            case 1:
-   //            tri.v1_.pos_ =  position;
-   //            // tri.v1_.nml_ = normal;
-   //            tri.v1_.tex_ = coord;
-   //            break;
-
-   //            case 2:
-   //            tri.v2_.pos_ =  position;
-   //            // tri.v2_.nml_ = normal;
-   //            tri.v2_.tex_ = coord;
-   //            break;
-
-   //            default:
-   //            break;
-   //          }
-   //        }
-   //        triangles[i] = tri;
-   //      }
-
 	  }
 
 	  BoundingBoxLimits bbox;
@@ -203,6 +168,63 @@ struct Utils
 
 	  return bbox;
 
+	}
+
+	static bool load_mtl(const std::string& mtl_filename, std::map<std::string, std::pair<std::string, int> >& material_map) {
+
+	    //parse .mtl file
+	    std::cout << "loading .mtl file ..." << std::endl;
+	    std::ifstream mtl_file(mtl_filename.c_str());
+	    if (!mtl_file.is_open()) {
+	      std::cout << "could not open .mtl file" << std::endl;
+	      return false;
+	    }
+
+	    std::string current_material = "";
+	    int material_index = 0;
+
+	    std::string line;
+	    while (std::getline(mtl_file, line)) {
+	      if(line.length() >= 2) {
+	        if (line[0] == '#') {
+	          continue;
+	        }
+	        if (line.substr(0, 6) == "newmtl") {
+	          current_material = line.substr(7);
+	          boost::trim(current_material);
+	          current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
+	          std::cout << "found: " << current_material << std::endl;
+	          material_map[current_material] = std::make_pair("",-1);
+	        }
+	        else if (line.substr(0, 6) == "map_Kd") {
+
+	          std::string current_texture = line.substr(7);
+	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
+	          boost::trim(current_texture);
+	          
+	          std::cout << current_material << " -> " << current_texture << ", " << material_index << std::endl;
+	          material_map[current_material] =  std::make_pair(current_texture, material_index);
+	          material_index++;
+	        }
+	      }
+	    
+	    }
+
+	    mtl_file.close();
+
+	    return true;
+
+	}
+
+	//writes the texture id of each face of a polyhedron into a text file
+	static void write_tex_id_file(Polyhedron &P, std::string tex_file_name) {
+		//write chart file
+	    std::ofstream ocfs( tex_file_name );
+		for( Facet_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {    
+	        ocfs << fi->tex_id << " ";
+		}
+		ocfs.close();
+		std::cout << "Texture id per face file written to:  " << tex_file_name << std::endl;
 	}
 
 };

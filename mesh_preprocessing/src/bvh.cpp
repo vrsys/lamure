@@ -396,8 +396,10 @@ void bvh::simplify(
 
     // add face id that is position of triangle in input triangle list
     f->face_id = i;      
-    //transfer chart id too
+    //transfer chart 
     f->chart_id = combined_set[i].chart_id;
+    //transfer tex id
+    f->tex_id = combined_set[i].tex_id;
 
     i++;
   }
@@ -425,9 +427,6 @@ void bvh::simplify(
   //     return;
   //   }
   // }
-
-
-  //SMS::Count_stop_predicate<Polyhedron> stop(50);
 
   //simplification with borders constrained
   Border_is_constrained_edge_map bem(polyMesh);
@@ -507,6 +506,7 @@ void bvh::simplify(
 
     Triangle_Chartid tri;
     tri.chart_id = f->chart_id;
+    tri.tex_id = f->tex_id;
 
     for (int i = 0; i < 3; ++i, ++c) {
 
@@ -584,10 +584,15 @@ void bvh::write_lod_file(const std::string& lod_filename) {
     {
       lamure::mesh::triangle_t new_tri = t.get_basic_triangle(); 
 
-#if 0 
+#if 0
 //for testing - replace tex coords with colour derived from chart id
-      double u = std::min(1.0, t.chart_id / 50.0);
-      double v = 0.5 * (t.chart_id % 3);
+      // double u = std::min(1.0, t.chart_id / 50.0);
+      // double v = 0.5 * (t.chart_id % 3);
+
+//for testing - replace tex coords with colour derived from texture id
+      double u = std::min(1.0, t.tex_id / 10.0);
+      double v = 0.5 * (t.tex_id % 3);
+
 
       new_tri.v0_.tex_.x = u;
       new_tri.v0_.tex_.y = v;
@@ -663,6 +668,24 @@ void bvh::write_chart_lod_file(const std::string& chart_lod_filename) {
   ofs.close();
 
   // std::cout << "chart lod file written to: " << chart_lod_filename << std::endl;
+
+}
+
+void bvh::write_lod_tex_id_file(const std::string& lod_tex_id_filename) {
+
+  std::ofstream ofs( lod_tex_id_filename );
+
+  //for each node
+  for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
+    //for each triangle in node
+    for(Triangle_Chartid& t : triangles_map_[node_id]){
+      //write chart id to file
+      ofs << t.tex_id << " ";
+    }
+  }
+  ofs.close();
+
+  // std::cout << " lod tex id file written to: " << lod_tex_id_filename << std::endl;
 
 }
 

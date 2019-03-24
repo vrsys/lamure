@@ -23,6 +23,7 @@ struct UVFace : public CGAL::HalfedgeDS_face_base<Refs> {
   TexCoord t_coords[3];
 
   int face_id;
+  int tex_id = 0;
 
   //provide id accessors to keep track of faces
   int& id() {return face_id;}

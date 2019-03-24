@@ -13,6 +13,7 @@ class Triangle_Chartid : public lamure::mesh::triangle_t {
 public:
 	Triangle_Chartid(){
 		chart_id = -1;
+		tex_id = 0;
 	}
 	~Triangle_Chartid(){}
 	
@@ -25,6 +26,7 @@ public:
 	}
 
 	int chart_id;
+	int tex_id;
 };
 
 
