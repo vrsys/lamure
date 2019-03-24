@@ -741,9 +741,16 @@ void glut_display() {
   // for each texture
   for (uint32_t i = 0; i < to_upload_per_texture.size(); ++i)
   {
-    std::cout << "Rendering from texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
-
+    
     num_vertices_ = to_upload_per_texture[i].size();
+
+    if (num_vertices_ == 0)
+    {
+      std::cout << "Nothing to render for texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
+      continue;
+    }
+
+    std::cout << "Rendering from texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
 
     //upload this vector to GPU (vertex_buffer_)
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
@@ -817,10 +824,10 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type,
   }
 
   if (type == USE_OLD_COORDS){
-    std::cout << "Calculating pixel sizes with old coords" << std::endl;
+    std::cout << "Calculating pixel sizes with old coords...";
   }
   else {
-    std::cout << "Calculating pixel sizes with new coords" << std::endl;
+    std::cout << "Calculating pixel sizes with new coords...";
   }
 
   //for all charts
@@ -831,9 +838,16 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type,
     //for all triangles
     for (auto& tri_id : chart.all_triangle_ids_)
     {
+
+
       //sample length  between vertices 0 and 1
       auto& tri = triangles[tri_id];
-      uint32_t texture_id = tri.tex_id;
+
+      int texture_id = tri.tex_id;
+
+      //check this texture is error free
+      if (texture_id == -1){continue;}
+
 
       //calculate areas in texture space
       double tri_area, tri_pixels;
@@ -862,6 +876,8 @@ void calculate_chart_tex_space_sizes(PixelResolutionCalculationType type,
       chart.real_to_tex_ratio_new = pixels_per_tri;
     }
   }
+
+  std::cout << "done\n";
 
 }
 
@@ -929,7 +945,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<int> chart_id_per_triangle;
     int num_charts = load_chart_file(chart_lod_filename, chart_id_per_triangle);
-    std::cout << "lodchart file lodaded." << std::endl;
+    std::cout << "lodchart file loaded." << std::endl;
 
     std::shared_ptr<lamure::ren::bvh> bvh = std::make_shared<lamure::ren::bvh>(bvh_filename);
     std::cout << "bvh file loaded." << std::endl;
@@ -1110,32 +1126,30 @@ int main(int argc, char *argv[]) {
       std::cout << "loading mtl..." << std::endl;
       std::string mtl_filename = bvh_filename.substr(0, bvh_filename.size()-11) + ".mtl"; //remove "_charts.bvh" suffix from bvh name 
       
-      bool load_mtl_success = Utils::load_tex_paths_from_mtl(mtl_filename, texture_paths);
+      std::vector<int> missing_textures = Utils::load_tex_paths_from_mtl(mtl_filename, texture_paths, texture_dimensions);
 
       if (texture_paths.size() < num_textures)
       {
-        std::cout << "WARNING: not enough textures were found in the material file";
+        std::cout << "WARNING: not enough textures were found in the material file\n";
         num_textures = texture_paths.size();
       }
 
-      //check existence of textures as png
-      for (int i = 0; i < texture_paths.size(); ++i)
+      //Replace missing texture ids with -1 in triangle list
+      if (missing_textures.size() > 0)
       {
-        bool file_good = true;
-        if(!boost::filesystem::exists(texture_paths[i])) {file_good = false;}
-        if(!boost::algorithm::ends_with(texture_paths[i], ".png")) {file_good = false;}
-
-        if (!file_good)
+        for (auto& tri : triangles)
         {
-          std::cout << "WARNING: texture does not exist or is not a PNG (" << texture_paths[i] << ")\n";
-          texture_dimensions.push_back(scm::math::vec2i(0,0));
-        }
-        else {
-          //get dimensions of file
-          texture_dimensions.push_back(Utils::get_png_dimensions(texture_paths[i]));
-          std::cout << "Texture: (" << texture_dimensions[i].x << "x" << texture_dimensions[i].y << ") " << texture_paths[i] << std::endl;
+          for (int i = 0; i < missing_textures.size(); ++i)
+          {
+            if (tri.tex_id == missing_textures[i])
+            {
+              tri.tex_id = -1;
+              break;
+            }
+          }
         }
       }
+
     }
     //if only one texture was found
     else {
@@ -1277,9 +1291,13 @@ int main(int argc, char *argv[]) {
       //pack to 2D upload array
       //limit texture id to number of textures that were found
       int texture_id = std::min( triangles[tri_id].tex_id , num_textures );
-      to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
-      to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
-      to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+      if (texture_id != -1)
+      {
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+      }
+
     } 
   }
 
@@ -1288,12 +1306,12 @@ int main(int argc, char *argv[]) {
   //for each chart, calculate relative size of real space to new tex space
   calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, std::vector<scm::math::vec2i>{scm::math::vec2i(window_width_, window_height_)});
 
-    //print pixel ratios per chart
-  for (auto& chart : charts)
-  {
-    std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
-    std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
-  }
+  //   //print pixel ratios per chart
+  // for (auto& chart : charts)
+  // {
+  //   std::cout << "Chart " << chart.id_ << ": old ratio " << chart.real_to_tex_ratio_old << std::endl;
+  //   std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
+  // }
 
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
   const double target_percentage_charts_with_enough_pixels = 1.0;

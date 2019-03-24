@@ -17,18 +17,23 @@
 struct Utils
 {
 
-	static bool load_tex_paths_from_mtl(const std::string& mtl_filename, std::vector<std::string>& texture_paths) {
+	static std::vector<int> load_tex_paths_from_mtl(const std::string& mtl_filename, 
+										std::vector<std::string>& texture_paths,
+										std::vector<scm::math::vec2i>& texture_dimensions) {
+
+	    std::vector<int> missing_textures;
 
 	    //parse .mtl file
 	    std::cout << "loading .mtl file ..." << std::endl;
 	    std::ifstream mtl_file(mtl_filename.c_str());
 	    if (!mtl_file.is_open()) {
-	      std::cout << "could not open .mtl file" << std::endl;
-	      return false;
+	      std::cout << "ERROR: could not open .mtl file" << std::endl;
+	      exit(EXIT_FAILURE);
 	    }
 
 	    //get path from mtl filename
 	    const std::string dir_path = mtl_filename.substr(0, mtl_filename.find_last_of("/\\") + 1);
+
 
 	    std::string line;
 	    while (std::getline(mtl_file, line)) {
@@ -44,12 +49,22 @@ struct Utils
 	          
 	          std::string full_path = dir_path + current_texture;
 
-	          //check existence of image file
-	          std::ifstream file(full_path);
-			  if(!file.good()){
-			    std::cout << "Texture specified in .mtl file was not found (" << full_path << ")\n";
-			    continue;
-			  }
+	          //check if file exists and is a png
+	          bool file_good = true;
+		      if(!boost::filesystem::exists(full_path)) {file_good = false;}
+		      if(!boost::algorithm::ends_with(full_path, ".png")) {file_good = false;}
+
+		      if (!file_good)
+		      {
+		        std::cout << "WARNING: texture does not exist or is not a PNG (" << full_path << ")\n";
+		        texture_dimensions.push_back(scm::math::vec2i(-1,-1));
+		        missing_textures.push_back(texture_dimensions.size() - 1);
+		      }
+		      else {
+		        //get dimensions of file
+		        texture_dimensions.push_back(Utils::get_png_dimensions(full_path));
+		        std::cout << "Texture: (" << texture_dimensions.back().x << "x" << texture_dimensions.back().y << ") " << full_path << std::endl;
+		      }
 
 	          texture_paths.push_back(full_path);
 	        }
@@ -59,7 +74,7 @@ struct Utils
 
 	    mtl_file.close();
 
-	    return true;
+	    return missing_textures;
 
 	}
 
