@@ -83,6 +83,9 @@ int num_vertices_ = 0;
 
 // std::vector<GLuint> vertex_buffers_;
 
+std::vector<std::string> texture_paths;
+
+std::vector<blit_vertex> to_upload;
 std::vector<std::vector<blit_vertex> > to_upload_per_texture;
 
 
@@ -723,23 +726,31 @@ void glut_display() {
 
   frame_buffer_->enable();
 
-  //for each textures
-  // for (int i = 0; i < to_upload_per_texture.size(); ++i)
-  // {
+  //set the viewport size
+  glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
 
-     //upload this vector to GPU (vertex_buffer_)
-    //  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-    //glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload_per_texture[i][0], GL_STATIC_DRAW);
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
+  //set background colour
+  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        //load the texture png file corresp. to the current loop iteration
-      //texture_ = load_image(texture_filename);
+  //create a vertex buffer 
+  glGenBuffers(1, &vertex_buffer_);
 
-    //set the viewport, background color, and reset default framebuffer
-    glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
-    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  // for each texture
+  for (uint32_t i = 0; i < to_upload_per_texture.size(); ++i)
+  {
+    std::cout << "Rendering from texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
 
+    num_vertices_ = to_upload_per_texture[i].size();
+
+    //upload this vector to GPU (vertex_buffer_)
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+    glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload_per_texture[i][0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    //load the texture png file corresp. to the current loop iteration
+    texture_ = load_image(texture_paths[i]);
 
     //use the shader program we created
     glUseProgram(shader_program_);
@@ -747,14 +758,12 @@ void glut_display() {
     //bind the VBO of the model such that the next draw call will render with these vertices
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
 
-
     //define the layout of the vertex buffer:
     //setup 2 attributes per vertex (2x texture coord)
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
-
 
     //get texture location
     int slot = 0;
@@ -764,7 +773,6 @@ void glut_display() {
     //here, enable the current texture
     texture_->enable(slot);
 
-
     //draw triangles from the currently bound buffer
     glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
 
@@ -772,32 +780,20 @@ void glut_display() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
 
-
     texture_->disable();
 
-  // }//end for each texture
+
+  }//end for each texture
 
   frame_buffer_->disable();
 
-
   save_image(outfile_name, frame_buffer_);
 
-  std::cout << " image saved\n";
-
   exit(1);
-
 
   glutSwapBuffers();
 }
 
-//returns a city block distance between 2 texture coordinates, given a width and height of the texture
-// int calc_city_block_length(scm::math::vec2f coord1, scm::math::vec2f coord2, int tex_width, int tex_height){
-
-//   scm::math::vec2i real_coord1(std::floor(coord1.x * tex_width), std::floor(coord1.y * tex_height));
-//   scm::math::vec2i real_coord2(std::floor(coord2.x * tex_width), std::floor(coord2.y * tex_height));
-
-//   return std::abs(real_coord1.x - real_coord2.x) + std::abs(real_coord1.y - real_coord2.y); 
-// }
 
 double get_area_of_triangle(scm::math::vec2f v0, scm::math::vec2f v1, scm::math::vec2f v2){
 
@@ -1100,7 +1096,7 @@ int main(int argc, char *argv[]) {
       //load mtl to get texture paths
       std::cout << "loading mtl..." << std::endl;
       std::string mtl_filename = bvh_filename.substr(0, bvh_filename.size()-11) + ".mtl"; //remove "_charts.bvh" suffix from bvh name 
-      std::vector<std::string> texture_paths;
+      std::vector<scm::math::vec2i> texture_dimensions;
       bool load_mtl_success = Utils::load_tex_paths_from_mtl(mtl_filename, texture_paths);
 
       if (texture_paths.size() < num_textures)
@@ -1108,10 +1104,29 @@ int main(int argc, char *argv[]) {
         std::cout << "WARNING: not enough textures were found in the material file";
         num_textures = texture_paths.size();
       }
+
+      //check existence of textures as png
+      for (int i = 0; i < texture_paths.size(); ++i)
+      {
+        bool file_good = true;
+        if(!boost::filesystem::exists(texture_paths[i])) {file_good = false;}
+        if(!boost::algorithm::ends_with(texture_paths[i], ".png")) {file_good = false;}
+
+        if (!file_good)
+        {
+          std::cout << "WARNING: texture does not exist or is not a PNG (" << texture_paths[i] << ")\n";
+          texture_dimensions.push_back(scm::math::vec2i(0,0));
+        }
+        else {
+          //get dimensions of file
+          texture_dimensions.push_back(Utils::get_png_dimensions(texture_paths[i]));
+          std::cout << "Texture: (" << texture_dimensions[i].x << "x" << texture_dimensions[i].y << ") " << texture_paths[i] << std::endl;
+        }
+
+      }
     }
 
     //todo
-    //check existence (as png) and sizes of each texture
     //use sizes when calculating texture space sizes in function below
 
 
@@ -1157,7 +1172,7 @@ int main(int argc, char *argv[]) {
   //use 2D array to account for different textures (if no textures were found, make sure it has at least one row)
   to_upload_per_texture.resize(std::max(num_textures,1));
 
-  std::vector<blit_vertex> to_upload;
+  
 
   for (int chart_id = 0; chart_id < charts.size(); ++chart_id) {
     chart& chart = charts[chart_id];
@@ -1386,17 +1401,8 @@ int main(int argc, char *argv[]) {
   //save name for new texture
   outfile_name = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv.png";
 
+  //create output frame buffer
   frame_buffer_ = std::make_shared<frame_buffer_t>(1, window_width_, window_height_, GL_RGBA, GL_LINEAR);
-
-  //fill the vertex buffer
-  num_vertices_ = to_upload.size();
-  // num_vertices_ = to_upload_per_texture[0].size();
-
-  //create a vertex buffer and populate it with our data
-  glGenBuffers(1, &vertex_buffer_);
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-  glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload[0], GL_STATIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   //create shaders
   make_shader_program();

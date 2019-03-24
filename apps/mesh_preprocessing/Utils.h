@@ -6,6 +6,9 @@
 
 #include <boost/algorithm/string.hpp>
 
+
+#include <endian.h>
+
 #ifndef UTILSH
 #define UTILSH
 
@@ -58,6 +61,21 @@ struct Utils
 
 	    return true;
 
+	}
+
+	//reads dimensions of png from header 
+	static scm::math::vec2i get_png_dimensions(std::string filepath) { 
+	    std::ifstream in(filepath);
+	    uint32_t width, height;
+
+	    in.seekg(16);
+	    in.read((char *)&width, 4);
+	    in.read((char *)&height, 4);
+
+	    width = be32toh(width);
+	    height = be32toh(height);
+
+	    return scm::math::vec2i(width, height);
 	}
 
 
