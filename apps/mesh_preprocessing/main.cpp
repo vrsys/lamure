@@ -73,7 +73,13 @@ struct blit_vertex {
   scm::math::vec2f new_coord_;
 };
 
+struct viewport {
+  scm::math::vec2f normed_dims;
+  scm::math::vec2f normed_offset;
+};
 
+
+//global rendering variables:
 
 int window_width_ = 1024;
 int window_height_ = 1024;
@@ -81,7 +87,6 @@ int window_height_ = 1024;
 int elapsed_ms_ = 0;
 int num_vertices_ = 0;
 
-// std::vector<GLuint> vertex_buffers_;
 
 std::vector<std::string> texture_paths;
 
@@ -91,13 +96,14 @@ std::vector<std::vector<blit_vertex> > to_upload_per_texture;
 
 GLuint shader_program_; //contains GPU-code
 GLuint vertex_buffer_; //contains 3d model
-std::shared_ptr<texture_t> texture_; //contains GPU image
+
+// std::shared_ptr<texture_t> texture_; //contains GPU image
 
 std::shared_ptr<frame_buffer_t> frame_buffer_; //contains resulting image
 
 std::string outfile_name = "tex_out.png";
 
-
+std::vector<viewport> viewports;
 
 
 
@@ -733,70 +739,96 @@ void glut_display() {
 
   //set background colour
   glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+  
   //create a vertex buffer 
   glGenBuffers(1, &vertex_buffer_);
 
-  // for each texture
-  for (uint32_t i = 0; i < to_upload_per_texture.size(); ++i)
+  //for each viewport
+  for (uint32_t view_id = 0; view_id < viewports.size(); ++view_id)
   {
-    
-    num_vertices_ = to_upload_per_texture[i].size();
+    std::cout << "Rendering into viewport " << view_id << std::endl;
 
-    if (num_vertices_ == 0)
+    viewport vport = viewports[view_id];
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // for each texture
+    for (uint32_t i = 0; i < to_upload_per_texture.size(); ++i)
     {
-      std::cout << "Nothing to render for texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
-      continue;
-    }
+      
+      num_vertices_ = to_upload_per_texture[i].size();
 
-    std::cout << "Rendering from texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
+      if (num_vertices_ == 0)
+      {
+        std::cout << "Nothing to render for texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
+        continue;
+      }
 
-    //upload this vector to GPU (vertex_buffer_)
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-    glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &to_upload_per_texture[i][0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-
-    //load the texture png file corresp. to the current loop iteration
-    texture_ = load_image(texture_paths[i]);
-
-    //use the shader program we created
-    glUseProgram(shader_program_);
-
-    //bind the VBO of the model such that the next draw call will render with these vertices
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-
-    //define the layout of the vertex buffer:
-    //setup 2 attributes per vertex (2x texture coord)
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
-
-    //get texture location
-    int slot = 0;
-    glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
-    glActiveTexture(GL_TEXTURE0 + slot);
-    
-    //here, enable the current texture
-    texture_->enable(slot);
-
-    //draw triangles from the currently bound buffer
-    glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
-
-    //unbind, unuse
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glUseProgram(0);
-
-    texture_->disable();
+      std::cout << "Rendering from texture (id) " << i << " (path) "<< texture_paths[i] << std::endl;
 
 
-  }//end for each texture
+
+      //convert output texture coordinates
+      std::vector<blit_vertex> updated_vertices;
+      for (auto v : to_upload_per_texture[i])
+      {
+        //do conversion into new viewport space for every vertex
+
+        //shift tex coords
+        v.new_coord_ = scm::math::vec2f(v.new_coord_.x - vport.normed_offset.x, v.new_coord_.y - vport.normed_offset.y);
+        //scale tex coords
+        v.new_coord_ = scm::math::vec2f(v.new_coord_.x / vport.normed_dims.x, v.new_coord_.y / vport.normed_dims.y);
+
+        updated_vertices.push_back(v);
+      }
+
+      //upload this vector to GPU (vertex_buffer_)
+      glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+      glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &updated_vertices[0], GL_STATIC_DRAW);
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+      //load the texture png file corresp. to the current loop iteration
+      std::shared_ptr<texture_t> texture_ = load_image(texture_paths[i]);
+
+      //use the shader program we created
+      glUseProgram(shader_program_);
+
+      //bind the VBO of the model such that the next draw call will render with these vertices
+      glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+
+      //define the layout of the vertex buffer:
+      //setup 2 attributes per vertex (2x texture coord)
+      glEnableVertexAttribArray(0);
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)0);
+      glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex), (void*)(2*sizeof(float)));
+
+      //get texture location
+      int slot = 0;
+      glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
+      glActiveTexture(GL_TEXTURE0 + slot);
+      
+      //here, enable the current texture
+      texture_->enable(slot);
+
+      //draw triangles from the currently bound buffer
+      glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
+
+      //unbind, unuse
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glUseProgram(0);
+
+      texture_->disable();
+
+
+    }//end for each texture
+
+    save_image(outfile_name.substr(0,outfile_name.length()-4) + std::to_string(view_id) + ".png", frame_buffer_);
+
+  } //end for each viewport
 
   frame_buffer_->disable();
-
-  save_image(outfile_name, frame_buffer_);
 
   exit(1);
 
@@ -1313,14 +1345,19 @@ int main(int argc, char *argv[]) {
   //   std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
   // }
 
+  const int single_tex_limit = 8192;
+  const int multi_tex_limit = single_tex_limit * 4;
+
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
-  const double target_percentage_charts_with_enough_pixels = 1.0;
+  const double target_percentage_charts_with_enough_pixels = 0.99;
   std::cout << "Testing texture size of " << window_width_ << " x " << window_height_ << std::endl;
   while (!is_output_texture_big_enough(charts, target_percentage_charts_with_enough_pixels)) {
 
     //limit texture size
-    if (std::max(window_width_, window_height_) >= 8192){
-      std::cout << "Max testure size reached\n";
+    
+
+    if (std::max(window_width_, window_height_) >= multi_tex_limit){
+      std::cout << "Max texture size reached\n";
       break;
     }
 
@@ -1334,7 +1371,40 @@ int main(int argc, char *argv[]) {
   }
 
 
+  //if output texture is bigger than 8k, create a set if viewports that will be rendered separately
+  if (window_width_ > single_tex_limit || window_height_ > single_tex_limit)
+  {
+    //calc num of viewports needed from size of output texture
+    int viewports_w, viewports_h;
+    viewports_w = std::ceil(window_width_ / single_tex_limit);
+    viewports_h = std::ceil(window_height_ / single_tex_limit);
 
+    scm::math::vec2f viewport_normed_size (1.f / viewports_w, 1.f / viewports_h);
+
+    //create a vector of viewports needed 
+    for (int y = 0; y < viewports_h; ++y)
+    {
+      for (int x = 0; x < viewports_w; ++x)
+      {
+        viewport vp;
+        vp.normed_dims = viewport_normed_size;
+        vp.normed_offset = scm::math::vec2f(viewport_normed_size.x * x, viewport_normed_size.y * y);
+        viewports.push_back(vp);
+      }
+    }
+
+    //set window size as size of 1 viewport
+    window_width_ = single_tex_limit;
+    window_height_ = single_tex_limit;
+
+  }
+  else {
+    viewport single_viewport;
+    single_viewport.normed_offset = scm::math::vec2f(0.f,0.f);
+    single_viewport.normed_dims = scm::math::vec2f(1.0,1.0);
+    viewports.push_back(single_viewport);
+  }
+  std::cout << "Created " << viewports.size() << " viewports to render multiple output textures" << std::endl;
 
 
     //replacing texture coordinates in LOD file
