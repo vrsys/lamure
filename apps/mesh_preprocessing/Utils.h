@@ -47,6 +47,10 @@ struct Utils
 	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
 	          boost::trim(current_texture);
 	          
+	          //replace jpg file types with png file types
+	          //in pipeline script, these are converted before this point
+	          current_texture = current_texture.substr(0,current_texture.length()-4).append(".png");
+
 	          std::string full_path = dir_path + current_texture;
 
 	          //check if file exists and is a png
