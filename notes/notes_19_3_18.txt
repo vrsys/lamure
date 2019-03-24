@@ -7,21 +7,12 @@ To do:
  - revise chart splitting system
  - consider normalisation of error metrics
 
- - "Creating charts from grid clusters..." parallelisable?
-
-    //alternative:
-
-    //create vector of vectors, each chart has a vector of face ids
-    // then creation of each chart can be parallelised once vactors are created
-    // add new chart method where chart is built from a list of faces rather than incrementally
-
-
-
+ - "Creating charts from grid clusters..." parallelisable - done
 
 Priorities for final 2 weeks of project:
 
  - Dilation (milky way)
- - Support multiple input textures (without combining to 1 large texture)
+ - Support multiple input textures (without combining to 1 large texture) - done
  - Support writing to multiple output textures
 
 Further notes:
@@ -46,8 +37,6 @@ Organisational:
 Multiple input textures
 
 When reading first chart file, form an index of textures images, and save the index for each face.
-
- - TODO check 
 
 in mesh preprocessing render function, loop for each texture:
  - load texture, bind 
