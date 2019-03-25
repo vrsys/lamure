@@ -97,7 +97,7 @@ std::vector<std::vector<blit_vertex> > to_upload_per_texture;
 GLuint shader_program_; //contains GPU-code
 GLuint vertex_buffer_; //contains 3d model
 
-// std::shared_ptr<texture_t> texture_; //contains GPU image
+std::vector< std::shared_ptr<texture_t> > textures_;
 
 std::shared_ptr<frame_buffer_t> frame_buffer_; //contains resulting image
 
@@ -207,6 +207,8 @@ load_tex_ids(std::string tex_id_file_name, std::vector<triangle>& triangles, int
     return num_textures;
 }
 
+
+
 std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   std::vector<unsigned char> img;
   unsigned int width = 0;
@@ -221,6 +223,15 @@ std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   texture->set_pixels(&img[0]);
 
   return texture;
+}
+
+void load_textures(){
+
+  std::cout << "Loading all textures" << std::endl;
+  for (auto tex_path : texture_paths)
+  {
+    textures_.push_back(load_image(tex_path));
+  }
 }
 
 
@@ -789,7 +800,7 @@ void glut_display() {
 
 
       //load the texture png file corresp. to the current loop iteration
-      std::shared_ptr<texture_t> texture_ = load_image(texture_paths[i]);
+      // std::shared_ptr<texture_t> texture_ = load_image(texture_paths[i]);
 
       //use the shader program we created
       glUseProgram(shader_program_);
@@ -810,7 +821,8 @@ void glut_display() {
       glActiveTexture(GL_TEXTURE0 + slot);
       
       //here, enable the current texture
-      texture_->enable(slot);
+      // texture_->enable(slot);
+      textures_[i]->enable(slot);
 
       //draw triangles from the currently bound buffer
       glDrawArrays(GL_TRIANGLES, 0, num_vertices_);
@@ -819,7 +831,7 @@ void glut_display() {
       glBindBuffer(GL_ARRAY_BUFFER, 0);
       glUseProgram(0);
 
-      texture_->disable();
+      textures_[i]->disable();
 
 
     }//end for each texture
@@ -1522,6 +1534,8 @@ int main(int argc, char *argv[]) {
 
   //create output frame buffer
   frame_buffer_ = std::make_shared<frame_buffer_t>(1, window_width_, window_height_, GL_RGBA, GL_LINEAR);
+
+  load_textures();
 
   //create shaders
   make_shader_program();
