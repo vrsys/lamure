@@ -749,7 +749,8 @@ void glut_display() {
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
 
   //set background colour
-  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+  // glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
   
   //create a vertex buffer 
   glGenBuffers(1, &vertex_buffer_);
@@ -969,6 +970,8 @@ int main(int argc, char *argv[]) {
          "\t-f: selects .bvh input file" << std::endl <<
          "\t-c: selects .lodchart input file (default = <bvhname>.lodchart)" << std::endl <<
          "\t-t: selects .png texture input file (default = <bvhname>.png)" << std::endl <<
+         "\t-single-max: specifies largest possible single output texture (=8192)" << std::endl <<
+         "\t-multi-max: specifies largest possible output texture (=total size of 4 x single_tex_limit (=32768))" << std::endl <<
          std::endl;
       return 0;
     }
@@ -985,6 +988,17 @@ int main(int argc, char *argv[]) {
     if (cmd_option_exists(argv, argv+argc, "-t")) {
       texture_filename = get_cmd_option(argv, argv+argc, "-t");
     }
+
+    int single_tex_limit = 8192;
+    if (cmd_option_exists(argv, argv+argc, "-single-max")) {
+      single_tex_limit = atoi(get_cmd_option(argv, argv+argc, "-single-max"));
+    }
+    int multi_tex_limit = single_tex_limit * 4;
+    if (cmd_option_exists(argv, argv+argc, "-multi-max")) {
+      multi_tex_limit = atoi(get_cmd_option(argv, argv+argc, "-multi-max"));
+    }
+
+
 
 
     std::vector<int> chart_id_per_triangle;
@@ -1357,8 +1371,6 @@ int main(int argc, char *argv[]) {
   //   std::cout << "-------- " << ": new ratio " << chart.real_to_tex_ratio_new << std::endl;
   // }
 
-  const int single_tex_limit = 8192;
-  const int multi_tex_limit = single_tex_limit * 4;
 
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
   const double target_percentage_charts_with_enough_pixels = 0.99;
