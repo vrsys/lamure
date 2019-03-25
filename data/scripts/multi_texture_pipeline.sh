@@ -7,15 +7,19 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=200
-CELL_RES=30
+CHART_THRES=400
+CELL_RES=200
 NORMAL_VARIANCE_THRESHOLD=0.01
 
 # hierarchy creation
 TRI_BUDGET=1000
 
+#maximum single output texture size
+MAX_TEX_SIZE=256
+
 #dilations
 NUM_DILATIONS=0
+
 
 ############################
 
@@ -60,7 +64,6 @@ echo "copying png files"
 cp /${SRC_DIR}/*.png ${REGR_DIR}
 echo "copying jpg files"
 cp /${SRC_DIR}/*.jpg ${REGR_DIR}
-# cp -a /${SRC_DIR}/. ${REGR_DIR}
 
 #create path to obj file
 OBJPATH="${REGR_DIR}/$(basename "${SRC_OBJ}")"
@@ -80,7 +83,7 @@ echo "----------------------------------------------------"
 echo "Running chart creation with file $OBJPATH"
 echo "----------------------------------------------------"
 
-./install/bin/lamure_grid_face_clustering -f $OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
+./install/bin/lamure_grid_face_clustering -debug -f $OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
 
 #create hierarchy
 echo "----------------------------------------------------"
@@ -108,7 +111,7 @@ echo "using bvh file $BVH_PATH"
 echo "using lodchart file $LODCHART_PATH"
 echo "using png file $PNGPATH"
 
-./install/bin/lamure_mesh_preprocessing -f $BVH_PATH
+./install/bin/lamure_mesh_preprocessing -f $BVH_PATH -single-max ${MAX_TEX_SIZE}
 
 FINAL_BVH_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.bvh"
 VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"

@@ -11,6 +11,9 @@ NORMAL_VARIANCE_THRESHOLD=0.01
 # hierarchy creation
 TRI_BUDGET=1000
 
+#maximum single output texture size
+MAX_TEX_SIZE=256
+
 #dilations
 NUM_DILATIONS=4
 
@@ -95,7 +98,7 @@ echo "using bvh file $BVH_PATH"
 echo "using lodchart file $LODCHART_PATH"
 echo "using png file $PNGPATH"
 
-./install/bin/lamure_mesh_preprocessing -f $BVH_PATH -c $LODCHART_PATH -t $PNGPATH
+./install/bin/lamure_mesh_preprocessing -f $BVH_PATH -c $LODCHART_PATH -t $PNGPATH -single-max ${MAX_TEX_SIZE}
 
 FINAL_BVH_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.bvh"
 VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
