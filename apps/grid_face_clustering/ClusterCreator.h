@@ -59,6 +59,9 @@ struct ClusterCreator
         //calculate areas of each face
     std::map<face_descriptor,double> fareas;
     std::map<face_descriptor,Vector> fnormals;
+
+    std::vector<double> fareas_vec;
+    std::vector<Vector> fnormals_vec;
     // calculate_normals_and_areas(P,fnormals,fareas);
     std::cout << "Calculating face areas...\n";
     for(face_descriptor fd: faces(P)){
@@ -77,11 +80,21 @@ struct ClusterCreator
     std::cout << "Calculating face normals...\n";
     CGAL::Polygon_mesh_processing::compute_face_normals(P,boost::make_assoc_property_map(fnormals));
 
-    std::cout << "Creating charts from grid clusters...\n";
-
-    //get boost face iterator
+        //get boost face iterator
     face_iterator fb_boost, fe_boost;
     boost::tie(fb_boost, fe_boost) = faces(P);
+
+    //convert to arrays
+    for (Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); fb++)
+    {
+      fareas_vec.push_back(fareas[*fb_boost]);
+      fnormals_vec.push_back(fnormals[*fb_boost]);
+      fb_boost++;
+    }
+
+    std::cout << "Creating charts from grid clusters...\n";
+
+
 
     //to create chart vector
     //create vector of vectors, each chart has a vector of face ids
@@ -143,11 +156,13 @@ struct ClusterCreator
         //create chart from this face, and merge if not the first
         if (f == 0)
         {
-          chart_local = Chart(i,*fi, fnormals[*fb_boost], fareas[*fb_boost]);
+          // chart_local = Chart(i,*fi, fnormals[*fb_boost], fareas[*fb_boost]);
+          chart_local = Chart(i,*fi, fnormals_vec[face_id], fareas_vec[face_id]);
         }
         else {
-          Chart new_chart(i,*fi, fnormals[*fb_boost], fareas[*fb_boost]);
-          chart_local.quick_merge_with(new_chart);
+
+          // chart_local.add_facet(*fi, fnormals[*fb_boost], fareas[*fb_boost]);
+          chart_local.add_facet(*fi, fnormals_vec[face_id], fareas_vec[face_id]);
         }
 
         current_position = face_id;

@@ -134,6 +134,22 @@ struct Chart
 
     recalculate_perimeter_from_scratch();
   }
+  //also requires update after merge
+  void add_facet(Facet f,const Vector normal,const double _area){
+
+    facets.push_back(f);
+    normals.push_back(normal);
+    areas.push_back(_area);
+
+    area += _area;
+
+    ErrorQuadric new_face_quad = createPQuad(f);
+    P_quad = P_quad + new_face_quad;
+
+    ErrorQuadric new_face_r_quad = ErrorQuadric(Utils::normalise(normal));
+    R_quad = R_quad + new_face_r_quad;
+
+  }
 
   //returns error of points in a joined chart , averga e distance from best fitting plane
   //returns plane normal for e_dir error term
