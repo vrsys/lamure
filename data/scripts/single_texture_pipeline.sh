@@ -4,18 +4,19 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=200
-CELL_RES=30
-NORMAL_VARIANCE_THRESHOLD=0.01
+CHART_THRES=200 # number of charts created
+CELL_RES=30 # starting grid - how many cells across
+NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
-TRI_BUDGET=1000
+TRI_BUDGET=2000
 
 #maximum single output texture size
-MAX_TEX_SIZE=256
+MAX_TEX_SIZE=1024
+MAX_MULTI_TEX_SIZE=1024
 
 #dilations
-NUM_DILATIONS=4
+NUM_DILATIONS=1000
 
 ############################
 
@@ -25,7 +26,7 @@ cd $LAM_DIR
 
 LAM_DIR=$PWD
 
-mkdir cddata/regression
+mkdir data/regression
 
 echo "detected $# arguments"
 
@@ -98,20 +99,19 @@ echo "using bvh file $BVH_PATH"
 echo "using lodchart file $LODCHART_PATH"
 echo "using png file $PNGPATH"
 
-./install/bin/lamure_mesh_preprocessing -f $BVH_PATH -c $LODCHART_PATH -t $PNGPATH -single-max ${MAX_TEX_SIZE}
+./install/bin/lamure_mesh_preprocessing -f $BVH_PATH -c $LODCHART_PATH -t $PNGPATH -single-max ${MAX_TEX_SIZE} -multi-max ${MAX_MULTI_TEX_SIZE}
 
 FINAL_BVH_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.bvh"
 VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
-FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.png"
+FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv0.png"
+DILATED_TEX_PATH="${FINAL_TEX_PATH:0:${#FINAL_TEX_PATH}-4}_dil.png"
 
 echo "----------------------------------------------------"
 echo "Dilation"
 echo "----------------------------------------------------"
+
 #dilate new texture to avoid cracks 
-for dilation_iteration in `seq 1 "$NUM_DILATIONS"`;
-do
-  ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $FINAL_TEX_PATH
-done
+./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $DILATED_TEX_PATH $NUM_DILATIONS
 
 
 echo "----------------------------------------------------"
@@ -123,6 +123,6 @@ touch $VIS_PATH
 echo $FINAL_BVH_PATH > $VIS_PATH
 
 echo "using vis file $VIS_PATH"
-echo "using tex file $FINAL_TEX_PATH"
+echo "using tex file $DILATED_TEX_PATH"
 
-./install/bin/lamure_vis $VIS_PATH $FINAL_TEX_PATH
+./install/bin/lamure_vis $VIS_PATH $DILATED_TEX_PATH
