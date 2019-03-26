@@ -7,8 +7,8 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=100 # number of charts created
-CELL_RES=20 # starting grid - how many cells across
+CHART_THRES=200 # number of charts created
+CELL_RES=50 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
@@ -16,8 +16,8 @@ TRI_BUDGET=4096
 
 #maximum single output texture size
 
-MAX_TEX_SIZE=1024
-MAX_MULTI_TEX_SIZE=1024
+MAX_TEX_SIZE=8192
+MAX_MULTI_TEX_SIZE=8192
 
 #dilations
 NUM_DILATIONS=1000
@@ -137,7 +137,7 @@ time ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $DILATED_TEX_PATH $NU
 echo "----------------------------------------------------"
 echo "Visualising"
 echo "----------------------------------------------------"
-
+ 
 #create vis file and run vis app
 touch $VIS_PATH
 echo $FINAL_BVH_PATH > $VIS_PATH
