@@ -43,6 +43,7 @@ int main( int argc, char** argv )
   }
   else {
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
+    std::cout << "Optional: -of specifies outfile name" << std::endl;
 
     std::cout << "Optional: -ch specifies chart threshold (=0)" << std::endl;
     std::cout << "Optional: -co specifies cost threshold (=double max)" << std::endl;
@@ -56,6 +57,11 @@ int main( int argc, char** argv )
 
     std::cout << "Optional: -debug writes charts to obj file, as colours that override texture coordinates (=false)" << std::endl;
     return 1;
+  }
+
+  std::string out_filename = obj_filename.substr(0,obj_filename.size()-4) + "_charts.obj";
+  if (Utils::cmdOptionExists(argv, argv+argc, "-of")) {
+    out_filename = Utils::getCmdOption(argv, argv + argc, "-of");
   }
 
   double cost_threshold = std::numeric_limits<double>::max();
@@ -187,8 +193,8 @@ int main( int argc, char** argv )
 
 
 
-  std::string out_filename = obj_filename.substr(0,obj_filename.size()-4) + "_charts.obj";
-  std::string chart_filename = obj_filename.substr(0,obj_filename.size()-4) + "_charts.chart";
+
+  std::string chart_filename = out_filename.substr(0,out_filename.size()-4) + ".chart";
   std::ofstream ofs( out_filename );
   OBJ_printer::print_polyhedron_wavefront_with_charts( ofs, polyMesh,chart_id_map, active_charts, !cluster_settings.write_charts_as_textures, chart_filename);
   ofs.close();

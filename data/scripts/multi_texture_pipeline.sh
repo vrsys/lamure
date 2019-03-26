@@ -7,9 +7,9 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=20
-CELL_RES=200
-NORMAL_VARIANCE_THRESHOLD=0.02
+CHART_THRES=200
+CELL_RES=20
+NORMAL_VARIANCE_THRESHOLD=0.01
 
 # hierarchy creation
 TRI_BUDGET=2000
@@ -57,8 +57,8 @@ mkdir "${REGR_DIR}"
 SRC_DIR=$(dirname "${SRC_OBJ}")
 
 #copy only necessary files. allow jpgs that need to be converted
-echo "copying obj"
-cp /${SRC_OBJ} ${REGR_DIR}
+# echo "copying obj"
+# cp /${SRC_OBJ} ${REGR_DIR}
 echo "copying material files" 
 cp /${SRC_DIR}/*.mtl ${REGR_DIR}
 echo "copying png files"
@@ -68,6 +68,7 @@ cp /${SRC_DIR}/*.jpg ${REGR_DIR}
 
 #create path to obj file
 OBJPATH="${REGR_DIR}/$(basename "${SRC_OBJ}")"
+CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 
 cd ${REGR_DIR}
 #convert textures to png if necessary
@@ -81,17 +82,17 @@ cd ${LAM_DIR}
 
 #create charts
 echo "----------------------------------------------------"
-echo "Running chart creation with file $OBJPATH"
+echo "Running chart creation with file $SRC_OBJ"
 echo "----------------------------------------------------"
 
-./install/bin/lamure_grid_face_clustering -debug -f $OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
+./install/bin/lamure_grid_face_clustering -debug -f $SRC_OBJ -of $CHART_OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
 
 #create hierarchy
 echo "----------------------------------------------------"
 echo "Creating LOD hierarchy"
 echo "----------------------------------------------------"
 
-CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
+
 CHARTFILE_PATH="${CHART_OBJPATH:0:${#CHART_OBJPATH}-4}.chart"
 
 echo "using obj file $CHART_OBJPATH"
