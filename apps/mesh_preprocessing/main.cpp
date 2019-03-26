@@ -749,9 +749,9 @@ void glut_display() {
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
 
   //set background colour
-  // glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-  glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
-  
+  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+  // glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+  // 
   //create a vertex buffer 
   glGenBuffers(1, &vertex_buffer_);
 
