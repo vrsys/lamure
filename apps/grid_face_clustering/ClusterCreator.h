@@ -62,6 +62,8 @@ struct ClusterCreator
 
     std::vector<double> fareas_vec;
     std::vector<Vector> fnormals_vec;
+    std::vector<std::shared_ptr<Facet> > faces_vec;
+
     // calculate_normals_and_areas(P,fnormals,fareas);
     std::cout << "Calculating face areas...\n";
     for(face_descriptor fd: faces(P)){
@@ -87,6 +89,8 @@ struct ClusterCreator
     //convert to arrays
     for (Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); fb++)
     {
+      faces_vec.push_back(std::make_shared<Facet>(*fb));
+
       fareas_vec.push_back(fareas[*fb_boost]);
       fnormals_vec.push_back(fnormals[*fb_boost]);
       fb_boost++;
@@ -136,36 +140,36 @@ struct ClusterCreator
       Chart chart_local;
 
       //go through list of faces, build charts
-      std::vector<uint32_t> face_list = faces_per_chart_vector[i];
+      std::vector<uint32_t>& face_list = faces_per_chart_vector[i];
 
       //get begin iterators
-      uint32_t current_position = 0;
-      Facet_iterator fi = P.facets_begin();
-      face_iterator fb_boost, fe_boost;
-      boost::tie(fb_boost, fe_boost) = faces(P);
+      // uint32_t current_position = 0;
+      // Facet_iterator fi = P.facets_begin();
+      // face_iterator fb_boost, fe_boost;
+      // boost::tie(fb_boost, fe_boost) = faces(P);
 
       for (uint32_t f = 0; f < face_list.size(); ++f)
       {
         uint32_t face_id = face_list[f];
-        uint32_t to_advance = face_id - current_position;
+        // uint32_t to_advance = face_id - current_position;
 
         //advance iterator by required number of steps
-        std::advance(fi, to_advance);
-        std::advance(fb_boost, to_advance);
+        // std::advance(fi, to_advance);
+        // std::advance(fb_boost, to_advance);
 
         //create chart from this face, and merge if not the first
         if (f == 0)
         {
           // chart_local = Chart(i,*fi, fnormals[*fb_boost], fareas[*fb_boost]);
-          chart_local = Chart(i,*fi, fnormals_vec[face_id], fareas_vec[face_id]);
+          chart_local = Chart(i,faces_vec[face_id], fnormals_vec[face_id], fareas_vec[face_id]);
         }
         else {
 
           // chart_local.add_facet(*fi, fnormals[*fb_boost], fareas[*fb_boost]);
-          chart_local.add_facet(*fi, fnormals_vec[face_id], fareas_vec[face_id]);
+          chart_local.add_facet(faces_vec[face_id], fnormals_vec[face_id], fareas_vec[face_id]);
         }
 
-        current_position = face_id;
+        // current_position = face_id;
       }//for each face
 
       //to calculate perimeter and avg normal properly
@@ -207,7 +211,7 @@ struct ClusterCreator
       for (auto& face : chart.facets)
       {
         //for each edge
-        Halfedge_facet_circulator fc = face.facet_begin();
+        Halfedge_facet_circulator fc = face->facet_begin();
         do {
           if (!fc->is_border() && !(fc->opposite()->is_border()) )//guard against no neighbour at this edge
           {
@@ -219,7 +223,7 @@ struct ClusterCreator
               chart_neighbours.insert(nbr_chart_id);
             }
           }
-        } while ( ++fc != face.facet_begin());
+        } while ( ++fc != face->facet_begin());
       }
 
       // std::cout << "found " << chart_neighbours.size() << " unique neighbours for chart " << chart.id << std::endl;
@@ -285,7 +289,7 @@ struct ClusterCreator
     for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
 
       //init chart instance for face
-      Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
+      Chart c(charts.size(),std::make_shared<Facet>(*fb), fnormals[*fb_boost], fareas[*fb_boost]);
       charts.push_back(c);
 
       fb_boost++;
@@ -329,7 +333,7 @@ struct ClusterCreator
       auto& chart = charts[id];
       if (chart.active) {
         for (auto& f : chart.facets) {
-          chart_id_map[f.id()] = active_charts;
+          chart_id_map[f->id()] = active_charts;
         }
         active_charts++;
       }

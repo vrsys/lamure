@@ -8,7 +8,7 @@
 #include <limits>
 #include <float.h>
 #include <lamure/mesh/bvh.h>
-
+#include <memory>
 
 #include <CGAL/Polygon_mesh_processing/measure.h>
 

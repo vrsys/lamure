@@ -749,8 +749,8 @@ void glut_display() {
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
 
   //set background colour
-  // glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-  glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+  // glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
   
   //create a vertex buffer 
   glGenBuffers(1, &vertex_buffer_);
@@ -992,10 +992,16 @@ int main(int argc, char *argv[]) {
     int single_tex_limit = 8192;
     if (cmd_option_exists(argv, argv+argc, "-single-max")) {
       single_tex_limit = atoi(get_cmd_option(argv, argv+argc, "-single-max"));
+      std::cout << "Single output texture limited to " << single_tex_limit << std::endl;
     }
+
+    window_width_ = single_tex_limit;
+    window_height_ = single_tex_limit;
+
     int multi_tex_limit = single_tex_limit * 4;
     if (cmd_option_exists(argv, argv+argc, "-multi-max")) {
       multi_tex_limit = atoi(get_cmd_option(argv, argv+argc, "-multi-max"));
+      std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
     }
 
 

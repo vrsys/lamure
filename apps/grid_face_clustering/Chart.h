@@ -6,11 +6,12 @@
 #include "eig.h"
 
 
+
 // struct to hold a vector of facets that make a chart
 struct Chart
 {
   uint32_t id;
-  std::vector<Facet> facets;
+  std::vector<std::shared_ptr<Facet> > facets;
   std::vector<bool> facets_are_inner_facets;
   std::vector<Vector> normals;
   std::vector<double> areas;
@@ -28,7 +29,7 @@ struct Chart
 
   Chart(){}
 
-  Chart(uint32_t _id, Facet f,const Vector normal,const double _area){
+  Chart(uint32_t _id, std::shared_ptr<Facet> f,const Vector normal,const double _area){
     facets.push_back(f);
     facets_are_inner_facets.resize(facets.size(), false);
 
@@ -52,14 +53,14 @@ struct Chart
   }
 
   //create a combined quadric for 3 vertices of a face
-  ErrorQuadric createPQuad(Facet &f){
+  ErrorQuadric createPQuad(std::shared_ptr<Facet> f){
 
     ErrorQuadric face_quad;
-    Halfedge_facet_circulator he = f.facet_begin();
+    Halfedge_facet_circulator he = f->facet_begin();
     CGAL_assertion( CGAL::circulator_size(he) >= 3);
     do {
       face_quad = face_quad + ErrorQuadric(he->vertex()->point());
-    } while ( ++he != f.facet_begin());
+    } while ( ++he != f->facet_begin());
 
     return face_quad;
   }
@@ -95,6 +96,11 @@ struct Chart
     has_border_edge = has_border_edge | mc.has_border_edge;
 
     neighbour_charts.insert(mc.neighbour_charts.begin(), mc.neighbour_charts.end());
+
+    // clear memory from old chart
+    mc.facets.clear();
+    mc.facets.shrink_to_fit(); 
+
 
   }
 
@@ -132,10 +138,12 @@ struct Chart
     }
     avg_normal = v / area;
 
+
+    facets_are_inner_facets.resize(facets.size(), false);
     recalculate_perimeter_from_scratch();
   }
   //also requires update after merge
-  void add_facet(Facet f,const Vector normal,const double _area){
+  void add_facet(std::shared_ptr<Facet> f,const Vector normal,const double _area){
 
     facets.push_back(f);
     normals.push_back(normal);
@@ -264,9 +272,9 @@ struct Chart
   //adds edge lengths of a face
   //
   //also looks out for border edges
-  static double get_face_perimeter(Facet& f, bool& found_mesh_border){
+  static double get_face_perimeter(std::shared_ptr<Facet> f, bool& found_mesh_border){
 
-    Halfedge_facet_circulator he = f.facet_begin();
+    Halfedge_facet_circulator he = f->facet_begin();
     CGAL_assertion( CGAL::circulator_size(he) >= 3);
     double accum_perimeter = 0;
 
@@ -279,7 +287,7 @@ struct Chart
       }
 
           accum_perimeter += edge_length(he);
-    } while ( ++he != f.facet_begin());
+    } while ( ++he != f->facet_begin());
 
     return accum_perimeter;
   }
@@ -306,7 +314,7 @@ struct Chart
         // std::cout << "for face " << c1_face.id() << std::endl;
 
         //for each edge
-        Halfedge_facet_circulator he = c1.facets[f1].facet_begin();
+        Halfedge_facet_circulator he = c1.facets[f1]->facet_begin();
         CGAL_assertion( CGAL::circulator_size(he) >= 3);
 
         do {
@@ -322,7 +330,7 @@ struct Chart
             for (uint32_t f2 = 0; f2 < c2.facets.size(); ++f2){
               if (!(c2.facets_are_inner_facets[f2]))
               {
-                if (c2.facets[f2].id() == adj_face_id)
+                if (c2.facets[f2]->id() == adj_face_id)
                 {
                   perimeter -= (2 * edge_length(he));
                   break;
@@ -334,7 +342,7 @@ struct Chart
           //   // std::cout << "border edge\n";
           // }
 
-        } while ( ++he != c1.facets[f1].facet_begin());
+        } while ( ++he != c1.facets[f1]->facet_begin());
 
       }
     }
@@ -355,7 +363,7 @@ struct Chart
     for (uint32_t i = 0; i < facets.size(); ++i)
     {
       //for each edge
-      Halfedge_facet_circulator fc = facets[i].facet_begin();
+      Halfedge_facet_circulator fc = facets[i]->facet_begin();
       bool inner_face = true; //set face as an inner face, unless any of its neighbours are not in this chart
 
       do {
@@ -374,7 +382,7 @@ struct Chart
           {
             // std::cout << "finding nbr" << std::endl;
 
-            if (nbr_id == facets[j].id())
+            if (nbr_id == facets[j]->id())
             {
               found_nbr = true;
               break;
@@ -390,7 +398,7 @@ struct Chart
           // std::cout << "border edge" << std::endl;
           perimeter_accum += Chart::edge_length(fc);
         }
-      } while ( ++fc != facets[i].facet_begin());
+      } while ( ++fc != facets[i]->facet_begin());
 
       facets_are_inner_facets[i] = inner_face;
     }
@@ -408,7 +416,7 @@ struct Chart
       if (!(this->facets_are_inner_facets[i]))
       {
         //get id of surrounding faces
-        Halfedge_facet_circulator fc = this->facets[i].facet_begin();
+        Halfedge_facet_circulator fc = this->facets[i]->facet_begin();
         bool found_nbr_chart = false;
         do {
 
@@ -426,7 +434,7 @@ struct Chart
             }
 
           }
-        } while ( ++fc != this->facets[i].facet_begin());
+        } while ( ++fc != this->facets[i]->facet_begin());
 
         //if a neighbour was found, this is not an inner chart, and vice versa
         this->facets_are_inner_facets[i] = !found_nbr_chart;

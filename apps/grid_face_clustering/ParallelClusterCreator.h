@@ -88,7 +88,7 @@ struct ParallelClusterCreator
     for ( Facet_iterator fb = P.facets_begin(); fb != P.facets_end(); ++fb){
 
       //init chart instance for face
-      Chart c(charts.size(),*fb, fnormals[*fb_boost], fareas[*fb_boost]);
+      Chart c(charts.size(),std::make_shared<Facet>(*fb), fnormals[*fb_boost], fareas[*fb_boost]);
       charts.push_back(c);
 
       fb_boost++;
@@ -121,7 +121,7 @@ struct ParallelClusterCreator
       for (auto& face : chart.facets)
       {
         //for each edge
-        Halfedge_facet_circulator fc = face.facet_begin();
+        Halfedge_facet_circulator fc = face->facet_begin();
         do {
           if (!fc->is_border() && !(fc->opposite()->is_border()) )//guard against no neighbour at this edge
           {
@@ -134,7 +134,7 @@ struct ParallelClusterCreator
               chart_neighbours.insert(nbr_chart_id);
             }
           }
-        } while ( ++fc != face.facet_begin());
+        } while ( ++fc != face->facet_begin());
       }
 
 
@@ -574,7 +574,7 @@ struct ParallelClusterCreator
       auto& chart = charts[id];
       if (chart.active) {
         for (auto& f : chart.facets) {
-          chart_id_map[f.id()] = active_charts;
+          chart_id_map[f->id()] = active_charts;
         }
         active_charts++;
       }
