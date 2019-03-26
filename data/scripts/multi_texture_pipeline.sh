@@ -7,12 +7,12 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=20
-CELL_RES=200
-NORMAL_VARIANCE_THRESHOLD=0.02
+CHART_THRES=100 # number of charts created
+CELL_RES=20 # starting grid - how many cells across
+NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
-TRI_BUDGET=2000
+TRI_BUDGET=4096
 
 #maximum single output texture size
 
@@ -58,8 +58,8 @@ mkdir "${REGR_DIR}"
 SRC_DIR=$(dirname "${SRC_OBJ}")
 
 #copy only necessary files. allow jpgs that need to be converted
-echo "copying obj"
-cp /${SRC_OBJ} ${REGR_DIR}
+# echo "copying obj"
+# cp /${SRC_OBJ} ${REGR_DIR}
 echo "copying material files" 
 cp /${SRC_DIR}/*.mtl ${REGR_DIR}
 echo "copying png files"
@@ -69,6 +69,7 @@ cp /${SRC_DIR}/*.jpg ${REGR_DIR}
 
 #create path to obj file
 OBJPATH="${REGR_DIR}/$(basename "${SRC_OBJ}")"
+CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 
 cd ${REGR_DIR}
 #convert textures to png if necessary
@@ -82,24 +83,24 @@ cd ${LAM_DIR}
 
 #create charts
 echo "----------------------------------------------------"
-echo "Running chart creation with file $OBJPATH"
+echo "Running chart creation with file $SRC_OBJ"
 echo "----------------------------------------------------"
 
-./install/bin/lamure_grid_face_clustering -debug -f $OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
+time ./install/bin/lamure_grid_face_clustering  -f $SRC_OBJ -of $CHART_OBJPATH -ch $CHART_THRES -cc $CELL_RES -ct $NORMAL_VARIANCE_THRESHOLD
 
 #create hierarchy
 echo "----------------------------------------------------"
 echo "Creating LOD hierarchy"
 echo "----------------------------------------------------"
 
-CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
+
 CHARTFILE_PATH="${CHART_OBJPATH:0:${#CHART_OBJPATH}-4}.chart"
 
 echo "using obj file $CHART_OBJPATH"
 echo "using chart file $CHARTFILE_PATH"
 
 
-./install/bin/lamure_mesh_hierarchy -f $CHART_OBJPATH -cf $CHARTFILE_PATH -t $TRI_BUDGET
+time ./install/bin/lamure_mesh_hierarchy -f $CHART_OBJPATH -cf $CHARTFILE_PATH -t $TRI_BUDGET
 
 BVH_PATH="${CHART_OBJPATH:0:${#CHART_OBJPATH}-4}.bvh"
 LODCHART_PATH="${CHART_OBJPATH:0:${#CHART_OBJPATH}-4}.lodchart"
@@ -113,12 +114,14 @@ echo "using bvh file $BVH_PATH"
 echo "using lodchart file $LODCHART_PATH"
 echo "using png file $PNGPATH"
 
-./install/bin/lamure_mesh_preprocessing -f $BVH_PATH -single-max ${MAX_TEX_SIZE} -multi-max ${MAX_MULTI_TEX_SIZE}
+time ./install/bin/lamure_mesh_preprocessing -f $BVH_PATH -single-max ${MAX_TEX_SIZE} -multi-max ${MAX_MULTI_TEX_SIZE}
 
 FINAL_BVH_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.bvh"
 VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv0.png"
-DILATED_TEX_PATH="${FINAL_TEX_PATH}_dil.png"
+DILATED_TEX_PATH="${FINAL_TEX_PATH:0:${#FINAL_TEX_PATH}-4}_dil.png"
+
+
 
 
 echo "----------------------------------------------------"
@@ -126,7 +129,9 @@ echo "Dilation"
 echo "----------------------------------------------------"
 
 #dilate new texture to avoid cracks 
-./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $DILATED_TEX_PATH $NUM_DILATIONS
+
+time ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $DILATED_TEX_PATH $NUM_DILATIONS
+
 
 
 echo "----------------------------------------------------"

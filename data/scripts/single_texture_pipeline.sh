@@ -4,12 +4,13 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=200 # number of charts created
-CELL_RES=30 # starting grid - how many cells across
+CHART_THRES=50 # number of charts created
+CELL_RES=20 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
-TRI_BUDGET=2000
+
+TRI_BUDGET=1024
 
 #maximum single output texture size
 MAX_TEX_SIZE=1024
@@ -41,7 +42,9 @@ else
 	SRC_PNGPATH=$2
 fi
 
-echo "using files $SRC_OBJPATH and $SRC_PNGPATH"
+SRC_MTLPATH="${SRC_OBJPATH:0:${#SRC_OBJPATH}-4}.mtl"
+
+echo "using files $SRC_OBJPATH and $SRC_PNGPATH and ${SRC_MTLPATH}"
 
 
 #create folder for regression test
@@ -54,11 +57,13 @@ mkdir "$REGR_DIR"
 
 
 #copy input files to regression folder
-cp $SRC_OBJPATH $REGR_DIR
-cp $SRC_PNGPATH $REGR_DIR
+# cp $SRC_OBJPATH $REGR_DIR
+cp $SRC_PNGPATH ${REGR_DIR}
+cp $SRC_MTLPATH ${REGR_DIR}
 
 #get copies of files
 OBJPATH="$REGR_DIR/$(basename $SRC_OBJPATH)"
+CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 PNGPATH="$REGR_DIR/$(basename $SRC_PNGPATH)"
 
 echo "Flipping texture image"
@@ -66,10 +71,10 @@ mogrify -flip ${PNGPATH}
 
 #create charts
 echo "----------------------------------------------------"
-echo "Running chart creation with file $OBJPATH"
+echo "Running chart creation with file $SRC_OBJPATH"
 echo "----------------------------------------------------"
 
-./install/bin/lamure_grid_face_clustering -f ${OBJPATH} -ch ${CHART_THRES} -cc ${CELL_RES} -ct ${NORMAL_VARIANCE_THRESHOLD}
+./install/bin/lamure_grid_face_clustering -f ${SRC_OBJPATH} -of $CHART_OBJPATH -ch ${CHART_THRES} -cc ${CELL_RES} -ct ${NORMAL_VARIANCE_THRESHOLD}
 
 # create LOD hierarchy and simplify nodes
 echo "----------------------------------------------------"
@@ -106,11 +111,13 @@ VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv0.png"
 DILATED_TEX_PATH="${FINAL_TEX_PATH:0:${#FINAL_TEX_PATH}-4}_dil.png"
 
+
 echo "----------------------------------------------------"
 echo "Dilation"
 echo "----------------------------------------------------"
 
 #dilate new texture to avoid cracks 
+
 ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $DILATED_TEX_PATH $NUM_DILATIONS
 
 
