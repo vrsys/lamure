@@ -9,7 +9,8 @@ CELL_RES=20 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
-TRI_BUDGET=2000
+
+TRI_BUDGET=1024
 
 #maximum single output texture size
 MAX_TEX_SIZE=1024
@@ -110,11 +111,13 @@ VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv0.png"
 DILATED_TEX_PATH="${FINAL_TEX_PATH:0:${#FINAL_TEX_PATH}-4}_dil.png"
 
+
 echo "----------------------------------------------------"
 echo "Dilation"
 echo "----------------------------------------------------"
 
 #dilate new texture to avoid cracks 
+
 ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $DILATED_TEX_PATH $NUM_DILATIONS
 
 
