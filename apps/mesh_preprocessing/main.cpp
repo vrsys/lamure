@@ -193,11 +193,11 @@ load_tex_ids(std::string tex_id_file_name, std::vector<triangle>& triangles, int
     if (tex_id_per_triangle.size() > 0)
     {
       std::cout << "Attempting to apply tex ids to triangles..." << std::endl;
-      if (tex_id_per_triangle.size() != triangles.size())
+      if (tex_id_per_triangle.size() != (triangles.size() - first_leaf_tri_offset))
       {
         std::cout << "Warning: some triangles did not have texture ids. They will be rendered from the first texture loaded\n";
 
-        std::cout << "Triangles: " << triangles.size() << " input tex ids: " << tex_id_per_triangle.size() << std::endl;
+        std::cout << "Leaf level triangles: " << triangles.size() - first_leaf_tri_offset << " input tex ids: " << tex_id_per_triangle.size() << std::endl;
       }
       for (uint32_t i = 0; i < std::min(tex_id_per_triangle.size() - first_leaf_tri_offset, triangles.size()); ++i){
         triangles[i].tex_id = tex_id_per_triangle[i + first_leaf_tri_offset];
@@ -784,14 +784,14 @@ void glut_display() {
       std::vector<blit_vertex> updated_vertices;
       for (auto v : to_upload_per_texture[i])
       {
+        blit_vertex new_bv = v;
         //do conversion into new viewport space for every vertex
-
         //shift tex coords
-        v.new_coord_ = scm::math::vec2f(v.new_coord_.x - vport.normed_offset.x, v.new_coord_.y - vport.normed_offset.y);
+        new_bv.new_coord_ = scm::math::vec2f(v.new_coord_.x - vport.normed_offset.x, v.new_coord_.y - vport.normed_offset.y);
         //scale tex coords
-        v.new_coord_ = scm::math::vec2f(v.new_coord_.x / vport.normed_dims.x, v.new_coord_.y / vport.normed_dims.y);
+        new_bv.new_coord_ = scm::math::vec2f(v.new_coord_.x / vport.normed_dims.x, v.new_coord_.y / vport.normed_dims.y);
 
-        updated_vertices.push_back(v);
+        updated_vertices.push_back(new_bv);
       }
 
       //upload this vector to GPU (vertex_buffer_)
@@ -997,7 +997,12 @@ int main(int argc, char *argv[]) {
     if (cmd_option_exists(argv, argv+argc, "-multi-max")) {
       multi_tex_limit = atoi(get_cmd_option(argv, argv+argc, "-multi-max"));
     }
-
+    //default (minimum) output texture size = single texture size
+    window_width_ = single_tex_limit;
+    window_height_ = single_tex_limit;
+    std::cout << "Single texture size limit: " << single_tex_limit << std::endl;
+    std::cout << "Multi texture size limit: " << multi_tex_limit << std::endl;
+    
 
 
 
@@ -1012,10 +1017,7 @@ int main(int argc, char *argv[]) {
     lod->open(lod_filename);
     std::cout << "lod file loaded." << std::endl;
 
-    //default (minimum) output texture size
-    window_width_ = 1024;
-    window_height_ = 1024;
-    
+
     std::vector<chart> charts;
     //initially, lets compile the charts
 
@@ -1127,15 +1129,15 @@ int main(int argc, char *argv[]) {
 
 
 
-    // //report chart parameters
-    // for (int chart_id = 0; chart_id < num_charts; ++chart_id) {
-    //   auto& chart = charts[chart_id];
-    //   std::cout << "chart id " << chart_id << std::endl;
-    //   std::cout << "box min " << chart.box_.min() << std::endl;
-    //   std::cout << "box max " << chart.box_.max() << std::endl;
-    //   std::cout << "original triangles " << chart.original_triangle_ids_.size() << std::endl;
-    //   std::cout << "all triangles " << chart.all_triangle_ids_.size() << std::endl;
-    // }
+    //report chart parameters
+    for (int chart_id = 0; chart_id < num_charts; ++chart_id) {
+      auto& chart = charts[chart_id];
+      std::cout << "chart id " << chart_id << std::endl;
+      std::cout << "box min " << chart.box_.min() << std::endl;
+      std::cout << "box max " << chart.box_.max() << std::endl;
+      std::cout << "original triangles " << chart.original_triangle_ids_.size() << std::endl;
+      std::cout << "all triangles " << chart.all_triangle_ids_.size() << std::endl;
+    }
 
     std::cout << "tris per node " << vertices_per_node/3 << std::endl;
 
@@ -1192,7 +1194,7 @@ int main(int argc, char *argv[]) {
         num_textures = texture_paths.size();
       }
 
-      //Replace missing texture ids with -1 in triangle list
+      //Replace texture ids of textures that are missing with -1 in triangle list
       if (missing_textures.size() > 0)
       {
         for (auto& tri : triangles)
@@ -1251,6 +1253,8 @@ int main(int argc, char *argv[]) {
       rect.max_.x *= scale;
       rect.max_.y *= scale;
       rects.push_back(rect);
+
+      std::cout << " Rect " << rect.max_.x << "x" << rect.max_.y << std::endl; 
     }
 
     //rectangle packing
@@ -1414,6 +1418,8 @@ int main(int argc, char *argv[]) {
         vp.normed_dims = viewport_normed_size;
         vp.normed_offset = scm::math::vec2f(viewport_normed_size.x * x, viewport_normed_size.y * y);
         viewports.push_back(vp);
+
+        std::cout << "Viewport " << viewports.size() -1 << ": " << viewport_normed_size.x << "x" << viewport_normed_size.y << " at (" << vp.normed_offset.x << "," << vp.normed_offset.y << ")\n";
       }
     }
 
@@ -1427,6 +1433,9 @@ int main(int argc, char *argv[]) {
     single_viewport.normed_offset = scm::math::vec2f(0.f,0.f);
     single_viewport.normed_dims = scm::math::vec2f(1.0,1.0);
     viewports.push_back(single_viewport);
+
+    std::cout << "Viewport " << viewports.size() -1 << ": " << single_viewport.normed_dims.x << "x" << single_viewport.normed_dims.y << " at (" << single_viewport.normed_offset.x << "," << single_viewport.normed_offset.y << ")\n";
+
   }
   std::cout << "Created " << viewports.size() << " viewports to render multiple output textures" << std::endl;
 

@@ -7,7 +7,7 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=200
+CHART_THRES=50
 CELL_RES=20
 NORMAL_VARIANCE_THRESHOLD=0.01
 
@@ -118,7 +118,7 @@ echo "using png file $PNGPATH"
 FINAL_BVH_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.bvh"
 VIS_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv.vis"
 FINAL_TEX_PATH="${BVH_PATH:0:${#BVH_PATH}-4}_uv0.png"
-DILATED_TEX_PATH="${FINAL_TEX_PATH}_dil.png"
+DILATED_TEX_PATH="${FINAL_TEX_PATH:0:${#FINAL_TEX_PATH}-4}_dil.png"
 
 echo "----------------------------------------------------"
 echo "Dilation"

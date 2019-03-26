@@ -4,8 +4,8 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=200 # number of charts created
-CELL_RES=30 # starting grid - how many cells across
+CHART_THRES=50 # number of charts created
+CELL_RES=20 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
