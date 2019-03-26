@@ -7,9 +7,9 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=400
+CHART_THRES=20
 CELL_RES=200
-NORMAL_VARIANCE_THRESHOLD=0.01
+NORMAL_VARIANCE_THRESHOLD=0.02
 
 # hierarchy creation
 TRI_BUDGET=2000
