@@ -4,12 +4,12 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=50
+CHART_THRES=200
 CELL_RES=30
 NORMAL_VARIANCE_THRESHOLD=0.01
 
 # hierarchy creation
-TRI_BUDGET=1000
+TRI_BUDGET=1024
 
 #maximum single output texture size
 MAX_TEX_SIZE=1024
