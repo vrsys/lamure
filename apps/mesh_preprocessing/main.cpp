@@ -12,6 +12,7 @@
 #include <vector>
 #include <algorithm>
 #include <set>
+#include <map>
 
 #include <lamure/types.h>
 #include <lamure/ren/dataset.h>
@@ -63,6 +64,7 @@ struct chart {
   lamure::bounding_box box_;
   std::set<int> all_triangle_ids_;
   std::set<int> original_triangle_ids_;
+  std::map<int, std::vector<scm::math::vec2f>> all_triangle_new_coods_;
   projection_info projection;
   double real_to_tex_ratio_old;
   double real_to_tex_ratio_new;
@@ -277,7 +279,7 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     scm::math::vec3f centroid(0.f, 0.f, 0.f);
 
     // compute average normal and centroid
-    for (auto tri_id : chart.all_triangle_ids_) {
+    for (auto tri_id : chart.original_triangle_ids_) {
 
       triangle& tri = triangles[tri_id];
 
@@ -306,13 +308,13 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
       centroid.z += tri.v2_.pos_.z;
     }
 
-    avg_normal.x /= (float)(chart.all_triangle_ids_.size()*3);
-    avg_normal.y /= (float)(chart.all_triangle_ids_.size()*3);
-    avg_normal.z /= (float)(chart.all_triangle_ids_.size()*3);
+    avg_normal.x /= (float)(chart.original_triangle_ids_.size()*3);
+    avg_normal.y /= (float)(chart.original_triangle_ids_.size()*3);
+    avg_normal.z /= (float)(chart.original_triangle_ids_.size()*3);
 
-    centroid.x /= (float)(chart.all_triangle_ids_.size()*3);
-    centroid.y /= (float)(chart.all_triangle_ids_.size()*3);
-    centroid.z /= (float)(chart.all_triangle_ids_.size()*3);
+    centroid.x /= (float)(chart.original_triangle_ids_.size()*3);
+    centroid.y /= (float)(chart.original_triangle_ids_.size()*3);
+    centroid.z /= (float)(chart.original_triangle_ids_.size()*3);
 
     // std::cout << "chart id " << chart_id << ", num tris: " << chart.all_triangle_ids_.size() << std::endl;
     // std::cout << "  avg_n: (" << avg_normal.x << " " << avg_normal.y << " " << avg_normal.z << ")" << std::endl;
@@ -405,6 +407,11 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
       tri.v2_.new_coord_.x -= chart.rect_.min_.x;
       tri.v2_.new_coord_.y -= chart.rect_.min_.y;
 
+
+      std::vector<scm::math::vec2f> coords = {
+        tri.v0_.new_coord_, tri.v1_.new_coord_, tri.v2_.new_coord_};
+      chart.all_triangle_new_coods_.insert(std::make_pair(tri_id, coords));
+
       // std::cout << "tri_id " << tri_id << " projected v0: (" << tri.v0_.new_coord_.x << " " << tri.v0_.new_coord_.y << ")" << std::endl;
       // std::cout << "tri_id " << tri_id << " projected v1: (" << tri.v1_.new_coord_.x << " " << tri.v1_.new_coord_.y << ")" << std::endl;
       // std::cout << "tri_id " << tri_id << " projected v2: (" << tri.v2_.new_coord_.x << " " << tri.v2_.new_coord_.y << ")" << std::endl;
@@ -413,6 +420,8 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
 
     chart.rect_.min_.x = 0.f;
     chart.rect_.min_.y = 0.f;
+
+    
 
 
     // std::cout << "chart " << chart_id << " rect min: " << chart.rect_.min_.x << ", " << chart.rect_.min_.y << std::endl;
@@ -426,14 +435,16 @@ void project(std::vector<chart>& charts, std::vector<triangle>& triangles) {
     
     // normalize largest_max to 1
     for (auto tri_id : chart.all_triangle_ids_) {
-      triangle& tri = triangles[tri_id];
+      //triangle& tri = triangles[tri_id];
 
-      tri.v0_.new_coord_.x /= largest_max;
-      tri.v0_.new_coord_.y /= largest_max;
-      tri.v1_.new_coord_.x /= largest_max;
-      tri.v1_.new_coord_.y /= largest_max;
-      tri.v2_.new_coord_.x /= largest_max;
-      tri.v2_.new_coord_.y /= largest_max;
+      chart.all_triangle_new_coods_[tri_id][0].x /= largest_max;
+      chart.all_triangle_new_coods_[tri_id][0].y /= largest_max;
+      chart.all_triangle_new_coods_[tri_id][1].x /= largest_max;
+      chart.all_triangle_new_coods_[tri_id][1].y /= largest_max;
+      chart.all_triangle_new_coods_[tri_id][2].x /= largest_max;
+      chart.all_triangle_new_coods_[tri_id][2].y /= largest_max;
+
+
     }
 
     chart.rect_.max_.x /= largest_max;
@@ -749,8 +760,8 @@ void glut_display() {
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
 
   //set background colour
-  // glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-  glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+  // glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
   
   //create a vertex buffer 
   glGenBuffers(1, &vertex_buffer_);
@@ -993,6 +1004,10 @@ int main(int argc, char *argv[]) {
     if (cmd_option_exists(argv, argv+argc, "-single-max")) {
       single_tex_limit = atoi(get_cmd_option(argv, argv+argc, "-single-max"));
     }
+
+    window_width_ = single_tex_limit;
+    window_height_ = single_tex_limit;
+
     int multi_tex_limit = single_tex_limit * 4;
     if (cmd_option_exists(argv, argv+argc, "-multi-max")) {
       multi_tex_limit = atoi(get_cmd_option(argv, argv+argc, "-multi-max"));
@@ -1087,31 +1102,42 @@ int main(int argc, char *argv[]) {
       auto& chart = charts[chart_id];
 
       for (int leaf_id = first_leaf; leaf_id < first_leaf+num_leafs; ++leaf_id) {
+
+#if 1
         lamure::bounding_box leaf_box(
           scm::math::vec3d(bvh->get_bounding_boxes()[leaf_id].min_vertex()),
           scm::math::vec3d(bvh->get_bounding_boxes()[leaf_id].max_vertex()));
 
         //disabled - adding any triangles that intersect chart projection
         // //broad check that the leaf and chart intersect before checking individual triangles
-        // if (chart.box_.intersects(leaf_box)) {
+         if (chart.box_.intersects(leaf_box)) {
 
-        //   lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
-        //     (vertices_per_node * size_of_vertex));
+           lod->read((char*)&vertices[0], (vertices_per_node*leaf_id*size_of_vertex),
+             (vertices_per_node * size_of_vertex));
 
-        //   for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
-        //     const auto& vertex = vertices[vertex_id];
-        //     scm::math::vec3d v(vertex.v_x_, vertex.v_y_, vertex.v_z_);
+           for (int vertex_id = 0; vertex_id < vertices_per_node; ++vertex_id) {
+             const auto& vertex = vertices[vertex_id];
+             scm::math::vec3d v(vertex.v_x_, vertex.v_y_, vertex.v_z_);
 
-        //     //find out if this triangle intersects the chart box
-        //     if (chart.box_.contains(v)) {
-        //       int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+(vertex_id/3);
-        //       // chart.all_triangle_ids_.insert(lod_tri_id);
+             //find out if this triangle intersects the chart box
+             if (chart.box_.contains(v)) {
+               int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+(vertex_id/3);
+               chart.all_triangle_ids_.insert(lod_tri_id);
 
-        //       //is it ok to add the same triangle multiple times?
-        //     }
-        //   }
-        // }
+               //is it ok to add the same triangle multiple times?
+             }
+           }
+         }
 
+         for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
+          
+          if (chart_id == chart_id_per_triangle[leaf_id*(vertices_per_node/3)+tri_id]) {
+            int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+tri_id;
+            chart.original_triangle_ids_.insert(lod_tri_id);
+          }
+        }
+
+#else
         //get tri id and then chart id from lodchart list
         //if chart is this chart, add to appropriate tri list
         for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
@@ -1119,11 +1145,12 @@ int main(int argc, char *argv[]) {
           if (chart_id == chart_id_per_triangle[leaf_id*(vertices_per_node/3)+tri_id]) {
             int lod_tri_id = (leaf_id-first_leaf)*(vertices_per_node/3)+tri_id;
             chart.all_triangle_ids_.insert(lod_tri_id);
+            chart.original_triangle_ids_.insert(lod_tri_id);
           }
         }
-      }
-      
+#endif
     }
+  }
 
 
 
@@ -1305,7 +1332,32 @@ int main(int argc, char *argv[]) {
          temp = triangles[tri_id].v2_.new_coord_.x;
          triangles[tri_id].v2_.new_coord_.x = triangles[tri_id].v2_.new_coord_.y;
          triangles[tri_id].v2_.new_coord_.y = temp;
+
+
+         temp = chart.all_triangle_new_coods_[tri_id][0].x;
+         chart.all_triangle_new_coods_[tri_id][0].x = chart.all_triangle_new_coods_[tri_id][0].y;
+         chart.all_triangle_new_coods_[tri_id][0].y = temp;
+
+         temp = chart.all_triangle_new_coods_[tri_id][1].x;
+         chart.all_triangle_new_coods_[tri_id][1].x = chart.all_triangle_new_coods_[tri_id][1].y;
+         chart.all_triangle_new_coods_[tri_id][1].y = temp;
+
+         temp = chart.all_triangle_new_coods_[tri_id][2].x;
+         chart.all_triangle_new_coods_[tri_id][2].x = chart.all_triangle_new_coods_[tri_id][2].y;
+         chart.all_triangle_new_coods_[tri_id][2].y = temp;
+
+         
        }
+
+
+       for(int vert_idx = 0; vert_idx < 3; ++vert_idx) {
+         chart.all_triangle_new_coods_[tri_id][vert_idx] *= scale;
+         chart.all_triangle_new_coods_[tri_id][vert_idx].x += rect.min_.x;
+         chart.all_triangle_new_coods_[tri_id][vert_idx].y += rect.min_.y;
+         chart.all_triangle_new_coods_[tri_id][vert_idx].x /= rect.max_.x;
+         chart.all_triangle_new_coods_[tri_id][vert_idx].y /= rect.max_.x;
+       }
+
 
 
       triangles[tri_id].v0_.new_coord_.x *= scale;
@@ -1342,18 +1394,18 @@ int main(int argc, char *argv[]) {
       //  std::cout << "v2: " << triangles[tri_id].v2_.new_coord_.x 
       //  << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
 
-      to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
-      to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
-      to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+      //to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
+      //to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
+      //to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
 
       //pack to 2D upload array
       //limit texture id to number of textures that were found
       int texture_id = std::min( triangles[tri_id].tex_id , num_textures );
       if (texture_id != -1)
       {
-        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
-        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
-        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, chart.all_triangle_new_coods_[tri_id][0]});
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, chart.all_triangle_new_coods_[tri_id][1]});
+        to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, chart.all_triangle_new_coods_[tri_id][2]});
       }
 
     } 
