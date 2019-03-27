@@ -128,7 +128,7 @@ vec4 mix_colors(idx_tex_positions positions, vec2 texture_coordinates, float mix
     vec4 child_color = get_physical_texture_color(positions.child_idx, texture_coordinates, positions.child_lvl);
     vec4 parent_color = get_physical_texture_color(positions.parent_idx, texture_coordinates, positions.parent_lvl);
 
-    return enable_hierarchy == true ? mix(parent_color, child_color, 1.f - mix_ratio) : child_color;
+    return enable_hierarchy == true ? mix(parent_color, child_color, mix_ratio) : child_color;
 }
 
 vec4 illustrate_level(int desired_level, float mix_ratio, idx_tex_positions positions)
@@ -218,7 +218,7 @@ vec4 illustrate_level(int desired_level, float mix_ratio, idx_tex_positions posi
                             1);
     }
 
-    return enable_hierarchy == true ? mix(parent_color, child_color, 1.f - mix_ratio) : child_color;
+    return enable_hierarchy == true ? mix(parent_color, child_color, mix_ratio) : child_color;
 }
 
 /*
