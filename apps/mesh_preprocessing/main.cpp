@@ -695,11 +695,16 @@ void make_shader_program() {
     layout (location = 0) in vec2 vertex_old_coord;\n\
     layout (location = 1) in vec2 vertex_new_coord;\n\
     \n\
+    uniform vec2 viewport_offset;\n\
+    uniform vec2 viewport_scale;\n\
+    \n\
     varying vec2 passed_uv;\n\
     \n\
     void main() {\n\
       vec2 coord = vec2(vertex_new_coord.x, vertex_new_coord.y);\n\
-      gl_Position = vec4((coord-0.5)*2.0, 0.5, 1.0);\n\
+      vec2 coord_translated = coord - viewport_offset; \n\
+      vec2 coord_scaled = coord_translated / viewport_scale; \n\
+      gl_Position = vec4((coord_scaled-0.5)*2.0, 0.5, 1.0);\n\
       passed_uv = vertex_old_coord;\n\
     }";
 
@@ -743,8 +748,6 @@ static void glut_timer(int32_t _e) {
 
 void glut_display() {
 
-  frame_buffer_->enable();
-
   //set the viewport size
   glViewport(0, 0, (GLsizei)window_width_, (GLsizei)window_height_);
 
@@ -761,6 +764,11 @@ void glut_display() {
     std::cout << "Rendering into viewport " << view_id << std::endl;
 
     viewport vport = viewports[view_id];
+
+    std::cout << "Viewport start: " << vport.normed_offset.x << ", " << vport.normed_offset.y << std::endl;
+    std::cout << "Viewport size: " << vport.normed_dims.x << ", " << vport.normed_dims.y << std::endl;
+
+    frame_buffer_->enable();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -782,29 +790,29 @@ void glut_display() {
 
       //convert output texture coordinates
       std::vector<blit_vertex> updated_vertices;
+
+      uint32_t vertex_count = 0;
       for (auto v : to_upload_per_texture[i])
       {
         blit_vertex new_bv = v;
         //do conversion into new viewport space for every vertex
         //shift tex coords
-        new_bv.new_coord_ = scm::math::vec2f(v.new_coord_.x - vport.normed_offset.x, v.new_coord_.y - vport.normed_offset.y);
+        new_bv.new_coord_ = scm::math::vec2f(v.new_coord_.x/* - vport.normed_offset.x*/, v.new_coord_.y /* - vport.normed_offset.y*/);
         //scale tex coords
-        new_bv.new_coord_ = scm::math::vec2f(v.new_coord_.x / vport.normed_dims.x, v.new_coord_.y / vport.normed_dims.y);
+        new_bv.new_coord_ = scm::math::vec2f(v.new_coord_.x/* / vport.normed_dims.x*/, v.new_coord_.y/* / vport.normed_dims.y */);
 
         updated_vertices.push_back(new_bv);
       }
 
+      std::cout << "TO UPLOAD PER VERTEX SIZE: " << to_upload_per_texture[i].size() << std::endl;
+
+
+      glUseProgram(shader_program_);
+
+
       //upload this vector to GPU (vertex_buffer_)
       glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
-      glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &updated_vertices[0], GL_STATIC_DRAW);
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-
-      //load the texture png file corresp. to the current loop iteration
-      // std::shared_ptr<texture_t> texture_ = load_image(texture_paths[i]);
-
-      //use the shader program we created
-      glUseProgram(shader_program_);
+      glBufferData(GL_ARRAY_BUFFER, num_vertices_*sizeof(blit_vertex), &updated_vertices[0], GL_STREAM_DRAW);
 
       //bind the VBO of the model such that the next draw call will render with these vertices
       glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
@@ -819,6 +827,9 @@ void glut_display() {
       //get texture location
       int slot = 0;
       glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
+      glUniform2f(glGetUniformLocation(shader_program_, "viewport_offset"), vport.normed_offset[0], vport.normed_offset[1]);
+      glUniform2f(glGetUniformLocation(shader_program_, "viewport_scale"), vport.normed_dims[0], vport.normed_dims[1]);
+
       glActiveTexture(GL_TEXTURE0 + slot);
       
       //here, enable the current texture
@@ -837,11 +848,12 @@ void glut_display() {
 
     }//end for each texture
 
+    frame_buffer_->disable();
+
     save_image(outfile_name.substr(0,outfile_name.length()-4) + std::to_string(view_id) + ".png", frame_buffer_);
 
   } //end for each viewport
 
-  frame_buffer_->disable();
 
   exit(1);
 
@@ -1169,22 +1181,26 @@ int main(int argc, char *argv[]) {
 
       for (int tri_id = 0; tri_id < vertices_per_node/3; ++tri_id) {
 
+        uint32_t triangle_offset = tri_id*3;
+
         triangle tri;
-        tri.v0_.pos_ = scm::math::vec3f(vertices[tri_id*3].v_x_, vertices[tri_id*3].v_y_, vertices[tri_id*3].v_z_);
-        tri.v0_.nml_ = scm::math::vec3f(vertices[tri_id*3].n_x_, vertices[tri_id*3].n_y_, vertices[tri_id*3].n_z_);
-        tri.v0_.old_coord_ = scm::math::vec2f(vertices[tri_id*3].c_x_, vertices[tri_id*3].c_y_);
 
-        tri.v1_.pos_ = scm::math::vec3f(vertices[tri_id*3+1].v_x_, vertices[tri_id*3+1].v_y_, vertices[tri_id*3+1].v_z_);
-        tri.v1_.nml_ = scm::math::vec3f(vertices[tri_id*3+1].n_x_, vertices[tri_id*3+1].n_y_, vertices[tri_id*3+1].n_z_);
-        tri.v1_.old_coord_ = scm::math::vec2f(vertices[tri_id*3+1].c_x_, vertices[tri_id*3+1].c_y_);
+        auto& vertex_0 = vertices[triangle_offset];
+        tri.v0_.pos_ = scm::math::vec3f(vertex_0.v_x_, vertex_0.v_y_, vertex_0.v_z_);
+        tri.v0_.nml_ = scm::math::vec3f(vertex_0.n_x_, vertex_0.n_y_, vertex_0.n_z_);
+        tri.v0_.old_coord_ = scm::math::vec2f(vertex_0.c_x_, vertex_0.c_y_);
 
-        tri.v2_.pos_ = scm::math::vec3f(vertices[tri_id*3+2].v_x_, vertices[tri_id*3+2].v_y_, vertices[tri_id*3+2].v_z_);
-        tri.v2_.nml_ = scm::math::vec3f(vertices[tri_id*3+2].n_x_, vertices[tri_id*3+2].n_y_, vertices[tri_id*3+2].n_z_);
-        tri.v2_.old_coord_ = scm::math::vec2f(vertices[tri_id*3+2].c_x_, vertices[tri_id*3+2].c_y_);
+        auto& vertex_1 = vertices[triangle_offset + 1];
+        tri.v1_.pos_ = scm::math::vec3f(vertex_1.v_x_, vertex_1.v_y_, vertex_1.v_z_);
+        tri.v1_.nml_ = scm::math::vec3f(vertex_1.n_x_, vertex_1.n_y_, vertex_1.n_z_);
+        tri.v1_.old_coord_ = scm::math::vec2f(vertex_1.c_x_, vertex_1.c_y_);
+
+        auto& vertex_2 = vertices[triangle_offset + 2];
+        tri.v2_.pos_ = scm::math::vec3f(vertex_2.v_x_, vertex_2.v_y_, vertex_2.v_z_);
+        tri.v2_.nml_ = scm::math::vec3f(vertex_2.n_x_, vertex_2.n_y_, vertex_2.n_z_);
+        tri.v2_.old_coord_ = scm::math::vec2f(vertex_2.c_x_, vertex_2.c_y_);
 
         triangles.push_back(tri);
-
-
       }
     }
 
@@ -1202,8 +1218,11 @@ int main(int argc, char *argv[]) {
     {
       //load mtl to get texture paths
       std::cout << "loading mtl..." << std::endl;
+
       std::string mtl_filename = bvh_filename.substr(0, bvh_filename.size()-11) + ".mtl"; //remove "_charts.bvh" suffix from bvh name 
-      
+      std::cout << "MTL-FILENAME: " << mtl_filename << std::endl;
+
+
       std::vector<int> missing_textures = Utils::load_tex_paths_from_mtl(mtl_filename, texture_paths, texture_dimensions);
 
       if (texture_paths.size() < num_textures)
@@ -1310,16 +1329,6 @@ int main(int argc, char *argv[]) {
     for (auto tri_id : chart.all_triangle_ids_) {
 
 
-      // std::cout << "before v0: " << triangles[tri_id].v0_.new_coord_.x 
-      //  << " " << triangles[tri_id].v0_.new_coord_.y << std::endl;
-
-      // std::cout << "before v1: " << triangles[tri_id].v1_.new_coord_.x 
-      //  << " " << triangles[tri_id].v1_.new_coord_.y << std::endl;
-
-      //  std::cout << "before v2: " << triangles[tri_id].v2_.new_coord_.x 
-      //  << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
-
-
        if (rect.flipped_) {
          float temp = chart.all_triangle_new_coods_[tri_id][0].x;
          chart.all_triangle_new_coods_[tri_id][0].x = chart.all_triangle_new_coods_[tri_id][0].y;
@@ -1346,24 +1355,6 @@ int main(int argc, char *argv[]) {
        }
 
 
-
-      // std::cout << "min to add x " << rect.min_.x << std::endl;
-      // std::cout << "min to add y " << rect.min_.y << std::endl;
-      // std::cout << "image size " << image.max_.x << std::endl;
- 
-      // std::cout << "v0: " << triangles[tri_id].v0_.new_coord_.x 
-      //  << " " << triangles[tri_id].v0_.new_coord_.y << std::endl;
-
-      //  std::cout << "v1: " << triangles[tri_id].v1_.new_coord_.x 
-      //  << " " << triangles[tri_id].v1_.new_coord_.y << std::endl;
-
-      //  std::cout << "v2: " << triangles[tri_id].v2_.new_coord_.x 
-      //  << " " << triangles[tri_id].v2_.new_coord_.y << std::endl;
-
-      //to_upload.push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, triangles[tri_id].v0_.new_coord_});
-      //to_upload.push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, triangles[tri_id].v1_.new_coord_});
-      //to_upload.push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, triangles[tri_id].v2_.new_coord_});
-
       //pack to 2D upload array
       //limit texture id to number of textures that were found
       int texture_id = std::min( triangles[tri_id].tex_id , num_textures );
@@ -1372,13 +1363,16 @@ int main(int argc, char *argv[]) {
         to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v0_.old_coord_, chart.all_triangle_new_coods_[tri_id][0]});
         to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v1_.old_coord_, chart.all_triangle_new_coods_[tri_id][1]});
         to_upload_per_texture[texture_id].push_back(blit_vertex{triangles[tri_id].v2_.old_coord_, chart.all_triangle_new_coods_[tri_id][2]});
+      } else {
+        std::cout << "TEXID INVALID" << std::endl;
+
+        std::cout << "TEXID: texid: " <<  triangles[tri_id].tex_id << " NUM TEXTURES: " << num_textures << "\n";
       }
 
     } 
   }
 
-  
-
+    
   //for each chart, calculate relative size of real space to new tex space
   calculate_chart_tex_space_sizes(USE_NEW_COORDS, charts, triangles, std::vector<scm::math::vec2i>{scm::math::vec2i(window_width_, window_height_)});
 

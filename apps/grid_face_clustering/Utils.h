@@ -185,6 +185,7 @@ struct Utils
 
 	    std::string line;
 	    while (std::getline(mtl_file, line)) {
+	      boost::trim(line);
 	      if(line.length() >= 2) {
 	        if (line[0] == '#') {
 	          continue;
@@ -193,6 +194,7 @@ struct Utils
 	          current_material = line.substr(7);
 	          boost::trim(current_material);
 	          current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
+			  current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
 	          std::cout << "found: " << current_material << std::endl;
 	          material_map[current_material] = std::make_pair("",-1);
 	        }
@@ -200,11 +202,12 @@ struct Utils
 
 	          std::string current_texture = line.substr(7);
 	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
+	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\r'), current_texture.end());
 	          boost::trim(current_texture);
 	          
 	          std::cout << current_material << " -> " << current_texture << ", " << material_index << std::endl;
 	          material_map[current_material] =  std::make_pair(current_texture, material_index);
-	          material_index++;
+	          ++material_index;
 	        }
 	      }
 	    

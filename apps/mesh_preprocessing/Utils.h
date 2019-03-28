@@ -37,14 +37,17 @@ struct Utils
 
 	    std::string line;
 	    while (std::getline(mtl_file, line)) {
+	      boost::trim(line);
 	      if(line.length() >= 2) {
 	        if (line[0] == '#') {
 	          continue;
 	        }
 	        else if (line.substr(0, 6) == "map_Kd") {
-
+	          //std::cout << "Parsing map_Kd" << "\n";
+	          //std::cout << "LION: " << line << "\n";
 	          std::string current_texture = line.substr(7);
 	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
+	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\r'), current_texture.end());
 	          boost::trim(current_texture);
 	          
 	          //replace jpg file types with png file types
@@ -77,6 +80,12 @@ struct Utils
 	    }
 
 	    mtl_file.close();
+
+	    std::cout << "Parsed texture paths: " << std::endl;
+
+	    for(auto const& texture_path : texture_paths) {
+	    	std::cout << texture_path << std::endl;
+	    }
 
 	    return missing_textures;
 
