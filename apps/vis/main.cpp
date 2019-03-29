@@ -216,7 +216,7 @@ struct settings {
   int32_t upload_ {32};
   bool provenance_ {0};
   bool create_aux_resources_ {1};
-  float near_plane_ {0.001f};
+  float near_plane_ {0.1f};
   float far_plane_ {1000.0f};
   float fov_ {30.0f};
   bool splatting_ {1};
@@ -3339,7 +3339,7 @@ int main(int argc, char *argv[])
 
   Window *primary_window = create_window(settings_.width_, settings_.height_, "lamure_vis", nullptr, nullptr);
   make_context_current(primary_window);
-  glfwSwapInterval(1);
+  glfwSwapInterval(0);
 
   init();
 

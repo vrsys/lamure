@@ -7,7 +7,7 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=100 # number of charts created
+CHART_THRES=1000 # number of charts created
 CELL_RES=10 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
@@ -16,8 +16,8 @@ TRI_BUDGET=4096
 
 #maximum single output texture size
 
-MAX_TEX_SIZE=8192
-MAX_MULTI_TEX_SIZE=8192
+MAX_TEX_SIZE=4096
+MAX_MULTI_TEX_SIZE=16384
 
 #dilations
 NUM_DILATIONS=1000
@@ -91,12 +91,14 @@ CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 
 # cd ${REGR_DIR}
 cd ${SRC_DIR}
+
 # #convert textures to png if necessary
 # echo "converting jpgs to pngs"
 # mogrify -format png *.jpg
-#flip all texture images
-echo "Flipping texture images"
-mogrify -flip *.png
+
+# #flip all texture images
+# echo "Flipping texture images"
+# mogrify -flip *.png
 
 cd ${LAM_DIR}
 
@@ -150,8 +152,11 @@ echo "----------------------------------------------------"
 
 #dilate new texture to avoid cracks 
 
-time ./install/bin/lamure_texture_dilation $FINAL_TEX_PATH $DILATED_TEX_PATH $NUM_DILATIONS
 
+
+for filename in /${SRC_DIR}/*uv*.png; do
+	time ./install/bin/lamure_texture_dilation $filename "${filename:0:${#filename}-4}_dil.png" $NUM_DILATIONS
+done
 
 
 echo "----------------------------------------------------"
