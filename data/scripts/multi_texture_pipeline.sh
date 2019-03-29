@@ -7,8 +7,8 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=400 # number of charts created
-CELL_RES=300 # starting grid - how many cells across
+CHART_THRES=200 # number of charts created
+CELL_RES=50 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
@@ -19,16 +19,29 @@ TRI_BUDGET=4096
 MAX_TEX_SIZE=8192
 MAX_MULTI_TEX_SIZE=8192
 
-
-
 #dilations
 NUM_DILATIONS=1000
+
+
+
+
+
 
 
 ############################
 
 echo "RUNNING MULTI TEXTURE PIPELINE"
 echo "----------------------------------------------------"
+echo "Settings:"
+echo "chart threshold: $CHART_THRES"
+echo "starting grid cell resolution: $CELL_RES"
+echo "normal variance threshold for chart splitting: $NORMAL_VARIANCE_THRESHOLD"
+echo "triangle budget for hierarchy creation: $TRI_BUDGET"
+echo "max single texture size: $MAX_TEX_SIZE"
+echo "max combined multi texture size: $MAX_MULTI_TEX_SIZE"
+echo "number of dilations: $NUM_DILATIONS"
+echo "----------------------------------------------------"
+
 
 #lamure directory
 LAM_DIR="../.."
@@ -77,13 +90,13 @@ OBJPATH="${SRC_OBJ}"
 CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 
 # cd ${REGR_DIR}
-cd ${SRC_DIR}
-#convert textures to png if necessary
-echo "converting jpgs to pngs"
-mogrify -format png *.jpg
-#flip all texture images
-echo "Flipping texture images"
-mogrify -flip *.png
+# cd ${SRC_DIR}
+# #convert textures to png if necessary
+# echo "converting jpgs to pngs"
+# mogrify -format png *.jpg
+# #flip all texture images
+# echo "Flipping texture images"
+# mogrify -flip *.png
 cd ${LAM_DIR}
 
 
