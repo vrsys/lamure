@@ -7,8 +7,8 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=200 # number of charts created
-CELL_RES=50 # starting grid - how many cells across
+CHART_THRES=100 # number of charts created
+CELL_RES=10 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
@@ -90,13 +90,14 @@ OBJPATH="${SRC_OBJ}"
 CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 
 # cd ${REGR_DIR}
-# cd ${SRC_DIR}
+cd ${SRC_DIR}
 # #convert textures to png if necessary
 # echo "converting jpgs to pngs"
 # mogrify -format png *.jpg
-# #flip all texture images
-# echo "Flipping texture images"
-# mogrify -flip *.png
+#flip all texture images
+echo "Flipping texture images"
+mogrify -flip *.png
+
 cd ${LAM_DIR}
 
 
