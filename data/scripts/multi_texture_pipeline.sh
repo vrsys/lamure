@@ -7,8 +7,8 @@
 # user settings
 ############################
 # charting:
-CHART_THRES=200 # number of charts created
-CELL_RES=50 # starting grid - how many cells across
+CHART_THRES=400 # number of charts created
+CELL_RES=300 # starting grid - how many cells across
 NORMAL_VARIANCE_THRESHOLD=0.01 # how much charts are split after grid is used
 
 # hierarchy creation
@@ -18,6 +18,8 @@ TRI_BUDGET=4096
 
 MAX_TEX_SIZE=8192
 MAX_MULTI_TEX_SIZE=8192
+
+
 
 #dilations
 NUM_DILATIONS=1000
@@ -45,33 +47,37 @@ fi
 echo "using obj model $SRC_OBJ"
 
 
+
 #create folder for regression test
-C_DATE=`date`
-C_DATE=${C_DATE// /_}
-C_DATE=${C_DATE//:/_}
-REGR_DIR="${LAM_DIR}/data/regression/${C_DATE}/"
-echo "creating folder ${REGR_DIR}"
-mkdir "${REGR_DIR}"
+# C_DATE=`date`
+# C_DATE=${C_DATE// /_}
+# C_DATE=${C_DATE//:/_}
+# REGR_DIR="${LAM_DIR}/data/regression/${C_DATE}/"
+# echo "creating folder ${REGR_DIR}"
+# mkdir "${REGR_DIR}"
 
 
 #copy input files to regression folder
 SRC_DIR=$(dirname "${SRC_OBJ}")
+# REGR_DIR=$(dirname "${SRC_OBJ}")
 
 #copy only necessary files. allow jpgs that need to be converted
 # echo "copying obj"
 # cp /${SRC_OBJ} ${REGR_DIR}
-echo "copying material files" 
-cp /${SRC_DIR}/*.mtl ${REGR_DIR}
-echo "copying png files"
-cp /${SRC_DIR}/*.png ${REGR_DIR}
-echo "copying jpg files"
-cp /${SRC_DIR}/*.jpg ${REGR_DIR}
+# echo "copying material files" 
+# cp /${SRC_DIR}/*.mtl ${REGR_DIR}
+# echo "copying png files"
+# cp /${SRC_DIR}/*.png ${REGR_DIR}
+# echo "copying jpg files"
+# cp /${SRC_DIR}/*.jpg ${REGR_DIR}
 
 #create path to obj file
-OBJPATH="${REGR_DIR}/$(basename "${SRC_OBJ}")"
+OBJPATH="${SRC_OBJ}"
+# OBJPATH="${REGR_DIR}/$(basename "${SRC_OBJ}")"
 CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 
-cd ${REGR_DIR}
+# cd ${REGR_DIR}
+cd ${SRC_DIR}
 #convert textures to png if necessary
 echo "converting jpgs to pngs"
 mogrify -format png *.jpg
