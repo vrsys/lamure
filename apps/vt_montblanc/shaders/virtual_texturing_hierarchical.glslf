@@ -13,8 +13,8 @@
 // #define FINE_DERIVATIVES
 #extension GL_ARB_derivative_control : enable
 
-const int ROW_SKIP = 128;
-const int COLUMN_SKIP = 128;
+const int ROW_SKIP = 32;
+const int COLUMN_SKIP = 32;
 
 in vec2 texture_coord;
 
@@ -248,6 +248,8 @@ vec4 traverse_idx_hierarchy(vec2 texture_coordinates)
     }
     else
     {
+        mix_ratio = 1.f; // No point blending: desired level is not accessible
+
         /// Binary-like search for maximum available depth
         int left = 0;
         int right = desired_level;
