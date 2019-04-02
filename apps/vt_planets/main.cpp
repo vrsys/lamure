@@ -21,15 +21,15 @@
 
 //#define COLLECT_BENCHMARKS
 
-char *get_cmd_option(char **begin, char **end, const std::string &option)
+char* get_cmd_option(char** begin, char** end, const std::string& option)
 {
-    char **it = std::find(begin, end, option);
+    char** it = std::find(begin, end, option);
     if(it != end && ++it != end)
         return *it;
     return nullptr;
 }
 
-bool cmd_option_exists(char **begin, char **end, const std::string &option) { return std::find(begin, end, option) != end; }
+bool cmd_option_exists(char** begin, char** end, const std::string& option) { return std::find(begin, end, option) != end; }
 
 struct Window
 {
@@ -42,7 +42,7 @@ struct Window
     unsigned int _width;
     unsigned int _height;
 
-    GLFWwindow *_glfw_window;
+    GLFWwindow* _glfw_window;
 
     scm::gl::trackball_manipulator _trackball_manipulator;
 
@@ -80,23 +80,23 @@ struct Window
     MouseButtonState _mouse_button_state;
 };
 
-std::list<Window *> _windows;
-Window *_current_context = nullptr;
-vt::CutUpdate *_cut_update = nullptr;
+std::list<Window*> _windows;
+Window* _current_context = nullptr;
+vt::CutUpdate* _cut_update = nullptr;
 
 class EventHandler
 {
   public:
-    static void on_error(int _err_code, const char *err_msg) { throw std::runtime_error(err_msg); }
-    static void on_window_resize(GLFWwindow *glfw_window, int width, int height)
+    static void on_error(int _err_code, const char* err_msg) { throw std::runtime_error(err_msg); }
+    static void on_window_resize(GLFWwindow* glfw_window, int width, int height)
     {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
         window->_height = (uint32_t)height;
         window->_width = (uint32_t)width;
     }
-    static void on_window_key_press(GLFWwindow *glfw_window, int key, int scancode, int action, int mods)
+    static void on_window_key_press(GLFWwindow* glfw_window, int key, int scancode, int action, int mods)
     {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
 
         if(action == GLFW_PRESS)
         {
@@ -141,16 +141,16 @@ class EventHandler
         ImGui_ImplGlfwGL3_KeyCallback(glfw_window, key, scancode, action, mods);
 #endif
     }
-    static void on_window_char(GLFWwindow *glfw_window, unsigned int codepoint)
+    static void on_window_char(GLFWwindow* glfw_window, unsigned int codepoint)
     {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
 #ifndef NDEBUG
         ImGui_ImplGlfwGL3_CharCallback(glfw_window, codepoint);
 #endif
     }
-    static void on_window_button_press(GLFWwindow *glfw_window, int button, int action, int mods)
+    static void on_window_button_press(GLFWwindow* glfw_window, int button, int action, int mods)
     {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
         if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
         {
             window->_mouse_button_state = Window::MouseButtonState::LEFT;
@@ -172,9 +172,9 @@ class EventHandler
         ImGui_ImplGlfwGL3_MouseButtonCallback(glfw_window, button, action, mods);
 #endif
     }
-    static void on_window_move_cursor(GLFWwindow *glfw_window, double xpos, double ypos)
+    static void on_window_move_cursor(GLFWwindow* glfw_window, double xpos, double ypos)
     {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
 
         float x = ((float)xpos / window->_width - 0.5f) * 6.28f;
         float y = ((float)ypos / window->_height - 0.5f) * 6.28f;
@@ -198,23 +198,23 @@ class EventHandler
         window->_ref_rot_x = x;
         window->_ref_rot_y = y;
     }
-    static void on_window_scroll(GLFWwindow *glfw_window, double xoffset, double yoffset)
+    static void on_window_scroll(GLFWwindow* glfw_window, double xoffset, double yoffset)
     {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
         window->_scale = std::min(window->_scale + (float)yoffset * 0.01f, 2.3f);
 
 #ifndef NDEBUG
         ImGui_ImplGlfwGL3_ScrollCallback(glfw_window, xoffset, yoffset);
 #endif
     }
-    static void on_window_enter(GLFWwindow *glfw_window, int entered)
+    static void on_window_enter(GLFWwindow* glfw_window, int entered)
     {
-        Window *window = (Window *)glfwGetWindowUserPointer(glfw_window);
+        Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
         // TODO
     }
 };
 
-void make_context_current(Window *_window)
+void make_context_current(Window* _window)
 {
     if(_window != nullptr)
     {
@@ -223,11 +223,11 @@ void make_context_current(Window *_window)
     }
 }
 
-Window *create_window(unsigned int width, unsigned int height, const std::string &title, GLFWmonitor *monitor, Window *share)
+Window* create_window(unsigned int width, unsigned int height, const std::string& title, GLFWmonitor* monitor, Window* share)
 {
-    Window *previous_context = _current_context;
+    Window* previous_context = _current_context;
 
-    Window *new_window = new Window();
+    Window* new_window = new Window();
 
     new_window->_glfw_window = nullptr;
     new_window->_width = width;
@@ -282,8 +282,8 @@ bool should_close()
     if(_windows.empty())
         return true;
 
-    std::list<Window *> to_delete;
-    for(const auto &window : _windows)
+    std::list<Window*> to_delete;
+    for(const auto& window : _windows)
     {
         if(glfwWindowShouldClose(window->_glfw_window))
         {
@@ -293,7 +293,7 @@ bool should_close()
 
     if(!to_delete.empty())
     {
-        for(auto &window : to_delete)
+        for(auto& window : to_delete)
         {
             ImGui_ImplGlfwGL3_Shutdown();
 
@@ -308,7 +308,7 @@ bool should_close()
     return _windows.empty();
 }
 
-void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *param)
+void debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
 {
     switch(severity)
     {
@@ -346,7 +346,7 @@ struct benchmark_entry
 std::vector<benchmark_entry> benchmark_entries;
 scm::shared_ptr<scm::core> _scm_core;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     _scm_core.reset(new scm::core(0, nullptr));
 
@@ -375,19 +375,21 @@ int main(int argc, char *argv[])
         std::runtime_error("GLFW initialisation failed");
     }
 
-    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
-    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
     glfwWindowHint(GLFW_DECORATED, GL_FALSE);
 
-    Window *primary_window = create_window(mode->width, mode->height, "VT Demo", monitor, nullptr);
+    Window* primary_window = create_window(mode->width, mode->height, "VT Demo", monitor, nullptr);
 
     make_context_current(primary_window);
 
+#ifndef NDEBUG
     // VSYNC
     glfwSwapInterval(1);
+#endif
 
-    auto *vtrenderer = new vt::VTRenderer();
+    auto* vtrenderer = new vt::VTRenderer();
 
     vtrenderer->add_view(view_id, primary_window->_width, primary_window->_height, primary_window->_scale);
     vtrenderer->add_context(primary_context_id);
@@ -398,7 +400,6 @@ int main(int argc, char *argv[])
 
 #ifndef NDEBUG
     glewExperimental = GL_TRUE;
-
     glewInit();
 
     ImGui_ImplGlfwGL3_Init(primary_window->_glfw_window, false);
@@ -433,19 +434,33 @@ int main(int argc, char *argv[])
 
         vtrenderer->clear_buffers(primary_context_id);
 
+        bool feedback_enabled;
+
         if(primary_window->_dataset == Window::Dataset::COLOR)
         {
-            vtrenderer->render_earth(data_world_map_id, data_world_elevation_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH,
-                                     primary_window->_enable_hierarchical, primary_window->_vis);
+            vtrenderer->render_earth(data_world_map_id,
+                                     data_world_elevation_map_id,
+                                     view_id,
+                                     primary_context_id,
+                                     primary_window->_interaction == Window::Interaction::EARTH,
+                                     primary_window->_enable_hierarchical,
+                                     primary_window->_vis,
+                                     feedback_enabled);
         }
         else
         {
-            vtrenderer->render_earth(data_world_elevation_map_id, data_world_elevation_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::EARTH,
-                                     primary_window->_enable_hierarchical, primary_window->_vis);
+            vtrenderer->render_earth(data_world_elevation_map_id,
+                                     data_world_elevation_map_id,
+                                     view_id,
+                                     primary_context_id,
+                                     primary_window->_interaction == Window::Interaction::EARTH,
+                                     primary_window->_enable_hierarchical,
+                                     primary_window->_vis,
+                                     feedback_enabled);
         }
-        vtrenderer->render_moon(data_moon_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::MOON, primary_window->_enable_hierarchical, primary_window->_vis);
+        vtrenderer->render_moon(
+            data_moon_map_id, view_id, primary_context_id, primary_window->_interaction == Window::Interaction::MOON, primary_window->_enable_hierarchical, primary_window->_vis, feedback_enabled);
 
-        vtrenderer->collect_feedback(primary_context_id);
 #ifndef NDEBUG
         vtrenderer->extract_debug_cut(cut_map_id);
         vtrenderer->extract_debug_cut(cut_map_elevation_id);
@@ -466,14 +481,14 @@ int main(int argc, char *argv[])
 
         std::chrono::duration<float> frame_seconds = std::chrono::high_resolution_clock::now() - frame_start;
 
-        vt::CutDatabase *cut_db = &vt::CutDatabase::get_instance();
+        vt::CutDatabase* cut_db = &vt::CutDatabase::get_instance();
 
         float phys_mem_usage = (float)(cut_db->get_size_mem_interleaved() - cut_db->get_available_memory()) / cut_db->get_size_mem_interleaved();
         uint64_t update_throughput = 0;
 
         for(vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map()))
         {
-            vt::Cut *cut = cut_db->start_reading_cut(cut_entry.first);
+            vt::Cut* cut = cut_db->start_reading_cut(cut_entry.first);
             if(!cut->is_drawn())
             {
                 cut_db->stop_reading_cut(cut_entry.first);
@@ -493,6 +508,8 @@ int main(int argc, char *argv[])
     }
 
     _cut_update->stop();
+
+    delete vtrenderer;
 
 #ifdef COLLECT_BENCHMARKS
     uint32_t size_cache_ram = vt::VTConfig::get_instance().get_size_ram_cache();

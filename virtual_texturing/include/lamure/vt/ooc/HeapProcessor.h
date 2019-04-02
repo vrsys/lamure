@@ -22,7 +22,7 @@ namespace ooc
 class HeapProcessor
 {
   protected:
-    TileRequestPriorityQueue<uint32_t> _requests_prio_queue;
+    TileRequestPriorityQueue<float> _requests_prio_queue;
 
     std::atomic<bool> _running;
     std::thread* _thread;

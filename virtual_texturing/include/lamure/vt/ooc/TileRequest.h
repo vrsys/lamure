@@ -15,12 +15,13 @@ namespace vt
 {
 namespace ooc
 {
+typedef float priority_type;
 class TileRequest : public Observable
 {
   protected:
     pre::AtlasFile* _resource;
     uint64_t _id;
-    uint32_t _priority;
+    priority_type _priority;
     bool _aborted;
 
   public:
@@ -34,9 +35,9 @@ class TileRequest : public Observable
 
     uint64_t getId();
 
-    void setPriority(uint32_t priority) { _priority = priority; }
+    void setPriority(priority_type priority);
 
-    uint32_t getPriority() { return _priority; }
+    priority_type getPriority();
 
     void erase();
 

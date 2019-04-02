@@ -21,7 +21,7 @@ namespace vt
 namespace ooc
 {
 typedef uint64_t id_type;
-typedef uint32_t priority_type;
+typedef float priority_type;
 
 class TileProvider
 {

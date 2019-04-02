@@ -21,6 +21,8 @@
 #include <unordered_map>
 #include <mutex>
 
+// #define RASTERIZATION_COUNT
+
 namespace vt
 {
 typedef uint64_t id_type;
@@ -40,6 +42,13 @@ typedef std::map<id_type, size_t> mem_slots_index_type;
 
 class ContextFeedback;
 typedef std::map<uint16_t, ContextFeedback*> context_feedback_map_type;
+class CutDecision;
+typedef std::map<uint64_t, CutDecision*> cut_decision_map_type;
+
+typedef std::set<id_type> id_set_type;
+typedef std::pair<id_type, float> prioritized_tile;
+typedef std::pair<uint64_t, prioritized_tile> prioritized_tile_from_cut;
+typedef std::set<prioritized_tile> prioritized_tile_set_type;
 
 typedef std::map<uint32_t, const std::string> dataset_map_type;
 typedef std::pair<uint32_t, const std::string> dataset_map_entry_type;

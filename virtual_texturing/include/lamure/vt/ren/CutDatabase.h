@@ -45,8 +45,9 @@ class CutDatabase
     CutDatabase(CutDatabase const&) = delete;
     void operator=(CutDatabase const&) = delete;
 
-  public:
     ~CutDatabase();
+
+    void warm_up_cache();
 
     size_t get_available_memory(uint16_t context_id);
     mem_slot_type* get_free_mem_slot(uint16_t context_id);
