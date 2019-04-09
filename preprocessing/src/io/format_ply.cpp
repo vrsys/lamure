@@ -41,8 +41,9 @@ read(const std::string &filename, surfel_callback_funtion callback)
 
     using namespace io::ply;
 
-    //at<io::ply::float32>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float32>, this, _1, _2);
-    //at<io::ply::uint8>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::uint8>, this, _1, _2);
+    at<io::ply::float64>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float64>, this, _1, _2);
+    at<io::ply::float32>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float32>, this, _1, _2);
+    at<io::ply::uint8>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::uint8>, this, _1, _2);
 
     // set callbacks
     ply_parser.scalar_property_definition_callbacks(scalar_callbacks);
@@ -112,6 +113,46 @@ scalar_callback(const std::string &element_name, const std::string &property_nam
             { /*ignore*/; };
         else if (property_name == "psz")
             return [this](float value)
+            { /*ignore*/; };
+        else
+            throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
+    }
+    else
+        throw std::runtime_error("format_ply::scalar_callback(): Invalid element_name!");
+}
+
+
+template<>
+std::function<void(double)> format_ply::
+scalar_callback(const std::string &element_name, const std::string &property_name)
+{
+    if (element_name == "vertex") {
+        if (property_name == "x")
+            return [this](double value)
+            { current_surfel_.pos().x = value; };
+        else if (property_name == "y")
+            return [this](double value)
+            { current_surfel_.pos().y = value; };
+        else if (property_name == "z")
+            return [this](double value)
+            { current_surfel_.pos().z = value; };
+        else if (property_name == "nx")
+            return [this](double value)
+            { current_surfel_.normal().x = value; };
+        else if (property_name == "ny")
+            return [this](double value)
+            { current_surfel_.normal().y = value; };
+        else if (property_name == "nz")
+            return [this](double value)
+            { current_surfel_.normal().z = value; };
+//        else if (property_name == "ncc")
+//            return [this](float value)
+//            { current_surfel_.ncc() = value; };
+        else if (property_name == "scalar_C2C_absolute_distances")
+            return [this](double value)
+            { /*ignore*/; };
+        else if (property_name == "psz")
+            return [this](double value)
             { /*ignore*/; };
         else
             throw std::runtime_error("format_ply::scalar_callback(): Invalid property_name!");
