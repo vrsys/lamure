@@ -48,8 +48,8 @@ int main( int argc, char** argv )
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
     std::cout << "Optional: -of specifies outfile name" << std::endl;
 
-    std::cout << "Optional: -ch specifies chart threshold (=0)" << std::endl;
-    std::cout << "Optional: -co specifies cost threshold (=double max)" << std::endl;
+    std::cout << "Optional: -ch specifies chart threshold (=infinite)" << std::endl;
+    std::cout << "Optional: -co specifies cost threshold (=infinite)" << std::endl;
 
     std::cout << "Optional: -ef specifies error fit coefficient (=1)" << std::endl;
     std::cout << "Optional: -eo specifies error orientation coefficient (=1)" << std::endl;
@@ -59,6 +59,8 @@ int main( int argc, char** argv )
     std::cout << "Optional: -ct specifies threshold for grid chart splitting by normal variance (=0.001)" << std::endl;
 
     std::cout << "Optional: -debug writes charts to obj file, as colours that override texture coordinates (=false)" << std::endl;
+
+    std::cout << "Optional: -t num triangles per kdtree node (default: 32000)" << std::endl;
     return 1;
   }
 
@@ -71,7 +73,7 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-co")) {
     cost_threshold = atof(Utils::getCmdOption(argv, argv + argc, "-co"));
   }
-  uint32_t chart_threshold = 0;
+  uint32_t chart_threshold = std::numeric_limits<uint32_t>::max();;
   if (Utils::cmdOptionExists(argv, argv+argc, "-ch")) {
     chart_threshold = atoi(Utils::getCmdOption(argv, argv + argc, "-ch"));
   }
@@ -102,7 +104,10 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-debug")) {
     cluster_settings.write_charts_as_textures = true;
   }
-
+  int num_tris_per_node = 1024*32;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-t")) {
+    num_tris_per_node = atoi(Utils::getCmdOption(argv, argv + argc, "-t"));
+  }
 
 
   
@@ -151,7 +156,7 @@ int main( int argc, char** argv )
   all_triangles.clear(); ///////////////
 
   std::cout << "Building kd tree..." << std::endl;
-  std::shared_ptr<kdtree_t> kdtree = std::make_shared<kdtree_t>(all_indexed_triangles, 1024*16);
+  std::shared_ptr<kdtree_t> kdtree = std::make_shared<kdtree_t>(all_indexed_triangles, num_tris_per_node);
 
   uint32_t first_leaf_id = kdtree->get_first_node_id_of_depth(kdtree->get_depth());
   uint32_t num_leaf_ids = kdtree->get_length_of_depth(kdtree->get_depth());

@@ -219,9 +219,9 @@ struct ParallelClusterCreator
       //reporting-------------
       
       
-     
+      
       if (chart_merges % 1000 == 0) {
-        std::cout << "joining cost: " << join_queue.front()->cost << " ... remaining joins: " << join_queue.size() << std::endl;
+        //std::cout << "joining cost: " << join_queue.front()->cost << " ... remaining joins: " << join_queue.size() << std::endl;
         int percent = (int)(((join_queue.front()->cost - lowest_cost) / (cost_threshold - lowest_cost)) * 100);
         if (percent != prev_cost_percent && percent > overall_percent) {
           prev_cost_percent = percent;

@@ -76,16 +76,16 @@ public:
     }
 
 
-#if 1
+#if 0
     
     
-    double c1_avg_area = c1.area/c1.normals.size();
-    double c2_avg_area = c2.area/c2.normals.size();
+    double c1_avg_area = c1.area;//c1.normals.size();
+    double c2_avg_area = c2.area;//c2.normals.size();
 
     float area_coeff = c1_avg_area/c2_avg_area;
 
-    if (area_coeff > 1.f) {
-      area_coeff = 1.f/area_coeff;
+    if (c1_avg_area > c2_avg_area) {
+      area_coeff = c2_avg_area/c1_avg_area;
     }
 
     Vector c1_normal = Utils::normalise(c1.init_normal);
@@ -94,12 +94,18 @@ public:
     double dot = c1_normal[0] * c2_normal[0] + c1_normal[1] * c2_normal[1] + c1_normal[2] * c2_normal[2];
 
 
-    area_coeff = std::min((1.f-area_coeff)/10.f, 0.5f); //highest reduction is area/10, up to 0.5
+    //area_coeff = std::min((1.f-area_coeff)/2.f, 0.3f); //highest error reduction
     //area_coeff = 0.f;
 
-    error = (1.0-std::max(0.0, dot)) - area_coeff;
+    error = (1.0-std::max(0.0, dot));// - area_coeff;
+    //error = (1.0-std::abs(dot)) - area_coeff;
 
     error = std::max(0.0, error);
+
+    if (1.f-area_coeff < 0.1) {
+      error = 0;
+    }
+
 
 
 
