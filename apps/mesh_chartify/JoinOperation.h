@@ -76,52 +76,6 @@ public:
     }
 
 
-#if 0
-    
-    
-    double c1_avg_area = c1.area;//c1.normals.size();
-    double c2_avg_area = c2.area;//c2.normals.size();
-
-    float area_coeff = c1_avg_area/c2_avg_area;
-
-    if (c1_avg_area > c2_avg_area) {
-      area_coeff = c2_avg_area/c1_avg_area;
-    }
-
-    Vector c1_normal = Utils::normalise(c1.init_normal);
-    Vector c2_normal = Utils::normalise(c2.init_normal);
-
-    double dot = c1_normal[0] * c2_normal[0] + c1_normal[1] * c2_normal[1] + c1_normal[2] * c2_normal[2];
-
-
-    //area_coeff = std::min((1.f-area_coeff)/2.f, 0.3f); //highest error reduction
-    //area_coeff = 0.f;
-
-    error = (1.0-std::max(0.0, dot));// - area_coeff;
-    //error = (1.0-std::abs(dot)) - area_coeff;
-
-    error = std::max(0.0, error);
-
-    if (1.f-area_coeff < 0.1) {
-      error = 0;
-    }
-
-
-
-
-
-    //Vector fit_plane_normal;
-    //double e_fit = Chart::get_fit_error(c1,c2, fit_plane_normal);
-
-    // std::cout << "e_fit " << e_fit;
-
-    //fit_plane_normal = Utils::normalise(fit_plane_normal);
-
-    //double e_direction = Chart::get_direction_error(c1,c2,fit_plane_normal); 
-
-    //error = /*5.f * std::abs(e_direction) +*/100.f* std::abs(e_fit);
-
-#else
     Vector fit_plane_normal;
 
     double e_fit =       cluster_settings.e_fit_cf *   Chart::get_fit_error(c1,c2, fit_plane_normal);
@@ -144,7 +98,6 @@ public:
     {
       std::cout << "Nan error [" << c1.id << ", " << c2.id << "]: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
     }
-#endif
 
     return error;
   }

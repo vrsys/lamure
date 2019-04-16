@@ -31,6 +31,8 @@
 
 #include "CGAL_typedefs.h"
 
+#include <lamure/mesh/bvh.h>
+#include <lamure/mesh/triangle_chartid.h>
 
   
 #include "kdtree.h"
@@ -60,7 +62,9 @@ int main( int argc, char** argv )
 
     std::cout << "Optional: -debug writes charts to obj file, as colours that override texture coordinates (=false)" << std::endl;
 
-    std::cout << "Optional: -t num triangles per kdtree node (default: 32000)" << std::endl;
+    std::cout << "Optional: -tkd num triangles per kdtree node (default: 32000)" << std::endl;
+
+    std::cout << "Optional: -tbvh num triangles per kdtree node (default: 8192)" << std::endl;
     return 1;
   }
 
@@ -104,10 +108,15 @@ int main( int argc, char** argv )
   if (Utils::cmdOptionExists(argv, argv+argc, "-debug")) {
     cluster_settings.write_charts_as_textures = true;
   }
-  int num_tris_per_node = 1024*32;
-  if (Utils::cmdOptionExists(argv, argv+argc, "-t")) {
-    num_tris_per_node = atoi(Utils::getCmdOption(argv, argv + argc, "-t"));
+  int num_tris_per_node_kdtree = 1024*32;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-tkd")) {
+    num_tris_per_node_kdtree = atoi(Utils::getCmdOption(argv, argv + argc, "-tkd"));
   }
+  int num_tris_per_node_bvh = 8*1024;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-tbvh")) {
+    num_tris_per_node_bvh = atoi(Utils::getCmdOption(argv, argv + argc, "-tbvh"));
+  }
+
 
 
   
@@ -153,10 +162,10 @@ int main( int argc, char** argv )
     exit(1);
   }
 
-  all_triangles.clear(); ///////////////
+  all_triangles.clear();
 
   std::cout << "Building kd tree..." << std::endl;
-  std::shared_ptr<kdtree_t> kdtree = std::make_shared<kdtree_t>(all_indexed_triangles, num_tris_per_node);
+  std::shared_ptr<kdtree_t> kdtree = std::make_shared<kdtree_t>(all_indexed_triangles, num_tris_per_node_kdtree);
 
   uint32_t first_leaf_id = kdtree->get_first_node_id_of_depth(kdtree->get_depth());
   uint32_t num_leaf_ids = kdtree->get_length_of_depth(kdtree->get_depth());
@@ -236,9 +245,7 @@ int main( int argc, char** argv )
     uint32_t active_charts;
 
     if (cell_resolution > 0) { //do grid clustering
-      //creates clusters, starting using an arbitrary grid
       active_charts = GridClusterCreator::create_grid_clusters(polyMesh, chart_id_map, limits, cell_resolution, cluster_settings);
-      //std::cout << "Grid clusters: " << active_charts << std::endl;
     }
 
     active_charts = ParallelClusterCreator::create_charts(chart_id_map, polyMesh, cost_threshold, chart_threshold, cluster_settings);
@@ -252,6 +259,104 @@ int main( int argc, char** argv )
 
   uint32_t num_threads = 24;
   lamure::mesh::parallel_for(num_threads, node_ids.size(), lambda_chartify);
+
+  //convert back to triangle soup
+  std::vector<lamure::mesh::Triangle_Chartid> triangles;
+
+  uint32_t polyhedron_id = 0;
+  for (auto& per_node_chart_id_map_it : per_node_chart_id_map) {
+    uint32_t node_id = per_node_chart_id_map_it.first;
+    auto polyMesh = per_node_polyhedron[node_id];
+
+    //create index
+    typedef CGAL::Inverse_index<Polyhedron::Vertex_const_iterator> Index;
+    Index index(polyMesh.vertices_begin(), polyMesh.vertices_end());
+ 
+    //compute normals
+    std::map<face_descriptor,Vector> fnormals;
+    std::map<vertex_descriptor,Vector> vnormals;
+    CGAL::Polygon_mesh_processing::compute_normals(polyMesh,
+      boost::make_assoc_property_map(vnormals),
+      boost::make_assoc_property_map(fnormals));
+
+    uint32_t nml_id = 0;
+
+    //extract triangle soup
+    for(Polyhedron::Facet_const_iterator fi = polyMesh.facets_begin(); fi != polyMesh.facets_end(); ++fi) {
+      Polyhedron::Halfedge_around_facet_const_circulator hc = fi->facet_begin();
+      Polyhedron::Halfedge_around_facet_const_circulator hc_end = hc;
+
+      if (circulator_size(hc) != 3) {
+        std::cout << "ERROR: mesh corrupt!" << std::endl;
+        exit(1);
+      }
+
+      lamure::mesh::Triangle_Chartid tri;
+
+      Polyhedron::Vertex_const_iterator it = polyMesh.vertices_begin();
+      std::advance(it, index[Polyhedron::Vertex_const_iterator(hc->vertex())]);
+      tri.v0_.pos_ = scm::math::vec3f(it->point().x(), it->point().y(), it->point().z());
+      tri.v0_.tex_ = scm::math::vec2f(fi->t_coords[0].x(), fi->t_coords[0].y());
+      auto nml_it = vertices(polyMesh).begin();
+      std::advance(nml_it, nml_id);
+      tri.v0_.nml_ = scm::math::vec3f(vnormals[*nml_it].x(), vnormals[*nml_it].y(), vnormals[*nml_it].z());
+      ++hc; ++nml_it;
+
+      it = polyMesh.vertices_begin();
+      std::advance(it, index[Polyhedron::Vertex_const_iterator(hc->vertex())]);
+      tri.v1_.pos_ = scm::math::vec3f(it->point().x(), it->point().y(), it->point().z());
+      tri.v1_.tex_ = scm::math::vec2f(fi->t_coords[1].x(), fi->t_coords[1].y());
+      nml_it = vertices(polyMesh).begin();
+      std::advance(nml_it, nml_id);
+      tri.v1_.nml_ = scm::math::vec3f(vnormals[*nml_it].x(), vnormals[*nml_it].y(), vnormals[*nml_it].z());
+      ++hc; ++nml_it;
+
+      it = polyMesh.vertices_begin();
+      std::advance(it, index[Polyhedron::Vertex_const_iterator(hc->vertex())]);
+      tri.v2_.pos_ = scm::math::vec3f(it->point().x(), it->point().y(), it->point().z());
+      tri.v2_.tex_ = scm::math::vec2f(fi->t_coords[2].x(), fi->t_coords[2].y());
+      nml_it = vertices(polyMesh).begin();
+      std::advance(nml_it, nml_id);
+      tri.v2_.nml_ = scm::math::vec3f(vnormals[*nml_it].x(), vnormals[*nml_it].y(), vnormals[*nml_it].z());
+      ++hc; ++nml_it;
+
+
+      tri.area_id = polyhedron_id;
+      tri.chart_id = per_node_chart_id_map_it.second[fi->id()];
+      tri.tex_id = fi->tex_id;
+
+      triangles.push_back(tri);
+
+ 
+    }
+    ++polyhedron_id;
+       
+  }
+
+  
+  std::cout << "creating LOD hierarchy..." << std::endl;
+
+  auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, num_tris_per_node_bvh);
+
+  std::string bvh_filename = obj_filename.substr(0, obj_filename.size()-4)+".bvh";
+  bvh->write_bvh_file(bvh_filename);
+  std::cout << "Bvh file written to " << bvh_filename << std::endl;
+
+  std::string lod_filename = obj_filename.substr(0, obj_filename.size()-4)+".lod";
+  bvh->write_lod_file(lod_filename);
+  std::cout << "Lod file written to " << lod_filename << std::endl;
+  
+  std::string lod_chart_filename = obj_filename.substr(0, obj_filename.size()-4)+".lodchart";
+  bvh->write_chart_lod_file(lod_chart_filename);
+  std::cout << "Lod chart file written to " << lod_chart_filename << std::endl;
+
+  std::string lod_tex_id_filename = obj_filename.substr(0, obj_filename.size()-4)+".lodtexid";
+  bvh->write_lod_tex_id_file(lod_tex_id_filename);
+  std::cout << "Lod tex id file written to " << lod_tex_id_filename << std::endl;
+
+  bvh.reset();
+
+#if 0
 
 
   //write obj
@@ -419,7 +524,7 @@ int main( int argc, char** argv )
   std::cout << "Texture id per face file written to:  " << tex_file_name << std::endl;
 
   std::cout << "TOTAL NUM CHARTS: " << chart_id_counter << std::endl;
-
+#endif
 
   return 0 ; 
 }
