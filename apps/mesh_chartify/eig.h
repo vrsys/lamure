@@ -1,15 +1,18 @@
 #include <math.h>
 
+namespace eigen {
+
+
+#ifndef EIGH
+#define EIGH
+
 #ifdef MAX
 #undef MAX
 #endif
 
 #define MAX(a, b) ((a)>(b)?(a):(b))
 
-#define n 3
-
-#ifndef EIGH
-#define EIGH
+static const int n = 3;
 
 struct eig
 {
@@ -277,3 +280,6 @@ struct eig
 
 
 #endif
+
+
+}//namespace eigen

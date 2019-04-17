@@ -85,10 +85,10 @@ public:
     uint32_t degenerate_faces = 0;
 
     //if there is different coordinates for every vertex, then we probably need to create an indexed vertex list
-    if (tris.size()*3 == vertices.size())
-    //if (true)
+    //if (tris.size()*3 == vertices.size())
+    if (true)
     {
-      std::cout << "Creating indexed vertex list from loaded obj\n";
+      std::cout << "Creating polyhedron indexed vertex list...\n";
 
       //create indexed vertex list
       std::vector<XtndPoint<Kernel> > vertices_indexed;
@@ -96,14 +96,14 @@ public:
       create_indexed_triangle_list(tris_indexed, vertices_indexed);
 
       //add vertices of surface
-      std::cout << "Polyhedron builder: adding vertices\n";
+      //std::cout << "Polyhedron builder: adding vertices\n";
       for (uint32_t i = 0; i < vertices_indexed.size(); ++i) {
         Vertex_handle vh = B.add_vertex(vertices_indexed[i]);
         vh->id = i;
       }
 
       //create faces using vertex index references
-      std::cout << "Polyhedron builder: adding faces\n";
+      //std::cout << "Polyhedron builder: adding faces\n";
       uint32_t face_count = 0;
       for (uint32_t i = 0; i < tris_indexed.size(); i+=3) {
 
@@ -209,9 +209,9 @@ public:
 
    
     // finish up the surface
-    std::cout << "Polyhedron builder: ending surface\n";
-    std::cout << "Discarded " << degenerate_faces << " degenerate faces\n";
-    std::cout << "---------------------------------------------\n";
+    //std::cout << "Polyhedron builder: ending surface\n";
+    //std::cout << "Discarded " << degenerate_faces << " degenerate faces\n";
+    //std::cout << "---------------------------------------------\n";
     B.end_surface();
 
   }

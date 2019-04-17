@@ -10,6 +10,7 @@
 #include <lamure/mesh/bvh.h>
 #include <memory>
 
+
 #include <CGAL/Polygon_mesh_processing/measure.h>
 
 #include <boost/algorithm/string/split.hpp>
@@ -32,15 +33,38 @@
 #include "CGAL_typedefs.h"
 
 #include <lamure/mesh/bvh.h>
-#include <lamure/mesh/triangle_chartid.h>
 
   
 #include "kdtree.h"
 #include <lamure/mesh/tools.h>
 
+#include "lodepng.h"
+#include "texture.h"
+#include "frame_buffer.h"
+
+#include "chart_packing.h"
+
+int window_width_ = 1024;
+int window_height_ = 1024;
+
 
 int main( int argc, char** argv ) 
 {
+
+
+  glutInit(&argc, argv);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+  glutInitWindowSize(window_width_, window_height_);
+  glutInitWindowPosition(64, 64);
+  glutCreateWindow(argv[0]);
+  glutSetWindowTitle("Lamure Mesh Preprocessing");
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glewExperimental = GL_TRUE;
+  glewInit();
+  glutHideWindow();
+
 
   std::string obj_filename = "dino.obj";
   if (Utils::cmdOptionExists(argv, argv+argc, "-f")) {
@@ -65,6 +89,11 @@ int main( int argc, char** argv )
     std::cout << "Optional: -tkd num triangles per kdtree node (default: 32000)" << std::endl;
 
     std::cout << "Optional: -tbvh num triangles per kdtree node (default: 8192)" << std::endl;
+
+    std::cout << "Optional: -single-max: specifies largest possible single output texture (=8192)" << std::endl;
+
+    std::cout << "Optional: -multi-max: specifies largest possible output texture (=total size of 4 x single_tex_limit (=32768))" << std::endl;
+
     return 1;
   }
 
@@ -117,6 +146,17 @@ int main( int argc, char** argv )
     num_tris_per_node_bvh = atoi(Utils::getCmdOption(argv, argv + argc, "-tbvh"));
   }
 
+  int single_tex_limit = 8192;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-single-max")) {
+    single_tex_limit = atoi(Utils::getCmdOption(argv, argv+argc, "-single-max"));
+    std::cout << "Single output texture limited to " << single_tex_limit << std::endl;
+  }
+
+  int multi_tex_limit = single_tex_limit * 4;
+  if (Utils::cmdOptionExists(argv, argv+argc, "-multi-max")) {
+    multi_tex_limit = atoi(Utils::getCmdOption(argv, argv+argc, "-multi-max"));
+    std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
+  }
 
 
   
@@ -138,12 +178,33 @@ int main( int argc, char** argv )
   std::map<std::string, std::pair<std::string, int>> material_map;
   bool load_mtl_success = Utils::load_mtl(mtl_filename, material_map);
 
-  if (all_materials.size() != 0 && all_materials.size() != all_triangles.size()) {
+  if (all_materials.size() != all_triangles.size()) {
     std::cout << "ERROR: incorrect amount of materials found, given number of incoming triangles.";
     exit(1);
   }
 
+  //check materials
+  std::map<uint32_t, texture_info> texture_info_map;
+
   if (load_mtl_success) {
+
+    for (auto mat_it : material_map) {
+      std::string texture_filename = mat_it.second.first;
+      uint32_t material_id = mat_it.second.second;
+      std::cout << "Material " << mat_it.first << " : " << texture_filename << " : " << material_id << std::endl;
+
+      if (boost::filesystem::exists(texture_filename) && boost::algorithm::ends_with(texture_filename, ".png")) {
+        texture_info_map[material_id] = {texture_filename, Utils::get_png_dimensions(texture_filename)};
+      }
+      else if (texture_filename == "") {
+        //ok
+      }
+      else {
+        std::cout << "ERROR: texture " << texture_filename << " was not found or is not a .png" << std::endl;
+        exit(1);
+      }
+    }
+
     for (uint32_t i = 0; i < all_triangles.size(); ++i) {
       auto& tri = all_triangles[i];
       std::string mat = all_materials[i];
@@ -249,7 +310,7 @@ int main( int argc, char** argv )
     }
 
     active_charts = ParallelClusterCreator::create_charts(chart_id_map, polyMesh, cost_threshold, chart_threshold, cluster_settings);
-    std::cout << "After creating chart clusters: " << active_charts << std::endl;
+    //std::cout << "After creating chart clusters: " << active_charts << std::endl;
 
     per_node_chart_id_map[node_id] = chart_id_map;
     per_node_polyhedron[node_id] = polyMesh;
@@ -257,13 +318,13 @@ int main( int argc, char** argv )
   };
   
 
-  uint32_t num_threads = 24;
+  uint32_t num_threads = std::min((size_t)24, node_ids.size());
   lamure::mesh::parallel_for(num_threads, node_ids.size(), lambda_chartify);
 
   //convert back to triangle soup
   std::vector<lamure::mesh::Triangle_Chartid> triangles;
 
-  uint32_t polyhedron_id = 0;
+  uint32_t num_areas = 0;
   for (auto& per_node_chart_id_map_it : per_node_chart_id_map) {
     uint32_t node_id = per_node_chart_id_map_it.first;
     auto polyMesh = per_node_polyhedron[node_id];
@@ -321,7 +382,7 @@ int main( int argc, char** argv )
       ++hc; ++nml_it;
 
 
-      tri.area_id = polyhedron_id;
+      tri.area_id = num_areas;
       tri.chart_id = per_node_chart_id_map_it.second[fi->id()];
       tri.tex_id = fi->tex_id;
 
@@ -329,15 +390,15 @@ int main( int argc, char** argv )
 
  
     }
-    ++polyhedron_id;
+    ++num_areas;
        
   }
 
   
-  std::cout << "creating LOD hierarchy..." << std::endl;
+  std::cout << "Creating LOD hierarchy..." << std::endl;
 
   auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, num_tris_per_node_bvh);
-
+/*
   std::string bvh_filename = obj_filename.substr(0, obj_filename.size()-4)+".bvh";
   bvh->write_bvh_file(bvh_filename);
   std::cout << "Bvh file written to " << bvh_filename << std::endl;
@@ -354,7 +415,170 @@ int main( int argc, char** argv )
   bvh->write_lod_tex_id_file(lod_tex_id_filename);
   std::cout << "Lod tex id file written to " << lod_tex_id_filename << std::endl;
 
+  */
+
+  std::cout << "Preparing charts..." << std::endl;
+
+
+  //prep charts for projection
+  std::map<uint32_t, std::map<uint32_t, chart>> chart_map;
+
+  for (uint32_t tri_id = 0; tri_id < triangles.size(); ++tri_id) {
+    const auto& tri = triangles[tri_id];
+    uint32_t area_id = tri.area_id;
+    uint32_t chart_id = tri.chart_id;
+
+    chart_map[area_id][chart_id].id_ = chart_id;
+    chart_map[area_id][chart_id].original_triangle_ids_.insert(tri_id);
+
+  }
+
+  for (uint32_t area_id = 0; area_id < num_areas; ++area_id) {
+
+    //init charts
+    for (auto& it : chart_map[area_id]) {
+
+      it.second.rect_ = rectangle{
+        scm::math::vec2f(std::numeric_limits<float>::max()),
+        scm::math::vec2f(std::numeric_limits<float>::lowest()),
+        it.first, 
+        false};
+
+      it.second.box_ = lamure::bounding_box(
+        scm::math::vec3d(std::numeric_limits<float>::max()),
+        scm::math::vec3d(std::numeric_limits<float>::lowest()));
+      
+    }
+
+  }
+
+
+  std::cout << "Expanding charts throughout BVH..." << std::endl;
+
+  //grow chart boxes by all triangles in all levels of bvh
+  for (uint32_t node_id = 0; node_id < bvh->get_num_nodes(); node_id++) {
+    
+    const std::vector<lamure::mesh::Triangle_Chartid>& tris = bvh->get_triangles(node_id);
+
+    for (const auto& tri : tris) {
+      chart_map[tri.area_id][tri.chart_id].box_.expand(scm::math::vec3d(tri.v0_.pos_));
+      chart_map[tri.area_id][tri.chart_id].box_.expand(scm::math::vec3d(tri.v1_.pos_));
+      chart_map[tri.area_id][tri.chart_id].box_.expand(scm::math::vec3d(tri.v2_.pos_));
+    }
+  }
+  
+  std::cout << "Assigning additional triangles to charts..." << std::endl;
+
+  std::vector<uint32_t> area_ids;
+  for (uint32_t area_id = 0; area_id < num_areas; ++area_id) {
+    area_ids.push_back(area_id);
+  }
+
+  auto lambda_append = [&](uint64_t i, uint32_t id)->void{
+
+    //compare all triangles with chart bounding boxes
+  
+    uint32_t area_id = area_ids[i];
+
+    for (auto& it : chart_map[area_id]) {
+
+      int chart_id = it.first;
+      auto& chart = it.second;
+
+      chart.all_triangle_ids_.insert(chart.original_triangle_ids_.begin(), chart.original_triangle_ids_.end());
+
+      //add any triangles that intersect chart
+      for (uint32_t tri_id = 0; tri_id < triangles.size(); ++tri_id) {
+        const auto& tri = triangles[tri_id];
+        if (chart.box_.contains(scm::math::vec3d(tri.v0_.pos_))
+          || chart.box_.contains(scm::math::vec3d(tri.v1_.pos_))
+          || chart.box_.contains(scm::math::vec3d(tri.v2_.pos_))) {
+
+          chart.all_triangle_ids_.insert(tri_id);
+        }
+      }
+
+      //report chart parameters
+      /*
+      std::cout << "chart id " << chart_id << std::endl;
+      std::cout << "box min " << chart.box_.min() << std::endl;
+      std::cout << "box max " << chart.box_.max() << std::endl;
+      std::cout << "original triangles " << chart.original_triangle_ids_.size() << std::endl;
+      std::cout << "all triangles " << chart.all_triangle_ids_.size() << std::endl;
+      */
+    }
+
+  };
+
+  
+  num_threads = std::min((size_t)24, area_ids.size());
+  lamure::mesh::parallel_for(num_threads, area_ids.size(), lambda_append);
+
+
+
+
+  std::vector<rectangle> area_rects;
+
+  for (uint32_t area_id = 0; area_id < num_areas; ++area_id) {
+    calculate_chart_tex_space_sizes(chart_map[area_id], triangles, texture_info_map);
+
+    project_charts(chart_map[area_id], triangles);
+
+    std::cout << "Projected " << chart_map[area_id].size() << " charts for area " << area_id << std::endl;
+
+    std::cout << "Running rectangle packing for area " << area_id << std::endl;
+    
+    //scale the rectangles
+    const float scale = 400.f;
+
+    std::vector<rectangle> rects;
+    for (auto& chart_it : chart_map[area_id]) {
+      chart& chart = chart_it.second;
+      if (chart.original_triangle_ids_.size() > 0) {
+        rectangle rect = chart.rect_;
+        rect.max_ *= scale;
+        rects.push_back(rect);
+      }
+    }
+
+    //rectangle packing
+    rectangle area_rect = pack(rects);
+    area_rect.id_ = area_id;
+    area_rect.flipped_ = false;
+    area_rects.push_back(area_rect);
+
+    std::cout << "Packing of area " << area_id << " complete (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
+
+    //apply rectangles
+    for (const auto& rect : rects) {
+      chart_map[area_id][rect.id_].rect_ = rect;
+      chart_map[area_id][rect.id_].projection.tex_space_rect = rect;//save for rendering from texture later on
+    }
+
+  }
+
+  std::cout << "Packing " << area_rects.size() << " areas..." << std::endl;
+  rectangle image = pack(area_rects);
+  for (auto& rect : area_rects) {
+    std::cout << "Area " << rect.id_ << " min: (" << rect.min_.x << ", " << rect.min_.y << ")" << std::endl;
+    std::cout << "Area " << rect.id_ << " max: (" << rect.max_.x << ", " << rect.max_.y << ")" << std::endl;
+
+    //next, apply the global transformation from area packing onto all individual chart rects per area
+
+  }
+
+
+
+  //default (minimum) output texture size = single texture size
+  window_width_ = single_tex_limit;
+  window_height_ = single_tex_limit;
+  std::cout << "Single texture size limit: " << single_tex_limit << std::endl;
+  std::cout << "Multi texture size limit: " << multi_tex_limit << std::endl;
+  
+
+  //cleanup
   bvh.reset();
+
 
 #if 0
 

@@ -98,7 +98,19 @@ public:
     {
       std::cout << "Nan error [" << c1.id << ", " << c2.id << "]: " << error << ", e_fit: " << e_fit << ", e_ori: " << e_direction << ", e_shape: " << e_shape << std::endl;
     }
+/*
+    float area_coeff = 0;
+    if (c1.area > c2.area) {
+      area_coeff = c2.area / c1.area;
+    }
+    else {
+      area_coeff = c1.area / c2.area;
+    }
 
+    if (area_coeff < 0.1) {
+      error *= 0.5;
+    }
+*/
     return error;
   }
 

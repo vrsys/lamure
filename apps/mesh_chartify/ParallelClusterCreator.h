@@ -226,7 +226,7 @@ struct ParallelClusterCreator
         if (percent != prev_cost_percent && percent > overall_percent) {
           prev_cost_percent = percent;
           overall_percent = percent;
-          std::cout << percent << " percent complete (" << chart_merges << " merges done)\n";
+          std::cout << percent << " percent to cost threshold (" << chart_merges << " merges done)\n";
         } 
       }
       
@@ -473,16 +473,16 @@ struct ParallelClusterCreator
       }
     }
     if (!join_queue.empty()) {
-      std::cout << "joins remaining: " << join_queue.size() << std::endl;
-      std::cout << "Cost of cheapest un-executed join: " << join_queue.front()->cost << std::endl;
+      //std::cout << "joins remaining: " << join_queue.size() << std::endl;
+      std::cout << "Maximum error exceeded. Cost of cheapest join operation: " << join_queue.front()->cost << std::endl;
     }
     else {
-      std::cout << "join list empty" << std::endl;
+      std::cout << "Join list empty" << std::endl;
     }
-    std::cout << "Total number of faces in charts = " << total_faces << std::endl;
-    std::cout << "Initial charts = " << charts.size() << std::endl;
-    std::cout << "Total number merges = " << chart_merges << std::endl;
-    std::cout << "Total active charts = " << total_active_charts << std::endl;
+    //std::cout << "Total number of faces in charts = " << total_faces << std::endl;
+    //std::cout << "Initial charts = " << charts.size() << std::endl;
+    //std::cout << "Total number merges = " << chart_merges << std::endl;
+    std::cout << "Num charts after chartification = " << total_active_charts << std::endl;
 
 
     // std::cout << report.str();

@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <limits>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include "CGAL_typedefs.h"
 
@@ -352,6 +355,22 @@ struct Utils
 	        exit(1);
     	}
 
+	}
+
+
+	//reads dimensions of png from header 
+	static scm::math::vec2i get_png_dimensions(std::string filepath) { 
+	    std::ifstream in(filepath);
+	    uint32_t width, height;
+
+	    in.seekg(16);
+	    in.read((char *)&width, 4);
+	    in.read((char *)&height, 4);
+
+	    width = be32toh(width);
+	    height = be32toh(height);
+
+	    return scm::math::vec2i(width, height);
 	}
 
 };

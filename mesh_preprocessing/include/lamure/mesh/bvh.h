@@ -27,6 +27,9 @@ public:
   void write_chart_lod_file(const std::string& chart_lod_filename);
   void write_lod_tex_id_file(const std::string& lod_tex_id_filename);
 
+  const std::vector<Triangle_Chartid>& get_triangles(uint32_t node_id) {
+    return triangles_map_[node_id];
+  }
 
 protected:
 
@@ -52,6 +55,7 @@ protected:
 
   void merge_similar_border_edges(Polyhedron& P,
                                   std::vector<Triangle_Chartid>& tri_list);
+
 
   //node_id -> triangles
   std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;

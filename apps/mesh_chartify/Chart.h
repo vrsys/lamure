@@ -216,7 +216,7 @@ struct Chart
 	  //do eigenvalue decomposition
 	  double eigenvectors[3][3] = {0};
 	  double eigenvalues[3] = {0};
-	  eig::eigen_decomposition(Z,eigenvectors,eigenvalues);
+	  eigen::eig::eigen_decomposition(Z,eigenvectors,eigenvalues);
 
 	  //find min eigenvalue
 	  double min_ev = DBL_MAX;
