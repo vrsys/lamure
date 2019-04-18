@@ -622,7 +622,7 @@ void bvh::write_lod_file(const std::string& lod_filename) {
 
 
   lod->close();
-
+/*
   std::cout << "lod file written with " << num_nodes_ << " nodes\n";
   std::cout << primitives_per_node_ <<  " vertices per node\n";
   std::cout << "vertex size = " << sizeof(vertex) << std::endl;
@@ -643,7 +643,7 @@ void bvh::write_lod_file(const std::string& lod_filename) {
   debug_ofs << "total tris: " << total_tris << std::endl;
   std::cout << "debug file written to " << of_path << std::endl;
   debug_ofs.close();
-
+*/
 }
 
 void bvh::write_chart_lod_file(const std::string& chart_lod_filename) {

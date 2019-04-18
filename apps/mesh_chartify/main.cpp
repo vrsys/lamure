@@ -44,8 +44,147 @@
 
 #include "chart_packing.h"
 
-int window_width_ = 1024;
-int window_height_ = 1024;
+int render_to_texture_width_ = 1024;
+int render_to_texture_height_ = 1024;
+
+int full_texture_width_ = 1024;
+int full_texture_height_ = 1024;
+
+
+struct viewport {
+  scm::math::vec2f normed_dims;
+  scm::math::vec2f normed_offset;
+};
+
+std::vector<viewport> viewports_;
+
+std::shared_ptr<frame_buffer_t> frame_buffer_;
+std::vector< std::shared_ptr<texture_t>> textures_;
+
+GLuint shader_program_; //contains GPU-code
+GLuint vertex_buffer_; //contains 3d model
+
+
+std::shared_ptr<texture_t> load_image(const std::string& filepath) {
+  std::vector<unsigned char> img;
+  unsigned int width = 0;
+  unsigned int height = 0;
+  int tex_error = lodepng::decode(img, width, height, filepath);
+  if (tex_error) {
+    std::cout << "ERROR: unable to load image file " << filepath << std::endl;
+    exit(1);
+  }
+  else {
+    std::cout << "Loaded texture from " << filepath << std::endl;}
+
+  auto texture = std::make_shared<texture_t>(width, height, GL_LINEAR);
+  texture->set_pixels(&img[0]);
+
+  return texture;
+}
+
+
+void save_framebuffer_to_image(std::string filename, std::shared_ptr<frame_buffer_t> frame_buffer) {
+
+  std::vector<uint8_t> pixels;
+  frame_buffer->get_pixels(0, pixels);
+
+  int tex_error = lodepng::encode(filename, pixels, frame_buffer->get_width(), frame_buffer->get_height());
+  if (tex_error) {
+    std::cout << "ERROR: unable to save image file " << filename << std::endl;
+    exit(1);
+  }
+  std::cout << "Framebuffer written to image " << filename << std::endl;
+
+}
+
+//subroutine for error-checking during shader compilation
+GLint compile_shader(const std::string& _src, GLint _shader_type) {
+
+  const char* shader_src = _src.c_str();
+  GLuint shader = glCreateShader(_shader_type);
+  
+  glShaderSource(shader, 1, &shader_src, NULL);
+  glCompileShader(shader);
+
+  GLint status;
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+  if (status == GL_FALSE) {
+    GLint log_length;
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
+
+    GLchar* log = new GLchar[log_length + 1];
+    glGetShaderInfoLog(shader, log_length, NULL, log);
+
+    const char* type = NULL;
+    switch (_shader_type) {
+      case GL_VERTEX_SHADER: type = "vertex"; break;
+      case GL_FRAGMENT_SHADER: type = "fragment"; break;
+      default: break;
+    }
+
+    std::string error_message = "ERROR: Compile shader failure in " + std::string(type) + " shader:\n" + std::string(log);
+    delete[] log;
+    std::cout << error_message << std::endl;
+    exit(1);
+  }
+
+  return shader;
+
+}
+
+
+//compile and link the shader programs
+void make_shader_program() {
+
+  //locates vertices at new uv position on screen
+  //passes old uvs in order to read from the texture 
+  
+  std::string vertex_shader_src = "#version 420\n\
+    layout (location = 0) in vec2 vertex_old_coord;\n\
+    layout (location = 1) in vec2 vertex_new_coord;\n\
+    \n\
+    uniform vec2 viewport_offset;\n\
+    uniform vec2 viewport_scale;\n\
+    \n\
+    varying vec2 passed_uv;\n\
+    \n\
+    void main() {\n\
+      vec2 coord = vec2(vertex_new_coord.x, vertex_new_coord.y);\n\
+      vec2 coord_translated = coord - viewport_offset; \n\
+      vec2 coord_scaled = coord_translated / viewport_scale; \n\
+      gl_Position = vec4((coord_scaled-0.5)*2.0, 0.5, 1.0);\n\
+      passed_uv = vertex_old_coord;\n\
+    }";
+
+  std::string fragment_shader_src = "#version 420\n\
+    uniform sampler2D image;\n\
+    varying vec2 passed_uv;\n\
+    \n\
+    layout (location = 0) out vec4 fragment_color;\n\
+    \n\
+    void main() {\n\
+      vec4 color = texture(image, passed_uv).rgba;\n\
+      fragment_color = vec4(color.rgb, 1.0);\n\
+    }";
+
+
+  //compile shaders
+  GLint vertex_shader = compile_shader(vertex_shader_src, GL_VERTEX_SHADER);
+  GLint fragment_shader = compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER);
+
+  //create the GL resource and save the handle for the shader program
+  shader_program_ = glCreateProgram();
+  glAttachShader(shader_program_, vertex_shader);
+  glAttachShader(shader_program_, fragment_shader);
+  glLinkProgram(shader_program_);
+
+  //since the program is already linked, we do not need to keep the separate shader stages
+  glDetachShader(shader_program_, vertex_shader);
+  glDeleteShader(vertex_shader);
+  glDetachShader(shader_program_, fragment_shader);
+  glDeleteShader(fragment_shader);
+}
 
 
 int main( int argc, char** argv ) 
@@ -54,7 +193,7 @@ int main( int argc, char** argv )
 
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-  glutInitWindowSize(window_width_, window_height_);
+  glutInitWindowSize(render_to_texture_width_, render_to_texture_height_);
   glutInitWindowPosition(64, 64);
   glutCreateWindow(argv[0]);
   glutSetWindowTitle("Lamure Mesh Preprocessing");
@@ -90,7 +229,7 @@ int main( int argc, char** argv )
 
     std::cout << "Optional: -tbvh num triangles per kdtree node (default: 8192)" << std::endl;
 
-    std::cout << "Optional: -single-max: specifies largest possible single output texture (=8192)" << std::endl;
+    std::cout << "Optional: -single-max: specifies largest possible single output texture (=4096)" << std::endl;
 
     std::cout << "Optional: -multi-max: specifies largest possible output texture (=total size of 4 x single_tex_limit (=32768))" << std::endl;
 
@@ -146,13 +285,13 @@ int main( int argc, char** argv )
     num_tris_per_node_bvh = atoi(Utils::getCmdOption(argv, argv + argc, "-tbvh"));
   }
 
-  int single_tex_limit = 8192;
+  int single_tex_limit = 4096;
   if (Utils::cmdOptionExists(argv, argv+argc, "-single-max")) {
     single_tex_limit = atoi(Utils::getCmdOption(argv, argv+argc, "-single-max"));
     std::cout << "Single output texture limited to " << single_tex_limit << std::endl;
   }
 
-  int multi_tex_limit = single_tex_limit * 4;
+  int multi_tex_limit = 1024 * 16;
   if (Utils::cmdOptionExists(argv, argv+argc, "-multi-max")) {
     multi_tex_limit = atoi(Utils::getCmdOption(argv, argv+argc, "-multi-max"));
     std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
@@ -417,8 +556,19 @@ int main( int argc, char** argv )
 
   */
 
-  std::cout << "Preparing charts..." << std::endl;
+  //here, we make sure that triangles is in the same ordering as the leaf level triangles
+  
+  first_leaf_id = bvh->get_first_node_id_of_depth(bvh->get_depth());
+  num_leaf_ids = bvh->get_length_of_depth(bvh->get_depth());
+  
+  triangles.clear();
+  for (uint32_t node_id = first_leaf_id; node_id < first_leaf_id+num_leaf_ids; ++node_id) {
+    triangles.insert(triangles.end(), bvh->get_triangles(node_id).begin(), bvh->get_triangles(node_id).end());
+  }
 
+  std::cout << "Reordered " << triangles.size() << " triangles" << std::endl;
+
+  std::cout << "Preparing charts..." << std::endl;
 
   //prep charts for projection
   std::map<uint32_t, std::map<uint32_t, chart>> chart_map;
@@ -428,9 +578,10 @@ int main( int argc, char** argv )
     uint32_t area_id = tri.area_id;
     uint32_t chart_id = tri.chart_id;
 
-    chart_map[area_id][chart_id].id_ = chart_id;
-    chart_map[area_id][chart_id].original_triangle_ids_.insert(tri_id);
-
+    if (chart_id != -1 && tri.get_area() > 0.f) {
+      chart_map[area_id][chart_id].id_ = chart_id;
+      chart_map[area_id][chart_id].original_triangle_ids_.insert(tri_id);
+    }
   }
 
   for (uint32_t area_id = 0; area_id < num_areas; ++area_id) {
@@ -490,11 +641,13 @@ int main( int argc, char** argv )
       //add any triangles that intersect chart
       for (uint32_t tri_id = 0; tri_id < triangles.size(); ++tri_id) {
         const auto& tri = triangles[tri_id];
-        if (chart.box_.contains(scm::math::vec3d(tri.v0_.pos_))
-          || chart.box_.contains(scm::math::vec3d(tri.v1_.pos_))
-          || chart.box_.contains(scm::math::vec3d(tri.v2_.pos_))) {
+        if (tri.chart_id != -1 && tri.get_area() > 0.f) {
+          if (chart.box_.contains(scm::math::vec3d(tri.v0_.pos_))
+            || chart.box_.contains(scm::math::vec3d(tri.v1_.pos_))
+            || chart.box_.contains(scm::math::vec3d(tri.v2_.pos_))) {
 
-          chart.all_triangle_ids_.insert(tri_id);
+            chart.all_triangle_ids_.insert(tri_id);
+          }
         }
       }
 
@@ -517,6 +670,8 @@ int main( int argc, char** argv )
 
 
 
+  const float packing_scale = 400.f;
+
   std::vector<rectangle> area_rects;
 
   for (uint32_t area_id = 0; area_id < num_areas; ++area_id) {
@@ -528,15 +683,13 @@ int main( int argc, char** argv )
 
     std::cout << "Running rectangle packing for area " << area_id << std::endl;
     
-    //scale the rectangles
-    const float scale = 400.f;
-
+    //init the rectangles
     std::vector<rectangle> rects;
     for (auto& chart_it : chart_map[area_id]) {
       chart& chart = chart_it.second;
       if (chart.original_triangle_ids_.size() > 0) {
         rectangle rect = chart.rect_;
-        rect.max_ *= scale;
+        rect.max_ *= packing_scale;
         rects.push_back(rect);
       }
     }
@@ -558,26 +711,323 @@ int main( int argc, char** argv )
   }
 
   std::cout << "Packing " << area_rects.size() << " areas..." << std::endl;
-  rectangle image = pack(area_rects);
-  for (auto& rect : area_rects) {
-    std::cout << "Area " << rect.id_ << " min: (" << rect.min_.x << ", " << rect.min_.y << ")" << std::endl;
-    std::cout << "Area " << rect.id_ << " max: (" << rect.max_.x << ", " << rect.max_.y << ")" << std::endl;
+  rectangle image_rect = pack(area_rects);
+  std::cout << "Packing of all areas complete (" << image_rect.max_.x << ", " << image_rect.max_.y << ")" << std::endl;
+
+  std::cout << "Applying texture space transformation..." << std::endl;
+
+  for (auto& area_rect : area_rects) {
+    std::cout << "Area " << area_rect.id_ << " min: (" << area_rect.min_.x << ", " << area_rect.min_.y << ")" << std::endl;
+    std::cout << "Area " << area_rect.id_ << " max: (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
 
     //next, apply the global transformation from area packing onto all individual chart rects per area
+    for (auto& chart_it : chart_map[area_rect.id_]) {
+      auto& chart = chart_it.second;
+      chart.rect_.min_ += area_rect.min_;
+     
+      //apply this transformation to the new parameterization
+
+      for (auto tri_id : chart.all_triangle_ids_) {
+        if ((chart.rect_.flipped_ && !area_rect.flipped_) || (area_rect.flipped_ && !chart.rect_.flipped_)) {
+          float temp = chart.all_triangle_new_coods_[tri_id][0].x;
+          chart.all_triangle_new_coods_[tri_id][0].x = chart.all_triangle_new_coods_[tri_id][0].y;
+          chart.all_triangle_new_coods_[tri_id][0].y = temp;
+
+          temp = chart.all_triangle_new_coods_[tri_id][1].x;
+          chart.all_triangle_new_coods_[tri_id][1].x = chart.all_triangle_new_coods_[tri_id][1].y;
+          chart.all_triangle_new_coods_[tri_id][1].y = temp;
+
+          temp = chart.all_triangle_new_coods_[tri_id][2].x;
+          chart.all_triangle_new_coods_[tri_id][2].x = chart.all_triangle_new_coods_[tri_id][2].y;
+          chart.all_triangle_new_coods_[tri_id][2].y = temp;
+        }
+
+        for (uint32_t i = 0; i < 3; ++i) {
+          chart.all_triangle_new_coods_[tri_id][i] *= packing_scale;
+          chart.all_triangle_new_coods_[tri_id][i].x += chart.rect_.min_.x;
+          chart.all_triangle_new_coods_[tri_id][i].y += chart.rect_.min_.y;
+          chart.all_triangle_new_coods_[tri_id][i].x /= image_rect.max_.x;
+          chart.all_triangle_new_coods_[tri_id][i].y /= image_rect.max_.x;
+        }
+      }
+    }
+  }
+
+  
+  struct blit_vertex_t {
+    scm::math::vec2f old_coord_;
+    scm::math::vec2f new_coord_;
+  };
+
+  //use 2D array to account for different textures (if no textures were found, make sure it has at least one row)
+  std::vector<std::vector<blit_vertex_t>> to_upload_per_texture;
+  to_upload_per_texture.resize(texture_info_map.size());
+
+
+  //replacing texture coordinates in LOD file
+  //...and at the same time, we will fill the upload per texture list
+  std::cout << "Updating texture coordinates in leaf-level LOD nodes..." << std::endl;
+  uint32_t num_invalid_tris = 0;
+  uint32_t num_dropped_tris = 0;
+
+  for (uint32_t node_id = first_leaf_id; node_id < first_leaf_id+num_leaf_ids; ++node_id) {
+
+    auto& tris = bvh->get_triangles(node_id);
+    for (int local_tri_id = 0; local_tri_id < tris.size(); ++local_tri_id) {
+      int32_t tri_id = ((node_id-first_leaf_id)*(bvh->get_primitives_per_node()/3))+local_tri_id;
+
+      auto& tri = tris[local_tri_id];
+      if (tri.chart_id != -1 && tri.get_area() > 0.f) {
+
+        auto& chart = chart_map[tri.area_id][tri.chart_id];
+
+        if (chart.all_triangle_ids_.find(tri_id) != chart.all_triangle_ids_.end()) {
+
+          if (tri.tex_id != -1) { //create render list
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});
+          }
+          else {
+            ++num_dropped_tris;
+          }
+
+          //override texture coordinates
+          tri.v0_.tex_ = chart.all_triangle_new_coods_[tri_id][0];
+          tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
+          tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
+
+        }
+        else {
+          ++num_dropped_tris;
+        }
+      }
+      else {
+        ++num_invalid_tris;
+      }
+    }
+  }
+
+  std::cout << "Updating texture coordinates in inner LOD nodes..." << std::endl;
+  for (uint32_t node_id = 0; node_id < first_leaf_id; ++node_id) {
+    
+    auto& tris = bvh->get_triangles(node_id);
+    for (int local_tri_id = 0; local_tri_id < tris.size(); ++local_tri_id) {
+      auto& tri = tris[local_tri_id];
+      if (tri.chart_id != -1) {
+        auto& proj_info = chart_map[tri.area_id][tri.chart_id].projection;
+        rectangle& chart_rect = chart_map[tri.area_id][tri.chart_id].rect_;
+        rectangle& area_rect = area_rects[tri.area_id];
+
+        //at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
+        
+        scm::math::vec3f original_v;
+
+        for (uint32_t i = 0; i < 3; ++i) {
+          switch (i) {
+            case 0: original_v = tri.v0_.pos_; break;
+            case 1: original_v = tri.v1_.pos_; break;
+            case 2: original_v = tri.v2_.pos_; break;
+            default: break;
+          }
+          scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
+          
+          projected_v -= proj_info.tex_coord_offset; //correct by offset (so that min uv coord = 0) 
+          
+          projected_v /= proj_info.largest_max; //apply normalisation factor
+          if ((chart_rect.flipped_ && !area_rect.flipped_) || (area_rect.flipped_ && !chart_rect.flipped_)) { //flip if needed
+            float temp = projected_v.x;
+            projected_v.x = projected_v.y;
+            projected_v.y = temp;
+          }
+          projected_v *= packing_scale; //scale
+          projected_v += chart_rect.min_; //offset position in texture
+          projected_v /= image_rect.max_; //scale down to normalised image space
+          projected_v.y = 1.0 - projected_v.y; //flip y coord
+
+          //replace existing coords
+          switch (i) {
+            case 0: tri.v0_.tex_ = projected_v; break;
+            case 1: tri.v1_.tex_ = projected_v; break;
+            case 2: tri.v2_.tex_ = projected_v; break;
+            default: break;
+          }
+        }
+      }
+      else {
+        ++num_invalid_tris;
+      }
+    }
 
   }
 
+  std::cout << "Num tris with invalid chart ids encountered: " << num_invalid_tris << std::endl;
+  std::cout << "Num dropped tris encountered: " << num_dropped_tris << std::endl;
+
+  std::string bvh_filename = obj_filename.substr(0, obj_filename.size()-4)+".bvh";
+  bvh->write_bvh_file(bvh_filename);
+  std::cout << "Bvh file written to " << bvh_filename << std::endl;
+
+  std::string lod_filename = obj_filename.substr(0, obj_filename.size()-4)+".lod";
+  bvh->write_lod_file(lod_filename);
+  std::cout << "Lod file written to " << lod_filename << std::endl;
+  
+  //cleanup
+  std::cout << "Cleanup bvh" << std::endl;
+  bvh.reset();
 
 
-  //default (minimum) output texture size = single texture size
-  window_width_ = single_tex_limit;
-  window_height_ = single_tex_limit;
   std::cout << "Single texture size limit: " << single_tex_limit << std::endl;
   std::cout << "Multi texture size limit: " << multi_tex_limit << std::endl;
-  
 
-  //cleanup
-  bvh.reset();
+  //default (minimum) output texture size = single texture size
+  render_to_texture_width_ = single_tex_limit;
+  render_to_texture_height_ = single_tex_limit;
+
+  full_texture_width_ = single_tex_limit;
+  full_texture_height_ = single_tex_limit;
+  
+  //double texture size up to 8k if a given percentage of charts do not have enough pixels
+  const double target_percentage_charts_with_enough_pixels = 0.90;
+  std::cout << "Adjusting final texture size (" << full_texture_width_ << " x " << full_texture_height_ << ")" << std::endl;
+
+  calculate_new_chart_tex_space_sizes(chart_map, triangles, scm::math::vec2i(full_texture_width_, full_texture_height_));
+  while (!is_output_texture_big_enough(chart_map, target_percentage_charts_with_enough_pixels)) {
+
+    if (std::max(full_texture_width_, full_texture_height_) >= multi_tex_limit) {
+      std::cout << "Maximum texture size limit reached (" << full_texture_width_ << " x " << full_texture_height_ << ")" << std::endl;
+      break;
+    }
+
+    full_texture_width_ *= 2;
+    full_texture_height_ *= 2;
+
+    std::cout << "Not enough pixels! Adjusting final texture size (" << full_texture_width_ << " x " << full_texture_height_ << ")" << std::endl;
+
+    calculate_new_chart_tex_space_sizes(chart_map, triangles, scm::math::vec2i(full_texture_width_, full_texture_height_));
+  }
+
+
+  //if output texture is bigger than 8k, create a set if viewports that will be rendered separately
+  if (full_texture_width_ > render_to_texture_width_ || full_texture_height_ > render_to_texture_height_) {
+    //calc num of viewports needed from size of output texture
+    int viewports_w = std::ceil(full_texture_width_ / render_to_texture_width_);
+    int viewports_h = std::ceil(full_texture_height_ / render_to_texture_height_);
+
+    scm::math::vec2f viewport_normed_size(1.f / viewports_w, 1.f / viewports_h);
+
+    //create a vector of viewports needed 
+    for (int y = 0; y < viewports_h; ++y) {
+      for (int x = 0; x < viewports_w; ++x) {
+        viewport vp;
+        vp.normed_dims = viewport_normed_size;
+        vp.normed_offset = scm::math::vec2f(viewport_normed_size.x * x, viewport_normed_size.y * y);
+        viewports_.push_back(vp);
+
+        //std::cout << "Viewport " << viewports.size() -1 << ": " << viewport_normed_size.x << "x" << viewport_normed_size.y << " at (" << vp.normed_offset.x << "," << vp.normed_offset.y << ")\n";
+      }
+    }
+  }
+  else {
+    viewport single_viewport;
+    single_viewport.normed_offset = scm::math::vec2f(0.f,0.f);
+    single_viewport.normed_dims = scm::math::vec2f(1.0,1.0);
+    viewports_.push_back(single_viewport);
+
+    //std::cout << "Viewport " << viewports.size() -1 << ": " << single_viewport.normed_dims.x << "x" << single_viewport.normed_dims.y << " at (" << single_viewport.normed_offset.x << "," << single_viewport.normed_offset.y << ")\n";
+  }
+  std::cout << "Created " << viewports_.size() << " viewports to render multiple output textures" << std::endl;
+
+  
+  //create output frame buffer
+  frame_buffer_ = std::make_shared<frame_buffer_t>(1, render_to_texture_width_, render_to_texture_height_, GL_RGBA, GL_LINEAR);
+
+  std::cout << "Loading all textures..." << std::endl;
+  for (auto tex_it : texture_info_map) {
+    textures_.push_back(load_image(tex_it.second.filename_));
+  }
+
+
+  std::cout << "Compiling shaders..." << std::endl;
+  make_shader_program();
+
+  //set the viewport size
+  glViewport(0, 0, (GLsizei)render_to_texture_width_, (GLsizei)render_to_texture_height_);
+
+  //set background colour
+  glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+
+  glGenBuffers(1, &vertex_buffer_);
+
+  for (uint32_t view_id = 0; view_id < viewports_.size(); ++view_id) {
+    std::cout << "Rendering into viewport " << view_id << "..." << std::endl;
+
+    viewport vport = viewports_[view_id];
+
+    std::cout << "Viewport start: " << vport.normed_offset.x << ", " << vport.normed_offset.y << std::endl;
+    std::cout << "Viewport size: " << vport.normed_dims.x << ", " << vport.normed_dims.y << std::endl;
+
+    frame_buffer_->enable();
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    for (uint32_t i = 0; i < to_upload_per_texture.size(); ++i) {
+      
+      uint32_t num_vertices = to_upload_per_texture[i].size();
+
+      if (num_vertices == 0) {
+        std::cout << "Nothing to render for texture " << i << " ("<< texture_info_map[i].filename_ << ")" << std::endl;
+        continue;
+      }
+
+      std::cout << "Rendering from texture " << i << " ("<< texture_info_map[i].filename_ << ")" << std::endl;
+
+
+      glUseProgram(shader_program_);
+
+      //upload this vector to GPU
+      glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+      glBufferData(GL_ARRAY_BUFFER, num_vertices*sizeof(blit_vertex_t), &to_upload_per_texture[i][0], GL_STREAM_DRAW);
+
+      
+      //define the layout of the vertex buffer:
+      //setup 2 attributes per vertex (2x texture coord)
+      glEnableVertexAttribArray(0);
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
+      glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2*sizeof(float)));
+
+      //get texture location
+      int slot = 0;
+      glUniform1i(glGetUniformLocation(shader_program_, "image"), slot);
+      glUniform2f(glGetUniformLocation(shader_program_, "viewport_offset"), vport.normed_offset[0], vport.normed_offset[1]);
+      glUniform2f(glGetUniformLocation(shader_program_, "viewport_scale"), vport.normed_dims[0], vport.normed_dims[1]);
+
+      glActiveTexture(GL_TEXTURE0 + slot);
+      
+      //here, enable the current texture
+      textures_[i]->enable(slot);
+
+      //draw triangles from the currently bound buffer
+      glDrawArrays(GL_TRIANGLES, 0, num_vertices);
+
+      //unbind, unuse
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glUseProgram(0);
+
+      textures_[i]->disable();
+
+
+    } //end for each texture
+
+    frame_buffer_->disable();
+
+    std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv" + std::to_string(view_id) + ".png";
+    save_framebuffer_to_image(image_filename, frame_buffer_);
+
+  } //end for each viewport
+
+
 
 
 #if 0

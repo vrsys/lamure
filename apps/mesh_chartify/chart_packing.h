@@ -80,6 +80,63 @@ static void calculate_chart_tex_space_sizes(std::map<uint32_t, chart>& chart_map
 
 }
 
+static void calculate_new_chart_tex_space_sizes(std::map<uint32_t, std::map<uint32_t, chart>>& chart_map, 
+                                                std::vector<lamure::mesh::Triangle_Chartid>& triangles, 
+                                                const scm::math::vec2i& texture_dimensions) {
+  for(auto& area_it : chart_map) {
+  	for (auto& chart_it : area_it.second) {
+  		auto& chart = chart_it.second;
+
+    double pixels = 0.0;
+    for (auto& tri_id : chart.original_triangle_ids_) {
+      //sample length  between vertices 0 and 1
+      auto& tri = triangles[tri_id];
+
+      int texture_id = tri.tex_id;
+       //calculate areas in texture space
+       double tri_area = get_area_of_triangle(chart.all_triangle_new_coods_[tri_id][0], chart.all_triangle_new_coods_[tri_id][1], chart.all_triangle_new_coods_[tri_id][2]);
+        //if we are calculating size of tris on output textures,pixel area is constant 
+       double pixel_area = (1.0 / texture_dimensions.x) * (1.0 / texture_dimensions.y);
+       double tri_pixels = tri_area / pixel_area;
+
+      pixels += tri_pixels;
+    }    
+
+    double pixels_per_tri = pixels / chart.original_triangle_ids_.size();
+
+    chart.real_to_tex_ratio_new = pixels_per_tri;
+    
+  }
+}
+
+
+}
+
+bool is_output_texture_big_enough(std::map<uint32_t, std::map<uint32_t, chart>>& chart_map, double target_percentage_charts_with_enough_pixels){
+  
+  //check if at least a given percentage of charts have at least as many pixels now as they did in the original texture
+  int charts_w_enough_pixels = 0;
+  int num_charts = 0;
+
+  for (auto& area_it : chart_map) {
+  	for (auto& chart_it : chart_map[area_it.first]) {
+  	  if (chart_it.second.all_triangle_ids_.size() > 0) {
+  	  	++num_charts;
+  	  
+        if (chart_it.second.real_to_tex_ratio_new >= chart_it.second.real_to_tex_ratio_old){
+          charts_w_enough_pixels++;
+        }
+      }
+    }
+  }
+
+  const double percentage_big_enough = (double)charts_w_enough_pixels / (double)num_charts;
+
+  //std::cout << "Percentage of charts big enough  = " << percentage_big_enough << std::endl;
+
+  return (percentage_big_enough >= target_percentage_charts_with_enough_pixels);
+}
+
 
 static scm::math::vec2f project_to_plane(
   const scm::math::vec3f& v, scm::math::vec3f& plane_normal, 
