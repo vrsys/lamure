@@ -44,11 +44,11 @@
 
 #include "chart_packing.h"
 
-int render_to_texture_width_ = 1024;
-int render_to_texture_height_ = 1024;
+int render_to_texture_width_ = 4096;
+int render_to_texture_height_ = 4096;
 
-int full_texture_width_ = 1024;
-int full_texture_height_ = 1024;
+int full_texture_width_ = 4096;
+int full_texture_height_ = 4096;
 
 
 struct viewport {
@@ -58,12 +58,15 @@ struct viewport {
 
 std::vector<viewport> viewports_;
 
-std::shared_ptr<frame_buffer_t> frame_buffer_;
 std::vector< std::shared_ptr<texture_t>> textures_;
 
-GLuint shader_program_; //contains GPU-code
-GLuint vertex_buffer_; //contains 3d model
+GLuint shader_program_;
+GLuint vertex_buffer_;
 
+GLuint dilation_shader_program_;
+GLuint dilation_vertex_buffer_;
+
+std::vector<std::shared_ptr<frame_buffer_t>> frame_buffers_;
 
 std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   std::vector<unsigned char> img;
@@ -81,6 +84,16 @@ std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   texture->set_pixels(&img[0]);
 
   return texture;
+}
+
+
+void save_image(std::string filename, std::vector<uint8_t> image, int width, int height) {
+  int tex_error = lodepng::encode(filename, image, width, height);
+  if (tex_error) {
+    std::cout << "ERROR: unable to save image file " << filename << std::endl;
+  }
+  std::cout << "Saved image to " << filename << std::endl;
+
 }
 
 
@@ -187,6 +200,119 @@ void make_shader_program() {
 }
 
 
+//compile and link the shader programs
+void make_dilation_shader_program() {
+
+  std::string vertex_shader_src = "#version 420\n\
+    layout (location = 0) in vec2 vertex_old_coord;\n\
+    layout (location = 1) in vec2 vertex_new_coord;\n\
+    \n\
+    varying vec2 passed_uv;\n\
+    \n\
+    void main() {\n\
+      vec2 coord = vec2(vertex_old_coord.x, vertex_old_coord.y);\n\
+      gl_Position = vec4((coord), 0.5, 1.0);\n\
+      passed_uv = vertex_new_coord;\n\
+    }";
+
+  std::string fragment_shader_src = "#version 420\n\
+    uniform sampler2D image;\n\
+    uniform int image_width;\n\
+    uniform int image_height;\n\
+    varying vec2 passed_uv;\n\
+    \n\
+    layout (location = 0) out vec4 fragment_color;\n\
+    \n\
+    vec4 weighted_dilation() {\n\
+      vec4 fallback_color = vec4(1.0, 0.0, 1.0, 1.0);\n\
+      vec4 accumulated_color = vec4(0.0, 0.0, 0.0, 1.0);\n\
+      float accumulated_weight = 0.0;\n\
+      for(int y_offset = -1; y_offset < 2; ++y_offset) {\n\
+        if( 0 == y_offset) {\n\
+          continue;\n\
+        }\n\
+        ivec2 sampling_frag_coord = ivec2(gl_FragCoord.xy) + ivec2(0, y_offset);\n\
+\n\
+        if( \n\
+           sampling_frag_coord.y >= image_height || sampling_frag_coord.y < 0 ) {\n\
+            continue;\n\
+           }\n\
+\n\
+        vec3 sampled_color = texelFetch(image, ivec2(sampling_frag_coord), 0).rgb;\n\
+\n\
+        if( !(1.0 == sampled_color.r && 0.0 == sampled_color.g && 1.0 == sampled_color.b) ) {\n\
+          ivec2 pixel_dist = ivec2(gl_FragCoord.xy) - sampling_frag_coord;\n\
+          float eucl_distance = sqrt(pixel_dist.x * pixel_dist.x + pixel_dist.y * pixel_dist.y);\n\
+          float weight = 1.0 / eucl_distance;\n\
+          accumulated_color += vec4(sampled_color, 1.0) * weight;\n\
+          accumulated_weight += weight;\n\
+        }\n\
+\n\
+    }\n\
+\n\
+      for(int x_offset = -1; x_offset < 2; ++x_offset) {\n\
+        if( 0 == x_offset) {\n\
+          continue;\n\
+        }\n\
+        ivec2 sampling_frag_coord = ivec2(gl_FragCoord.xy) + ivec2(x_offset, 0);\n\
+\n\
+        if( \n\
+           sampling_frag_coord.x >= image_width || sampling_frag_coord.x < 0 ) {\n\
+            continue;\n\
+           }\n\
+\n\
+        vec3 sampled_color = texelFetch(image, ivec2(sampling_frag_coord), 0).rgb;\n\
+\n\
+        if( !(1.0 == sampled_color.r && 0.0 == sampled_color.g && 1.0 == sampled_color.b) ) {\n\
+          ivec2 pixel_dist = ivec2(gl_FragCoord.xy) - sampling_frag_coord;\n\
+          float eucl_distance = sqrt(pixel_dist.x * pixel_dist.x + pixel_dist.y * pixel_dist.y);\n\
+          float weight = 1.0 / eucl_distance;\n\
+          accumulated_color += vec4(sampled_color, 1.0) * weight;\n\
+          accumulated_weight += weight;\n\
+        }\n\
+\n\
+    }\n\
+\n\
+\n\
+      if(accumulated_weight > 0.0) {\n\
+        //return vec4(0.0, 1.0, 0.0, 1.0);\n\
+        return vec4( (accumulated_color / accumulated_weight).rgb, 1.0);\n\
+      } else {\n\
+        return fallback_color;\n\
+      }\n\
+    }\n\
+\n\
+    void main() {\n\
+      vec4 color = texture(image, passed_uv).rgba;\n\
+    \n\
+      if(1.0 == color.r && 0.0 == color.g && 1.0 == color.b) {\n\
+      \n\
+        fragment_color = weighted_dilation();\n\
+       //fragment_color = vec4(1.0, 0.0, 0.0, 1.0); \n\
+      } else {\n\
+        fragment_color = texelFetch(image, ivec2(gl_FragCoord.xy), 0);\n\
+      }\n\
+    }";
+
+
+  //compile shaders
+  GLint vertex_shader = compile_shader(vertex_shader_src, GL_VERTEX_SHADER);
+  GLint fragment_shader = compile_shader(fragment_shader_src, GL_FRAGMENT_SHADER);
+
+  //create the GL resource and save the handle for the shader program
+  dilation_shader_program_ = glCreateProgram();
+  glAttachShader(dilation_shader_program_, vertex_shader);
+  glAttachShader(dilation_shader_program_, fragment_shader);
+  glLinkProgram(dilation_shader_program_);
+
+  //since the program is already linked, we do not need to keep the separate shader stages
+  glDetachShader(dilation_shader_program_, vertex_shader);
+  glDeleteShader(vertex_shader);
+  glDetachShader(dilation_shader_program_, fragment_shader);
+  glDeleteShader(fragment_shader);
+}
+
+
 int main( int argc, char** argv ) 
 {
 
@@ -231,7 +357,7 @@ int main( int argc, char** argv )
 
     std::cout << "Optional: -single-max: specifies largest possible single output texture (=4096)" << std::endl;
 
-    std::cout << "Optional: -multi-max: specifies largest possible output texture (=total size of 4 x single_tex_limit (=32768))" << std::endl;
+    std::cout << "Optional: -multi-max: specifies largest possible output texture (=8192)" << std::endl;
 
     return 1;
   }
@@ -291,12 +417,11 @@ int main( int argc, char** argv )
     std::cout << "Single output texture limited to " << single_tex_limit << std::endl;
   }
 
-  int multi_tex_limit = 1024 * 16;
+  int multi_tex_limit = 8192;
   if (Utils::cmdOptionExists(argv, argv+argc, "-multi-max")) {
     multi_tex_limit = atoi(Utils::getCmdOption(argv, argv+argc, "-multi-max"));
     std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
   }
-
 
   
   std::vector<lamure::mesh::triangle_t> all_triangles;
@@ -537,24 +662,8 @@ int main( int argc, char** argv )
   std::cout << "Creating LOD hierarchy..." << std::endl;
 
   auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, num_tris_per_node_bvh);
-/*
-  std::string bvh_filename = obj_filename.substr(0, obj_filename.size()-4)+".bvh";
-  bvh->write_bvh_file(bvh_filename);
-  std::cout << "Bvh file written to " << bvh_filename << std::endl;
 
-  std::string lod_filename = obj_filename.substr(0, obj_filename.size()-4)+".lod";
-  bvh->write_lod_file(lod_filename);
-  std::cout << "Lod file written to " << lod_filename << std::endl;
-  
-  std::string lod_chart_filename = obj_filename.substr(0, obj_filename.size()-4)+".lodchart";
-  bvh->write_chart_lod_file(lod_chart_filename);
-  std::cout << "Lod chart file written to " << lod_chart_filename << std::endl;
 
-  std::string lod_tex_id_filename = obj_filename.substr(0, obj_filename.size()-4)+".lodtexid";
-  bvh->write_lod_tex_id_file(lod_tex_id_filename);
-  std::cout << "Lod tex id file written to " << lod_tex_id_filename << std::endl;
-
-  */
 
   //here, we make sure that triangles is in the same ordering as the leaf level triangles
   
@@ -843,7 +952,7 @@ int main( int argc, char** argv )
           projected_v *= packing_scale; //scale
           projected_v += chart_rect.min_; //offset position in texture
           projected_v /= image_rect.max_; //scale down to normalised image space
-          projected_v.y = 1.0 - projected_v.y; //flip y coord
+          //projected_v.y = 1.0 - projected_v.y; //flip y coord
 
           //replace existing coords
           switch (i) {
@@ -880,12 +989,14 @@ int main( int argc, char** argv )
   std::cout << "Single texture size limit: " << single_tex_limit << std::endl;
   std::cout << "Multi texture size limit: " << multi_tex_limit << std::endl;
 
-  //default (minimum) output texture size = single texture size
-  render_to_texture_width_ = single_tex_limit;
-  render_to_texture_height_ = single_tex_limit;
 
-  full_texture_width_ = single_tex_limit;
-  full_texture_height_ = single_tex_limit;
+  render_to_texture_width_ = std::max(single_tex_limit, 4096);
+  render_to_texture_height_ = std::max(single_tex_limit, 4096);
+
+  multi_tex_limit = std::max(render_to_texture_width_, multi_tex_limit);
+
+  full_texture_width_ = render_to_texture_width_;
+  full_texture_height_ = render_to_texture_height_;
   
   //double texture size up to 8k if a given percentage of charts do not have enough pixels
   const double target_percentage_charts_with_enough_pixels = 0.90;
@@ -939,9 +1050,8 @@ int main( int argc, char** argv )
   std::cout << "Created " << viewports_.size() << " viewports to render multiple output textures" << std::endl;
 
   
-  //create output frame buffer
-  frame_buffer_ = std::make_shared<frame_buffer_t>(1, render_to_texture_width_, render_to_texture_height_, GL_RGBA, GL_LINEAR);
 
+  
   std::cout << "Loading all textures..." << std::endl;
   for (auto tex_it : texture_info_map) {
     textures_.push_back(load_image(tex_it.second.filename_));
@@ -950,6 +1060,30 @@ int main( int argc, char** argv )
 
   std::cout << "Compiling shaders..." << std::endl;
   make_shader_program();
+  make_dilation_shader_program();
+
+  std::cout << "Creating framebuffers..." << std::endl;
+  
+  //create output frame buffers
+  for (int i = 0; i < 2; ++i) {
+    frame_buffers_.push_back(std::make_shared<frame_buffer_t>(1, render_to_texture_width_, render_to_texture_height_, GL_RGBA, GL_LINEAR));
+  }
+
+  //create vertex buffer for dilation
+  float screen_space_quad_geometry[30] {
+    -1.0, -1.0, 0.0, 0.0,
+     1.0, -1.0, 1.0, 0.0,
+    -1.0,  1.0, 0.0, 1.0,
+
+      1.0, -1.0, 1.0, 0.0,
+      1.0,  1.0, 1.0, 1.0,
+     -1.0,  1.0, 0.0, 1.0
+  };
+  glGenBuffers(1, &dilation_vertex_buffer_);
+  glBindBuffer(GL_ARRAY_BUFFER, dilation_vertex_buffer_);
+  glBufferData(GL_ARRAY_BUFFER, 6*4*sizeof(float), &screen_space_quad_geometry[0], GL_STATIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 
   //set the viewport size
   glViewport(0, 0, (GLsizei)render_to_texture_width_, (GLsizei)render_to_texture_height_);
@@ -959,6 +1093,8 @@ int main( int argc, char** argv )
 
   glGenBuffers(1, &vertex_buffer_);
 
+  std::vector<std::vector<uint8_t>> area_images(viewports_.size());
+
   for (uint32_t view_id = 0; view_id < viewports_.size(); ++view_id) {
     std::cout << "Rendering into viewport " << view_id << "..." << std::endl;
 
@@ -967,7 +1103,7 @@ int main( int argc, char** argv )
     std::cout << "Viewport start: " << vport.normed_offset.x << ", " << vport.normed_offset.y << std::endl;
     std::cout << "Viewport size: " << vport.normed_dims.x << ", " << vport.normed_dims.y << std::endl;
 
-    frame_buffer_->enable();
+    frame_buffers_[0]->enable();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -981,7 +1117,6 @@ int main( int argc, char** argv )
       }
 
       std::cout << "Rendering from texture " << i << " ("<< texture_info_map[i].filename_ << ")" << std::endl;
-
 
       glUseProgram(shader_program_);
 
@@ -1004,7 +1139,7 @@ int main( int argc, char** argv )
       glUniform2f(glGetUniformLocation(shader_program_, "viewport_scale"), vport.normed_dims[0], vport.normed_dims[1]);
 
       glActiveTexture(GL_TEXTURE0 + slot);
-      
+
       //here, enable the current texture
       textures_[i]->enable(slot);
 
@@ -1020,15 +1155,78 @@ int main( int argc, char** argv )
 
     } //end for each texture
 
-    frame_buffer_->disable();
+    frame_buffers_[0]->disable();
 
-    std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_uv" + std::to_string(view_id) + ".png";
-    save_framebuffer_to_image(image_filename, frame_buffer_);
+    std::cout << "Dilating view " << view_id << "..." << std::endl;
+
+    uint32_t num_dilations = render_to_texture_width_/2;
+  
+    uint32_t current_framebuffer = 0;
+    for (int i = 0; i < num_dilations; ++i) {
+
+      current_framebuffer = (i+1)%2;
+
+      frame_buffers_[current_framebuffer]->enable();
+      int current_texture = 0;
+      if (current_framebuffer == 0) {
+        current_texture = 1;
+      }
+
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      glUseProgram(dilation_shader_program_);
+      glBindBuffer(GL_ARRAY_BUFFER, dilation_vertex_buffer_);
+
+      glEnableVertexAttribArray(0);
+      glEnableVertexAttribArray(1);
+      glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
+      glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2*sizeof(float)));
+
+      int slot = 0;
+      glUniform1i(glGetUniformLocation(dilation_shader_program_, "image"), slot);
+      glUniform1i(glGetUniformLocation(dilation_shader_program_, "image_width"), render_to_texture_width_);
+      glUniform1i(glGetUniformLocation(dilation_shader_program_, "image_height"), render_to_texture_height_);
+      glActiveTexture(GL_TEXTURE0 + slot);
+      frame_buffers_[current_texture]->bind_texture(slot);
+
+      glDrawArrays(GL_TRIANGLES, 0, 6);
+
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+      glUseProgram(0);
+
+      frame_buffers_[current_texture]->unbind_texture(slot);
+
+      frame_buffers_[current_framebuffer]->disable();
+    }
+
+    std::vector<uint8_t> pixels;
+    frame_buffers_[current_framebuffer]->get_pixels(0, pixels);
+    area_images[view_id] = pixels;
 
   } //end for each viewport
 
+  std::cout << "Producing final texture..." << std::endl;
+
+  //concatenate all area images to one big texture
+  uint32_t num_bytes_per_pixel = 4;
+  std::vector<uint8_t> final_texture(full_texture_width_*full_texture_height_*num_bytes_per_pixel);
+  
+  uint32_t num_lookups_per_line = full_texture_width_ / render_to_texture_width_;
+
+  for (uint32_t y = 0; y < full_texture_height_; ++y) { //for each line
+    for (uint32_t tex_x = 0; tex_x < num_lookups_per_line; ++tex_x) {
+      void* dst = ((void*)&final_texture[0]) + y*full_texture_width_*num_bytes_per_pixel + tex_x*render_to_texture_width_*num_bytes_per_pixel;
+      uint32_t tex_y = y / render_to_texture_height_;
+      uint32_t tex_id = tex_y * num_lookups_per_line + tex_x;
+      void* src = ((void*)&area_images[tex_id][0]) + (y % render_to_texture_height_)*render_to_texture_width_*num_bytes_per_pixel; //+ 0;
+
+      memcpy(dst, src, render_to_texture_width_*num_bytes_per_pixel);
+    }
+  }
 
 
+  std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_texture.png";
+  save_image(image_filename, final_texture, full_texture_width_, full_texture_height_);
 
 #if 0
 

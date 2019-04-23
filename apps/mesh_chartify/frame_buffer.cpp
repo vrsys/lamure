@@ -174,29 +174,6 @@ frame_buffer_t::draw(
 void
 frame_buffer_t::get_pixels(
   uint32_t index,
-  char** data)
-{
-  if (index >= num_buffers_) {
-    std::cout << "frame buffer index is out of bounds" << std::endl;
-    exit(1);
-  }
-
-  if (data != nullptr) {
-    std::cout << "data must be nullptr" << std::endl;
-    exit(1);
-  }
-  
-  *data = new char[4*width_*height_];
-
-  glBindTexture(GL_TEXTURE_2D, textures_[index]);
-  glGetTexImage(GL_TEXTURE_2D, 0, format_, GL_UNSIGNED_BYTE, *data);
-  glBindTexture(GL_TEXTURE_2D, 0);
-
-}
-
-void
-frame_buffer_t::get_pixels(
-  uint32_t index,
   std::vector<uint8_t>& image)
 {
   if (index >= num_buffers_) {
