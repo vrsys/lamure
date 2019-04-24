@@ -74,7 +74,7 @@ std::shared_ptr<texture_t> load_image(const std::string& filepath) {
   unsigned int height = 0;
   int tex_error = lodepng::decode(img, width, height, filepath);
   if (tex_error) {
-    std::cout << "ERROR: unable to load image file " << filepath << std::endl;
+    std::cout << "ERROR: unable to load image file (not a .png?) " << filepath << std::endl;
     exit(1);
   }
   else {
@@ -422,6 +422,8 @@ int main( int argc, char** argv )
   std::vector<lamure::mesh::triangle_t> all_triangles;
   std::vector<std::string> all_materials;
 
+  std::cout << "Loading obj from " << obj_filename << "..." << std::endl;
+
   Utils::load_obj(obj_filename, all_triangles, all_materials);
 
   std::vector<indexed_triangle_t> all_indexed_triangles;
@@ -449,6 +451,11 @@ int main( int argc, char** argv )
 
     for (auto mat_it : material_map) {
       std::string texture_filename = mat_it.second.first;
+
+      if (texture_filename.size() > 3) {
+        texture_filename = texture_filename.substr(0, texture_filename.size()-3)+"png";
+      }
+ 
       uint32_t material_id = mat_it.second.second;
       std::cout << "Material " << mat_it.first << " : " << texture_filename << " : " << material_id << std::endl;
 

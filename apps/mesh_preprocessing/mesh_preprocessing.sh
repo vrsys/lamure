@@ -2,6 +2,12 @@
 
 # Requires path of OBJ as argument
 
+#lamure directory
+#SCRIPT_CALL=$0
+#LAMURE_DIR=$(basename -- "$SCRIPT_CALL")
+
+#alternatively, use user specified directory:
+LAMURE_DIR=~/svn/lamure/install/bin/
 
 ############################
 # user settings
@@ -25,28 +31,24 @@ NUM_DILATIONS=4096
 echo "RUNNING MESHLOD PIPELINE"
 echo "------------------------"
 
-#lamure directory
-LAMURE_DIR=/home/nite5129/svn/lamure_gary444_2/lamure/install/bin/
-
 SRC_OBJ=$1
 
-echo "using obj model $SRC_OBJ"
+echo "Using obj model $SRC_OBJ"
 
 #create path to obj file
 OBJPATH="$SRC_OBJ"
-CHART_OBJPATH="${OBJPATH:0:${#OBJPATH}-4}_charts.obj"
 
 #convert textures to png if necessary
-#echo "converting jpgs to pngs"
-#mogrify -format png *.jpg
+echo "Converting jpgs to pngs"
+mogrify -format png *.jpg
 #flip all texture images
-#echo "Flipping texture images"
-#mogrify -flip *.png
+echo "Flipping texture images"
+mogrify -flip *.png
 
 echo "Running chart creation with file $SRC_OBJ"
 echo "-----------------------------------------"
 
-time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -of $CHART_OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -cc GRID_RES -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE
+time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -cc GRID_RES -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE
 
 
 
