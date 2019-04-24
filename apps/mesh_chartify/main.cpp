@@ -906,6 +906,10 @@ int main( int argc, char** argv )
           tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
           tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
 
+          tri.v0_.tex_.y = 1.0-tri.v0_.tex_.y; //flip y coord
+          tri.v1_.tex_.y = 1.0-tri.v1_.tex_.y;
+          tri.v2_.tex_.y = 1.0-tri.v2_.tex_.y;
+
         }
         else {
           ++num_dropped_tris;
@@ -952,7 +956,7 @@ int main( int argc, char** argv )
           projected_v *= packing_scale; //scale
           projected_v += chart_rect.min_; //offset position in texture
           projected_v /= image_rect.max_; //scale down to normalised image space
-          //projected_v.y = 1.0 - projected_v.y; //flip y coord
+          projected_v.y = 1.0 - projected_v.y; //flip y coord
 
           //replace existing coords
           switch (i) {
