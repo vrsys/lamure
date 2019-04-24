@@ -416,7 +416,7 @@ void benchmarkOutOfCore(const char *folderName, const char *atlasFileName, size_
 
     vt::ooc::TileProvider provider;
 
-    auto atlas = provider.addResource(atlasFileName);
+    auto atlas = provider.loadResource(atlasFileName);
     uint64_t tileCount = atlas->getTotalTiles();
 
     std::random_device random;
@@ -437,21 +437,21 @@ void benchmarkOutOfCore(const char *folderName, const char *atlasFileName, size_
     auto start = std::chrono::system_clock::now();
 
     while ((std::chrono::system_clock::now() - start) < std::chrono::milliseconds(60000)) {
-        if (provider.getTile(atlas, tileId1, loadCount--) != nullptr) {
+        if (provider.getTile(atlas, tileId1, loadCount--, 0) != nullptr) {
             ++loadedCount;
-            provider.ungetTile(atlas, tileId1);
+            provider.ungetTile(atlas, tileId1, 0);
             tileId1 = randomGen(randomEng);
         }
 
-        if (provider.getTile(atlas, tileId2, loadCount--) != nullptr) {
+        if (provider.getTile(atlas, tileId2, loadCount--, 0) != nullptr) {
             ++loadedCount;
-            provider.ungetTile(atlas, tileId2);
+            provider.ungetTile(atlas, tileId2, 0);
             tileId2 = randomGen(randomEng);
         }
 
-        if (provider.getTile(atlas, tileId3, loadCount--) != nullptr) {
+        if (provider.getTile(atlas, tileId3, loadCount--, 0) != nullptr) {
             ++loadedCount;
-            provider.ungetTile(atlas, tileId3);
+            provider.ungetTile(atlas, tileId3, 0);
             tileId3 = randomGen(randomEng);
         }
 

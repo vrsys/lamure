@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -20,16 +20,16 @@ class CutState
     CutState(uint16_t depth);
     ~CutState();
 
-    uint8_t *get_index(uint16_t level);
-    cut_type &get_cut();
-    mem_slots_index_type &get_mem_slots_updated();
-    mem_slots_index_type &get_mem_slots_cleared();
-    mem_slots_index_type &get_mem_slots_locked();
-    void accept(CutState &cut_state);
+    uint8_t* get_index(uint16_t level);
+    cut_type& get_cut();
+    mem_slots_index_type& get_mem_slots_updated();
+    mem_slots_index_type& get_mem_slots_cleared();
+    mem_slots_index_type& get_mem_slots_locked();
+    void accept(CutState& cut_state);
 
   private:
     std::vector<uint32_t> _index_buffer_sizes;
-    std::vector<uint8_t *> _index_buffers;
+    std::vector<uint8_t*> _index_buffers;
     cut_type _cut;
     mem_slots_index_type _mem_slots_updated;
     mem_slots_index_type _mem_slots_cleared;
@@ -39,13 +39,15 @@ class CutState
 class Cut : public DoubleBuffer<CutState>
 {
   public:
-    static Cut& init_cut(pre::AtlasFile * atlas);
+    static Cut& init_cut(uint64_t id, pre::AtlasFile* atlas);
     ~Cut() override{};
 
-    pre::AtlasFile *get_atlas() const;
+    pre::AtlasFile* get_atlas() const;
 
     bool is_drawn() const;
     void set_drawn(bool _drawn);
+
+    uint64_t get_id();
 
     static uint32_t get_dataset_id(uint64_t cut_id);
     static uint16_t get_view_id(uint64_t cut_id);
@@ -55,11 +57,12 @@ class Cut : public DoubleBuffer<CutState>
     void deliver() override;
 
   private:
-    Cut(pre::AtlasFile *atlas, CutState *front, CutState *back);
+    Cut(uint64_t id, pre::AtlasFile* atlas, CutState* front, CutState* back);
 
-    pre::AtlasFile *_atlas;
+    uint64_t _id;
+    pre::AtlasFile* _atlas;
     bool _drawn;
 };
-}
+} // namespace vt
 
 #endif // LAMURE_CUT_H

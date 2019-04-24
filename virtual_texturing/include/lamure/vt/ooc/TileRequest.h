@@ -1,54 +1,51 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
 #ifndef VT_OOC_TILEREQUEST_H
 #define VT_OOC_TILEREQUEST_H
 
-
-//#include <lamure/vt/PriorityHeap.h>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/Observable.h>
 
-namespace vt{
-    namespace ooc{
-        class TileRequest : /*public PriorityHeapContent<uint32_t>,*/ public Observable {
-        protected:
-            pre::AtlasFile *_resource;
-            uint64_t _id;
-            uint32_t _priority;
-            bool _aborted;
+namespace vt
+{
+namespace ooc
+{
+typedef float priority_type;
+class TileRequest : public Observable
+{
+  protected:
+    pre::AtlasFile* _resource;
+    uint64_t _id;
+    priority_type _priority;
+    bool _aborted;
 
-        public:
-            explicit TileRequest();
+  public:
+    explicit TileRequest();
 
-            void setResource(pre::AtlasFile *resource);
+    void setResource(pre::AtlasFile* resource);
 
-            pre::AtlasFile *getResource();
+    pre::AtlasFile* getResource();
 
-            void setId(uint64_t id);
+    void setId(uint64_t id);
 
-            uint64_t getId();
+    uint64_t getId();
 
-            void setPriority(uint32_t priority){
-                _priority = priority;
-            }
+    void setPriority(priority_type priority);
 
-            uint32_t getPriority(){
-                return _priority;
-            }
+    priority_type getPriority();
 
-            void erase();
+    void erase();
 
-            void abort();
+    void abort();
 
-            bool isAborted();
-        };
-    }
-}
+    bool isAborted();
+};
+} // namespace ooc
+} // namespace vt
 
-
-#endif //TILE_PROVIDER_TILEREQUEST_H
+#endif // TILE_PROVIDER_TILEREQUEST_H

@@ -1,7 +1,7 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
@@ -18,7 +18,6 @@ namespace vt
 class QuadTree
 {
   public:
-
     static const id_type get_child_id(id_type node_id, id_type child_index);
 
     static const id_type get_parent_id(id_type node_id);
@@ -33,8 +32,8 @@ class QuadTree
 
     static const size_t get_tiles_per_row(uint32_t _depth);
 
-    static void get_pos_by_id(id_type node_id, uint_fast32_t  &x, uint_fast32_t  &y);
+    static void get_pos_by_id(id_type node_id, uint_fast32_t& x, uint_fast32_t& y);
 };
-}
+} // namespace vt
 
 #endif // QUAD_TREE_H

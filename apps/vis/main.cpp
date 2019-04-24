@@ -96,6 +96,7 @@ scm::gl::program_ptr vis_line_shader_;
 scm::gl::program_ptr vis_trimesh_shader_;
 scm::gl::program_ptr vis_trimesh_lighting_shader_;
 scm::gl::program_ptr vis_vt_shader_;
+scm::gl::program_ptr vis_vt_shader_feedback_;
 
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
@@ -292,10 +293,19 @@ struct vt_info {
     size_t size_feedback_;
 
     int32_t  *feedback_lod_cpu_buffer_;
+#ifdef RASTERIZATION_COUNT
     uint32_t *feedback_count_cpu_buffer_;
+#endif
+
+    scm::gl::buffer_ptr feedback_index_ib_;
+    scm::gl::buffer_ptr feedback_index_vb_;
+    scm::gl::vertex_array_ptr feedback_vao_;
+    scm::gl::buffer_ptr feedback_inv_index_;
 
     scm::gl::buffer_ptr feedback_lod_storage_;
+#ifdef RASTERIZATION_COUNT
     scm::gl::buffer_ptr feedback_count_storage_;
+#endif
 
     int toggle_visualization_;
     bool enable_hierarchy_;
@@ -817,24 +827,76 @@ void apply_vt_cut_update() {
   context_->sync();
 }
 
-void collect_vt_feedback() {
+void update_vt_feedback_layout()
+{
+  auto allocated_slots = &vt_.cut_update_->get_context_feedback(vt_.context_id_)->get_allocated_slot_index();
 
-  int32_t *feedback_lod = (int32_t *) context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
+  if(allocated_slots->size() == 0)
+  {
+    return;
+  }
+
+  std::vector<uint32_t> output(allocated_slots->size());
+  std::copy(allocated_slots->begin(), allocated_slots->end(), output.begin());
+
+  using namespace scm::math;
+  using namespace scm::gl;
+
+  context_state_objects_guard csg(context_);
+  context_vertex_input_guard cvg(context_);
+
+  auto mapped_index = (uint32_t*)context_->map_buffer_range(vt_.feedback_index_vb_, 0, output.size() * sizeof(uint32_t), ACCESS_WRITE_ONLY);
+  memcpy(&mapped_index[0], &output[0], output.size() * sizeof(uint32_t));
+  context_->unmap_buffer(vt_.feedback_index_vb_);
+
+  context_->clear_buffer_data(vt_.feedback_inv_index_, FORMAT_R_32UI, nullptr);
+  context_->sync();
+
+  context_->bind_storage_buffer(vt_.feedback_inv_index_, 2);
+  context_->bind_index_buffer(vt_.feedback_index_ib_, PRIMITIVE_POINT_LIST, TYPE_UINT);
+  context_->bind_vertex_array(vt_.feedback_vao_);
+  context_->apply();
+
+  vis_vt_shader_feedback_->uniform("feedback_index_size", (const unsigned int)allocated_slots->size());
+  context_->bind_program(vis_vt_shader_feedback_);
+
+  context_->apply();
+
+  context_->draw_elements((const unsigned int)allocated_slots->size());
+}
+
+void collect_vt_feedback() {
+  context_->apply();
+
+  using namespace scm::math;
+  using namespace scm::gl;
+
+  context_state_objects_guard csg(context_);
+  context_vertex_input_guard cvg(context_);
+
+  memset(vt_.feedback_lod_cpu_buffer_, 0, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
+
+  int32_t* feedback_lod = (int32_t*)context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
   memcpy(vt_.feedback_lod_cpu_buffer_, feedback_lod, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
   context_->sync();
 
   context_->unmap_buffer(vt_.feedback_lod_storage_);
   context_->clear_buffer_data(vt_.feedback_lod_storage_, scm::gl::FORMAT_R_32I, nullptr);
+#ifdef RASTERIZATION_COUNT
+  memset(vt_.feedback_count_cpu_buffer_, 0, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
 
-  uint32_t *feedback_count = (uint32_t *) context_->map_buffer(vt_.feedback_count_storage_,
-                                                               scm::gl::ACCESS_READ_ONLY);
-  memcpy(vt_.feedback_count_cpu_buffer_, feedback_count, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
+    uint32_t* feedback_count = (uint32_t*)context_->map_buffer(vt_.feedback_count_storage_, scm::gl::ACCESS_READ_ONLY);
+    memcpy(vt_.feedback_count_cpu_buffer_, feedback_count, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
+    context_->sync();
+
+    vt_.cut_update_->feedback(vt_.context_id_, vt_.feedback_lod_cpu_buffer_, vt_.feedback_count_cpu_buffer_);
+
+    context_->unmap_buffer(vt_.feedback_count_storage_);
+    context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);
+#else
   context_->sync();
-
-  vt_.cut_update_->feedback(vt_.context_id_, vt_.feedback_lod_cpu_buffer_, vt_.feedback_count_cpu_buffer_);
-
-  context_->unmap_buffer(vt_.feedback_count_storage_);
-  context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);
+  vt_.cut_update_->feedback(vt_.context_id_, vt_.feedback_lod_cpu_buffer_, nullptr);
+#endif
 }
 
 void draw_resources(const lamure::context_t context_id, const lamure::view_t view_id) {
@@ -914,6 +976,18 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
 
     // draw image_plane resources with vt system
     if (settings_.show_photos_ && !settings_.atlas_file_.empty()) {
+
+      context_->apply();
+
+      bool feedback_enabled = vt_.cut_update_->can_accept_feedback(vt_.context_id_);
+
+      if(feedback_enabled)
+      {
+        update_vt_feedback_layout();
+      }
+
+      vis_vt_shader_->uniform("enable_feedback", feedback_enabled);
+
       context_->bind_program(vis_vt_shader_);
 
       uint64_t color_cut_id =
@@ -961,7 +1035,10 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
       context_->bind_texture(vt_.physical_texture_, vt_filter_linear_, 17);
 
       context_->bind_storage_buffer(vt_.feedback_lod_storage_, 0);
+      context_->bind_storage_buffer(vt_.feedback_inv_index_, 2);
+#ifdef RASTERIZATION_COUNT
       context_->bind_storage_buffer(vt_.feedback_count_storage_, 1);
+#endif
 
       context_->apply();
 
@@ -991,7 +1068,10 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
       }
       context_->sync();
 
-      collect_vt_feedback();
+      if(feedback_enabled)
+      {
+        collect_vt_feedback();
+      }
 
     }
 
@@ -2574,8 +2654,8 @@ void init_vt_database() {
   vt::VTConfig::CONFIG_PATH = settings_.atlas_file_.substr(0, settings_.atlas_file_.size() - 5) + "ini";
 
   vt::VTConfig::get_instance().define_size_physical_texture(128, 8192);
-  vt_.texture_id_ = vt::CutDatabase::get_instance().register_dataset(settings_.atlas_file_);
   vt_.context_id_ = vt::CutDatabase::get_instance().register_context();
+  vt_.texture_id_ = vt::CutDatabase::get_instance().register_dataset(settings_.atlas_file_);
   vt_.view_id_    = vt::CutDatabase::get_instance().register_view();
   vt_.cut_id_     = vt::CutDatabase::get_instance().register_cut(vt_.texture_id_, vt_.view_id_, vt_.context_id_);
   vt_.cut_update_ = &vt::CutUpdate::get_instance();
@@ -2605,6 +2685,8 @@ void init_vt_system() {
 
     // add_context
     context_ = device_->main_context();
+    context_->apply();
+
     vt_.physical_texture_size_ = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_tile_width(),
                                                    vt::VTConfig::get_instance().get_phys_tex_tile_width());
 
@@ -2618,17 +2700,35 @@ void init_vt_system() {
                          vt::VTConfig::get_instance().get_phys_tex_tile_width() *
                          vt::VTConfig::get_instance().get_phys_tex_layers();
 
-    vt_.feedback_lod_storage_   = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY,
-                                                         vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
-    vt_.feedback_count_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY,
-                                                         vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
-
-    vt_.feedback_lod_cpu_buffer_   = new int32_t[vt_.size_feedback_];
+    vt_.feedback_lod_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
+#ifdef RASTERIZATION_COUNT
+    vt_.feedback_count_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
+#endif
+    vt_.feedback_lod_cpu_buffer_ = new int32_t[vt_.size_feedback_];
+#ifdef RASTERIZATION_COUNT
     vt_.feedback_count_cpu_buffer_ = new uint32_t[vt_.size_feedback_];
+#endif
 
-    for (size_t i = 0; i < vt_.size_feedback_; ++i) {
-        vt_.feedback_lod_cpu_buffer_[i] = 0;
-        vt_.feedback_count_cpu_buffer_[i] = 0;
+    using namespace scm::gl;
+
+    std::vector<uint32_t> slot_indices(vt_.size_feedback_);
+    std::iota(slot_indices.begin(), slot_indices.end(), 0);
+
+    vt_.feedback_index_ib_ = device_->create_buffer(BIND_INDEX_BUFFER, USAGE_STATIC_DRAW, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI), &slot_indices[0]);
+    vt_.feedback_index_vb_ = device_->create_buffer(BIND_VERTEX_BUFFER, USAGE_DYNAMIC_DRAW, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI), 0);
+    vt_.feedback_vao_ = device_->create_vertex_array(vertex_format(0, 0, TYPE_UINT, size_of_format(FORMAT_R_32UI)), boost::assign::list_of(vt_.feedback_index_vb_), vis_vt_shader_feedback_);
+    vt_.feedback_lod_storage_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32I));
+#ifdef RASTERIZATION_COUNT
+    vt_.feedback_count_storage_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI));
+#endif
+    vt_.feedback_inv_index_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI));
+
+    for(size_t i = 0; i < vt_.size_feedback_; ++i)
+    {
+      vt_.feedback_lod_cpu_buffer_[i] = 0;
+#ifdef RASTERIZATION_COUNT
+      vt_.feedback_count_cpu_buffer_[i] = 0;
+#endif
     }
 }
 
@@ -2660,6 +2760,7 @@ void init() {
     std::string vis_trimesh_fs_lighting_source;
 
     std::string vis_vt_vs_source;
+    std::string vis_vt_vs_feedback_source;
     std::string vis_vt_fs_source;
 
     std::string vis_xyz_vs_source;
@@ -2703,6 +2804,7 @@ void init() {
 
       || !read_shader(shader_root_path + "/vt/virtual_texturing.glslv", vis_vt_vs_source)
       || !read_shader(shader_root_path + "/vt/virtual_texturing_hierarchical.glslf", vis_vt_fs_source)
+      || !read_shader(shader_root_path + "/vt/virtual_texturing_inv_index_generation.glslv", vis_vt_vs_feedback_source)
 
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
@@ -2773,6 +2875,14 @@ void init() {
                     (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_vt_vs_source))
                     (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_vt_fs_source)));
     if (!vis_vt_shader_) {
+      std::cout << "error creating shader vis_vt_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_vt_shader_feedback_ = device_->create_program(
+        boost::assign::list_of
+            (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_vt_vs_feedback_source)));
+    if (!vis_vt_shader_feedback_) {
       std::cout << "error creating shader vis_vt_shader_ program" << std::endl;
       std::exit(1);
     }

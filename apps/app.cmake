@@ -33,7 +33,6 @@ macro(InitApp APP_NAME)
 
       install(PROGRAMS ${SCRIPT_FILES} DESTINATION bin)
 
-
   endif(MSVC)
 endmacro()
 

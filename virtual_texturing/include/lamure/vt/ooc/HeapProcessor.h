@@ -1,57 +1,55 @@
 // Copyright (c) 2014-2018 Bauhaus-Universitaet Weimar
 // This Software is distributed under the Modified BSD License, see license.txt.
 //
-// Virtual Reality and Visualization Research Group 
+// Virtual Reality and Visualization Research Group
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
 #ifndef VT_OOC_HEAP_PROCESSOR_H
 #define VT_OOC_HEAP_PROCESSOR_H
 
-
-#include <thread>
 #include <atomic>
 #include <condition_variable>
-#include <lamure/vt/ooc/TileCache.h>
 #include <lamure/vt/TileRequestPriorityQueue.h>
+#include <lamure/vt/ooc/TileCache.h>
 #include <lamure/vt/ooc/TileRequest.h>
+#include <thread>
 
-namespace vt {
-    namespace ooc {
-        class HeapProcessor {
-        protected:
-            TileRequestPriorityQueue<uint32_t> _requests;
+namespace vt
+{
+namespace ooc
+{
+class HeapProcessor
+{
+  protected:
+    TileRequestPriorityQueue<float> _requests_prio_queue;
 
-            std::atomic<bool> _running;
-            std::atomic<size_t> _currentlyProcessing;
-            std::thread *_thread;
+    std::atomic<bool> _running;
+    std::thread* _thread;
 
-            TileCache *_cache;
-        public:
-            HeapProcessor();
-            ~HeapProcessor();
+    TileCache* _cache;
 
-            void request(TileRequest *request);
+  public:
+    HeapProcessor();
+    ~HeapProcessor();
 
-            void start();
+    void request(TileRequest* request);
 
-            void run();
+    void start();
 
-            virtual void beforeStart() = 0;
+    void run();
 
-            virtual void process(TileRequest *req) = 0;
+    virtual void beforeStart() = 0;
 
-            virtual void beforeStop() = 0;
+    virtual bool process(TileRequest* req) = 0;
 
-            void writeTo(TileCache *cache);
+    virtual void beforeStop() = 0;
 
-            void stop();
+    void writeTo(TileCache* cache);
 
-            size_t pendingCount();
+    void stop();
+};
+} // namespace ooc
+} // namespace vt
 
-            bool currentlyProcessing();
-        };
-    }
-}
-
-#endif //TILE_PROVIDER_HEAP_PROCESSOR_H
+#endif // TILE_PROVIDER_HEAP_PROCESSOR_H

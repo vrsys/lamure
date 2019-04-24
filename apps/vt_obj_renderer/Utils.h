@@ -38,10 +38,19 @@ struct vt_info {
     size_t size_feedback_;
 
     int32_t  *feedback_lod_cpu_buffer_;
+#ifdef RASTERIZATION_COUNT
     uint32_t *feedback_count_cpu_buffer_;
+#endif
+
+    scm::gl::buffer_ptr feedback_index_ib_;
+    scm::gl::buffer_ptr feedback_index_vb_;
+    scm::gl::vertex_array_ptr feedback_vao_;
+    scm::gl::buffer_ptr feedback_inv_index_;
 
     scm::gl::buffer_ptr feedback_lod_storage_;
+#ifdef RASTERIZATION_COUNT
     scm::gl::buffer_ptr feedback_count_storage_;
+#endif
 
     int toggle_visualization_;
     bool enable_hierarchy_;

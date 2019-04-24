@@ -17,7 +17,7 @@
 
 namespace vt
 {
-VTRenderer::VTRenderer(CutUpdate *cut_update) : _data_resources(), _ctxt_resources(), _view_resources()
+VTRenderer::VTRenderer(CutUpdate* cut_update) : _data_res(), _ctxt_res(), _view_res()
 {
     this->_cut_update = cut_update;
     this->init();
@@ -25,46 +25,6 @@ VTRenderer::VTRenderer(CutUpdate *cut_update) : _data_resources(), _ctxt_resourc
 
 void VTRenderer::init()
 {
-    _device.reset(new scm::gl::render_device());
-
-    std::string fs_vt_color, vs_vt;
-
-    {
-        using namespace scm::gl;
-        using namespace boost::assign;
-
-        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_vt) ||
-           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical.glslf", fs_vt_color))
-        {
-            scm::err() << "error reading shader files" << scm::log::end;
-            throw std::runtime_error("Error reading shader files");
-        }
-
-        _obj.reset(new scm::gl::wavefront_obj_geometry(_device, std::string(LAMURE_PRIMITIVES_DIR) + "/montblanc_1202116x304384.obj"));
-    }
-
-    {
-        using namespace scm::gl;
-        using namespace boost::assign;
-
-        _shader_vt = _device->create_program(list_of(_device->create_shader(STAGE_VERTEX_SHADER, vs_vt))(_device->create_shader(STAGE_FRAGMENT_SHADER, fs_vt_color)));
-    }
-
-    if(!_shader_vt)
-    {
-        scm::err() << "error creating shader program" << scm::log::end;
-        throw std::runtime_error("Error creating shader program");
-    }
-
-    _dstate_less = _device->create_depth_stencil_state(true, true, scm::gl::COMPARISON_LESS);
-    _blend_state = _device->create_blend_state(true, scm::gl::FUNC_SRC_COLOR, scm::gl::FUNC_ONE_MINUS_SRC_ALPHA, scm::gl::FUNC_SRC_ALPHA, scm::gl::FUNC_ONE_MINUS_SRC_ALPHA);
-
-    _filter_nearest = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
-    _filter_linear = _device->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
-
-    _ms_no_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, true);
-    _ms_cull = _device->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, true);
-
     _toggle_visualization = 0;
     _enable_hierarchy = true;
 }
@@ -74,7 +34,9 @@ void VTRenderer::add_data(uint64_t cut_id, uint32_t context_id, uint32_t data_id
     using namespace scm::math;
     using namespace scm::gl;
 
-    data_resource *resource = new data_resource();
+    _ctxt_res[context_id]->_render_context->apply();
+
+    data_res* res = new data_res();
 
     uint16_t depth = (uint16_t)((*CutDatabase::get_instance().get_cut_map())[cut_id]->get_atlas()->getDepth());
     uint16_t level = 0;
@@ -82,79 +44,145 @@ void VTRenderer::add_data(uint64_t cut_id, uint32_t context_id, uint32_t data_id
     {
         uint32_t size_index_texture = (uint32_t)QuadTree::get_tiles_per_row(level);
 
-        auto index_texture_level_ptr = _device->create_texture_2d(vec2ui(size_index_texture, size_index_texture), FORMAT_RGBA_8UI);
+        auto index_texture_level_ptr = _ctxt_res[context_id]->_device->create_texture_2d(vec2ui(size_index_texture, size_index_texture), FORMAT_RGBA_8UI);
 
-        _ctxt_resources[context_id]->_render_context->clear_image_data(index_texture_level_ptr, 0, FORMAT_RGBA_8UI, 0);
-        resource->_index_hierarchy.emplace_back(index_texture_level_ptr);
+        _ctxt_res[context_id]->_render_context->clear_image_data(index_texture_level_ptr, 0, FORMAT_RGBA_8UI, 0);
+        res->_index_hierarchy.emplace_back(index_texture_level_ptr);
 
         level++;
     }
 
-    _data_resources[data_id] = resource;
+    _data_res[data_id] = res;
+
+    _ctxt_res[context_id]->_render_context->sync();
 }
 void VTRenderer::add_view(uint16_t view_id, uint32_t width, uint32_t height, float scale)
 {
-    view_resource *resource = new view_resource();
+    view_res* res = new view_res();
 
-    resource->_width = width;
-    resource->_height = height;
-    resource->_start = std::chrono::system_clock::now();
-    resource->_scale = scale;
+    res->_width = width;
+    res->_height = height;
+    res->_start = std::chrono::system_clock::now();
+    res->_scale = scale;
 
-    _view_resources[view_id] = resource;
+    _view_res[view_id] = res;
 }
 void VTRenderer::add_context(uint16_t context_id)
 {
     using namespace scm::math;
     using namespace scm::gl;
 
-    ctxt_resource *resource = new ctxt_resource();
+    ctxt_res* res = new ctxt_res();
 
-    resource->_render_context = _device->create_context();
-    resource->_physical_texture_dimension = vec2ui(VTConfig::get_instance().get_phys_tex_tile_width(), VTConfig::get_instance().get_phys_tex_tile_width());
+    res->_device.reset(new render_device());
+    res->_render_context = res->_device->create_context();
 
-    vec2ui physical_texture_size = vec2ui(VTConfig::get_instance().get_phys_tex_px_width(), VTConfig::get_instance().get_phys_tex_px_width());
-    resource->_physical_texture = _device->create_texture_2d(physical_texture_size, get_tex_format(), 1, VTConfig::get_instance().get_phys_tex_layers() + 1);
+    res->_render_context->apply();
 
-    resource->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
-    resource->_feedback_lod_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32I));
-    resource->_feedback_count_storage = _device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, resource->_size_feedback * size_of_format(FORMAT_R_32UI));
+    res->_obj.reset(new wavefront_obj_geometry(res->_device, std::string(LAMURE_PRIMITIVES_DIR) + "/montblanc_1202116x304384.obj"));
 
-    resource->_feedback_lod_cpu_buffer = new int32_t[resource->_size_feedback];
-    resource->_feedback_count_cpu_buffer = new uint32_t[resource->_size_feedback];
+    std::string fs_vt_color, vs_vt, vs_vt_feedback;
 
-    for(size_t i = 0; i < resource->_size_feedback; ++i)
     {
-        resource->_feedback_lod_cpu_buffer[i] = 0;
-        resource->_feedback_count_cpu_buffer[i] = 0;
+        using namespace boost::assign;
+
+        if(!scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing.glslv", vs_vt) ||
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_hierarchical.glslf", fs_vt_color) ||
+           !scm::io::read_text_file(std::string(LAMURE_SHADERS_DIR) + "/virtual_texturing_inv_index_generation.glslv", vs_vt_feedback))
+        {
+            scm::err() << "error reading shader files" << scm::log::end;
+            throw std::runtime_error("Error reading shader files");
+        }
+
+        res->_shader_vt_feedback = res->_device->create_program(list_of(res->_device->create_shader(STAGE_VERTEX_SHADER, vs_vt_feedback)));
+        res->_shader_vt = res->_device->create_program(list_of(res->_device->create_shader(STAGE_VERTEX_SHADER, vs_vt))(res->_device->create_shader(STAGE_FRAGMENT_SHADER, fs_vt_color)));
+
+        res->_dstate_less = res->_device->create_depth_stencil_state(true, true, COMPARISON_LESS);
+        res->_blend_state = res->_device->create_blend_state(true, FUNC_SRC_COLOR, FUNC_ONE_MINUS_SRC_ALPHA, FUNC_SRC_ALPHA, FUNC_ONE_MINUS_SRC_ALPHA);
+
+        res->_filter_nearest = res->_device->create_sampler_state(FILTER_MIN_MAG_NEAREST, WRAP_CLAMP_TO_EDGE);
+        res->_filter_linear = res->_device->create_sampler_state(FILTER_MIN_MAG_LINEAR, WRAP_CLAMP_TO_EDGE);
+
+        res->_ms_no_cull = res->_device->create_rasterizer_state(FILL_SOLID, CULL_NONE, ORIENT_CCW, true);
+        res->_ms_cull = res->_device->create_rasterizer_state(FILL_SOLID, CULL_BACK, ORIENT_CCW, true);
     }
 
-    _ctxt_resources[context_id] = resource;
+    if(!res->_shader_vt || !res->_shader_vt_feedback)
+    {
+        scm::err() << "error creating shader program" << scm::log::end;
+        throw std::runtime_error("Error creating shader program");
+    }
+
+    res->_physical_texture_dimension = vec2ui(VTConfig::get_instance().get_phys_tex_tile_width(), VTConfig::get_instance().get_phys_tex_tile_width());
+    vec2ui physical_texture_size = vec2ui(VTConfig::get_instance().get_phys_tex_px_width(), VTConfig::get_instance().get_phys_tex_px_width());
+    res->_physical_texture = res->_device->create_texture_2d(physical_texture_size, get_tex_format(), 1, VTConfig::get_instance().get_phys_tex_layers() + 1);
+
+    res->_size_feedback = VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_tile_width() * VTConfig::get_instance().get_phys_tex_layers();
+
+    std::vector<uint32_t> slot_indices(res->_size_feedback);
+    std::iota(slot_indices.begin(), slot_indices.end(), 0);
+
+    res->_feedback_index_ib = res->_device->create_buffer(BIND_INDEX_BUFFER, USAGE_STATIC_DRAW, res->_size_feedback * size_of_format(FORMAT_R_32UI), &slot_indices[0]);
+    res->_feedback_index_vb = res->_device->create_buffer(BIND_VERTEX_BUFFER, USAGE_DYNAMIC_DRAW, res->_size_feedback * size_of_format(FORMAT_R_32UI), 0);
+    res->_feedback_vao = res->_device->create_vertex_array(vertex_format(0, 0, TYPE_UINT, size_of_format(FORMAT_R_32UI)), boost::assign::list_of(res->_feedback_index_vb), res->_shader_vt_feedback);
+    res->_feedback_lod_storage = res->_device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, res->_size_feedback * size_of_format(FORMAT_R_32I));
+#ifdef RASTERIZATION_COUNT
+    res->_feedback_count_storage = res->_device->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, res->_size_feedback * size_of_format(FORMAT_R_32UI));
+#endif
+    res->_feedback_inv_index = res->_device->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_COPY, res->_size_feedback * size_of_format(FORMAT_R_32UI));
+
+    res->_feedback_lod_cpu_buffer = new int32_t[res->_size_feedback];
+#ifdef RASTERIZATION_COUNT
+    res->_feedback_count_cpu_buffer = new uint32_t[res->_size_feedback];
+#endif
+
+    for(size_t i = 0; i < res->_size_feedback; ++i)
+    {
+        res->_feedback_lod_cpu_buffer[i] = 0;
+#ifdef RASTERIZATION_COUNT
+        res->_feedback_count_cpu_buffer[i] = 0;
+#endif
+    }
+
+    res->_render_context->sync();
+
+    _ctxt_res[context_id] = res;
 }
-void VTRenderer::update_view(uint16_t view_id, uint32_t width, uint32_t height, float scale, const scm::math::mat4f &view_matrix)
+void VTRenderer::update_view(uint16_t view_id, uint32_t width, uint32_t height, float scale, const scm::math::mat4f& view_matrix)
 {
-    _view_resources[view_id]->_width = width;
-    _view_resources[view_id]->_height = height;
-    _view_resources[view_id]->_scale = scale;
-    _view_resources[view_id]->_view_matrix = view_matrix;
+    _view_res[view_id]->_width = width;
+    _view_res[view_id]->_height = height;
+    _view_res[view_id]->_scale = scale;
+    _view_res[view_id]->_view_matrix = view_matrix;
 }
 void VTRenderer::clear_buffers(uint16_t context_id)
 {
     using namespace scm::math;
     using namespace scm::gl;
 
-    context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
-    context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
+    context_state_objects_guard csg(_ctxt_res[context_id]->_render_context);
+    context_texture_units_guard tug(_ctxt_res[context_id]->_render_context);
 
-    _ctxt_resources[context_id]->_render_context->set_default_frame_buffer();
+    _ctxt_res[context_id]->_render_context->set_default_frame_buffer();
 
-    _ctxt_resources[context_id]->_render_context->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(.2f, .2f, .2f, 1.0f));
-    _ctxt_resources[context_id]->_render_context->clear_default_depth_stencil_buffer();
+    _ctxt_res[context_id]->_render_context->clear_default_color_buffer(FRAMEBUFFER_BACK, vec4f(.2f, .2f, .2f, 1.0f));
+    _ctxt_res[context_id]->_render_context->clear_default_depth_stencil_buffer();
 
-    _ctxt_resources[context_id]->_render_context->apply();
+    _ctxt_res[context_id]->_render_context->apply();
 }
 void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t context_id)
 {
+    _ctxt_res[context_id]->_render_context->apply();
+
+    bool feedback_enabled = _cut_update->can_accept_feedback(context_id);
+
+    if(feedback_enabled)
+    {
+        update_feedback_layout(context_id);
+    }
+
+    _ctxt_res[context_id]->_shader_vt->uniform("enable_feedback", feedback_enabled);
+
     using namespace scm::math;
     using namespace scm::gl;
 
@@ -162,96 +190,119 @@ void VTRenderer::render(uint32_t color_data_id, uint16_t view_id, uint16_t conte
     uint32_t max_depth_level_color = (*CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
 
     mat4f projection_matrix = mat4f::identity();
-    perspective_matrix(projection_matrix, 10.f + _view_resources[view_id]->_scale * 100.f, float(_view_resources[view_id]->_width) / float(_view_resources[view_id]->_height), 0.01f, 1000.0f);
-    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_resources[view_id]->_start;
+    perspective_matrix(projection_matrix, 10.f + _view_res[view_id]->_scale * 100.f, float(_view_res[view_id]->_width) / float(_view_res[view_id]->_height), 0.01f, 1000.0f);
+    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - _view_res[view_id]->_start;
 
     mat4f model_matrix = mat4f::identity(); //* make_rotation((float)elapsed_seconds.count(), 0.f, 1.f, 0.f);
 
-    mat4f model_view_matrix = _view_resources[view_id]->_view_matrix * model_matrix;
-    _shader_vt->uniform("projection_matrix", projection_matrix);
-    _shader_vt->uniform("model_view_matrix", model_view_matrix);
+    mat4f model_view_matrix = _view_res[view_id]->_view_matrix * model_matrix;
+    _ctxt_res[context_id]->_shader_vt->uniform("projection_matrix", projection_matrix);
+    _ctxt_res[context_id]->_shader_vt->uniform("model_view_matrix", model_view_matrix);
 
-    _shader_vt->uniform("physical_texture_dim", _ctxt_resources[context_id]->_physical_texture_dimension);
-    _shader_vt->uniform("max_level", max_depth_level_color);
-    _shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
-    _shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
+    _ctxt_res[context_id]->_shader_vt->uniform("physical_texture_dim", _ctxt_res[context_id]->_physical_texture_dimension);
+    _ctxt_res[context_id]->_shader_vt->uniform("max_level", max_depth_level_color);
+    _ctxt_res[context_id]->_shader_vt->uniform("tile_size", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_tile()));
+    _ctxt_res[context_id]->_shader_vt->uniform("tile_padding", scm::math::vec2((uint32_t)VTConfig::get_instance().get_size_padding()));
 
-    _shader_vt->uniform("enable_hierarchy", _enable_hierarchy);
-    _shader_vt->uniform("toggle_visualization", _toggle_visualization);
+    _ctxt_res[context_id]->_shader_vt->uniform("enable_hierarchy", _enable_hierarchy);
+    _ctxt_res[context_id]->_shader_vt->uniform("toggle_visualization", _toggle_visualization);
 
-    for(uint32_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
+    for(uint32_t i = 0; i < _data_res[color_data_id]->_index_hierarchy.size(); ++i)
     {
         std::string texture_string = "hierarchical_idx_textures";
-        _shader_vt->uniform(texture_string, i, int((i)));
+        _ctxt_res[context_id]->_shader_vt->uniform(texture_string, i, int((i)));
     }
 
-    _shader_vt->uniform("physical_texture_array", 17);
+    _ctxt_res[context_id]->_shader_vt->uniform("physical_texture_array", 17);
 
-    context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
-    context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
-    context_framebuffer_guard fbg(_ctxt_resources[context_id]->_render_context);
+    context_state_objects_guard csg(_ctxt_res[context_id]->_render_context);
+    context_texture_units_guard tug(_ctxt_res[context_id]->_render_context);
+    context_framebuffer_guard fbg(_ctxt_res[context_id]->_render_context);
 
-    _ctxt_resources[context_id]->_render_context->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(_view_resources[view_id]->_width, _view_resources[view_id]->_height)));
+    _ctxt_res[context_id]->_render_context->set_viewport(viewport(vec2ui(0, 0), 1 * vec2ui(_view_res[view_id]->_width, _view_res[view_id]->_height)));
 
-    _ctxt_resources[context_id]->_render_context->set_depth_stencil_state(_dstate_less);
-    _ctxt_resources[context_id]->_render_context->set_rasterizer_state(_ms_cull);
-    _ctxt_resources[context_id]->_render_context->set_blend_state(_blend_state);
+    _ctxt_res[context_id]->_render_context->set_depth_stencil_state(_ctxt_res[context_id]->_dstate_less);
+    _ctxt_res[context_id]->_render_context->set_rasterizer_state(_ctxt_res[context_id]->_ms_cull);
+    _ctxt_res[context_id]->_render_context->set_blend_state(_ctxt_res[context_id]->_blend_state);
 
-    _ctxt_resources[context_id]->_render_context->bind_program(_shader_vt);
+    _ctxt_res[context_id]->_render_context->bind_program(_ctxt_res[context_id]->_shader_vt);
 
-    _ctxt_resources[context_id]->_render_context->sync();
+    _ctxt_res[context_id]->_render_context->sync();
 
     apply_cut_update(context_id);
 
-    for(uint16_t i = 0; i < _data_resources[color_data_id]->_index_hierarchy.size(); ++i)
+    for(uint16_t i = 0; i < _data_res[color_data_id]->_index_hierarchy.size(); ++i)
     {
-        _ctxt_resources[context_id]->_render_context->bind_texture(_data_resources[color_data_id]->_index_hierarchy.at(i), _filter_nearest, i);
+        _ctxt_res[context_id]->_render_context->bind_texture(_data_res[color_data_id]->_index_hierarchy.at(i), _ctxt_res[context_id]->_filter_nearest, i);
     }
 
-    _ctxt_resources[context_id]->_render_context->bind_texture(_ctxt_resources[context_id]->_physical_texture, _filter_linear, 17);
+    _ctxt_res[context_id]->_render_context->bind_texture(_ctxt_res[context_id]->_physical_texture, _ctxt_res[context_id]->_filter_linear, 17);
 
     //////////
 
-    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, 0);
-    _ctxt_resources[context_id]->_render_context->bind_storage_buffer(_ctxt_resources[context_id]->_feedback_count_storage, 1);
+    _ctxt_res[context_id]->_render_context->bind_storage_buffer(_ctxt_res[context_id]->_feedback_lod_storage, 0);
+    _ctxt_res[context_id]->_render_context->bind_storage_buffer(_ctxt_res[context_id]->_feedback_inv_index, 2);
+#ifdef RASTERIZATION_COUNT
+    _ctxt_res[context_id]->_render_context->bind_storage_buffer(_ctxt_res[context_id]->_feedback_count_storage, 1);
+#endif
 
-    _ctxt_resources[context_id]->_render_context->apply();
+    _ctxt_res[context_id]->_render_context->apply();
 
-    _obj->draw(_ctxt_resources[context_id]->_render_context, geometry::MODE_SOLID);
+    _ctxt_res[context_id]->_obj->draw(_ctxt_res[context_id]->_render_context, geometry::MODE_SOLID);
 
-    _ctxt_resources[context_id]->_render_context->sync();
+    _ctxt_res[context_id]->_render_context->sync();
+
+    if(feedback_enabled)
+    {
+        collect_feedback(context_id);
+    }
 }
 
 void VTRenderer::collect_feedback(uint16_t context_id)
 {
+    _ctxt_res[context_id]->_render_context->apply();
+
     using namespace scm::math;
     using namespace scm::gl;
 
-    context_state_objects_guard csg(_ctxt_resources[context_id]->_render_context);
-    context_texture_units_guard tug(_ctxt_resources[context_id]->_render_context);
+    context_state_objects_guard csg(_ctxt_res[context_id]->_render_context);
+    context_texture_units_guard tug(_ctxt_res[context_id]->_render_context);
 
-    int32_t *feedback_lod = (int32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_lod_storage, ACCESS_READ_ONLY);
-    memcpy(_ctxt_resources[context_id]->_feedback_lod_cpu_buffer, feedback_lod, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
-    _ctxt_resources[context_id]->_render_context->sync();
+    memset(_ctxt_res[context_id]->_feedback_lod_cpu_buffer, 0, _ctxt_res[context_id]->_size_feedback * size_of_format(FORMAT_R_32I));
 
-    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_lod_storage);
-    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_lod_storage, FORMAT_R_32I, nullptr);
+    int32_t* feedback_lod = (int32_t*)_ctxt_res[context_id]->_render_context->map_buffer(_ctxt_res[context_id]->_feedback_lod_storage, ACCESS_READ_ONLY);
+    memcpy(_ctxt_res[context_id]->_feedback_lod_cpu_buffer, feedback_lod, _cut_update->get_context_feedback(context_id)->get_allocated_slot_index().size() * size_of_format(FORMAT_R_32I));
+    _ctxt_res[context_id]->_render_context->sync();
 
-    uint32_t *feedback_count = (uint32_t *)_ctxt_resources[context_id]->_render_context->map_buffer(_ctxt_resources[context_id]->_feedback_count_storage, ACCESS_READ_ONLY);
-    memcpy(_ctxt_resources[context_id]->_feedback_count_cpu_buffer, feedback_count, _ctxt_resources[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
-    _ctxt_resources[context_id]->_render_context->sync();
+    _ctxt_res[context_id]->_render_context->unmap_buffer(_ctxt_res[context_id]->_feedback_lod_storage);
+    _ctxt_res[context_id]->_render_context->clear_buffer_data(_ctxt_res[context_id]->_feedback_lod_storage, FORMAT_R_32I, nullptr);
 
-    _cut_update->feedback(context_id, _ctxt_resources[context_id]->_feedback_lod_cpu_buffer, _ctxt_resources[context_id]->_feedback_count_cpu_buffer);
+#ifdef RASTERIZATION_COUNT
+    memset(_ctxt_res[context_id]->_feedback_count_cpu_buffer, 0, _ctxt_res[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
 
-    _ctxt_resources[context_id]->_render_context->unmap_buffer(_ctxt_resources[context_id]->_feedback_count_storage);
-    _ctxt_resources[context_id]->_render_context->clear_buffer_data(_ctxt_resources[context_id]->_feedback_count_storage, FORMAT_R_32UI, nullptr);
+    uint32_t* feedback_count = (uint32_t*)_ctxt_res[context_id]->_render_context->map_buffer(_ctxt_res[context_id]->_feedback_count_storage, ACCESS_READ_ONLY);
+    memcpy(_ctxt_res[context_id]->_feedback_count_cpu_buffer, feedback_count, _ctxt_res[context_id]->_size_feedback * size_of_format(FORMAT_R_32UI));
+
+    _ctxt_res[context_id]->_render_context->sync();
+    _cut_update->feedback(context_id, _ctxt_res[context_id]->_feedback_lod_cpu_buffer, _ctxt_res[context_id]->_feedback_count_cpu_buffer);
+#else
+    _ctxt_res[context_id]->_render_context->sync();
+    _cut_update->feedback(context_id, _ctxt_res[context_id]->_feedback_lod_cpu_buffer, nullptr);
+#endif
+
+#ifdef RASTERIZATION_COUNT
+    _ctxt_res[context_id]->_render_context->unmap_buffer(_ctxt_res[context_id]->_feedback_count_storage);
+    _ctxt_res[context_id]->_render_context->clear_buffer_data(_ctxt_res[context_id]->_feedback_count_storage, FORMAT_R_32UI, nullptr);
+#endif
 }
 
 void VTRenderer::apply_cut_update(uint16_t context_id)
 {
+#ifndef NDEBUG
     auto start = std::chrono::high_resolution_clock::now();
+#endif
 
-    CutDatabase *cut_db = &CutDatabase::get_instance();
+    CutDatabase* cut_db = &CutDatabase::get_instance();
 
     for(cut_map_entry_type cut_entry : (*cut_db->get_cut_map()))
     {
@@ -260,7 +311,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
             continue;
         }
 
-        Cut *cut = cut_db->start_reading_cut(cut_entry.first);
+        Cut* cut = cut_db->start_reading_cut(cut_entry.first);
 
         if(!cut->is_drawn())
         {
@@ -272,7 +323,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         for(auto position_slot_updated : cut->get_front()->get_mem_slots_updated())
         {
-            const mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, context_id);
+            const mem_slot_type* mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, context_id);
 
             if(mem_slot_updated == nullptr || !mem_slot_updated->updated || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr)
             {
@@ -299,7 +350,7 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
 
         for(auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared())
         {
-            const mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, context_id);
+            const mem_slot_type* mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, context_id);
 
             if(mem_slot_cleared == nullptr)
             {
@@ -318,13 +369,15 @@ void VTRenderer::apply_cut_update(uint16_t context_id)
         cut_db->stop_reading_cut(cut_entry.first);
     }
 
-    _ctxt_resources[context_id]->_render_context->sync();
+    _ctxt_res[context_id]->_render_context->sync();
 
+#ifndef NDEBUG
     auto end = std::chrono::high_resolution_clock::now();
     _apply_time = std::chrono::duration<float, std::milli>(end - start).count();
+#endif
 }
 
-void VTRenderer::update_index_texture(uint32_t data_id, uint16_t context_id, uint16_t level, const uint8_t *buf_cpu)
+void VTRenderer::update_index_texture(uint32_t data_id, uint16_t context_id, uint16_t level, const uint8_t* buf_cpu)
 {
     using namespace scm::math;
     using namespace scm::gl;
@@ -334,7 +387,7 @@ void VTRenderer::update_index_texture(uint32_t data_id, uint16_t context_id, uin
     vec3ui origin = vec3ui(0, 0, 0);
     vec3ui dimensions = vec3ui(size_index_texture, size_index_texture, 1);
 
-    _ctxt_resources[context_id]->_render_context->update_sub_texture(_data_resources[data_id]->_index_hierarchy.at(level), texture_region(origin, dimensions), 0, FORMAT_RGBA_8UI, buf_cpu);
+    _ctxt_res[context_id]->_render_context->update_sub_texture(_data_res[data_id]->_index_hierarchy.at(level), texture_region(origin, dimensions), 0, FORMAT_RGBA_8UI, buf_cpu);
 }
 
 scm::gl::data_format VTRenderer::get_tex_format()
@@ -351,7 +404,7 @@ scm::gl::data_format VTRenderer::get_tex_format()
     }
 }
 
-void VTRenderer::update_physical_texture_blockwise(uint16_t context_id, const uint8_t *buf_texel, size_t slot_position)
+void VTRenderer::update_physical_texture_blockwise(uint16_t context_id, const uint8_t* buf_texel, size_t slot_position)
 {
     using namespace scm::math;
     using namespace scm::gl;
@@ -365,23 +418,57 @@ void VTRenderer::update_physical_texture_blockwise(uint16_t context_id, const ui
     vec3ui origin = vec3ui((uint32_t)x_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)y_tile * VTConfig::get_instance().get_size_tile(), (uint32_t)layer);
     vec3ui dimensions = vec3ui(VTConfig::get_instance().get_size_tile(), VTConfig::get_instance().get_size_tile(), 1);
 
-    _ctxt_resources[context_id]->_render_context->update_sub_texture(_ctxt_resources[context_id]->_physical_texture, texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
+    _ctxt_res[context_id]->_render_context->update_sub_texture(_ctxt_res[context_id]->_physical_texture, texture_region(origin, dimensions), 0, get_tex_format(), buf_texel);
 }
 
 VTRenderer::~VTRenderer()
 {
-    _shader_vt.reset();
+    for(auto res : _ctxt_res)
+    {
+        res.second->_feedback_index_ib.reset();
+        res.second->_feedback_index_vb.reset();
+        res.second->_feedback_vao.reset();
+        res.second->_feedback_inv_index.reset();
+        res.second->_feedback_lod_storage.reset();
 
-    _filter_nearest.reset();
-    _filter_linear.reset();
+        res.second->_filter_nearest.reset();
+        res.second->_filter_linear.reset();
 
-    _ms_no_cull.reset();
+        res.second->_ms_no_cull.reset();
+        res.second->_ms_cull.reset();
+        res.second->_dstate_less.reset();
+        res.second->_blend_state.reset();
 
-    _device.reset();
+        res.second->_obj.reset();
+
+        res.second->_shader_vt.reset();
+        res.second->_shader_vt_feedback.reset();
+
+        res.second->_device.reset();
+
+#ifdef RASTERIZATION_COUNT
+        res.second->_feedback_count_storage.reset();
+#endif
+        delete[] res.second->_feedback_lod_cpu_buffer;
+#ifdef RASTERIZATION_COUNT
+        delete[] res.second->_feedback_count_cpu_buffer;
+#endif
+        delete res.second;
+    }
+
+    for(auto res : _view_res)
+    {
+        delete res.second;
+    }
+
+    for(auto res : _data_res)
+    {
+        delete res.second;
+    }
 }
 void VTRenderer::extract_debug_cut(uint64_t cut_id)
 {
-    CutDatabase *cut_db = &CutDatabase::get_instance();
+    CutDatabase* cut_db = &CutDatabase::get_instance();
 
     cut_db->start_reading_cut(cut_id);
 
@@ -433,7 +520,7 @@ void VTRenderer::extract_debug_cut(uint64_t cut_id)
 }
 void VTRenderer::extract_debug_cut_context(uint64_t cut_id)
 {
-    CutDatabase *cut_db = &CutDatabase::get_instance();
+    CutDatabase* cut_db = &CutDatabase::get_instance();
 
     cut_db->start_reading_cut(cut_id);
 
@@ -456,7 +543,7 @@ void VTRenderer::extract_debug_cut_context(uint64_t cut_id)
         {
             for(size_t x = 0; x < cut_db->get_size_mem_x(); ++x)
             {
-                mem_slot_type *mem_slot = cut_db->read_mem_slot_at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y(), context_id);
+                mem_slot_type* mem_slot = cut_db->read_mem_slot_at(x + y * cut_db->get_size_mem_x() + layer * cut_db->get_size_mem_x() * cut_db->get_size_mem_y(), context_id);
 
                 if(!(*mem_slot).locked)
                 {
@@ -484,7 +571,7 @@ void VTRenderer::extract_debug_cut_context(uint64_t cut_id)
         {
             for(size_t x = 0; x < phys_tex_tile_width; ++x)
             {
-                stream_feedback << _ctxt_resources[context_id]->_feedback_lod_cpu_buffer[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
+                stream_feedback << _ctxt_res[context_id]->_feedback_lod_cpu_buffer[x + y * phys_tex_tile_width + layer * phys_tex_tile_width * phys_tex_tile_width] << " ";
             }
 
             stream_feedback << std::endl;
@@ -506,7 +593,7 @@ void VTRenderer::extract_debug_cut_context(uint64_t cut_id)
 }
 void VTRenderer::render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t context_id)
 {
-    _ctxt_resources[context_id]->_render_context->apply();
+    _ctxt_res[context_id]->_render_context->apply();
 
     uint64_t cut_id = (((uint64_t)data_id) << 32) | ((uint64_t)view_id << 16) | ((uint64_t)context_id);
 
@@ -530,7 +617,7 @@ void VTRenderer::render_debug_cut(uint32_t data_id, uint16_t view_id, uint16_t c
 }
 void VTRenderer::render_debug_context(uint16_t context_id)
 {
-    _ctxt_resources[context_id]->_render_context->apply();
+    _ctxt_res[context_id]->_render_context->apply();
 
     ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
 
@@ -588,4 +675,43 @@ void VTRenderer::render_debug_context(uint16_t context_id)
 void VTRenderer::toggle_visualization(int toggle) { _toggle_visualization = toggle; }
 
 void VTRenderer::enable_hierarchy(bool enable) { _enable_hierarchy = enable; }
+void VTRenderer::update_feedback_layout(uint16_t context_id)
+{
+    auto allocated_slots = &_cut_update->get_context_feedback(context_id)->get_allocated_slot_index();
+
+    if(allocated_slots->empty())
+    {
+        return;
+    }
+
+    std::vector<uint32_t> output(allocated_slots->size());
+    std::copy(allocated_slots->begin(), allocated_slots->end(), output.begin());
+
+    _ctxt_res[context_id]->_render_context->apply();
+
+    using namespace scm::math;
+    using namespace scm::gl;
+
+    context_state_objects_guard csg(_ctxt_res[context_id]->_render_context);
+    context_vertex_input_guard cvg(_ctxt_res[context_id]->_render_context);
+
+    auto mapped_index = (uint32_t*)_ctxt_res[context_id]->_render_context->map_buffer_range(_ctxt_res[context_id]->_feedback_index_vb, 0, output.size() * sizeof(uint32_t), ACCESS_WRITE_ONLY);
+    memcpy(&mapped_index[0], &output[0], output.size() * sizeof(uint32_t));
+    _ctxt_res[context_id]->_render_context->unmap_buffer(_ctxt_res[context_id]->_feedback_index_vb);
+
+    _ctxt_res[context_id]->_render_context->clear_buffer_data(_ctxt_res[context_id]->_feedback_inv_index, FORMAT_R_32UI, nullptr);
+    _ctxt_res[context_id]->_render_context->sync();
+
+    _ctxt_res[context_id]->_render_context->bind_storage_buffer(_ctxt_res[context_id]->_feedback_inv_index, 2);
+    _ctxt_res[context_id]->_render_context->bind_index_buffer(_ctxt_res[context_id]->_feedback_index_ib, PRIMITIVE_POINT_LIST, TYPE_UINT);
+    _ctxt_res[context_id]->_render_context->bind_vertex_array(_ctxt_res[context_id]->_feedback_vao);
+    _ctxt_res[context_id]->_render_context->apply();
+
+    _ctxt_res[context_id]->_shader_vt_feedback->uniform("feedback_index_size", (const unsigned int)allocated_slots->size());
+    _ctxt_res[context_id]->_render_context->bind_program(_ctxt_res[context_id]->_shader_vt_feedback);
+
+    _ctxt_res[context_id]->_render_context->apply();
+
+    _ctxt_res[context_id]->_render_context->draw_elements((const unsigned int)allocated_slots->size());
 }
+} // namespace vt
