@@ -1,0 +1,57 @@
+For next week:
+
+ - Finish edge constraint - review result
+	- adrien will update CGAL
+
+ - finish chart creation
+	- 
+
+
+Next steps for chart simplification:
+ 1. create charts from hi-res mesh
+ 2. project triangles on best plane into rectangles
+ 3. pack rectangles into texture space
+ 4. render to texture
+
+
+
+For the intermediate presentation:
+
+ - introduce motivation for method:
+	- LOD mesh loading with coherent texturing
+	- 
+ - describe choice of methods - against progressive texturing - and jusitfy choice
+ - describe road map for progress:
+	- solving chart problems
+	- solving simplification problems - over complicated border edges
+
+
+-----------------------------------------------------------------------
+
+done:
+
+ - edge constraint impemented and working, looks good at finer detail but streaking persists at low levels (and dissappearing triangles in low detail)
+
+ - charts fixed but:
+	- improve vis capabilities - better colour differences
+	- map to textures in a more sensible manner
+	- why does meshlab not load them?
+
+
+TO DO: 
+ - develop error metric for joins
+	- use lamure function for calculating normals/CGAL?
+	- compare difference in normals - arccos of dot product between normals
+	- accumulate error at joins
+
+ - continue debugging obj printing
+ 	- problem occurs in schism function to create vertex buffer from imported obj
+
+
+-----------------------------------------------------------------------
+
+done: 
+
+ - started adding normals into join cost calculation
+
+ - obj output problem occurs in schism call to create vertex buffer from obj

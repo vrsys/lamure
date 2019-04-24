@@ -1,0 +1,47 @@
+for next week:
+
+
+ - load chart file in mesh_hierarchy app - loader exists already in rectangle packing app
+ - assign each triangle a chart
+ - carry chart ids over into face in polyhedron
+ - ...and back to trinagle_t after simplification :)
+
+ - after simplification of each node, (or at the end when the .lod file is written) write chart id of each face into auxiliary chartlod file:
+	- another list of ints, where each int is associated with a triangle in LOD file
+
+- original OBJ texture coords need to persist through to mesh_hierarchy app, and written into LOD file
+
+
+TO DO:
+
+test broken charts
+
+investigate: grid clusterer flipping normals? calculating normals incorrectly? tested with tiny3.obj
+
+extension (next week)?
+
+ - info about the projection of triangles on to texture needs to be stored, in order to project original uvs into new texture space
+ - decide which info to write (normal, min max, 
+ - implement projection and overwrite uvs
+
+
+DONE:
+
+ - implemented chart propogation through mesh_hierarchy app into new chart lod file
+	- tested by overriding UVs of triangles at every mesh level according to chart
+	- didn't throroughly test writing of new file 
+
+ - implemented UV propogation through face clustering app by extending face
+ - tested with small mesh
+
+ - checked loading of UVs into mesh_hierarchy app
+ - they should propogate through (at leaf level) because triangles are copied directly into the node-triangle map at that level
+
+ - tested propogation of UV through face-clustering with cactus mesh
+
+ - implemented chart correctino for broken charts. TEST!
+
+
+meshes to test with :
+/opt/3d_models/animals/horse/horse.obj
+/opt/3d_models/street/cactus/

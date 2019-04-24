@@ -303,6 +303,9 @@ int main(int argc, char *argv[]) {
     if(!FreeImage_Save(FIF_JPEG, image, output_filename.c_str(), 0)) {
         perror("FreeImage_Save");
     }
+
+
+    std::cout << "Image saved to " << output_filename << std::endl;
     
     FreeImage_Unload(image);
 

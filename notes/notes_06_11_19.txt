@@ -1,0 +1,51 @@
+6/11/19
+
+for next week:
+
+implement simplification of model with CGAL - mesh simplification app.
+tutorial: https://doc.cgal.org/latest/Surface_mesh_simplification/index.html
+
+input and output not working correctly. 
+
+hard code model to load (off/obj)
+
+or use tiny object loader...https://github.com/syoyo/tinyobjloader
+maybe only need to incelude tiny_obj_loader.cc/.h in project
+
+
+
+to run...make then make install, from inside lamure/lamure/build folder
+
+to check whether obj renders correctly: meshlab
+
+e.g: meshlab /opt/3d_models/dinosaurs/rex_skull.obj 
+
+ - does meshlab give info about number of faces? - yes
+ - does meshlab load .off s? - no, but can load them to http://masc.cs.gmu.edu/wiki/ObjViewer to see faces
+ - find a simple mesh to test with: e.g. /home/hoqe4365/Desktop/off_models/benchmark/db/4/m402
+
+
+ - edit tutorial code to load a simple mesh
+	 - next steps...why isn't model loading working??
+
+
+TODO:
+
+ - does CGAL polyhedron support texture/normals?
+	- use function from vt_obj_renderer/Utils.h
+ - create simplified mesh comparison
+
+----------------------------------------------------------------------------
+
+To find CGAL version:
+
+  std::cout << "My CGAL library is " <<  CGAL_VERSION_NR << " (1MMmmb1000)" << std::endl; 
+  std::cout << std::endl;
+  std::cout << "where MM is the major number release, mm is the minor number release, and "
+<< "b is the bug fixing number release." << std::endl;
+
+My CGAL library is 04.07.0 (MMmmb)
+
+where MM is the major number release, mm is the minor number release, and b is the bug fixing number release.
+
+----------------------------------------------------------------------------

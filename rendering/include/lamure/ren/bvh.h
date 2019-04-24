@@ -85,8 +85,6 @@ protected:
 
     void                load_bvh_file(const std::string& filename);
 
-private:
-
     uint32_t            num_nodes_;
     uint32_t            fan_factor_;
     uint32_t            depth_;
