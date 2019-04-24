@@ -15,7 +15,6 @@ public:
   void enable();
   void disable();
   void draw(uint32_t index);
-  void get_pixels(uint32_t index, char** data);
   void get_pixels(uint32_t index, std::vector<uint8_t>& image);
 
   float read_depth(uint32_t x, uint32_t y);

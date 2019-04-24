@@ -1,5 +1,0 @@
-TO DO:
-
-flip texture coordinates in final app before rendering, to avoid mogrify flipping every time
-
-

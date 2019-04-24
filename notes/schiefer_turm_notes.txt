@@ -1,8 +1,0 @@
-Schieferturm notes
-
-artefacts occur when charts include surfaces with large angle deviation from average normal of chart - as seen on the corner of the Schieferturm tower
-
-A better case can be seen on the smaller chart that is not joined to one of the larger surfaces - this is projcted from an angle, such that the texture detail is preserved well
-
-
-TO DO- check when merging, that the normal deviation between the average normal of the 2 charts do not differ too significantly - could limit this at e.g. 45 degrees
