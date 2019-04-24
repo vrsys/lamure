@@ -47,6 +47,10 @@ std::function<void(float)> format_ply::
 scalar_callback(const std::string &element_name, const std::string &property_name);
 
 template<>
+std::function<void(double)> format_ply::
+scalar_callback(const std::string &element_name, const std::string &property_name);
+
+template<>
 std::function<void(uint8_t)> format_ply::
 scalar_callback(const std::string &element_name, const std::string &property_name);
 

@@ -32,6 +32,7 @@ macro(InitApp APP_NAME)
       file(GLOB SCRIPT_FILES . ${PROJECT_SOURCE_DIR}/*.sh)
 
       install(PROGRAMS ${SCRIPT_FILES} DESTINATION bin)
+
   endif(MSVC)
 endmacro()
 

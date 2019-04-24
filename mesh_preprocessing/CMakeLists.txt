@@ -21,9 +21,11 @@ set(PROJECT_INCLUDES ${MESH_INC} ${MESH_INL})
 
 include_directories(${PROJECT_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}
+        ${REND_INCLUDE_DIR}
         ${LAMURE_CONFIG_DIR}
         ${GMP_INCLUDE_DIR}
         ${MPFR_INCLUDE_DIR}
+        ${CGAL_INCLUDE_DIR}
         )
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
@@ -33,7 +35,7 @@ link_directories(${SCHISM_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${PROJECT_INCLUDES} ${PROJECT_SOURCES})
 
-add_dependencies(${PROJECT_NAME} lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_common lamure_rendering)
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_MESH_PREPROCESSING_LIBRARY -DBOOST_ALL_NO_LIB")
@@ -49,8 +51,11 @@ set(MESH_PREPROC_LIBRARY ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME}
         ${COMMON_LIBRARY}
+        ${REND_LIBRARY}
         ${PROJECT_LIBS}
         optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
+        optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
+        optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
         )
 
 if (${LAMURE_USE_CGAL_FOR_NNI})

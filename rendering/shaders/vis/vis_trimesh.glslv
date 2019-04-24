@@ -11,14 +11,14 @@ layout (location = 0) in vec4 vertex_position;
 layout (location = 1) in vec4 vertex_normal;
 layout (location = 2) in vec2 vertex_coord;
 
-uniform mat4 mvp_matrix;
-
+//output to fragment shader
 out vertex_data {
     vec4 position;
     vec4 normal;
     vec2 coord;
 } vertex_out;
 
+uniform mat4 mvp_matrix;
 
 void main() {
 

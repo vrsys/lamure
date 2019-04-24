@@ -18,6 +18,8 @@ in vertex_data {
 void main()
 {
   vec4 n = vertex_in.normal;
-  out_color = vec4(n.r*0.5+0.5, n.g*0.5+0.5, n.b*0.5+0.5, 1.0f);
+  vec2 c = vertex_in.coord;
+  //out_color = vec4(n.r*0.5+0.5, n.g*0.5+0.5, n.b*0.5+0.5, 1.0f);
+  out_color = vec4(c.r, c.g, 0.5, 1.0f);
 }
 

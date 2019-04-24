@@ -195,6 +195,7 @@ add_dependencies(lamure_provenance lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 add_dependencies(lamure_virtual_texturing lamure_common)
 add_dependencies(lamure_mesh_preprocessing lamure_common)
+add_dependencies(lamure_mesh_preprocessing lamure_rendering)
 add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")

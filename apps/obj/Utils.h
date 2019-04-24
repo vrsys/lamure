@@ -1,16 +1,16 @@
 #ifndef VT_OBJ_RENDERER_UTILS_H
 #define VT_OBJ_RENDERER_UTILS_H
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+
 //lamure
 #include <lamure/types.h>
 #include <lamure/ren/camera.h>
 #include <lamure/ren/config.h>
 #include <lamure/ren/policy.h>
-
-//lamure vt
-#include <lamure/vt/VTConfig.h>
-#include <lamure/vt/ren/CutDatabase.h>
-#include <lamure/vt/ren/CutUpdate.h>
 
 //schism
 #include <scm/core.h>
@@ -23,38 +23,6 @@
 #include <scm/gl_util/data/imaging/texture_loader.h>
 #include <scm/gl_util/primitives/wavefront_obj.h>
 
-struct vt_info {
-    uint32_t texture_id_;
-    uint16_t view_id_;
-    uint16_t context_id_;
-    uint64_t cut_id_;
-    vt::CutUpdate *cut_update_;
-
-    std::vector<scm::gl::texture_2d_ptr> index_texture_hierarchy_;
-    scm::gl::texture_2d_ptr physical_texture_;
-
-    scm::math::vec2ui physical_texture_size_;
-    scm::math::vec2ui physical_texture_tile_size_;
-    size_t size_feedback_;
-
-    int32_t  *feedback_lod_cpu_buffer_;
-#ifdef RASTERIZATION_COUNT
-    uint32_t *feedback_count_cpu_buffer_;
-#endif
-
-    scm::gl::buffer_ptr feedback_index_ib_;
-    scm::gl::buffer_ptr feedback_index_vb_;
-    scm::gl::vertex_array_ptr feedback_vao_;
-    scm::gl::buffer_ptr feedback_inv_index_;
-
-    scm::gl::buffer_ptr feedback_lod_storage_;
-#ifdef RASTERIZATION_COUNT
-    scm::gl::buffer_ptr feedback_count_storage_;
-#endif
-
-    int toggle_visualization_;
-    bool enable_hierarchy_;
-};
 
 struct resource {
     uint64_t num_primitives_{0};
@@ -72,8 +40,8 @@ struct input {
 
 struct vertex {
     scm::math::vec3f position_;
-    scm::math::vec2f coords_;
     scm::math::vec3f normal_;
+    scm::math::vec2f coords_;
 };
 
 struct Utils {
@@ -89,17 +57,35 @@ struct Utils {
         return std::find(begin, end, option) != end;
     }
 
-    static scm::gl::data_format get_tex_format() {
-        switch (vt::VTConfig::get_instance().get_format_texture()) {
-            case vt::VTConfig::R8:
-                return scm::gl::FORMAT_R_8;
-            case vt::VTConfig::RGB8:
-                return scm::gl::FORMAT_RGB_8;
-            case vt::VTConfig::RGBA8:
-            default:
-                return scm::gl::FORMAT_RGBA_8;
-        }
-    }
+    // //parses a face string like "f  2//1  8//1  4//1 " into 3 given arrays
+    // static void parse_face_string (std::string face_string, int (&index)[3], int (&coord)[3], int (&normal)[3]){
+
+    //   //split by space into faces
+    //   std::vector<std::string> faces;
+    //   boost::algorithm::trim(face_string);
+    //   boost::algorithm::split(faces, face_string, boost::algorithm::is_any_of(" "), boost::algorithm::token_compress_on);
+
+    //   for (int i = 0; i < 3; ++i)
+    //   {
+    //     //split by / for indices
+    //     std::vector<std::string> inds;
+    //     boost::algorithm::split(inds, faces[i], [](char c){return c == '/';}, boost::algorithm::token_compress_off);
+
+    //     for (int j = 0; j < (int)inds.size(); ++j)
+    //     {
+    //       int idx = 0;
+    //       //parse value from string
+    //       if (inds[j] != ""){
+    //         idx = stoi(inds[j]);
+    //       }
+    //       if (j == 0){index[i] = idx;}
+    //       else if (j == 1){coord[i] = idx;}
+    //       else if (j == 2){normal[i] = idx;}
+          
+    //     }
+    //   }
+    // }
+
 
     //load an .obj file and return all vertices, normals and coords interleaved
     static uint32_t load_obj(const std::string &_file, std::vector<vertex> &_vertices) {
@@ -143,9 +129,16 @@ struct Utils {
                            &index[1], &coord[1], &normal[1],
                            &index[2], &coord[2], &normal[2]);
 
+
+                    // fscanf(file, "%d/%d %d/%d %d/%d\n",
+                    //        &index[0], &coord[0],
+                    //        &index[1], &coord[1],
+                    //        &index[2], &coord[2]);
+
                     vindices.insert(vindices.end(), {index[0], index[1], index[2]});
                     tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
                     nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
+
                 }
             }
 
@@ -156,6 +149,7 @@ struct Utils {
             std::cout << "coords: " << tindices.size() << std::endl;
 
             _vertices.resize(nindices.size());
+
 
             for (uint32_t i = 0; i < nindices.size(); i++) {
                 vertex vertex;
@@ -171,6 +165,7 @@ struct Utils {
 
                 _vertices[i] = vertex;
             }
+
 
             num_tris = _vertices.size() / 3;
 
