@@ -1,0 +1,73 @@
+To do:
+
+
+ - get a version of nordportal to run through the pipeline
+	- flip combined texture? - done
+
+ - revise chart splitting system
+ - consider normalisation of error metrics
+
+ - "Creating charts from grid clusters..." parallelisable - done
+
+Priorities for final 2 weeks of project:
+
+ - Dilation (milky way)
+ - Support multiple input textures (without combining to 1 large texture) - done
+ - Support writing to multiple output textures
+
+Further notes:
+
+ - for the final presentation, think about which parameters should be frozen for timing meshes of different sizes
+ 	- could be done on machined with more cores, if heavily parallelised
+	- can ssh to more powerful machines if they are not in use, but display is needed
+ - test pipeline with very large models (Halberstadt/kopf/wappen)
+ - Update pipelines to not copy all objs...read objs in place and create temporary foolder that is overwritten each time?
+
+
+Organisational:
+
+ - presentation 24th April
+ - implementation until 1 April
+ - Prepare slides before 10th April
+ - practice presentation on 23rd April
+
+
+////////////////////////////////////////////////
+
+Multiple input textures
+
+When reading first chart file, form an index of textures images, and save the index for each face.
+
+in mesh preprocessing render function, loop for each texture:
+ - load texture, bind 
+ - fill vertex buffer, bind
+ - render the triangles that belong to each texture id
+
+
+
+////////////////////////////////////////////////
+
+Multiple output textures
+
+If output texture needs to be larger than 8k, it should be split into multiple texture images.
+
+Rectangle packing runs as before, potentially packing across output textures. 
+
+Each output texture is created by a viewport render. In the case of multiple input textures, 
+each input texture should be rendered for each viewport.
+
+Coordinates (new coords) of every triangle need to be shifted and scaled to reflect each output texture's position WRT the complete output texture. 
+
+
+
+Post:
+ - each image will be dilated individually
+ - images will be combined as input for VT (ask Anton for support here?)
+
+
+
+
+
+
+
+
