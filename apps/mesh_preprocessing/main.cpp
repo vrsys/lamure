@@ -339,12 +339,7 @@ int main( int argc, char** argv )
     std::cout << "Please provide an obj filename using -f <filename.obj>" << std::endl;
     std::cout << "Optional: -of specifies outfile name" << std::endl;
 
-    std::cout << "Optional: -ch specifies chart threshold (=infinite)" << std::endl;
     std::cout << "Optional: -co specifies cost threshold (=infinite)" << std::endl;
-
-    std::cout << "Optional: -ef specifies error fit coefficient (=1)" << std::endl;
-    std::cout << "Optional: -eo specifies error orientation coefficient (=1)" << std::endl;
-    std::cout << "Optional: -es specifies error shape coefficient (=1)" << std::endl;
 
     std::cout << "Optional: -cc specifies cell resolution for grid splitting, along longest axis. When 0, no cell splitting is used. (=0)" << std::endl;
     std::cout << "Optional: -ct specifies threshold for grid chart splitting by normal variance (=0.001)" << std::endl;
