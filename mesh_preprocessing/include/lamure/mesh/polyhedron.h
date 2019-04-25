@@ -57,6 +57,7 @@ struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
   int face_id;
   int tex_id;
   int area_id;
+  int tri_id;
 
   // typedef typename Traits::Vector_2 TexCoord;
   TexCoord t_coords[3];

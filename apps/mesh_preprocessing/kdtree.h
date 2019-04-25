@@ -15,6 +15,7 @@
 class indexed_triangle_t : public lamure::mesh::triangle_t {
   public:
     uint32_t tex_idx_;
+    uint32_t tri_id_;
 };
 
 

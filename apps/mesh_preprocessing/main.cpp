@@ -480,6 +480,7 @@ int main( int argc, char** argv )
       idx_tri.v1_ = tri.v1_;
       idx_tri.v2_ = tri.v2_;
       idx_tri.tex_idx_ = material_map[mat].second;
+      idx_tri.tri_id_ = i;
 
       all_indexed_triangles.push_back(idx_tri);
     }
@@ -651,7 +652,8 @@ int main( int argc, char** argv )
       tri.area_id = num_areas;
       tri.chart_id = per_node_chart_id_map_it.second[fi->id()];
       tri.tex_id = fi->tex_id;
-
+      tri.tri_id = fi->tri_id;
+      
       triangles.push_back(tri);
 
  
@@ -660,7 +662,6 @@ int main( int argc, char** argv )
        
   }
 
-  
   std::cout << "Creating LOD hierarchy..." << std::endl;
 
   auto bvh = std::make_shared<lamure::mesh::bvh>(triangles, num_tris_per_node_bvh);
@@ -761,6 +762,7 @@ int main( int argc, char** argv )
           }
         }
       }
+
 
       //report chart parameters
       /*
@@ -894,7 +896,30 @@ int main( int argc, char** argv )
 
         if (chart.all_triangle_ids_.find(tri_id) != chart.all_triangle_ids_.end()) {
 
-          if (tri.tex_id != -1) { //create render list
+          //create per-texture render list
+          if (tri.tex_id != -1) {
+
+            const auto& old_tri = all_indexed_triangles[tri.tri_id];
+
+            double epsilon = FLT_EPSILON;
+            
+            //obtain original coordinates 
+            //since indexed cgal polyhedra dont preserve texture coordinates correctly
+            if (scm::math::length(tri.v0_.pos_-old_tri.v0_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v0_.tex_;
+            else if (scm::math::length(tri.v0_.pos_-old_tri.v1_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v1_.tex_;
+            else if (scm::math::length(tri.v0_.pos_-old_tri.v2_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v2_.tex_;
+            else std::cout << "WARNING: tex coord v0 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+
+            if (scm::math::length(tri.v1_.pos_-old_tri.v0_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v0_.tex_;
+            else if (scm::math::length(tri.v1_.pos_-old_tri.v1_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v1_.tex_;
+            else if (scm::math::length(tri.v1_.pos_-old_tri.v2_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v2_.tex_;
+            else std::cout << "WARNING: tex coord v1 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+
+            if (scm::math::length(tri.v2_.pos_-old_tri.v0_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v0_.tex_;
+            else if (scm::math::length(tri.v2_.pos_-old_tri.v1_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v1_.tex_;
+            else if (scm::math::length(tri.v2_.pos_-old_tri.v2_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v2_.tex_;
+            else std::cout << "WARNING: tex coord v2 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+
             to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
             to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
             to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});

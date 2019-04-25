@@ -12,6 +12,7 @@ public:
   std::vector<int>    tris;
   std::vector<double> tcoords;
   std::vector<int>    tindices;
+  std::vector<int>    tri_ids;
 
   bool CHECK_VERTICES;
 
@@ -22,13 +23,15 @@ public:
                       std::vector<double> &_tcoords,
                       std::vector<int> &_tindices,
                       bool _CHECK_VERTICES,
-                      std::vector<int> &_face_textures) 
+                      std::vector<int> &_face_textures,
+                      std::vector<int> &_tri_ids) 
                       : vertices(_vertices), 
                         tris(_tris), 
                         tcoords(_tcoords), 
                         tindices(_tindices), 
                         CHECK_VERTICES(_CHECK_VERTICES), 
-                        face_textures(_face_textures)  {}
+                        face_textures(_face_textures),
+                        tri_ids(_tri_ids)  {}
 
 
 
@@ -66,6 +69,7 @@ public:
        tindices.push_back(tri_idx*3+2);
 
        face_textures.push_back(_triangles[tri_idx].tex_idx_);
+       tri_ids.push_back(_triangles[tri_idx].tri_id_);
 
      }
 
@@ -83,12 +87,7 @@ public:
 
 
     uint32_t degenerate_faces = 0;
-
-    //if there is different coordinates for every vertex, then we probably need to create an indexed vertex list
-    //if (tris.size()*3 == vertices.size())
-    if (true)
-    {
-      std::cout << "Creating polyhedron indexed vertex list...\n";
+    std::cout << "Creating polyhedron indexed vertex list...\n";
 
       //create indexed vertex list
       std::vector<XtndPoint<Kernel> > vertices_indexed;
@@ -125,11 +124,9 @@ public:
           TexCoord tc3 ( vertices_indexed[tris_indexed[i+2]].get_u() , vertices_indexed[tris_indexed[i+2]].get_v() );
           fh->add_tex_coords(tc1,tc2,tc3);
 
-          //Add texture id for face
-          if (face_textures.size() > 0)
-          {
-            fh->tex_id = face_textures[i/3];
-          }
+
+          fh->tex_id = face_textures[i/3];
+          fh->tri_id = tri_ids[i/3];
 
           B.add_vertex_to_facet(tris_indexed[i]);
           B.add_vertex_to_facet(tris_indexed[i+1]);
@@ -143,66 +140,6 @@ public:
 
 
       }
-    }
-    else {
-
-
-      std::cout << "Loaded obj already indexed - creating polyhedron directly\n";
-
-      std::cout << "Polyhedron builder: adding vertices\n";
-      for( int i=0; i<(int)vertices.size() / 3; ++i ){
-
-        Vertex_handle vh = B.add_vertex( XtndPoint<Kernel>( 
-                             vertices[(i*3)], 
-                             vertices[(i*3)+1], 
-                             vertices[(i*3)+2],
-                              tcoords[i*2],
-                              tcoords[(i*2)+1]));
-        vh->id = i;
-
-      }
-
-      // add the polyhedron triangles
-      std::cout << "Polyhedron builder: adding faces\n";
-      uint32_t face_count = 0;
-      for( int i=0; i<(int)(tris.size()); i+=3 ){ 
-
-
-        //check for degenerate faces:
-        bool degenerate = is_face_degenerate(
-                    Point( vertices[(tris[i+0]) * 3], vertices[((tris[i+0]) * 3) + 1], vertices[((tris[i+0]) * 3) + 2] ),
-                    Point( vertices[(tris[i+1]) * 3], vertices[((tris[i+1]) * 3) + 1], vertices[((tris[i+1]) * 3) + 2] ),
-                    Point( vertices[(tris[i+2]) * 3], vertices[((tris[i+2]) * 3) + 1], vertices[((tris[i+2]) * 3) + 2] )
-                    );
-
-        if(!degenerate){
-
-          Facet_handle fh = B.begin_facet();
-          fh->id() = face_count++;
-
-          //add tex coords 
-          TexCoord tc1 ( tcoords[ tindices[i+0]*2 ] , tcoords[ (tindices[i+0]*2)+1 ] );
-          TexCoord tc2 ( tcoords[ tindices[i+1]*2 ] , tcoords[ (tindices[i+1]*2)+1 ] );
-          TexCoord tc3 ( tcoords[ tindices[i+2]*2 ] , tcoords[ (tindices[i+2]*2)+1 ] );
-          fh->add_tex_coords(tc1,tc2,tc3);
-
-          //Add texture id for face
-          if (face_textures.size() > 0)
-          {
-            fh->tex_id = face_textures[i/3];
-          }
-
-          B.add_vertex_to_facet( tris[i+0] );
-          B.add_vertex_to_facet( tris[i+1] );
-          B.add_vertex_to_facet( tris[i+2] );
-          B.end_facet();
-        }
-        else {
-          degenerate_faces++;
-        }
-
-      }
-    }
 
 
    
