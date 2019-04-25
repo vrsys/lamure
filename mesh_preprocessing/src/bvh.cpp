@@ -401,6 +401,7 @@ void bvh::simplify(
     //transfer tex id
     f->tex_id = combined_set[i].tex_id;
     f->area_id = combined_set[i].area_id;
+    f->tri_id = combined_set[i].tri_id;
 
     i++;
   }
@@ -509,6 +510,7 @@ void bvh::simplify(
     tri.chart_id = f->chart_id;
     tri.tex_id = f->tex_id;
     tri.area_id = f->area_id;
+    tri.tri_id = f->tri_id;
 
     for (int i = 0; i < 3; ++i, ++c) {
 

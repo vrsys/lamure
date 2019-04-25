@@ -39,11 +39,11 @@ echo "Using obj model $SRC_OBJ"
 OBJPATH="$SRC_OBJ"
 
 #convert textures to png if necessary
-echo "Converting jpgs to pngs"
-mogrify -format png *.jpg
+#echo "Converting jpgs to pngs"
+#mogrify -format png *.jpg
 #flip all texture images
-echo "Flipping texture images"
-mogrify -flip *.png
+#echo "Flipping texture images"
+#mogrify -flip *.png
 
 echo "Running chart creation with file $SRC_OBJ"
 echo "-----------------------------------------"
