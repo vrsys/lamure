@@ -87,10 +87,12 @@ std::shared_ptr<texture_t> load_image(const std::string& filepath) {
 }
 
 
-void save_image(std::string filename, std::vector<uint8_t> image, int width, int height) {
-  int tex_error = lodepng::encode(filename, image, width, height);
+void save_image(std::string& filename, std::vector<uint8_t>& image, int width, int height) {
+  unsigned int tex_error = lodepng::encode(filename, image, width, height);
+
   if (tex_error) {
-    std::cout << "ERROR: unable to save image file " << filename << std::endl;
+    std::cerr << "ERROR: unable to save image file " << filename << std::endl;
+    std::cerr << tex_error << ": " << lodepng_error_text(tex_error) << std::endl;
   }
   std::cout << "Saved image to " << filename << std::endl;
 
