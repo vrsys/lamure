@@ -418,7 +418,7 @@ int main( int argc, char** argv )
     std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
   }
 
-  
+#ifdef ADHOC_PARSER
   std::vector<lamure::mesh::triangle_t> all_triangles;
   std::vector<std::string> all_materials;
 
@@ -491,6 +491,16 @@ int main( int argc, char** argv )
   }
 
   all_triangles.clear();
+#endif
+
+#ifdef VCG_PARSER
+  std::vector<indexed_triangle_t> all_indexed_triangles;
+  std::map<uint32_t, texture_info> texture_info_map;
+
+  std::cout << "Loading obj from " << obj_filename << "..." << std::endl;
+
+  Utils::load_obj(obj_filename, all_indexed_triangles, texture_info_map);
+#endif
 
   std::cout << "Building kd tree..." << std::endl;
   std::shared_ptr<kdtree_t> kdtree = std::make_shared<kdtree_t>(all_indexed_triangles, num_tris_per_node_kdtree);

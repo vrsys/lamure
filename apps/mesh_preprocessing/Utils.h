@@ -9,6 +9,8 @@
 #include <boost/filesystem/path.hpp>
 
 #include "CGAL_typedefs.h"
+#include "kdtree.h"
+#include "chart_packing.h"
 
 #include <lamure/mesh/triangle.h>
 
@@ -21,7 +23,53 @@ struct BoundingBoxLimits
   scm::math::vec3f max;
 };
 
+#define VCG_PARSER
 
+#ifdef VCG_PARSER
+#include <iostream>
+#include <fstream>
+#include <chrono>
+#include <vector>
+#include <string>
+#include <stack>
+
+using namespace std;
+
+#include <vcg/complex/complex.h>
+#include <vcg/complex/algorithms/update/topology.h>
+#include <vcg/complex/algorithms/update/bounding.h>
+#include <vcg/complex/algorithms/update/flag.h>
+#include <vcg/complex/algorithms/clean.h>
+#include <vcg/space/intersection/triangle_triangle3.h>
+#include <vcg/math/histogram.h>
+#include <wrap/io_trimesh/import.h>
+#include <wrap/io_trimesh/export.h>
+#include <vcg/simplex/face/pos.h>
+#include <vcg/complex/algorithms/inertia.h>
+#include <vcg/space/index/grid_static_ptr.h>
+#include <wrap/ply/plylib.h>
+#include <wrap/io_trimesh/import_obj.h>
+#include <wrap/io_trimesh/io_material.h>
+
+using namespace vcg;
+
+class CVertex;
+class CFace;
+
+struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType>
+{
+};
+
+class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::TexCoord2f, vertex::BitFlags, vertex::Normal3f>
+{
+};
+class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::VertexRef, face::Normal3f, face::WedgeTexCoord2f, face::BitFlags, face::Mark>
+{
+};
+class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
+{
+};
+#endif
 
 struct Utils
 {
@@ -61,7 +109,7 @@ struct Utils
 	      if (j == 0){index[i] = idx;}
 	      else if (j == 1){coord[i] = idx;}
 	      else if (j == 2){normal[i] = idx;}
-	      
+
 	    }
 	  }
 	}
@@ -77,9 +125,9 @@ struct Utils
 	}
 
 	// load obj function from vt_obj_loader/Utils.h
-	static BoundingBoxLimits load_obj(const std::string& filename, 
-	              std::vector<double> &v, 
-	              std::vector<int> &vindices, 
+	static BoundingBoxLimits load_obj(const std::string& filename,
+	              std::vector<double> &v,
+	              std::vector<int> &vindices,
 	              std::vector<double> &t,
 	              std::vector<int> &tindices,
 	              std::vector<std::string> &materials){
@@ -130,20 +178,20 @@ struct Utils
 	        else if (vz < min_pos.z){min_pos.z = vz;}
 
 
-	      } 
+	      }
 	      // else if (strcmp(line, "vn") == 0) {
 	      //   float nx, ny, nz;
 	      //   fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
 	      //   n.insert(n.end(), {nx,ny, nz});
-	      // } 
+	      // }
 	      else if (strcmp(line, "vt") == 0) {
 	        double tx, ty;
 	        fscanf(file, "%lf %lf\n", &tx, &ty);
 	        t.insert(t.end(), {tx, ty});
-	      } 
+	      }
 	      else if (strcmp(line, "f") == 0) {
 	        fgets(line, 128, file);
-	        std::string face_string = line; 
+	        std::string face_string = line;
 	        int index[3];
 	        int coord[3];
 	        int normal[3];
@@ -176,6 +224,7 @@ struct Utils
 
 	}
 
+#ifdef ADHOC_PARSER
 	static bool load_mtl(const std::string& mtl_filename, std::map<std::string, std::pair<std::string, int> >& material_map) {
 
 	    //parse .mtl file
@@ -210,13 +259,13 @@ struct Utils
 	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
 	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\r'), current_texture.end());
 	          boost::trim(current_texture);
-	          
+
 	          std::cout << current_material << " -> " << current_texture << ", " << material_index << std::endl;
 	          material_map[current_material] =  std::make_pair(current_texture, material_index);
 	          ++material_index;
 	        }
 	      }
-	    
+
 	    }
 
 	    mtl_file.close();
@@ -224,19 +273,102 @@ struct Utils
 	    return true;
 
 	}
+#endif
 
 	//writes the texture id of each face of a polyhedron into a text file
 	static void write_tex_id_file(Polyhedron &P, std::string tex_file_name) {
 		//write chart file
 	    std::ofstream ocfs( tex_file_name );
-		for( Facet_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {    
+		for( Facet_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
 	        ocfs << fi->tex_id << " ";
 		}
 		ocfs.close();
 		std::cout << "Texture id per face file written to:  " << tex_file_name << std::endl;
 	}
 
+#ifdef VCG_PARSER
+	static void load_obj(const std::string &file, std::vector<indexed_triangle_t>& triangles, std::map<uint32_t, texture_info>& texture_info_map)
+	{
+		triangles.clear();
+		texture_info_map.clear();
 
+		CMesh m;
+
+		int load_mask;
+		bool mask_load_success = vcg::tri::io::ImporterOBJ<CMesh>::LoadMask(file.c_str(), load_mask);
+		int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, file.c_str(), load_mask);
+
+		if (!mask_load_success || load_error != vcg::tri::io::ImporterOBJ<CMesh>::OBJError::E_NOERROR)
+		{
+			if (vcg::tri::io::ImporterOBJ<CMesh>::ErrorCritical(load_error))
+			{
+				throw std::runtime_error("Failed to load the model: " + std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)));
+			}
+			else
+			{
+				std::cerr << std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
+			}
+		}
+
+		triangles.resize((size_t) m.FN());
+
+		for (size_t i = 0; i < m.FN(); i++)
+		{
+			auto v_0 = m.face[i].V(0);
+			auto v_1 = m.face[i].V(1);
+			auto v_2 = m.face[i].V(2);
+
+			memcpy(&triangles[i].v0_.pos_.data_array[0], &v_0->P()[0], sizeof(float) * 3);
+			memcpy(&triangles[i].v1_.pos_.data_array[0], &v_1->P()[0], sizeof(float) * 3);
+			memcpy(&triangles[i].v2_.pos_.data_array[0], &v_2->P()[0], sizeof(float) * 3);
+
+			memcpy(&triangles[i].v0_.nml_.data_array[0], &v_0->N()[0], sizeof(float) * 3);
+			memcpy(&triangles[i].v1_.nml_.data_array[0], &v_1->N()[0], sizeof(float) * 3);
+			memcpy(&triangles[i].v2_.nml_.data_array[0], &v_2->N()[0], sizeof(float) * 3);
+
+			triangles[i].v0_.tex_.x = v_0->T().U();
+			triangles[i].v0_.tex_.y = v_0->T().V();
+
+			triangles[i].v1_.tex_.x = v_1->T().U();
+			triangles[i].v1_.tex_.y = v_1->T().V();
+
+			triangles[i].v2_.tex_.x = v_2->T().U();
+			triangles[i].v2_.tex_.y = v_2->T().V();
+
+			triangles[i].tri_id_ = (uint32_t) i;
+			triangles[i].tex_idx_ = m.face[i].WT(0).n();
+		}
+
+		for (uint32_t i = 0; i < m.textures.size(); i++)
+		{
+			std::string texture_filename = m.textures[i];
+
+			if (texture_filename.size() > 3)
+			{
+				texture_filename = texture_filename.substr(0, texture_filename.size() - 3) + "png";
+			}
+
+			uint32_t material_id = i;
+			std::cout << "Material " << m.textures[i] << " : " << texture_filename << " : " << material_id << std::endl;
+
+			if (boost::filesystem::exists(texture_filename) && boost::algorithm::ends_with(texture_filename, ".png"))
+			{
+				texture_info_map[material_id] = {texture_filename, Utils::get_png_dimensions(texture_filename)};
+			}
+			else if (texture_filename == "")
+			{
+				//ok
+			}
+			else
+			{
+				std::cout << "ERROR: texture " << texture_filename << " was not found or is not a .png" << std::endl;
+				exit(1);
+			}
+		}
+	}
+#endif
+
+#ifdef ADHOC_PARSER
    //load an .obj file and return all vertices, normals and coords interleaved
     static void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& triangles, std::vector<std::string>& materials) {
 
@@ -313,7 +445,7 @@ struct Utils
 	        for (uint32_t i = 0; i < nindices.size()/3; i++) {
 	          lamure::mesh::triangle_t tri;
 	          for (uint32_t j = 0; j < 3; ++j) {
-	            
+
 	            scm::math::vec3f position(
 	                    v[3 * (vindices[3*i+j] - 1)], v[3 * (vindices[3*i+j] - 1) + 1], v[3 * (vindices[3*i+j] - 1) + 2]);
 
@@ -323,7 +455,7 @@ struct Utils
 	            scm::math::vec2f coord(
 	                    t[2 * (tindices[3*i+j] - 1)], t[2 * (tindices[3*i+j] - 1) + 1]);
 
-	            
+
 	            switch (j) {
 	              case 0:
 	              tri.v0_.pos_ = position;
@@ -356,10 +488,11 @@ struct Utils
     	}
 
 	}
+#endif
 
 
-	//reads dimensions of png from header 
-	static scm::math::vec2i get_png_dimensions(std::string filepath) { 
+	//reads dimensions of png from header
+	static scm::math::vec2i get_png_dimensions(std::string filepath) {
 	    std::ifstream in(filepath);
 	    uint32_t width, height;
 
