@@ -38,7 +38,7 @@ struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFace
 {
 };
 
-class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::BitFlags, vertex::Normal3f>
+class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::TexCoord2f, vertex::BitFlags, vertex::Normal3f>
 {
 };
 class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::VertexRef, face::Normal3f, face::WedgeTexCoord2f, face::BitFlags, face::Mark>
@@ -87,16 +87,15 @@ int main(int argc, char** argv)
         }
     }
 
-    int duplicate_vertices_removed = vcg::tri::Clean<CMesh>::RemoveDuplicateVertex(m, true);
-    int faces_out_of_range_area_removed = vcg::tri::Clean<CMesh>::RemoveFaceOutOfRangeArea(m);
-    int unreferenced_vertices_removed = vcg::tri::Clean<CMesh>::RemoveUnreferencedVertex(m);
+    vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
+    vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
+
+    int non_manifold_vertices = vcg::tri::Clean<CMesh>::SplitNonManifoldVertex(m, 0.25f);
 
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
-    std::cout << "Duplicate vertices removed: " << duplicate_vertices_removed << std::endl;
-    std::cout << "Faces out of range area removed: " << faces_out_of_range_area_removed << std::endl;
-    std::cout << "Unreferenced vertices removed: " << unreferenced_vertices_removed << std::endl;
+    std::cout << "Non-manifold vertices split: " << non_manifold_vertices << std::endl;
 
     int non_manifold_faces = vcg::tri::Clean<CMesh>::RemoveNonManifoldFace(m);
 
@@ -105,12 +104,20 @@ int main(int argc, char** argv)
 
     std::cout << "Non-manifold faces removed: " << non_manifold_faces << std::endl;
 
-    int non_manifold_vertices = vcg::tri::Clean<CMesh>::RemoveNonManifoldVertex(m);
+    int duplicate_vertices_removed = vcg::tri::Clean<CMesh>::RemoveDuplicateVertex(m, true);
+    int faces_out_of_range_area_removed = vcg::tri::Clean<CMesh>::RemoveFaceOutOfRangeArea(m);
+    int unreferenced_vertices_removed = vcg::tri::Clean<CMesh>::RemoveUnreferencedVertex(m);
+    int degenerate_edge_removed = vcg::tri::Clean<CMesh>::RemoveDegenerateEdge(m);
+    int degenerate_face_removed = vcg::tri::Clean<CMesh>::RemoveDegenerateFace(m);
 
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
-    std::cout << "Non-manifold vertices removed: " << non_manifold_vertices << std::endl;
+    std::cout << "Duplicate vertices removed: " << duplicate_vertices_removed << std::endl;
+    std::cout << "Faces out of range area removed: " << faces_out_of_range_area_removed << std::endl;
+    std::cout << "Unreferenced vertices removed: " << unreferenced_vertices_removed << std::endl;
+    std::cout << "Degenerate edges removed: " << degenerate_edge_removed << std::endl;
+    std::cout << "Degenerate faces removed: " << degenerate_face_removed << std::endl;
 
     int save_error = vcg::tri::io::ExporterOBJ<CMesh>::Save(m, model_fixed.c_str(), load_mask);
 
