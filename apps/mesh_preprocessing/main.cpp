@@ -575,7 +575,7 @@ int main( int argc, char** argv )
     polyhedron_builder<HalfedgeDS> builder(node_triangles);
     polyMesh.delegate(builder);
 
-    if (!CGAL::is_triangle_mesh(polyMesh) || !polyMesh.is_valid(false)){
+    if (!CGAL::is_triangle_mesh(polyMesh)){//} || !polyMesh.is_valid(false)){
       std::cerr << "ERROR: Input geometry is not valid / not triangulated." << std::endl;
       return;
     }
@@ -714,14 +714,14 @@ int main( int argc, char** argv )
     for (auto& it : chart_map[area_id]) {
 
       it.second.rect_ = rectangle{
-        scm::math::vec2f(std::numeric_limits<float>::max()),
         scm::math::vec2f(std::numeric_limits<float>::lowest()),
-        it.first, 
+        scm::math::vec2f(std::numeric_limits<float>::max()),
+        it.first,
         false};
 
       it.second.box_ = lamure::bounding_box(
-        scm::math::vec3d(std::numeric_limits<float>::max()),
-        scm::math::vec3d(std::numeric_limits<float>::lowest()));
+        scm::math::vec3d(std::numeric_limits<float>::lowest()),
+        scm::math::vec3d(std::numeric_limits<float>::max()));
       
     }
 
@@ -841,6 +841,7 @@ int main( int argc, char** argv )
 
   std::cout << "Applying texture space transformation..." << std::endl;
 
+  // TODO: this loop is way too slow
   for (auto& area_rect : area_rects) {
     std::cout << "Area " << area_rect.id_ << " min: (" << area_rect.min_.x << ", " << area_rect.min_.y << ")" << std::endl;
     std::cout << "Area " << area_rect.id_ << " max: (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
@@ -852,6 +853,7 @@ int main( int argc, char** argv )
      
       //apply this transformation to the new parameterization
 
+      // TODO: can be parallel!
       for (auto tri_id : chart.all_triangle_ids_) {
         if ((chart.rect_.flipped_ && !area_rect.flipped_) || (area_rect.flipped_ && !chart.rect_.flipped_)) {
           float temp = chart.all_triangle_new_coods_[tri_id][0].x;
