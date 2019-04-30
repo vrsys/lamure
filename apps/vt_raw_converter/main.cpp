@@ -31,14 +31,14 @@ struct pixel {
 };
 
 struct image {
-  int w, h;
+  unsigned int w, h;
   pixel *data;  
 };
 
 image image_;
 
 //read image
-pixel *read_img(char const *name, int *width, int *height, float scale) {
+pixel *read_img(char const *name, unsigned int *width, unsigned int *height, float scale) {
     FIBITMAP *image;
     int i,j,pnum;
     RGBQUAD aPixel;
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
   std::cout << "loading image..." << std::endl;
   std::cout << "Path: " << input_file << std::endl;
 
-  int width, height;
+  unsigned int width, height;
   auto data = read_img(input_file.c_str(), &width, &height, scale);
 
   std::cout << "width: "  << width << ", " 

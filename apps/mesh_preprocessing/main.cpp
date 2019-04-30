@@ -87,10 +87,12 @@ std::shared_ptr<texture_t> load_image(const std::string& filepath) {
 }
 
 
-void save_image(std::string filename, std::vector<uint8_t> image, int width, int height) {
-  int tex_error = lodepng::encode(filename, image, width, height);
+void save_image(std::string& filename, std::vector<uint8_t>& image, int width, int height) {
+  unsigned int tex_error = lodepng::encode(filename, image, width, height);
+
   if (tex_error) {
-    std::cout << "ERROR: unable to save image file " << filename << std::endl;
+    std::cerr << "ERROR: unable to save image file " << filename << std::endl;
+    std::cerr << tex_error << ": " << lodepng_error_text(tex_error) << std::endl;
   }
   std::cout << "Saved image to " << filename << std::endl;
 
@@ -418,7 +420,7 @@ int main( int argc, char** argv )
     std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
   }
 
-  
+#ifdef ADHOC_PARSER
   std::vector<lamure::mesh::triangle_t> all_triangles;
   std::vector<std::string> all_materials;
 
@@ -491,6 +493,16 @@ int main( int argc, char** argv )
   }
 
   all_triangles.clear();
+#endif
+
+#ifdef VCG_PARSER
+  std::vector<indexed_triangle_t> all_indexed_triangles;
+  std::map<uint32_t, texture_info> texture_info_map;
+
+  std::cout << "Loading obj from " << obj_filename << "..." << std::endl;
+
+  Utils::load_obj(obj_filename, all_indexed_triangles, texture_info_map);
+#endif
 
   std::cout << "Building kd tree..." << std::endl;
   std::shared_ptr<kdtree_t> kdtree = std::make_shared<kdtree_t>(all_indexed_triangles, num_tris_per_node_kdtree);
