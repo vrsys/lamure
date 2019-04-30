@@ -18,10 +18,10 @@ GRID_RES=30 #initial resolution
 COST_THRESHOLD=0.05 # max cost
 
 # BVH hierarchy creation
-TRI_BUDGET=8192
+TRI_BUDGET=16000
 
 #maximum output texture size
-MAX_FINAL_TEX_SIZE=8192
+MAX_FINAL_TEX_SIZE=65536
 
 #dilations
 NUM_DILATIONS=4096

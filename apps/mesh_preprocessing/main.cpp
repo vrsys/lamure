@@ -523,6 +523,7 @@ int main( int argc, char** argv )
     const auto& node = kdtree->get_nodes()[node_id];
     const auto& indices = kdtree->get_indices();
 
+
     BoundingBoxLimits limits;
     limits.min = scm::math::vec3f(std::numeric_limits<float>::max());
     limits.max = scm::math::vec3f(std::numeric_limits<float>::lowest());
@@ -1188,46 +1189,50 @@ int main( int argc, char** argv )
 
     frame_buffers_[0]->disable();
 
-    std::cout << "Dilating view " << view_id << "..." << std::endl;
-
-    uint32_t num_dilations = render_to_texture_width_/2;
-  
     uint32_t current_framebuffer = 0;
-    for (int i = 0; i < num_dilations; ++i) {
+    if (true) {
 
-      current_framebuffer = (i+1)%2;
+      std::cout << "Dilating view " << view_id << "..." << std::endl;
 
-      frame_buffers_[current_framebuffer]->enable();
-      int current_texture = 0;
-      if (current_framebuffer == 0) {
-        current_texture = 1;
+      uint32_t num_dilations = render_to_texture_width_/2;
+    
+      for (int i = 0; i < num_dilations; ++i) {
+
+        current_framebuffer = (i+1)%2;
+
+        frame_buffers_[current_framebuffer]->enable();
+        int current_texture = 0;
+        if (current_framebuffer == 0) {
+          current_texture = 1;
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glUseProgram(dilation_shader_program_);
+        glBindBuffer(GL_ARRAY_BUFFER, dilation_vertex_buffer_);
+
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2*sizeof(float)));
+
+        int slot = 0;
+        glUniform1i(glGetUniformLocation(dilation_shader_program_, "image"), slot);
+        glUniform1i(glGetUniformLocation(dilation_shader_program_, "image_width"), render_to_texture_width_);
+        glUniform1i(glGetUniformLocation(dilation_shader_program_, "image_height"), render_to_texture_height_);
+        glActiveTexture(GL_TEXTURE0 + slot);
+        frame_buffers_[current_texture]->bind_texture(slot);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glUseProgram(0);
+
+        frame_buffers_[current_texture]->unbind_texture(slot);
+
+        frame_buffers_[current_framebuffer]->disable();
       }
 
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-      glUseProgram(dilation_shader_program_);
-      glBindBuffer(GL_ARRAY_BUFFER, dilation_vertex_buffer_);
-
-      glEnableVertexAttribArray(0);
-      glEnableVertexAttribArray(1);
-      glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
-      glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2*sizeof(float)));
-
-      int slot = 0;
-      glUniform1i(glGetUniformLocation(dilation_shader_program_, "image"), slot);
-      glUniform1i(glGetUniformLocation(dilation_shader_program_, "image_width"), render_to_texture_width_);
-      glUniform1i(glGetUniformLocation(dilation_shader_program_, "image_height"), render_to_texture_height_);
-      glActiveTexture(GL_TEXTURE0 + slot);
-      frame_buffers_[current_texture]->bind_texture(slot);
-
-      glDrawArrays(GL_TRIANGLES, 0, 6);
-
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-      glUseProgram(0);
-
-      frame_buffers_[current_texture]->unbind_texture(slot);
-
-      frame_buffers_[current_framebuffer]->disable();
     }
 
     std::vector<uint8_t> pixels;
@@ -1237,6 +1242,8 @@ int main( int argc, char** argv )
   } //end for each viewport
 
   std::cout << "Producing final texture..." << std::endl;
+
+#if 0
 
   //concatenate all area images to one big texture
   uint32_t num_bytes_per_pixel = 4;
@@ -1258,6 +1265,32 @@ int main( int argc, char** argv )
 
   std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_texture.png";
   save_image(image_filename, final_texture, full_texture_width_, full_texture_height_);
+
+#else 
+  std::ofstream raw_file;
+  std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) 
+    + "_rgba_w" + std::to_string(full_texture_width_) + "_h" + std::to_string(full_texture_height_) 
+    + ".data";
+  raw_file.open(image_filename, std::ios::out | std::ios::trunc | std::ios::binary);
+
+  //concatenate all area images to one big texture
+  uint32_t num_bytes_per_pixel = 4;
+  
+  uint32_t num_lookups_per_line = full_texture_width_ / render_to_texture_width_;
+
+  for (uint32_t y = 0; y < full_texture_height_; ++y) { //for each line
+    for (uint32_t tex_x = 0; tex_x < num_lookups_per_line; ++tex_x) {
+      uint32_t tex_y = y / render_to_texture_height_;
+      uint32_t tex_id = tex_y * num_lookups_per_line + tex_x;
+      char* src = ((char*)&area_images[tex_id][0]) + (y % render_to_texture_height_)*render_to_texture_width_*num_bytes_per_pixel; //+ 0;
+
+      raw_file.write(src, render_to_texture_width_*num_bytes_per_pixel);
+    }
+  }
+
+  raw_file.close();
+
+#endif
 
 #if 0
 

@@ -40,13 +40,10 @@ struct UVFace : public CGAL::HalfedgeDS_face_base<Refs> {
 
 template <class Refs, class T, class P>
 struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
-// struct XtndVertex : public CGAL::HalfedgeDS_vertex_max_base_with_id<Refs, T, P>  {
     
   using CGAL::HalfedgeDS_vertex_base<Refs, T, P>::HalfedgeDS_vertex_base;
-  // using CGAL::HalfedgeDS_vertex_max_base_with_id<Refs, T, P>::HalfedgeDS_vertex_max_base_with_id;
 
   uint32_t id;
-  // uint32_t& id() {return &id;}
 
 };
 
@@ -72,7 +69,6 @@ struct XtndPoint : public Traits::Point_3 {
 
   static bool float_safe_equals(Point p1, Point p2){
     double eps = std::numeric_limits<double>::epsilon();
-    // double eps = 0.0000001;
 
     if (std::abs(p1.x() - p2.x()) > eps
       || std::abs(p1.y() - p2.y()) > eps
@@ -92,7 +88,6 @@ struct Custom_items : public CGAL::Polyhedron_items_with_id_3 {
     template <class Refs, class Traits>
     struct Vertex_wrapper {
       typedef XtndVertex<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
-      // typedef CGA:HalfedgeDS_vertex_max_base_with_id<Refs,CGAL::Tag_true, XtndPoint<Traits>> Vertex;
     };
 
     template <class Refs, class Traits>

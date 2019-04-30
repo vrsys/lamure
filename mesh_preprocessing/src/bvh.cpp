@@ -267,8 +267,7 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles) {
     };
 
 
-    uint32_t num_threads = 24;
-
+    uint32_t num_threads = std::min((size_t)24, nodes_todo.size());
     lamure::mesh::parallel_for(num_threads, nodes_todo.size(), lambda_simplify);
   }
 
@@ -411,24 +410,6 @@ void bvh::simplify(
     i++;
   }
 
-  // // try to merge edges - still hunting cause of seg fault 
-  // if (!contrain_edges) {
-  //   int target_merges = combined_set.size() / 2;
-  //   edge_merger::merge_similar_border_edges(polyMesh, combined_set, target_merges);
-
-  //   //rebuild polymesh
-  //   polyMesh.clear();
-  //   std::cout << "Rebuilding mesh with " << combined_set.size() << " triangles \n";
-  //   lamure::mesh::polyhedron_builder<lamure::mesh::HalfedgeDS> rebuilder(combined_set);
-  //   polyMesh.delegate(rebuilder);
-
-  //   if (polyMesh.is_valid(false) && CGAL::is_triangle_mesh(polyMesh)){
-  //   }
-  //   else {
-  //     std::cout << "WARNING! Rebuilt triangle mesh invalid! (No triangles saved for this node)" << std::endl;
-  //     return;
-  //   }
-  // }
 
   //simplification with borders constrained
   Border_is_constrained_edge_map bem(polyMesh);
@@ -447,9 +428,6 @@ void bvh::simplify(
               ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
                                 .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
                                 .edge_is_constrained_map(bem)
-                                // .get_placement(Placement(bem))
-                                // .get_cost (SMS::Edge_length_cost <Polyhedron>())
-                                // .get_placement(SMS::Midpoint_placement<Polyhedron>())
                                 .get_cost (SMS::LindstromTurk_cost<Polyhedron>())
                                 .get_placement(Placement())
              );
@@ -471,32 +449,8 @@ void bvh::simplify(
                                  .get_placement(SMS::Midpoint_placement<Polyhedron>())
               );
 
-    //with only border constraints
-    // SMS::Count_ratio_stop_predicate<Polyhedron> stop(0);
-    // SMS::edge_collapse
-    //      (polyMesh
-    //      ,stop
-    //       ,CGAL::parameters::vertex_index_map(get(CGAL::vertex_external_index,polyMesh)) 
-    //                         .halfedge_index_map  (get(CGAL::halfedge_external_index  ,polyMesh))
-    //                         .edge_is_constrained_map(bem)
-    //                         // .get_placement(Placement(bem))
-    //                         // .get_cost (SMS::Edge_length_cost <Polyhedron>())
-    //                         // .get_placement(SMS::Midpoint_placement<Polyhedron>())
-    //                         .get_cost (SMS::LindstromTurk_cost<Polyhedron>())
-    //                         .get_placement(Placement())
-    //      );
-
   }
 
-/*
-  //print to obj if required
-  std::string filename = "data/nodes/simplified_node_" + std::to_string(print_mesh_to_obj_id) + ".obj";
-  std::ofstream ofs(filename);
-  OBJ_printer::print_polyhedron(ofs,polyMesh,filename);
-  ofs.close();
-  std::cout << "simplified node " << print_mesh_to_obj_id << " was written to " << filename << std::endl;
-  */
-  
 
   output_tris.clear();
 
@@ -526,9 +480,6 @@ void bvh::simplify(
         tri.v0_.tex_ = vec2f(
           c->vertex()->point().get_u(),
           c->vertex()->point().get_v());
-        // tri.v0_.tex_ = vec2f(
-        //   c->facet()->t_coords[0].x(),
-        //   c->facet()->t_coords[0].y());
         break;
 
         case 1: 
@@ -539,9 +490,6 @@ void bvh::simplify(
         tri.v1_.tex_ = vec2f(
           c->vertex()->point().get_u(),
           c->vertex()->point().get_v());
-        // tri.v1_.tex_ = vec2f(
-        //   c->facet()->t_coords[1].x(),
-        //   c->facet()->t_coords[1].y());
         break;
 
         case 2: 
@@ -552,9 +500,6 @@ void bvh::simplify(
         tri.v2_.tex_ = vec2f(
           c->vertex()->point().get_u(),
           c->vertex()->point().get_v());
-        // tri.v2_.tex_ = vec2f(
-        //   c->facet()->t_coords[2].x(),
-        //   c->facet()->t_coords[2].y());
         break;
 
         default: break;
@@ -588,24 +533,6 @@ void bvh::write_lod_file(const std::string& lod_filename) {
     {
       lamure::mesh::triangle_t new_tri = t.get_basic_triangle(); 
 
-#if 0
-//for testing - replace tex coords with colour derived from chart id
-      // double u = std::min(1.0, t.chart_id / 50.0);
-      // double v = 0.5 * (t.chart_id % 3);
-
-//for testing - replace tex coords with colour derived from texture id
-      double u = std::min(1.0, t.tex_id / 10.0);
-      double v = 0.5 * (t.tex_id % 3);
-
-
-      new_tri.v0_.tex_.x = u;
-      new_tri.v0_.tex_.y = v;
-      new_tri.v1_.tex_.x = u;
-      new_tri.v1_.tex_.y = v;
-      new_tri.v2_.tex_.x = u;
-      new_tri.v2_.tex_.y = v;
-#endif
-
       tris.push_back(new_tri);
     }
     simple_triangles_map[node_tri_list.first] = tris;
@@ -624,74 +551,9 @@ void bvh::write_lod_file(const std::string& lod_filename) {
 
 
   lod->close();
-/*
-  std::cout << "lod file written with " << num_nodes_ << " nodes\n";
-  std::cout << primitives_per_node_ <<  " vertices per node\n";
-  std::cout << "vertex size = " << sizeof(vertex) << std::endl;
-  std::cout << "completed lod file" << std::endl;
-
-// debug 
-  std::string of_path = "data/tex_hunting/on_mesh_hier_save2.txt";
-  std::ofstream debug_ofs(of_path);
-  int total_tris = 0;
-  for (auto& tri_list : simple_triangles_map){
-    for (auto& tri : tri_list.second){
-      total_tris++;
-      debug_ofs << tri.v0_.tex_ << std::endl;
-      debug_ofs << tri.v1_.tex_ << std::endl;
-      debug_ofs << tri.v2_.tex_ << std::endl;
-    }
-  }
-  debug_ofs << "total tris: " << total_tris << std::endl;
-  std::cout << "debug file written to " << of_path << std::endl;
-  debug_ofs.close();
-*/
-}
-
-void bvh::write_chart_lod_file(const std::string& chart_lod_filename) {
-
-  std::ofstream ofs( chart_lod_filename );
-
-  //for each node
-  for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
-
-    //debug only:
-    if (triangles_map_[node_id].size() != (primitives_per_node_ / 3))
-    {
-      std::cout << "WARNING: [bvh::write_chart_lod_file] triangle list size for node " << node_id << " is " << triangles_map_[node_id].size() << ", does not equal primitives_per_node_: " << primitives_per_node_ << std::endl;
-    }
-
-    //for each triangle in node
-    for(Triangle_Chartid& t : triangles_map_[node_id]){
-
-      //write chart id to file
-      ofs << t.chart_id << " ";
-    }
-  }
-
-  ofs.close();
-
-  // std::cout << "chart lod file written to: " << chart_lod_filename << std::endl;
 
 }
 
-void bvh::write_lod_tex_id_file(const std::string& lod_tex_id_filename) {
-
-  std::ofstream ofs( lod_tex_id_filename );
-
-  //for each node
-  for (uint32_t node_id = 0; node_id < num_nodes_; ++node_id) {
-    //for each triangle in node
-    for(Triangle_Chartid& t : triangles_map_[node_id]){
-      //write chart id to file
-      ofs << t.tex_id << " ";
-    }
-  }
-  ofs.close();
-
-  // std::cout << " lod tex id file written to: " << lod_tex_id_filename << std::endl;
-
-}
 
 
 }

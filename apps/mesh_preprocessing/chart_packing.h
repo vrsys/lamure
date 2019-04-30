@@ -4,6 +4,8 @@
 
 #include <lamure/mesh/triangle_chartid.h>
 
+#include <scm/core.h>
+
 struct rectangle {
   scm::math::vec2f min_;
   scm::math::vec2f max_;
@@ -160,15 +162,82 @@ static scm::math::vec2f project_to_plane(
 
 }
 
+static void rotate_chart(chart& chart, const std::vector<lamure::mesh::Triangle_Chartid>& triangles) {
+/*
+  //compute min rect
+  float optimal_angle = 0;
+
+  float width = chart.rect_.max_.x - chart.rect_.min_.x;
+  float height = chart.rect_.max_.y - chart.rect_.min_.y;
+  float min_dim = width < height ? width : height;
+  float min_area = width * height;
+
+
+  for (float angle = 0; angle < 180.f; angle += 4.f) {
+    
+    rectangle candidate{
+      scm::math::vec2f(std::numeric_limits<float>::max()), 
+      scm::math::vec2f(std::numeric_limits<float>::lowest()), 
+      chart.rect_.id_, false};
+
+    float theta = 0.01745329f * angle;
+
+    scm::math::mat4f rot = scm::math::make_rotation(angle, scm::math::vec3f(0, 0, 1));
+
+    for (auto tri_id : chart.all_triangle_ids_) {
+      for (uint32_t i = 0; i < 3; ++i) {
+        auto tex = scm::math::vec4f(chart.all_triangle_new_coods_[tri_id][i].x,
+          chart.all_triangle_new_coods_[tri_id][i].y, 0, 1);
+        auto coord = rot * tex;
+
+        candidate.min_.x = std::min(candidate.min_.x, coord.x);
+        candidate.min_.y = std::min(candidate.min_.y, coord.y);
+
+        candidate.max_.x = std::max(candidate.max_.x, coord.x);
+        candidate.max_.y = std::max(candidate.max_.y, coord.y);
+
+      }
+    }
+
+    width = candidate.max_.x - candidate.min_.x;
+    height = candidate.max_.y - candidate.min_.y;
+    float dim = width < height ? width : height;
+    float area = width * height;
+
+    //if (area < min_area) {
+    if (dim < min_dim) {
+      optimal_angle = angle;
+      min_area = area;
+      min_dim = dim;
+      chart.rect_ = candidate;
+    }
+
+  }
+
+  //apply best transform
+  float theta = 0.01745329f * optimal_angle;
+
+  scm::math::mat4f rot = scm::math::make_rotation(optimal_angle, scm::math::vec3f(0, 0, 1));
+
+  for (auto tri_id : chart.all_triangle_ids_) {
+    for (uint32_t i = 0; i < 3; ++i) {
+      auto tex = scm::math::vec4f(chart.all_triangle_new_coods_[tri_id][i].x,
+        chart.all_triangle_new_coods_[tri_id][i].y, 0, 1);
+      auto coord = rot * tex;
+      chart.all_triangle_new_coods_[tri_id][i] = coord;
+    }
+  }
+
+*/
+
+}
+
 static void project_charts(std::map<uint32_t, chart>& chart_map, const std::vector<lamure::mesh::Triangle_Chartid>& triangles) {
 
-  //keep a record of the largest chart edge
+  //keep a record of the longest chart edge
   float largest_max = 0.f;
 
-  //std::cout << "Projecting to plane:\n";
-
   //iterate all charts
-  //for (uint32_t chart_id = 0; chart_id < charts.size(); ++chart_id) {
   for (auto& chart_it : chart_map) {
   	uint32_t chart_id = chart_it.first;
     chart& chart = chart_it.second;
@@ -231,20 +300,20 @@ static void project_charts(std::map<uint32_t, chart>& chart_map, const std::vect
     for (auto tri_id : chart.all_triangle_ids_) {
       auto& tri = triangles[tri_id];
 
-      chart.rect_.min_.x = std::min(chart.rect_.min_.x, chart.all_triangle_new_coods_[tri_id][0].x);
-      chart.rect_.min_.y = std::min(chart.rect_.min_.y, chart.all_triangle_new_coods_[tri_id][0].y);
-      chart.rect_.min_.x = std::min(chart.rect_.min_.x, chart.all_triangle_new_coods_[tri_id][1].x);
-      chart.rect_.min_.y = std::min(chart.rect_.min_.y, chart.all_triangle_new_coods_[tri_id][1].y);
-      chart.rect_.min_.x = std::min(chart.rect_.min_.x, chart.all_triangle_new_coods_[tri_id][2].x);
-      chart.rect_.min_.y = std::min(chart.rect_.min_.y, chart.all_triangle_new_coods_[tri_id][2].y);
+      for (uint32_t i = 0; i < 3; ++i) {
 
-      chart.rect_.max_.x = std::max(chart.rect_.max_.x, chart.all_triangle_new_coods_[tri_id][0].x);
-      chart.rect_.max_.y = std::max(chart.rect_.max_.y, chart.all_triangle_new_coods_[tri_id][0].y);
-      chart.rect_.max_.x = std::max(chart.rect_.max_.x, chart.all_triangle_new_coods_[tri_id][1].x);
-      chart.rect_.max_.y = std::max(chart.rect_.max_.y, chart.all_triangle_new_coods_[tri_id][1].y);
-      chart.rect_.max_.x = std::max(chart.rect_.max_.x, chart.all_triangle_new_coods_[tri_id][2].x);
-      chart.rect_.max_.y = std::max(chart.rect_.max_.y, chart.all_triangle_new_coods_[tri_id][2].y);
+        chart.rect_.min_.x = std::min(chart.rect_.min_.x, chart.all_triangle_new_coods_[tri_id][i].x);
+        chart.rect_.min_.y = std::min(chart.rect_.min_.y, chart.all_triangle_new_coods_[tri_id][i].y);
+
+        chart.rect_.max_.x = std::max(chart.rect_.max_.x, chart.all_triangle_new_coods_[tri_id][i].x);
+        chart.rect_.max_.y = std::max(chart.rect_.max_.y, chart.all_triangle_new_coods_[tri_id][i].y);
+
+      }
     }
+
+    //TODO save chart rotation angle per chart, then apply to interior LODs
+    //rotate_chart(chart, triangles);
+
 
     //record offset for rendering from texture
     chart.projection.tex_coord_offset = chart.rect_.min_;
@@ -271,16 +340,13 @@ static void project_charts(std::map<uint32_t, chart>& chart_map, const std::vect
 
   }
 
-  //std::cout << "largest max: " << largest_max << std::endl;
-
-  //std::cout << "Normalize charts but keep relative size:\n";
+  //Normalize charts but keep relative size
   for (auto& chart_it : chart_map) {
     chart& chart = chart_it.second;
     int32_t chart_id = chart_it.first;
     
     // normalize largest_max to 1
     for (auto tri_id : chart.all_triangle_ids_) {
-      //triangle& tri = triangles[tri_id];
 
       chart.all_triangle_new_coods_[tri_id][0] /= largest_max;
       chart.all_triangle_new_coods_[tri_id][1] /= largest_max;
@@ -291,8 +357,6 @@ static void project_charts(std::map<uint32_t, chart>& chart_map, const std::vect
     chart.rect_.max_ /= largest_max;
     chart.projection.largest_max = largest_max;
 
-    //std::cout << "chart " << chart_id << " rect min: " << chart.rect_.min_.x << ", " << chart.rect_.min_.y << std::endl;
-    //std::cout << "chart " << chart_id << " rect max: " << chart.rect_.max_.x << ", " << chart.rect_.max_.y << std::endl;
   }
 
 
@@ -335,12 +399,10 @@ rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
 
   //calc the size of the texture
   float dim = sqrtf(input.size());
-  //std::cout << dim << " -> " << std::ceil(dim) << std::endl;
   dim = std::ceil(dim);
 
 
   //get the largest rect
-  //std::cout << input[0].max_.y-input[0].min_.y << std::endl;
   float max_height = input[0].max_.y-input[0].min_.y;
 
   //compute the average height of all rects
@@ -364,12 +426,10 @@ rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
     exit(1);
   }
 
-  //heuristically take half
+  //heuristically adjust texture size
   dim *= scale_factor;
   
   rectangle texture{scm::math::vec2f(0,0), scm::math::vec2f((int)((dim)*average_height),(int)((dim)*average_height)),0};
-
-  //std::cout << "texture size: " << texture.max_.x << " x " << texture.max_.y<< std::endl;
 
   //pack the rects
   int offset_x =0;
@@ -394,10 +454,7 @@ rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
   
     if (rect.max_.y > texture.max_.y)
     {
-      //std::cout << "rect max y = " << rect.max_.y << ", tex max y = " << texture.max_.y << std::endl;
-      //std::cout << "Rect " << i << "(" << rect.max_.x - rect.min_.x << " x " << rect.max_.y - rect.min_.y << ") doesn't fit on texture\n";
-
-      //recursive call until all rectangles fir on texture
+      //recursive call until all rectangles fit on texture
       //std::cout << "Repacking....(" << scale_factor*1.1 << ")\n";
       rectangle rtn_tex_rect = pack(starting_rects, scale_factor * 1.1);
       input = starting_rects;
@@ -408,42 +465,6 @@ rectangle pack(std::vector<rectangle>& input, float scale_factor = 0.9f) {
 
   }
 
-  //done
-
-#if 0
-
-  //print the result
-  //for (int i=0; i< input.size(); i++){
-  //  auto& rect = input[i];
-  //  std::cout<< "rectangle["<< rect.id_<< "]"<<"  min("<< rect.min_.x<<" ,"<< rect.min_.y<<")"<<std::endl;
-  //  std::cout<< "rectangle["<< rect.id_<< "]"<<"  max("<< rect.max_.x<< " ,"<<rect.max_.y<<")"<<std::endl;
-  //}
-
-  //output test image for rectangle packing
-  std::vector<unsigned char> image;
-  image.resize(texture.max_.x*texture.max_.y*4);
-  for (int i = 0; i < image.size()/4; ++i) {
-    image[i*4+0] = 255;
-    image[i*4+1] = 0;
-    image[i*4+2] = 0;
-    image[i*4+3] = 255;
-  }
-  for (int i=0; i< input.size(); i++){
-    auto& rect = input[i];
-    int color = (255/input.size())*rect.id_;
-    for (int x = rect.min_.x; x < rect.max_.x; x++) {
-      for (int y = rect.min_.y; y < rect.max_.y; ++y) {
-        int pixel = (x + texture.max_.x*y) * 4;
-           image[pixel] = (char)color;
-           image[pixel+1] = (char)color;
-           image[pixel+2] = (char)color;
-           image[pixel+3] = (char)255;
-      }
-    }
-  }
-  save_image("data/mesh_prepro_texture.png", image, texture.max_.x, texture.max_.y);
-
-#endif
 
   return texture;
 }
