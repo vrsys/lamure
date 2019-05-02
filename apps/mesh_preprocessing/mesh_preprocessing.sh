@@ -14,7 +14,6 @@ LAMURE_DIR=~/svn/lamure/install/bin/
 ############################
 # charting:
 KDTREE_TRI_BUDGET=24000
-GRID_RES=0 #initial resolution
 COST_THRESHOLD=0.05 # max cost
 
 # BVH hierarchy creation
@@ -48,7 +47,7 @@ OBJPATH="$SRC_OBJ"
 echo "Running chart creation with file $SRC_OBJ"
 echo "-----------------------------------------"
 
-time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -cc $GRID_RES -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE
+time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE
 
 
 

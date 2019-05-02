@@ -343,7 +343,6 @@ int main( int argc, char** argv )
 
     std::cout << "Optional: -co specifies cost threshold (=infinite)" << std::endl;
 
-    std::cout << "Optional: -cc specifies cell resolution for grid splitting, along longest axis. When 0, no cell splitting is used. (=0)" << std::endl;
     std::cout << "Optional: -ct specifies threshold for grid chart splitting by normal variance (=0.001)" << std::endl;
 
     std::cout << "Optional: -debug writes charts to obj file, as colours that override texture coordinates (=false)" << std::endl;
@@ -392,9 +391,6 @@ int main( int argc, char** argv )
   CLUSTER_SETTINGS cluster_settings (e_fit_cf, e_ori_cf, e_shape_cf, cst);
 
   int cell_resolution = 0;
-  if (Utils::cmdOptionExists(argv, argv+argc, "-cc")) {
-    cell_resolution = atoi(Utils::getCmdOption(argv, argv + argc, "-cc"));
-  }
 
   if (Utils::cmdOptionExists(argv, argv+argc, "-debug")) {
     cluster_settings.write_charts_as_textures = true;
@@ -419,8 +415,6 @@ int main( int argc, char** argv )
     multi_tex_limit = atoi(Utils::getCmdOption(argv, argv+argc, "-multi-max"));
     std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
   }
-
-  std::cout << "CELL RES " << cell_resolution << std::endl;
 
 #ifdef ADHOC_PARSER
   std::vector<lamure::mesh::triangle_t> all_triangles;
@@ -587,10 +581,11 @@ int main( int argc, char** argv )
     std::map<uint32_t, uint32_t> chart_id_map;
     uint32_t active_charts;
 
+/*
     if (cell_resolution > 0) { //do grid clustering
       active_charts = GridClusterCreator::create_grid_clusters(polyMesh, chart_id_map, limits, cell_resolution, cluster_settings);
     }
-
+*/
     active_charts = ParallelClusterCreator::create_charts(chart_id_map, polyMesh, cost_threshold, chart_threshold, cluster_settings);
     //std::cout << "After creating chart clusters: " << active_charts << std::endl;
 
@@ -916,8 +911,6 @@ int main( int argc, char** argv )
 
         if (chart.all_triangle_ids_.find(tri_id) != chart.all_triangle_ids_.end()) {
 
-          uint32_t not_found_mask = 0;
-
           //create per-texture render list
           if (tri.tex_id != -1) {
 
@@ -932,7 +925,6 @@ int main( int argc, char** argv )
             else if (scm::math::length(tri.v0_.pos_-old_tri.v2_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v2_.tex_;
             else { 
               std::cout << "WARNING: tex coord v0 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
-              not_found_mask |= 1;
             }
 
             if (scm::math::length(tri.v1_.pos_-old_tri.v0_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v0_.tex_;
@@ -940,7 +932,6 @@ int main( int argc, char** argv )
             else if (scm::math::length(tri.v1_.pos_-old_tri.v2_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v2_.tex_;
             else { 
               std::cout << "WARNING: tex coord v1 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
-              not_found_mask |= 2;
             }
 
             if (scm::math::length(tri.v2_.pos_-old_tri.v0_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v0_.tex_;
@@ -948,23 +939,21 @@ int main( int argc, char** argv )
             else if (scm::math::length(tri.v2_.pos_-old_tri.v2_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v2_.tex_;
             else { 
               std::cout << "WARNING: tex coord v2 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
-              not_found_mask |= 4;
             }
 
-            if (not_found_mask == 0) {
-              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
-              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
-              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});
-            }
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});
+
           }
           else {
             ++num_dropped_tris;
           }
 
           //override texture coordinates
-          if (not_found_mask & 1 == 0) tri.v0_.tex_ = chart.all_triangle_new_coods_[tri_id][0];
-          if (not_found_mask & 2 == 0) tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
-          if (not_found_mask & 4 == 0) tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
+          tri.v0_.tex_ = chart.all_triangle_new_coods_[tri_id][0];
+          tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
+          tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
 
           tri.v0_.tex_.y = 1.0-tri.v0_.tex_.y; //flip y coord
           tri.v1_.tex_.y = 1.0-tri.v1_.tex_.y;
@@ -1274,55 +1263,59 @@ int main( int argc, char** argv )
   } //end for each viewport
 
   std::cout << "Producing final texture..." << std::endl;
-
-#if 1
-
-  //concatenate all area images to one big texture
-  uint32_t num_bytes_per_pixel = 4;
-  std::vector<uint8_t> final_texture(full_texture_width_*full_texture_height_*num_bytes_per_pixel);
   
-  uint32_t num_lookups_per_line = full_texture_width_ / render_to_texture_width_;
+  bool want_raw_file = false;
+  if (!want_raw_file) {
 
-  for (uint32_t y = 0; y < full_texture_height_; ++y) { //for each line
-    for (uint32_t tex_x = 0; tex_x < num_lookups_per_line; ++tex_x) {
-      void* dst = ((void*)&final_texture[0]) + y*full_texture_width_*num_bytes_per_pixel + tex_x*render_to_texture_width_*num_bytes_per_pixel;
-      uint32_t tex_y = y / render_to_texture_height_;
-      uint32_t tex_id = tex_y * num_lookups_per_line + tex_x;
-      void* src = ((void*)&area_images[tex_id][0]) + (y % render_to_texture_height_)*render_to_texture_width_*num_bytes_per_pixel; //+ 0;
+    //concatenate all area images to one big texture
+    uint32_t num_bytes_per_pixel = 4;
+    std::vector<uint8_t> final_texture(full_texture_width_*full_texture_height_*num_bytes_per_pixel);
+    
+    uint32_t num_lookups_per_line = full_texture_width_ / render_to_texture_width_;
 
-      memcpy(dst, src, render_to_texture_width_*num_bytes_per_pixel);
+    for (uint32_t y = 0; y < full_texture_height_; ++y) { //for each line
+      for (uint32_t tex_x = 0; tex_x < num_lookups_per_line; ++tex_x) {
+        void* dst = ((void*)&final_texture[0]) + y*full_texture_width_*num_bytes_per_pixel + tex_x*render_to_texture_width_*num_bytes_per_pixel;
+        uint32_t tex_y = y / render_to_texture_height_;
+        uint32_t tex_id = tex_y * num_lookups_per_line + tex_x;
+        void* src = ((void*)&area_images[tex_id][0]) + (y % render_to_texture_height_)*render_to_texture_width_*num_bytes_per_pixel; //+ 0;
+
+        memcpy(dst, src, render_to_texture_width_*num_bytes_per_pixel);
+      }
     }
+
+    std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_texture.png";
+    save_image(image_filename, final_texture, full_texture_width_, full_texture_height_);
+
+  }
+  else {
+
+    std::ofstream raw_file;
+    std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) 
+      + "_rgba_w" + std::to_string(full_texture_width_) + "_h" + std::to_string(full_texture_height_) 
+      + ".data";
+    raw_file.open(image_filename, std::ios::out | std::ios::trunc | std::ios::binary);
+
+    //concatenate all area images to one big texture
+    uint32_t num_bytes_per_pixel = 4;
+    
+    uint32_t num_lookups_per_line = full_texture_width_ / render_to_texture_width_;
+
+    for (uint32_t y = 0; y < full_texture_height_; ++y) { //for each line
+      for (uint32_t tex_x = 0; tex_x < num_lookups_per_line; ++tex_x) {
+        uint32_t tex_y = y / render_to_texture_height_;
+        uint32_t tex_id = tex_y * num_lookups_per_line + tex_x;
+        char* src = ((char*)&area_images[tex_id][0]) + (y % render_to_texture_height_)*render_to_texture_width_*num_bytes_per_pixel; //+ 0;
+
+        raw_file.write(src, render_to_texture_width_*num_bytes_per_pixel);
+      }
+    }
+
+    raw_file.close();
+
   }
 
 
-  std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) + "_texture.png";
-  save_image(image_filename, final_texture, full_texture_width_, full_texture_height_);
-
-#else 
-  std::ofstream raw_file;
-  std::string image_filename = bvh_filename.substr(0, bvh_filename.size()-4) 
-    + "_rgba_w" + std::to_string(full_texture_width_) + "_h" + std::to_string(full_texture_height_) 
-    + ".data";
-  raw_file.open(image_filename, std::ios::out | std::ios::trunc | std::ios::binary);
-
-  //concatenate all area images to one big texture
-  uint32_t num_bytes_per_pixel = 4;
-  
-  uint32_t num_lookups_per_line = full_texture_width_ / render_to_texture_width_;
-
-  for (uint32_t y = 0; y < full_texture_height_; ++y) { //for each line
-    for (uint32_t tex_x = 0; tex_x < num_lookups_per_line; ++tex_x) {
-      uint32_t tex_y = y / render_to_texture_height_;
-      uint32_t tex_id = tex_y * num_lookups_per_line + tex_x;
-      char* src = ((char*)&area_images[tex_id][0]) + (y % render_to_texture_height_)*render_to_texture_width_*num_bytes_per_pixel; //+ 0;
-
-      raw_file.write(src, render_to_texture_width_*num_bytes_per_pixel);
-    }
-  }
-
-  raw_file.close();
-
-#endif
 
 #if 0
 
