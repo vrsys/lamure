@@ -7,7 +7,7 @@
 template<class HDS>
 class polyhedron_builder : public CGAL::Modifier_base<HDS> {
 private:
-    std::vector<indexed_triangle_t> indexed_triangles;
+    const std::vector<indexed_triangle_t>& indexed_triangles;
 
 public:
 
@@ -79,8 +79,11 @@ public:
                        vertices_indexed[tris_indexed[i + 2]].get_v());
           fh->add_tex_coords(tc1, tc2, tc3);
 
-          fh->tex_id = indexed_triangles[i].tex_idx_;
-          fh->tri_id = indexed_triangles[i].tri_id_;
+          fh->tex_id = indexed_triangles[i / 3].tex_idx_;
+          fh->tri_id = indexed_triangles[i / 3].tri_id_;
+
+          if (fh->tri_id < 0 || fh->tri_id > 10000000)
+          std::cout << "encountered " << fh->tri_id << std::endl;
 
           B.add_vertex_to_facet(tris_indexed[i]);
           B.add_vertex_to_facet(tris_indexed[i + 1]);

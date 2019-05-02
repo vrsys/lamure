@@ -23,7 +23,8 @@ struct BoundingBoxLimits
   scm::math::vec3f max;
 };
 
-#define VCG_PARSER
+//#define VCG_PARSER
+#define ADHOC_PARSER
 
 #ifdef VCG_PARSER
 #include <iostream>

@@ -420,6 +420,8 @@ int main( int argc, char** argv )
     std::cout << "Multi output texture limited to " << multi_tex_limit << std::endl;
   }
 
+  std::cout << "CELL RES " << cell_resolution << std::endl;
+
 #ifdef ADHOC_PARSER
   std::vector<lamure::mesh::triangle_t> all_triangles;
   std::vector<std::string> all_materials;
@@ -662,13 +664,15 @@ int main( int argc, char** argv )
       tri.chart_id = per_node_chart_id_map_it.second[fi->id()];
       tri.tex_id = fi->tex_id;
       tri.tri_id = fi->tri_id;
-      
-      triangles.push_back(tri);
+
+      //if (tri.tri_id >= 0 && tri.tri_id < all_indexed_triangles.size()) {
+        triangles.push_back(tri);
+      //}
 
  
     }
     ++num_areas;
-       
+  
   }
 
   std::cout << "Creating LOD hierarchy..." << std::endl;
@@ -886,6 +890,7 @@ int main( int argc, char** argv )
 
   //use 2D array to account for different textures (if no textures were found, make sure it has at least one row)
   std::vector<std::vector<blit_vertex_t>> to_upload_per_texture;
+  std::cout << "texture info map size: " << texture_info_map.size() << std::endl;
   to_upload_per_texture.resize(texture_info_map.size());
 
 
@@ -898,15 +903,20 @@ int main( int argc, char** argv )
   for (uint32_t node_id = first_leaf_id; node_id < first_leaf_id+num_leaf_ids; ++node_id) {
 
     auto& tris = bvh->get_triangles(node_id);
+
     for (int local_tri_id = 0; local_tri_id < tris.size(); ++local_tri_id) {
       int32_t tri_id = ((node_id-first_leaf_id)*(bvh->get_primitives_per_node()/3))+local_tri_id;
 
       auto& tri = tris[local_tri_id];
+      //std::cout << "tri id << " << tri.tri_id << " area id " << tri.area_id << " chart id " << tri.chart_id << std::endl;
+
       if (tri.chart_id != -1 && tri.get_area() > 0.f) {
 
         auto& chart = chart_map[tri.area_id][tri.chart_id];
 
         if (chart.all_triangle_ids_.find(tri_id) != chart.all_triangle_ids_.end()) {
+
+          uint32_t not_found_mask = 0;
 
           //create per-texture render list
           if (tri.tex_id != -1) {
@@ -920,30 +930,41 @@ int main( int argc, char** argv )
             if (scm::math::length(tri.v0_.pos_-old_tri.v0_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v0_.tex_;
             else if (scm::math::length(tri.v0_.pos_-old_tri.v1_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v1_.tex_;
             else if (scm::math::length(tri.v0_.pos_-old_tri.v2_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v2_.tex_;
-            else std::cout << "WARNING: tex coord v0 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+            else { 
+              std::cout << "WARNING: tex coord v0 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+              not_found_mask |= 1;
+            }
 
             if (scm::math::length(tri.v1_.pos_-old_tri.v0_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v0_.tex_;
             else if (scm::math::length(tri.v1_.pos_-old_tri.v1_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v1_.tex_;
             else if (scm::math::length(tri.v1_.pos_-old_tri.v2_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v2_.tex_;
-            else std::cout << "WARNING: tex coord v1 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+            else { 
+              std::cout << "WARNING: tex coord v1 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+              not_found_mask |= 2;
+            }
 
             if (scm::math::length(tri.v2_.pos_-old_tri.v0_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v0_.tex_;
             else if (scm::math::length(tri.v2_.pos_-old_tri.v1_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v1_.tex_;
             else if (scm::math::length(tri.v2_.pos_-old_tri.v2_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v2_.tex_;
-            else std::cout << "WARNING: tex coord v2 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+            else { 
+              std::cout << "WARNING: tex coord v2 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
+              not_found_mask |= 4;
+            }
 
-            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
-            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
-            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});
+            if (not_found_mask == 0) {
+              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
+              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
+              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});
+            }
           }
           else {
             ++num_dropped_tris;
           }
 
           //override texture coordinates
-          tri.v0_.tex_ = chart.all_triangle_new_coods_[tri_id][0];
-          tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
-          tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
+          if (not_found_mask & 1 == 0) tri.v0_.tex_ = chart.all_triangle_new_coods_[tri_id][0];
+          if (not_found_mask & 2 == 0) tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
+          if (not_found_mask & 4 == 0) tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
 
           tri.v0_.tex_.y = 1.0-tri.v0_.tex_.y; //flip y coord
           tri.v1_.tex_.y = 1.0-tri.v1_.tex_.y;
@@ -1254,7 +1275,7 @@ int main( int argc, char** argv )
 
   std::cout << "Producing final texture..." << std::endl;
 
-#if 0
+#if 1
 
   //concatenate all area images to one big texture
   uint32_t num_bytes_per_pixel = 4;
