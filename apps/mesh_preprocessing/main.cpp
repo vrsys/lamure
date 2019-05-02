@@ -916,8 +916,6 @@ int main( int argc, char** argv )
 
         if (chart.all_triangle_ids_.find(tri_id) != chart.all_triangle_ids_.end()) {
 
-          uint32_t not_found_mask = 0;
-
           //create per-texture render list
           if (tri.tex_id != -1) {
 
@@ -932,7 +930,6 @@ int main( int argc, char** argv )
             else if (scm::math::length(tri.v0_.pos_-old_tri.v2_.pos_) < epsilon) tri.v0_.tex_ = old_tri.v2_.tex_;
             else { 
               std::cout << "WARNING: tex coord v0 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
-              not_found_mask |= 1;
             }
 
             if (scm::math::length(tri.v1_.pos_-old_tri.v0_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v0_.tex_;
@@ -940,7 +937,6 @@ int main( int argc, char** argv )
             else if (scm::math::length(tri.v1_.pos_-old_tri.v2_.pos_) < epsilon) tri.v1_.tex_ = old_tri.v2_.tex_;
             else { 
               std::cout << "WARNING: tex coord v1 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
-              not_found_mask |= 2;
             }
 
             if (scm::math::length(tri.v2_.pos_-old_tri.v0_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v0_.tex_;
@@ -948,23 +944,21 @@ int main( int argc, char** argv )
             else if (scm::math::length(tri.v2_.pos_-old_tri.v2_.pos_) < epsilon) tri.v2_.tex_ = old_tri.v2_.tex_;
             else { 
               std::cout << "WARNING: tex coord v2 could not be disambiguated (" << (int)(tri.tri_id == old_tri.tri_id_) << ")" << std::endl;
-              not_found_mask |= 4;
             }
 
-            if (not_found_mask == 0) {
-              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
-              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
-              to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});
-            }
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v0_.tex_, chart.all_triangle_new_coods_[tri_id][0]});
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v1_.tex_, chart.all_triangle_new_coods_[tri_id][1]});
+            to_upload_per_texture[tri.tex_id].push_back(blit_vertex_t{tri.v2_.tex_, chart.all_triangle_new_coods_[tri_id][2]});
+
           }
           else {
             ++num_dropped_tris;
           }
 
           //override texture coordinates
-          if (not_found_mask & 1 == 0) tri.v0_.tex_ = chart.all_triangle_new_coods_[tri_id][0];
-          if (not_found_mask & 2 == 0) tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
-          if (not_found_mask & 4 == 0) tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
+          tri.v0_.tex_ = chart.all_triangle_new_coods_[tri_id][0];
+          tri.v1_.tex_ = chart.all_triangle_new_coods_[tri_id][1];
+          tri.v2_.tex_ = chart.all_triangle_new_coods_[tri_id][2];
 
           tri.v0_.tex_.y = 1.0-tri.v0_.tex_.y; //flip y coord
           tri.v1_.tex_.y = 1.0-tri.v1_.tex_.y;
