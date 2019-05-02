@@ -611,7 +611,8 @@ int main( int argc, char** argv )
     //create index
     typedef CGAL::Inverse_index<Polyhedron::Vertex_const_iterator> Index;
     Index index(polyMesh.vertices_begin(), polyMesh.vertices_end());
- 
+
+#ifdef RECOMPUTE_NORMALS
     //compute normals
     std::map<face_descriptor,Vector> fnormals;
     std::map<vertex_descriptor,Vector> vnormals;
@@ -620,6 +621,7 @@ int main( int argc, char** argv )
       boost::make_assoc_property_map(fnormals));
 
     uint32_t nml_id = 0;
+#endif
 
     //extract triangle soup
     for(Polyhedron::Facet_const_iterator fi = polyMesh.facets_begin(); fi != polyMesh.facets_end(); ++fi) {
@@ -637,28 +639,22 @@ int main( int argc, char** argv )
       std::advance(it, index[Polyhedron::Vertex_const_iterator(hc->vertex())]);
       tri.v0_.pos_ = scm::math::vec3f(it->point().x(), it->point().y(), it->point().z());
       tri.v0_.tex_ = scm::math::vec2f(fi->t_coords[0].x(), fi->t_coords[0].y());
-      auto nml_it = vertices(polyMesh).begin();
-      std::advance(nml_it, nml_id);
-      tri.v0_.nml_ = scm::math::vec3f(vnormals[*nml_it].x(), vnormals[*nml_it].y(), vnormals[*nml_it].z());
-      ++hc; ++nml_it;
+      tri.v0_.nml_ = scm::math::vec3f(it->point().normal.x(), it->point().normal.y(), it->point().normal.z());
+      ++hc;
 
       it = polyMesh.vertices_begin();
       std::advance(it, index[Polyhedron::Vertex_const_iterator(hc->vertex())]);
       tri.v1_.pos_ = scm::math::vec3f(it->point().x(), it->point().y(), it->point().z());
       tri.v1_.tex_ = scm::math::vec2f(fi->t_coords[1].x(), fi->t_coords[1].y());
-      nml_it = vertices(polyMesh).begin();
-      std::advance(nml_it, nml_id);
-      tri.v1_.nml_ = scm::math::vec3f(vnormals[*nml_it].x(), vnormals[*nml_it].y(), vnormals[*nml_it].z());
-      ++hc; ++nml_it;
+      tri.v1_.nml_ = scm::math::vec3f(it->point().normal.x(), it->point().normal.y(), it->point().normal.z());
+      ++hc;
 
       it = polyMesh.vertices_begin();
       std::advance(it, index[Polyhedron::Vertex_const_iterator(hc->vertex())]);
       tri.v2_.pos_ = scm::math::vec3f(it->point().x(), it->point().y(), it->point().z());
       tri.v2_.tex_ = scm::math::vec2f(fi->t_coords[2].x(), fi->t_coords[2].y());
-      nml_it = vertices(polyMesh).begin();
-      std::advance(nml_it, nml_id);
-      tri.v2_.nml_ = scm::math::vec3f(vnormals[*nml_it].x(), vnormals[*nml_it].y(), vnormals[*nml_it].z());
-      ++hc; ++nml_it;
+      tri.v2_.nml_ = scm::math::vec3f(it->point().normal.x(), it->point().normal.y(), it->point().normal.z());
+      ++hc;
 
 
       tri.area_id = num_areas;
@@ -714,15 +710,16 @@ int main( int argc, char** argv )
     for (auto& it : chart_map[area_id]) {
 
       it.second.rect_ = rectangle{
-        scm::math::vec2f(std::numeric_limits<float>::lowest()),
         scm::math::vec2f(std::numeric_limits<float>::max()),
+        scm::math::vec2f(std::numeric_limits<float>::lowest()),
         it.first,
         false};
 
       it.second.box_ = lamure::bounding_box(
-        scm::math::vec3d(std::numeric_limits<float>::lowest()),
-        scm::math::vec3d(std::numeric_limits<float>::max()));
-      
+        scm::math::vec3d(std::numeric_limits<float>::max()),
+        scm::math::vec3d(std::numeric_limits<float>::lowest())
+      );
+
     }
 
   }

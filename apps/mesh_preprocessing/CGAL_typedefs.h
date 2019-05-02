@@ -51,37 +51,48 @@ struct XtndVertex : public CGAL::HalfedgeDS_vertex_base<Refs, T, P>  {
 };
 
 //extended point class
-template <class Traits>
-struct XtndPoint : public Traits::Point_3 {
+template<class Traits>
+struct XtndPoint: public Traits::Point_3
+{
 
-  XtndPoint() : Traits::Point_3() {}
+    XtndPoint()
+        : Traits::Point_3()
+    {}
 
-  XtndPoint(double x, double y, double z) 
-    : Traits::Point_3(x, y, z),
-      texCoord(0.0, 0.0) {}
+    XtndPoint(double x, double y, double z)
+        : Traits::Point_3(x, y, z),
+          texCoord(0.0, 0.0)
+    {}
 
-  XtndPoint(double x, double y, double z, double u, double v ) 
-  : Traits::Point_3(x, y, z),
-    texCoord(u, v) {}
+    XtndPoint(double x, double y, double z, double u, double v, double n_x, double n_y, double n_z)
+        : Traits::Point_3(x, y, z),
+          texCoord(u, v), normal(n_x, n_y, n_z)
+    {}
 
-  typedef typename Traits::Vector_2 TexCoord;
-  TexCoord texCoord;
+    typedef typename Traits::Vector_2 TexCoord;
+    TexCoord texCoord;
 
-  double get_u () const {return texCoord.hx();}
-  double get_v () const {return texCoord.hy();}
+    typedef typename Traits::Vector_3 Normal;
+    Normal normal;
 
-  static bool float_safe_equals(Point p1, Point p2){
-    double eps = std::numeric_limits<double>::epsilon();
-    // double eps = 0.0000001;
+    double get_u() const
+    { return texCoord.hx(); }
+    double get_v() const
+    { return texCoord.hy(); }
 
-    if (std::abs(p1.x() - p2.x()) > eps
-      || std::abs(p1.y() - p2.y()) > eps
-      || std::abs(p1.z() - p2.z()) > eps)
+    static bool float_safe_equals(Point p1, Point p2)
     {
-      return false;
+        double eps = std::numeric_limits<double>::epsilon();
+        // double eps = 0.0000001;
+
+        if (std::abs(p1.x() - p2.x()) > eps
+            || std::abs(p1.y() - p2.y()) > eps
+            || std::abs(p1.z() - p2.z()) > eps)
+        {
+            return false;
+        }
+        return true;
     }
-    return true;
-  }
 
 };
 
