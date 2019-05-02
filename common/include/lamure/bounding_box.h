@@ -25,9 +25,9 @@ public:
                                     const vec3r& max)
                             : min_(min), max_(max) {
 
-                                assert((min_[0] <= max_[0]) && 
+                                /*assert((min_[0] <= max_[0]) &&
                                        (min_[1] <= max_[1]) && 
-                                       (min_[2] <= max_[2]));
+                                       (min_[2] <= max_[2]));*/
                             }
 
     const vec3r         min() const { return min_; }
