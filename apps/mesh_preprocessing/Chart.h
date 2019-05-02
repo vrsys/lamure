@@ -49,9 +49,6 @@ struct Chart
     P_quad = createPQuad(f);
     R_quad = ErrorQuadric(Utils::normalise(normal));
 
-
-
-    // std::cout << "Chart " << id << ", normal: " << normal << std::endl;
   }
 
   //create a combined quadric for 3 vertices of a face
@@ -184,10 +181,6 @@ struct Chart
     Vector avg_normal = Utils::normalise((c1.avg_normal * c1.area) + (c2.avg_normal * c2.area));
     double angle_between_vectors = acos(avg_normal * plane_normal);
 
-    // std::cout << "avg normal: " << avg_normal.x() << ", " << avg_normal.y() << ", " << avg_normal.z() << std::endl;
-    // std::cout << "angle between = " << angle_between_vectors << std::endl;
-
-
     if (angle_between_vectors > (0.5 * M_PI))
     {
       fit_plane_normal = -plane_normal;
@@ -195,11 +188,6 @@ struct Chart
     else {
       fit_plane_normal = plane_normal;
     }
-
-    //test - scale by area of new plane
-    // e_fit /= (c1.area + c2.area);
-
-    // std::cout << "plane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
 
     return e_fit;
 
@@ -231,12 +219,6 @@ struct Chart
 
 	  plane_normal = Vector(eigenvectors[0][min_loc], eigenvectors[1][min_loc], eigenvectors[2][min_loc]);
 
-	  // std::cout << "plane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
-	  // std::cout << "ev1: " << eigenvectors[0][0] << ", " << eigenvectors[1][0] << ", " << eigenvectors[2][0] << std::endl;
-	  // std::cout << "ev2: " << eigenvectors[0][1] << ", " << eigenvectors[1][1] << ", " << eigenvectors[2][1] << std::endl;
-	  // std::cout << "ev3: " << eigenvectors[0][2] << ", " << eigenvectors[1][2] << ", " << eigenvectors[2][2] << std::endl;
-
-
 	  //d is described specified as:  d =  (-nT*b)   /     c
 	  scalar_offset = (-plane_normal * eq.b) / eq.c;
 
@@ -262,13 +244,7 @@ struct Chart
     return shape_penalty;
   }
 
-    // as defined in Garland et al 2001
   static double get_irregularity(double perimeter, double area){
-
-    // std::cout << "P = " << perimeter << ", area = " << area << std::endl;
-    // std::cout << "Irreg = " << (perimeter*perimeter) / (4 * M_PI * area) << std::endl;
-
-
     return (perimeter*perimeter) / (4 * M_PI * area);
   }
 
@@ -301,20 +277,13 @@ struct Chart
   //TODO update to make use of list of which faces are inner faces
   static double get_chart_perimeter(Chart& c1, Chart& c2){
 
-    // std::cout << "perimeter of charts [" << c1.id << ", " << c2.id << "]" << std::endl;
-
     double perimeter = c1.perimeter + c2.perimeter;
 
-    // std::cout << "combined P before processing: " << c1.perimeter << " + " << c2.perimeter << " = " << perimeter << std::endl;
-
     //for each face in c1
-    // for (auto& c1_face : c1.facets){
     for (uint32_t f1 = 0; f1 < c1.facets.size(); ++f1)
     {
       if (!(c1.facets_are_inner_facets[f1]))
       {
-
-        // std::cout << "for face " << c1_face.id() << std::endl;
 
         //for each edge
         Halfedge_facet_circulator he = c1.facets[f1]->facet_begin();
@@ -326,8 +295,6 @@ struct Chart
           //check this edge is not a border
           if ( !(he->is_border()) && !(he->opposite()->is_border()) ){
             int32_t adj_face_id = he->opposite()->facet()->id();
-
-            // std::cout << "found adjacent face: " << adj_face_id << std::endl;
 
             // for (auto& c2_face : c2.facets){
             for (uint32_t f2 = 0; f2 < c2.facets.size(); ++f2){
@@ -349,8 +316,6 @@ struct Chart
 
       }
     }
-
-    // std::cout << "after = " << perimeter << std::endl;
 
     return perimeter;
 
@@ -376,15 +341,11 @@ struct Chart
         //if this edge is shared with another face
         if (!fc->is_border() && !(fc->opposite()->is_border()) )
         {
-          // std::cout << "non border edge" << std::endl;
-
           //search for face in this chart
           uint32_t nbr_id = fc->opposite()->facet()->id();
           bool found_nbr = false;
           for (uint32_t j = 0; j < facets.size(); ++j)
           {
-            // std::cout << "finding nbr" << std::endl;
-
             if (nbr_id == facets[j]->id())
             {
               found_nbr = true;
@@ -451,51 +412,21 @@ struct Chart
 
   static double get_direction_error(Chart& c1, Chart& c2, Vector &plane_normal){
 
-    // std::cout << "----\nplane normal: " << plane_normal.x() << ", " << plane_normal.y() << ", " << plane_normal.z() << std::endl;
-
-    // std::cout << "eq1:\n" << c1.R_quad.print() << "\neq2:\n" << c2.R_quad.print() << std::endl;
-    // std::cout << "area 1: " << c1.area << " area 2: " << c2.area << std::endl;
-
     ErrorQuadric combinedQuad = (c1.R_quad*c1.area) + (c2.R_quad*c2.area);
 
-    // std::cout << "combined:\n" << combinedQuad.print() << std::endl;
-
     double e_direction = evaluate_direction_quadric(combinedQuad,plane_normal);
-
-    if (std::isnan(e_direction))
-    {
-      // std::cout << "E direction = " << e_direction <<  ", Plane normal = " << plane_normal << std::endl;
-      // std::cout << "r quad 1 = \n" << c1.R_quad.print() << std::endl;
-      // std::cout << "r quad 1 = \n" << c2.R_quad.print() << std::endl;
-    }
-    // std::cout << "E direction = " << e_direction << std::endl;
 
     return e_direction / (c1.area + c2.area);
   }
 
   static double evaluate_direction_quadric(ErrorQuadric &eq, Vector &plane_normal){
 
-
-    // std::cout << "Term 1 = " << (plane_normal * (eq.A * plane_normal)) << std::endl;
-    // std::cout << "Term 2 = " <<(2 * (eq.b  * plane_normal))<< std::endl;
-    // std::cout << "Term 3 = " << eq.c << std::endl;
-
     return (plane_normal * (eq.A * plane_normal))
                         + (2 * (eq.b  * plane_normal))
                         + eq.c;
   }
 
-  // static double accum_direction_error_in_chart(Chart& chart, const Vector plane_normal){
-  //   double accum_error = 0;
-  //   for (uint32_t i = 0; i < chart.facets.size(); i++){
-  //     double error = 1.0 - (plane_normal * chart.normals[i]);
-  //     accum_error += (error * chart.areas[i]);
-  //   }
-  //   return accum_error;
-  // }
-
   static double edge_length(Halfedge_facet_circulator he){
-    // const Point& p = he->opposite()->vertex()->point();
     const Point& p = he->prev()->vertex()->point();
     const Point& q = he->vertex()->point();
 

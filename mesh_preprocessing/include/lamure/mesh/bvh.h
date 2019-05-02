@@ -24,8 +24,6 @@ public:
   ~bvh();
 
   void write_lod_file(const std::string& lod_filename);
-  void write_chart_lod_file(const std::string& chart_lod_filename);
-  void write_lod_tex_id_file(const std::string& lod_tex_id_filename);
 
   std::vector<Triangle_Chartid>& get_triangles(uint32_t node_id) {
     return triangles_map_[node_id];

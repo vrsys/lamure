@@ -12,43 +12,7 @@ private:
 public:
 
 
-  polyhedron_builder( std::vector<indexed_triangle_t> &triangles) : indexed_triangles(triangles) {
-
-     /*for (uint32_t tri_idx = 0; tri_idx < _triangles.size(); ++tri_idx) {
-       vertices.push_back(_triangles[tri_idx].v0_.pos_.x);
-       vertices.push_back(_triangles[tri_idx].v0_.pos_.y);
-       vertices.push_back(_triangles[tri_idx].v0_.pos_.z);
-
-       vertices.push_back(_triangles[tri_idx].v1_.pos_.x);
-       vertices.push_back(_triangles[tri_idx].v1_.pos_.y);
-       vertices.push_back(_triangles[tri_idx].v1_.pos_.z);
-
-       vertices.push_back(_triangles[tri_idx].v2_.pos_.x);
-       vertices.push_back(_triangles[tri_idx].v2_.pos_.y);
-       vertices.push_back(_triangles[tri_idx].v2_.pos_.z);
-
-       tris.push_back(tri_idx*3);
-       tris.push_back(tri_idx*3+1);
-       tris.push_back(tri_idx*3+2);
-
-       tcoords.push_back(_triangles[tri_idx].v0_.tex_.x);
-       tcoords.push_back(_triangles[tri_idx].v0_.tex_.y);
-
-       tcoords.push_back(_triangles[tri_idx].v1_.tex_.x);
-       tcoords.push_back(_triangles[tri_idx].v1_.tex_.y);
-
-       tcoords.push_back(_triangles[tri_idx].v2_.tex_.x);
-       tcoords.push_back(_triangles[tri_idx].v2_.tex_.y);
-
-       tindices.push_back(tri_idx*3);
-       tindices.push_back(tri_idx*3+1);
-       tindices.push_back(tri_idx*3+2);
-
-       face_textures.push_back(_triangles[tri_idx].tex_idx_);
-       tri_ids.push_back(_triangles[tri_idx].tri_id_);
-     }*/
-
-  }
+  polyhedron_builder( std::vector<indexed_triangle_t> &triangles) : indexed_triangles(triangles) {}
 
     // Returns false for error
     void operator()(HDS &hds)
@@ -132,12 +96,10 @@ public:
         }
       }
 
-      // finish up the surface
-      // std::cout << "Polyhedron builder: ending surface\n";
-      // std::cout << "Discarded " << degenerate_faces << " degenerate faces\n";
-      // std::cout << "---------------------------------------------\n";
-      B.end_surface();
-    }
+    // finish up the surface
+    B.end_surface();
+
+  }
 
   bool is_face_degenerate(Point v1, Point v2, Point v3){
     if (v1 == v2 || v1 == v3 || v2 == v3)

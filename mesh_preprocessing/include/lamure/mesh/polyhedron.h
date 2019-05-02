@@ -40,11 +40,6 @@ namespace lamure {
 namespace mesh {
 
 
-/*
-
-CUSTOM DATA STRUCTURES ===================================================
-
-*/
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef Kernel::Vector_2 TexCoord;
@@ -59,7 +54,6 @@ struct ChartFace : public CGAL::HalfedgeDS_face_base<Refs> {
   int area_id;
   int tri_id;
 
-  // typedef typename Traits::Vector_2 TexCoord;
   TexCoord t_coords[3];
 
   //save tex coords, assume order is the same as the added order of vertices
@@ -107,7 +101,6 @@ struct XtndPoint : public Traits::Point_3 {
   : Traits::Point_3(x, y, z),
     texCoord(u, v) {}
 
-  // typedef typename Traits::Vector_2 TexCoord;
   TexCoord texCoord;
 
   double get_u () const {return texCoord.hx();}
@@ -297,19 +290,7 @@ public:
       }
     }
 
-    // assign_vertex_candidates(input_triangles, tris, vertices);
   }
-
-  // void assign_vertex_candidates(std::vector<lamure::mesh::Triangle_Chartid>& input_triangles,
-  //                                   std::vector<uint32_t>& tris,
-  //                                   std::vector<XtndPoint<Kernel> >& vertices) {
-  //   //for all vertex indices of triangles
-  //   for (int i = 0; i < tris.size(); i++){
-
-  //     //get uv and edge directions from that input_triangle
-  //     auto& 
-  //   }
-  // }
 
 };
 
