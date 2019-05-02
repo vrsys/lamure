@@ -23,8 +23,8 @@ struct BoundingBoxLimits
   scm::math::vec3f max;
 };
 
-//#define VCG_PARSER
-#define ADHOC_PARSER
+#define VCG_PARSER
+//#define ADHOC_PARSER
 
 #ifdef VCG_PARSER
 #include <iostream>
@@ -56,18 +56,23 @@ using namespace vcg;
 
 class CVertex;
 class CFace;
+class CEdge;
 
-struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType>
+struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType, Use<CEdge>::AsEdgeType>
 {
 };
 
-class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::TexCoord2f, vertex::BitFlags, vertex::Normal3f>
+class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::VEAdj, vertex::Coord3f, vertex::TexCoord2f, vertex::Mark, vertex::BitFlags, vertex::Normal3f>
 {
 };
 class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::VertexRef, face::Normal3f, face::WedgeTexCoord2f, face::BitFlags, face::Mark>
 {
 };
-class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
+class CEdge : public Edge<MyTypes, edge::EEAdj, edge::VEAdj>
+{
+};
+
+class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>, vector<CEdge>>
 {
 };
 #endif
