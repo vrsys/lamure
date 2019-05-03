@@ -37,6 +37,7 @@ struct BoundingBoxLimits
 using namespace std;
 
 #include <vcg/complex/complex.h>
+#include <vcg/complex/algorithms/update/texture.h>
 #include <vcg/complex/algorithms/update/topology.h>
 #include <vcg/complex/algorithms/update/bounding.h>
 #include <vcg/complex/algorithms/update/flag.h>
@@ -50,29 +51,23 @@ using namespace std;
 #include <vcg/space/index/grid_static_ptr.h>
 #include <wrap/ply/plylib.h>
 #include <wrap/io_trimesh/import_obj.h>
-#include <wrap/io_trimesh/io_material.h>
 
 using namespace vcg;
 
 class CVertex;
 class CFace;
-class CEdge;
 
-struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType, Use<CEdge>::AsEdgeType>
-{
-};
-
-class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::VEAdj, vertex::Coord3f, vertex::TexCoord2f, vertex::Mark, vertex::BitFlags, vertex::Normal3f>
-{
-};
-class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::VertexRef, face::Normal3f, face::WedgeTexCoord2f, face::BitFlags, face::Mark>
-{
-};
-class CEdge : public Edge<MyTypes, edge::EEAdj, edge::VEAdj>
+struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType>
 {
 };
 
-class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>, vector<CEdge>>
+class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::Mark, vertex::TexCoord2f, vertex::BitFlags, vertex::Normal3f>
+{
+};
+class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::WedgeTexCoord2f, face::Normal3f, face::VertexRef, face::BitFlags, face::Mark>
+{
+};
+class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
 {
 };
 #endif
@@ -298,23 +293,25 @@ struct Utils
 		triangles.clear();
 		texture_info_map.clear();
 
-		CMesh m;
+        CMesh m;
 
-		int load_mask;
-		bool mask_load_success = vcg::tri::io::ImporterOBJ<CMesh>::LoadMask(file.c_str(), load_mask);
-		int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, file.c_str(), load_mask);
+        int load_mask;
+        vcg::tri::io::ImporterOBJ<CMesh>::Info oi;
+        bool mask_load_success = vcg::tri::io::ImporterOBJ<CMesh>::LoadMask(file.c_str(), oi);
+        load_mask = oi.mask;
+        int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, file.c_str(), load_mask);
 
-		if (!mask_load_success || load_error != vcg::tri::io::ImporterOBJ<CMesh>::OBJError::E_NOERROR)
-		{
-			if (vcg::tri::io::ImporterOBJ<CMesh>::ErrorCritical(load_error))
-			{
-				throw std::runtime_error("Failed to load the model: " + std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)));
-			}
-			else
-			{
-				std::cerr << std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
-			}
-		}
+        if (!mask_load_success || load_error != vcg::tri::io::ImporterOBJ<CMesh>::OBJError::E_NOERROR)
+        {
+            if (vcg::tri::io::ImporterOBJ<CMesh>::ErrorCritical(load_error))
+            {
+                throw std::runtime_error("Failed to load the model: " + std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)));
+            }
+            else
+            {
+                std::cerr << std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
+            }
+        }
 
 		triangles.resize((size_t) m.FN());
 
