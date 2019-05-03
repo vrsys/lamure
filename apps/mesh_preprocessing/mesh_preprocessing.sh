@@ -7,7 +7,7 @@
 #LAMURE_DIR=$(basename -- "$SCRIPT_CALL")
 
 #alternatively, use user specified directory:
-LAMURE_DIR=~/svn/lamure/install/bin/
+LAMURE_DIR=~/Desktop/vrsys/lamure/install/bin/
 
 ############################
 # user settings

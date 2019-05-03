@@ -125,6 +125,7 @@ struct Utils
 			);
 	}
 
+#ifdef ADHOC_PARSER
 	// load obj function from vt_obj_loader/Utils.h
 	static BoundingBoxLimits load_obj(const std::string& filename,
 	              std::vector<double> &v,
@@ -225,7 +226,6 @@ struct Utils
 
 	}
 
-#ifdef ADHOC_PARSER
 	static bool load_mtl(const std::string& mtl_filename, std::map<std::string, std::pair<std::string, int> >& material_map) {
 
 	    //parse .mtl file
@@ -295,15 +295,14 @@ struct Utils
 
         CMesh m;
 
-        int load_mask;
         vcg::tri::io::ImporterOBJ<CMesh>::Info oi;
         bool mask_load_success = vcg::tri::io::ImporterOBJ<CMesh>::LoadMask(file.c_str(), oi);
-        load_mask = oi.mask;
-        int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, file.c_str(), load_mask);
+        const int load_mask = oi.mask;
+        int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, file.c_str(), oi);
 
-        if (!mask_load_success || load_error != vcg::tri::io::ImporterOBJ<CMesh>::OBJError::E_NOERROR)
+        if(!mask_load_success || load_error != vcg::tri::io::ImporterOBJ<CMesh>::OBJError::E_NOERROR)
         {
-            if (vcg::tri::io::ImporterOBJ<CMesh>::ErrorCritical(load_error))
+            if(vcg::tri::io::ImporterOBJ<CMesh>::ErrorCritical(load_error))
             {
                 throw std::runtime_error("Failed to load the model: " + std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)));
             }
@@ -312,6 +311,9 @@ struct Utils
                 std::cerr << std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
             }
         }
+
+        vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
+        vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
 		triangles.resize((size_t) m.FN());
 
@@ -329,14 +331,14 @@ struct Utils
 			memcpy(&triangles[i].v1_.nml_.data_array[0], &v_1->N()[0], sizeof(float) * 3);
 			memcpy(&triangles[i].v2_.nml_.data_array[0], &v_2->N()[0], sizeof(float) * 3);
 
-			triangles[i].v0_.tex_.x = v_0->T().U();
-			triangles[i].v0_.tex_.y = v_0->T().V();
+			triangles[i].v0_.tex_.x = m.face[i].WT(0).U();
+			triangles[i].v0_.tex_.y = m.face[i].WT(0).V();
 
-			triangles[i].v1_.tex_.x = v_1->T().U();
-			triangles[i].v1_.tex_.y = v_1->T().V();
+			triangles[i].v1_.tex_.x = m.face[i].WT(1).U();
+			triangles[i].v1_.tex_.y = m.face[i].WT(1).V();
 
-			triangles[i].v2_.tex_.x = v_2->T().U();
-			triangles[i].v2_.tex_.y = v_2->T().V();
+			triangles[i].v2_.tex_.x = m.face[i].WT(2).U();
+			triangles[i].v2_.tex_.y = m.face[i].WT(2).V();
 
 			triangles[i].tri_id_ = (uint32_t) i;
 			triangles[i].tex_idx_ = m.face[i].WT(0).n();
