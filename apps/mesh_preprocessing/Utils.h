@@ -19,8 +19,8 @@
 
 struct BoundingBoxLimits
 {
-  scm::math::vec3f min;
-  scm::math::vec3f max;
+    scm::math::vec3f min;
+    scm::math::vec3f max;
 };
 
 #define VCG_PARSER
@@ -74,224 +74,245 @@ class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
 
 struct Utils
 {
-	static char* getCmdOption(char ** begin, char ** end, const std::string & option) {
-	  char ** itr = std::find(begin, end, option);
-	  if (itr != end && ++itr != end) {
-	      return *itr;
-	  }
-	  return 0;
-	}
+    static char* getCmdOption(char** begin, char** end, const std::string& option)
+    {
+        char** itr = std::find(begin, end, option);
+        if(itr != end && ++itr != end)
+        {
+            return *itr;
+        }
+        return 0;
+    }
 
-	static bool cmdOptionExists(char** begin, char** end, const std::string& option) {
-	  return std::find(begin, end, option) != end;
-	}
+    static bool cmdOptionExists(char** begin, char** end, const std::string& option) { return std::find(begin, end, option) != end; }
 
-	//parses a face string like "f  2//1  8//1  4//1 " into 3 given arrays
-	static void parse_face_string (std::string face_string, int (&index)[3], int (&coord)[3], int (&normal)[3]){
+    // parses a face string like "f  2//1  8//1  4//1 " into 3 given arrays
+    static void parse_face_string(std::string face_string, int (&index)[3], int (&coord)[3], int (&normal)[3])
+    {
+        // split by space into faces
+        std::vector<std::string> faces;
+        boost::algorithm::trim(face_string);
+        boost::algorithm::split(faces, face_string, boost::algorithm::is_any_of(" "), boost::algorithm::token_compress_on);
 
-	  //split by space into faces
-	  std::vector<std::string> faces;
-	  boost::algorithm::trim(face_string);
-	  boost::algorithm::split(faces, face_string, boost::algorithm::is_any_of(" "), boost::algorithm::token_compress_on);
+        for(int i = 0; i < 3; ++i)
+        {
+            // split by / for indices
+            std::vector<std::string> inds;
+            boost::algorithm::split(inds, faces[i], [](char c) { return c == '/'; }, boost::algorithm::token_compress_off);
 
-	  for (int i = 0; i < 3; ++i)
-	  {
-	    //split by / for indices
-	    std::vector<std::string> inds;
-	    boost::algorithm::split(inds, faces[i], [](char c){return c == '/';}, boost::algorithm::token_compress_off);
+            for(int j = 0; j < (int)inds.size(); ++j)
+            {
+                int idx = 0;
+                // parse value from string
+                if(inds[j] != "")
+                {
+                    idx = stoi(inds[j]);
+                }
+                if(j == 0)
+                {
+                    index[i] = idx;
+                }
+                else if(j == 1)
+                {
+                    coord[i] = idx;
+                }
+                else if(j == 2)
+                {
+                    normal[i] = idx;
+                }
+            }
+        }
+    }
 
-	    for (int j = 0; j < (int)inds.size(); ++j)
-	    {
-	      int idx = 0;
-	      //parse value from string
-	      if (inds[j] != ""){
-	        idx = stoi(inds[j]);
-	      }
-	      if (j == 0){index[i] = idx;}
-	      else if (j == 1){coord[i] = idx;}
-	      else if (j == 2){normal[i] = idx;}
+    static Vector normalise(Vector v) { return v / std::sqrt(v.squared_length()); }
 
-	    }
-	  }
-	}
-
-	static Vector normalise(Vector v) {return v / std::sqrt(v.squared_length());}
-
-	static Point midpoint(Point p1, Point p2){
-		return Point(
-			((p1.x() + p2.x()) / 2.0),
-			((p1.y() + p2.y()) / 2.0),
-			((p1.z() + p2.z()) / 2.0)
-			);
-	}
+    static Point midpoint(Point p1, Point p2) { return Point(((p1.x() + p2.x()) / 2.0), ((p1.y() + p2.y()) / 2.0), ((p1.z() + p2.z()) / 2.0)); }
 
 #ifdef ADHOC_PARSER
-	// load obj function from vt_obj_loader/Utils.h
-	static BoundingBoxLimits load_obj(const std::string& filename,
-	              std::vector<double> &v,
-	              std::vector<int> &vindices,
-	              std::vector<double> &t,
-	              std::vector<int> &tindices,
-	              std::vector<std::string> &materials){
+    // load obj function from vt_obj_loader/Utils.h
+    static BoundingBoxLimits
+    load_obj(const std::string& filename, std::vector<double>& v, std::vector<int>& vindices, std::vector<double>& t, std::vector<int>& tindices, std::vector<std::string>& materials)
+    {
+        scm::math::vec3f min_pos(std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), std::numeric_limits<double>::max());
+        scm::math::vec3f max_pos(std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest());
 
-	  scm::math::vec3f min_pos(std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),std::numeric_limits<double>::max());
-	  scm::math::vec3f max_pos(std::numeric_limits<double>::lowest(),std::numeric_limits<double>::lowest(),std::numeric_limits<double>::lowest());
+        FILE* file = fopen(filename.c_str(), "r");
 
-	  FILE *file = fopen(filename.c_str(), "r");
+        if(0 != file)
+        {
+            std::string current_material = "";
 
-	  if (0 != file) {
+            while(true)
+            {
+                char line[128];
+                int32_t l = fscanf(file, "%s", line);
 
+                if(l == EOF)
+                    break;
+                if(strcmp(line, "usemtl") == 0)
+                {
+                    char name[128];
+                    fscanf(file, "%s\n", name);
+                    current_material = std::string(name);
+                    current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
+                    current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
+                    boost::trim(current_material);
+                    std::cout << "obj switch material: " << current_material << std::endl;
+                }
+                else if(strcmp(line, "v") == 0)
+                {
+                    double vx, vy, vz;
+                    fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
+
+                    // scaling for zebra
+                    // vx *= 0.01;
+                    // vy *= 0.01;
+                    // vz *= 0.01;
+
+                    v.insert(v.end(), {vx, vy, vz});
+
+                    // compare to find bounding box limits
+                    if(vx > max_pos.x)
+                    {
+                        max_pos.x = vx;
+                    }
+                    else if(vx < min_pos.x)
+                    {
+                        min_pos.x = vx;
+                    }
+                    if(vy > max_pos.y)
+                    {
+                        max_pos.y = vy;
+                    }
+                    else if(vy < min_pos.y)
+                    {
+                        min_pos.y = vy;
+                    }
+                    if(vz > max_pos.z)
+                    {
+                        max_pos.z = vz;
+                    }
+                    else if(vz < min_pos.z)
+                    {
+                        min_pos.z = vz;
+                    }
+                }
+                // else if (strcmp(line, "vn") == 0) {
+                //   float nx, ny, nz;
+                //   fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
+                //   n.insert(n.end(), {nx,ny, nz});
+                // }
+                else if(strcmp(line, "vt") == 0)
+                {
+                    double tx, ty;
+                    fscanf(file, "%lf %lf\n", &tx, &ty);
+                    t.insert(t.end(), {tx, ty});
+                }
+                else if(strcmp(line, "f") == 0)
+                {
+                    fgets(line, 128, file);
+                    std::string face_string = line;
+                    int index[3];
+                    int coord[3];
+                    int normal[3];
+
+                    parse_face_string(face_string, index, coord, normal);
+
+                    // here all indices are decremented by 1 to fit 0 indexing schemes
+                    vindices.insert(vindices.end(), {index[0] - 1, index[1] - 1, index[2] - 1});
+                    tindices.insert(tindices.end(), {coord[0] - 1, coord[1] - 1, coord[2] - 1});
+                    // nindices.insert(nindices.end(), {normal[0]-1, normal[1]-1, normal[2]-1});
+
+                    materials.push_back(current_material);
+                }
+            }
+
+            fclose(file);
+
+            std::cout << "positions: " << v.size() / 3 << std::endl;
+            // std::cout << "normals: " << n.size()/3 << std::endl;
+            std::cout << "coords: " << t.size() / 2 << std::endl;
+            std::cout << "faces: " << vindices.size() / 3 << std::endl;
+        }
+
+        BoundingBoxLimits bbox;
+        bbox.min = min_pos;
+        bbox.max = max_pos;
+
+        return bbox;
+    }
+
+    static bool load_mtl(const std::string& mtl_filename, std::map<std::string, std::pair<std::string, int>>& material_map)
+    {
+        // parse .mtl file
+        std::cout << "loading .mtl file ..." << std::endl;
+        std::ifstream mtl_file(mtl_filename.c_str());
+        if(!mtl_file.is_open())
+        {
+            std::cout << "could not open .mtl file" << std::endl;
+            return false;
+        }
 
         std::string current_material = "";
+        int material_index = 0;
 
-	    while (true) {
-	      char line[128];
-	      int32_t l = fscanf(file, "%s", line);
+        std::string line;
+        while(std::getline(mtl_file, line))
+        {
+            boost::trim(line);
+            if(line.length() >= 2)
+            {
+                if(line[0] == '#')
+                {
+                    continue;
+                }
+                if(line.substr(0, 6) == "newmtl")
+                {
+                    current_material = line.substr(7);
+                    boost::trim(current_material);
+                    current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
+                    current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
+                    std::cout << "found: " << current_material << std::endl;
+                    material_map[current_material] = std::make_pair("", -1);
+                }
+                else if(line.substr(0, 6) == "map_Kd")
+                {
+                    std::string current_texture = line.substr(7);
+                    current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
+                    current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\r'), current_texture.end());
+                    boost::trim(current_texture);
 
-	      if (l == EOF) break;
-	      if (strcmp(line, "usemtl") == 0) {
-	        char name[128];
-	        fscanf(file, "%s\n", name);
-	        current_material = std::string(name);
-	        current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
-	        current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
-	        boost::trim(current_material);
-	        std::cout << "obj switch material: " << current_material << std::endl;
-	      }
-	      else if (strcmp(line, "v") == 0) {
-	        double vx, vy, vz;
-	        fscanf(file, "%lf %lf %lf\n", &vx, &vy, &vz);
+                    std::cout << current_material << " -> " << current_texture << ", " << material_index << std::endl;
+                    material_map[current_material] = std::make_pair(current_texture, material_index);
+                    ++material_index;
+                }
+            }
+        }
 
-	        	        //scaling for zebra
-	        // vx *= 0.01;
-	        // vy *= 0.01;
-	        // vz *= 0.01;
+        mtl_file.close();
 
-
-	        v.insert(v.end(), {vx, vy, vz});
-
-
-	        //compare to find bounding box limits
-	        if (vx > max_pos.x){max_pos.x = vx;}
-	        else if (vx < min_pos.x){min_pos.x = vx;}
-	        if (vy > max_pos.y){max_pos.y = vy;}
-	        else if (vy < min_pos.y){min_pos.y = vy;}
-	        if (vz > max_pos.z){max_pos.z = vz;}
-	        else if (vz < min_pos.z){min_pos.z = vz;}
-
-
-	      }
-	      // else if (strcmp(line, "vn") == 0) {
-	      //   float nx, ny, nz;
-	      //   fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
-	      //   n.insert(n.end(), {nx,ny, nz});
-	      // }
-	      else if (strcmp(line, "vt") == 0) {
-	        double tx, ty;
-	        fscanf(file, "%lf %lf\n", &tx, &ty);
-	        t.insert(t.end(), {tx, ty});
-	      }
-	      else if (strcmp(line, "f") == 0) {
-	        fgets(line, 128, file);
-	        std::string face_string = line;
-	        int index[3];
-	        int coord[3];
-	        int normal[3];
-
-	        parse_face_string(face_string, index, coord, normal);
-
-	        //here all indices are decremented by 1 to fit 0 indexing schemes
-	        vindices.insert(vindices.end(), {index[0]-1, index[1]-1, index[2]-1});
-	        tindices.insert(tindices.end(), {coord[0]-1, coord[1]-1, coord[2]-1});
-	        // nindices.insert(nindices.end(), {normal[0]-1, normal[1]-1, normal[2]-1});
-
-	        materials.push_back(current_material);
-	      }
-	    }
-
-	    fclose(file);
-
-	    std::cout << "positions: " << v.size()/3 << std::endl;
-	    // std::cout << "normals: " << n.size()/3 << std::endl;
-	    std::cout << "coords: " << t.size()/2 << std::endl;
-	    std::cout << "faces: " << vindices.size()/3 << std::endl;
-
-	  }
-
-	  BoundingBoxLimits bbox;
-	  bbox.min = min_pos;
-	  bbox.max = max_pos;
-
-	  return bbox;
-
-	}
-
-	static bool load_mtl(const std::string& mtl_filename, std::map<std::string, std::pair<std::string, int> >& material_map) {
-
-	    //parse .mtl file
-	    std::cout << "loading .mtl file ..." << std::endl;
-	    std::ifstream mtl_file(mtl_filename.c_str());
-	    if (!mtl_file.is_open()) {
-	      std::cout << "could not open .mtl file" << std::endl;
-	      return false;
-	    }
-
-	    std::string current_material = "";
-	    int material_index = 0;
-
-	    std::string line;
-	    while (std::getline(mtl_file, line)) {
-	      boost::trim(line);
-	      if(line.length() >= 2) {
-	        if (line[0] == '#') {
-	          continue;
-	        }
-	        if (line.substr(0, 6) == "newmtl") {
-	          current_material = line.substr(7);
-	          boost::trim(current_material);
-	          current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
-			  current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
-	          std::cout << "found: " << current_material << std::endl;
-	          material_map[current_material] = std::make_pair("",-1);
-	        }
-	        else if (line.substr(0, 6) == "map_Kd") {
-
-	          std::string current_texture = line.substr(7);
-	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\n'), current_texture.end());
-	          current_texture.erase(std::remove(current_texture.begin(), current_texture.end(), '\r'), current_texture.end());
-	          boost::trim(current_texture);
-
-	          std::cout << current_material << " -> " << current_texture << ", " << material_index << std::endl;
-	          material_map[current_material] =  std::make_pair(current_texture, material_index);
-	          ++material_index;
-	        }
-	      }
-
-	    }
-
-	    mtl_file.close();
-
-	    return true;
-
-	}
+        return true;
+    }
 #endif
 
-	//writes the texture id of each face of a polyhedron into a text file
-	static void write_tex_id_file(Polyhedron &P, std::string tex_file_name) {
-		//write chart file
-	    std::ofstream ocfs( tex_file_name );
-		for( Facet_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
-	        ocfs << fi->tex_id << " ";
-		}
-		ocfs.close();
-		std::cout << "Texture id per face file written to:  " << tex_file_name << std::endl;
-	}
+    // writes the texture id of each face of a polyhedron into a text file
+    static void write_tex_id_file(Polyhedron& P, std::string tex_file_name)
+    {
+        // write chart file
+        std::ofstream ocfs(tex_file_name);
+        for(Facet_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi)
+        {
+            ocfs << fi->tex_id << " ";
+        }
+        ocfs.close();
+        std::cout << "Texture id per face file written to:  " << tex_file_name << std::endl;
+    }
 
 #ifdef VCG_PARSER
-	static void load_obj(const std::string &file, std::vector<indexed_triangle_t>& triangles, std::map<uint32_t, texture_info>& texture_info_map)
-	{
-		triangles.clear();
-		texture_info_map.clear();
+    static void load_obj(const std::string& file, std::vector<indexed_triangle_t>& triangles, std::map<uint32_t, texture_info>& texture_info_map)
+    {
+        triangles.clear();
+        texture_info_map.clear();
 
         CMesh m;
 
@@ -315,202 +336,205 @@ struct Utils
         vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
         vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
-		triangles.resize((size_t) m.FN());
+        triangles.resize((size_t)m.FN());
 
-		for (size_t i = 0; i < m.FN(); i++)
-		{
-			auto v_0 = m.face[i].V(0);
-			auto v_1 = m.face[i].V(1);
-			auto v_2 = m.face[i].V(2);
+        for(size_t i = 0; i < m.FN(); i++)
+        {
+            auto v_0 = m.face[i].V(0);
+            auto v_1 = m.face[i].V(1);
+            auto v_2 = m.face[i].V(2);
 
-			memcpy(&triangles[i].v0_.pos_.data_array[0], &v_0->P()[0], sizeof(float) * 3);
-			memcpy(&triangles[i].v1_.pos_.data_array[0], &v_1->P()[0], sizeof(float) * 3);
-			memcpy(&triangles[i].v2_.pos_.data_array[0], &v_2->P()[0], sizeof(float) * 3);
+            memcpy(&triangles[i].v0_.pos_.data_array[0], &v_0->P()[0], sizeof(float) * 3);
+            memcpy(&triangles[i].v1_.pos_.data_array[0], &v_1->P()[0], sizeof(float) * 3);
+            memcpy(&triangles[i].v2_.pos_.data_array[0], &v_2->P()[0], sizeof(float) * 3);
 
-			memcpy(&triangles[i].v0_.nml_.data_array[0], &v_0->N()[0], sizeof(float) * 3);
-			memcpy(&triangles[i].v1_.nml_.data_array[0], &v_1->N()[0], sizeof(float) * 3);
-			memcpy(&triangles[i].v2_.nml_.data_array[0], &v_2->N()[0], sizeof(float) * 3);
+            memcpy(&triangles[i].v0_.nml_.data_array[0], &v_0->N()[0], sizeof(float) * 3);
+            memcpy(&triangles[i].v1_.nml_.data_array[0], &v_1->N()[0], sizeof(float) * 3);
+            memcpy(&triangles[i].v2_.nml_.data_array[0], &v_2->N()[0], sizeof(float) * 3);
 
-			triangles[i].v0_.tex_.x = m.face[i].WT(0).U();
-			triangles[i].v0_.tex_.y = m.face[i].WT(0).V();
+            triangles[i].v0_.tex_.x = m.face[i].WT(0).U();
+            triangles[i].v0_.tex_.y = m.face[i].WT(0).V();
 
-			triangles[i].v1_.tex_.x = m.face[i].WT(1).U();
-			triangles[i].v1_.tex_.y = m.face[i].WT(1).V();
+            triangles[i].v1_.tex_.x = m.face[i].WT(1).U();
+            triangles[i].v1_.tex_.y = m.face[i].WT(1).V();
 
-			triangles[i].v2_.tex_.x = m.face[i].WT(2).U();
-			triangles[i].v2_.tex_.y = m.face[i].WT(2).V();
+            triangles[i].v2_.tex_.x = m.face[i].WT(2).U();
+            triangles[i].v2_.tex_.y = m.face[i].WT(2).V();
 
-			triangles[i].tri_id_ = (uint32_t) i;
-			triangles[i].tex_idx_ = m.face[i].WT(0).n();
-		}
+            triangles[i].tri_id_ = (uint32_t)i;
+            triangles[i].tex_idx_ = m.face[i].WT(0).n();
+        }
 
-		for (uint32_t i = 0; i < m.textures.size(); i++)
-		{
-			std::string texture_filename = m.textures[i];
+        for(uint32_t i = 0; i < m.textures.size(); i++)
+        {
+            std::string texture_filename = m.textures[i];
 
-			if (texture_filename.size() > 3)
-			{
-				texture_filename = texture_filename.substr(0, texture_filename.size() - 3) + "png";
-			}
+            if(texture_filename.size() > 3)
+            {
+                texture_filename = texture_filename.substr(0, texture_filename.size() - 3) + "png";
+            }
 
-			uint32_t material_id = i;
-			std::cout << "Material " << m.textures[i] << " : " << texture_filename << " : " << material_id << std::endl;
+            uint32_t material_id = i;
+            std::cout << "Material " << m.textures[i] << " : " << texture_filename << " : " << material_id << std::endl;
 
-			if (boost::filesystem::exists(texture_filename) && boost::algorithm::ends_with(texture_filename, ".png"))
-			{
-				texture_info_map[material_id] = {texture_filename, Utils::get_png_dimensions(texture_filename)};
-			}
-			else if (texture_filename == "")
-			{
-				//ok
-			}
-			else
-			{
-				std::cout << "ERROR: texture " << texture_filename << " was not found or is not a .png" << std::endl;
-				exit(1);
-			}
-		}
-	}
+            if(boost::filesystem::exists(texture_filename) && boost::algorithm::ends_with(texture_filename, ".png"))
+            {
+                texture_info_map[material_id] = {texture_filename, Utils::get_png_dimensions(texture_filename)};
+            }
+            else if(texture_filename == "")
+            {
+                // ok
+            }
+            else
+            {
+                std::cout << "ERROR: texture " << texture_filename << " was not found or is not a .png" << std::endl;
+                exit(1);
+            }
+        }
+    }
 #endif
 
 #ifdef ADHOC_PARSER
-   //load an .obj file and return all vertices, normals and coords interleaved
-    static void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& triangles, std::vector<std::string>& materials) {
+    // load an .obj file and return all vertices, normals and coords interleaved
+    static void load_obj(const std::string& _file, std::vector<lamure::mesh::triangle_t>& triangles, std::vector<std::string>& materials)
+    {
+        triangles.clear();
 
-	    triangles.clear();
+        std::vector<float> v;
+        std::vector<uint32_t> vindices;
+        std::vector<float> n;
+        std::vector<uint32_t> nindices;
+        std::vector<float> t;
+        std::vector<uint32_t> tindices;
 
-	    std::vector<float> v;
-	    std::vector<uint32_t> vindices;
-	    std::vector<float> n;
-	    std::vector<uint32_t> nindices;
-	    std::vector<float> t;
-	    std::vector<uint32_t> tindices;
+        uint32_t num_tris = 0;
 
-	    uint32_t num_tris = 0;
+        FILE* file = fopen(_file.c_str(), "r");
 
-	    FILE *file = fopen(_file.c_str(), "r");
+        std::string current_material = "";
 
-	    std::string current_material = "";
+        if(0 != file)
+        {
+            while(true)
+            {
+                char line[128];
+                int32_t l = fscanf(file, "%s", line);
 
-	    if (0 != file) {
+                if(l == EOF)
+                    break;
+                if(strcmp(line, "usemtl") == 0)
+                {
+                    char name[128];
+                    fscanf(file, "%s\n", name);
+                    current_material = std::string(name);
+                    current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
+                    current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
+                    boost::trim(current_material);
+                    std::cout << "obj switch material: " << current_material << std::endl;
+                }
+                else if(strcmp(line, "v") == 0)
+                {
+                    float vx, vy, vz;
+                    fscanf(file, "%f %f %f\n", &vx, &vy, &vz);
+                    v.insert(v.end(), {vx, vy, vz});
+                }
+                else if(strcmp(line, "vn") == 0)
+                {
+                    float nx, ny, nz;
+                    fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
+                    n.insert(n.end(), {nx, ny, nz});
+                }
+                else if(strcmp(line, "vt") == 0)
+                {
+                    float tx, ty;
+                    fscanf(file, "%f %f\n", &tx, &ty);
+                    t.insert(t.end(), {tx, ty});
+                }
+                else if(strcmp(line, "f") == 0)
+                {
+                    std::string vertex1, vertex2, vertex3;
+                    uint32_t index[3];
+                    uint32_t coord[3];
+                    uint32_t normal[3];
+                    fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &index[0], &coord[0], &normal[0], &index[1], &coord[1], &normal[1], &index[2], &coord[2], &normal[2]);
 
-	        while (true) {
-	            char line[128];
-	            int32_t l = fscanf(file, "%s", line);
+                    vindices.insert(vindices.end(), {index[0], index[1], index[2]});
+                    tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
+                    nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
 
+                    materials.push_back(current_material);
+                }
+            }
 
-		        if (l == EOF) break;
-		        if (strcmp(line, "usemtl") == 0) {
-		          char name[128];
-		          fscanf(file, "%s\n", name);
-		          current_material = std::string(name);
-		          current_material.erase(std::remove(current_material.begin(), current_material.end(), '\n'), current_material.end());
-		          current_material.erase(std::remove(current_material.begin(), current_material.end(), '\r'), current_material.end());
-		          boost::trim(current_material);
-		          std::cout << "obj switch material: " << current_material << std::endl;
-		        }
-		        else if (strcmp(line, "v") == 0) {
-	                float vx, vy, vz;
-	                fscanf(file, "%f %f %f\n", &vx, &vy, &vz);
-	                v.insert(v.end(), {vx, vy, vz});
-	            } else if (strcmp(line, "vn") == 0) {
-	                float nx, ny, nz;
-	                fscanf(file, "%f %f %f\n", &nx, &ny, &nz);
-	                n.insert(n.end(), {nx, ny, nz});
-	            } else if (strcmp(line, "vt") == 0) {
-	                float tx, ty;
-	                fscanf(file, "%f %f\n", &tx, &ty);
-	                t.insert(t.end(), {tx, ty});
-	            } else if (strcmp(line, "f") == 0) {
-	                std::string vertex1, vertex2, vertex3;
-	                uint32_t index[3];
-	                uint32_t coord[3];
-	                uint32_t normal[3];
-	                fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n",
-	                       &index[0], &coord[0], &normal[0],
-	                       &index[1], &coord[1], &normal[1],
-	                       &index[2], &coord[2], &normal[2]);
+            fclose(file);
 
-	                vindices.insert(vindices.end(), {index[0], index[1], index[2]});
-	                tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
-	                nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
+            std::cout << "positions: " << vindices.size() << std::endl;
+            std::cout << "normals: " << nindices.size() << std::endl;
+            std::cout << "coords: " << tindices.size() << std::endl;
 
-	                materials.push_back(current_material);
-	            }
-	        }
+            triangles.resize(nindices.size() / 3);
 
-	        fclose(file);
+            for(uint32_t i = 0; i < nindices.size() / 3; i++)
+            {
+                lamure::mesh::triangle_t tri;
+                for(uint32_t j = 0; j < 3; ++j)
+                {
+                    scm::math::vec3f position(v[3 * (vindices[3 * i + j] - 1)], v[3 * (vindices[3 * i + j] - 1) + 1], v[3 * (vindices[3 * i + j] - 1) + 2]);
 
-	        std::cout << "positions: " << vindices.size() << std::endl;
-	        std::cout << "normals: " << nindices.size() << std::endl;
-	        std::cout << "coords: " << tindices.size() << std::endl;
+                    scm::math::vec3f normal(n[3 * (nindices[3 * i + j] - 1)], n[3 * (nindices[3 * i + j] - 1) + 1], n[3 * (nindices[3 * i + j] - 1) + 2]);
 
-	        triangles.resize(nindices.size()/3);
+                    scm::math::vec2f coord(t[2 * (tindices[3 * i + j] - 1)], t[2 * (tindices[3 * i + j] - 1) + 1]);
 
-	        for (uint32_t i = 0; i < nindices.size()/3; i++) {
-	          lamure::mesh::triangle_t tri;
-	          for (uint32_t j = 0; j < 3; ++j) {
+                    switch(j)
+                    {
+                    case 0:
+                        tri.v0_.pos_ = position;
+                        tri.v0_.nml_ = normal;
+                        tri.v0_.tex_ = coord;
+                        break;
 
-	            scm::math::vec3f position(
-	                    v[3 * (vindices[3*i+j] - 1)], v[3 * (vindices[3*i+j] - 1) + 1], v[3 * (vindices[3*i+j] - 1) + 2]);
+                    case 1:
+                        tri.v1_.pos_ = position;
+                        tri.v1_.nml_ = normal;
+                        tri.v1_.tex_ = coord;
+                        break;
 
-	            scm::math::vec3f normal(
-	                    n[3 * (nindices[3*i+j] - 1)], n[3 * (nindices[3*i+j] - 1) + 1], n[3 * (nindices[3*i+j] - 1) + 2]);
+                    case 2:
+                        tri.v2_.pos_ = position;
+                        tri.v2_.nml_ = normal;
+                        tri.v2_.tex_ = coord;
+                        break;
 
-	            scm::math::vec2f coord(
-	                    t[2 * (tindices[3*i+j] - 1)], t[2 * (tindices[3*i+j] - 1) + 1]);
-
-
-	            switch (j) {
-	              case 0:
-	              tri.v0_.pos_ = position;
-	              tri.v0_.nml_ = normal;
-	              tri.v0_.tex_ = coord;
-	              break;
-
-	              case 1:
-	              tri.v1_.pos_ = position;
-	              tri.v1_.nml_ = normal;
-	              tri.v1_.tex_ = coord;
-	              break;
-
-	              case 2:
-	              tri.v2_.pos_ = position;
-	              tri.v2_.nml_ = normal;
-	              tri.v2_.tex_ = coord;
-	              break;
-
-	              default:
-	              break;
-	            }
-	          }
-	          triangles[i] = tri;
-	        }
-
-	    } else {
-	        std::cout << "failed to open file: " << _file << std::endl;
-	        exit(1);
-    	}
-
-	}
+                    default:
+                        break;
+                    }
+                }
+                triangles[i] = tri;
+            }
+        }
+        else
+        {
+            std::cout << "failed to open file: " << _file << std::endl;
+            exit(1);
+        }
+    }
 #endif
 
+    // reads dimensions of png from header
+    static scm::math::vec2i get_png_dimensions(std::string filepath)
+    {
+        std::ifstream in(filepath);
+        uint32_t width, height;
 
-	//reads dimensions of png from header
-	static scm::math::vec2i get_png_dimensions(std::string filepath) {
-	    std::ifstream in(filepath);
-	    uint32_t width, height;
+        in.seekg(16);
+        in.read((char*)&width, 4);
+        in.read((char*)&height, 4);
 
-	    in.seekg(16);
-	    in.read((char *)&width, 4);
-	    in.read((char *)&height, 4);
+        width = be32toh(width);
+        height = be32toh(height);
 
-	    width = be32toh(width);
-	    height = be32toh(height);
-
-	    return scm::math::vec2i(width, height);
-	}
-
+        return scm::math::vec2i(width, height);
+    }
 };
 
 #endif

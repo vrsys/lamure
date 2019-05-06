@@ -13,54 +13,43 @@
 #include <map>
 #include <vector>
 
+namespace lamure
+{
+namespace mesh
+{
+class bvh : public lamure::ren::bvh
+{
+  public:
+    bvh(std::vector<Triangle_Chartid>& triangles, uint32_t primitives_per_node);
+    ~bvh();
 
-namespace lamure {
-namespace mesh {
+    void write_lod_file(const std::string& lod_filename);
 
+    std::vector<Triangle_Chartid>& get_triangles(uint32_t node_id) { return triangles_map_[node_id]; }
 
-class bvh : public lamure::ren::bvh {
-public:
-  bvh(std::vector<Triangle_Chartid>& triangles, uint32_t primitives_per_node);
-  ~bvh();
+  protected:
+    struct bvh_node
+    {
+        uint32_t depth_; // depth of the node in the hierarchy
+        vec3f min_;
+        vec3f max_;
+        uint64_t begin_; // first triangle id that belongs to this node
+        uint64_t end_;   // last triangle
+    };
 
-  void write_lod_file(const std::string& lod_filename);
+    void create_hierarchy(std::vector<Triangle_Chartid>& triangles);
 
-  std::vector<Triangle_Chartid>& get_triangles(uint32_t node_id) {
-    return triangles_map_[node_id];
-  }
+    void simplify(std::vector<Triangle_Chartid>& left_child_tris, std::vector<Triangle_Chartid>& right_child_tris, std::vector<Triangle_Chartid>& output_tris, bool contrain_edges);
 
-protected:
+    Vec3 normalise(Vec3 v);
 
-  
-  struct bvh_node {
-    uint32_t depth_; //depth of the node in the hierarchy
-    vec3f min_;
-    vec3f max_;
-    uint64_t begin_; //first triangle id that belongs to this node
-    uint64_t end_; //last triangle
-  };
+    void merge_similar_border_edges(Polyhedron& P, std::vector<Triangle_Chartid>& tri_list);
 
-  void create_hierarchy(std::vector<Triangle_Chartid>& triangles);
-  
-
-  void simplify(
-    std::vector<Triangle_Chartid>& left_child_tris,
-    std::vector<Triangle_Chartid>& right_child_tris,
-    std::vector<Triangle_Chartid>& output_tris,
-    bool contrain_edges);
-
-  Vec3 normalise(Vec3 v);
-
-  void merge_similar_border_edges(Polyhedron& P,
-                                  std::vector<Triangle_Chartid>& tri_list);
-
-
-  //node_id -> triangles
-  std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;
-
+    // node_id -> triangles
+    std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;
 };
 
-}
-}
+} // namespace mesh
+} // namespace lamure
 
 #endif

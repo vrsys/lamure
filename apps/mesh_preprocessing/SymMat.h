@@ -3,38 +3,35 @@
 #include <string>
 #include <sstream>
 
-
-
 #include <CGAL/Simple_cartesian.h>
 
 typedef CGAL::Simple_cartesian<double> Kernel;
 typedef CGAL::Point_3<Kernel> Point;
 typedef Kernel::Vector_3 Vector;
 
-class SymMat {
-	
-private:
-	std::vector<double> elements;
-public:
-	SymMat();
+class SymMat
+{
+  private:
+    std::vector<double> elements;
 
-	SymMat(Point vertex);
+  public:
+    SymMat();
 
-	SymMat(Vector vector);
+    SymMat(Point vertex);
 
-	SymMat operator+(const SymMat& rhs) const;
+    SymMat(Vector vector);
 
-	SymMat operator-(const SymMat& rhs) const;
+    SymMat operator+(const SymMat& rhs) const;
 
-	SymMat operator/(const double rhs) const;
+    SymMat operator-(const SymMat& rhs) const;
 
-	Vector operator*(const Vector& rhs) const;
+    SymMat operator/(const double rhs) const;
 
-	SymMat operator*(const double rhs) const;
+    Vector operator*(const Vector& rhs) const;
 
-	void to_c_mat3(double cm[3][3]);
+    SymMat operator*(const double rhs) const;
 
-	std::string print_mat();
+    void to_c_mat3(double cm[3][3]);
 
-
+    std::string print_mat();
 };

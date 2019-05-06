@@ -8,18 +8,21 @@
 #include <complex>
 #include <vector>
 
-namespace lamure {
-namespace mesh {
-
-class plane_t {
-public:
+namespace lamure
+{
+namespace mesh
+{
+class plane_t
+{
+  public:
     plane_t();
     plane_t(const vec3r& _normal, const vec3r& _origin);
 
-    enum classification_result_t {
-      FRONT,
-      BACK,
-      INSIDE
+    enum classification_result_t
+    {
+        FRONT,
+        BACK,
+        INSIDE
     };
 
     vec3r get_normal() const;

@@ -59,10 +59,9 @@ char* get_cmd_option(char** begin, char** end, const std::string& option)
 
 bool cmd_option_exists(char** begin, char** end, const std::string& option) { return std::find(begin, end, option) != end; }
 
-#ifdef NDEBUG
-#define FIX_T_VERTICES
-#endif
-
+//#ifdef NDEBUG
+//#define FIX_T_VERTICES
+//#endif
 
 /***
  * NB! Some semantics in the code that follows are counterintuitive,
