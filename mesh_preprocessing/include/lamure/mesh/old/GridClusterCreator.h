@@ -391,7 +391,7 @@ struct GridClusterCreator
                 avg_normal += (cluster.areas[i] * cluster.normals[i]);
             }
             // avg_normal /= total_area;
-            avg_normal = Utils::normalise(avg_normal);
+            avg_normal = utils::normalise(avg_normal);
 
             if(total_area == 0.0) // debug only
             {
@@ -421,7 +421,7 @@ struct GridClusterCreator
             {
                 // create new nodes by dividing the node into 8
 
-                const Point midpoint = Utils::midpoint(cluster.min, cluster.max);
+                const Point midpoint = utils::midpoint(cluster.min, cluster.max);
                 Cluster new_clusters[8];
 
                 // distribute triangles between 8 new clusters

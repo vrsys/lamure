@@ -1,4 +1,4 @@
-#include "SymMat.h"
+#include "lamure/mesh/old/SymMat.h"
 
 SymMat SymMat::operator+(const SymMat& rhs) const
 {

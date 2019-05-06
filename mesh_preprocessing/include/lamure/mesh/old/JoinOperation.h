@@ -1,4 +1,4 @@
-#include "Utils.h"
+#include "utils.h"
 
 struct JoinOperation
 {
@@ -80,7 +80,7 @@ struct JoinOperation
 
         // std::cout << "e_fit " << e_fit;
 
-        fit_plane_normal = Utils::normalise(fit_plane_normal);
+        fit_plane_normal = utils::normalise(fit_plane_normal);
 
         double e_direction = cluster_settings.e_ori_cf * Chart::get_direction_error(c1, c2, fit_plane_normal);
 

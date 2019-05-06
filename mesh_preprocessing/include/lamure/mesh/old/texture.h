@@ -1,4 +1,3 @@
-
 #ifndef TEXTURE_H_
 #define TEXTURE_H_
 

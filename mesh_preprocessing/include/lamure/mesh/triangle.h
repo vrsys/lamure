@@ -1,4 +1,3 @@
-
 #ifndef LAMURE_MESH_TRIANGLE_H_
 #define LAMURE_MESH_TRIANGLE_H_
 

@@ -1,5 +1,5 @@
 
-#include "texture.h"
+#include "lamure/mesh/old/texture.h"
 
 texture_t::texture_t() : width_(0), height_(0), bytes_per_pixel_(4), internal_format_(GL_RGBA8), format_(GL_RGBA), internal_type_(GL_UNSIGNED_BYTE), interpolation_(GL_NEAREST) {}
 

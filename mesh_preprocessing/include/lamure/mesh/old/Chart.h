@@ -1,9 +1,6 @@
-
 #include "CGAL_typedefs.h"
-
-#include "Utils.h"
-
 #include "eig.h"
+#include "utils.h"
 
 // struct to hold a vector of facets that make a chart
 struct Chart
@@ -46,7 +43,7 @@ struct Chart
         has_border_edge = found_mesh_border;
 
         P_quad = createPQuad(f);
-        R_quad = ErrorQuadric(Utils::normalise(normal));
+        R_quad = ErrorQuadric(utils::normalise(normal));
     }
 
     // create a combined quadric for 3 vertices of a face
@@ -148,7 +145,7 @@ struct Chart
         ErrorQuadric new_face_quad = createPQuad(f);
         P_quad = P_quad + new_face_quad;
 
-        ErrorQuadric new_face_r_quad = ErrorQuadric(Utils::normalise(normal));
+        ErrorQuadric new_face_r_quad = ErrorQuadric(utils::normalise(normal));
         R_quad = R_quad + new_face_r_quad;
     }
 
@@ -169,7 +166,7 @@ struct Chart
         // TODO does it need to be calculated exactly or just faces * 3 ?
 
         // check against sign of average normal to get sign of plane_normal
-        Vector avg_normal = Utils::normalise((c1.avg_normal * c1.area) + (c2.avg_normal * c2.area));
+        Vector avg_normal = utils::normalise((c1.avg_normal * c1.area) + (c2.avg_normal * c2.area));
         double angle_between_vectors = acos(avg_normal * plane_normal);
 
         if(angle_between_vectors > (0.5 * M_PI))

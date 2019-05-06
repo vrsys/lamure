@@ -1,5 +1,3 @@
-
-
 struct ErrorQuadric
 {
     SymMat A;

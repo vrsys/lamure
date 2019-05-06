@@ -1,5 +1,5 @@
 
-#include "kdtree.h"
+#include "lamure/mesh/old/kdtree.h"
 
 uint32_t kdtree_t::invalid_node_id_t = std::numeric_limits<uint32_t>::max();
 

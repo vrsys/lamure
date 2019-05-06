@@ -1,5 +1,3 @@
-
-
 // class for running clustering algorithm on Charts
 struct ClusterCreator
 {
