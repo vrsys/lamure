@@ -3,55 +3,6 @@
 #ifndef UTILSH
 #define UTILSH
 
-#define VCG_PARSER
-//#define ADHOC_PARSER
-
-#ifdef VCG_PARSER
-#include <iostream>
-#include <fstream>
-#include <chrono>
-#include <vector>
-#include <string>
-#include <stack>
-
-using namespace std;
-
-#include <vcg/complex/complex.h>
-#include <vcg/complex/algorithms/update/texture.h>
-#include <vcg/complex/algorithms/update/topology.h>
-#include <vcg/complex/algorithms/update/bounding.h>
-#include <vcg/complex/algorithms/update/flag.h>
-#include <vcg/complex/algorithms/clean.h>
-#include <vcg/space/intersection/triangle_triangle3.h>
-#include <vcg/math/histogram.h>
-#include <wrap/io_trimesh/import.h>
-#include <wrap/io_trimesh/export.h>
-#include <vcg/simplex/face/pos.h>
-#include <vcg/complex/algorithms/inertia.h>
-#include <vcg/space/index/grid_static_ptr.h>
-#include <wrap/ply/plylib.h>
-#include <wrap/io_trimesh/import_obj.h>
-
-using namespace vcg;
-
-class CVertex;
-class CFace;
-
-struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType>
-{
-};
-
-class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::Mark, vertex::TexCoord2f, vertex::BitFlags, vertex::Normal3f>
-{
-};
-class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::WedgeTexCoord2f, face::Normal3f, face::VertexRef, face::BitFlags, face::Mark>
-{
-};
-class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
-{
-};
-#endif
-
 namespace utils
 {
 static void print_help_message()
@@ -385,25 +336,37 @@ static void load_obj(const std::string& file, std::vector<indexed_triangle_t>& t
 
     CMesh m;
 
-    vcg::tri::io::ImporterOBJ<CMesh>::Info oi;
-    bool mask_load_success = vcg::tri::io::ImporterOBJ<CMesh>::LoadMask(file.c_str(), oi);
-    const int load_mask = oi.mask;
-    int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, file.c_str(), oi);
-
-    if(!mask_load_success || load_error != vcg::tri::io::ImporterOBJ<CMesh>::OBJError::E_NOERROR)
     {
-        if(vcg::tri::io::ImporterOBJ<CMesh>::ErrorCritical(load_error))
-        {
-            throw std::runtime_error("Failed to load the model: " + std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)));
-        }
-        else
-        {
-            std::cerr << std::string(vcg::tri::io::ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
-        }
-    }
+        using namespace vcg::tri;
+        using namespace vcg::tri::io;
 
-    vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
-    vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
+        ImporterOBJ<CMesh>::Info oi;
+        bool mask_load_success = ImporterOBJ<CMesh>::LoadMask(file.c_str(), oi);
+        const int load_mask = oi.mask;
+        int load_error = ImporterOBJ<CMesh>::Open(m, file.c_str(), oi);
+
+        const int expected_mask = Mask::IOM_VERTCOORD | Mask::IOM_VERTTEXCOORD | Mask::IOM_WEDGTEXCOORD | Mask::IOM_VERTNORMAL;
+
+        if(!(load_mask & expected_mask))
+        {
+            throw std::runtime_error("Mesh does not contain necessary components, mask of missing components: " + std::to_string(load_mask ^ expected_mask));
+        }
+
+        if(!mask_load_success || load_error != ImporterOBJ<CMesh>::OBJError::E_NOERROR)
+        {
+            if(ImporterOBJ<CMesh>::ErrorCritical(load_error))
+            {
+                throw std::runtime_error("Failed to load the model: " + std::string(ImporterOBJ<CMesh>::ErrorMsg(load_error)));
+            }
+            else
+            {
+                std::cerr << std::string(ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
+            }
+        }
+
+        UpdateTopology<CMesh>::FaceFace(m);
+        UpdateTopology<CMesh>::VertexFace(m);
+    }
 
     triangles.resize((size_t)m.FN());
 
@@ -865,8 +828,6 @@ static void convert_to_triangle_soup(app_state& state)
 
 static void assign_parallel(app_state& state)
 {
-    std::cout << "Assigning additional triangles to charts..." << std::endl;
-
     std::vector<uint32_t> area_ids;
     for(uint32_t area_id = 0; area_id < state.num_areas; ++area_id)
     {
@@ -1127,6 +1088,9 @@ static void write_bvh(app_state& state, std::string& obj_filename)
 
 static void create_viewports(app_state& state, cmd_options& opt)
 {
+    std::cout << "Single texture size limit: " << opt.single_tex_limit << std::endl;
+    std::cout << "Multi texture size limit: " << opt.multi_tex_limit << std::endl;
+
     {
         state.t_d.render_to_texture_width_ = std::max(opt.single_tex_limit, 4096);
         state.t_d.render_to_texture_height_ = std::max(opt.single_tex_limit, 4096);
@@ -1430,7 +1394,8 @@ static void load_textures(app_state& state)
     } // end for each viewport
 }
 
-static void produce_texture(app_state& state, std::string& obj_filename){
+static void produce_texture(app_state& state, std::string& obj_filename)
+{
     if(!want_raw_file)
     {
         // concatenate all area images to one big texture

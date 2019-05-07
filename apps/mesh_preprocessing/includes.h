@@ -6,6 +6,11 @@
  *
  ***/
 
+/*** Define macros early to rule out unnecessary includes! ***/
+
+#define VCG_PARSER
+// #define ADHOC_PARSER
+
 // STL
 #include <iostream>
 #include <fstream>
@@ -18,6 +23,9 @@
 #include <float.h>
 #include <memory>
 #include <iostream>
+#include <vector>
+#include <string>
+#include <stack>
 
 // OMP
 #include <omp.h>
@@ -41,6 +49,24 @@
 // LAMURE
 #include <lamure/mesh/tools.h>
 #include <lamure/mesh/bvh.h>
+
+#ifdef VCG_PARSER
+#include <vcg/complex/complex.h>
+#include <vcg/complex/algorithms/update/texture.h>
+#include <vcg/complex/algorithms/update/topology.h>
+#include <vcg/complex/algorithms/update/bounding.h>
+#include <vcg/complex/algorithms/update/flag.h>
+#include <vcg/complex/algorithms/clean.h>
+#include <vcg/space/intersection/triangle_triangle3.h>
+#include <vcg/math/histogram.h>
+#include <wrap/io_trimesh/import.h>
+#include <wrap/io_trimesh/export.h>
+#include <vcg/simplex/face/pos.h>
+#include <vcg/complex/algorithms/inertia.h>
+#include <vcg/space/index/grid_static_ptr.h>
+#include <wrap/ply/plylib.h>
+#include <wrap/io_trimesh/import_obj.h>
+#endif
 
 // TODO: none of these should remain here, none of these should be order-dependent
 

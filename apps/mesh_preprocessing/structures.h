@@ -84,4 +84,25 @@ struct app_state
     std::shared_ptr<lamure::mesh::bvh> bvh;
 };
 
+#ifdef VCG_PARSER
+using namespace vcg;
+
+class CVertex;
+class CFace;
+
+struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType>
+{
+};
+
+class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::Mark, vertex::TexCoord2f, vertex::BitFlags, vertex::Normal3f>
+{
+};
+class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::WedgeTexCoord2f, face::Normal3f, face::VertexRef, face::BitFlags, face::Mark>
+{
+};
+class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
+{
+};
+#endif
+
 #endif // LAMURE_MP_STRUCTURES_H
