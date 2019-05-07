@@ -22,7 +22,7 @@ static void initialize_glut_window(int argc, char** argv, cmd_options& opt)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(opt.multi_tex_limit, opt.multi_tex_limit);
+    glutInitWindowSize(opt.single_tex_limit, opt.single_tex_limit);
     glutInitWindowPosition(64, 64);
     glutCreateWindow(argv[0]);
     glutSetWindowTitle(STRING_APP_NAME.c_str());
