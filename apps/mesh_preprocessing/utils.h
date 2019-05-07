@@ -18,11 +18,11 @@ static void print_help_message()
     std::cout << "Optional: -multi-max: specifies largest possible output texture (=8192)" << std::endl;
 }
 
-static void initialize_glut_window(int argc, char** argv)
+static void initialize_glut_window(int argc, char** argv, cmd_options& opt)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-    glutInitWindowSize(4096, 4096);
+    glutInitWindowSize(opt.multi_tex_limit, opt.multi_tex_limit);
     glutInitWindowPosition(64, 64);
     glutCreateWindow(argv[0]);
     glutSetWindowTitle(STRING_APP_NAME.c_str());

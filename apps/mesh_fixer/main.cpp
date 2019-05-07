@@ -131,7 +131,7 @@ int main(int argc, char** argv)
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
-    small_connected_removed.first += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).first;
+    small_connected_removed.second += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).second;
 
     int face_folds_removed = vcg::tri::Clean<CMesh>::RemoveFaceFoldByFlip(m);
 #ifdef FIX_T_VERTICES
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
-    small_connected_removed.first += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).first;
+    small_connected_removed.second += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).second;
 
     vcg::tri::UpdateTopology<CMesh>::TestVertexFace(m);
 
@@ -192,9 +192,6 @@ int main(int argc, char** argv)
 
     vcg::tri::UpdateNormal<CMesh>::NormalizePerVertex(m);
 
-    vcg::tri::Allocator<CMesh>::CompactEveryVector(m);
-    vcg::tri::RequireCompactness<CMesh>(m);
-
     std::cout << "Small connected components removed: " << small_connected_removed.second << " out of " << small_connected_removed.first << " total" << std::endl;
 
     std::cout << "Duplicate vertices removed: " << duplicate_vertices_removed << std::endl;
@@ -219,11 +216,25 @@ int main(int argc, char** argv)
     {
         std::cerr << "FIXED MESH CONTAINS MORE THAN 1 COMPONENT" << std::endl;
 
+        std::vector<int> sizes;
+
         for(int i = 0; i < CCV.size(); i++)
         {
-            std::cerr << "Size of component: " << CCV[i].first << std::endl;
+            std::cerr << "Size of component " << std::to_string(i) << ": " << CCV[i].first << std::endl;
+            sizes.emplace_back(CCV[i].first);
         }
+
+        int max_size = *std::max_element(sizes.begin(), sizes.end());
+        std::cerr << "Size of largest component: " << max_size << std::endl;
+
+        auto connected_removed = vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, max_size);
+        std::cerr << "Lesser connected components removed: " << connected_removed.second << " out of " << connected_removed.first << " total" << std::endl;
+
+        // TODO: save connected components to separate OBJ-s instead of dropping them
     }
+
+    vcg::tri::Allocator<CMesh>::CompactEveryVector(m);
+    vcg::tri::RequireCompactness<CMesh>(m);
 
     {
         using namespace vcg::tri::io;

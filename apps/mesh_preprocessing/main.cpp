@@ -50,14 +50,14 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    initialize_glut_window(argc, argv);
-
     cmd_options opt;
     extract_cmd_options(argc, argv, obj_filename, opt);
 
+    initialize_glut_window(argc, argv, opt);
+
     app_state state;
 
-    execute_stage("Load obj from " + obj_filename, [&] { utils::load_obj(obj_filename, state.all_indexed_triangles, state.texture_info_map); });
+    execute_stage("Load obj from " + obj_filename, [&] { load_obj(obj_filename, state.all_indexed_triangles, state.texture_info_map); });
 
     execute_stage("Build kd tree and initialize nodes", [&] {
         state.kdtree = std::make_shared<kdtree_t>(state.all_indexed_triangles, opt.num_tris_per_node_kdtree);
