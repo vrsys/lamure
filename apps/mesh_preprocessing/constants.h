@@ -10,7 +10,6 @@ const std::string STRING_APP_NAME = "Lamure Mesh Preprocessing";
 
 const float packing_scale = 400.f;
 const double target_percentage_charts_with_enough_pixels = 0.90;
-const bool want_raw_file = false;
 
 const std::string vertex_shader_src = "#version 420\n\
     layout (location = 0) in vec2 vertex_old_coord;\n\

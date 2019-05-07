@@ -199,7 +199,7 @@ class polyhedron_builder : public CGAL::Modifier_base<HDS>
         // create a cgal incremental builder
         CGAL::Polyhedron_incremental_builder_3<HDS> B(hds, true);
         uint32_t num_tris = combined_set.size();
-        B.begin_surface(3 * num_tris, num_tris);
+        B.begin_surface(3 * num_tris, num_tris, 0, CGAL::Polyhedron_incremental_builder_3<HDS>::ABSOLUTE_INDEXING);
 
         // create indexed vertex list
         std::vector<XtndPoint<Kernel>> vertices;
@@ -212,14 +212,39 @@ class polyhedron_builder : public CGAL::Modifier_base<HDS>
             B.add_vertex(vertices[i]);
         }
 
+        std::vector<size_t> new_face(4);
+
         // create faces using vertex index references
         for(uint32_t i = 0; i < tris.size(); i += 3)
         {
-            B.begin_facet();
-            B.add_vertex_to_facet(tris[i]);
-            B.add_vertex_to_facet(tris[i + 1]);
-            B.add_vertex_to_facet(tris[i + 2]);
-            B.end_facet();
+            new_face[0] = tris[i];
+            new_face[1] = tris[i + 1];
+            new_face[2] = tris[i + 2];
+            new_face[3] = tris[i];
+
+            bool valid = B.test_facet_indices(new_face);
+
+            if(!valid)
+            {
+                std::cerr << "Triangle " << i / 3 << " violates non-manifoldness constraint, skipping" << std::endl;
+                continue;
+            }
+
+            if(!B.error())
+            {
+                B.begin_facet();
+                B.add_vertex_to_facet(tris[i]);
+                B.add_vertex_to_facet(tris[i + 1]);
+                B.add_vertex_to_facet(tris[i + 2]);
+                B.end_facet();
+            }
+
+            if(B.error())
+            {
+                B.end_surface();
+                std::cerr << "Error in incremental polyhedron building" << std::endl;
+                return;
+            }
         }
 
         B.end_surface();

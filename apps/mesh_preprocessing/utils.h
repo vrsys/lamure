@@ -559,7 +559,11 @@ static void extract_cmd_options(int argc, char** argv, std::string& obj_filename
     {
         opt.out_filename = getCmdOption(argv, argv + argc, "-of");
     }
-
+    opt.want_raw_file = false;
+    if(cmdOptionExists(argv, argv + argc, "-raw"))
+    {
+        opt.want_raw_file = true;
+    }
     opt.cost_threshold = std::numeric_limits<double>::max();
     if(cmdOptionExists(argv, argv + argc, "-co"))
     {
@@ -1394,9 +1398,9 @@ static void load_textures(app_state& state)
     } // end for each viewport
 }
 
-static void produce_texture(app_state& state, std::string& obj_filename)
+static void produce_texture(app_state& state, std::string& obj_filename, cmd_options& opt)
 {
-    if(!want_raw_file)
+    if(!opt.want_raw_file)
     {
         // concatenate all area images to one big texture
         uint32_t num_bytes_per_pixel = 4;

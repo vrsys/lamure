@@ -91,7 +91,7 @@ int main(int argc, char** argv)
 
     execute_stage("Load textures", [&] { load_textures(state); });
 
-    execute_stage("Produce final textures", [&] { produce_texture(state, obj_filename); });
+    execute_stage("Produce final textures", [&] { produce_texture(state, obj_filename, opt); });
 
-    return 0;
+    exit(0);
 }

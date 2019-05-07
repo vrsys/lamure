@@ -6,18 +6,19 @@
 
 struct cmd_options
 {
-    std::string out_filename;
+    std::string out_filename; // TODO: is never in use
     double cost_threshold;
     uint32_t chart_threshold;
     double e_fit_cf;
     double e_ori_cf;
     double e_shape_cf;
     double cst;
-    bool write_charts_as_textures;
+    bool write_charts_as_textures; // TODO: is never in use
     int num_tris_per_node_kdtree;
     int num_tris_per_node_bvh;
     int single_tex_limit;
     int multi_tex_limit;
+    bool want_raw_file;
 };
 
 struct texture_dims

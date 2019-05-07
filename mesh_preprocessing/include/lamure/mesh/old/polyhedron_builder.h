@@ -54,7 +54,7 @@ class polyhedron_builder : public CGAL::Modifier_base<HDS>
 
             if(!valid)
             {
-                std::cerr << "Triangle " << i << " violates non-manifoldness constraint, skipping" << std::endl;
+                std::cerr << "Triangle " << i / 3 << " violates non-manifoldness constraint, skipping" << std::endl;
                 continue;
             }
 
