@@ -73,7 +73,8 @@ echo -e "\e[0m"
 echo "Running chart creation with file $SRC_OBJ"
 echo "-----------------------------------------"
 
-time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE
+DATE=`date '+%Y-%m-%d:%H:%M:%S'`
+time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE 2>&1 | tee log_${DATE}.txt
 
 
 
