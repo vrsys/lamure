@@ -918,7 +918,6 @@ static void apply_texture_space_transformation(app_state& state)
 {
     std::cout << "Applying texture space transformation..." << std::endl;
 
-#pragma omp parallel for
     for(uint32_t k = 0; k < state.area_rects.size(); k++)
     {
         auto& area_rect = state.area_rects[k];
@@ -934,7 +933,7 @@ static void apply_texture_space_transformation(app_state& state)
             chart.rect_.min_ += area_rect.min_;
 
             std::vector<int> ids(chart.all_triangle_ids_.begin(), chart.all_triangle_ids_.end());
-#pragma omp parallel for
+
             // apply this transformation to the new parameterization
             for(uint32_t a = 0; a < ids.size(); a++)
             {
@@ -1062,6 +1061,81 @@ static void update_texture_coordinates(app_state& state)
                 else
                 {
                     ++num_dropped_tris;
+                }
+            }
+            else
+            {
+                ++num_invalid_tris;
+            }
+        }
+    }
+
+    std::cout << "Updating texture coordinates in inner LOD nodes..." << std::endl;
+
+#pragma omp parallel for
+    for(uint32_t node_id = 0; node_id < first_leaf_id; ++node_id)
+    {
+        auto& tris = state.bvh->get_triangles(node_id);
+        for(int local_tri_id = 0; local_tri_id < tris.size(); ++local_tri_id)
+        {
+            auto& tri = tris[local_tri_id];
+            if(tri.chart_id != -1)
+            {
+                auto& proj_info = state.chart_map[tri.area_id][tri.chart_id].projection;
+                rectangle& chart_rect = state.chart_map[tri.area_id][tri.chart_id].rect_;
+                rectangle& area_rect = state.area_rects[tri.area_id];
+
+                // at this point we will need to project all triangles of inner nodes to their respective charts using the corresponding chart plane
+
+                scm::math::vec3f original_v;
+
+                for(uint32_t i = 0; i < 3; ++i)
+                {
+                    switch(i)
+                    {
+                    case 0:
+                        original_v = tri.v0_.pos_;
+                        break;
+                    case 1:
+                        original_v = tri.v1_.pos_;
+                        break;
+                    case 2:
+                        original_v = tri.v2_.pos_;
+                        break;
+                    default:
+                        break;
+                    }
+                    scm::math::vec2f projected_v = project_to_plane(original_v, proj_info.proj_normal, proj_info.proj_centroid, proj_info.proj_world_up);
+
+                    projected_v -= proj_info.tex_coord_offset; // correct by offset (so that min uv coord = 0)
+
+                    projected_v /= proj_info.largest_max; // apply normalisation factor
+                    if((chart_rect.flipped_ && !area_rect.flipped_) || (area_rect.flipped_ && !chart_rect.flipped_))
+                    { // flip if needed
+                        float temp = projected_v.x;
+                        projected_v.x = projected_v.y;
+                        projected_v.y = temp;
+                    }
+                    projected_v *= packing_scale;         // scale
+                    projected_v += chart_rect.min_;       // offset position in texture
+                    projected_v /= state.image_rect.max_; // scale down to normalised image space
+                    projected_v.y = 1.0 - projected_v.y;  // flip y coord
+
+                    // replace existing coords
+                    switch(i)
+                    {
+                    case 0:
+                        tri.v0_.tex_ = projected_v;
+                        break;
+                    case 1:
+                        tri.v1_.tex_ = projected_v;
+                        break;
+                    case 2:
+                        tri.v2_.tex_ = projected_v;
+                        break;
+                    default:
+                        break;
+                    }
                 }
             }
             else
