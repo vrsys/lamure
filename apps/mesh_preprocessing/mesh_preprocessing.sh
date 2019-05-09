@@ -30,6 +30,29 @@ NUM_DILATIONS=4096
 
 ############################
 
+echo -e "\e[32m"
+
+read -p "Use default settings? (y/n)? " answer
+case ${answer:0:1} in
+    y|Y )
+        echo "Using following default settings"
+        echo "Triangle budget per KD-tree node: " ${KDTREE_TRI_BUDGET}
+        echo "Chart creation cost threshold: " ${COST_THRESHOLD}
+        echo "Triangle budget per BVH node: " ${TRI_BUDGET}
+        echo "Maximum size of final texture: " ${MAX_FINAL_TEX_SIZE}
+        echo "Number of dilations: " ${NUM_DILATIONS}
+    ;;
+    * )
+        read -rp "Triangle budget per KD-tree node: " KDTREE_TRI_BUDGET
+        read -rp "Chart creation cost threshold: " COST_THRESHOLD
+        read -rp "Triangle budget per BVH node: " TRI_BUDGET
+        read -rp "Maximum size of final texture: " MAX_FINAL_TEX_SIZE
+        read -rp "Number of dilations: " NUM_DILATIONS
+    ;;
+esac
+
+echo -e "\e[0m"
+
 echo "RUNNING MESHLOD PIPELINE"
 echo "------------------------"
 
@@ -46,10 +69,10 @@ read -p "Convert all textures to PNG (required)? (y/n)? " answer
 case ${answer:0:1} in
     y|Y )
         # convert textures to PNG using mogrify
-        targets=*.{jpg,JPG,png,PNG,bmp,BMP,tiff,TIFF,tif,TIF,ppm,PPM,pgm,PGM,pbm,PBM,pnm,PNM}
+        targets=`*.jpg *.JPG *.png *.PNG *.bmp *.BMP *.tiff *.TIFF *.tif *.TIF *.ppm *.PPM *.pgm *.PGM *.pbm *.PBM *.pnm *.PNM`
         echo "Converting to PNG: "
-        echo $targets
-        mogrify -format png $targets
+        echo ${targets}
+        mogrify -format png ${targets}
     ;;
     * )
         echo "Skipping conversion (assuming was done before)"
@@ -59,9 +82,10 @@ esac
 read -p "Flip all textures (required)? (y/n)? " answer
 case ${answer:0:1} in
     y|Y )
-        targets=*.png
+        targets=`*.png`
         echo "Flipping PNGs"
-        mogrify -flip $targets
+        echo ${targets}
+        mogrify -flip ${targets}
     ;;
     * )
         echo "Skipping flipping (assuming was done before)"
@@ -74,7 +98,7 @@ echo "Running chart creation with file $SRC_OBJ"
 echo "-----------------------------------------"
 
 DATE=`date '+%Y-%m-%d:%H:%M:%S'`
-time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE 2>&1 | tee log_${DATE}.txt
+time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE} 2>&1 | tee log_${DATE}.txt
 
 
 
