@@ -8,8 +8,8 @@ set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # main sources
-file(GLOB MESH_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
-file(GLOB MESH_INC ${PROJECT_INCLUDE_DIR}/lamure/mesh/*.h)
+file(GLOB MESH_SRC ${PROJECT_SOURCE_DIR}/*.cpp ${PROJECT_SOURCE_DIR}/old/*.cpp)
+file(GLOB MESH_INC ${PROJECT_INCLUDE_DIR}/lamure/mesh/*.h ${PROJECT_INCLUDE_DIR}/lamure/mesh/old/*.h)
 file(GLOB MESH_INL ${PROJECT_INCLUDE_DIR}/lamure/mesh/*.inl)
 
 SOURCE_GROUP("mesh_preprocessing" FILES ${MAIN_SRC})
@@ -18,6 +18,15 @@ SOURCE_GROUP("mesh_preprocessing" FILES ${MAIN_INL})
 
 set(PROJECT_SOURCES ${MESH_SRC})
 set(PROJECT_INCLUDES ${MESH_INC} ${MESH_INL})
+
+find_package(OpenMP)
+if(NOT TARGET OpenMP::OpenMP_CXX)
+    find_package(Threads REQUIRED)
+    add_library(OpenMP::OpenMP_CXX IMPORTED INTERFACE)
+    set_property(TARGET OpenMP::OpenMP_CXX PROPERTY INTERFACE_COMPILE_OPTIONS ${OpenMP_CXX_FLAGS})
+    # Only works if the same flag is passed to the linker; use CMake 3.9+ otherwise (Intel, AppleClang)
+    set_property(TARGET OpenMP::OpenMP_CXX PROPERTY INTERFACE_LINK_LIBRARIES ${OpenMP_CXX_FLAGS} Threads::Threads)
+endif()
 
 include_directories(${PROJECT_INCLUDE_DIR}
         ${COMMON_INCLUDE_DIR}

@@ -15,6 +15,7 @@
 using namespace std;
 
 #include <vcg/complex/complex.h>
+#include <vcg/complex/algorithms/update/texture.h>
 #include <vcg/complex/algorithms/update/topology.h>
 #include <vcg/complex/algorithms/update/bounding.h>
 #include <vcg/complex/algorithms/update/flag.h>
@@ -33,23 +34,18 @@ using namespace vcg;
 
 class CVertex;
 class CFace;
-class CEdge;
 
-struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType, Use<CEdge>::AsEdgeType>
-{
-};
-
-class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::VEAdj, vertex::Coord3f, vertex::TexCoord2f, vertex::Mark, vertex::BitFlags, vertex::Normal3f>
-{
-};
-class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::VertexRef, face::Normal3f, face::WedgeTexCoord2f, face::BitFlags, face::Mark>
-{
-};
-class CEdge : public Edge<MyTypes, edge::EEAdj, edge::VEAdj>
+struct MyTypes : public UsedTypes<Use<CVertex>::AsVertexType, Use<CFace>::AsFaceType>
 {
 };
 
-class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>, vector<CEdge>>
+class CVertex : public Vertex<MyTypes, vertex::VFAdj, vertex::Coord3f, vertex::Mark, vertex::TexCoord2f, vertex::BitFlags, vertex::Normal3f>
+{
+};
+class CFace : public Face<MyTypes, face::FFAdj, face::VFAdj, face::WedgeTexCoord2f, face::Normal3f, face::VertexRef, face::BitFlags, face::Mark>
+{
+};
+class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
 {
 };
 
@@ -62,6 +58,19 @@ char* get_cmd_option(char** begin, char** end, const std::string& option)
 }
 
 bool cmd_option_exists(char** begin, char** end, const std::string& option) { return std::find(begin, end, option) != end; }
+
+//#ifdef NDEBUG
+//#define FIX_T_VERTICES
+//#endif
+
+/***
+ * NB! Some semantics in the code that follows are counterintuitive,
+ * partially due to OBJ format I/O specifics.
+ *
+ * Special attention is required while handling per-vertex, "per-wedge" and per-face attributes.
+ *
+ * A.F.
+ ***/
 
 int main(int argc, char** argv)
 {
@@ -76,9 +85,10 @@ int main(int argc, char** argv)
 
     CMesh m;
 
-    int load_mask;
-    bool mask_load_success = vcg::tri::io::ImporterOBJ<CMesh>::LoadMask(model.c_str(), load_mask);
-    int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, model.c_str(), load_mask);
+    vcg::tri::io::ImporterOBJ<CMesh>::Info oi;
+    bool mask_load_success = vcg::tri::io::ImporterOBJ<CMesh>::LoadMask(model.c_str(), oi);
+    const int load_mask = oi.mask;
+    int load_error = vcg::tri::io::ImporterOBJ<CMesh>::Open(m, model.c_str(), oi);
 
     if(!mask_load_success || load_error != vcg::tri::io::ImporterOBJ<CMesh>::OBJError::E_NOERROR)
     {
@@ -94,15 +104,11 @@ int main(int argc, char** argv)
 
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
-    vcg::tri::UpdateTopology<CMesh>::VertexEdge(m);
-    vcg::tri::UpdateTopology<CMesh>::EdgeEdge(m);
 
     int non_manifold_vertices = vcg::tri::Clean<CMesh>::SplitNonManifoldVertex(m, 0.25f);
 
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
-    vcg::tri::UpdateTopology<CMesh>::VertexEdge(m);
-    vcg::tri::UpdateTopology<CMesh>::EdgeEdge(m);
 
     std::cout << "Non-manifold vertices split: " << non_manifold_vertices << std::endl;
 
@@ -110,8 +116,6 @@ int main(int argc, char** argv)
 
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
-    vcg::tri::UpdateTopology<CMesh>::VertexEdge(m);
-    vcg::tri::UpdateTopology<CMesh>::EdgeEdge(m);
 
     std::cout << "Non-manifold faces removed: " << non_manifold_faces << std::endl;
 
@@ -126,31 +130,67 @@ int main(int argc, char** argv)
 
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
-    vcg::tri::UpdateTopology<CMesh>::VertexEdge(m);
-    vcg::tri::UpdateTopology<CMesh>::EdgeEdge(m);
 
-    small_connected_removed.first += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).first;
+    small_connected_removed.second += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).second;
 
     int face_folds_removed = vcg::tri::Clean<CMesh>::RemoveFaceFoldByFlip(m);
+#ifdef FIX_T_VERTICES
     int t_vertices_flipped = vcg::tri::Clean<CMesh>::RemoveTVertexByFlip(m);
     int t_vertices_collapsed = vcg::tri::Clean<CMesh>::RemoveTVertexByCollapse(m);
+#endif
 
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
-    vcg::tri::UpdateTopology<CMesh>::VertexEdge(m);
-    vcg::tri::UpdateTopology<CMesh>::EdgeEdge(m);
 
-    small_connected_removed.first += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).first;
+    small_connected_removed.second += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).second;
 
-    vcg::tri::UpdateTopology<CMesh>::TestFaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::TestVertexFace(m);
-    vcg::tri::UpdateTopology<CMesh>::TestVertexEdge(m);
 
-    vcg::tri::Allocator<CMesh>::CompactEveryVector(m);
-    vcg::tri::RequireCompactness<CMesh>(m);
+    int save_mask = vcg::tri::io::Mask::IOM_VERTCOORD;
+
+    {
+        using namespace vcg;
+        using namespace vcg::tri::io;
+
+        if(!(load_mask & Mask::IOM_VERTTEXCOORD) && !(load_mask & Mask::IOM_WEDGTEXCOORD))
+        {
+            std::cerr << "Mesh has no texture coordinates, initializing simple parametrization" << std::endl;
+
+            UpdateTexture<CMesh>::WedgeTexFromPlane(m, Point3f(1.f, 0.f, 0.f), Point3f(0.f, 1.f, 0.f), true);
+
+            save_mask |= Mask::IOM_WEDGTEXCOORD;
+        }
+        else
+        {
+            save_mask |= (load_mask & Mask::IOM_VERTTEXCOORD) | (load_mask & Mask::IOM_WEDGTEXCOORD);
+        }
+
+        if(!(load_mask & Mask::IOM_VERTNORMAL))
+        {
+            std::cerr << "Mesh has no per-vertex normals" << std::endl;
+
+            if((load_mask & Mask::IOM_FACENORMAL) || (load_mask & Mask::IOM_WEDGNORMAL))
+            {
+                std::cerr << "Mesh has per-face normals, recomputing per-vertex" << std::endl;
+
+                UpdateNormal<CMesh>::PerVertexNormalizedPerFaceNormalized(m);
+                save_mask |= Mask::IOM_VERTNORMAL;
+            }
+            else
+            {
+                std::cerr << "Mesh has no normals, computing per-vertex" << std::endl;
+
+                UpdateNormal<CMesh>::PerVertexNelsonMaxWeighted(m);
+                save_mask |= Mask::IOM_VERTNORMAL;
+            }
+        }
+        else
+        {
+            save_mask |= load_mask & Mask::IOM_VERTNORMAL;
+        }
+    }
 
     vcg::tri::UpdateNormal<CMesh>::NormalizePerVertex(m);
-    vcg::tri::UpdateNormal<CMesh>::NormalizePerFace(m);
 
     std::cout << "Small connected components removed: " << small_connected_removed.second << " out of " << small_connected_removed.first << " total" << std::endl;
 
@@ -162,8 +202,10 @@ int main(int argc, char** argv)
     std::cout << "Zero area faces removed: " << zero_area_face_removed << std::endl;
 
     std::cout << "Face folds removed: " << face_folds_removed << std::endl;
+#ifdef FIX_T_VERTICES
     std::cout << "T-vertices flipped: " << t_vertices_flipped << std::endl;
     std::cout << "T-vertices collapsed: " << t_vertices_collapsed << std::endl;
+#endif
 
     std::vector<std::pair<int, vcg::tri::Clean<CMesh>::FacePointer>> CCV;
     int components = vcg::tri::Clean<CMesh>::ConnectedComponents(m, CCV);
@@ -174,17 +216,35 @@ int main(int argc, char** argv)
     {
         std::cerr << "FIXED MESH CONTAINS MORE THAN 1 COMPONENT" << std::endl;
 
+        std::vector<int> sizes;
+
         for(int i = 0; i < CCV.size(); i++)
         {
-            std::cerr << "Size of component: " << CCV[i].first << std::endl;
+            std::cerr << "Size of component " << std::to_string(i) << ": " << CCV[i].first << std::endl;
+            sizes.emplace_back(CCV[i].first);
         }
+
+        int max_size = *std::max_element(sizes.begin(), sizes.end());
+        std::cerr << "Size of largest component: " << max_size << std::endl;
+
+        auto connected_removed = vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, max_size);
+        std::cerr << "Lesser connected components removed: " << connected_removed.second << " out of " << connected_removed.first << " total" << std::endl;
+
+        // TODO: save connected components to separate OBJ-s instead of dropping them
     }
 
-    int save_error = vcg::tri::io::ExporterOBJ<CMesh>::Save(m, model_fixed.c_str(), load_mask);
+    vcg::tri::Allocator<CMesh>::CompactEveryVector(m);
+    vcg::tri::RequireCompactness<CMesh>(m);
 
-    if(save_error != vcg::tri::io::ExporterOBJ<CMesh>::SaveError::E_NOERROR)
     {
-        throw std::runtime_error("Failed to save the model: " + std::string(vcg::tri::io::ExporterOBJ<CMesh>::ErrorMsg(save_error)));
+        using namespace vcg::tri::io;
+
+        int save_error = ExporterOBJ<CMesh>::Save(m, model_fixed.c_str(), save_mask);
+
+        if(save_error != ExporterOBJ<CMesh>::SaveError::E_NOERROR)
+        {
+            throw std::runtime_error("Failed to save the model: " + std::string(ExporterOBJ<CMesh>::ErrorMsg(save_error)));
+        }
     }
 
     return 0;
