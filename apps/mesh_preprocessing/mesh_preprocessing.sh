@@ -2,12 +2,15 @@
 
 # Requires path of OBJ as argument
 
-#lamure directory
-#SCRIPT_CALL=$0
-#LAMURE_DIR=$(basename -- "$SCRIPT_CALL")
-
-#alternatively, use user specified directory:
-LAMURE_DIR=~/svn/lamure/install/bin/
+if [[ -z "${LAMURE_DIR}" ]]; then
+  echo -e "\e[31m"
+  echo -e "To run this mesh preprocessing script, define \e[1;4mLAMURE_DIR\e[24m\e[21m environmental variable, e.g.:"
+  echo -e "\e[1;4mexport LAMURE_DIR=/opt/lamure/install/bin/\e[24m\e[21m"
+  echo -e "You might want to add this line to your \e[1;4m.bashrc\e[24m\e[21m for persistent definition. Do not forget to follow it by:"
+  echo -e "\e[1;4msource .bashrc\e[24m\e[21m"
+  echo -e "\e[0m"
+  exit
+fi
 
 ############################
 # user settings
@@ -27,6 +30,29 @@ NUM_DILATIONS=4096
 
 ############################
 
+echo -e "\e[32m"
+
+read -p "Use default settings? (y/n)? " answer
+case ${answer:0:1} in
+    y|Y )
+        echo "Using following default settings"
+        echo "Triangle budget per KD-tree node: " ${KDTREE_TRI_BUDGET}
+        echo "Chart creation cost threshold: " ${COST_THRESHOLD}
+        echo "Triangle budget per BVH node: " ${TRI_BUDGET}
+        echo "Maximum size of final texture: " ${MAX_FINAL_TEX_SIZE}
+        echo "Number of dilations: " ${NUM_DILATIONS}
+    ;;
+    * )
+        read -rp "Triangle budget per KD-tree node: " KDTREE_TRI_BUDGET
+        read -rp "Chart creation cost threshold: " COST_THRESHOLD
+        read -rp "Triangle budget per BVH node: " TRI_BUDGET
+        read -rp "Maximum size of final texture: " MAX_FINAL_TEX_SIZE
+        read -rp "Number of dilations: " NUM_DILATIONS
+    ;;
+esac
+
+echo -e "\e[0m"
+
 echo "RUNNING MESHLOD PIPELINE"
 echo "------------------------"
 
@@ -37,17 +63,42 @@ echo "Using obj model $SRC_OBJ"
 #create path to obj file
 OBJPATH="$SRC_OBJ"
 
-#convert textures to png if necessary
-#echo "Converting jpgs to pngs"
-#mogrify -format png *.jpg
-#flip all texture images
-#echo "Flipping texture images"
-#mogrify -flip *.png
+echo -e "\e[32m"
+
+read -p "Convert all textures to PNG (required)? (y/n)? " answer
+case ${answer:0:1} in
+    y|Y )
+        # convert textures to PNG using mogrify
+        targets=`*.jpg *.JPG *.png *.PNG *.bmp *.BMP *.tiff *.TIFF *.tif *.TIF *.ppm *.PPM *.pgm *.PGM *.pbm *.PBM *.pnm *.PNM`
+        echo "Converting to PNG: "
+        echo ${targets}
+        mogrify -format png ${targets}
+    ;;
+    * )
+        echo "Skipping conversion (assuming was done before)"
+    ;;
+esac
+
+read -p "Flip all textures (required)? (y/n)? " answer
+case ${answer:0:1} in
+    y|Y )
+        targets=`*.png`
+        echo "Flipping PNGs"
+        echo ${targets}
+        mogrify -flip ${targets}
+    ;;
+    * )
+        echo "Skipping flipping (assuming was done before)"
+    ;;
+esac
+
+echo -e "\e[0m"
 
 echo "Running chart creation with file $SRC_OBJ"
 echo "-----------------------------------------"
 
-time ${LAMURE_DIR}lamure_mesh_preprocessing -f $OBJPATH -tkd $KDTREE_TRI_BUDGET -co $COST_THRESHOLD -tbvh $TRI_BUDGET -multi-max $MAX_FINAL_TEX_SIZE
+DATE=`date '+%Y-%m-%d:%H:%M:%S'`
+time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE} 2>&1 | tee log_${DATE}.txt
 
 
 
