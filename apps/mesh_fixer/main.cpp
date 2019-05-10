@@ -63,6 +63,8 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) { re
 //#define FIX_T_VERTICES
 //#endif
 
+// #define REMOVE_CONNECTED_COMPONENTS
+
 /***
  * NB! Some semantics in the code that follows are counterintuitive,
  * partially due to OBJ format I/O specifics.
@@ -119,7 +121,9 @@ int main(int argc, char** argv)
 
     std::cout << "Non-manifold faces removed: " << non_manifold_faces << std::endl;
 
+#ifdef REMOVE_CONNECTED_COMPONENTS
     auto small_connected_removed = vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000);
+#endif
 
     int duplicate_vertices_removed = vcg::tri::Clean<CMesh>::RemoveDuplicateVertex(m, true);
     int faces_out_of_range_area_removed = vcg::tri::Clean<CMesh>::RemoveFaceOutOfRangeArea(m);
@@ -131,7 +135,9 @@ int main(int argc, char** argv)
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
+#ifdef REMOVE_CONNECTED_COMPONENTS
     small_connected_removed.second += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).second;
+#endif
 
     int face_folds_removed = vcg::tri::Clean<CMesh>::RemoveFaceFoldByFlip(m);
 #ifdef FIX_T_VERTICES
@@ -142,7 +148,9 @@ int main(int argc, char** argv)
     vcg::tri::UpdateTopology<CMesh>::FaceFace(m);
     vcg::tri::UpdateTopology<CMesh>::VertexFace(m);
 
+#ifdef REMOVE_CONNECTED_COMPONENTS
     small_connected_removed.second += (vcg::tri::Clean<CMesh>::RemoveSmallConnectedComponentsSize(m, 50000)).second;
+#endif
 
     vcg::tri::UpdateTopology<CMesh>::TestVertexFace(m);
 
@@ -192,7 +200,9 @@ int main(int argc, char** argv)
 
     vcg::tri::UpdateNormal<CMesh>::NormalizePerVertex(m);
 
+#ifdef REMOVE_CONNECTED_COMPONENTS
     std::cout << "Small connected components removed: " << small_connected_removed.second << " out of " << small_connected_removed.first << " total" << std::endl;
+#endif
 
     std::cout << "Duplicate vertices removed: " << duplicate_vertices_removed << std::endl;
     std::cout << "Faces out of range area removed: " << faces_out_of_range_area_removed << std::endl;
@@ -207,6 +217,7 @@ int main(int argc, char** argv)
     std::cout << "T-vertices collapsed: " << t_vertices_collapsed << std::endl;
 #endif
 
+#ifdef REMOVE_CONNECTED_COMPONENTS
     std::vector<std::pair<int, vcg::tri::Clean<CMesh>::FacePointer>> CCV;
     int components = vcg::tri::Clean<CMesh>::ConnectedComponents(m, CCV);
 
@@ -232,6 +243,7 @@ int main(int argc, char** argv)
 
         // TODO: save connected components to separate OBJ-s instead of dropping them
     }
+#endif
 
     vcg::tri::Allocator<CMesh>::CompactEveryVector(m);
     vcg::tri::RequireCompactness<CMesh>(m);

@@ -774,6 +774,8 @@ static void chartify_parallel(app_state& state, cmd_options& opt)
 
 static void convert_to_triangle_soup(app_state& state)
 {
+    state.triangles.clear();
+
     state.num_areas = 0;
     for(auto& per_node_chart_id_map_it : state.per_node_chart_id_map)
     {
@@ -784,11 +786,19 @@ static void convert_to_triangle_soup(app_state& state)
         typedef CGAL::Inverse_index<Polyhedron::Vertex_const_iterator> Index;
         Index index(polyMesh.vertices_begin(), polyMesh.vertices_end());
 
+        uint32_t num_of_faces = polyMesh.size_of_facets();
+
         // extract triangle soup
-        for(Polyhedron::Facet_const_iterator fi = polyMesh.facets_begin(); fi != polyMesh.facets_end(); ++fi)
+
+        uint32_t offset = state.triangles.size();
+        state.triangles.resize(offset + num_of_faces);
+
+#pragma omp parallel for
+        for(uint32_t i = 0; i < num_of_faces; i++)
         {
+            Polyhedron::Facet_const_iterator fi = polyMesh.facets_begin();
+            std::advance(fi, i);
             Polyhedron::Halfedge_around_facet_const_circulator hc = fi->facet_begin();
-            Polyhedron::Halfedge_around_facet_const_circulator hc_end = hc;
 
             if(circulator_size(hc) != 3)
             {
@@ -824,11 +834,11 @@ static void convert_to_triangle_soup(app_state& state)
             tri.tex_id = fi->tex_id;
             tri.tri_id = fi->tri_id;
 
-            state.triangles.push_back(tri);
+            state.triangles[offset + i] = tri;
         }
         ++state.num_areas;
     }
-};
+}
 
 static void assign_parallel(app_state& state)
 {
