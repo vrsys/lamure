@@ -41,12 +41,32 @@ class bvh : public lamure::ren::bvh
 
     void simplify(std::vector<Triangle_Chartid>& left_child_tris, std::vector<Triangle_Chartid>& right_child_tris, std::vector<Triangle_Chartid>& output_tris, bool contrain_edges);
 
-    Vec3 normalise(Vec3 v);
-
-    void merge_similar_border_edges(Polyhedron& P, std::vector<Triangle_Chartid>& tri_list);
-
     // node_id -> triangles
     std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;
+
+#ifdef FLUSH_APP_STATE
+  public:
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+        ar& triangles_map_;
+        ar& num_nodes_;
+        ar& fan_factor_;
+        ar& depth_;
+        ar& primitives_per_node_;
+        ar& size_of_primitive_;
+        // ar& bounding_boxes_;
+        ar& centroids_;
+        ar& visibility_;
+        ar& avg_primitive_extent_;
+        ar& max_primitive_extent_deviation_;
+        ar& filename_;
+        ar& translation_;
+        ar& primitive_;
+    }
+#endif
 };
 
 } // namespace mesh

@@ -51,7 +51,6 @@ struct ParallelClusterCreator
         cluster_faces(charts, join_queue, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
 
         return populate_chart_LUT(charts, chart_id_map);
-        ;
     }
 
     // builds a chart list where each face of a polyhedron is 1 chart

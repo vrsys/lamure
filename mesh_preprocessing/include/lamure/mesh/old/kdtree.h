@@ -61,6 +61,21 @@ class kdtree_t
     uint32_t fanout_factor_;
     std::vector<node_t> nodes_;
     std::vector<uint32_t> indices_;
+
+#ifdef FLUSH_APP_STATE
+  public:
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+        ar& depth_;
+        ar& num_triangles_per_node_;
+        ar& fanout_factor_;
+        ar& nodes_;
+        ar& indices_;
+    }
+#endif
 };
 
 #endif

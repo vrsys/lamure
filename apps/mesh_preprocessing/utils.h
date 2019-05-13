@@ -720,10 +720,13 @@ static void chartify_parallel(app_state& state, cmd_options& opt)
         limits.max = scm::math::vec3f(std::numeric_limits<float>::lowest());
 
         std::vector<indexed_triangle_t> node_triangles;
+        node_triangles.resize(node.end_ - node.begin_);
+
+#pragma omp parallel for
         for(uint32_t idx = node.begin_; idx < node.end_; ++idx)
         {
             const auto& tri = state.all_indexed_triangles[indices[idx]];
-            node_triangles.push_back(tri);
+            node_triangles[idx - node.begin_] = tri;
 
             limits.min.x = std::min(limits.min.x, tri.v0_.pos_.x);
             limits.min.y = std::min(limits.min.y, tri.v0_.pos_.y);
@@ -772,7 +775,7 @@ static void chartify_parallel(app_state& state, cmd_options& opt)
     lamure::mesh::parallel_for(num_threads, state.node_ids.size(), lambda_chartify);
 }
 
-static void convert_to_triangle_soup(app_state& state)
+static void convert_to_triangle_soup_parallel(app_state &state)
 {
     state.triangles.clear();
 
@@ -881,6 +884,9 @@ static void assign_parallel(app_state& state)
 
 static void pack_areas(app_state& state)
 {
+    state.area_rects.resize(state.num_areas);
+
+#pragma omp parallel for
     for(uint32_t area_id = 0; area_id < state.num_areas; ++area_id)
     {
         calculate_chart_tex_space_sizes(state.chart_map[area_id], state.triangles, state.texture_info_map);
@@ -907,7 +913,7 @@ static void pack_areas(app_state& state)
         rectangle area_rect = pack(rects);
         area_rect.id_ = area_id;
         area_rect.flipped_ = false;
-        state.area_rects.push_back(area_rect);
+        state.area_rects[area_id] = area_rect;
 
         std::cout << "Packing of area " << area_id << " complete (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
 
@@ -924,7 +930,7 @@ static void pack_areas(app_state& state)
     std::cout << "Packing of all areas complete (" << state.image_rect.max_.x << ", " << state.image_rect.max_.y << ")" << std::endl;
 }
 
-static void apply_texture_space_transformation(app_state& state)
+static void apply_texture_space_transformations_in_parallel(app_state& state)
 {
     std::cout << "Applying texture space transformation..." << std::endl;
 
