@@ -66,6 +66,8 @@ class kdtree_t
   public:
     friend class boost::serialization::access;
 
+    kdtree_t() = default;
+
     template <class Archive>
     void serialize(Archive& ar, const unsigned int version)
     {

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Logging routines
+DATE=`date '+%Y-%m-%d:%H:%M:%S'`
+PIPEFILE=pipe
+mkfifo ${PIPEFILE}
+tee log_${DATE}.txt < ${PIPEFILE} &
+TEEPID=$!
+exec > ${PIPEFILE} 2>&1
+
 # Requires path of OBJ as argument
 
 if [[ -z "${LAMURE_DIR}" ]]; then
@@ -97,11 +105,9 @@ echo -e "\e[0m"
 echo "Running chart creation with file $SRC_OBJ"
 echo "-----------------------------------------"
 
-DATE=`date '+%Y-%m-%d:%H:%M:%S'`
-time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE} 2>&1 | tee log_${DATE}.txt
+time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE} -raw
 
-
-
-
-
-
+# Logging routines
+exec 1>&- 2>&-
+wait ${TEEPID}
+rm ${PIPEFILE}

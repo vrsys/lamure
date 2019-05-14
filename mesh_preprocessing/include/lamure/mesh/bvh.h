@@ -48,6 +48,8 @@ class bvh : public lamure::ren::bvh
   public:
     friend class boost::serialization::access;
 
+    bvh() = default;
+
     template <class Archive>
     void serialize(Archive& ar, const unsigned int version)
     {
