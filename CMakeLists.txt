@@ -95,14 +95,6 @@ find_package( Threads )
 
 ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
 
-#INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
-#LINK_DIRECTORIES(${Boost_LIBRARY_DIR})
-
-find_package(GLFW3 REQUIRED)
-include(findGLFW3)
-include(FindOpenGL)
-include(FindGLEW)
-
 ################################
 # GLUT
 ################################
@@ -110,16 +102,11 @@ SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${GLOBAL_EXT_DIR}/freeglut/include)
 SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${GLOBAL_EXT_DIR}/freeglut/lib)
 find_package(GLUT REQUIRED)
 
-#include_directories(${GLUT_INCLUDE_DIR})
-#link_directories(${GLUT_LIBRARY_DIRS})
-
-#add_definitions(${GLUT_DEFINITIONS})
-
 ################################
 # glfw
 ################################
 find_package(GLFW3 REQUIRED)
-include(findGLFW3)
+# include(findGLFW3)
 include(FindOpenGL)
 include(FindGLEW)
 
