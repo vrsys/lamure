@@ -246,9 +246,6 @@ int main(int argc, char** argv)
             reorder_triangles(state);
         });
 
-        // TODO
-        exit(0);
-
         // triangles, chart_map, num_areas
         execute_stage("Prepare charts", state, [&] { prepare_charts(state); });
 
