@@ -119,9 +119,6 @@ void pick_up_from(STAGE& stage, std::string& obj_filename, cmd_options& opt)
             });
         }
 
-        // TODO
-        exit(0);
-
         if(stage <= PREPARE_CHARTS)
         {
             execute_stage("Prepare charts", state, [&] { prepare_charts(state); });
