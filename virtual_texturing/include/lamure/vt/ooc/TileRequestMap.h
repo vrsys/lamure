@@ -11,6 +11,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <cstdint>
+#include <lamure/vt/platform.h>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/ooc/TileRequest.h>
 #include <lamure/vt/Observer.h>
@@ -19,7 +20,7 @@ namespace vt
 {
 namespace ooc
 {
-class TileRequestMap : public Observer
+class VT_DLL TileRequestMap : public Observer
 {
   protected:
     std::map<std::pair<pre::AtlasFile*, uint64_t>, TileRequest*> _map;

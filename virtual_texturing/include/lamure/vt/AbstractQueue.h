@@ -8,6 +8,7 @@
 #ifndef VT_ABSTRACTQUEUE_H
 #define VT_ABSTRACTQUEUE_H
 
+#include <lamure/vt/common.h>
 #include <cstddef>
 #include <atomic>
 #include <mutex>
@@ -19,7 +20,7 @@ template <typename content_type>
 class AbstractQueue;
 
 template <typename content_type>
-class AbstractQueueEntry
+class VT_DLL AbstractQueueEntry
 {
   protected:
     std::atomic<AbstractQueueEntry<content_type>*> _prev;
@@ -55,7 +56,7 @@ class AbstractQueueEntry
 };
 
 template <typename content_type>
-class AbstractQueue
+class VT_DLL AbstractQueue
 {
   protected:
     alignas(64) std::condition_variable _newEntry;

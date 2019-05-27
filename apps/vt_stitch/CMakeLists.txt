@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the vt_stitch executable
 
@@ -28,3 +30,4 @@ add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common lamure_pvs_commo
 
 MsvcPostBuild(${PROJECT_NAME})
 
+ENDIF(NOT MSVC)

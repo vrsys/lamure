@@ -17,7 +17,7 @@ namespace lamure {
 namespace prov
 {
 template <class TPoint, class TMetaData>
-class Cacheable : public Readable
+class PROVENANCE_DLL Cacheable : public Readable
 {
   public:
     Cacheable(ifstream &is_prov, ifstream &is_meta)

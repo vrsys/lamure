@@ -101,7 +101,7 @@ class reduction_strategy_provenance : public reduction_strategy
             is.seekg(0, std::ios::end);
             fsize = is.tellg() - fsize;
 
-            if(fsize != length_of_data)
+            if((uint64_t)fsize != length_of_data)
             {
                 std::stringstream istr;
                 istr << fsize;

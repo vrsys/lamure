@@ -9,8 +9,9 @@
 #define PROV_AUX_STREAM_H_
 
 
+#include <lamure/prov/platform.h>
 #include <lamure/types.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/math.h>
@@ -25,7 +26,7 @@
 namespace lamure {
 namespace prov {
 
-class aux_stream
+class PROVENANCE_DLL aux_stream
 {
 
 public:
@@ -41,8 +42,8 @@ public:
     const aux_stream_type type() const { return type_; };
     const std::string filename() const { return filename_; };
 
-    void read_aux(const std::string& filename, aux& aux);
-    void write_aux(const std::string& filename, aux& aux);
+    void read_aux(const std::string& filename, auxi& aux);
+    void write_aux(const std::string& filename, auxi& aux);
 
 
 protected:
@@ -96,7 +97,7 @@ protected:
       std::vector<aux_feature> features_;
     };
   
-    class aux_serializable {
+    class PROVENANCE_DLL aux_serializable {
     public:
         ~aux_serializable() {};
         size_t data_offset_;
@@ -149,7 +150,7 @@ protected:
 
     };
 
-    class aux_sig : public aux_serializable {
+    class PROVENANCE_DLL aux_sig : public aux_serializable {
     public:
         aux_sig()
         : aux_serializable() {};
@@ -188,7 +189,7 @@ protected:
         }
     };
 
-    class aux_file_seg : public aux_serializable {
+    class PROVENANCE_DLL aux_file_seg : public aux_serializable {
     public:
         aux_file_seg()
         : aux_serializable() {};
@@ -235,7 +236,7 @@ protected:
 
     
 
-    class aux_sparse_seg : public aux_serializable {
+    class PROVENANCE_DLL aux_sparse_seg : public aux_serializable {
     public:
         aux_sparse_seg()
         : aux_serializable() {};
@@ -363,7 +364,7 @@ protected:
 
 
 
-    class aux_view_seg : public aux_serializable { // 1 per camera
+    class PROVENANCE_DLL aux_view_seg : public aux_serializable { // 1 per camera
     public:
         aux_view_seg()
         : aux_serializable() {};
@@ -493,7 +494,7 @@ protected:
     };
 
 
-    class aux_atlas_seg : public aux_serializable { // 1 per file
+    class PROVENANCE_DLL aux_atlas_seg : public aux_serializable { // 1 per file
     public:
         aux_atlas_seg()
         : aux_serializable() {};
@@ -549,7 +550,7 @@ protected:
     };
 
 
-    class aux_atlas_tile_seg : public aux_serializable { // 1 per camera
+    class PROVENANCE_DLL aux_atlas_tile_seg : public aux_serializable { // 1 per camera
     public:
         aux_atlas_tile_seg()
         : aux_serializable() {};
@@ -620,7 +621,7 @@ protected:
     };
 
     
-    class aux_tree_seg : public aux_serializable { // 1 per camera
+    class PROVENANCE_DLL aux_tree_seg : public aux_serializable { // 1 per camera
     public:
         aux_tree_seg()
         : aux_serializable() {};

@@ -14,7 +14,7 @@
 namespace lamure {
 namespace prov
 {
-class DenseMetaData : public MetaData
+class PROVENANCE_DLL DenseMetaData : public MetaData
 {
   public:
     DenseMetaData()

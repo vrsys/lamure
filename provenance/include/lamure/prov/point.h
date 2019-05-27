@@ -14,7 +14,7 @@
 namespace lamure {
 namespace prov
 {
-class Point
+class PROVENANCE_DLL Point
 {
   public:
     Point(const vec3f &_position, const vec3f &_color, const vec<uint8_t> &_metadata) : _position(_position), _color(_color) {}

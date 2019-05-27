@@ -118,17 +118,17 @@ write(aux_stream::aux_serializable& serializable) {
 
 
 void aux_stream::
-read_aux(const std::string& filename, aux& aux) {
+read_aux(const std::string& filename, auxi& aux) {
  
     open_stream(filename, aux_stream_type::AUX_STREAM_IN);
 
     if (type_ != AUX_STREAM_IN) {
         throw std::runtime_error(
-            "lamure: aux_stream::Failed to read aux from: " + filename_);
+            "lamure: aux_stream::Failed to read auxi from: " + filename_);
     }
     if (!file_.is_open()) {
          throw std::runtime_error(
-            "lamure: aux_stream::Failed to read aux from: " + filename_);
+            "lamure: aux_stream::Failed to read auxi from: " + filename_);
     }
    
     //scan stream
@@ -247,7 +247,7 @@ read_aux(const std::string& filename, aux& aux) {
     }   
 
     for (uint64_t i = 0; i < sparse.num_points_; ++i) {
-      aux::sparse_point p;
+      auxi::sparse_point p;
       p.pos_ = scm::math::vec3f(sparse.points_[i].x_, sparse.points_[i].y_, sparse.points_[i].z_);
       p.r_ = sparse.points_[i].r_;
       p.g_ = sparse.points_[i].g_;
@@ -255,7 +255,7 @@ read_aux(const std::string& filename, aux& aux) {
       p.a_ = (uint8_t)255;
 
       for (uint32_t j = 0; j < sparse.points_[i].num_features_; ++j) {
-        aux::feature f;
+        auxi::feature f;
         f.camera_id_ = sparse.points_[i].features_[j].camera_id_;
         f.using_count_ = sparse.points_[i].features_[j].using_count_;
         f.coords_ = scm::math::vec2f(
@@ -272,7 +272,7 @@ read_aux(const std::string& filename, aux& aux) {
 
     
     for (const auto& view : views) {
-       aux::view v;
+       auxi::view v;
        v.camera_id_ = view.camera_id_;
        v.position_ = scm::math::vec3f(view.position_.x_, view.position_.y_, view.position_.z_);
 
@@ -292,7 +292,7 @@ read_aux(const std::string& filename, aux& aux) {
    
     }
 
-    aux::atlas ta;
+    auxi::atlas ta;
     ta.num_atlas_tiles_ = atlas.num_atlas_tiles_;
     ta.atlas_width_ = atlas.atlas_width_;
     ta.atlas_height_ = atlas.atlas_height_;
@@ -300,7 +300,7 @@ read_aux(const std::string& filename, aux& aux) {
     aux.set_atlas(ta);
 
     for (const auto& tile : tiles) {
-      aux::atlas_tile t;
+      auxi::atlas_tile t;
       t.atlas_tile_id_ = tile.atlas_tile_id_;
       t.x_ = tile.x_;
       t.y_ = tile.y_;
@@ -325,17 +325,17 @@ read_aux(const std::string& filename, aux& aux) {
 }
 
 void aux_stream::
-write_aux(const std::string& filename, aux& aux) {
+write_aux(const std::string& filename, auxi& aux) {
 
    open_stream(filename, aux_stream_type::AUX_STREAM_OUT);
 
    if (type_ != AUX_STREAM_OUT) {
        throw std::runtime_error(
-           "lamure: aux_stream::Failed to append aux to: " + filename_);
+           "lamure: aux_stream::Failed to append auxi to: " + filename_);
    }
    if (!file_.is_open()) {
        throw std::runtime_error(
-           "lamure: aux_stream::Failed to append aux to: " + filename_);
+           "lamure: aux_stream::Failed to append auxi to: " + filename_);
    }
    
    file_.seekp(0, std::ios::beg);

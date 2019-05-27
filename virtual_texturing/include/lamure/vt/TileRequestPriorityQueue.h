@@ -17,7 +17,7 @@ template <typename priority_type>
 class TileRequestPriorityQueue;
 
 template <typename priority_type>
-class TileRequestPriorityQueueEntry : public AbstractQueueEntry<vt::ooc::TileRequest*>
+class VT_DLL TileRequestPriorityQueueEntry : public AbstractQueueEntry<vt::ooc::TileRequest*>
 {
   protected:
     std::mutex _deleteLock;
@@ -36,7 +36,7 @@ TileRequestPriorityQueueEntry<priority_type>::TileRequestPriorityQueueEntry(ooc:
 }
 
 template <typename priority_type>
-class TileRequestPriorityQueue : public AbstractQueue<ooc::TileRequest*>
+class VT_DLL TileRequestPriorityQueue : public AbstractQueue<ooc::TileRequest*>
 {
   protected:
     virtual void _insertUnsafe(TileRequestPriorityQueueEntry<priority_type>& entry)

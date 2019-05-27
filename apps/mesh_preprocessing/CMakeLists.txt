@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the preprocessing executable
 
@@ -39,6 +41,8 @@ target_link_libraries(${PROJECT_NAME}
     stdc++fs
     )
 
-add_dependencies(${PROJECT_NAME} lamure_preprocessing lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_mesh_preprocessing lamure_preprocessing lamure_common)
 
-MsvcPostBuild(${PROJECT_NAME})
+# MsvcPostBuild(${PROJECT_NAME})
+
+ENDIF(NOT MSVC)

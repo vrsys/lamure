@@ -70,7 +70,8 @@ add_library(${PROJECT_NAME}_s STATIC
 add_dependencies(${PROJECT_NAME} lamure_common)
 
 IF (MSVC)
-    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PREPROCESSING_LIBRARY -DBOOST_ALL_NO_LIB")
+    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_VT_LIBRARY -DBOOST_ALL_NO_LIB")
+    SET_TARGET_PROPERTIES(${PROJECT_NAME}_s PROPERTIES COMPILE_FLAGS "-D LAMURE_VT_LIBRARY -DBOOST_ALL_NO_LIB")
 ENDIF(MSVC)
 
 
@@ -102,14 +103,14 @@ endif ()
 ###############################################################################
 
 IF (MSVC)
-    install (TARGETS ${PROJECT_NAME}
+    install (TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_s
             CONFIGURATIONS Release
             RUNTIME DESTINATION bin/Release
             LIBRARY DESTINATION lib/Release
             ARCHIVE DESTINATION lib/Release
             )
 
-    install (TARGETS ${PROJECT_NAME}
+    install (TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_s
             CONFIGURATIONS Debug
             RUNTIME DESTINATION bin/Debug
             LIBRARY DESTINATION lib/Debug

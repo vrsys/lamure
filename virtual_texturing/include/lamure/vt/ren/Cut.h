@@ -14,7 +14,7 @@
 namespace vt
 {
 class CutDatabase;
-class CutState
+class VT_DLL CutState
 {
   public:
     CutState(uint16_t depth);
@@ -36,7 +36,7 @@ class CutState
     mem_slots_index_type _mem_slots_locked;
 };
 
-class Cut : public DoubleBuffer<CutState>
+class VT_DLL Cut : public DoubleBuffer<CutState>
 {
   public:
     static Cut& init_cut(uint64_t id, pre::AtlasFile* atlas);

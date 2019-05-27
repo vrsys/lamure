@@ -13,7 +13,7 @@
 namespace lamure {
 namespace prov
 {
-class Readable
+class PROVENANCE_DLL Readable
 {
   public:
     static const uint64_t HEADER_LENGTH = 0x0A;
@@ -41,7 +41,7 @@ class Readable
         is.seekg(0, std::ios::end);
         fsize = is.tellg() - fsize;
 
-        if(fsize != data_length)
+        if((uint64_t)fsize != data_length)
         {
             std::stringstream istr;
             istr << fsize;

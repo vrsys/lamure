@@ -6,7 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/prov/octree.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 #include <lamure/bounding_box.h>
 
 #include <limits>
@@ -34,13 +34,13 @@ octree::
 
 
 void octree::
-create(std::vector<aux::sparse_point>& _points) {
+create(std::vector<auxi::sparse_point>& _points) {
   nodes_.clear(); 
   depth_ = 0;
   min_num_points_per_node_ = 16;
   uint32_t max_depth = 12;
 
-  std::vector<aux::sparse_point> points = _points;
+  std::vector<auxi::sparse_point> points = _points;
 
   uint64_t num_points = points.size();
   if (num_points < min_num_points_per_node_) {
@@ -120,7 +120,7 @@ create(std::vector<aux::sparse_point>& _points) {
 
     //sort all points between begin and end along x-axis, find midpoint
     std::sort(&points[node.begin_], &points[node.end_], 
-      [](const aux::sparse_point& _l, const aux::sparse_point& _r) -> bool { 
+      [](const auxi::sparse_point& _l, const auxi::sparse_point& _r) -> bool {
         return _l.pos_.x < _r.pos_.x; 
       }
     );
@@ -131,7 +131,7 @@ create(std::vector<aux::sparse_point>& _points) {
     
     //sort all points between begin and end along y-axis, find midpoints
     std::sort(&points[node.begin_], &points[mid_id_x], 
-      [](const aux::sparse_point& _l, const aux::sparse_point& _r) -> bool { 
+      [](const auxi::sparse_point& _l, const auxi::sparse_point& _r) -> bool {
         return _l.pos_.y < _r.pos_.y; 
       }
     );
@@ -141,7 +141,7 @@ create(std::vector<aux::sparse_point>& _points) {
     }
 
     std::sort(&points[mid_id_x], &points[node.end_], 
-      [](const aux::sparse_point& _l, const aux::sparse_point& _r) -> bool { 
+      [](const auxi::sparse_point& _l, const auxi::sparse_point& _r) -> bool {
         return _l.pos_.y < _r.pos_.y; 
       }
     );
@@ -152,7 +152,7 @@ create(std::vector<aux::sparse_point>& _points) {
 
     //sort all points between begin and end along z-axis, find midpoints
     std::sort(&points[node.begin_], &points[mid_id_y0], 
-      [](const aux::sparse_point& _l, const aux::sparse_point& _r) -> bool { 
+      [](const auxi::sparse_point& _l, const auxi::sparse_point& _r) -> bool {
         return _l.pos_.z < _r.pos_.z; 
       }
     );
@@ -162,7 +162,7 @@ create(std::vector<aux::sparse_point>& _points) {
     }
 
     std::sort(&points[mid_id_y0], &points[mid_id_x], 
-      [](const aux::sparse_point& _l, const aux::sparse_point& _r) -> bool { 
+      [](const auxi::sparse_point& _l, const auxi::sparse_point& _r) -> bool {
         return _l.pos_.z < _r.pos_.z; 
       }
     );
@@ -172,7 +172,7 @@ create(std::vector<aux::sparse_point>& _points) {
     }
     
     std::sort(&points[mid_id_x], &points[mid_id_y1], 
-      [](const aux::sparse_point& _l, const aux::sparse_point& _r) -> bool { 
+      [](const auxi::sparse_point& _l, const auxi::sparse_point& _r) -> bool {
         return _l.pos_.z < _r.pos_.z; 
       }
     );
@@ -182,7 +182,7 @@ create(std::vector<aux::sparse_point>& _points) {
     }
     
     std::sort(&points[mid_id_y1], &points[node.end_], 
-      [](const aux::sparse_point& _l, const aux::sparse_point& _r) -> bool { 
+      [](const auxi::sparse_point& _l, const auxi::sparse_point& _r) -> bool {
         return _l.pos_.z < _r.pos_.z; 
       }
     );

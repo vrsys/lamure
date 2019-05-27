@@ -13,7 +13,7 @@
 #include <lamure/prov/sparse_octree.h>
 #include <lamure/prov/octree.h>
 
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/math.h>
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
          "\t-s: sparse.prov file" << std::endl <<
          //"\t-d: dense.prov file" << std::endl <<
          "\t-f: fotos directory" << std::endl <<
-         "\t-o: output.aux file" << std::endl <<
+         "\t-o: output.auxi file" << std::endl <<
          std::endl;
       return 0;
     }
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     if (check_file_extensions(sparse_file, ".prov") && 
         //check_file_extensions(dense_file, ".prov") && 
-        check_file_extensions(aux_file, ".aux")) {
+        check_file_extensions(aux_file, ".auxi")) {
         throw std::runtime_error("File format is incompatible");
     }
 
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 */
-    lamure::prov::aux aux;
+    lamure::prov::auxi aux;
 
     //sparse points
     std::cout << "Converting sparse_points..." << std::endl;
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
     const std::vector<lamure::prov::SparsePoint>& feature_points = cache_sparse.get_points();
     for (uint64_t i = 0; i < feature_points.size(); ++i) {
       const auto& point = feature_points[i];
-      lamure::prov::aux::sparse_point p;
+      lamure::prov::auxi::sparse_point p;
       p.pos_ = point.get_position();
       p.r_ = (uint8_t)point.get_color().x;
       p.g_ = (uint8_t)point.get_color().y;
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
       for (uint64_t j = 0; j < measurements.size(); ++j) {
         const auto& measurement = measurements[j];
 
-        lamure::prov::aux::feature f;
+        lamure::prov::auxi::feature f;
         f.camera_id_ = measurement.get_camera();
         f.using_count_ = 1;
         f.coords_ = measurement.get_occurence();
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
     for (uint64_t i = 0; i < cameras.size(); ++i) {
       auto& camera = cameras[i];
 
-      lamure::prov::aux::view v;
+      lamure::prov::auxi::view v;
       v.camera_id_ = camera.get_index();
       v.position_ = camera.get_translation();
 
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
     octree->create(aux.get_sparse_points());
     aux.set_octree(octree);
 
-    std::cout << "Writing aux file..." << std::endl;
+    std::cout << "Writing auxi file..." << std::endl;
 
     aux.write_aux_file(aux_file);
 

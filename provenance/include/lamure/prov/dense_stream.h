@@ -14,7 +14,7 @@
 namespace lamure {
 namespace prov
 {
-class DenseStream : public Streamable<DensePoint>
+class PROVENANCE_DLL DenseStream : public Streamable<DensePoint>
 {
   public:
     DenseStream(ifstream &is) : Streamable(is) {}

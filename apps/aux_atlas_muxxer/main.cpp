@@ -6,7 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/types.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 #include <lamure/prov/octree.h>
 
 #include <scm/core/math.h>
@@ -58,9 +58,9 @@ int main(int argc, char *argv[]) {
       !cmd_option_exists(argv, argv+argc, "-o")) {
       std::cout << "Usage: " << argv[0] << std::endl <<
          "INFO: aux_import " << std::endl <<
-         "\t-f input .aux file (required)" << std::endl <<
+         "\t-f input .auxi file (required)" << std::endl <<
          "\t-l input .log file from last_atlas_compiler (required)" << std::endl <<
-         "\t-o output .aux file (required)" << std::endl <<
+         "\t-o output .auxi file (required)" << std::endl <<
          std::endl;
       return 0;
     }
@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
     std::string log_file_in = std::string(get_cmd_option(argv, argv + argc, "-l"));
     std::string aux_file_out = std::string(get_cmd_option(argv, argv + argc, "-o"));
 
-    lamure::prov::aux aux_in(aux_file_in);
-    lamure::prov::aux aux_out;
+    lamure::prov::auxi aux_in(aux_file_in);
+    lamure::prov::auxi aux_out;
 
     uint32_t num_views = aux_in.get_num_views();
     std::cout << aux_in.get_num_views() << " views, " << aux_in.get_num_sparse_points() << " points" << std::endl;
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
     std::cout << "muxing atlas..." << std::endl;
     std::cout << "atlas width: " << atlas_width << std::endl;
     std::cout << "atlas height: " << atlas_height << std::endl;
-    lamure::prov::aux::atlas atlas{aux_in.get_num_views(), atlas_width, atlas_height, rotated};
+    lamure::prov::auxi::atlas atlas{aux_in.get_num_views(), atlas_width, atlas_height, rotated};
     aux_out.set_atlas(atlas);
 
     for (uint32_t i = 0; i < aux_in.get_num_views(); ++i) {
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Error: tile_map does not contain image file " << view.image_file_ << std::endl;
         exit(1);
       }
-      lamure::prov::aux::atlas_tile atlas_tile{i, it->second.x_, it->second.y_, it->second.width_, it->second.height_};
+      lamure::prov::auxi::atlas_tile atlas_tile{i, it->second.x_, it->second.y_, it->second.width_, it->second.height_};
       aux_out.add_atlas_tile(atlas_tile);
       view.atlas_tile_id_ = i;
       aux_out.add_view(view);
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
     std::cout << "copy octree..." << std::endl;
     aux_out.set_octree(aux_in.get_octree());
     
-    std::cout << "writing aux file..." << std::endl;
+    std::cout << "writing auxi file..." << std::endl;
     aux_out.write_aux_file(aux_file_out);
 
     

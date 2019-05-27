@@ -45,7 +45,7 @@
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 #include <lamure/prov/octree.h>
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/ren/CutDatabase.h>
@@ -268,7 +268,7 @@ struct settings {
   std::vector<std::string> models_;
   std::map<uint32_t, scm::math::mat4d> transforms_;
   std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
-  std::map<uint32_t, std::vector<lamure::prov::aux::view>> views_;
+  std::map<uint32_t, std::vector<lamure::prov::auxi::view>> views_;
   std::map<uint32_t, std::string> aux_;
   std::map<uint32_t, std::string> textures_;
   std::string selection_ {""};
@@ -383,9 +383,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
               settings.transforms_[address] = load_matrix(value);
               std::cout << "found transform for model id " << address << std::endl;
             }
-            else if (key == "aux") {
+            else if (key == "auxi") {
               settings.aux_[address] = value;
-              std::cout << "found aux data for model id " << address << std::endl;
+              std::cout << "found auxi data for model id " << address << std::endl;
             }
             else if (key == "tex") {
               settings.textures_[address] = value;
@@ -2136,14 +2136,14 @@ void create_aux_resources() {
       
       uint32_t model_id = aux_file.first;
 
-      std::cout << "aux: " << aux_file.second << std::endl;
-      lamure::prov::aux aux(aux_file.second);
+      std::cout << "auxi: " << aux_file.second << std::endl;
+      lamure::prov::auxi aux(aux_file.second);
 
       provenance_[model_id].num_views_ = aux.get_num_views();
-      std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
-      std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
-      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
-      std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
+      std::cout << "auxi: " << aux.get_num_views() << " views" << std::endl;
+      std::cout << "auxi: " << aux.get_num_sparse_points() << " points" << std::endl;
+      std::cout << "auxi: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
+      std::cout << "auxi: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
       std::vector<xyz> points_to_upload;
 
@@ -3063,7 +3063,7 @@ void gui_selection_settings(settings& stgs){
       model_names_short.push_back(make_short_name(s));
     }
 
-    char* model_names[num_models_ + 1];
+    char** model_names = new char* [num_models_ + 1];
     for(unsigned i = 0; i < model_names_short.size(); ++i ){
       model_names[i] = ((char *) model_names_short[i].c_str());
     }
@@ -3075,7 +3075,7 @@ void gui_selection_settings(settings& stgs){
       dataset = num_models_;
     }
 
-    ImGui::Combo("Dataset", &dataset, model_names, num_models_+1);
+    ImGui::Combo("Dataset", &dataset, (const char* const*)model_names, num_models_+1);
 
     if(dataset == num_models_){
       selection_.selected_model_ = -1;
@@ -3126,6 +3126,8 @@ void gui_selection_settings(settings& stgs){
     }
 
     ImGui::End();
+
+    delete [] model_names;
 }
 
 
@@ -3303,7 +3305,7 @@ void gui_provenance_settings(){
       }
     }
     else {
-      ImGui::Text("No aux file");
+      ImGui::Text("No auxi file");
     }
 
     ImGui::Checkbox("Heatmap", &settings_.heatmap_);

@@ -11,13 +11,14 @@
 #include <cstdint>
 #include <cstddef>
 #include <fstream>
+#include <lamure/vt/platform.h>
 
 namespace vt
 {
 namespace pre
 {
 template <typename val_type>
-class Index
+class VT_DLL Index
 {
   protected:
     size_t _size;

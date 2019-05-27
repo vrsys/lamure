@@ -15,7 +15,7 @@
 namespace lamure {
 namespace prov
 {
-class SparseOctree : public OctreeNode
+class PROVENANCE_DLL SparseOctree : public OctreeNode
 {
   public:
     class Builder

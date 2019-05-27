@@ -8,13 +8,14 @@
 #ifndef VT_OOC_HEAPPROCESSOR_H
 #define VT_OOC_HEAPPROCESSOR_H
 
+#include <lamure/vt/platform.h>
 #include <lamure/vt/ooc/HeapProcessor.h>
 
 namespace vt
 {
 namespace ooc
 {
-class TileLoader : public HeapProcessor
+class VT_DLL TileLoader : public HeapProcessor
 {
   public:
     TileLoader();

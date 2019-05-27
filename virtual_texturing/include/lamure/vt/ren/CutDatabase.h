@@ -16,7 +16,7 @@
 namespace vt
 {
 class VTContext;
-class SyncStructure
+class VT_DLL SyncStructure
 {
   public:
     SyncStructure() : _read_lock(), _write_lock(), _read_write_lock(), _is_written(false), _is_read(false), _read_write_cv() {}
@@ -26,7 +26,7 @@ class SyncStructure
     std::mutex _read_lock, _write_lock, _read_write_lock;
     std::condition_variable _read_write_cv;
 };
-class StateStructure : public DoubleBuffer<mem_slots_type>
+class VT_DLL StateStructure : public DoubleBuffer<mem_slots_type>
 {
   public:
     StateStructure(mem_slots_type* front, mem_slots_type* back) : DoubleBuffer<mem_slots_type>(front, back) {}
@@ -34,7 +34,7 @@ class StateStructure : public DoubleBuffer<mem_slots_type>
 
     void deliver() override { _front->assign(_back->begin(), _back->end()); }
 };
-class CutDatabase
+class VT_DLL CutDatabase
 {
   public:
     static CutDatabase& get_instance()

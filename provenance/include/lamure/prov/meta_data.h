@@ -13,7 +13,7 @@
 namespace lamure {
 namespace prov
 {
-class MetaData
+class PROVENANCE_DLL MetaData
 {
   public:
     const vec<char> &get_metadata() const { return _metadata; }

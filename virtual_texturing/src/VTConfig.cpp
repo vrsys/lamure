@@ -10,7 +10,13 @@
 
 namespace vt
 {
+#ifdef _WIN32
+#ifdef LAMURE_VT_LIBRARY
 std::string vt::VTConfig::CONFIG_PATH;
+#endif
+#else
+std::string vt::VTConfig::CONFIG_PATH;
+#endif
 
 void VTConfig::read_config(const char* path_config)
 {

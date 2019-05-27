@@ -22,6 +22,7 @@
 #include <iomanip>
 #include <cmath>
 
+#include <lamure/vt/common.h>
 #include <lamure/vt/pre/QuadTree.h>
 #include <lamure/vt/pre/Bitmap.h>
 #include <lamure/vt/pre/AtlasFile.h>
@@ -32,7 +33,7 @@ namespace vt
 {
 namespace pre
 {
-class Preprocessor
+class VT_DLL Preprocessor
 {
   public:
     enum DEST_COMBINED

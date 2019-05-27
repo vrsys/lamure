@@ -200,6 +200,7 @@ add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_virtual_texturing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_mesh_preprocessing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_provenance PROPERTIES DEBUG_POSTFIX "d")

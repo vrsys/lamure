@@ -9,7 +9,7 @@
 #define PROV_OCTREE_H_
 
 #include <lamure/types.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 
 #include <scm/core/math.h>
 
@@ -65,7 +65,7 @@ public:
                       octree();
   virtual             ~octree();
 
-  void                create(std::vector<aux::sparse_point>& _points);
+  void                create(std::vector<auxi::sparse_point>& _points);
   uint64_t            query(const scm::math::vec3f& _pos);
 
   uint64_t            get_child_id(uint64_t node_id, uint32_t child_index);

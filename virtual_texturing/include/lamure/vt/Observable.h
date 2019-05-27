@@ -16,7 +16,7 @@
 
 namespace vt
 {
-class Observable
+class VT_DLL Observable
 {
   protected:
     std::map<event_type, std::set<Observer*>> _events;

@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the mesh preprocessing library
 
@@ -105,4 +107,4 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/mesh DESTINATION in
 # inline files 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/mesh DESTINATION include/lamure FILES_MATCHING PATTERN "*.inl")
 
-
+ENDIF(NOT MSVC)
