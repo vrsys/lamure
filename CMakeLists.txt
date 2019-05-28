@@ -170,6 +170,15 @@ include (FindZLIB)
 
 include(FindGLEW)
 
+add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
+add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
+
+if (CONTAINER_DEPLOYMENT_BUILD)
+find_package(ImageMagick REQUIRED COMPONENTS Magick++ MagickWand MagickCore montage PATHS ${GLOBAL_EXT_DIR}/imagemagick)
+else(CONTAINER_DEPLOYMENT_BUILD)
+find_package(ImageMagick REQUIRED COMPONENTS Magick++ MagickWand MagickCore montage)
+endif (CONTAINER_DEPLOYMENT_BUILD)
+
 ############################################################
 # Build 3rd-party
 
@@ -190,15 +199,17 @@ add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_provenance lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 add_dependencies(lamure_virtual_texturing lamure_common)
-add_dependencies(lamure_mesh_preprocessing lamure_common)
-add_dependencies(lamure_mesh_preprocessing lamure_rendering)
 add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_virtual_texturing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
-set_target_properties(lamure_mesh_preprocessing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_provenance PROPERTIES DEBUG_POSTFIX "d")
 
+IF(NOT MSVC)
+add_dependencies(lamure_mesh_preprocessing lamure_common)
+add_dependencies(lamure_mesh_preprocessing lamure_rendering)
 
+set_target_properties(lamure_mesh_preprocessing PROPERTIES DEBUG_POSTFIX "d")
+ENDIF(NOT MSVC)

@@ -7,11 +7,6 @@ project(${CMAKE_PROJECT_NAME}_virtual_texturing)
 set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
-add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
-
-find_package(ImageMagick COMPONENTS Magick++ MagickWand MagickCore montage)
-
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/*.h)
