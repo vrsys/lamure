@@ -19,12 +19,21 @@ get_filename_component(CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} ABSOLUTE)
 message(STATUS "Build type:     ${CMAKE_BUILD_TYPE}")
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
 
+if(MSVC)
+    option(CONTAINER_DEPLOYMENT_BUILD "Set to enable Docker-based deployment behaviors" ON)
+endif()
+
 ############################################################
 # Directories
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 set(THIRD_PARTY_PROJECTS_DIR ${CMAKE_SOURCE_DIR}/third_party)
 set(GLOBAL_EXT_DIR ${CMAKE_SOURCE_DIR}/externals)
+
+if(CONTAINER_DEPLOYMENT_BUILD)
+    set(GLOBAL_EXT_DIR ${DEPLOYMENT_EXTERNALS})
+endif(CONTAINER_DEPLOYMENT_BUILD)
+
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 set(TEST_OUTPUT_PATH ${CMAKE_BINARY_DIR}/test)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
