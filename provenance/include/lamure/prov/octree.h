@@ -60,7 +60,7 @@ protected:
   std::set<uint32_t> fotos_;
 };
 
-class octree {
+class PROVENANCE_DLL octree {
 public:
                       octree();
   virtual             ~octree();
