@@ -174,7 +174,7 @@ add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
 add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
 
 if (CONTAINER_DEPLOYMENT_BUILD)
-find_package(ImageMagick REQUIRED COMPONENTS Magick++ MagickWand MagickCore montage PATHS ${GLOBAL_EXT_DIR}/imagemagick)
+include(FindImageMagick)
 else(CONTAINER_DEPLOYMENT_BUILD)
 find_package(ImageMagick REQUIRED COMPONENTS Magick++ MagickWand MagickCore montage)
 endif (CONTAINER_DEPLOYMENT_BUILD)
