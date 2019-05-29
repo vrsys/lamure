@@ -9,6 +9,7 @@
 #define PROV_AUX_H_
 
 #include <lamure/types.h>
+#include <lamure/prov/platform.h>
 
 #include <string>
 #include <fstream>
@@ -22,7 +23,7 @@ namespace prov {
 
 class octree;
 
-class auxi {
+class PROVENANCE_DLL auxi {
 public:
 
     struct feature {

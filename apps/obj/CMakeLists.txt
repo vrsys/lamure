@@ -37,7 +37,7 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     )
 
-add_dependencies(${PROJECT_NAME} lamure_rendering lamure_common lamure_pvs_common)
+add_dependencies(${PROJECT_NAME} lamure_virtual_texturing lamure_rendering lamure_common lamure_pvs_common)
 
 MsvcPostBuild(${PROJECT_NAME})
 
