@@ -7,10 +7,10 @@
 
 #if WIN32
 #if defined(LAMURE_VT_LIBRARY)
-     #define VT_DLL __declspec( dllexport )
-  #else
+    #define VT_DLL __declspec( dllexport )
+#else
     #define VT_DLL __declspec( dllimport )
-  #endif
+#endif
 #else
 #define VT_DLL
 #endif

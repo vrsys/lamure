@@ -30,10 +30,19 @@ class VT_DLL TileRequestPriorityQueueEntry : public AbstractQueueEntry<vt::ooc::
     virtual priority_type getPriority() { return this->_content.load()->getPriority(); }
 };
 
+#ifdef _WIN32
+#if defined(LAMURE_VT_LIBRARY)
 template <typename priority_type>
 TileRequestPriorityQueueEntry<priority_type>::TileRequestPriorityQueueEntry(ooc::TileRequest* req, TileRequestPriorityQueue<priority_type>& queue) : AbstractQueueEntry<ooc::TileRequest*>(req, &queue)
 {
 }
+#endif
+#else
+template <typename priority_type>
+TileRequestPriorityQueueEntry<priority_type>::TileRequestPriorityQueueEntry(ooc::TileRequest* req, TileRequestPriorityQueue<priority_type>& queue) : AbstractQueueEntry<ooc::TileRequest*>(req, &queue)
+{
+}
+#endif
 
 template <typename priority_type>
 class VT_DLL TileRequestPriorityQueue : public AbstractQueue<ooc::TileRequest*>

@@ -57,7 +57,7 @@ void VTRenderer::add_view(uint16_t view_id, uint32_t width, uint32_t height, flo
 
     res->_width = width;
     res->_height = height;
-    res->_start = std::chrono::system_clock::now();
+    res->_start = std::chrono::high_resolution_clock::now();
     res->_scale = scale;
 
     _view_res[view_id] = res;
