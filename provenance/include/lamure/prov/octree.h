@@ -26,7 +26,7 @@ namespace lamure {
 namespace prov {
 
 
-class octree_node {
+class PROVENANCE_DLL octree_node {
 public:
   octree_node()
     : idx_(0), child_mask_(0), child_idx_(0), min_(std::numeric_limits<float>::max()), max_(std::numeric_limits<float>::lowest()) {};
