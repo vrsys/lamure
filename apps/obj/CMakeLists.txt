@@ -28,6 +28,7 @@ target_link_libraries(${PROJECT_NAME}
     ${OpenGL_LIBRARIES}
     ${GLEW_LIBRARY}
     ${GLUT_glut_LIBRARY}
+	${GLUT_LIBRARY}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
     optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
     optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
