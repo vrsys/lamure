@@ -36,6 +36,11 @@ class VT_DLL CutState
     mem_slots_index_type _mem_slots_locked;
 };
 
+#ifdef _WIN32
+template VT_DLL CutState* DoubleBuffer<CutState>::get_front();
+template VT_DLL CutState* DoubleBuffer<CutState>::get_back();
+#endif
+
 class VT_DLL Cut : public DoubleBuffer<CutState>
 {
   public:
