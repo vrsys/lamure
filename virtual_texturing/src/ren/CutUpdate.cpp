@@ -34,7 +34,7 @@ void CutUpdate::start()
         _context_feedbacks[context_id] = new ContextFeedback(context_id, this);
     }
 
-    for(auto cut_entry : (*_cut_db->get_cut_map()))
+    for(cut_map_entry_type cut_entry : (*_cut_db->get_cut_map()))
     {
         _cut_decisions[cut_entry.first] = new CutDecision();
     }
@@ -45,12 +45,14 @@ void CutUpdate::run(ContextFeedback* _context_feedback)
     while(!_should_stop.load())
     {
         std::unique_lock<std::mutex> lk(_context_feedback->_feedback_dispatch_lock, std::defer_lock);
+
         if(_context_feedback->_feedback_new.load())
         {
             dispatch_context(_context_feedback->_id);
         }
         _context_feedback->_feedback_new.store(false);
 
+#ifndef _WIN32
         while(!_context_feedback->_feedback_cv.wait_for(lk, std::chrono::milliseconds(16), [&]() -> bool { return _context_feedback->_feedback_new.load(); }))
         {
             if(_should_stop.load())
@@ -58,6 +60,17 @@ void CutUpdate::run(ContextFeedback* _context_feedback)
                 break;
             }
         }
+#else
+		while (!_context_feedback->_feedback_new.load())
+		{
+			std::this_thread::sleep_for(16ms);
+
+			if (_should_stop.load())
+			{
+				break;
+			}
+		}
+#endif
     }
 }
 
