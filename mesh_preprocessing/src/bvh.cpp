@@ -225,7 +225,6 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles)
         }
 
         // lambda for parallel version
-
         auto lambda_simplify = [&](uint64_t i, uint32_t id) -> void {
             uint32_t node_id = nodes_todo[i];
 
@@ -261,9 +260,12 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles)
 
             num_nodes_done++;
         };
-
+#ifdef PARALLEL_EXECUTION
         uint32_t num_threads = std::min((size_t)24, nodes_todo.size());
         lamure::mesh::parallel_for(num_threads, nodes_todo.size(), lambda_simplify);
+#else
+        lamure::mesh::parallel_for(1, nodes_todo.size(), lambda_simplify);
+#endif
     }
 
     std::cout << "Upsweep done." << std::endl;

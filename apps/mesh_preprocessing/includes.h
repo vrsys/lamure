@@ -17,13 +17,15 @@
  * Turn this flag on to enable saving app state before each stage.
  * Load it any time for examination like this:
  *
- * SparseOctree octree;
- * ifstream ifstream_tree(_input_path);
- * text_iarchive ia_tree(ifstream_tree);
- * ia_tree >> octree;
+ *   ofstream ofstream_state(save_path);
+ *   boost::archive::binary_oarchive oa_state(ofstream_state);
+ *   oa_state << state;
+ *   ofstream_state.close();
  *
  */
-#define FLUSH_APP_STATE
+// #define FLUSH_APP_STATE
+
+#define PARALLEL_EXECUTION
 
 // STL
 #include <iostream>
@@ -41,8 +43,10 @@
 #include <string>
 #include <stack>
 
+#ifdef PARALLEL_EXECUTION
 // OMP
 #include <omp.h>
+#endif
 
 // CGAL
 #include <CGAL/Polygon_mesh_processing/measure.h>

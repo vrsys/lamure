@@ -76,6 +76,15 @@ if (${LAMURE_USE_CGAL_FOR_NNI})
             )
 endif ()
 
+option(CGAL_ACTIVATE_CONCURRENCY "Enable concurrency" ON)
+
+if(CGAL_ACTIVATE_CONCURRENCY)
+    find_package(TBB REQUIRED)
+    if(TBB_FOUND)
+        target_link_libraries(lamure_mesh_preprocessing ${TBB_LIBRARIES})
+    endif()
+endif()
+
 ###############################################################################
 # install 
 ###############################################################################

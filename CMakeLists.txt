@@ -138,6 +138,12 @@ if (${LAMURE_USE_CGAL_FOR_NNI})
   ################################
   # CGAL
   ################################
+  if(NOT MSVC)
+    option(CGAL_USE_413 "Use Cgal version 4.13.1 (mesh preprocessing)" ON)
+  else()
+    option(CGAL_USE_413 "Use Cgal version 4.13.1 (mesh preprocessing)" OFF)
+  endif()
+
   include(find_cgal)
 
   ################################

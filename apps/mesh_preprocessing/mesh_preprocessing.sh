@@ -2,7 +2,7 @@
 
 # Logging routines
 DATE=`date '+%Y-%m-%d:%H:%M:%S'`
-PIPEFILE=pipe
+PIPEFILE="${HOME}"/pipe
 mkfifo ${PIPEFILE}
 tee log_${DATE}.txt < ${PIPEFILE} &
 TEEPID=$!

@@ -347,11 +347,6 @@ static void load_obj(const std::string& file, std::vector<indexed_triangle_t>& t
 
         const int expected_mask = Mask::IOM_VERTCOORD | Mask::IOM_VERTTEXCOORD | Mask::IOM_WEDGTEXCOORD | Mask::IOM_VERTNORMAL;
 
-        if(!(load_mask & expected_mask))
-        {
-            throw std::runtime_error("Mesh does not contain necessary components, mask of missing components: " + std::to_string(load_mask ^ expected_mask));
-        }
-
         if(!mask_load_success || load_error != ImporterOBJ<CMesh>::OBJError::E_NOERROR)
         {
             if(ImporterOBJ<CMesh>::ErrorCritical(load_error))
@@ -361,7 +356,13 @@ static void load_obj(const std::string& file, std::vector<indexed_triangle_t>& t
             else
             {
                 std::cerr << std::string(ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
+                exit(1);
             }
+        }
+
+        if(!(load_mask & expected_mask))
+        {
+            throw std::runtime_error("Mesh does not contain necessary components, mask of missing components: " + std::to_string(load_mask ^ expected_mask));
         }
 
         UpdateTopology<CMesh>::FaceFace(m);
@@ -721,8 +722,9 @@ static void chartify_parallel(app_state& state, cmd_options& opt)
 
         std::vector<indexed_triangle_t> node_triangles;
         node_triangles.resize(node.end_ - node.begin_);
-
+#ifdef PARALLEL_EXECUTION
 #pragma omp parallel for
+#endif
         for(uint32_t idx = node.begin_; idx < node.end_; ++idx)
         {
             const auto& tri = state.all_indexed_triangles[indices[idx]];
@@ -771,11 +773,15 @@ static void chartify_parallel(app_state& state, cmd_options& opt)
         state.per_node_polyhedron[node_id] = polyMesh;
     };
 
+#ifdef PARALLEL_EXECUTION
     uint32_t num_threads = std::min((size_t)24, state.node_ids.size());
     lamure::mesh::parallel_for(num_threads, state.node_ids.size(), lambda_chartify);
+#else
+    lamure::mesh::parallel_for(1, state.node_ids.size(), lambda_chartify);
+#endif
 }
 
-static void convert_to_triangle_soup_parallel(app_state &state)
+static void convert_to_triangle_soup_parallel(app_state& state)
 {
     state.triangles.clear();
 
@@ -796,7 +802,9 @@ static void convert_to_triangle_soup_parallel(app_state &state)
         uint32_t offset = state.triangles.size();
         state.triangles.resize(offset + num_of_faces);
 
+#ifdef PARALLEL_EXECUTION
 #pragma omp parallel for
+#endif
         for(uint32_t i = 0; i < num_of_faces; i++)
         {
             Polyhedron::Facet_const_iterator fi = polyMesh.facets_begin();
@@ -878,15 +886,20 @@ static void assign_parallel(app_state& state)
         }
     };
 
+#ifdef PARALLEL_EXECUTION
     uint32_t num_threads = std::min((size_t)24, area_ids.size());
     lamure::mesh::parallel_for(num_threads, area_ids.size(), lambda_append);
+#else
+    lamure::mesh::parallel_for(1, area_ids.size(), lambda_append);
+#endif
 }
 
 static void pack_areas(app_state& state)
 {
     state.area_rects.resize(state.num_areas);
-
+#ifdef PARALLEL_EXECUTION
 #pragma omp parallel for
+#endif
     for(uint32_t area_id = 0; area_id < state.num_areas; ++area_id)
     {
         calculate_chart_tex_space_sizes(state.chart_map[area_id], state.triangles, state.texture_info_map);
@@ -941,12 +954,34 @@ static void apply_texture_space_transformations_in_parallel(app_state& state)
         std::cout << "Area " << area_rect.id_ << " min: (" << area_rect.min_.x << ", " << area_rect.min_.y << ")" << std::endl;
         std::cout << "Area " << area_rect.id_ << " max: (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
 
-#pragma omp parallel for
-        // next, apply the global transformation from area packing onto all individual chart rects per area
-        for(uint32_t j = 0; j < state.chart_map[area_rect.id_].size(); j++)
+        // std::cout << "Chart map size " << state.chart_map[area_rect.id_].size() << std::endl;
+
+        std::vector<int> chart_ids(state.chart_map[area_rect.id_].size());
+        for(const auto& chart_pair : state.chart_map[area_rect.id_])
         {
-            auto& chart = state.chart_map[area_rect.id_][j];
+            chart_ids.emplace_back(chart_pair.first);
+        }
+
+#ifdef PARALLEL_EXECUTION
+#pragma omp parallel for
+#endif
+
+        // next, apply the global transformation from area packing onto all individual chart rects per area
+        for(uint32_t j = 0; j < chart_ids.size(); j++)
+        {
+            // std::cout << "Chart " << std::to_string(chart_ids[j]) << std::endl;
+
+            uint32_t chart_id = chart_ids[j];
+
+            auto& chart = state.chart_map[area_rect.id_][chart_id];
             chart.rect_.min_ += area_rect.min_;
+
+            if(chart.all_triangle_ids_.size() == 0)
+            {
+                continue;
+            }
+
+            // std::cout << "Chart " << std::to_string(chart_ids[j]) << ", all triangle ids size " << chart.all_triangle_ids_.size() << std::endl;
 
             std::vector<int> ids(chart.all_triangle_ids_.begin(), chart.all_triangle_ids_.end());
 
@@ -954,6 +989,9 @@ static void apply_texture_space_transformations_in_parallel(app_state& state)
             for(uint32_t a = 0; a < ids.size(); a++)
             {
                 int tri_id = ids[a];
+
+                // std::cout << "Triangle " << std::to_string(tri_id) << std::endl;
+
                 if((chart.rect_.flipped_ && !area_rect.flipped_) || (area_rect.flipped_ && !chart.rect_.flipped_))
                 {
                     float temp = chart.all_triangle_new_coods_[tri_id][0].x;
@@ -980,6 +1018,8 @@ static void apply_texture_space_transformations_in_parallel(app_state& state)
             }
         }
     }
+
+    std::cout << "Done applying texture space transformation" << std::endl;
 }
 
 static void update_texture_coordinates(app_state& state)
@@ -1088,7 +1128,9 @@ static void update_texture_coordinates(app_state& state)
 
     std::cout << "Updating texture coordinates in inner LOD nodes..." << std::endl;
 
+#ifdef PARALLEL_EXECUTION
 #pragma omp parallel for
+#endif
     for(uint32_t node_id = 0; node_id < first_leaf_id; ++node_id)
     {
         auto& tris = state.bvh->get_triangles(node_id);

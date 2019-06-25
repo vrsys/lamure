@@ -202,6 +202,7 @@ int main(int argc, char** argv)
 
     initialize_glut_window(argc, argv, opt);
 
+#ifdef FLUSH_APP_STATE
     if(cmdOptionExists(argv, argv + argc, "-pickupfrom"))
     {
         STAGE stage_id = (STAGE)std::stoi(getCmdOption(argv, argv + argc, "-pickupfrom"));
@@ -209,6 +210,7 @@ int main(int argc, char** argv)
 
         exit(0);
     }
+#endif
 
     app_state state;
 
