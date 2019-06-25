@@ -74,6 +74,10 @@ namespace ren {
 #define LAMURE_DEFAULT_MAIN_MEMORY_BUDGET 4096
 #define LAMURE_DEFAULT_SIZE_OF_PROVENANCE 0
 
+//minimum depth for trimesh bvh nodes during lod selection
+#define LAMURE_MESH_MIN_DEPTH_ENABLE
+#define LAMURE_MESH_MIN_DEPTH 3
+
 //------------------------------
 //for ooc_cache:
 //------------------------------

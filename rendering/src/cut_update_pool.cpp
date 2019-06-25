@@ -1219,15 +1219,6 @@ void cut_update_pool::compile_transfer_list()
 
 void cut_update_pool::split_node(const cut_update_index::action &action)
 {
-#if 0
-    // hack: split until depth-1
-    const auto bvh = model_database::get_instance()->get_model(action.model_id_)->get_bvh();
-    if(bvh->get_depth_of_node(action.node_id_) >= bvh->get_depth() - 1)
-    {
-        index_->reject_action(action);
-        return;
-    }
-#endif
     
     std::vector<node_t> child_ids;
     index_->get_all_children(action.model_id_, action.node_id_, child_ids);
@@ -1319,6 +1310,16 @@ void cut_update_pool::split_node(const cut_update_index::action &action)
 
 void cut_update_pool::collapse_node(const cut_update_index::action &action)
 {
+#ifdef LAMURE_MESH_MIN_DEPTH_ENABLE
+    //prevent collapsing in shallow parts
+    const auto bvh = model_database::get_instance()->get_model(action.model_id_)->get_bvh();
+    if (bvh->get_primitive() == bvh::primitive_type::TRIMESH 
+        && bvh->get_depth_of_node(action.node_id_) <= LAMURE_MESH_MIN_DEPTH)
+    {
+        index_->reject_action(action);
+        return;
+    }
+#endif
     // return if parent is invalid node id
     if(action.node_id_ < 1 || action.node_id_ == invalid_node_t)
     {
