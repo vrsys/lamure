@@ -271,6 +271,7 @@ struct settings {
   std::map<uint32_t, std::vector<lamure::prov::auxi::view>> views_;
   std::map<uint32_t, std::string> aux_;
   std::map<uint32_t, std::string> textures_;
+  std::map<uint32_t, int> min_lod_depths_;
   std::string selection_ {""};
   float max_radius_ {std::numeric_limits<float>::max()};
   int color_rendering_mode {0};
@@ -383,13 +384,17 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
               settings.transforms_[address] = load_matrix(value);
               std::cout << "found transform for model id " << address << std::endl;
             }
-            else if (key == "auxi") {
+            else if (key == "aux") {
               settings.aux_[address] = value;
-              std::cout << "found auxi data for model id " << address << std::endl;
+              std::cout << "found aux data for model id " << address << std::endl;
             }
             else if (key == "tex") {
               settings.textures_[address] = value;
               std::cout << "found texture for model id " << address << std::endl;
+            }
+            else if (key == "depth") {
+              settings.min_lod_depths_[address] = atoi(value.c_str());
+              std::cout << "found depth for model id " << address << std::endl;
             }
             else {
               std::cout << "unrecognized key: " << key << std::endl;
@@ -2136,14 +2141,14 @@ void create_aux_resources() {
       
       uint32_t model_id = aux_file.first;
 
-      std::cout << "auxi: " << aux_file.second << std::endl;
+      std::cout << "aux: " << aux_file.second << std::endl;
       lamure::prov::auxi aux(aux_file.second);
 
       provenance_[model_id].num_views_ = aux.get_num_views();
-      std::cout << "auxi: " << aux.get_num_views() << " views" << std::endl;
-      std::cout << "auxi: " << aux.get_num_sparse_points() << " points" << std::endl;
-      std::cout << "auxi: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
-      std::cout << "auxi: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
+      std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
+      std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
+      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
+      std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
 
       std::vector<xyz> points_to_upload;
 
@@ -3305,7 +3310,7 @@ void gui_provenance_settings(){
       }
     }
     else {
-      ImGui::Text("No auxi file");
+      ImGui::Text("No aux file");
     }
 
     ImGui::Checkbox("Heatmap", &settings_.heatmap_);
@@ -3435,9 +3440,10 @@ int main(int argc, char *argv[])
     model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
     
     //force single pass for trimeshes
-    const lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
+    lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
     if (bvh->get_primitive() == lamure::ren::bvh::primitive_type::TRIMESH) {
       settings_.splatting_ = false;
+      bvh->set_min_lod_depth(settings_.min_lod_depths_[num_models_]);
     }
 
     ++num_models_;
