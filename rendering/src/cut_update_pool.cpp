@@ -1313,12 +1313,16 @@ void cut_update_pool::collapse_node(const cut_update_index::action &action)
 #ifdef LAMURE_MESH_MIN_DEPTH_ENABLE
     //prevent collapsing in shallow parts
     const auto bvh = model_database::get_instance()->get_model(action.model_id_)->get_bvh();
-    if (bvh->get_primitive() == bvh::primitive_type::TRIMESH 
-        && bvh->get_depth_of_node(action.node_id_) <= LAMURE_MESH_MIN_DEPTH)
-    {
+    if (bvh->get_primitive() == bvh::primitive_type::TRIMESH) {
+      if (bvh->get_min_lod_depth() > 0 && bvh->get_depth_of_node(action.node_id_) <= bvh->get_min_lod_depth()) {
         index_->reject_action(action);
         return;
-    }
+      }
+      else if (bvh->get_depth_of_node(action.node_id_) <= LAMURE_MESH_MIN_DEPTH) {
+        index_->reject_action(action);
+        return;
+      }
+  }
 #endif
     // return if parent is invalid node id
     if(action.node_id_ < 1 || action.node_id_ == invalid_node_t)

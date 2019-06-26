@@ -232,7 +232,7 @@ protected:
         uint32_t max_surfels_per_node_;
         uint32_t serialized_surfel_size_;
         uint32_t primitive_;
-        uint32_t reserved_0_;
+        uint32_t min_lod_depth_;
 
         bvh_tree_state state_;
         uint32_t reserved_1_;
@@ -268,7 +268,7 @@ protected:
             file.write((char*)&max_surfels_per_node_, 4);
             file.write((char*)&serialized_surfel_size_, 4);
             file.write((char*)&primitive_, 4);
-            file.write((char*)&reserved_0_, 4);
+            file.write((char*)&min_lod_depth_, 4);
             file.write((char*)&state_, 4);
             file.write((char*)&reserved_1_, 4);
             file.write((char*)&reserved_2_, 8);
@@ -289,7 +289,7 @@ protected:
             file.read((char*)&max_surfels_per_node_, 4);
             file.read((char*)&serialized_surfel_size_, 4);
             file.read((char*)&primitive_, 4);
-            file.read((char*)&reserved_0_, 4);
+            file.read((char*)&min_lod_depth_, 4);
             file.read((char*)&state_, 4);
             file.read((char*)&reserved_1_, 4);
             file.read((char*)&reserved_2_, 8);
