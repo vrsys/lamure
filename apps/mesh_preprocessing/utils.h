@@ -661,7 +661,7 @@ static void prepare_charts(app_state& state)
         uint32_t area_id = tri.area_id;
         uint32_t chart_id = tri.chart_id;
 
-        if(chart_id != -1 && tri.get_area() > 0.f)
+        if(chart_id != (uint32_t)-1 && tri.get_area() > 0.f)
         {
             state.chart_map[area_id][chart_id].id_ = chart_id;
             state.chart_map[area_id][chart_id].original_triangle_ids_.insert(tri_id);
@@ -853,10 +853,10 @@ static void convert_to_triangle_soup_parallel(app_state& state)
 
 static void assign_parallel(app_state& state)
 {
-    std::vector<uint32_t> area_ids;
+    std::vector<uint32_t> area_ids(state.num_areas);
     for(uint32_t area_id = 0; area_id < state.num_areas; ++area_id)
     {
-        area_ids.push_back(area_id);
+        area_ids[area_id] = area_id;
     }
 
     auto lambda_append = [&](uint64_t i, uint32_t id) -> void {
@@ -866,7 +866,7 @@ static void assign_parallel(app_state& state)
 
         for(auto& it : state.chart_map[area_id])
         {
-            int chart_id = it.first;
+            // uint32_t chart_id = it.first;
             auto& chart = it.second;
 
             chart.all_triangle_ids_.insert(chart.original_triangle_ids_.begin(), chart.original_triangle_ids_.end());
@@ -933,6 +933,8 @@ static void pack_areas(app_state& state)
         // apply rectangles
         for(const auto& rect : rects)
         {
+            // std::cout << "Rectangle ID: " << rect.id_ << std::endl;
+
             state.chart_map[area_id][rect.id_].rect_ = rect;
             state.chart_map[area_id][rect.id_].projection.tex_space_rect = rect; // save for rendering from texture later on
         }
@@ -954,13 +956,19 @@ static void apply_texture_space_transformations_in_parallel(app_state& state)
         std::cout << "Area " << area_rect.id_ << " min: (" << area_rect.min_.x << ", " << area_rect.min_.y << ")" << std::endl;
         std::cout << "Area " << area_rect.id_ << " max: (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
 
-        // std::cout << "Chart map size " << state.chart_map[area_rect.id_].size() << std::endl;
+        std::cout << "Chart map size " << state.chart_map[area_rect.id_].size() << std::endl;
 
-        std::vector<int> chart_ids(state.chart_map[area_rect.id_].size());
-        for(const auto& chart_pair : state.chart_map[area_rect.id_])
+        std::vector<uint32_t> chart_ids(state.chart_map[area_rect.id_].size());
+        int i = 0;
+        for(const auto& pair : state.chart_map[area_rect.id_])
         {
-            chart_ids.emplace_back(chart_pair.first);
+            chart_ids[i] = pair.first;
+            i++;
+
+            //std::cout << "Chart: " << std::to_string(i) << ", id: " << std::to_string(chart_ids[i]) << std::endl;
         }
+
+        // std::cout << "Chart ids initialized" << std::endl;
 
 #ifdef PARALLEL_EXECUTION
 #pragma omp parallel for
@@ -969,15 +977,24 @@ static void apply_texture_space_transformations_in_parallel(app_state& state)
         // next, apply the global transformation from area packing onto all individual chart rects per area
         for(uint32_t j = 0; j < chart_ids.size(); j++)
         {
-            // std::cout << "Chart " << std::to_string(chart_ids[j]) << std::endl;
-
             uint32_t chart_id = chart_ids[j];
+
+            // std::cout << "Chart " << std::to_string(chart_id) << std::endl;
+
+            if(chart_id == (uint32_t)-1)
+            {
+                std::cerr << "Skipping chart with blank ID" << std::endl;
+
+                continue;
+            }
 
             auto& chart = state.chart_map[area_rect.id_][chart_id];
             chart.rect_.min_ += area_rect.min_;
 
             if(chart.all_triangle_ids_.size() == 0)
             {
+                std::cerr << "Skipping chart " << std::to_string(chart_ids[j]) << " with no triangles" << std::endl;
+
                 continue;
             }
 
@@ -1478,49 +1495,47 @@ static void load_textures(app_state& state)
         state.frame_buffers[0]->disable();
 
         uint32_t current_framebuffer = 0;
-        if(true)
+
+        std::cout << "Dilating view " << view_id << "..." << std::endl;
+
+        uint32_t num_dilations = state.t_d.render_to_texture_width_ / 2;
+
+        for(int i = 0; i < num_dilations; ++i)
         {
-            std::cout << "Dilating view " << view_id << "..." << std::endl;
+            current_framebuffer = (i + 1) % 2;
 
-            uint32_t num_dilations = state.t_d.render_to_texture_width_ / 2;
-
-            for(int i = 0; i < num_dilations; ++i)
+            state.frame_buffers[current_framebuffer]->enable();
+            int current_texture = 0;
+            if(current_framebuffer == 0)
             {
-                current_framebuffer = (i + 1) % 2;
-
-                state.frame_buffers[current_framebuffer]->enable();
-                int current_texture = 0;
-                if(current_framebuffer == 0)
-                {
-                    current_texture = 1;
-                }
-
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-                glUseProgram(state.handles.dilation_shader_program_);
-                glBindBuffer(GL_ARRAY_BUFFER, state.handles.dilation_vertex_buffer_);
-
-                glEnableVertexAttribArray(0);
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2 * sizeof(float)));
-
-                int slot = 0;
-                glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image"), slot);
-                glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_width"), state.t_d.render_to_texture_width_);
-                glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_height"), state.t_d.render_to_texture_height_);
-                glActiveTexture(GL_TEXTURE0 + slot);
-                state.frame_buffers[current_texture]->bind_texture(slot);
-
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-                glUseProgram(0);
-
-                state.frame_buffers[current_texture]->unbind_texture(slot);
-
-                state.frame_buffers[current_framebuffer]->disable();
+                current_texture = 1;
             }
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glUseProgram(state.handles.dilation_shader_program_);
+            glBindBuffer(GL_ARRAY_BUFFER, state.handles.dilation_vertex_buffer_);
+
+            glEnableVertexAttribArray(0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2 * sizeof(float)));
+
+            int slot = 0;
+            glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image"), slot);
+            glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_width"), state.t_d.render_to_texture_width_);
+            glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_height"), state.t_d.render_to_texture_height_);
+            glActiveTexture(GL_TEXTURE0 + slot);
+            state.frame_buffers[current_texture]->bind_texture(slot);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glUseProgram(0);
+
+            state.frame_buffers[current_texture]->unbind_texture(slot);
+
+            state.frame_buffers[current_framebuffer]->disable();
         }
 
         std::vector<uint8_t> pixels;

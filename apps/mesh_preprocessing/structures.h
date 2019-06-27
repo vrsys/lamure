@@ -78,7 +78,7 @@ struct app_state
     std::map<uint32_t, Polyhedron> per_node_polyhedron;
 
     std::map<uint32_t, std::map<uint32_t, uint32_t>> per_node_chart_id_map;
-    std::map<uint32_t, std::map<uint32_t, chart>> chart_map; // TODO: duplicate type?
+    std::map<uint32_t, std::map<uint32_t, chart>> chart_map;
 
     // shared_ptr-s
     std::shared_ptr<kdtree_t> kdtree;

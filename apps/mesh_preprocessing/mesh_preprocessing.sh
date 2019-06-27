@@ -2,7 +2,7 @@
 
 # Logging routines
 DATE=`date '+%Y-%m-%d:%H:%M:%S'`
-PIPEFILE="${HOME}"/pipe
+PIPEFILE="${HOME}"/pipe"${DATE}"
 mkfifo ${PIPEFILE}
 tee log_${DATE}.txt < ${PIPEFILE} &
 TEEPID=$!
@@ -33,9 +33,6 @@ TRI_BUDGET=16000
 #maximum output texture size
 MAX_FINAL_TEX_SIZE=8192
 
-#dilations
-NUM_DILATIONS=4096
-
 ############################
 
 echo -e "\e[32m"
@@ -48,13 +45,11 @@ case ${answer:0:1} in
         echo "Chart creation cost threshold: " ${COST_THRESHOLD}
         echo "Triangle budget per BVH node: " ${TRI_BUDGET}
         echo "Maximum size of final texture: " ${MAX_FINAL_TEX_SIZE}
-        echo "Number of dilations: " ${NUM_DILATIONS}
     ;;
     * )
         read -rp "Triangle budget per KD-tree node: " KDTREE_TRI_BUDGET
         read -rp "Chart creation cost threshold: " COST_THRESHOLD
         read -rp "Triangle budget per BVH node: " TRI_BUDGET
-        read -rp "Number of dilations: " NUM_DILATIONS
     ;;
 esac
 

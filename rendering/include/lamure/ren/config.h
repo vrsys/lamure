@@ -76,7 +76,7 @@ namespace ren {
 
 //minimum depth for trimesh bvh nodes during lod selection
 #define LAMURE_MESH_MIN_DEPTH_ENABLE
-#define LAMURE_MESH_MIN_DEPTH 3
+#define LAMURE_MESH_MIN_DEPTH 6
 
 //------------------------------
 //for ooc_cache:
