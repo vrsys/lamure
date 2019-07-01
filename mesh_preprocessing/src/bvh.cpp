@@ -37,6 +37,7 @@ bvh::bvh(std::vector<Triangle_Chartid>& triangles, uint32_t primitives_per_node)
     size_of_primitive_ = sizeof(vertex);
     primitive_ = primitive_type::TRIMESH;
     primitives_per_node_ = primitives_per_node;
+    min_lod_depth_ = 0;
 
     create_hierarchy(triangles);
 }
@@ -279,6 +280,7 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles)
             std::cout << "WARNING: (" << node_id << ": " << triangles_map_[node_id].size() << ") removing \
       " << triangles_map_[node_id].size() - primitives_per_node_
                       << " triangles manually to stay on budget: " << primitives_per_node_ << std::endl;
+            min_lod_depth_ = std::max(min_lod_depth_, get_depth_of_node(node_id));
         }
 
         // if we have too many, remove some

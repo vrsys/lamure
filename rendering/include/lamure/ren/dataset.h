@@ -66,7 +66,7 @@ public:
     const model_t       model_id() const { return model_id_; };
     const scm::gl::boxf& aabb() const { return aabb_; };
     const bool          is_loaded() const { return is_loaded_; };
-    const bvh*          get_bvh() const { return bvh_; };
+    bvh*                get_bvh() { return bvh_; };
     
     void                set_transform(const scm::math::mat4f& transform) { transform_ = transform; };
     const scm::math::mat4f transform() const { return transform_; };

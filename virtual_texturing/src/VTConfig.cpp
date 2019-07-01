@@ -95,4 +95,23 @@ const VTConfig::FORMAT_TEXTURE VTConfig::which_texture_format(const char* _textu
 }
 
 uint32_t VTConfig::get_size_ram_cache() const { return _size_ram_cache; }
+void VTConfig::set_defaults()
+{
+    _size_tile = 256;
+    _size_padding = 1;
+    _size_physical_texture = 4096;
+    _size_physical_update_throughput = 4;
+    _size_ram_cache = 16384;
+    _format_texture = FORMAT_TEXTURE::RGB8;
+    _verbose = false;
+
+    define_size_physical_texture(64, 8192);
+}
+void VTConfig::setSizeTile(uint16_t sizeTile) { _size_tile = sizeTile; }
+void VTConfig::setSizePadding(uint16_t sizePadding) { _size_padding = sizePadding; }
+void VTConfig::setSizePhysicalTexture(uint32_t sizePhysicalTexture) { _size_physical_texture = sizePhysicalTexture; }
+void VTConfig::setSizePhysicalUpdateThroughput(uint32_t sizePhysicalUpdateThroughput) { _size_physical_update_throughput = sizePhysicalUpdateThroughput; }
+void VTConfig::setSizeRamCache(uint32_t sizeRamCache) { _size_ram_cache = sizeRamCache; }
+void VTConfig::setFormatTexture(VTConfig::FORMAT_TEXTURE formatTexture) { _format_texture = formatTexture; }
+void VTConfig::setVerbose(bool verbose) { _verbose = verbose; }
 } // namespace vt

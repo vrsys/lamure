@@ -44,6 +44,7 @@ class bvh : public lamure::ren::bvh
     // node_id -> triangles
     std::map<uint32_t, std::vector<Triangle_Chartid>> triangles_map_;
 
+
 #ifdef FLUSH_APP_STATE
   public:
     friend class boost::serialization::access;
