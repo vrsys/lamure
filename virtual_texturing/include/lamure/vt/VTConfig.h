@@ -31,7 +31,7 @@ class VT_DLL VTConfig
 
     static VTConfig& get_instance(bool with_config = true)
     {
-        if(with_config){
+        if(with_config && !CONFIG_PATH.empty()){
             static VTConfig instance(CONFIG_PATH.c_str());
             return instance;
         } else {
