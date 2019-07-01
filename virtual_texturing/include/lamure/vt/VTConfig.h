@@ -73,13 +73,13 @@ class VT_DLL VTConfig
     uint32_t get_phys_tex_tile_width() const;
     uint16_t get_phys_tex_layers() const;
 
-    void setSizeTile(uint16_t sizeTile);
-    void setSizePadding(uint16_t sizePadding);
-    void setSizePhysicalTexture(uint32_t sizePhysicalTexture);
-    void setSizePhysicalUpdateThroughput(uint32_t sizePhysicalUpdateThroughput);
-    void setSizeRamCache(uint32_t sizeRamCache);
-    void setFormatTexture(FORMAT_TEXTURE formatTexture);
-    void setVerbose(bool verbose);
+    void set_size_tile(uint16_t sizeTile);
+    void set_size_padding(uint16_t sizePadding);
+    void set_size_physical_texture(uint32_t sizePhysicalTexture);
+    void set_size_physical_update_throughput(uint32_t sizePhysicalUpdateThroughput);
+    void set_size_ram_cache(uint32_t sizeRamCache);
+    void set_format_texture(FORMAT_TEXTURE formatTexture);
+    void set_verbose(bool verbose);
 
 private:
     VTConfig() { set_defaults(); }

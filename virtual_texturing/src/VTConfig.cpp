@@ -107,11 +107,11 @@ void VTConfig::set_defaults()
 
     define_size_physical_texture(64, 8192);
 }
-void VTConfig::setSizeTile(uint16_t sizeTile) { _size_tile = sizeTile; }
-void VTConfig::setSizePadding(uint16_t sizePadding) { _size_padding = sizePadding; }
-void VTConfig::setSizePhysicalTexture(uint32_t sizePhysicalTexture) { _size_physical_texture = sizePhysicalTexture; }
-void VTConfig::setSizePhysicalUpdateThroughput(uint32_t sizePhysicalUpdateThroughput) { _size_physical_update_throughput = sizePhysicalUpdateThroughput; }
-void VTConfig::setSizeRamCache(uint32_t sizeRamCache) { _size_ram_cache = sizeRamCache; }
-void VTConfig::setFormatTexture(VTConfig::FORMAT_TEXTURE formatTexture) { _format_texture = formatTexture; }
-void VTConfig::setVerbose(bool verbose) { _verbose = verbose; }
+void VTConfig::set_size_tile(uint16_t sizeTile) { _size_tile = sizeTile; }
+void VTConfig::set_size_padding(uint16_t sizePadding) { _size_padding = sizePadding; }
+void VTConfig::set_size_physical_texture(uint32_t sizePhysicalTexture) { _size_physical_texture = sizePhysicalTexture; }
+void VTConfig::set_size_physical_update_throughput(uint32_t sizePhysicalUpdateThroughput) { _size_physical_update_throughput = sizePhysicalUpdateThroughput; }
+void VTConfig::set_size_ram_cache(uint32_t sizeRamCache) { _size_ram_cache = sizeRamCache; }
+void VTConfig::set_format_texture(VTConfig::FORMAT_TEXTURE formatTexture) { _format_texture = formatTexture; }
+void VTConfig::set_verbose(bool verbose) { _verbose = verbose; }
 } // namespace vt
