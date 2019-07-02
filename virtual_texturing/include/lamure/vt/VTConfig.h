@@ -29,9 +29,9 @@ class VT_DLL VTConfig
 
     static std::string CONFIG_PATH;
 
-    static VTConfig& get_instance(bool with_config = true)
+    static VTConfig& get_instance()
     {
-        if(with_config && !CONFIG_PATH.empty()){
+        if(!CONFIG_PATH.empty()){
             static VTConfig instance(CONFIG_PATH.c_str());
             return instance;
         } else {
