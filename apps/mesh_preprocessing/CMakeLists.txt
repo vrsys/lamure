@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the preprocessing executable
 
@@ -34,8 +36,13 @@ target_link_libraries(${PROJECT_NAME}
     ${GLUT_LIBRARY}
     ${GLEW_LIBRARY}
     ${GLEW_LIBRARIES}
+    optimized ${Boost_SERIALIZATION_LIBRARY_RELEASE} debug ${Boost_SERIALIZATION_LIBRARY_DEBUG}
+    optimized ${Boost_THREAD_LIBRARY_RELEASE} debug ${Boost_THREAD_LIBRARY_DEBUG}
+    stdc++fs
     )
 
-add_dependencies(${PROJECT_NAME} lamure_preprocessing lamure_common)
+add_dependencies(${PROJECT_NAME} lamure_mesh_preprocessing lamure_preprocessing lamure_common)
 
-MsvcPostBuild(${PROJECT_NAME})
+# MsvcPostBuild(${PROJECT_NAME})
+
+ENDIF(NOT MSVC)

@@ -255,6 +255,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
     bvh.set_primitives_per_node(tree.max_surfels_per_node_);
     bvh.set_size_of_primitive(tree.serialized_surfel_size_);
     bvh.set_primitive((bvh::primitive_type)tree.primitive_);
+    bvh.set_min_lod_depth(tree.min_lod_depth_);
     scm::math::vec3f translation(tree.translation_.x_,
                                 tree.translation_.y_,
                                 tree.translation_.z_);
@@ -318,7 +319,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
    tree.max_surfels_per_node_ = bvh.get_primitives_per_node();
    tree.serialized_surfel_size_ = bvh.get_size_of_primitive();
    tree.primitive_ = (bvh_primitive_type)bvh.get_primitive();
-   tree.reserved_0_ = 0;
+   tree.min_lod_depth_ = bvh.get_min_lod_depth();
    tree.state_ = bvh_tree_state::BVH_STATE_SERIALIZED;
    tree.reserved_1_ = 0;
    tree.reserved_2_ = 0;

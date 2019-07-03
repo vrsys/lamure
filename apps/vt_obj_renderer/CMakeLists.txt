@@ -35,6 +35,7 @@ target_link_libraries(${PROJECT_NAME}
   ${VT_LIBRARY}
   ${OpenGL_LIBRARY}
   ${GLUT_glut_LIBRARY}
+  ${GLUT_LIBRARY}
   ${GLEW_LIBRARY}
   ${OpenGL_LIBRARIES}
   optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
@@ -43,3 +44,4 @@ target_link_libraries(${PROJECT_NAME}
   optimized ${Boost_REGEX_LIBRARY_RELEASE} debug ${Boost_REGEX_LIBRARY_DEBUG}
 )
 
+add_dependencies(${PROJECT_NAME} lamure_virtual_texturing lamure_rendering lamure_common lamure_pvs_common)

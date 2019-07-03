@@ -8,7 +8,9 @@
 #ifndef LAMURE_DEBUGOUTPUT_H
 #define LAMURE_DEBUGOUTPUT_H
 
-class DebugOutput
+#include <lamure/vt/common.h>
+
+class VT_DLL DebugOutput
 {
   public:
     static const int FPS_S = 60;

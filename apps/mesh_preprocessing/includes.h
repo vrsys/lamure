@@ -11,6 +11,22 @@
 #define VCG_PARSER
 // #define ADHOC_PARSER
 
+#define MEASURE_EXECUTION_TIME
+
+/***
+ * Turn this flag on to enable saving app state before each stage.
+ * Load it any time for examination like this:
+ *
+ *   ofstream ofstream_state(save_path);
+ *   boost::archive::binary_oarchive oa_state(ofstream_state);
+ *   oa_state << state;
+ *   ofstream_state.close();
+ *
+ */
+// #define FLUSH_APP_STATE
+
+#define PARALLEL_EXECUTION
+
 // STL
 #include <iostream>
 #include <fstream>
@@ -27,8 +43,10 @@
 #include <string>
 #include <stack>
 
+#ifdef PARALLEL_EXECUTION
 // OMP
 #include <omp.h>
+#endif
 
 // CGAL
 #include <CGAL/Polygon_mesh_processing/measure.h>
@@ -42,6 +60,21 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
+#ifdef FLUSH_APP_STATE
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/set.hpp>
+#include <boost/serialization/collections_load_imp.hpp>
+#include <boost/serialization/collections_save_imp.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <experimental/filesystem>
+#endif
+
 // GL
 #include <GL/glew.h>
 #include <GL/freeglut.h>
@@ -49,6 +82,8 @@
 // LAMURE
 #include <lamure/mesh/tools.h>
 #include <lamure/mesh/bvh.h>
+#include <lamure/mesh/triangle.h>
+#include <lamure/mesh/lodepng.h>
 
 #ifdef VCG_PARSER
 #include <vcg/complex/complex.h>
@@ -59,13 +94,13 @@
 #include <vcg/complex/algorithms/clean.h>
 #include <vcg/space/intersection/triangle_triangle3.h>
 #include <vcg/math/histogram.h>
-#include <wrap/io_trimesh/import.h>
-#include <wrap/io_trimesh/export.h>
 #include <vcg/simplex/face/pos.h>
 #include <vcg/complex/algorithms/inertia.h>
 #include <vcg/space/index/grid_static_ptr.h>
 #include <wrap/ply/plylib.h>
 #include <wrap/io_trimesh/import_obj.h>
+#include <wrap/io_trimesh/import.h>
+#include <wrap/io_trimesh/export.h>
 #endif
 
 // TODO: none of these should remain here, none of these should be order-dependent
@@ -84,9 +119,5 @@
 #include <lamure/mesh/old/frame_buffer.h>
 
 #include <lamure/mesh/old/chart_packing.h>
-
-#include <lamure/mesh/old/lodepng.h>
-
-#include <lamure/mesh/triangle.h>
 
 #endif // LAMURE_MP_INCLUDES_H

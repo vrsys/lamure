@@ -56,6 +56,7 @@ public:
     const uint32_t      get_depth() const { return depth_; }
     const uint32_t      get_primitives_per_node() const { return primitives_per_node_; }
     const uint32_t      get_size_of_primitive() const { return size_of_primitive_; }
+    const uint32_t      get_min_lod_depth() const { return min_lod_depth_; }
     const vec3f         get_translation() const { return translation_; }
     const std::vector<scm::gl::boxf>& get_bounding_boxes() const { return bounding_boxes_; }
     const std::vector<vec3f>& get_centroids() const { return centroids_; };
@@ -71,6 +72,7 @@ public:
     void                set_depth(const uint32_t depth) { depth_ = depth; }
     void                set_primitives_per_node(const uint32_t primitives_per_node) { primitives_per_node_ = primitives_per_node; }
     void                set_size_of_primitive(const uint32_t size_of_primitive) { size_of_primitive_ = size_of_primitive; }
+    void                set_min_lod_depth(const uint32_t min_lod_depth) { min_lod_depth_ = min_lod_depth; }
     void                set_translation(const scm::math::vec3f& translation) { translation_ = translation; }
     void                set_bounding_box(const node_t node_id, const scm::gl::boxf& bounding_box);
     void                set_centroid(const node_t node_id, const scm::math::vec3f& centroid);
@@ -90,6 +92,7 @@ protected:
     uint32_t            depth_;
     uint32_t            primitives_per_node_;
     uint32_t            size_of_primitive_;
+    uint32_t            min_lod_depth_;
 
     std::vector<scm::gl::boxf> bounding_boxes_;
     std::vector<vec3f>  centroids_;
@@ -103,6 +106,9 @@ protected:
     vec3f               translation_;
    
     primitive_type      primitive_;
+
+
+    
 
 };
 

@@ -8,6 +8,7 @@
 #ifndef VT_OOC_TILEREQUEST_H
 #define VT_OOC_TILEREQUEST_H
 
+#include <lamure/vt/platform.h>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/Observable.h>
 
@@ -16,7 +17,7 @@ namespace vt
 namespace ooc
 {
 typedef float priority_type;
-class TileRequest : public Observable
+class VT_DLL TileRequest : public Observable
 {
   protected:
     pre::AtlasFile* _resource;

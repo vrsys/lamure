@@ -15,7 +15,7 @@ namespace lamure {
 namespace prov
 {
 template <class TPair, class TMetaData>
-class Partition
+class PROVENANCE_DLL Partition
 {
   public:
     Partition()

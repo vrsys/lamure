@@ -8,9 +8,11 @@
 #ifndef VT_COMMON_H
 #define VT_COMMON_H
 
+#include <lamure/vt/platform.h>
+
 #include <cstddef>
 #include <cstdint>
-#include <lamure/config.h>
+// #include <lamure/config.h>
 #include <map>
 #include <set>
 #include <condition_variable>

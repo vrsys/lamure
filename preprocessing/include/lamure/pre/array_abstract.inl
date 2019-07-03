@@ -5,11 +5,14 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#include <lamure/pre/platform.h>
+
 namespace lamure
 {
 namespace pre
 {
-
+#ifdef _WIN32
+#if defined(LAMURE_PREPROCESSING_LIBRARY)
 template<typename T>
 array_abstract<T>::
 ~array_abstract()
@@ -19,7 +22,18 @@ array_abstract<T>::
     }
     catch (...) {}
 }
-
+#endif
+#else
+template<typename T>
+array_abstract<T>::
+~array_abstract()
+{
+    try {
+        reset();
+    }
+    catch (...) {}
+}
+#endif
 }
 } // namespace lamure
 

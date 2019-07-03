@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Logging routines
+DATE=`date '+%Y-%m-%d:%H:%M:%S'`
+PIPEFILE="${HOME}"/pipe"${DATE}"
+mkfifo ${PIPEFILE}
+tee log_${DATE}.txt < ${PIPEFILE} &
+TEEPID=$!
+exec > ${PIPEFILE} 2>&1
+
 # Requires path of OBJ as argument
 
 if [[ -z "${LAMURE_DIR}" ]]; then
@@ -25,9 +33,6 @@ TRI_BUDGET=16000
 #maximum output texture size
 MAX_FINAL_TEX_SIZE=8192
 
-#dilations
-NUM_DILATIONS=4096
-
 ############################
 
 echo -e "\e[32m"
@@ -40,13 +45,11 @@ case ${answer:0:1} in
         echo "Chart creation cost threshold: " ${COST_THRESHOLD}
         echo "Triangle budget per BVH node: " ${TRI_BUDGET}
         echo "Maximum size of final texture: " ${MAX_FINAL_TEX_SIZE}
-        echo "Number of dilations: " ${NUM_DILATIONS}
     ;;
     * )
         read -rp "Triangle budget per KD-tree node: " KDTREE_TRI_BUDGET
         read -rp "Chart creation cost threshold: " COST_THRESHOLD
         read -rp "Triangle budget per BVH node: " TRI_BUDGET
-        read -rp "Number of dilations: " NUM_DILATIONS
     ;;
 esac
 
@@ -91,21 +94,19 @@ read -rp "Please input the maximum allowed size for the final texture: " MAX_FIN
 
 echo -e "\e[0m"
 
-DATE=`date '+%Y-%m-%d:%H:%M:%S'`
-
 read -p "Would you like to produce a .raw file for VT preprocessing at the end (if not, you get a .png)? (y/n)? " answer
 case ${answer:0:1} in
     y|Y )
         echo "Going to create RAW texture file at the end."
-        time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -raw -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE} 2>&1 | tee log_${DATE}.txt
+        time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -raw -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE}
     ;;
     * )
         echo "Going to create PNG texture file at the end."
-        time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE} 2>&1 | tee log_${DATE}.txt
+        time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE}
     ;;
 esac
 
-
-
-
-
+# Logging routines
+exec 1>&- 2>&-
+wait ${TEEPID}
+rm ${PIPEFILE}

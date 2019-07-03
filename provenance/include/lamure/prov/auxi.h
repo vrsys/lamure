@@ -9,6 +9,7 @@
 #define PROV_AUX_H_
 
 #include <lamure/types.h>
+#include <lamure/prov/platform.h>
 
 #include <string>
 #include <fstream>
@@ -22,7 +23,7 @@ namespace prov {
 
 class octree;
 
-class aux {
+class PROVENANCE_DLL auxi {
 public:
 
     struct feature {
@@ -68,9 +69,9 @@ public:
       uint32_t height_{0};
     };
 
-                        aux();
-                        aux(const std::string& filename);
-    virtual             ~aux() {}
+                        auxi();
+                        auxi(const std::string& filename);
+    virtual             ~auxi() {}
 
     const std::string   get_filename() const { return filename_; }
     const uint32_t      get_num_views() const { return views_.size(); }

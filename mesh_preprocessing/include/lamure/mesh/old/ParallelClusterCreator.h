@@ -1,6 +1,8 @@
 #include <memory>
 
-#include <omp.h>
+//#ifdef PARALLEL_EXECUTION
+//#include <omp.h>
+//#endif
 
 // class for running clustering algorithm on Charts
 struct ParallelClusterCreator
@@ -51,7 +53,6 @@ struct ParallelClusterCreator
         cluster_faces(charts, join_queue, cost_threshold, chart_threshold, cluster_settings, chart_id_map);
 
         return populate_chart_LUT(charts, chart_id_map);
-        ;
     }
 
     // builds a chart list where each face of a polyhedron is 1 chart
@@ -326,12 +327,13 @@ struct ParallelClusterCreator
 
             std::vector<int> to_erase_merged;
             std::vector<std::shared_ptr<JoinOperation>> to_recalculate_error_merged;
-
-#pragma omp declare reduction(merge : std::vector <int> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
-#pragma omp declare reduction(merge : std::vector <std::shared_ptr <JoinOperation>> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
-
-// find affected joins and add to list for erase/update
-#pragma omp parallel for reduction(merge : to_erase_merged, to_recalculate_error_merged)
+//#ifdef PARALLEL_EXECUTION
+//#pragma omp declare reduction(merge : std::vector <int> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+//#pragma omp declare reduction(merge : std::vector <std::shared_ptr <JoinOperation>> : omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+//
+//// find affected joins and add to list for erase/update
+//#pragma omp parallel for reduction(merge : to_erase_merged, to_recalculate_error_merged)
+//#endif
             for(uint32_t j = 0; j < join_queue.size(); j++)
             {
                 // if join is affected, update references and cost
@@ -390,8 +392,10 @@ struct ParallelClusterCreator
                 num_erased++;
             }
 
+#ifdef PARALLEL_EXECUTION
 // recalculate error for joins that need to be updated
 #pragma omp parallel for
+#endif
             for(uint32_t j = 0; j < to_recalculate_error_merged.size(); j++)
             {
                 std::shared_ptr<JoinOperation> join_ptr(to_recalculate_error_merged[j]);

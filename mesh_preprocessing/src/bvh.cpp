@@ -37,6 +37,7 @@ bvh::bvh(std::vector<Triangle_Chartid>& triangles, uint32_t primitives_per_node)
     size_of_primitive_ = sizeof(vertex);
     primitive_ = primitive_type::TRIMESH;
     primitives_per_node_ = primitives_per_node;
+    min_lod_depth_ = 0;
 
     create_hierarchy(triangles);
 }
@@ -225,7 +226,6 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles)
         }
 
         // lambda for parallel version
-
         auto lambda_simplify = [&](uint64_t i, uint32_t id) -> void {
             uint32_t node_id = nodes_todo[i];
 
@@ -261,9 +261,12 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles)
 
             num_nodes_done++;
         };
-
+#ifdef PARALLEL_EXECUTION
         uint32_t num_threads = std::min((size_t)24, nodes_todo.size());
         lamure::mesh::parallel_for(num_threads, nodes_todo.size(), lambda_simplify);
+#else
+        lamure::mesh::parallel_for(1, nodes_todo.size(), lambda_simplify);
+#endif
     }
 
     std::cout << "Upsweep done." << std::endl;
@@ -277,6 +280,7 @@ void bvh::create_hierarchy(std::vector<Triangle_Chartid>& triangles)
             std::cout << "WARNING: (" << node_id << ": " << triangles_map_[node_id].size() << ") removing \
       " << triangles_map_[node_id].size() - primitives_per_node_
                       << " triangles manually to stay on budget: " << primitives_per_node_ << std::endl;
+            min_lod_depth_ = std::max(min_lod_depth_, get_depth_of_node(node_id));
         }
 
         // if we have too many, remove some

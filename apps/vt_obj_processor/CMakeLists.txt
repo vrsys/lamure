@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the vis executable
 
@@ -48,3 +50,4 @@ target_link_libraries(${PROJECT_NAME}
   optimized ${Boost_REGEX_LIBRARY_RELEASE} debug ${Boost_REGEX_LIBRARY_DEBUG}
 )
 
+ENDIF(NOT MSVC)

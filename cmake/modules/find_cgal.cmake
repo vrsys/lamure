@@ -1,6 +1,7 @@
 ##############################################################################
 # search paths
 ##############################################################################
+if (NOT ${CGAL_USE_413})
 SET(CGAL_INCLUDE_SEARCH_DIRS
   ${GLOBAL_EXT_DIR}/CGAL-4.9/include
   ${GLOBAL_EXT_DIR}/CGAL/include
@@ -15,6 +16,10 @@ SET(CGAL_LIBRARY_SEARCH_DIRS
   /usr/lib/x86_64-linux-gnu
   /opt/cgal/lib
 )
+else()
+    SET(CGAL_INCLUDE_SEARCH_DIRS /opt/CGAL/CGAL-4.13.1/install/include)
+    SET(CGAL_LIBRARY_SEARCH_DIRS /opt/CGAL/CGAL-4.13.1/install/lib)
+endif()
 
 ##############################################################################
 # search
@@ -57,14 +62,17 @@ FOREACH (_SEARCH_DIR ${CGAL_LIBRARY_SEARCH_DIRS})
     ENDIF ()
 ENDFOREACH()
 
-find_path(CGAL_INCLUDE_DIR NAMES CGAL/CGAL_Ipelet_base.h PATHS ${CGAL_INCLUDE_SEARCH_DIRS})
+find_path(CGAL_INCLUDE_DIR NAMES CGAL/CGAL_Ipelet_base.h PATHS ${CGAL_INCLUDE_SEARCH_DIRS} NO_DEFAULT_PATH)
 
-find_library(CGAL_LIBRARY NAMES ${CGAL_LIBRARY_FILENAME} PATHS ${CGAL_LIBRARY_SEARCH_DIRS})
-find_library(CGAL_CORE_LIBRARY NAMES ${CGAL_CORE_LIBRARY_FILENAME} PATHS ${CGAL_LIBRARY_SEARCH_DIRS})
+if (${CGAL_USE_413})
+    SET(CGAL_INCLUDE_DIR /opt/CGAL/CGAL-4.13.1/install/include)
+endif()
+
+find_library(CGAL_LIBRARY NAMES ${CGAL_LIBRARY_FILENAME} PATHS ${CGAL_LIBRARY_SEARCH_DIRS} NO_DEFAULT_PATH)
+find_library(CGAL_CORE_LIBRARY NAMES ${CGAL_CORE_LIBRARY_FILENAME} PATHS ${CGAL_LIBRARY_SEARCH_DIRS} NO_DEFAULT_PATH)
 
 get_filename_component(_CGAL_LIBRARY_DIR ${CGAL_LIBRARY} PATH)
 SET(CGAL_LIBRARY_DIR "${_CGAL_LIBRARY_DIR}/" CACHE PATH "Sets path to CGAL libraries")
-
 
 IF (UNIX)
   UNSET(CGAL_CORE_LIBRARY_DEBUG)

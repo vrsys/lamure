@@ -10,7 +10,13 @@
 
 namespace vt
 {
+#ifdef _WIN32
+#ifdef LAMURE_VT_LIBRARY
 std::string vt::VTConfig::CONFIG_PATH;
+#endif
+#else
+std::string vt::VTConfig::CONFIG_PATH;
+#endif
 
 void VTConfig::read_config(const char* path_config)
 {
@@ -89,4 +95,23 @@ const VTConfig::FORMAT_TEXTURE VTConfig::which_texture_format(const char* _textu
 }
 
 uint32_t VTConfig::get_size_ram_cache() const { return _size_ram_cache; }
+void VTConfig::set_defaults()
+{
+    _size_tile = 256;
+    _size_padding = 1;
+    _size_physical_texture = 4096;
+    _size_physical_update_throughput = 4;
+    _size_ram_cache = 16384;
+    _format_texture = FORMAT_TEXTURE::RGB8;
+    _verbose = false;
+
+    define_size_physical_texture(64, 8192);
+}
+void VTConfig::set_size_tile(uint16_t sizeTile) { _size_tile = sizeTile; }
+void VTConfig::set_size_padding(uint16_t sizePadding) { _size_padding = sizePadding; }
+void VTConfig::set_size_physical_texture(uint32_t sizePhysicalTexture) { _size_physical_texture = sizePhysicalTexture; }
+void VTConfig::set_size_physical_update_throughput(uint32_t sizePhysicalUpdateThroughput) { _size_physical_update_throughput = sizePhysicalUpdateThroughput; }
+void VTConfig::set_size_ram_cache(uint32_t sizeRamCache) { _size_ram_cache = sizeRamCache; }
+void VTConfig::set_format_texture(VTConfig::FORMAT_TEXTURE formatTexture) { _format_texture = formatTexture; }
+void VTConfig::set_verbose(bool verbose) { _verbose = verbose; }
 } // namespace vt

@@ -17,7 +17,7 @@
 
 namespace vt
 {
-class VTConfig
+class VT_DLL VTConfig
 {
   public:
     enum FORMAT_TEXTURE
@@ -31,8 +31,13 @@ class VTConfig
 
     static VTConfig& get_instance()
     {
-        static VTConfig instance(CONFIG_PATH.c_str());
-        return instance;
+        if(!CONFIG_PATH.empty()){
+            static VTConfig instance(CONFIG_PATH.c_str());
+            return instance;
+        } else {
+            static VTConfig instance;
+            return instance;
+        }
     }
 
     VTConfig(VTConfig const&) = delete;
@@ -53,6 +58,8 @@ class VTConfig
      * */
     void define_size_physical_texture(uint32_t max_tex_layers, uint32_t max_tex_px_width_gl);
 
+    void set_defaults();
+
     uint16_t get_size_tile() const;
     uint16_t get_size_padding() const;
     uint32_t get_size_physical_update_throughput() const;
@@ -66,7 +73,16 @@ class VTConfig
     uint32_t get_phys_tex_tile_width() const;
     uint16_t get_phys_tex_layers() const;
 
-  private:
+    void set_size_tile(uint16_t sizeTile);
+    void set_size_padding(uint16_t sizePadding);
+    void set_size_physical_texture(uint32_t sizePhysicalTexture);
+    void set_size_physical_update_throughput(uint32_t sizePhysicalUpdateThroughput);
+    void set_size_ram_cache(uint32_t sizeRamCache);
+    void set_format_texture(FORMAT_TEXTURE formatTexture);
+    void set_verbose(bool verbose);
+
+private:
+    VTConfig() { set_defaults(); }
     VTConfig(const char* path_config) { read_config(path_config); }
 
     // Sections

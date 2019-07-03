@@ -30,7 +30,7 @@ class Triangle_Chartid : public lamure::mesh::triangle_t
         return tri;
     }
 
-    int chart_id;
+    uint32_t chart_id;
     int tex_id;
     int area_id;
     int tri_id;

@@ -16,7 +16,7 @@ namespace lamure {
 namespace prov
 {
 template <class Entity>
-class Streamable : public Readable
+class PROVENANCE_DLL Streamable : public Readable
 {
   public:
     Streamable(ifstream &is) : is(is) { read_header(is); }

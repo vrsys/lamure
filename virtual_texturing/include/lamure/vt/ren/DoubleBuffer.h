@@ -14,7 +14,7 @@
 namespace vt
 {
 template <typename T>
-class DoubleBuffer
+class VT_DLL DoubleBuffer
 {
   public:
     explicit DoubleBuffer(T* front, T* back)

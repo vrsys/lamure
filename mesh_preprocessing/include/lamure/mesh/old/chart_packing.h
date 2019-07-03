@@ -9,7 +9,7 @@ struct rectangle
 {
     scm::math::vec2f min_;
     scm::math::vec2f max_;
-    int id_;
+    uint32_t id_;
     bool flipped_;
 };
 
@@ -27,7 +27,7 @@ struct projection_info
 
 struct chart
 {
-    int id_;
+    uint32_t id_;
     rectangle rect_;
     lamure::bounding_box box_;
     std::set<int> all_triangle_ids_;
@@ -291,7 +291,7 @@ static void project_charts(std::map<uint32_t, chart>& chart_map, const std::vect
         // compute the bounding rectangle for each chart
         for(auto tri_id : chart.all_triangle_ids_)
         {
-            auto& tri = triangles[tri_id];
+            // auto& tri = triangles[tri_id];
 
             for(uint32_t i = 0; i < 3; ++i)
             {
@@ -319,7 +319,7 @@ static void project_charts(std::map<uint32_t, chart>& chart_map, const std::vect
         // shift projected coordinates to min = 0
         for(auto tri_id : chart.all_triangle_ids_)
         {
-            auto& tri = triangles[tri_id];
+            // auto& tri = triangles[tri_id];
 
             chart.all_triangle_new_coods_[tri_id][0] -= chart.rect_.min_;
             chart.all_triangle_new_coods_[tri_id][1] -= chart.rect_.min_;
@@ -333,7 +333,7 @@ static void project_charts(std::map<uint32_t, chart>& chart_map, const std::vect
     for(auto& chart_it : chart_map)
     {
         chart& chart = chart_it.second;
-        int32_t chart_id = chart_it.first;
+        // uint32_t chart_id = chart_it.first;
 
         // normalize largest_max to 1
         for(auto tri_id : chart.all_triangle_ids_)

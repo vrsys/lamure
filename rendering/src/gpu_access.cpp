@@ -226,10 +226,10 @@ scm::gl::vertex_array_ptr gpu_access::get_memory(bvh::primitive_type type)
 
 const size_t gpu_access::query_video_memory_in_mb(scm::gl::render_device_ptr const &device)
 {
-    int size_in_kb;
+    GLint size_in_kb;
     device->opengl_api().glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &size_in_kb);
     // glGetIntegerv(0x9048/*GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX*/, &size_in_kb);
-    return size_t(size_in_kb) / 1024;
+    return static_cast<size_t>(size_in_kb) / 1024;
 }
 }
 }

@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the prov_vis executable
 
@@ -37,3 +39,4 @@ target_link_libraries(${PROJECT_NAME}
     optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
 )
 
+ENDIF(NOT MSVC)

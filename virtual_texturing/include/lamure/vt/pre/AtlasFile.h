@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <fstream>
 #include <cstring>
+#include <lamure/vt/common.h>
 #include <lamure/vt/pre/Bitmap.h>
 #include <lamure/vt/pre/QuadTree.h>
 #include <lamure/vt/pre/CielabIndex.h>
@@ -21,7 +22,7 @@ namespace pre
 {
 class OffsetIndex;
 
-class AtlasFile
+class VT_DLL AtlasFile
 {
   public:
     enum LAYOUT

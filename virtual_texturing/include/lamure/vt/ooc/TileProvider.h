@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <set>
+#include <lamure/vt/common.h>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/ooc/TileRequestMap.h>
 #include <lamure/vt/ooc/TileCache.h>
@@ -23,7 +24,7 @@ namespace ooc
 typedef uint64_t id_type;
 typedef float priority_type;
 
-class TileProvider
+class VT_DLL TileProvider
 {
   protected:
     std::mutex _resourcesLock;

@@ -18,7 +18,7 @@ template <typename priority_type>
 class PriorityHeapContent;
 
 template <typename priority_type>
-class PriorityHeap : public FibonacciHeap<priority_type, PriorityHeapContent<priority_type>*>
+class VT_DLL PriorityHeap : public FibonacciHeap<priority_type, PriorityHeapContent<priority_type>*>
 {
   protected:
     typedef priority_type key_type;
@@ -87,7 +87,7 @@ class PriorityHeap : public FibonacciHeap<priority_type, PriorityHeapContent<pri
 };
 
 template <typename priority_type>
-class PriorityHeapContent
+class VT_DLL PriorityHeapContent
 {
   protected:
     std::mutex _lock;

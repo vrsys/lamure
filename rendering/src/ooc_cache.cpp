@@ -83,13 +83,24 @@ ooc_cache *ooc_cache::get_instance(Data_Provenance const &data_provenance)
             model_database *database = model_database::get_instance();
             // size_t out_of_core_budget_in_nodes = (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();
 
+            float safety = 0.75;
+            unsigned long long ram_free_in_bytes = 0;
+
+#ifndef _WIN32
             struct sysinfo info;
             sysinfo(&info);
             // std::cout << "uptime: " << info.uptime << std::endl;
             //std::cout << "freeram: " << info.freeram << std::endl;
 
-            float safety = 0.75;
-            long ram_free_in_bytes = info.freeram * safety;
+            ram_free_in_bytes = (unsigned long long)(info.freeram * safety);
+#else
+            MEMORYSTATUSEX status;
+            status.dwLength = sizeof(status);
+            GlobalMemoryStatusEx(&status);
+
+            ram_free_in_bytes = (unsigned long long)(status.ullAvailPhys * safety);
+#endif
+
             long out_of_core_budget_in_bytes = policy->out_of_core_budget_in_mb() * 1024 * 1024;
 
             if(policy->out_of_core_budget_in_mb() == 0)
@@ -138,14 +149,24 @@ ooc_cache *ooc_cache::get_instance()
             model_database *database = model_database::get_instance();
             // size_t out_of_core_budget_in_nodes = (policy->out_of_core_budget_in_mb()*1024*1024) / database->get_slot_size();
 
+            float safety = 0.75;
+            unsigned long long ram_free_in_bytes = 0;
+
+#ifndef _WIN32
             struct sysinfo info;
             sysinfo(&info);
             // std::cout << "uptime: " << info.uptime << std::endl;
-            // std::cout << "freeram: " << info.freeram << std::endl;
+            //std::cout << "freeram: " << info.freeram << std::endl;
 
-            float safety = 0.75;
-            long ram_free_in_bytes = info.freeram * safety;
-            long out_of_core_budget_in_bytes = policy->out_of_core_budget_in_mb() * 1024 * 1024;
+            ram_free_in_bytes = (unsigned long long)(info.freeram * safety);
+#else
+            MEMORYSTATUSEX status;
+            status.dwLength = sizeof(status);
+            GlobalMemoryStatusEx(&status);
+
+            ram_free_in_bytes = (unsigned long long)(status.ullAvailPhys * safety);
+#endif
+            unsigned long long out_of_core_budget_in_bytes = policy->out_of_core_budget_in_mb() * 1024 * 1024;
 
             if(policy->out_of_core_budget_in_mb() == 0)
             {

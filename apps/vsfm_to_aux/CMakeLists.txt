@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the vsfm_to_aux executable
 
@@ -27,3 +29,5 @@ target_link_libraries(${PROJECT_NAME}
         optimized ${SCHISM_GL_CORE_LIBRARY} debug ${SCHISM_GL_CORE_LIBRARY_DEBUG}
         optimized ${SCHISM_GL_UTIL_LIBRARY} debug ${SCHISM_GL_UTIL_LIBRARY_DEBUG}
         )
+
+ENDIF(NOT MSVC)

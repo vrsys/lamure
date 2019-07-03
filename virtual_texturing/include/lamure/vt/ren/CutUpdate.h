@@ -15,7 +15,7 @@
 
 namespace vt
 {
-class CutUpdate
+class VT_DLL CutUpdate
 {
   public:
     friend class ContextFeedback;
@@ -69,7 +69,7 @@ class CutUpdate
     void remove_from_indexed_memory(Cut* cut, id_type tile_id, uint16_t context_id);
 };
 
-class CutDecision
+class VT_DLL CutDecision
 {
   public:
     friend class CutUpdate;
@@ -83,7 +83,7 @@ class CutDecision
     id_set_type keep;
 };
 
-class ContextFeedback
+class VT_DLL ContextFeedback
 {
   public:
     friend class CutUpdate;

@@ -16,7 +16,7 @@
 namespace lamure {
 namespace prov
 {
-class SparsePoint : public Point
+class PROVENANCE_DLL SparsePoint : public Point
 {
   public:
     class Measurement

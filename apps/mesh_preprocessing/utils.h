@@ -347,11 +347,6 @@ static void load_obj(const std::string& file, std::vector<indexed_triangle_t>& t
 
         const int expected_mask = Mask::IOM_VERTCOORD | Mask::IOM_VERTTEXCOORD | Mask::IOM_WEDGTEXCOORD | Mask::IOM_VERTNORMAL;
 
-        if(!(load_mask & expected_mask))
-        {
-            throw std::runtime_error("Mesh does not contain necessary components, mask of missing components: " + std::to_string(load_mask ^ expected_mask));
-        }
-
         if(!mask_load_success || load_error != ImporterOBJ<CMesh>::OBJError::E_NOERROR)
         {
             if(ImporterOBJ<CMesh>::ErrorCritical(load_error))
@@ -361,7 +356,13 @@ static void load_obj(const std::string& file, std::vector<indexed_triangle_t>& t
             else
             {
                 std::cerr << std::string(ImporterOBJ<CMesh>::ErrorMsg(load_error)) << std::endl;
+                exit(1);
             }
+        }
+
+        if(!(load_mask & expected_mask))
+        {
+            throw std::runtime_error("Mesh does not contain necessary components, mask of missing components: " + std::to_string(load_mask ^ expected_mask));
         }
 
         UpdateTopology<CMesh>::FaceFace(m);
@@ -660,7 +661,7 @@ static void prepare_charts(app_state& state)
         uint32_t area_id = tri.area_id;
         uint32_t chart_id = tri.chart_id;
 
-        if(chart_id != -1 && tri.get_area() > 0.f)
+        if(chart_id != (uint32_t)-1 && tri.get_area() > 0.f)
         {
             state.chart_map[area_id][chart_id].id_ = chart_id;
             state.chart_map[area_id][chart_id].original_triangle_ids_.insert(tri_id);
@@ -720,10 +721,14 @@ static void chartify_parallel(app_state& state, cmd_options& opt)
         limits.max = scm::math::vec3f(std::numeric_limits<float>::lowest());
 
         std::vector<indexed_triangle_t> node_triangles;
+        node_triangles.resize(node.end_ - node.begin_);
+#ifdef PARALLEL_EXECUTION
+#pragma omp parallel for
+#endif
         for(uint32_t idx = node.begin_; idx < node.end_; ++idx)
         {
             const auto& tri = state.all_indexed_triangles[indices[idx]];
-            node_triangles.push_back(tri);
+            node_triangles[idx - node.begin_] = tri;
 
             limits.min.x = std::min(limits.min.x, tri.v0_.pos_.x);
             limits.min.y = std::min(limits.min.y, tri.v0_.pos_.y);
@@ -768,12 +773,18 @@ static void chartify_parallel(app_state& state, cmd_options& opt)
         state.per_node_polyhedron[node_id] = polyMesh;
     };
 
+#ifdef PARALLEL_EXECUTION
     uint32_t num_threads = std::min((size_t)24, state.node_ids.size());
     lamure::mesh::parallel_for(num_threads, state.node_ids.size(), lambda_chartify);
+#else
+    lamure::mesh::parallel_for(1, state.node_ids.size(), lambda_chartify);
+#endif
 }
 
-static void convert_to_triangle_soup(app_state& state)
+static void convert_to_triangle_soup_parallel(app_state& state)
 {
+    state.triangles.clear();
+
     state.num_areas = 0;
     for(auto& per_node_chart_id_map_it : state.per_node_chart_id_map)
     {
@@ -784,11 +795,21 @@ static void convert_to_triangle_soup(app_state& state)
         typedef CGAL::Inverse_index<Polyhedron::Vertex_const_iterator> Index;
         Index index(polyMesh.vertices_begin(), polyMesh.vertices_end());
 
+        uint32_t num_of_faces = polyMesh.size_of_facets();
+
         // extract triangle soup
-        for(Polyhedron::Facet_const_iterator fi = polyMesh.facets_begin(); fi != polyMesh.facets_end(); ++fi)
+
+        uint32_t offset = state.triangles.size();
+        state.triangles.resize(offset + num_of_faces);
+
+#ifdef PARALLEL_EXECUTION
+#pragma omp parallel for
+#endif
+        for(uint32_t i = 0; i < num_of_faces; i++)
         {
+            Polyhedron::Facet_const_iterator fi = polyMesh.facets_begin();
+            std::advance(fi, i);
             Polyhedron::Halfedge_around_facet_const_circulator hc = fi->facet_begin();
-            Polyhedron::Halfedge_around_facet_const_circulator hc_end = hc;
 
             if(circulator_size(hc) != 3)
             {
@@ -824,18 +845,18 @@ static void convert_to_triangle_soup(app_state& state)
             tri.tex_id = fi->tex_id;
             tri.tri_id = fi->tri_id;
 
-            state.triangles.push_back(tri);
+            state.triangles[offset + i] = tri;
         }
         ++state.num_areas;
     }
-};
+}
 
 static void assign_parallel(app_state& state)
 {
-    std::vector<uint32_t> area_ids;
+    std::vector<uint32_t> area_ids(state.num_areas);
     for(uint32_t area_id = 0; area_id < state.num_areas; ++area_id)
     {
-        area_ids.push_back(area_id);
+        area_ids[area_id] = area_id;
     }
 
     auto lambda_append = [&](uint64_t i, uint32_t id) -> void {
@@ -845,7 +866,7 @@ static void assign_parallel(app_state& state)
 
         for(auto& it : state.chart_map[area_id])
         {
-            int chart_id = it.first;
+            // uint32_t chart_id = it.first;
             auto& chart = it.second;
 
             chart.all_triangle_ids_.insert(chart.original_triangle_ids_.begin(), chart.original_triangle_ids_.end());
@@ -865,12 +886,20 @@ static void assign_parallel(app_state& state)
         }
     };
 
+#ifdef PARALLEL_EXECUTION
     uint32_t num_threads = std::min((size_t)24, area_ids.size());
     lamure::mesh::parallel_for(num_threads, area_ids.size(), lambda_append);
+#else
+    lamure::mesh::parallel_for(1, area_ids.size(), lambda_append);
+#endif
 }
 
 static void pack_areas(app_state& state)
 {
+    state.area_rects.resize(state.num_areas);
+#ifdef PARALLEL_EXECUTION
+#pragma omp parallel for
+#endif
     for(uint32_t area_id = 0; area_id < state.num_areas; ++area_id)
     {
         calculate_chart_tex_space_sizes(state.chart_map[area_id], state.triangles, state.texture_info_map);
@@ -897,13 +926,15 @@ static void pack_areas(app_state& state)
         rectangle area_rect = pack(rects);
         area_rect.id_ = area_id;
         area_rect.flipped_ = false;
-        state.area_rects.push_back(area_rect);
+        state.area_rects[area_id] = area_rect;
 
         std::cout << "Packing of area " << area_id << " complete (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
 
         // apply rectangles
         for(const auto& rect : rects)
         {
+            // std::cout << "Rectangle ID: " << rect.id_ << std::endl;
+
             state.chart_map[area_id][rect.id_].rect_ = rect;
             state.chart_map[area_id][rect.id_].projection.tex_space_rect = rect; // save for rendering from texture later on
         }
@@ -914,7 +945,7 @@ static void pack_areas(app_state& state)
     std::cout << "Packing of all areas complete (" << state.image_rect.max_.x << ", " << state.image_rect.max_.y << ")" << std::endl;
 }
 
-static void apply_texture_space_transformation(app_state& state)
+static void apply_texture_space_transformations_in_parallel(app_state& state)
 {
     std::cout << "Applying texture space transformation..." << std::endl;
 
@@ -925,12 +956,49 @@ static void apply_texture_space_transformation(app_state& state)
         std::cout << "Area " << area_rect.id_ << " min: (" << area_rect.min_.x << ", " << area_rect.min_.y << ")" << std::endl;
         std::cout << "Area " << area_rect.id_ << " max: (" << area_rect.max_.x << ", " << area_rect.max_.y << ")" << std::endl;
 
-#pragma omp parallel for
-        // next, apply the global transformation from area packing onto all individual chart rects per area
-        for(uint32_t j = 0; j < state.chart_map[area_rect.id_].size(); j++)
+        std::cout << "Chart map size " << state.chart_map[area_rect.id_].size() << std::endl;
+
+        std::vector<uint32_t> chart_ids(state.chart_map[area_rect.id_].size());
+        int i = 0;
+        for(const auto& pair : state.chart_map[area_rect.id_])
         {
-            auto& chart = state.chart_map[area_rect.id_][j];
+            chart_ids[i] = pair.first;
+            i++;
+
+            //std::cout << "Chart: " << std::to_string(i) << ", id: " << std::to_string(chart_ids[i]) << std::endl;
+        }
+
+        // std::cout << "Chart ids initialized" << std::endl;
+
+#ifdef PARALLEL_EXECUTION
+#pragma omp parallel for
+#endif
+
+        // next, apply the global transformation from area packing onto all individual chart rects per area
+        for(uint32_t j = 0; j < chart_ids.size(); j++)
+        {
+            uint32_t chart_id = chart_ids[j];
+
+            // std::cout << "Chart " << std::to_string(chart_id) << std::endl;
+
+            if(chart_id == (uint32_t)-1)
+            {
+                std::cerr << "Skipping chart with blank ID" << std::endl;
+
+                continue;
+            }
+
+            auto& chart = state.chart_map[area_rect.id_][chart_id];
             chart.rect_.min_ += area_rect.min_;
+
+            if(chart.all_triangle_ids_.size() == 0)
+            {
+                std::cerr << "Skipping chart " << std::to_string(chart_ids[j]) << " with no triangles" << std::endl;
+
+                continue;
+            }
+
+            // std::cout << "Chart " << std::to_string(chart_ids[j]) << ", all triangle ids size " << chart.all_triangle_ids_.size() << std::endl;
 
             std::vector<int> ids(chart.all_triangle_ids_.begin(), chart.all_triangle_ids_.end());
 
@@ -938,6 +1006,9 @@ static void apply_texture_space_transformation(app_state& state)
             for(uint32_t a = 0; a < ids.size(); a++)
             {
                 int tri_id = ids[a];
+
+                // std::cout << "Triangle " << std::to_string(tri_id) << std::endl;
+
                 if((chart.rect_.flipped_ && !area_rect.flipped_) || (area_rect.flipped_ && !chart.rect_.flipped_))
                 {
                     float temp = chart.all_triangle_new_coods_[tri_id][0].x;
@@ -964,6 +1035,8 @@ static void apply_texture_space_transformation(app_state& state)
             }
         }
     }
+
+    std::cout << "Done applying texture space transformation" << std::endl;
 }
 
 static void update_texture_coordinates(app_state& state)
@@ -1072,7 +1145,9 @@ static void update_texture_coordinates(app_state& state)
 
     std::cout << "Updating texture coordinates in inner LOD nodes..." << std::endl;
 
+#ifdef PARALLEL_EXECUTION
 #pragma omp parallel for
+#endif
     for(uint32_t node_id = 0; node_id < first_leaf_id; ++node_id)
     {
         auto& tris = state.bvh->get_triangles(node_id);
@@ -1420,49 +1495,47 @@ static void load_textures(app_state& state)
         state.frame_buffers[0]->disable();
 
         uint32_t current_framebuffer = 0;
-        if(true)
+
+        std::cout << "Dilating view " << view_id << "..." << std::endl;
+
+        uint32_t num_dilations = state.t_d.render_to_texture_width_ / 2;
+
+        for(int i = 0; i < num_dilations; ++i)
         {
-            std::cout << "Dilating view " << view_id << "..." << std::endl;
+            current_framebuffer = (i + 1) % 2;
 
-            uint32_t num_dilations = state.t_d.render_to_texture_width_ / 2;
-
-            for(int i = 0; i < num_dilations; ++i)
+            state.frame_buffers[current_framebuffer]->enable();
+            int current_texture = 0;
+            if(current_framebuffer == 0)
             {
-                current_framebuffer = (i + 1) % 2;
-
-                state.frame_buffers[current_framebuffer]->enable();
-                int current_texture = 0;
-                if(current_framebuffer == 0)
-                {
-                    current_texture = 1;
-                }
-
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-                glUseProgram(state.handles.dilation_shader_program_);
-                glBindBuffer(GL_ARRAY_BUFFER, state.handles.dilation_vertex_buffer_);
-
-                glEnableVertexAttribArray(0);
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2 * sizeof(float)));
-
-                int slot = 0;
-                glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image"), slot);
-                glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_width"), state.t_d.render_to_texture_width_);
-                glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_height"), state.t_d.render_to_texture_height_);
-                glActiveTexture(GL_TEXTURE0 + slot);
-                state.frame_buffers[current_texture]->bind_texture(slot);
-
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-                glUseProgram(0);
-
-                state.frame_buffers[current_texture]->unbind_texture(slot);
-
-                state.frame_buffers[current_framebuffer]->disable();
+                current_texture = 1;
             }
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glUseProgram(state.handles.dilation_shader_program_);
+            glBindBuffer(GL_ARRAY_BUFFER, state.handles.dilation_vertex_buffer_);
+
+            glEnableVertexAttribArray(0);
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(blit_vertex_t), (void*)(2 * sizeof(float)));
+
+            int slot = 0;
+            glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image"), slot);
+            glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_width"), state.t_d.render_to_texture_width_);
+            glUniform1i(glGetUniformLocation(state.handles.dilation_shader_program_, "image_height"), state.t_d.render_to_texture_height_);
+            glActiveTexture(GL_TEXTURE0 + slot);
+            state.frame_buffers[current_texture]->bind_texture(slot);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glUseProgram(0);
+
+            state.frame_buffers[current_texture]->unbind_texture(slot);
+
+            state.frame_buffers[current_framebuffer]->disable();
         }
 
         std::vector<uint8_t> pixels;

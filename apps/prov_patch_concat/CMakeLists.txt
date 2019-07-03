@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the patch_concat executable
 
@@ -23,4 +25,6 @@ target_link_libraries(${PROJECT_NAME}
 
 add_dependencies(${PROJECT_NAME} lamure_preprocessing lamure_common)
 
-MsvcPostBuild(${PROJECT_NAME})
+# MsvcPostBuild(${PROJECT_NAME})
+
+ENDIF(NOT MSVC)

@@ -8,6 +8,7 @@
 #ifndef LAMURE_OFFSETINDEX_H
 #define LAMURE_OFFSETINDEX_H
 
+#include <lamure/vt/platform.h>
 #include "Index.h"
 #include "AtlasFile.h"
 
@@ -15,7 +16,7 @@ namespace vt
 {
 namespace pre
 {
-class OffsetIndex : public Index<uint64_t>
+class VT_DLL OffsetIndex : public Index<uint64_t>
 {
   private:
     const uint64_t EXISTS_BIT = 0x8000000000000000;

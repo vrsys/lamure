@@ -593,7 +593,7 @@ void Preprocessor::_putFileFormat(AtlasFile::LAYOUT fileFormat, uint8_t* out)
 
 void Preprocessor::_writeHeader()
 {
-    uint8_t data[_HEADER_SIZE];
+    uint8_t* data = new uint8_t [_HEADER_SIZE];
 
     data[0] = 'A';
     data[1] = 'T';
@@ -617,6 +617,8 @@ void Preprocessor::_writeHeader()
     _destHeaderFile->seekp(_destHeaderOffset);
     _destHeaderFile->write((char*)data, _HEADER_SIZE);
     _destHeaderFile->flush();
+
+    delete [] data;
 }
 
 void Preprocessor::setOutput(const std::string& destFileName, Bitmap::PIXEL_FORMAT destPxFormat, AtlasFile::LAYOUT format, size_t tileWidth, size_t tileHeight, size_t padding, bool combine)

@@ -8,21 +8,21 @@
 #ifndef LAMURE_NODE_H
 #define LAMURE_NODE_H
 
+#include <boost/asio/io_service.hpp>
+#include <boost/bind.hpp>
+#include <boost/thread/thread.hpp>
+
 #include <lamure/prov/dense_meta_data.h>
 #include <lamure/prov/dense_point.h>
 #include <lamure/prov/partition.h>
 #include <lamure/prov/partitionable.h>
-
-#include <boost/asio/io_service.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread/thread.hpp>
 
 namespace lamure {
 namespace prov
 {
 typedef pair<DensePoint, DenseMetaData> dense_pair;
 
-class OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partitionable<OctreeNode>
+class PROVENANCE_DLL OctreeNode : public Partition<dense_pair, DenseMetaData>, public Partitionable<OctreeNode>
 {
   public:
     OctreeNode() : Partition<dense_pair, DenseMetaData>(), Partitionable<OctreeNode>()

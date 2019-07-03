@@ -13,6 +13,7 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <lamure/vt/common.h>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <lamure/vt/pre/OffsetIndex.h>
 
@@ -20,7 +21,7 @@ namespace vt
 {
 namespace pre
 {
-class DeltaECalculator : public AtlasFile
+class VT_DLL DeltaECalculator : public AtlasFile
 {
   public:
     explicit DeltaECalculator(const char* fileName);

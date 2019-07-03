@@ -8,6 +8,7 @@
 #ifndef TILE_PROVIDER_BITMAP_H
 #define TILE_PROVIDER_BITMAP_H
 
+#include <lamure/vt/platform.h>
 #include <cstdint>
 #include <stdexcept>
 
@@ -17,7 +18,7 @@ namespace pre
 {
 //#define BITMAP_ENABLE_SAFETY_CHECKS
 
-class Bitmap
+class VT_DLL Bitmap
 {
   public:
     enum PIXEL_FORMAT

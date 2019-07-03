@@ -45,7 +45,7 @@
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 #include <lamure/prov/octree.h>
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/ren/CutDatabase.h>
@@ -268,9 +268,10 @@ struct settings {
   std::vector<std::string> models_;
   std::map<uint32_t, scm::math::mat4d> transforms_;
   std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
-  std::map<uint32_t, std::vector<lamure::prov::aux::view>> views_;
+  std::map<uint32_t, std::vector<lamure::prov::auxi::view>> views_;
   std::map<uint32_t, std::string> aux_;
   std::map<uint32_t, std::string> textures_;
+  std::map<uint32_t, int> min_lod_depths_;
   std::string selection_ {""};
   float max_radius_ {std::numeric_limits<float>::max()};
   int color_rendering_mode {0};
@@ -390,6 +391,10 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             else if (key == "tex") {
               settings.textures_[address] = value;
               std::cout << "found texture for model id " << address << std::endl;
+            }
+            else if (key == "depth") {
+              settings.min_lod_depths_[address] = atoi(value.c_str());
+              std::cout << "found depth for model id " << address << std::endl;
             }
             else {
               std::cout << "unrecognized key: " << key << std::endl;
@@ -2137,7 +2142,7 @@ void create_aux_resources() {
       uint32_t model_id = aux_file.first;
 
       std::cout << "aux: " << aux_file.second << std::endl;
-      lamure::prov::aux aux(aux_file.second);
+      lamure::prov::auxi aux(aux_file.second);
 
       provenance_[model_id].num_views_ = aux.get_num_views();
       std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
@@ -3063,7 +3068,7 @@ void gui_selection_settings(settings& stgs){
       model_names_short.push_back(make_short_name(s));
     }
 
-    char* model_names[num_models_ + 1];
+    char** model_names = new char* [num_models_ + 1];
     for(unsigned i = 0; i < model_names_short.size(); ++i ){
       model_names[i] = ((char *) model_names_short[i].c_str());
     }
@@ -3075,7 +3080,7 @@ void gui_selection_settings(settings& stgs){
       dataset = num_models_;
     }
 
-    ImGui::Combo("Dataset", &dataset, model_names, num_models_+1);
+    ImGui::Combo("Dataset", &dataset, (const char* const*)model_names, num_models_+1);
 
     if(dataset == num_models_){
       selection_.selected_model_ = -1;
@@ -3126,6 +3131,8 @@ void gui_selection_settings(settings& stgs){
     }
 
     ImGui::End();
+
+    delete [] model_names;
 }
 
 
@@ -3433,9 +3440,10 @@ int main(int argc, char *argv[])
     model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
     
     //force single pass for trimeshes
-    const lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
+    lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
     if (bvh->get_primitive() == lamure::ren::bvh::primitive_type::TRIMESH) {
       settings_.splatting_ = false;
+      bvh->set_min_lod_depth(settings_.min_lod_depths_[num_models_]);
     }
 
     ++num_models_;

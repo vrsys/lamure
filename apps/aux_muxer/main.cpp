@@ -6,13 +6,14 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/types.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 #include <lamure/prov/octree.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/math.h>
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <map>
 
@@ -118,7 +119,7 @@ int main(int argc, char *argv[]) {
       std::cout << "Usage: " << argv[0] << std::endl <<
          "INFO: aux_import " << std::endl <<
          "\t-f input folder (required)" << std::endl <<
-         "\t-a aux output file (default: default.aux)" << std::endl <<
+         "\t-a auxi output file (default: default.auxi)" << std::endl <<
          std::endl;
       return 0;
     }
@@ -128,7 +129,7 @@ int main(int argc, char *argv[]) {
       input_folder += "/";
     }
 
-    std::string aux_file = input_folder + "default.aux";
+    std::string aux_file = input_folder + "default.auxi";
     if (cmd_option_exists(argv, argv+argc, "-a")) {
       aux_file = input_folder + std::string(get_cmd_option(argv, argv + argc, "-a"));
     }
@@ -388,8 +389,8 @@ int main(int argc, char *argv[]) {
 
 
 
-    //write aux object
-    lamure::prov::aux aux;
+    //write auxi object
+    lamure::prov::auxi aux;
 
     for (auto it : cameraNames) {
       auto& cN = it.second;
@@ -399,7 +400,7 @@ int main(int argc, char *argv[]) {
       auto& cD = cameraDistortions.find(id)->second;
       auto& cP = cameraPoses.find(id)->second;
 
-      lamure::prov::aux::view v;
+      lamure::prov::auxi::view v;
       v.camera_id_ = cN.cameraId_;
       v.image_file_ = std::to_string(cN.cameraId_);
       while (v.image_file_.size() < 8) {
@@ -430,7 +431,7 @@ int main(int argc, char *argv[]) {
       int32_t id = wP.worldPointId_;
       auto& wPDE_maps = worldPointDetectionErrors.find(id)->second;
       
-      lamure::prov::aux::sparse_point p;
+      lamure::prov::auxi::sparse_point p;
 
       p.pos_ = scm::math::vec3f(wP.worldPointX_, wP.worldPointY_, wP.worldPointZ_);
       p.r_ = (uint8_t)255;
@@ -438,12 +439,12 @@ int main(int argc, char *argv[]) {
       p.b_ = (uint8_t)255;
       p.a_ = (uint8_t)255;
       
-      auto aux_features = std::vector<lamure::prov::aux::feature>();
+      auto aux_features = std::vector<lamure::prov::auxi::feature>();
       for (const auto& wPDE_map : wPDE_maps) {
         for (const auto& wPDE : wPDE_map.second) {
           auto& feature = features[wPDE.second.cameraId_][wPDE.second.featureId_];
           
-          lamure::prov::aux::feature f;
+          lamure::prov::auxi::feature f;
           f.camera_id_ = wPDE.second.cameraId_;
           f.using_count_ = feature.usingCount_;
           f.coords_ = scm::math::vec2f(feature.featureX_, feature.featureY_);
@@ -467,7 +468,7 @@ int main(int argc, char *argv[]) {
     octree->create(aux.get_sparse_points());
     aux.set_octree(octree);
 
-    std::cout << "Write aux to file..." << std::endl;
+    std::cout << "Write auxi to file..." << std::endl;
     aux.write_aux_file(aux_file);
 
     std::cout << "Num views: " << aux.get_num_views() << std::endl;

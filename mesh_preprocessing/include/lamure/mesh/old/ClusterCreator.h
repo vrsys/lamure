@@ -121,8 +121,10 @@ struct ClusterCreator
         // resize vector before paralellisation
         charts.resize(faces_per_chart_vector.size());
 
+#ifdef PARALLEL_EXECUTION
 // for each chart
 #pragma omp parallel for
+#endif
         for(uint32_t i = 0; i < faces_per_chart_vector.size(); ++i)
         {
             Chart chart_local;

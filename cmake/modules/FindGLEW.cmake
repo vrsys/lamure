@@ -34,8 +34,17 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
+if (CONTAINER_DEPLOYMENT_BUILD)
+
+set(GLEW_INCLUDE_DIR ${GLOBAL_EXT_DIR}/glew/include)
+set(GLEW_LIBRARY ${GLOBAL_EXT_DIR}/glew/lib/Release/x64/glew32.lib)
+
+else (CONTAINER_DEPLOYMENT_BUILD)
+
 find_path(GLEW_INCLUDE_DIR GL/glew.h)
 find_library(GLEW_LIBRARY NAMES GLEW glew32 glew glew32s PATH_SUFFIXES lib64)
+
+endif(CONTAINER_DEPLOYMENT_BUILD)
 
 set(GLEW_INCLUDE_DIRS ${GLEW_INCLUDE_DIR})
 set(GLEW_LIBRARIES ${GLEW_LIBRARY})

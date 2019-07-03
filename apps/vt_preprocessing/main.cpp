@@ -339,7 +339,7 @@ int delta(const int argc, const char **argv){
 uint64_t createRandomImage(const char *fileName, uint64_t width, uint64_t height, Bitmap::PIXEL_FORMAT pxFormat, size_t maxBufferSize) {
     std::random_device random;
     std::default_random_engine randomEng(random());
-    std::uniform_int_distribution<uint8_t> randomGen(0, 255);
+    std::uniform_int_distribution<int> randomGen(0, 255);
 
     std::ofstream outFile(fileName, std::ios::trunc);
     size_t pxByteSize = Bitmap::pixelSize(pxFormat);

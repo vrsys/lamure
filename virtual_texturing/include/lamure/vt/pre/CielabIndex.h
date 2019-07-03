@@ -8,13 +8,14 @@
 #ifndef LAMURE_CIELABINDEX_H
 #define LAMURE_CIELABINDEX_H
 
+#include <lamure/vt/platform.h>
 #include <lamure/vt/pre/Index.h>
 
 namespace vt
 {
 namespace pre
 {
-class CielabIndex : public Index<uint32_t>
+class VT_DLL CielabIndex : public Index<uint32_t>
 {
   private:
     uint32_t _convert(float val);

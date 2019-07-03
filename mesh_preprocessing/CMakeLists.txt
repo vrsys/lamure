@@ -1,3 +1,5 @@
+IF(NOT MSVC)
+
 ############################################################
 # CMake Build Script for the mesh preprocessing library
 
@@ -74,6 +76,15 @@ if (${LAMURE_USE_CGAL_FOR_NNI})
             )
 endif ()
 
+option(CGAL_ACTIVATE_CONCURRENCY "Enable concurrency" ON)
+
+if(CGAL_ACTIVATE_CONCURRENCY)
+    find_package(TBB REQUIRED)
+    if(TBB_FOUND)
+        target_link_libraries(lamure_mesh_preprocessing ${TBB_LIBRARIES})
+    endif()
+endif()
+
 ###############################################################################
 # install 
 ###############################################################################
@@ -105,4 +116,4 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/mesh DESTINATION in
 # inline files 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/lamure/mesh DESTINATION include/lamure FILES_MATCHING PATTERN "*.inl")
 
-
+ENDIF(NOT MSVC)
