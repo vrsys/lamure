@@ -128,9 +128,6 @@ scm::gl::sampler_state_ptr vt_filter_nearest_;
 
 scm::gl::texture_2d_ptr bg_texture_;
 
-std::string lod_mesh_texture_path_ = "";
-scm::gl::texture_2d_ptr lod_mesh_texture_;
-
 struct resource {
   uint64_t num_primitives_ {0};
   scm::gl::buffer_ptr buffer_;
@@ -144,6 +141,7 @@ std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
 std::map<uint32_t, resource> octree_resources_;
 std::map<uint32_t, resource> image_plane_resources_;
+std::map<uint32_t, scm::gl::texture_2d_ptr> texture_resources_;
 
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 scm::time::accum_timer<scm::time::high_res_timer> frame_time_;
@@ -1311,8 +1309,8 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         }
 
 
-        if("" != lod_mesh_texture_path_) {
-          context_->bind_texture(lod_mesh_texture_, filter_linear_, 10);
+        if("" != settings_.textures_[model_id]) {
+          context_->bind_texture(texture_resources_[model_id], filter_linear_, 10);
           shader->uniform_sampler("in_mesh_color_texture", 10);
 
           shader->uniform("color_rendering_mode", settings_.color_rendering_mode);
@@ -2055,6 +2053,17 @@ void lines_from_min_max(
 
 void create_aux_resources() {
 
+  //load textures
+  for (uint32_t model_id = 0; model_id < num_models_; ++model_id) {
+    if ("" != settings_.textures_[model_id]) {
+      scm::gl::texture_loader tl;
+      std::string texture_path = settings_.textures_[model_id];
+      std::cout << "Loading texture for model " << model_id << ": " << texture_path << std::endl;
+      texture_resources_[model_id] = tl.load_texture_2d(*device_, texture_path, true, false);
+      
+    }
+  }
+
   //create pvs representation
   if (settings_.pvs_ != "") {
     std::cout << "pvs: " << settings_.pvs_ << std::endl;
@@ -2099,6 +2108,7 @@ void create_aux_resources() {
       }
     }
   }
+
 
   if (!settings_.create_aux_resources_) {
     return;
@@ -3036,11 +3046,6 @@ void init() {
     bg_texture_ = tl.load_texture_2d(*device_, settings_.background_image_, true, false);
   }
 
-  if("" != lod_mesh_texture_path_) {
-    scm::gl::texture_loader tl;
-    lod_mesh_texture_ = tl.load_texture_2d(*device_, lod_mesh_texture_path_, true, false);
-    std::cout << "Loaded LOD mesh texture: " << lod_mesh_texture_path_ << "\n";
-  }
 
 
 }
@@ -3361,7 +3366,7 @@ void gui_status_screen(){
     ImGui::Checkbox("Selection", &gui_.selection_settings_);
     ImGui::Checkbox("View / LOD Settings", &gui_.view_settings_);
     ImGui::Checkbox("Visual Settings", &gui_.visual_settings_);
-    if (settings_.provenance_) {
+    if (settings_.create_aux_resources_) {
       ImGui::Checkbox("Provenance Settings", &gui_.provenance_settings_);
     }
     else {
@@ -3380,7 +3385,7 @@ void gui_status_screen(){
         gui_visual_settings();
     }
 
-    if (settings_.provenance_ && gui_.provenance_settings_ && settings_.create_aux_resources_){
+    if (settings_.create_aux_resources_ && gui_.provenance_settings_ && settings_.create_aux_resources_){
         gui_provenance_settings();
     }
 
@@ -3393,18 +3398,14 @@ int main(int argc, char *argv[])
     
   std::string vis_file = "";
 
-  if (argc >= 2) {
-    vis_file = std::string(argv[1]);
-    //parse path to LOD mesh texture
-    if(argc > 2) {
-      lod_mesh_texture_path_ = std::string(argv[2]);
-    }
-  }
-  else {
-    std::cout << "Usage: " << argv[0] << " <vis_file.vis> <lod_mesh_texture_path (optional)>" << std::endl;
+  if (argc != 2) {
+    std::cout << "Usage: " << argv[0] << " <vis_file.vis>" << std::endl;
     std::cout << "\tHELP: to render a single model use:" << std::endl;
     std::cout << "\techo <input_file.bvh> > default.vis && " << argv[0] << " default.vis" << std::endl;
     return 0;
+  }
+  else {
+    vis_file = argv[1];
   }
 
   putenv((char *)"__GL_SYNC_TO_VBLANK=0");
@@ -3446,6 +3447,7 @@ int main(int argc, char *argv[])
       bvh->set_min_lod_depth(settings_.min_lod_depths_[num_models_]);
     }
 
+
     ++num_models_;
   }
 
@@ -3469,7 +3471,7 @@ int main(int argc, char *argv[])
   if (GLEW_OK != err) {
     std::cout << "GLEW error: " << glewGetErrorString(err) << std::endl;
   }
-  std::cout << "using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
+  std::cout << "Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
 
   ImGui_ImplGlfwGL3_Init(primary_window->_glfw_window, false);
   ImGui_ImplGlfwGL3_CreateDeviceObjects();
