@@ -187,6 +187,7 @@ struct xyz {
 
 struct vertex {
     scm::math::vec3f pos_;
+    scm::math::vec3f nml_;
     scm::math::vec2f uv_;
 };
 
@@ -2304,7 +2305,8 @@ void create_aux_resources() {
 
         triangles_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
                                                               (0, 0, scm::gl::TYPE_VEC3F, sizeof(vertex))
-                                                              (0, 1, scm::gl::TYPE_VEC2F, sizeof(vertex)),
+                                                              (0, 1, scm::gl::TYPE_VEC3F, sizeof(vertex))
+                                                              (0, 2, scm::gl::TYPE_VEC2F, sizeof(vertex)),
                                                       boost::assign::list_of(triangles_resource.buffer_));
 
 
