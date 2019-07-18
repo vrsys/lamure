@@ -4,7 +4,7 @@
 DATE=`date '+%Y-%m-%d:%H:%M:%S'`
 PIPEFILE="${HOME}"/pipe"${DATE}"
 mkfifo ${PIPEFILE}
-tee log_${DATE}.txt < ${PIPEFILE} &
+tee log_mesh_preprocessing_${DATE}.txt < ${PIPEFILE} &
 TEEPID=$!
 exec > ${PIPEFILE} 2>&1
 
@@ -21,90 +21,158 @@ if [[ -z "${LAMURE_DIR}" ]]; then
 fi
 
 ############################
-# user settings
+# settings
 ############################
 # charting:
 KDTREE_TRI_BUDGET=24000
-COST_THRESHOLD=0.05 # max cost
+COST_THRESHOLD=0.03 # max cost
 
 # BVH hierarchy creation
 TRI_BUDGET=16000
 
-#maximum output texture size
-MAX_FINAL_TEX_SIZE=8192
+# texturing
+MAX_FINAL_TEX_SIZE=65536
+VT_PREPROCESSING_MEMORY_BUDGET_GB=50
 
+FLIP_PNGS=No
+SRC_OBJ=None
+RUN_VT=Yes
 ############################
 
-echo -e "\e[32m"
 
-read -p "Use default settings? (y/n)? " answer
-case ${answer:0:1} in
-    y|Y )
-        echo "Using following default settings"
-        echo "Triangle budget per KD-tree node: " ${KDTREE_TRI_BUDGET}
-        echo "Chart creation cost threshold: " ${COST_THRESHOLD}
-        echo "Triangle budget per BVH node: " ${TRI_BUDGET}
-        echo "Maximum size of final texture: " ${MAX_FINAL_TEX_SIZE}
+POSITIONAL=()
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -o|--objfile)
+    SRC_OBJ="$2"
+    shift # past argument
+    shift # past value
     ;;
-    * )
-        read -rp "Triangle budget per KD-tree node: " KDTREE_TRI_BUDGET
-        read -rp "Chart creation cost threshold: " COST_THRESHOLD
-        read -rp "Triangle budget per BVH node: " TRI_BUDGET
+    -v|--vtbudget)
+    VT_PREPROCESSING_MEMORY_BUDGET_GB="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -k|--kdtreebudget)
+    KDTREE_TRI_BUDGET="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -t|--treebudget)
+    TRI_BUDGET="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -c|--costthreshold)
+    COST_THRESHOLD="$2"
+    shift # past argument
+    shift # past value
+    ;;
+    -m|--maxfinaltexsize)
+    MAX_FINAL_TEX_SIZE="$2"
+    shift # past argument
+    shift # past value
+    ;; 
+    -f|--flippngs)
+    FLIP_PNGS=Yes
+    shift # past argument
+    ;;
+    -n|--novt)
+    RUN_VT=No
+    shift # past argument
+    ;;                  
+    --default)
+    DEFAULT=YES
+    shift # past argument
+    ;;
+    *)    # unknown option
+    POSITIONAL+=("$1") # save it in an array for later
+    shift # past argument
     ;;
 esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
 
-echo -e "\e[0m"
+if [ "$SRC_OBJ" == "None" ]; then
+   echo $0 "please specify objfile to preprocess with -o option"
+   echo ""
+   echo "other settings are follows:"
+   echo "------------------------"
+   echo "Triangle budget per KD-tree node: " ${KDTREE_TRI_BUDGET} "(set with option -k)"
+   echo "Chart creation cost threshold: " ${COST_THRESHOLD} "(set with option -c)"
+   echo "Triangle budget per BVH node: " ${TRI_BUDGET} "(set with option -t)"
+   echo "Maximum size of final texture atlas: " ${MAX_FINAL_TEX_SIZE} "(set with option -m)"
+   echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB} "(set with option -v)"
+   echo "Flip pngs: " ${FLIP_PNGS} "(enable with option -f)"
+   echo "Run virtual texture processing: " ${RUN_VT} "(disable with option -n)"   
+   echo "Processing obj model: " ${SRC_OBJ} "(set with option -o)"
+   exit 0
+fi
 
-echo "RUNNING MESHLOD PIPELINE"
+echo "RUNNING MESHLOD PIPELINE with settings as follows:"
 echo "------------------------"
+echo "Triangle budget per KD-tree node: " ${KDTREE_TRI_BUDGET}
+echo "Chart creation cost threshold: " ${COST_THRESHOLD}
+echo "Triangle budget per BVH node: " ${TRI_BUDGET}
+echo "Maximum size of final texture atlas: " ${MAX_FINAL_TEX_SIZE}
+echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB}
+echo "Flip textures: " ${FLIP_PNGS}
+echo "Run virtual texture processing: " ${RUN_VT}
+echo "Processing $SRC_OBJ"
 
-SRC_OBJ=$1
 
-echo "Using obj model $SRC_OBJ"
+# convert textures from jpg to png
+mogrify -format png *jpg
 
-#create path to obj file
-OBJPATH="$SRC_OBJ"
+if [ "$FLIP_PNGS" == "Yes" ]; then
+    echo "flipping textures"
+    mogrify -flip *png
+fi
 
-echo -e "\e[32m"
 
-read -p "Convert all textures to PNG (required)? (y/n)? " answer
-case ${answer:0:1} in
-    y|Y )
-        # convert textures to PNG using mogrify
-        echo "Converting to PNG... "
-        mogrify -format png *.jpg
-    ;;
-    * )
-        echo "Skipping conversion (assuming was done before)"
-    ;;
-esac
+if [ "$RUN_VT" == "Yes" ]; then
+    echo "performing mesh preprocessing and texture atlas generation for " $SRC_OBJ
+    time env DISPLAY=:0.0 ${LAMURE_DIR}lamure_mesh_preprocessing -f ${SRC_OBJ} -raw -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE}
+    SRC_OBJ_NAME_WITHOUT_EXTENSION=${SRC_OBJ%.*}
+    echo "performing vt preprocessing for " $SRC_OBJ_NAME_WITHOUT_EXTENSION
 
-read -p "Flip all textures (required)? (y/n)? " answer
-case ${answer:0:1} in
-    y|Y )
-        echo "Flipping PNGs..."
-        mogrify -flip *.jpg
-    ;;
-    * )
-        echo "Skipping flipping (assuming was done before)"
-    ;;
-esac
+    TEXTURE_ATLAS_DATA_NAME=`ls $SRC_OBJ_NAME_WITHOUT_EXTENSION*data`
+    TEXTURE_ATLAS_DATA_NAME_WITHOUT_EXTENSION=${TEXTURE_ATLAS_DATA_NAME%.*}
 
-read -rp "Please input the maximum allowed size for the final texture: " MAX_FINAL_TEX_SIZE
+    #echo $TEXTURE_ATLAS_DATA_NAME
+    TEXTURE_ATLAS_NAME_TOKENS=`sed 's/_/\n/g' <<< $TEXTURE_ATLAS_DATA_NAME_WITHOUT_EXTENSION`
+    #echo $TEXTURE_ATLAS_NAME_TOKENS
+    TEXTURE_ATLAS_NAME_TOKENS_ARR=($TEXTURE_ATLAS_NAME_TOKENS)
+    NUM_TOKENS=${#TEXTURE_ATLAS_NAME_TOKENS_ARR[@]}
+    #echo $NUM_TOKENS ${TEXTURE_ATLAS_NAME_TOKENS_ARR[$NUM_TOKENS-1]}
 
-echo -e "\e[0m"
+    TEXTURE_ATLAS_WIDTH_TMP=${TEXTURE_ATLAS_NAME_TOKENS_ARR[$NUM_TOKENS-2]}
+    TEXTURE_ATLAS_WIDTH=${TEXTURE_ATLAS_WIDTH_TMP#?}
+    TEXTURE_ATLAS_HEIGHT_TMP=${TEXTURE_ATLAS_NAME_TOKENS_ARR[$NUM_TOKENS-1]}
+    TEXTURE_ATLAS_HEIGHT=${TEXTURE_ATLAS_HEIGHT_TMP#?}
+    #echo env DISPLAY=:0.0 ${LAMURE_DIR}lamure_vt_preprocessing process Domfigur_rgba_w16384_h16384.data rgba 16384 16384 256 256 1 Domfigur rgb 90
+    time env DISPLAY=:0.0 ${LAMURE_DIR}lamure_vt_preprocessing process $TEXTURE_ATLAS_DATA_NAME rgba $TEXTURE_ATLAS_WIDTH $TEXTURE_ATLAS_HEIGHT 256 256 1 $SRC_OBJ_NAME_WITHOUT_EXTENSION rgb $VT_PREPROCESSING_MEMORY_BUDGET_GB
 
-read -p "Would you like to produce a .raw file for VT preprocessing at the end (if not, you get a .png)? (y/n)? " answer
-case ${answer:0:1} in
-    y|Y )
-        echo "Going to create RAW texture file at the end."
-        time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -raw -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE}
-    ;;
-    * )
-        echo "Going to create PNG texture file at the end."
-        time ${LAMURE_DIR}lamure_mesh_preprocessing -f ${OBJPATH} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE}
-    ;;
-esac
+    # clean up
+    rm *png *data
+fi
+
+if [ "$RUN_VT" == "No" ]; then
+    echo "performing mesh preprocessing and texture atlas generation for " $SRC_OBJ
+    time env DISPLAY=:0.0 ${LAMURE_DIR}lamure_mesh_preprocessing -f ${SRC_OBJ} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE}
+    echo "Note that intermediate png files are kept"
+fi
+
+
+
+
+# optionally output a scaled down jpg one needs to calculate width and height
+# env DISPLAY=:0.0 ${LAMURE_DIR}lamure_vt_preprocessing extract name.atlas 3 name.rgb 
+
+
 
 # Logging routines
 exec 1>&- 2>&-
