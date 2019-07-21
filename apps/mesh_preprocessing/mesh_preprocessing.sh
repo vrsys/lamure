@@ -37,6 +37,7 @@ VT_PREPROCESSING_MEMORY_BUDGET_GB=50
 FLIP_PNGS=No
 SRC_OBJ=None
 RUN_VT=Yes
+RUN_MESH_FIXER=No
 ############################
 
 
@@ -83,7 +84,11 @@ case $key in
     -n|--novt)
     RUN_VT=No
     shift # past argument
-    ;;                  
+    ;;  
+    -x|--xfixer)
+    RUN_MESH_FIXER=Yes
+    shift # past argument
+    ;;                
     --default)
     DEFAULT=YES
     shift # past argument
@@ -107,6 +112,7 @@ if [ "$SRC_OBJ" == "None" ]; then
    echo "Maximum size of final texture atlas: " ${MAX_FINAL_TEX_SIZE} "(set with option -m)"
    echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB} "(set with option -v)"
    echo "Flip pngs: " ${FLIP_PNGS} "(enable with option -f)"
+   echo "Run mesh fixer: " ${RUN_MESH_FIXER} "(enable with option -x)"
    echo "Run virtual texture processing: " ${RUN_VT} "(disable with option -n)"   
    echo "Processing obj model: " ${SRC_OBJ} "(set with option -o)"
    exit 0
@@ -120,18 +126,27 @@ echo "Triangle budget per BVH node: " ${TRI_BUDGET}
 echo "Maximum size of final texture atlas: " ${MAX_FINAL_TEX_SIZE}
 echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB}
 echo "Flip textures: " ${FLIP_PNGS}
+echo "Run mesh fixer: " ${RUN_MESH_FIXER}
 echo "Run virtual texture processing: " ${RUN_VT}
 echo "Processing $SRC_OBJ"
 
+if [ "$RUN_MESH_FIXER" == "Yes" ]; then
+    echo "running mesh fixer"
+    SRC_OBJ_NAME_WITHOUT_EXTENSION=${SRC_OBJ%.*}
+    FIXED_SRC_OBJ=${SRC_OBJ_NAME_WITHOUT_EXTENSION}_fixed.obj
+    time env DISPLAY=:0.0 ${LAMURE_DIR}lamure_mesh_fixer ${SRC_OBJ} ${FIXED_SRC_OBJ}
+    SRC_OBJ=${FIXED_SRC_OBJ}
+    echo "SRC_OBJ changed to " ${SRC_OBJ}
+fi
 
 # convert textures from jpg to png
+echo converting jpgs to pngs
 mogrify -format png *jpg
 
 if [ "$FLIP_PNGS" == "Yes" ]; then
     echo "flipping textures"
     mogrify -flip *png
 fi
-
 
 if [ "$RUN_VT" == "Yes" ]; then
     echo "performing mesh preprocessing and texture atlas generation for " $SRC_OBJ
@@ -165,8 +180,6 @@ if [ "$RUN_VT" == "No" ]; then
     time env DISPLAY=:0.0 ${LAMURE_DIR}lamure_mesh_preprocessing -f ${SRC_OBJ} -tkd ${KDTREE_TRI_BUDGET} -co ${COST_THRESHOLD} -tbvh ${TRI_BUDGET} -multi-max ${MAX_FINAL_TEX_SIZE}
     echo "Note that intermediate png files are kept"
 fi
-
-
 
 
 # optionally output a scaled down jpg one needs to calculate width and height
