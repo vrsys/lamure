@@ -16,7 +16,7 @@ namespace ren {
 
 provenance_stream::
 provenance_stream()
-: is_file_open_(false) {
+: is_file_open_(false), file_size_(0) {
 
 }
 
@@ -50,6 +50,10 @@ open(const std::string& file_name) {
     }
 
     is_file_open_ = true;
+
+    stream_.seekg(0, std::ios::end);
+    file_size_ = (uint64_t)stream_.tellg();
+    stream_.seekg(0, std::ios::beg);
 }
 
 
@@ -77,6 +81,7 @@ close() {
 
         file_name_ = "";
         is_file_open_ = false;
+        file_size_ = 0;
     }
 }
 
@@ -87,6 +92,16 @@ read(char* const data,
     assert(length_in_bytes > 0);
     assert(is_file_open_);
     assert(data != nullptr);
+
+    if (!is_file_open_) {
+        std::cout << "file not open!" << std::endl;
+        exit(0);
+    }
+
+    if (offset_in_bytes + length_in_bytes > file_size_) {
+        //std::cout << "file length exceeded" << std::endl;
+        return;
+    }
 
     stream_.seekg(offset_in_bytes);
     stream_.read(data, length_in_bytes);
