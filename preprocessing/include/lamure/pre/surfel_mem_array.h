@@ -22,7 +22,7 @@ class surfel_ext {
 public:
 
   surfel surfel_;
-  prov prov_;
+  prov_data prov_;
 
 
   static bool compare_x(const surfel_ext &left_surfel, const surfel_ext &right_surfel) {
@@ -79,7 +79,7 @@ public:
     { reset(surfel_mem_data, offset, length); }
 
     explicit surfel_mem_array(const std::shared_ptr<std::vector<surfel>> &surfel_mem_data,
-                              const std::shared_ptr<std::vector<prov>> &prov_mem_data,
+                              const std::shared_ptr<std::vector<prov_data>> &prov_mem_data,
                               const size_t offset,
                               const size_t length)
         : array_abstract<surfel>(), has_provenance_(true)
@@ -90,15 +90,15 @@ public:
     surfel const &read_surfel_ref(const size_t index) const;
     void write_surfel(const surfel &surfel, const size_t index) const override;
 
-    prov read_prov(const size_t index) const;
-    prov const &read_prov_ref(const size_t index) const;
-    void write_prov(const prov &surfel, const size_t index) const;
+    prov_data read_prov(const size_t index) const;
+    prov_data const &read_prov_ref(const size_t index) const;
+    void write_prov(const prov_data &surfel, const size_t index) const;
 
     std::shared_ptr<std::vector<surfel>> & surfel_mem_data() { return surfel_mem_data_; }
     const std::shared_ptr<std::vector<surfel>> & surfel_mem_data() const { return surfel_mem_data_; }
 
-    std::shared_ptr<std::vector<prov>> & prov_mem_data() { return prov_mem_data_; }
-    const std::shared_ptr<std::vector<prov>> & prov_mem_data() const { return prov_mem_data_; }
+    std::shared_ptr<std::vector<prov_data>> & prov_mem_data() { return prov_mem_data_; }
+    const std::shared_ptr<std::vector<prov_data>> & prov_mem_data() const { return prov_mem_data_; }
 
     void get(std::vector<surfel_ext>& data);
     void set(std::vector<surfel_ext>& data);
@@ -114,7 +114,7 @@ public:
                const size_t length);
 
     void reset(const std::shared_ptr<std::vector<surfel>> &surfel_mem_data,
-               const std::shared_ptr<std::vector<prov>> &prov_mem_data,
+               const std::shared_ptr<std::vector<prov_data>> &prov_mem_data,
                const size_t offset,
                const size_t length);
 
@@ -123,7 +123,7 @@ public:
 protected:
 
     std::shared_ptr<std::vector<surfel>> surfel_mem_data_;
-    std::shared_ptr<std::vector<prov>> prov_mem_data_;
+    std::shared_ptr<std::vector<prov_data>> prov_mem_data_;
 
     bool has_provenance_;
 

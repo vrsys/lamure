@@ -62,7 +62,7 @@ write_surfel(const surfel &surfel, const size_t index) const
 }
 
 
-prov surfel_mem_array::
+prov_data surfel_mem_array::
 read_prov(const size_t index) const
 {
     assert(!is_empty_);
@@ -72,7 +72,7 @@ read_prov(const size_t index) const
     return prov_mem_data_->operator[](offset_ + index);
 }
 
-prov const &surfel_mem_array::
+prov_data const &surfel_mem_array::
 read_prov_ref(const size_t index) const
 {
     assert(!is_empty_);
@@ -83,7 +83,7 @@ read_prov_ref(const size_t index) const
 }
 
 void surfel_mem_array::
-write_prov(const prov &prov, const size_t index) const
+write_prov(const prov_data &prov, const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
@@ -116,7 +116,7 @@ reset(const std::shared_ptr<std::vector<surfel>> &surfel_mem_data,
 
 void surfel_mem_array::
 reset(const std::shared_ptr<std::vector<surfel>> &surfel_mem_data,
-      const std::shared_ptr<std::vector<prov>> &prov_mem_data,
+      const std::shared_ptr<std::vector<prov_data>> &prov_mem_data,
       const size_t offset,
       const size_t length)
 {

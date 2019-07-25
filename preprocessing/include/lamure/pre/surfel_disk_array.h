@@ -48,7 +48,7 @@ public:
     }
 
     explicit surfel_disk_array(const std::shared_ptr<file<surfel>> &surfel_file,
-                               const std::shared_ptr<file<prov>> &prov_file,
+                               const std::shared_ptr<file<prov_data>> &prov_file,
                                const size_t offset,
                                const size_t length)
         : array_abstract<surfel>(), has_provenance_(true) { 
@@ -58,14 +58,14 @@ public:
     surfel read_surfel(const size_t index) const override;
     void write_surfel(const surfel &surfel, const size_t index) const override;
 
-    prov read_prov(const size_t index) const;
-    void write_prov(const prov &prov, const size_t index) const;
+    prov_data read_prov(const size_t index) const;
+    void write_prov(const prov_data &prov, const size_t index) const;
 
     std::shared_ptr<file<surfel>> &get_file() { return surfel_file_; }
     const std::shared_ptr<file<surfel>> &get_file() const { return surfel_file_; }
 
-    std::shared_ptr<file<prov>> &get_prov_file() { return prov_file_; }
-    const std::shared_ptr<file<prov>> &get_prov_file() const { return prov_file_; }
+    std::shared_ptr<file<prov_data>> &get_prov_file() { return prov_file_; }
+    const std::shared_ptr<file<prov_data>> &get_prov_file() const { return prov_file_; }
 
     void reset() override;
 
@@ -74,21 +74,21 @@ public:
                const size_t offset,
                const size_t length);
     void reset(const std::shared_ptr<file<surfel>> &surfel_file,
-               const std::shared_ptr<file<prov>> &prov_file,
+               const std::shared_ptr<file<prov_data>> &prov_file,
                const size_t offset,
                const size_t length);
 
     //to be removed
     std::shared_ptr<std::vector<surfel>> read_all() const;
 
-    std::shared_ptr<std::vector<prov>> read_all_prov() const;
+    std::shared_ptr<std::vector<prov_data>> read_all_prov() const;
 
     //to be removed
     void write_all(const std::shared_ptr<std::vector<surfel>> &surfel_data,
                    const size_t offset_in_vector);
 
     void write_all(const std::shared_ptr<std::vector<surfel>> &surfel_data,
-                   const std::shared_ptr<std::vector<prov>> &prov_data,
+                   const std::shared_ptr<std::vector<prov_data>> &prov_data,
                    const size_t offset_in_vector);
 
 
@@ -97,7 +97,7 @@ public:
 protected:
 
     std::shared_ptr<file<surfel>> surfel_file_;
-    std::shared_ptr<file<prov>> prov_file_;
+    std::shared_ptr<file<prov_data>> prov_file_;
 
     bool has_provenance_;
 

@@ -32,7 +32,7 @@ write_surfel(const surfel &surfel, const size_t index) const
 }
 
 
-prov surfel_disk_array::
+prov_data surfel_disk_array::
 read_prov(const size_t index) const
 {
     assert(!is_empty_);
@@ -42,7 +42,7 @@ read_prov(const size_t index) const
 }
 
 void surfel_disk_array::
-write_prov(const prov &prov, const size_t index) const
+write_prov(const prov_data &prov, const size_t index) const
 {
     assert(!is_empty_);
     assert(index < length_);
@@ -76,7 +76,7 @@ reset(const std::shared_ptr<file<surfel>> &surfel_file,
 
 void surfel_disk_array::
 reset(const std::shared_ptr<file<surfel>> &surfel_file,
-      const std::shared_ptr<file<prov>> &prov_file,
+      const std::shared_ptr<file<prov_data>> &prov_file,
       const size_t offset,
       const size_t length)
 {
@@ -101,7 +101,7 @@ read_all() const
     return std::make_shared<std::vector<surfel>>(data);
 }
 
-std::shared_ptr<std::vector<prov>> surfel_disk_array::
+std::shared_ptr<std::vector<prov_data>> surfel_disk_array::
 read_all_prov() const
 {
     if (is_empty()) {
@@ -109,9 +109,9 @@ read_all_prov() const
         exit(1);
     }
 
-    std::vector<prov> data(length_);
+    std::vector<prov_data> data(length_);
     prov_file_->read(&data, 0, offset_, length_);
-    return std::make_shared<std::vector<prov>>(data);
+    return std::make_shared<std::vector<prov_data>>(data);
 }
 
 
@@ -130,7 +130,7 @@ write_all(const std::shared_ptr<std::vector<surfel>> &surfel_data,
 
 void surfel_disk_array::
 write_all(const std::shared_ptr<std::vector<surfel>> &surfel_data,
-          const std::shared_ptr<std::vector<prov>> &prov_data,
+          const std::shared_ptr<std::vector<prov_data>> &prov_data,
           const size_t offset_in_vector)
 {
     if (is_empty()) {

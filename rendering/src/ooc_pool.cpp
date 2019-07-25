@@ -117,9 +117,16 @@ void ooc_pool::run()
 
         lod_files.push_back(lod_file_name);
 
-        if(_data_provenance.get_size_in_bytes() > 0)
+        if (_data_provenance.get_size_in_bytes() > 0)
         {
-            provenance_files.push_back(provenance_file_name);
+            std::ifstream f(provenance_file_name.c_str());
+            if (f.good()) {
+              provenance_files.push_back(provenance_file_name);
+              f.close();
+            }
+            else {
+              provenance_files.push_back("");   
+            }
         }
     }
 
@@ -163,16 +170,17 @@ void ooc_pool::run()
                 if (job.slot_mem_provenance_ == nullptr) {
                     std::cout << "prov slot mem not allocated" << std::endl;
                 }
-                provenance_stream access_provenance;
-                access_provenance.open(provenance_files[job.model_id_]);
-                size_t stride_in_bytes_provenance = database->get_primitives_per_node(job.model_id_) * _data_provenance.get_size_in_bytes();
-                //bytes_loaded_ += stride_in_bytes_provenance;
-                size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
-                access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
-                memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
-                access_provenance.close();
+                if (provenance_files[job.model_id_] != "") {
+                    provenance_stream access_provenance;
+                    access_provenance.open(provenance_files[job.model_id_]);
+                    size_t stride_in_bytes_provenance = database->get_primitives_per_node(job.model_id_) * _data_provenance.get_size_in_bytes();
+                    //bytes_loaded_ += stride_in_bytes_provenance;
+                    size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
+                    access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
+                    memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
+                    access_provenance.close();
+                }
             }
-
         }
     }
 

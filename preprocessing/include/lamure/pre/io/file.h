@@ -77,7 +77,7 @@ namespace pre {
 typedef file<surfel> surfel_file;
 typedef std::shared_ptr<surfel_file> shared_surfel_file;
 
-typedef file<prov> prov_file;
+typedef file<prov_data> prov_file;
 typedef std::shared_ptr<prov_file> shared_prov_file;
 
 }

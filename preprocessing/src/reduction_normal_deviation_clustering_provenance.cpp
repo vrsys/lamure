@@ -58,7 +58,7 @@ surfel_ext reduction_normal_deviation_clustering_provenance::create_representati
             radius = dist + surfel.surfel_.radius();
     }
 
-    return surfel_ext{surfel(pos, vec3b((const uint8_t)col.x, (const uint8_t)col.y, (const uint8_t)col.z), radius, nml), prov()};
+    return surfel_ext{surfel(pos, vec3b((const uint8_t)col.x, (const uint8_t)col.y, (const uint8_t)col.z), radius, nml), prov_data()};
 }
 
 std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering_provenance::compute_grid_dimensions(const std::vector<surfel_mem_array *> &input, const bounding_box &bounding_box,
@@ -644,10 +644,10 @@ reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_d
 
     vec3f repr_normal = repr.surfel_.normal();
 
-    float prov_value_3 = 0.f;
-    float prov_value_4 = 0.f;
-    float prov_value_5 = 0.f;
-    float prov_value_6 = 0.f;
+    float prov_values_[num_prov_values_];
+    for (uint32_t i = 0; i < num_prov_values_; ++i) {
+        prov_values_[i] = 0.f;
+    }
 
     for(const auto &surfel : input)
     {
@@ -659,10 +659,9 @@ reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_d
         data._mean_absolute_deviation += absolute_deviation;
         data._standard_deviation += sq_deviation;
 
-        prov_value_3 += surfel.prov_.value_3_;
-        prov_value_4 += surfel.prov_.value_4_;
-        prov_value_5 += surfel.prov_.value_5_;
-        prov_value_6 += surfel.prov_.value_6_;
+        for (uint32_t i = 0; i < num_prov_values_; ++i) {
+          prov_values_[i] += surfel.prov_.values_[i];
+        }
     }
 
     data._mean_absolute_deviation /= (float)input.size();
@@ -676,10 +675,9 @@ reduction_normal_deviation_clustering_provenance::LoDMetaData reduction_normal_d
     repr.prov_.mean_absolute_deviation_ = data._mean_absolute_deviation;
     repr.prov_.standard_deviation_ = data._standard_deviation;
     repr.prov_.coefficient_of_variation_ = data._coefficient_of_variation;
-    repr.prov_.value_3_ = prov_value_3 / (float)input.size();
-    repr.prov_.value_4_ = prov_value_4 / (float)input.size();
-    repr.prov_.value_5_ = prov_value_5 / (float)input.size();
-    repr.prov_.value_6_ = prov_value_6 / (float)input.size();
+    for (uint32_t i = 0; i < num_prov_values_; ++i) {
+      repr.prov_.values_[i] /= (float)input.size();
+    }
 
     //    printf("\nMAD: %e ", data._mean_absolute_deviation);
     //    printf("\nSTD: %e ", data._standard_deviation);
