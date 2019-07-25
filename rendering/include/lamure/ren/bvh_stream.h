@@ -239,7 +239,7 @@ protected:
         uint64_t reserved_2_;
 
         bvh_vector translation_;
-        uint32_t reserved_3_;
+        uint32_t provenance_surfel_size_;
 
     protected:
         friend class bvh_stream;
@@ -275,7 +275,7 @@ protected:
             file.write((char*)&translation_.x_, 4);
             file.write((char*)&translation_.y_, 4);
             file.write((char*)&translation_.z_, 4);
-            file.write((char*)&reserved_3_, 4);
+            file.write((char*)&provenance_surfel_size_, 4);
         } 
         void deserialize(std::fstream& file) {
             if (!file.is_open()) {
@@ -296,7 +296,7 @@ protected:
             file.read((char*)&translation_.x_, 4);
             file.read((char*)&translation_.y_, 4);
             file.read((char*)&translation_.z_, 4);
-            file.read((char*)&reserved_3_, 4);
+            file.read((char*)&provenance_surfel_size_, 4);
         }
         
     };

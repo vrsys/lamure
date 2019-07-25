@@ -44,7 +44,7 @@ convert(const std::string& in_file, const std::string& out_file, bool xyz_rgb) {
     uint32_t i = 0;
     for (const auto& token : tokens) {
       if (!xyz_rgb || idx >= 6) { //ignore surfels
-        if (i > num_prov_values_) {
+        if (i >= num_prov_values_) {
           throw std::runtime_error("prov attribute exceeds size. increase prov_data::num_prov_values_. current value: " + num_prov_values_);
         }
         v.values_[i] = atof(token.c_str());

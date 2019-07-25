@@ -260,6 +260,7 @@ read_bvh(const std::string& filename, bvh& bvh) {
                                 tree.translation_.y_,
                                 tree.translation_.z_);
     bvh.set_translation(translation);
+    bvh.set_size_of_provenance(tree.provenance_surfel_size_);
 
     if (bvh.get_num_nodes() != node_id) {
        throw std::runtime_error(
@@ -304,7 +305,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
 
    bvh_file_seg seg;
    seg.major_version_ = 1;
-   seg.minor_version_ = 1;
+   seg.minor_version_ = 3;
    seg.reserved_ = 0;
 
    write(seg);
@@ -326,7 +327,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
    tree.translation_.x_ = bvh.get_translation().x;
    tree.translation_.y_ = bvh.get_translation().y;
    tree.translation_.z_ = bvh.get_translation().z;
-   tree.reserved_3_ = 0;
+   tree.provenance_surfel_size_ = bvh.get_size_of_provenance();
 
    write(tree);
 

@@ -104,6 +104,7 @@ void ooc_pool::run()
 
     std::vector<std::string> lod_files;
     std::vector<std::string> provenance_files;
+    std::vector<size_t> provenance_sizes;
 
     for (model_t model_id = 0; model_id < num_models; ++model_id) {
         
@@ -121,6 +122,7 @@ void ooc_pool::run()
         {
             std::ifstream f(provenance_file_name.c_str());
             if (f.good()) {
+              //check if corresponding .prov file exists
               provenance_files.push_back(provenance_file_name);
               f.close();
             }
@@ -128,6 +130,8 @@ void ooc_pool::run()
               provenance_files.push_back("");   
             }
         }
+
+        provenance_sizes.push_back(database->get_model(model_id)->get_bvh()->get_size_of_provenance());
     }
 
     char *local_cache = new char[size_of_slot_];
@@ -160,24 +164,44 @@ void ooc_pool::run()
             access.close();
 
             std::lock_guard<std::mutex> lock(mutex_);
-            //bytes_loaded_ += stride_in_bytes;
 
             memcpy(job.slot_mem_, local_cache, stride_in_bytes);
 
             history_.push_back(job);
 
-            if(_data_provenance.get_size_in_bytes() > 0) {
+            if(_data_provenance.get_size_in_bytes() > 0) { //check if provenance backend invoked
                 if (job.slot_mem_provenance_ == nullptr) {
                     std::cout << "prov slot mem not allocated" << std::endl;
                 }
                 if (provenance_files[job.model_id_] != "") {
                     provenance_stream access_provenance;
                     access_provenance.open(provenance_files[job.model_id_]);
-                    size_t stride_in_bytes_provenance = database->get_primitives_per_node(job.model_id_) * _data_provenance.get_size_in_bytes();
-                    //bytes_loaded_ += stride_in_bytes_provenance;
+                    
+                    size_t size_of_provenance = provenance_sizes[job.model_id_];
+                    if (size_of_provenance == 0) {
+                        std::cout << "Warning!" << std::endl;
+                        //WARNING! You invoked the provenance backend, but your provenance size for this model is zero.
+                        //In this case, revert to the system-wide provenance size. 
+                        //For .bvh files generated before bvh format revision 1.3, this should do the trick.
+                        size_of_provenance = _data_provenance.get_size_in_bytes();
+                    }
+
+                    size_t stride_in_bytes_provenance = database->get_primitives_per_node(job.model_id_) * size_of_provenance;
+
                     size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
                     access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
-                    memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
+
+                    if (_data_provenance.get_size_in_bytes() == size_of_provenance) {
+                        memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
+                    }
+                    else {
+
+                      for (uint64_t surfel_id = 0; surfel_id < database->get_primitives_per_node(job.model_id_); ++surfel_id) {
+                        memcpy(job.slot_mem_provenance_+surfel_id*_data_provenance.get_size_in_bytes(), 
+                            local_cache_provenance+surfel_id*size_of_provenance, size_of_provenance);
+                      }
+                    }
+                    
                     access_provenance.close();
                 }
             }

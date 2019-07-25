@@ -115,6 +115,16 @@ vec3 get_color(in vec3 position, in vec3 normal, in vec3 color, in float radius)
     else if (channel == 6) {
       prov_value = prov6;
     }
+    else if (channel == 7) {
+      prov_value = prov7;
+    }
+    else if (channel == 8) {
+      prov_value = prov8;
+    }
+    else if (channel == 9) {
+      prov_value = prov9;
+    }
+
     if (heatmap) {
       float value = (prov_value - heatmap_min) / (heatmap_max - heatmap_min);
       view_color = quick_interp(heatmap_min_color, heatmap_max_color, value);
