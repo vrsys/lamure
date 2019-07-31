@@ -85,13 +85,10 @@ class Data_Provenance
             picojson::value::object::const_iterator iter_visualization = obj.find("visualization");
             if(iter_visualization != obj.end())
             {
-                if(iter_visualization->second.get<std::string>() == "color")
+                //if(iter_visualization->second.get<std::string>() == "color")
+                if(iter_visualization->second.get<std::string>() != "")
                 {
                     visualization = Item_Provenance::visualization_item::VISUALIZATION_COLOR;
-                }
-                else if(iter_visualization->second.get<std::string>() == "arrow")
-                {
-                    visualization = Item_Provenance::visualization_item::VISUALIZATION_ARROW;
                 }
             }
 
