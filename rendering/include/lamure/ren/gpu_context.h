@@ -43,29 +43,27 @@ class gpu_context
     temporary_storages get_temporary_storages_provenance() { return temporary_storages_provenance_; };
 
     scm::gl::buffer_ptr get_context_buffer(scm::gl::render_device_ptr device);
-    scm::gl::buffer_ptr get_context_buffer(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+
     scm::gl::vertex_array_ptr get_context_memory(bvh::primitive_type type, scm::gl::render_device_ptr device);
-    scm::gl::vertex_array_ptr get_context_memory(bvh::primitive_type type, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+
 
     const node_t upload_budget_in_nodes() const { return upload_budget_in_nodes_; };
     const node_t render_budget_in_nodes() const { return render_budget_in_nodes_; };
 
     void map_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device);
-    void map_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+
     void unmap_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device);
-    void unmap_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+
     bool update_primary_buffer(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device_);
-    bool update_primary_buffer_fix(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+    bool update_primary_buffer_fix(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device);
 
     fix_struct get_fix_a() { return fix_a_; };
     fix_struct get_fix_b() { return fix_b_; };
 
     void create(scm::gl::render_device_ptr device);
-    void create(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
 
   private:
     void test_video_memory(scm::gl::render_device_ptr device);
-    void test_video_memory(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
 
     context_t context_id_;
 

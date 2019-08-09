@@ -12,7 +12,7 @@
 #include <lamure/utils.h>
 #include <unordered_map>
 
-#include <lamure/ren/data_provenance.h>
+
 #include <lamure/ren/cut_update_pool.h>
 #include <lamure/ren/gpu_context.h>
 #include <lamure/ren/platform.h>
@@ -36,7 +36,7 @@ class RENDERING_DLL controller
 
     void signal_system_reset();
     void reset_system();
-    void reset_system(Data_Provenance const &data_provenance);
+
     const bool is_system_reset_signaled(const context_t context_id);
 
     context_t deduce_context_id(const gua_context_desc_t context_desc);
@@ -47,14 +47,14 @@ class RENDERING_DLL controller
     const context_t num_contexts_registered();
 
     void dispatch(const context_t context_id, scm::gl::render_device_ptr device);
-    void dispatch(const context_t context_id, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+
     const bool is_cut_update_in_progress(const context_t context_id);
-    const bool is_cut_update_in_progress(const context_t context_id, Data_Provenance const &data_provenanc);
+
 
     scm::gl::buffer_ptr get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device);
-    scm::gl::buffer_ptr get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+    
     scm::gl::vertex_array_ptr get_context_memory(const context_t context_id, bvh::primitive_type type, scm::gl::render_device_ptr device);
-    scm::gl::vertex_array_ptr get_context_memory(const context_t context_id, bvh::primitive_type type, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance);
+    
 
     size_t ms_since_last_node_upload() { return ms_since_last_node_upload_; };
     void reset_ms_since_last_node_upload() { ms_since_last_node_upload_ = 0; };

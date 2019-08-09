@@ -7,6 +7,8 @@
 
 #include <lamure/ren/gpu_access.h>
 
+#include <lamure/ren/policy.h>
+
 #include <boost/shared_ptr.hpp>
 
 #include <scm/gl_core.h>
@@ -18,6 +20,8 @@ namespace lamure
 {
 namespace ren
 {
+
+
 gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, bool create_layout)
     : num_slots_(num_slots), 
       size_of_surfel_(8 * sizeof(float)), 
@@ -26,23 +30,63 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
       is_mapped_provenance_(false), 
       has_layout_(create_layout)
 {
-    std::cout << "gpu access constructor " << std::endl;
     assert(device);
     assert(sizeof(float) == 4);
 
     num_slots_ = num_slots;
     size_of_slot_ = num_surfels_per_node * size_of_surfel_;
-    //std::cout << "num_surfels_per_node: " << num_surfels_per_node << ", size_of_surfel: " << size_of_surfel_ << std::endl;
 
     buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_, 0);
-    if (!buffer_) {
-        std::cout << "failed to create buffer" << std::endl;
-        exit(1);
-    }
- 
+
+    auto data_provenance = lamure::ren::data_provenance::get_instance();
+
     if(has_layout_)
     {
-        pcl_memory_ = device->create_vertex_array(scm::gl::vertex_format
+
+        if (data_provenance->get_size_in_bytes() > 0) {
+
+            std::vector<scm::gl::vertex_format::element> vertex_format;
+            vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_));
+            vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
+            vertex_format.push_back(scm::gl::vertex_format::element(0, 2, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
+            vertex_format.push_back(scm::gl::vertex_format::element(0, 3, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
+            vertex_format.push_back(scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
+            vertex_format.push_back(scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_));
+            vertex_format.push_back(scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_));
+    
+            size_of_slot_provenance_ = num_surfels_per_node * data_provenance->get_size_in_bytes();
+
+            buffer_provenance_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_provenance_, 0);
+
+            int counter = 7;
+            for(Item_Provenance const &item : data_provenance->get_items())
+            {
+                if(item.get_visualization() == Item_Provenance::visualization_item::VISUALIZATION_COLOR)
+                {
+                    switch(item.get_type())
+                    {
+                    case Item_Provenance::type_item::TYPE_INT:
+                        vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_INT, data_provenance->get_size_in_bytes()));
+                        break;
+                    case Item_Provenance::type_item::TYPE_FLOAT:
+                        vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_FLOAT, data_provenance->get_size_in_bytes()));
+                        break;
+                    case Item_Provenance::type_item::TYPE_VEC3I:
+                        vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3I, data_provenance->get_size_in_bytes()));
+                        break;
+                    case Item_Provenance::type_item::TYPE_VEC3F:
+                        vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3F, data_provenance->get_size_in_bytes()));
+                        break;
+                    }
+                    ++counter;
+                }
+            }
+
+          pcl_memory_ = device->create_vertex_array(vertex_format, boost::assign::list_of(buffer_)(buffer_provenance_));
+
+        }
+        else {
+            pcl_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
             (0, 1, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)
             (0, 2, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE)
@@ -51,87 +95,8 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
             (0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_)
             (0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_),
             boost::assign::list_of(buffer_));
-
-        pcl_qz_memory_ = device->create_vertex_array(scm::gl::vertex_format
-            (0, 0, scm::gl::TYPE_UINT, size_of_surfel_qz_)  // quant. pos x 16b
-            (0, 1, scm::gl::TYPE_UINT, size_of_surfel_qz_)  // quant. pos y 16b
-            (0, 2, scm::gl::TYPE_UINT, size_of_surfel_qz_),  // quant. pos z 16b
-            boost::assign::list_of(buffer_));
-
-        tri_memory_ = device->create_vertex_array(scm::gl::vertex_format
-            (0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_)
-            (0, 1, scm::gl::TYPE_VEC3F, size_of_surfel_)
-            (0, 2, scm::gl::TYPE_VEC2F, size_of_surfel_),
-            boost::assign::list_of(buffer_));
-    }
-
-    device->main_context()->apply();
-
-#ifdef LAMURE_ENABLE_INFO
-    std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << " (WITHOUT_PROVENANCE)" << std::endl;
-#endif
-}
-
-
-gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, Data_Provenance const &data_provenance, bool create_layout)
-    : num_slots_(num_slots), 
-      size_of_surfel_(8 * sizeof(float)), 
-      size_of_surfel_qz_(3*sizeof(float)), 
-      is_mapped_(false), 
-      is_mapped_provenance_(false), 
-      has_layout_(create_layout)
-{
-    assert(device);
-    assert(sizeof(float) == 4);
-
-    num_slots_ = num_slots;
-    size_of_slot_ = num_surfels_per_node * size_of_surfel_;
-
-    buffer_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_, 0);
-
-    size_of_slot_provenance_ = num_surfels_per_node * data_provenance.get_size_in_bytes();
-    buffer_provenance_ = device->create_buffer(scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_DYNAMIC_COPY, num_slots_ * size_of_slot_provenance_, 0);
-    if(has_layout_)
-    {
-
-        std::cout << data_provenance.get_size_in_bytes() << std::endl;
-        std::cout << lamure::ren::policy::get_instance()->size_of_provenance() << std::endl;
-
-        std::vector<scm::gl::vertex_format::element> vertex_format;
-        vertex_format.push_back(scm::gl::vertex_format::element(0, 0, scm::gl::TYPE_VEC3F, size_of_surfel_));
-        vertex_format.push_back(scm::gl::vertex_format::element(0, 1, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
-        vertex_format.push_back(scm::gl::vertex_format::element(0, 2, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
-        vertex_format.push_back(scm::gl::vertex_format::element(0, 3, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
-        vertex_format.push_back(scm::gl::vertex_format::element(0, 4, scm::gl::TYPE_UBYTE, size_of_surfel_, scm::gl::INT_FLOAT_NORMALIZE));
-        vertex_format.push_back(scm::gl::vertex_format::element(0, 5, scm::gl::TYPE_FLOAT, size_of_surfel_));
-        vertex_format.push_back(scm::gl::vertex_format::element(0, 6, scm::gl::TYPE_VEC3F, size_of_surfel_));
-
-        int counter = 7;
-        for(Item_Provenance const &item : data_provenance.get_items())
-        {
-            if(item.get_visualization() == Item_Provenance::visualization_item::VISUALIZATION_COLOR)
-            {
-                switch(item.get_type())
-                {
-                case Item_Provenance::type_item::TYPE_INT:
-                    vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_INT, data_provenance.get_size_in_bytes()));
-                    break;
-                case Item_Provenance::type_item::TYPE_FLOAT:
-                    vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_FLOAT, data_provenance.get_size_in_bytes()));
-                    break;
-                case Item_Provenance::type_item::TYPE_VEC3I:
-                    vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3I, data_provenance.get_size_in_bytes()));
-                    break;
-                case Item_Provenance::type_item::TYPE_VEC3F:
-                    vertex_format.push_back(scm::gl::vertex_format::element(1, counter, scm::gl::TYPE_VEC3F, data_provenance.get_size_in_bytes()));
-                    break;
-                }
-                ++counter;
-            }
         }
 
-        pcl_memory_ = device->create_vertex_array(vertex_format, boost::assign::list_of(buffer_)(buffer_provenance_));
-
         pcl_qz_memory_ = device->create_vertex_array(scm::gl::vertex_format
             (0, 0, scm::gl::TYPE_UINT, size_of_surfel_qz_)  // quant. pos x 16b
             (0, 1, scm::gl::TYPE_UINT, size_of_surfel_qz_)  // quant. pos y 16b
@@ -149,7 +114,12 @@ gpu_access::gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots
     device->main_context()->apply();
 
 #ifdef LAMURE_ENABLE_INFO
-    std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << " (WITH PROVENANCE)" << std::endl;
+    if (data_provenance->get_size_in_bytes() > 0) {
+      std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << " (WITH PROVENANCE)" << std::endl;
+    }
+    else {
+      std::cout << "lamure: gpu-cache size (MB): " << buffer_->descriptor()._size / 1024 / 1024 << " (WITHOUT PROVENANCE)" << std::endl;  
+    }
 #endif
 }
 

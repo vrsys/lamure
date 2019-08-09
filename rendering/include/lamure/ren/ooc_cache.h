@@ -35,7 +35,6 @@ class RENDERING_DLL ooc_cache : public cache
     ooc_cache &operator=(const ooc_cache &) = delete;
     virtual ~ooc_cache();
 
-    static ooc_cache *get_instance(Data_Provenance const &data_provenance);
     static ooc_cache *get_instance();
 
     void register_node(const model_t model_id, const node_t node_id, const int32_t priority);
@@ -54,7 +53,6 @@ class RENDERING_DLL ooc_cache : public cache
 
   protected:
     ooc_cache(const size_t num_slots);
-    ooc_cache(const size_t num_slots, Data_Provenance const &data_provenance);
     static bool is_instanced_;
     static ooc_cache *single_;
 
