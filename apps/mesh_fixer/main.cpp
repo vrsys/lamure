@@ -49,6 +49,13 @@ class CMesh : public vcg::tri::TriMesh<vector<CVertex>, vector<CFace>>
 {
 };
 
+namespace {
+    // Helper method to emulate GLSL
+    float fract(float value){
+    return (float)fmod(value, 1.0f);
+    }
+}
+
 char* get_cmd_option(char** begin, char** end, const std::string& option)
 {
     char** it = std::find(begin, end, option);
@@ -247,6 +254,17 @@ int main(int argc, char** argv)
 
     vcg::tri::Allocator<CMesh>::CompactEveryVector(m);
     vcg::tri::RequireCompactness<CMesh>(m);
+
+
+    // loop over faces and perform fract on texcoords
+    #pragma omp parallel for
+    for(unsigned i = 0; i < m.face.size(); ++i){
+        auto& f = m.face[i];
+        for(unsigned j = 0; j < 3; ++j){
+            f.WT(j).U() = fract(f.WT(j).U());
+            f.WT(j).V() = fract(f.WT(j).V());
+        }
+    }
 
     {
         using namespace vcg::tri::io;
