@@ -150,8 +150,6 @@ double fps_ = 0.0;
 uint64_t rendered_splats_ = 0;
 uint64_t rendered_nodes_ = 0;
 
-lamure::ren::Data_Provenance data_provenance_;
-
 struct input {
   float trackball_x_ = 0.f;
   float trackball_y_ = 0.f;
@@ -1224,14 +1222,8 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
-  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-    context_->bind_vertex_array(
-      controller->get_context_memory(context_id, _type, device_, data_provenance_));
-  }
-  else {
-   context_->bind_vertex_array(
-      controller->get_context_memory(context_id, _type, device_)); 
-  }
+  context_->bind_vertex_array(controller->get_context_memory(context_id, _type, device_)); 
+  
   context_->apply();
 
   rendered_splats_ = 0;
@@ -1436,12 +1428,8 @@ void glut_display() {
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
-  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-    controller->reset_system(data_provenance_);
-  }
-  else {
-    controller->reset_system();
-  }
+  controller->reset_system();
+
   lamure::context_t context_id = controller->deduce_context_id(0);
   
   for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id) {
@@ -1476,12 +1464,7 @@ void glut_display() {
   }
 
   if (settings_.lod_update_) {
-    if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-      controller->dispatch(context_id, device_, data_provenance_);
-    }
-    else {
-      controller->dispatch(context_id, device_); 
-    }
+    controller->dispatch(context_id, device_); 
   }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
 
@@ -3200,7 +3183,10 @@ void gui_view_settings(){
 
 void gui_visual_settings(){
 
-    uint32_t num_attributes = 5 + data_provenance_.get_size_in_bytes()/sizeof(float);
+    size_t data_provenance_size_in_bytes = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
+
+
+    uint32_t num_attributes = 5 + data_provenance_size_in_bytes/sizeof(float);
 
     const char* vis_values[] = {
       "Color", "Normals", "Accuracy", 
@@ -3213,7 +3199,7 @@ void gui_visual_settings(){
     ImGui::SetNextWindowSize(ImVec2(500.0f, 305.0f));
     ImGui::Begin("Visual Settings", &gui_.visual_settings_, ImGuiWindowFlags_MenuBar);
     
-    uint32_t num_vis_entries = (5 + data_provenance_.get_size_in_bytes()/sizeof(float));
+    uint32_t num_vis_entries = (5 + data_provenance_size_in_bytes/sizeof(float));
     ImGui::Combo("Vis", &it, vis_values, num_vis_entries);
     settings_.vis_ = it;
 
@@ -3422,10 +3408,10 @@ int main(int argc, char *argv[])
 
   if (settings_.provenance_ && settings_.json_ != "") {
     std::cout << "json: " << settings_.json_ << std::endl;
-    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
-    std::cout << "size of provenance: " << data_provenance_.get_size_in_bytes() << std::endl;
+    lamure::ren::data_provenance::get_instance()->parse_json(settings_.json_);
+    std::cout << "size of provenance: " << lamure::ren::data_provenance::get_instance()->get_size_in_bytes() << std::endl;
   }
- 
+
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_max_upload_budget_in_mb(settings_.upload_);
   policy->set_render_budget_in_mb(settings_.vram_);

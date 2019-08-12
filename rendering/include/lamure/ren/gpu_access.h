@@ -26,7 +26,7 @@ class gpu_access
 {
   public:
     gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, bool create_layout = true);
-    gpu_access(scm::gl::render_device_ptr device, const slot_t num_slots, const uint32_t num_surfels_per_node, Data_Provenance const &data_provenance, bool create_layout = true);
+    
     ~gpu_access();
 
     const slot_t num_slots() const { return num_slots_; };

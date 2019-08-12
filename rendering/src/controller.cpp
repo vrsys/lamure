@@ -6,7 +6,10 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/ren/controller.h>
+
+#include <lamure/ren/data_provenance.h>
 #include <scm/gl_core/render_device/opengl/gl_core.h>
+
 
 #include <chrono>
 
@@ -120,8 +123,7 @@ void controller::reset_system()
         context_t num_contexts_registered = controller->num_contexts_registered();
         for(context_t ctx_id = 0; ctx_id < num_contexts_registered; ++ctx_id)
         {
-            // while(controller->is_cut_update_in_progress(ctx_id))
-            // {};
+            while(controller->is_cut_update_in_progress(ctx_id)) {};
         }
 
         std::lock_guard<std::mutex> lock(mutex_);
@@ -170,69 +172,7 @@ void controller::reset_system()
     }
 }
 
-void controller::reset_system(Data_Provenance const &data_provenance)
-{
-    policy *policy = policy::get_instance();
 
-    if(policy->reset_system())
-    {
-        model_database *database = model_database::get_instance();
-        cut_database *cuts = cut_database::get_instance();
-        controller *controller = controller::get_instance();
-
-        context_t num_contexts_registered = controller->num_contexts_registered();
-        for(context_t ctx_id = 0; ctx_id < num_contexts_registered; ++ctx_id)
-        {
-            while(controller->is_cut_update_in_progress(ctx_id, data_provenance))
-            {
-            };
-        }
-
-        std::lock_guard<std::mutex> lock(mutex_);
-
-        if(policy->reset_system())
-        {
-            database->apply();
-            cuts->reset();
-
-            for(auto &cut_update_pool_it : cut_update_pools_)
-            {
-                cut_update_pool *pool = cut_update_pool_it.second;
-                if(pool != nullptr)
-                {
-                    while(pool->is_running())
-                    {
-                    };
-                    delete pool;
-                    pool = nullptr;
-                }
-            }
-
-            cut_update_pools_.clear();
-
-            for(auto &gpu_context_it : gpu_contexts_)
-            {
-                gpu_context *context = gpu_context_it.second;
-                if(context != nullptr)
-                {
-                    delete context;
-                    context = nullptr;
-                }
-            }
-
-            gpu_contexts_.clear();
-
-            // disregard:
-            // num_contexts_registered_ = 0;
-            // num_views_registered_.clear();
-            // context_map_.clear();
-
-            // keep the model map!
-
-            policy->set_reset_system(false);
-        }
-    }
-}
 
 context_t controller::deduce_context_id(const gua_context_desc_t context_desc)
 {
@@ -310,34 +250,7 @@ model_t controller::deduce_model_id(const gua_model_desc_t &model_desc)
     }
 }
 
-const bool controller::is_cut_update_in_progress(const context_t context_id, Data_Provenance const &data_provenance)
-{
-    auto gpu_context_it = gpu_contexts_.find(context_id);
 
-    if(gpu_context_it == gpu_contexts_.end())
-    {
-        throw std::runtime_error("lamure: controller::Gpu Context not found for context: " + context_id);
-    }
-
-    auto cut_update_it = cut_update_pools_.find(context_id);
-
-    if(cut_update_it != cut_update_pools_.end())
-    {
-        return cut_update_it->second->is_running();
-    }
-    else
-    {
-        gpu_context *ctx = gpu_context_it->second;
-        if(!ctx->is_created())
-        {
-            throw std::runtime_error("lamure: controller::Gpu Context not created for context: " + context_id);
-        }
-        cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes(), data_provenance);
-        return is_cut_update_in_progress(context_id, data_provenance);
-    }
-
-    return true;
-}
 
 const bool controller::is_cut_update_in_progress(const context_t context_id)
 {
@@ -363,78 +276,14 @@ const bool controller::is_cut_update_in_progress(const context_t context_id)
         }
 
         cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
+        
         return is_cut_update_in_progress(context_id);
     }
 
     return true;
 }
 
-void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    auto gpu_context_it = gpu_contexts_.find(context_id);
 
-    if(gpu_context_it == gpu_contexts_.end())
-    {
-        throw std::runtime_error("lamure: controller::Gpu Context not found for context: " + context_id);
-    }
-
-    auto cut_update_it = cut_update_pools_.find(context_id);
-
-    if(cut_update_it != cut_update_pools_.end())
-    {
-        lamure::ren::cut_database *cuts = lamure::ren::cut_database::get_instance();
-        cuts->swap(context_id);
-
-        // cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_temporary_storages().storage_a_, gpu_context_it->second->get_temporary_storages().storage_b_,
-        // gpu_context_it->second->get_temporary_storages_provenance().storage_a_, gpu_context_it->second->get_temporary_storages_provenance().storage_b_);
-
-        cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_fix_a().fix_buffer_, gpu_context_it->second->get_fix_b().fix_buffer_,
-                                                   gpu_context_it->second->get_fix_a().fix_buffer_provenance_, gpu_context_it->second->get_fix_b().fix_buffer_provenance_);
-
-        //GLenum first_error = device->opengl_api().glGetError();
-
-        if(cuts->is_front_modified(context_id))
-        {
-            cut_database_record::temporary_buffer current = cuts->get_buffer(context_id);
-
-            gpu_context *ctx = gpu_context_it->second;
-
-            // ctx->unmap_temporary_storage(current, device, data_provenance);
-
-            if(ctx->update_primary_buffer_fix(current, device, data_provenance))
-            {
-                ms_since_last_node_upload_ = 0;
-            }
-            cuts->signal_upload_complete(context_id);
-            // ctx->map_temporary_storage(current, device, data_provenance);
-        }
-        //first_error = device->opengl_api().glGetError();
-
-    }
-    else
-    {
-        gpu_context *ctx = gpu_context_it->second;
-        if(!ctx->is_created())
-        {
-            // throw std::runtime_error(
-            //    "lamure: controller::Gpu Context not created for context: " + context_id);
-
-            // fix for gua:
-            ctx->create(device, data_provenance);
-            //int first_error = device->opengl_api().glGetError();
-            
-        }
-
-        cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes(), data_provenance);
-        dispatch(context_id, device, data_provenance);
-    }
-
-    {
-        auto const &current_time_stamp = std::chrono::system_clock::now();
-        ms_since_last_node_upload_ += (std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(current_time_stamp - latest_timestamp_).count());
-        latest_timestamp_ = current_time_stamp;
-    }
-}
 
 void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr device)
 {
@@ -447,28 +296,51 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
 
     auto cut_update_it = cut_update_pools_.find(context_id);
 
+    uint64_t size_of_provenance = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
+
     if(cut_update_it != cut_update_pools_.end())
     {
         lamure::ren::cut_database *cuts = lamure::ren::cut_database::get_instance();
         cuts->swap(context_id);
 
-        cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_temporary_storages().storage_a_, gpu_context_it->second->get_temporary_storages().storage_b_,
-                                                   gpu_context_it->second->get_temporary_storages_provenance().storage_a_, gpu_context_it->second->get_temporary_storages_provenance().storage_b_);
+        if (size_of_provenance > 0) {
+            cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_fix_a().fix_buffer_, gpu_context_it->second->get_fix_b().fix_buffer_,
+                                                       gpu_context_it->second->get_fix_a().fix_buffer_provenance_, gpu_context_it->second->get_fix_b().fix_buffer_provenance_);
+
+        }
+        else {
+            cut_update_it->second->dispatch_cut_update(gpu_context_it->second->get_temporary_storages().storage_a_, gpu_context_it->second->get_temporary_storages().storage_b_,
+                                                       gpu_context_it->second->get_temporary_storages_provenance().storage_a_, gpu_context_it->second->get_temporary_storages_provenance().storage_b_);    
+        }
+        
 
         if(cuts->is_front_modified(context_id))
         {
             cut_database_record::temporary_buffer current = cuts->get_buffer(context_id);
 
             gpu_context *ctx = gpu_context_it->second;
-            ctx->unmap_temporary_storage(current, device);
 
-            if(ctx->update_primary_buffer(current, device))
-            {
-                ms_since_last_node_upload_ = 0;
+            
+            if (size_of_provenance > 0) {
+                
+                if(ctx->update_primary_buffer_fix(current, device))
+                {
+                    ms_since_last_node_upload_ = 0;
+                }
+                cuts->signal_upload_complete(context_id);
             }
+            else {
 
-            cuts->signal_upload_complete(context_id);
-            ctx->map_temporary_storage(current, device);
+                ctx->unmap_temporary_storage(current, device);
+
+                if(ctx->update_primary_buffer(current, device))
+                {
+                    ms_since_last_node_upload_ = 0;
+                }
+
+                cuts->signal_upload_complete(context_id);
+                ctx->map_temporary_storage(current, device);
+            }
         }
     }
     else
@@ -481,9 +353,11 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
 
             // fix for gua:
             ctx->create(device);
+
         }
 
         cut_update_pools_[context_id] = new cut_update_pool(context_id, ctx->upload_budget_in_nodes(), ctx->render_budget_in_nodes());
+
         dispatch(context_id, device);
     }
 
@@ -495,6 +369,7 @@ void controller::dispatch(const context_t context_id, scm::gl::render_device_ptr
 }
 
 const bool controller::is_model_present(const gua_model_desc_t model_desc) { return model_map_.find(model_desc) != model_map_.end(); }
+
 
 scm::gl::buffer_ptr controller::get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device)
 {
@@ -508,17 +383,7 @@ scm::gl::buffer_ptr controller::get_context_buffer(const context_t context_id, s
     return gpu_context_it->second->get_context_buffer(device);
 }
 
-scm::gl::buffer_ptr controller::get_context_buffer(const context_t context_id, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    auto gpu_context_it = gpu_contexts_.find(context_id);
 
-    if(gpu_context_it == gpu_contexts_.end())
-    {
-        throw std::runtime_error("lamure: controller::Gpu Context not found for context: " + context_id);
-    }
-
-    return gpu_context_it->second->get_context_buffer(device, data_provenance);
-}
 
 scm::gl::vertex_array_ptr controller::get_context_memory(const context_t context_id, bvh::primitive_type type, scm::gl::render_device_ptr device)
 {
@@ -532,17 +397,6 @@ scm::gl::vertex_array_ptr controller::get_context_memory(const context_t context
     return gpu_context_it->second->get_context_memory(type, device);
 }
 
-scm::gl::vertex_array_ptr controller::get_context_memory(const context_t context_id, bvh::primitive_type type, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    auto gpu_context_it = gpu_contexts_.find(context_id);
-
-    if(gpu_context_it == gpu_contexts_.end())
-    {
-        throw std::runtime_error("lamure: controller::Gpu Context not found for context: " + context_id);
-    }
-
-    return gpu_context_it->second->get_context_memory(type, device, data_provenance);
-}
 
 } // namespace ren
 
