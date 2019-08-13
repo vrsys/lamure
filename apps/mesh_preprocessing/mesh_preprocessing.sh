@@ -38,6 +38,8 @@ FLIP_PNGS=No
 SRC_OBJ=None
 RUN_VT=Yes
 RUN_MESH_FIXER=No
+PRINT_HELP=No
+CONVERT_TIFS_TO_JPG=No
 ############################
 
 
@@ -88,7 +90,15 @@ case $key in
     -x|--xfixer)
     RUN_MESH_FIXER=Yes
     shift # past argument
-    ;;                
+    ;;
+    -j|--jpg)
+    CONVERT_TIFS_TO_JPG=Yes
+    shift # past argument
+    ;;
+    -h|--help)
+    PRINT_HELP=Yes
+    shift # past argument
+    ;;                 
     --default)
     DEFAULT=YES
     shift # past argument
@@ -101,7 +111,7 @@ esac
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-if [ "$SRC_OBJ" == "None" ]; then
+if [ "$SRC_OBJ" == "None" ] || [ "$PRINT_HELP" == "Yes" ]; then
    echo $0 "please specify objfile to preprocess with -o option"
    echo ""
    echo "other settings are follows:"
@@ -111,6 +121,7 @@ if [ "$SRC_OBJ" == "None" ]; then
    echo "Triangle budget per BVH node: " ${TRI_BUDGET} "(set with option -t)"
    echo "Maximum size of final texture atlas: " ${MAX_FINAL_TEX_SIZE} "(set with option -m)"
    echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB} "(set with option -v)"
+   echo "Convert tifs to jpgs: " ${CONVERT_TIFS_TO_JPG} "(enable with option -j)"
    echo "Flip pngs: " ${FLIP_PNGS} "(enable with option -f)"
    echo "Run mesh fixer: " ${RUN_MESH_FIXER} "(enable with option -x)"
    echo "Run virtual texture processing: " ${RUN_VT} "(disable with option -n)"   
@@ -125,10 +136,26 @@ echo "Chart creation cost threshold: " ${COST_THRESHOLD}
 echo "Triangle budget per BVH node: " ${TRI_BUDGET}
 echo "Maximum size of final texture atlas: " ${MAX_FINAL_TEX_SIZE}
 echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB}
+echo "Convert tifs to jpgs: " ${CONVERT_TIFS_TO_JPG}
 echo "Flip textures: " ${FLIP_PNGS}
 echo "Run mesh fixer: " ${RUN_MESH_FIXER}
 echo "Run virtual texture processing: " ${RUN_VT}
 echo "Processing $SRC_OBJ"
+
+
+MTL_NAME=None
+MTL_NAME_BACKUP=None
+
+if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
+    echo "converting tifs to jpgs"
+    SRC_OBJ_NAME_WITHOUT_EXTENSION=${SRC_OBJ%.*}
+    MTL_NAME=${SRC_OBJ_NAME_WITHOUT_EXTENSION}.mtl
+    MTL_NAME_BACKUP=${SRC_OBJ_NAME_WITHOUT_EXTENSION}.mtl.backup
+    Ycp ${MTL_NAME} ${MTL_NAME_BACKUP}
+    sed -i -e 's/.tif/.jpg/g' ${MTL_NAME}
+    mogrify -format jpg -quality 98 *tif
+fi
+
 
 if [ "$RUN_MESH_FIXER" == "Yes" ]; then
     echo "running mesh fixer"
@@ -182,6 +209,11 @@ if [ "$RUN_VT" == "No" ]; then
 fi
 
 
+# clean up
+if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
+    mv ${MTL_NAME_BACKUP} ${MTL_NAME}
+    rm *jpg
+fi
 # optionally output a scaled down jpg one needs to calculate width and height
 # env DISPLAY=:0.0 ${LAMURE_DIR}lamure_vt_preprocessing extract name.atlas 3 name.rgb 
 
