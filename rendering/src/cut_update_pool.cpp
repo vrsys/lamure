@@ -1370,6 +1370,10 @@ const float cut_update_pool::calculate_node_error(const view_t view_id, const mo
     model_database *database = model_database::get_instance();
     auto bvh = database->get_model(model_id)->get_bvh();
 
+    if (bvh->get_depth_of_node(node_id) <= bvh->get_min_lod_depth()) {
+      return 100.f;
+    }
+
     const scm::math::mat4f &model_matrix = model_transforms_[model_id];
     const scm::math::mat4f &view_matrix = user_cameras_[view_id].get_view_matrix();
 

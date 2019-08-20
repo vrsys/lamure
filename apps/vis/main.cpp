@@ -2105,7 +2105,8 @@ void create_aux_resources() {
       continue;
     }
 
-    const auto& bounding_boxes = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes();
+    const auto bvh = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh();
+    const auto& bounding_boxes = bvh->get_bounding_boxes();
 
     resource bvh_line_resource;
     bvh_line_resource.buffer_.reset();
@@ -2115,7 +2116,10 @@ void create_aux_resources() {
     for (uint64_t node_id = 0; node_id < bounding_boxes.size(); ++node_id) {
       const auto& node = bounding_boxes[node_id];
 
-      lines_from_min_max(node.min_vertex(), node.max_vertex(), bvh_lines_to_upload);
+      auto min_vertex = node.min_vertex() + bvh->get_translation();
+      auto max_vertex = node.max_vertex() + bvh->get_translation();
+
+      lines_from_min_max(min_vertex, max_vertex, bvh_lines_to_upload);
 
     }
 
