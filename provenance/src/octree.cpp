@@ -287,7 +287,7 @@ create(std::vector<auxi::sparse_point>& _points) {
           child.begin_ = range.begin_;
           child.end_ = range.end_;
           child.idx_ = num_nodes;
-          std::cout << "node " << num_nodes << " " << child.end_ - child.begin_ << " points " << std::endl;
+          //std::cout << "node " << num_nodes << " " << child.end_ - child.begin_ << " points " << std::endl;
           //std::cout << "node " << num_nodes << " min " << child.min_.x << " " << child.min_.y << " " << child.min_.z << std::endl;
           //std::cout << "node " << num_nodes << " max " << child.max_.x << " " << child.max_.y << " " << child.max_.z << std::endl;
           nodes_todo.push(child);
