@@ -151,7 +151,7 @@ if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
     SRC_OBJ_NAME_WITHOUT_EXTENSION=${SRC_OBJ%.*}
     MTL_NAME=${SRC_OBJ_NAME_WITHOUT_EXTENSION}.mtl
     MTL_NAME_BACKUP=${SRC_OBJ_NAME_WITHOUT_EXTENSION}.mtl.backup
-    Ycp ${MTL_NAME} ${MTL_NAME_BACKUP}
+    cp ${MTL_NAME} ${MTL_NAME_BACKUP}
     sed -i -e 's/.tif/.jpg/g' ${MTL_NAME}
     mogrify -format jpg -quality 98 *tif
 fi
@@ -211,7 +211,7 @@ fi
 
 # clean up
 if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
-    mv ${MTL_NAME_BACKUP} ${MTL_NAME}
+    cp ${MTL_NAME_BACKUP} ${MTL_NAME}
     rm *jpg
 fi
 # optionally output a scaled down jpg one needs to calculate width and height
