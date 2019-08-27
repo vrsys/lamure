@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
   bool terminate = false;
   std::string input_filename = "";
   std::string output_filename = "";
+  double regularization_distance = 0.1;
 
   if (cmd_option_exists(argv, argv + argc, "-i")) {
     input_filename = std::string(get_cmd_option(argv, argv + argc, "-i"));
@@ -50,11 +51,18 @@ int main(int argc, char *argv[]) {
   }
   else terminate = true;
 
+  //define regularization distance between points
+  if (cmd_option_exists(argv, argv + argc, "-f")) {
+    regularization_distance = atof(get_cmd_option(argv, argv + argc, "-f"));
+  }
+  else terminate = true;
+
   if (terminate) {
     std::cout << "Usage: " << argv[0] << "<flags>\n" <<
       "INFO: " << argv[0] << "\n" <<
       "\t-i: select input .xyz file\n" <<
-      "\t-o: select output .xyz file\n" << std::endl; 
+      "\t-o: select output .xyz file\n" <<
+      "\t-f: select regularization distance between surfels\n" << std::endl;
     std::exit(0);
   }
   
@@ -82,8 +90,12 @@ int main(int argc, char *argv[]) {
     lineparser >> std::setprecision(DEFAULT_PRECISION) >> pos.y;
     lineparser >> std::setprecision(DEFAULT_PRECISION) >> pos.z;
 
+
+    scm::math::vec3f normal(0.0);
     if (xyz_all) {
-    	//...
+    	lineparser >> std::setprecision(DEFAULT_PRECISION) >> normal.x;
+    	lineparser >> std::setprecision(DEFAULT_PRECISION) >> normal.y;
+    	lineparser >> std::setprecision(DEFAULT_PRECISION) >> normal.z;
     }
 
     scm::math::vec3d color;
@@ -92,14 +104,14 @@ int main(int argc, char *argv[]) {
     lineparser >> color.z;
 
     lamure::vec3b bcolor(color.x, color.y, color.z);
-    scm::math::vec3f normal(0);
-
+    
+    double radius = 1.0;
     if (xyz_all) {
-    	//...
+    	lineparser >> std::setprecision(DEFAULT_PRECISION) >> radius;
     }
 
  
-    lamure::pre::surfel surfel(pos, bcolor, 1.0f, normal, 0.0);
+    lamure::pre::surfel surfel(pos, bcolor, radius, normal, 0.0);
     input_surfels.push_back(surfel);
 
   }
@@ -107,11 +119,6 @@ int main(int argc, char *argv[]) {
   input_file.close();
 
   std::cout << input_surfels.size() << " points loaded." << std::endl;
-
-  
-
-  //define regularization distance between points in meters
-  double regularization_distance = 1.0;
 
   //container for regularized result
   std::vector<lamure::pre::surfel> output_surfels;
@@ -128,9 +135,22 @@ int main(int argc, char *argv[]) {
   	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.pos().x << " ";
   	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.pos().y << " ";
   	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.pos().z << " ";
+
+  	if (xyz_all) {
+    	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.normal().x << " ";
+  		output_file << std::setprecision(DEFAULT_PRECISION) << surfel.normal().y << " ";
+  		output_file << std::setprecision(DEFAULT_PRECISION) << surfel.normal().z << " ";
+    }
+
   	output_file << (int)surfel.color().x << " ";
   	output_file << (int)surfel.color().y << " ";
-  	output_file << (int)surfel.color().z << std::endl;
+  	output_file << (int)surfel.color().z << " ";
+
+  	if (xyz_all) {
+    	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.radius() << " ";
+    }
+
+    output_file << std::endl;
   }
 
   output_file.close();
