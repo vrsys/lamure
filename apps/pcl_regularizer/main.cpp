@@ -128,6 +128,7 @@ int main(int argc, char *argv[]) {
   octree->regularize(input_surfels, regularization_distance, output_surfels);
   octree.reset();
 
+  std::cout << "Writing output file " << output_filename << std::endl;
 
   std::ofstream output_file(output_filename.c_str(), std::ios::trunc);
 
@@ -154,6 +155,8 @@ int main(int argc, char *argv[]) {
   }
 
   output_file.close();
+
+  std::cout << "Done. Have a nice day." << std::endl;
 
 
   return 0;
