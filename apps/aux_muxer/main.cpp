@@ -449,7 +449,10 @@ int main(int argc, char *argv[]) {
       v.transform_ = scm::math::make_translation(v.position_)
         * scm::math::transpose(m) * scm::math::make_rotation(180.f, scm::math::vec3f(0, 1, 0));
 
-      v.focal_length_ = 0.f;
+      v.focal_value_x_ = cI.focalValueH_;
+      v.focal_value_y_ = cI.focalValueV_;
+      v.center_x_ = cI.centerX_;
+      v.center_y_ = cI.centerY_;
       v.distortion_ = 0.f;
       v.image_width_ = cI.imageWidth_;
       v.image_height_ = cI.imageHeight_;

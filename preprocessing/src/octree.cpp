@@ -104,7 +104,7 @@ regularize(std::vector<surfel>& _input_points, double _min_voxel_edge_length, st
       rep_surfel.pos().x = (node.min_.x + node.max_.x) * 0.5;
       rep_surfel.pos().y = (node.min_.y + node.max_.y) * 0.5;
       rep_surfel.pos().z = (node.min_.z + node.max_.z) * 0.5;
-      rep_surfel.radius() = sqrt(2.0)*min_voxel_edge_length_;
+      rep_surfel.radius() = min_voxel_edge_length_;
       rep_surfel.normal() = scm::math::vec3d(0.0);
 
 
@@ -323,7 +323,7 @@ regularize(std::vector<surfel>& _input_points, double _min_voxel_edge_length, st
           ++num_nodes;
         }
         else {
-            std::cout << "WARNINg! did not find range " << i << std::endl;
+            std::cout << "Did not find range " << i << std::endl;
         }
       }
     }

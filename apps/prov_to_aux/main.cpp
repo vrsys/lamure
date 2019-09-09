@@ -148,7 +148,10 @@ int main(int argc, char *argv[]) {
       auto rotation = scm::math::mat4f(camera.get_orientation().to_matrix());
       v.transform_ = translation * rotation;
 
-      v.focal_length_ = camera.get_focal_length();
+      v.focal_value_x_ = camera.get_focal_length();
+      v.focal_value_y_ = 0.f;
+      v.center_x_ = 0.f;
+      v.center_y_ = 0.f;
       //uint32_t distortion = 0;
       //for (uint32_t j = 0; j < 4; ++j) {
       //  distortion |= ((uint32_t)metadata[i].get_metadata()[j]) << (j*8);

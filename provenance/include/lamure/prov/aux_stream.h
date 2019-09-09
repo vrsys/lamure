@@ -378,14 +378,14 @@ protected:
 
         aux_quat orientation_;
         
-        float focal_length_;
+        uint32_t reserved_1_;
         float distortion_;
 
-        uint32_t reserved_1_;
-        uint32_t reserved_2_;
+        float focal_value_x_;
+        float focal_value_y_;
 
-        uint32_t reserved_3_;
-        uint32_t reserved_4_;
+        float center_x_;
+        float center_y_;
 
         uint32_t reserved_5_;
         uint32_t reserved_6_;
@@ -436,12 +436,12 @@ protected:
             file.write((char*)&orientation_.y_, 4);
             file.write((char*)&orientation_.z_, 4);
             file.write((char*)&orientation_.w_, 4);
-            file.write((char*)&focal_length_, 4);
-            file.write((char*)&distortion_, 4);
             file.write((char*)&reserved_1_, 4);
-            file.write((char*)&reserved_2_, 4);
-            file.write((char*)&reserved_3_, 4);
-            file.write((char*)&reserved_4_, 4);
+            file.write((char*)&distortion_, 4);
+            file.write((char*)&focal_value_x_, 4);
+            file.write((char*)&focal_value_y_, 4);
+            file.write((char*)&center_x_, 4);
+            file.write((char*)&center_y_, 4);
             file.write((char*)&reserved_5_, 4);
             file.write((char*)&reserved_6_, 4);
             file.write((char*)&image_width_, 4);
@@ -471,12 +471,12 @@ protected:
             file.read((char*)&orientation_.y_, 4);
             file.read((char*)&orientation_.z_, 4);
             file.read((char*)&orientation_.w_, 4);
-            file.read((char*)&focal_length_, 4);
-            file.read((char*)&distortion_, 4);
             file.read((char*)&reserved_1_, 4);
-            file.read((char*)&reserved_2_, 4);
-            file.read((char*)&reserved_3_, 4);
-            file.read((char*)&reserved_4_, 4);
+            file.read((char*)&distortion_, 4);
+            file.read((char*)&focal_value_x_, 4);
+            file.read((char*)&focal_value_y_, 4);
+            file.read((char*)&center_x_, 4);
+            file.read((char*)&center_y_, 4);
             file.read((char*)&reserved_5_, 4);
             file.read((char*)&reserved_6_, 4);
             file.read((char*)&image_width_, 4);
