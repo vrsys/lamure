@@ -46,7 +46,10 @@ public:
       uint32_t camera_id_;
       scm::math::vec3f position_;
       scm::math::mat4f transform_; //trans + rot
-      float focal_length_;
+      float focal_value_x_;
+      float focal_value_y_;
+      float center_x_;
+      float center_y_;
       float distortion_;
       uint32_t image_width_;
       uint32_t image_height_;

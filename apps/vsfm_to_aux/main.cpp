@@ -112,7 +112,10 @@ int main(int argc, char *argv[]) {
       lamure::prov::auxi::view v;
       v.camera_id_ = i;
       line_ss >> v.image_file_;
-      line_ss >> v.focal_length_;
+      line_ss >> v.focal_value_x_;
+      v.focal_value_y_ = 0.f;
+      v.center_x_ = 0.f;
+      v.center_y_ = 0.f;
       scm::math::quatf quat;
       line_ss >> quat.w;
       line_ss >> quat.x;

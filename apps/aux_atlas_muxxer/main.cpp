@@ -136,7 +136,10 @@ int main(int argc, char *argv[]) {
     std::cout << "muxing atlas..." << std::endl;
     std::cout << "atlas width: " << atlas_width << std::endl;
     std::cout << "atlas height: " << atlas_height << std::endl;
+
+
     lamure::prov::auxi::atlas atlas{aux_in.get_num_views(), atlas_width, atlas_height, rotated};
+
     aux_out.set_atlas(atlas);
 
     for (uint32_t i = 0; i < aux_in.get_num_views(); ++i) {

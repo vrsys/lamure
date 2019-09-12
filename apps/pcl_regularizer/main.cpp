@@ -33,12 +33,35 @@ static bool cmd_option_exists(char **begin, char **end, const std::string &optio
 }
 
 
+void get_string(const lamure::pre::surfel& surfel, std::string& line, bool xyz_all) {
+
+  line += std::to_string(surfel.pos().x) + " ";
+  line += std::to_string(surfel.pos().y) + " ";
+  line += std::to_string(surfel.pos().z) + " ";
+
+  if (xyz_all) {
+    line += std::to_string(surfel.normal().x) + " ";
+    line += std::to_string(surfel.normal().y) + " ";
+    line += std::to_string(surfel.normal().z) + " ";
+  }
+
+  line += std::to_string((int)surfel.color().x) + " ";
+  line += std::to_string((int)surfel.color().y) + " ";
+  line += std::to_string((int)surfel.color().z) + " ";
+
+  if (xyz_all) {
+    line += std::to_string(surfel.radius()) + " ";
+  }
+
+  line += "\n";
+
+}
+
 
 int main(int argc, char *argv[]) {
 
   bool terminate = false;
   std::string input_filename = "";
-  std::string output_filename = "";
   double regularization_distance = 0.1;
 
   if (cmd_option_exists(argv, argv + argc, "-i")) {
@@ -46,14 +69,9 @@ int main(int argc, char *argv[]) {
   }
   else terminate = true;
 
-  if (cmd_option_exists(argv, argv + argc, "-o")) {
-    output_filename = std::string(get_cmd_option(argv, argv + argc, "-o"));
-  }
-  else terminate = true;
-
   //define regularization distance between points
-  if (cmd_option_exists(argv, argv + argc, "-f")) {
-    regularization_distance = atof(get_cmd_option(argv, argv + argc, "-f"));
+  if (cmd_option_exists(argv, argv + argc, "-r")) {
+    regularization_distance = atof(get_cmd_option(argv, argv + argc, "-r"));
   }
   else terminate = true;
 
@@ -61,8 +79,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Usage: " << argv[0] << "<flags>\n" <<
       "INFO: " << argv[0] << "\n" <<
       "\t-i: select input .xyz file\n" <<
-      "\t-o: select output .xyz file\n" <<
-      "\t-f: select regularization distance between surfels\n" << std::endl;
+      "\t-r: select regularization distance between surfels\n" << std::endl;
     std::exit(0);
   }
   
@@ -123,38 +140,48 @@ int main(int argc, char *argv[]) {
   //container for regularized result
   std::vector<lamure::pre::surfel> output_surfels;
 
-  //do the thing!
-  std::shared_ptr<lamure::pre::octree> octree = std::make_shared<lamure::pre::octree>();
-  octree->regularize(input_surfels, regularization_distance, output_surfels);
-  octree.reset();
+  if (input_surfels.size() > 10) {
+
+    //do the thing!
+    std::shared_ptr<lamure::pre::octree> octree = std::make_shared<lamure::pre::octree>();
+    octree->regularize(input_surfels, regularization_distance, output_surfels);
+    octree.reset();
+
+    if (output_surfels.size() < 10) {
+      std::cout << "Too few surfels left after regularization." << std::endl;
+      return 0;
+    }
+
+  }
+  else {
+    std::cout << "Too few input surfels. Let's just skip these." << std::endl;
+    return 0;
+  }
+
+
+
+  std::string output_filename = input_filename.substr(0, input_filename.size()-4) + "_regularized.xyz";
 
   std::cout << "Writing output file " << output_filename << std::endl;
 
   std::ofstream output_file(output_filename.c_str(), std::ios::trunc);
+  output_file.close();
 
-  for (const auto& surfel : output_surfels) {
-  	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.pos().x << " ";
-  	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.pos().y << " ";
-  	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.pos().z << " ";
+  line = "";
+  for (uint64_t i = 0; i < output_surfels.size(); ++i) {
+    get_string(output_surfels[i], line, xyz_all);
 
-  	if (xyz_all) {
-    	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.normal().x << " ";
-  		output_file << std::setprecision(DEFAULT_PRECISION) << surfel.normal().y << " ";
-  		output_file << std::setprecision(DEFAULT_PRECISION) << surfel.normal().z << " ";
+    if (((i % 1000000) == 0) || (i == output_surfels.size()-1)) {
+
+      std::ofstream output_file(output_filename.c_str(), std::ios::app);
+      output_file << line;
+      output_file.close();
+
+      line = "";
     }
-
-  	output_file << (int)surfel.color().x << " ";
-  	output_file << (int)surfel.color().y << " ";
-  	output_file << (int)surfel.color().z << " ";
-
-  	if (xyz_all) {
-    	output_file << std::setprecision(DEFAULT_PRECISION) << surfel.radius() << " ";
-    }
-
-    output_file << std::endl;
   }
 
-  output_file.close();
+  output_surfels.clear();
 
   std::cout << "Done. Have a nice day." << std::endl;
 

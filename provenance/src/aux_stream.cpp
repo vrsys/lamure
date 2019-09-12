@@ -280,8 +280,13 @@ read_aux(const std::string& filename, auxi& aux) {
        auto rotation = scm::math::quatf(view.orientation_.w_, view.orientation_.x_, view.orientation_.y_, view.orientation_.z_).to_matrix();
        v.transform_ = translation * rotation;
  
-       v.focal_length_ = view.focal_length_;
        v.distortion_ = view.distortion_;
+
+       v.focal_value_x_ = view.focal_value_x_;
+       v.focal_value_y_ = view.focal_value_y_;
+       v.center_x_ = view.center_x_;
+       v.center_y_ = view.center_y_;
+
        v.image_width_ = view.image_width_;
        v.image_height_ = view.image_height_;
        v.atlas_tile_id_ = view.atlas_tile_id_;
@@ -365,12 +370,15 @@ write_aux(const std::string& filename, auxi& aux) {
      v.orientation_.y_ = quat.y;
      v.orientation_.z_ = quat.z;
 
-     v.focal_length_ = view.focal_length_;
-     v.distortion_ = view.distortion_;
      v.reserved_1_ = 0;
-     v.reserved_2_ = 0;
-     v.reserved_3_ = 0;
-     v.reserved_4_ = 0;
+     v.distortion_ = view.distortion_;
+
+     v.focal_value_x_ = view.focal_value_x_;
+     v.focal_value_y_ = view.focal_value_y_;
+
+     v.center_x_ = view.center_x_;
+     v.center_y_ = view.center_y_;
+
      v.reserved_5_ = 0;
      v.reserved_6_ = 0;
      v.image_width_ = view.image_width_;
