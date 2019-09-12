@@ -41,7 +41,7 @@ regularize(std::vector<surfel>& _input_points, double _min_voxel_edge_length, st
 
 
   uint32_t max_depth = 40;
-  uint32_t min_num_points_per_node = 1;
+  uint64_t min_num_points_per_node = 1;
 
   uint64_t num_points = _input_points.size();
   if (num_points < 16) {
@@ -92,6 +92,9 @@ regularize(std::vector<surfel>& _input_points, double _min_voxel_edge_length, st
     auxiliary_node node = nodes_todo.top();
     nodes_todo.pop();
 
+    if (node.depth_ > depth_) {
+      std::cout << "Processing depth " << node.depth_ << " ..." << std::endl;
+    }
     depth_ = std::max(depth_, node.depth_);
 
     //termination criterion
@@ -143,7 +146,7 @@ regularize(std::vector<surfel>& _input_points, double _min_voxel_edge_length, st
 
     auto min_vertex = node.min_;
     auto max_vertex = node.max_;
-    auto mid_vertex = 0.5f*(min_vertex+max_vertex);
+    auto mid_vertex = 0.5*(min_vertex+max_vertex);
 
     //sort all points between begin and end along x-axis, find midpoint
     std::sort(&_input_points[node.begin_], &_input_points[node.end_], 
