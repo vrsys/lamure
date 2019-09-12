@@ -152,6 +152,12 @@ scm::gl::sampler_state_ptr vt_filter_nearest_;
 
 scm::gl::texture_2d_ptr bg_texture_;
 
+//typedef eigenform
+//CPU representation vector for eigenform values  
+std::vector<std::vector<float>> bvh_ssbo_cpu_data_;
+scm::gl::buffer_ptr bvh_ssbo_time_step_0_;
+scm::gl::buffer_ptr bvh_ssbo_time_step_1_;
+
 struct resource {
   uint64_t num_primitives_ {0};
   scm::gl::buffer_ptr buffer_;
@@ -270,6 +276,7 @@ struct settings {
   int32_t fem_result_ {0};
   int32_t fem_vis_mode_ {0};
   float fem_deform_factor_ {1.0};
+  std::string fem_value_mapping_file_;
   float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
   bool enable_lighting_ {0};
   bool use_material_color_ {0};
@@ -497,6 +504,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "provenance") {
             settings.provenance_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "fem_value_mapping_file") {
+            settings.fem_value_mapping_file_ = value.c_str();
           }
           else if (key == "create_aux_resources") {
             settings.create_aux_resources_ = (bool)std::max(atoi(value.c_str()), 0);
@@ -1604,7 +1614,59 @@ void glut_display() {
     screen_quad_->draw(context_);
     
   }
-  
+  else {
+    //single pass
+
+    context_->clear_color_buffer(fbo_, 0,
+      scm::math::vec4f(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z, 1.0f));
+    context_->clear_depth_stencil_buffer(fbo_);
+    context_->set_frame_buffer(fbo_);
+
+    //draw pointclouds
+    auto selected_single_pass_shading_program = vis_xyz_shader_;
+
+    if(settings_.enable_lighting_) {
+      selected_single_pass_shading_program = vis_xyz_lighting_shader_;
+    }
+
+    context_->bind_program(selected_single_pass_shading_program);
+    context_->set_blend_state(color_no_blending_state_);
+    context_->set_depth_stencil_state(depth_state_less_);
+    
+    set_uniforms(selected_single_pass_shading_program);
+    context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
+    context_->apply();
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
+
+    //draw meshes
+    
+
+    selected_single_pass_shading_program = vis_trimesh_shader_;
+    if(settings_.enable_lighting_) {
+      selected_single_pass_shading_program = vis_trimesh_lighting_shader_;
+    }
+    context_->bind_program(selected_single_pass_shading_program);
+
+    set_uniforms(selected_single_pass_shading_program);
+    context_->apply();
+
+#if 1
+    //draw shaded
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
+#else
+    //draw wireframe
+    context_->set_rasterizer_state(wireframe_no_backface_culling_rasterizer_state_);
+    context_->apply();
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
+#endif
+
+    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+    context_->bind_program(vis_xyz_shader_);
+    draw_brush(vis_xyz_shader_);
+    draw_resources(context_id, view_id);
+
+
+  }
 
 
   //PASS 4: fullscreen quad
@@ -2837,7 +2899,7 @@ void init() {
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
-      || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
+      || !read_shader(shader_root_path + "/fem_vis/fem_vis_ssbo_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass2.glslg", vis_xyz_pass2_gs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass2.glslf", vis_xyz_pass2_fs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz_pass3.glslv", vis_xyz_pass3_vs_source)
@@ -3509,6 +3571,87 @@ std::vector<fem_result_meta_data> fem_md;
 }
 
 
+// contains all simulated attributes per simulation step
+struct fem_attributes_per_simulation_step {
+  std::vector<float> u_xyz; // verschiebung der Punkte, z positiv nach unten gerichtet   ; 3 attribute
+  std::vector<float> sig_xx; // Normalspannung; Kraft bezogen auf eine Fläche in lokale x-Richtung (Richtung eines Stabes); 1 attribut
+  std::vector<float> tau_xy_xz_abs; //Schubspannung entlang Flächen xy and xz, sowie betrag addierter vektoren ; 3 attribute
+  std::vector<float> sig_v;   //Vergleichsspannung
+  std::vector<float> eps_x;// Dehnung
+};
+
+// contains all fem attributes for a temporal simulation
+struct fem_attributes_per_time_series {
+  std::vector<fem_attributes_per_simulation_step> series;
+  float min_value = std::numeric_limits<float>::max();
+  float max_value = std::numeric_limits<float>::min();
+};
+
+// contains all time series (also individual attributes) of an entire collection defined in an fem_value_mapping_file
+struct fem_attribute_collection {
+  std::vector<fem_attributes_per_time_series> collection;
+};
+
+
+fem_attribute_collection current_fem_attribute_collection;
+
+void parse_file_to_fem(std::string const& file_path) {
+
+}
+
+void parse_directory_to_fem() {
+
+}
+
+void parse_fem_collection(std::string const& fem_mapping_file_path) {
+  std::cout << "Starting to parse files defined in " << fem_mapping_file_path << std::endl;
+
+  std::ifstream in_fem_mapping_file(fem_mapping_file_path);
+
+  std::string fem_path_line_buffer;
+
+  while(std::getline(in_fem_mapping_file, fem_path_line_buffer)) {
+    std::cout << "Read line: " <<  fem_path_line_buffer  << std::endl;
+
+    if ( !boost::filesystem::exists( fem_path_line_buffer ) )
+    {
+      std::cout << "Can't find my file!" << std::endl;
+    } else {
+      std::cout << "File or path exists - starting to parse it to FEM attribute series!" << std::endl;
+
+      bool is_file = boost::filesystem::is_regular_file(fem_path_line_buffer);
+
+      std::cout << "Is: " <<  ( is_file ?  "File!" : "Directory!") << std::endl; 
+
+      if(is_file) {
+        parse_file_to_fem(fem_path_line_buffer);
+      } else {
+        boost::filesystem::path p{fem_path_line_buffer};
+
+        std::string const time_series_prefix(p.filename().c_str());
+
+
+
+        const std::string target_path( time_series_prefix );
+        //const boost::regex my_filter( "somefiles.*\.txt" );
+
+        std::vector< std::string > all_matching_files;
+
+        std::cout << "Parent path: " << time_series_prefix << '\n'; 
+
+
+
+
+      }
+    } 
+  }
+
+
+
+  in_fem_mapping_file.close();
+
+}
+
 int main(int argc, char *argv[])
 {
     
@@ -3541,6 +3684,17 @@ int main(int argc, char *argv[])
     parse_json_for_fem(settings_.json_);
   }
  
+
+  if (settings_.provenance_ && settings_.json_ != "" && settings_.fem_value_mapping_file_ != "") {
+
+    std::cout << "Starting to read mapping file!" << std::endl;
+    std::cout << settings_.fem_value_mapping_file_ << std::endl;
+
+    parse_fem_collection(settings_.fem_value_mapping_file_);
+
+    return 0;
+  }
+
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_max_upload_budget_in_mb(settings_.upload_);
   policy->set_render_budget_in_mb(settings_.vram_);

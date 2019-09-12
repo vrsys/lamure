@@ -39,16 +39,12 @@ layout(location = 4) in float empty;
 layout(location = 5) in float in_radius;
 layout(location = 6) in vec3 in_normal;
 
-layout(location = 7) in float prov1;
-layout(location = 8) in float prov2;
-layout(location = 9) in float prov3;
-layout(location = 10) in float prov4;
-layout(location = 11) in float prov5;
-layout(location = 12) in float prov6;
-layout(location = 13) in float prov7;
-layout(location = 14) in float prov8;
-layout(location = 15) in float prov9;
-
+layout(location = 7) in int fem_vert_id_0;
+layout(location = 8) in int fem_vert_id_1;
+layout(location = 9) in int fem_vert_id_2;
+layout(location = 10) in float fem_vert_w_0;
+layout(location = 11) in float fem_vert_w_1;
+layout(location = 12) in float fem_vert_w_2;
 
 out VertexData {
   //output to geometry shader
@@ -63,7 +59,7 @@ out VertexData {
 } VertexOut;
 
 
-INCLUDE fem_vis_color.glsl
+INCLUDE fem_vis_ssbo_color.glsl
 
 vec3 unpack_fem_result(float v){
   vec3 res = vec3(fract(v), fract(v * 256.0), fract(v * 65536.0));
@@ -84,6 +80,8 @@ void main() {
   vec3 deformation = vec3(0.0);
   float deform = 0.0;
   if(0 != fem_result){
+
+/*
     if(1 == fem_result){
       deform = prov1;
     }
@@ -111,6 +109,8 @@ void main() {
     else if(9 == fem_result){
       deform = prov9;
     }
+
+*/
 
     if(0.0 != deform){
       deformation = unpack_fem_result(deform);
@@ -165,6 +165,13 @@ void main() {
     VertexOut.pass_point_color = mix(VertexOut.pass_point_color, data_value_to_rainbow(length(deformation), fem_min_absolute_deform, fem_max_absolute_deform), 0.3);
   }
   
+
+  if(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) {
+    VertexOut.pass_point_color = vec3(1.0, 0.0, 0.0);   
+  } else {
+    VertexOut.pass_point_color = vec3(fem_vert_w_0, fem_vert_w_1,fem_vert_w_2);
+  }
+
   gl_Position = vec4(new_in_position, 1.0);
 
 
