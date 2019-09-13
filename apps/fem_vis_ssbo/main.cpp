@@ -155,9 +155,8 @@ scm::gl::texture_2d_ptr bg_texture_;
 
 //typedef eigenform
 //CPU representation vector for eigenform values  
-std::vector<std::vector<float>> bvh_ssbo_cpu_data_;
-scm::gl::buffer_ptr bvh_ssbo_time_step_0_;
-scm::gl::buffer_ptr bvh_ssbo_time_step_1_;
+//std::vector<std::vector<float>> bvh_ssbo_cpu_data_;
+
 
 struct resource {
   uint64_t num_primitives_ {0};
@@ -3623,10 +3622,24 @@ struct fem_attribute_collection {
   // key:   name of the parent folder of the attributes as std::string
   // value: time series data as as fem_attributes_per_time_series
   std::map<std::string, fem_attributes_per_time_series> data;
+
+
+
+  uint64_t get_max_num_timesteps_in_collection() {
+    uint64_t max_num_timesteps = 0;
+    for(auto const& simulation : data) {
+      max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
+    }
+
+    return max_num_timesteps; 
+  }
 };
 
 
 fem_attribute_collection fem_collection;
+
+scm::gl::buffer_ptr bvh_ssbo_time_step_x_;
+scm::gl::buffer_ptr bvh_ssbo_time_step_x_plus_one_;
 
 void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files) {
 
@@ -3634,11 +3647,6 @@ void parse_file_to_fem(std::string const& attribute_name, std::string const& sor
 
   auto& current_time_series = fem_collection.data[attribute_name];
 
-  for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
-    auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
-    current_time_series.global_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
-    current_time_series.global_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest(); 
-  }
 
   int total_num_lines = 0;
 
@@ -3698,9 +3706,9 @@ void parse_file_to_fem(std::string const& attribute_name, std::string const& sor
           
           in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_XX][line_write_count];
           
-          //if(2 == FEM_attrib_idx) {
-            std::cout << current_attributes.data[FEM_attrib::SIG_XX][line_write_count] << std::endl;
-          //}
+
+          //std::cout << current_attributes.data[FEM_attrib::SIG_XX][line_write_count] << std::endl;
+
 
           in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_XY][line_write_count];
           in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_XZ][line_write_count];
@@ -3733,38 +3741,62 @@ void parse_file_to_fem(std::string const& attribute_name, std::string const& sor
       //update global minimum (for time series)
       current_time_series.global_min_val[current_FEM_attrib] = std::min(current_time_series.global_min_val[current_FEM_attrib], *min_element_it);
       
+
       //get max element iterator in vector
       auto max_element_it = std::max_element(current_attribute_vector.begin(), current_attribute_vector.end());
       //update local maximum (for time step)
-      current_attributes.local_max_val[current_FEM_attrib] = std::max(current_attributes.local_min_val[current_FEM_attrib], *max_element_it);
+      current_attributes.local_max_val[current_FEM_attrib] = std::max(current_attributes.local_max_val[current_FEM_attrib], *max_element_it);
       //update global maximum (for time series)
+
       current_time_series.global_max_val[current_FEM_attrib] = std::max(current_time_series.global_max_val[current_FEM_attrib], *max_element_it);
-      if(2 == FEM_attrib_idx) {
-        std::cout << *max_element_it << std::endl;
+
+      std::cout << "Attrib " << int(current_FEM_attrib) << std::endl;
+      //if(2 == FEM_attrib_idx) {
+      //  std::cout << *max_element_it << std::endl;
+     // }
+
+      if(FEM_attrib(FEM_attrib_idx) == FEM_attrib::SIG_XX) {
+        std::cout << "Lokales Minimum Normalspannung: " << current_attributes.local_min_val[current_FEM_attrib] << std::endl;
+        std::cout << "Lokales Maximum Normalspannung: " << current_attributes.local_max_val[current_FEM_attrib] << std::endl;
+
+        std::cout << "Globales Minimum Normalspannung: " << current_time_series.global_min_val[current_FEM_attrib] << std::endl;
+        std::cout << "Globales Maximum Normalspannung: " << current_time_series.global_max_val[current_FEM_attrib] << std::endl;
       }
     }
   }
 
 }
 
-void parse_directory_to_fem(std::string const& attribute_name, 
+void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
                             std::vector<std::string> const& sorted_fem_time_series_files) {
 
-  if(fem_collection.data.end() == fem_collection.data.find(attribute_name)) {
-    std::cout << "Parsing time series data for attribute " << attribute_name << std::endl;
 
-    fem_collection.data.insert(std::make_pair(attribute_name, fem_attributes_per_time_series{}) );
+
+  if(fem_collection.data.end() == fem_collection.data.find(simulation_name)) {
+    std::cout << "Parsing time series data for simulation \"" << simulation_name << "\""<< std::endl;
+
+    fem_collection.data.insert(std::make_pair(simulation_name, fem_attributes_per_time_series{}) );
+
+
+    auto& current_time_series = fem_collection.data[simulation_name];
+
+    for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
+      auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
+      current_time_series.global_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
+      current_time_series.global_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest(); 
+    } //initiliaze global min and max vals
+
 
     for(auto const& file_path : sorted_fem_time_series_files) {
-      parse_file_to_fem(attribute_name, file_path);
+      parse_file_to_fem(simulation_name, file_path);
     }
 
 
-    std::cout << "Global Minimum Normalspannung: " << fem_collection.data[attribute_name].global_min_val[FEM_attrib::SIG_XX] << std::endl;
-    std::cout << "Global Maximum Normalspannung: " << fem_collection.data[attribute_name].global_max_val[FEM_attrib::SIG_XX] << std::endl;
+    std::cout << "Global Minimum Normalspannung: " << fem_collection.data[simulation_name].global_min_val[FEM_attrib::SIG_XX] << std::endl;
+    std::cout << "Global Maximum Normalspannung: " << fem_collection.data[simulation_name].global_max_val[FEM_attrib::SIG_XX] << std::endl;
 
   } else {
-    std::cout << "Regarding attribute: " << attribute_name << std::endl;
+    std::cout << "Regarding attribute: " << simulation_name << std::endl;
     throw time_series_already_parsed_exception();
   }
 
@@ -3826,9 +3858,9 @@ void parse_fem_collection(std::string const& fem_mapping_file_path) {
 
         parse_directory_to_fem(FEM_attribute_name, sorted_fem_time_series_files);
 
-        for(auto const& time_series_path : sorted_fem_time_series_files) {
-          std::cout << "X: " << time_series_path << std::endl;
-        }
+        //for(auto const& time_series_path : sorted_fem_time_series_files) {
+        //  std::cout << "X: " << time_series_path << std::endl;
+        //}
 
         //std::cout << dir_iterator->path().filename().string() << std::endl;
 
@@ -3886,6 +3918,8 @@ int main(int argc, char *argv[])
 
     std::cout << "Parsed everything" << std::endl;
 
+
+    std::cout << "Max num timesteps in any series: " << fem_collection.get_max_num_timesteps_in_collection() << std::endl;
     return 0;
   }
 
