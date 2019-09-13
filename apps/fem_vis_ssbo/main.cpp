@@ -153,6 +153,175 @@ scm::gl::sampler_state_ptr vt_filter_nearest_;
 
 scm::gl::texture_2d_ptr bg_texture_;
 
+
+
+
+
+
+class FEM_path_not_a_directory_exception: public exception
+{
+  virtual const char* what() const throw()
+  {
+    return "One of the provided FEM paths in the mapping file was not a directory!";
+  }
+};
+
+class time_series_already_parsed_exception: public exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Time series for attribute was already parsed!";
+  }
+};
+
+
+// allows back- and forth-casting between enum classes and int
+enum class FEM_attrib {
+  U_XYZ  , // verschiebung der Punkte, z positiv nach unten gerichtet   ; 3 attribute
+  SIG_XX , // Normalspannung; Kraft bezogen auf eine Fläche in lokale x-Richtung (Richtung eines Stabes); 1 attribut
+  TAU_XY , //Schubspannung entlang Flaechen xy 
+  TAU_XZ , //Schubspannung entlang Flaechen xz
+  TAU_ABS, //Betrag addierter Schubspannungsvektoren xy und xz
+  SIG_V  , //Vergleichsspannung
+  EPS_X,    // Dehnung
+
+  NUM_FEM_ATTRIBS // total number of vectors (needs to stay for convenient iteration over attributes)
+};
+
+// contains all simulated attributes per simulation step
+struct fem_attributes_per_simulation_step {
+  std::map<FEM_attrib, std::vector<float> > data;
+  
+  // for now we do not store the min and max value of the U-vector
+  std::map<FEM_attrib, float> local_min_val;  //min values for each attribute of the current timestep
+  std::map<FEM_attrib, float> local_max_val;  //max values for each attribute of the current timestep
+
+  void serialize(uint64_t byte_offset_timestep, std::vector<float>& target) const {
+    uint64_t bytes_serialized_so_far_current_timestep = 0;
+
+    for(int attribute_index = 0; attribute_index < int(FEM_attrib::NUM_FEM_ATTRIBS); ++attribute_index) {
+      auto const current_FEM_attribute = FEM_attrib(attribute_index);
+      auto const current_attribute_vec_it = data.find(current_FEM_attribute);
+
+      if(data.end() == current_attribute_vec_it) {
+        std::cout << "Attribute was not in map! Exiting" << std::endl;
+        exit(-1);
+      }
+
+      auto const& current_attribute_source_vector = *current_attribute_vec_it;
+      size_t num_bytes_to_copy_from_source_vector = current_attribute_source_vector.second.size() * sizeof(float);
+
+
+      memcpy( (char*) target.data() + byte_offset_timestep + bytes_serialized_so_far_current_timestep, 
+              (char*) current_attribute_source_vector.second.data(), 
+              num_bytes_to_copy_from_source_vector
+            );
+
+      bytes_serialized_so_far_current_timestep += num_bytes_to_copy_from_source_vector;
+
+    }
+  }
+};
+
+// contains all fem attributes for a temporal simulation
+struct fem_attributes_per_time_series {
+  std::vector<fem_attributes_per_simulation_step> series;
+
+  std::map<FEM_attrib, float> global_min_val; //global min value for each attribute of the entire attribute
+  std::map<FEM_attrib, float> global_max_val; //global max value for each attribute of the entire attribute
+
+  std::vector<float> serialized_time_series;
+
+
+  char* serialize_time_series() {
+    if(serialized_time_series.empty()) { //only serialize if it was not yet serialized
+      uint64_t total_num_floats_in_series = 0;
+
+      uint64_t num_byte_per_timestep = 0;
+      bool is_first_timestep = true;
+      for(auto const& time_step : series) {
+        for(auto const& attribute_vector : time_step.data) {
+          total_num_floats_in_series += attribute_vector.second.size();
+
+          if(is_first_timestep) {
+            num_byte_per_timestep += attribute_vector.second.size() * sizeof(float);
+          }
+        }
+        
+        is_first_timestep = false;
+      }
+
+
+      serialized_time_series.resize(total_num_floats_in_series);
+
+      uint64_t time_step_idx = 0;
+      for(auto const& time_step : series) {
+        time_step.serialize( time_step_idx * num_byte_per_timestep, serialized_time_series);
+
+        ++time_step_idx;
+      }
+    }
+
+    return (char*) serialized_time_series.data();
+  }
+
+};
+
+// contains all time series (also individual attributes) of an entire collection defined in an fem_value_mapping_file
+struct fem_attribute_collection {
+  // key:   name of the parent folder of the attributes as std::string
+  // value: time series data as as fem_attributes_per_time_series
+  std::map<std::string, fem_attributes_per_time_series> data;
+
+
+
+  uint64_t get_max_num_timesteps_in_collection() {
+    uint64_t max_num_timesteps = 0;
+    for(auto const& simulation : data) {
+      max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
+    }
+    return max_num_timesteps; 
+  }
+
+  //i.e. How much size do we need to allocate in the SSBO to store - any - complete simulation series
+  uint64_t get_max_num_elements_per_simulation() {
+    uint64_t max_num_elements_per_simulation = 0;
+    for(auto const& simulation : data) {
+      size_t num_elements_for_current_simulation = 0;
+      for(auto const& simulation_series : simulation.second.series) {
+        for(auto const& simulation_attribute : simulation_series.data) {
+          //for(auto const& simulation_attribute : simulation_frame) {
+            num_elements_for_current_simulation += simulation_attribute.second.size();
+          //}
+
+        }
+      }
+      max_num_elements_per_simulation = std::max(num_elements_for_current_simulation, max_num_elements_per_simulation);
+      //max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
+    }
+    return max_num_elements_per_simulation; 
+  }
+
+  char* get_data_ptr_to_attribute() {
+
+    return data["Temperatur"].serialize_time_series();
+  }
+
+};
+
+
+
+
+
+
+struct fem_attribute_collection;
+
+fem_attribute_collection fem_collection;
+
+scm::gl::buffer_ptr bvh_ssbo_time_series ;
+
+uint64_t max_size_of_ssbo = 0;
+
 //typedef eigenform
 //CPU representation vector for eigenform values  
 //std::vector<std::vector<float>> bvh_ssbo_cpu_data_;
@@ -1490,6 +1659,22 @@ void glut_display() {
 
   lamure::context_t context_id = controller->deduce_context_id(0);
   
+
+  if( (nullptr == bvh_ssbo_time_series) ) {
+    std::cout << "need to allocate ssbo!" << std::endl;
+
+    bvh_ssbo_time_series = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER,
+                                                  scm::gl::USAGE_DYNAMIC_DRAW,
+                                                  max_size_of_ssbo,
+                                                  0);
+
+    float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(bvh_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+    memcpy((char*) mapped_fem_ssbo, fem_collection.get_data_ptr_to_attribute(), fem_collection.get_max_num_elements_per_simulation() ); // CHANGE MAX NUM ELEMENTS
+
+    device_->main_context()->unmap_buffer(bvh_ssbo_time_series);
+  }
+
+
   for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id) {
 
     if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
@@ -3570,76 +3755,10 @@ std::vector<fem_result_meta_data> fem_md;
   return true;
 }
 
-class FEM_path_not_a_directory_exception: public exception
-{
-  virtual const char* what() const throw()
-  {
-    return "One of the provided FEM paths in the mapping file was not a directory!";
-  }
-};
-
-class time_series_already_parsed_exception: public exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Time series for attribute was already parsed!";
-  }
-};
-
-
-// allows back- and forth-casting between enum classes and int
-enum class FEM_attrib {
-  U_XYZ  , // verschiebung der Punkte, z positiv nach unten gerichtet   ; 3 attribute
-  SIG_XX , // Normalspannung; Kraft bezogen auf eine Fläche in lokale x-Richtung (Richtung eines Stabes); 1 attribut
-  TAU_XY , //Schubspannung entlang Flaechen xy 
-  TAU_XZ , //Schubspannung entlang Flaechen xz
-  TAU_ABS, //Betrag addierter Schubspannungsvektoren xy und xz
-  SIG_V  , //Vergleichsspannung
-  EPS_X,    // Dehnung
-
-  NUM_FEM_ATTRIBS // total number of vectors (needs to stay for convenient iteration over attributes)
-};
-
-// contains all simulated attributes per simulation step
-struct fem_attributes_per_simulation_step {
-  std::map<FEM_attrib, std::vector<float> > data;
-  
-  // for now we do not store the min and max value of the U-vector
-  std::map<FEM_attrib, float> local_min_val;  //min values for each attribute of the current timestep
-  std::map<FEM_attrib, float> local_max_val;  //max values for each attribute of the current timestep
-};
-
-// contains all fem attributes for a temporal simulation
-struct fem_attributes_per_time_series {
-  std::vector<fem_attributes_per_simulation_step> series;
-
-  std::map<FEM_attrib, float> global_min_val; //global min value for each attribute of the entire attribute
-  std::map<FEM_attrib, float> global_max_val; //global max value for each attribute of the entire attribute
-};
-
-// contains all time series (also individual attributes) of an entire collection defined in an fem_value_mapping_file
-struct fem_attribute_collection {
-  // key:   name of the parent folder of the attributes as std::string
-  // value: time series data as as fem_attributes_per_time_series
-  std::map<std::string, fem_attributes_per_time_series> data;
 
 
 
-  uint64_t get_max_num_timesteps_in_collection() {
-    uint64_t max_num_timesteps = 0;
-    for(auto const& simulation : data) {
-      max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
-    }
 
-    return max_num_timesteps; 
-  }
-};
-
-
-fem_attribute_collection fem_collection;
-
-scm::gl::buffer_ptr bvh_ssbo_time_step_x_;
-scm::gl::buffer_ptr bvh_ssbo_time_step_x_plus_one_;
 
 void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files) {
 
@@ -3799,8 +3918,8 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
     std::cout << "Regarding attribute: " << simulation_name << std::endl;
     throw time_series_already_parsed_exception();
   }
-
 }
+
 
 void parse_fem_collection(std::string const& fem_mapping_file_path) {
   std::cout << "Starting to parse files defined in " << fem_mapping_file_path << std::endl;
@@ -3920,7 +4039,16 @@ int main(int argc, char *argv[])
 
 
     std::cout << "Max num timesteps in any series: " << fem_collection.get_max_num_timesteps_in_collection() << std::endl;
-    return 0;
+    std::cout << "Max num elements in any series of timesteps: " << fem_collection.get_max_num_elements_per_simulation() << std::endl;
+
+
+    max_size_of_ssbo = fem_collection.get_max_num_elements_per_simulation() * sizeof(float);
+
+    
+
+    std::cout << "Allocating ssbo of size " << max_size_of_ssbo << std::endl;
+
+    //return 0;
   }
 
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
