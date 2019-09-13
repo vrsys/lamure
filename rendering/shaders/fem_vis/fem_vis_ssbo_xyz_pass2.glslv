@@ -5,7 +5,7 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
-#version 420 core
+#version 450 core
 
 uniform mat4 mvp_matrix;
 uniform mat4 model_matrix;
@@ -30,6 +30,10 @@ uniform float fem_max_absolute_deform;
 uniform vec3 fem_min_deformation;
 uniform vec3 fem_max_deformation;
 
+layout(std430, binding = 10)  coherent readonly buffer fem_data_array_struct {
+     float fem_array[];
+};
+
 
 layout(location = 0) in vec3 in_position;
 layout(location = 1) in float in_r;
@@ -45,6 +49,8 @@ layout(location = 9) in int fem_vert_id_2;
 layout(location = 10) in float fem_vert_w_0;
 layout(location = 11) in float fem_vert_w_1;
 layout(location = 12) in float fem_vert_w_2;
+
+
 
 out VertexData {
   //output to geometry shader
@@ -169,7 +175,21 @@ void main() {
   if(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) {
     VertexOut.pass_point_color = vec3(1.0, 0.0, 0.0);   
   } else {
-    VertexOut.pass_point_color = vec3(fem_vert_w_0, fem_vert_w_1,fem_vert_w_2);
+
+
+    init_colormap();
+
+    //if((fem_array[64818 * 3 + fem_vert_id_0] != 0.0) || (fem_array[64818 * 3 +  fem_vert_id_1] != 0.0) || (fem_array[64818 * 3 +  fem_vert_id_2] != 0.0) ) {
+
+        float mixed_attrib = fem_array[64818 * 3 + fem_vert_id_0] * fem_vert_w_0 
+                           + fem_array[64818 * 3 + fem_vert_id_1] * fem_vert_w_1 
+                           + fem_array[64818 * 3 + fem_vert_id_2] * fem_vert_w_2; 
+
+        float norm_attrib = (mixed_attrib - (-1070.73)) /  (1070.04- (-1070.73) );
+        
+
+        VertexOut.pass_point_color = get_colormap_value(norm_attrib);
+    //} 
   }
 
   gl_Position = vec4(new_in_position, 1.0);

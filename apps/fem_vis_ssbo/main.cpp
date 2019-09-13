@@ -318,7 +318,7 @@ struct fem_attribute_collection;
 
 fem_attribute_collection fem_collection;
 
-scm::gl::buffer_ptr bvh_ssbo_time_series ;
+scm::gl::buffer_ptr fem_ssbo_time_series ;
 
 uint64_t max_size_of_ssbo = 0;
 
@@ -1660,18 +1660,25 @@ void glut_display() {
   lamure::context_t context_id = controller->deduce_context_id(0);
   
 
-  if( (nullptr == bvh_ssbo_time_series) ) {
+  if( (nullptr == fem_ssbo_time_series) ) {
     std::cout << "need to allocate ssbo!" << std::endl;
 
-    bvh_ssbo_time_series = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER,
+    fem_ssbo_time_series = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER,
                                                   scm::gl::USAGE_DYNAMIC_DRAW,
                                                   max_size_of_ssbo,
                                                   0);
 
-    float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(bvh_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
-    memcpy((char*) mapped_fem_ssbo, fem_collection.get_data_ptr_to_attribute(), fem_collection.get_max_num_elements_per_simulation() ); // CHANGE MAX NUM ELEMENTS
+    float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(fem_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+    memcpy((char*) mapped_fem_ssbo, fem_collection.get_data_ptr_to_attribute(), fem_collection.get_max_num_elements_per_simulation() * sizeof(float)); // CHANGE MAX NUM ELEMENTS
 
-    device_->main_context()->unmap_buffer(bvh_ssbo_time_series);
+
+    for(int i = 0; i < 1000; ++i) {
+      std::cout << mapped_fem_ssbo[i] << std::endl;
+    }
+
+    device_->main_context()->unmap_buffer(fem_ssbo_time_series);
+
+
   }
 
 
@@ -1754,6 +1761,10 @@ void glut_display() {
     }
 
     context_->bind_program(selected_pass2_shading_program);
+
+    selected_pass2_shading_program->storage_buffer("fem_data_array_struct", 10);
+    context_->bind_storage_buffer(fem_ssbo_time_series , 10);
+    context_->apply();
 
     set_uniforms(selected_pass2_shading_program);
 
