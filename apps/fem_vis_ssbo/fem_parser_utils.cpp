@@ -9,14 +9,23 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 
+#include <scm/core.h>
+#include <scm/core/math.h>
+
 //entire set of attributes for one simulation (frame, e.g. time step 58 of Eigenform_003)
 void fem_attributes_per_simulation_step::
 serialize(uint64_t byte_offset_timestep, std::vector<float>& target) const {
     uint64_t bytes_serialized_so_far_current_timestep = 0;
 
+    uint32_t already_serialized_attributes = 0;
+
     for(int attribute_index = 0; attribute_index < int(FEM_attrib::NUM_FEM_ATTRIBS); ++attribute_index) {
       auto const current_FEM_attribute = FEM_attrib(attribute_index);
       auto const current_attribute_vec_it = data.find(current_FEM_attribute);
+
+      if(FEM_attrib(attribute_index) == FEM_attrib::MAG_U) {
+        std::cout << "Attribute index of MAG U " << already_serialized_attributes << std::endl;
+      }
 
       if(data.end() == current_attribute_vec_it) {
         std::cout << "Attribute was not in map! Exiting" << std::endl;
@@ -27,12 +36,17 @@ serialize(uint64_t byte_offset_timestep, std::vector<float>& target) const {
       size_t num_bytes_to_copy_from_source_vector = current_attribute_source_vector.second.size() * sizeof(float);
 
 
+      //std::cout << " " ;
+
       memcpy( (char*) target.data() + byte_offset_timestep + bytes_serialized_so_far_current_timestep, 
               (char*) current_attribute_source_vector.second.data(), 
               num_bytes_to_copy_from_source_vector
             );
 
       bytes_serialized_so_far_current_timestep += num_bytes_to_copy_from_source_vector;
+
+
+      ++already_serialized_attributes;
     }
 }
 
@@ -228,7 +242,10 @@ void parse_file_to_fem(std::string const& simulation_name,
     	}
     }
 
-    current_attributes.data[FEM_attrib::U_XYZ].resize(3 * total_num_attribute_lines); //3 attributes combines for cache coherence
+    current_attributes.data[FEM_attrib::U_X].resize(total_num_attribute_lines); //3 attributes combines for cache coherence
+    current_attributes.data[FEM_attrib::U_Y].resize(total_num_attribute_lines); //3 attributes combines for cache coherence
+    current_attributes.data[FEM_attrib::U_Z].resize(total_num_attribute_lines); //3 attributes combines for cache coherence
+    current_attributes.data[FEM_attrib::MAG_U].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::SIG_XX].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::TAU_XY].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::TAU_XZ].resize(total_num_attribute_lines);
@@ -258,12 +275,27 @@ void parse_file_to_fem(std::string const& simulation_name,
 
           float vertex_idx; //parse and throw away
           in_line_stringstream >> vertex_idx;
-          float deformation_base_offset = 3 * line_write_count;
+
           
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 0];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 1];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 2];
+          in_line_stringstream >> current_attributes.data[FEM_attrib::U_X][line_write_count];
+          in_line_stringstream >> current_attributes.data[FEM_attrib::U_Y][line_write_count];
+          in_line_stringstream >> current_attributes.data[FEM_attrib::U_Z][line_write_count];
           
+          scm::math::vec3 deformation_vector = scm::math::vec3{current_attributes.data[FEM_attrib::U_X][line_write_count],
+                                                               current_attributes.data[FEM_attrib::U_Y][line_write_count],
+                                                               current_attributes.data[FEM_attrib::U_Z][line_write_count]};
+
+
+          float length_of_vector = scm::math::length(deformation_vector);    
+
+          //if(std::isinf(length_of_vector) || std::isnan(length_of_vector)) { 
+          //  std::cout << "INVALID VALUE" << std::endl;
+          //}
+
+          current_attributes.data[FEM_attrib::MAG_U][line_write_count] =   length_of_vector;                                       
+
+          //std::cout << length_of_vector << std::endl;
+
           in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_XX][line_write_count];
           
 
@@ -317,12 +349,12 @@ void parse_file_to_fem(std::string const& simulation_name,
       //  std::cout << *max_element_it << std::endl;
      // }
 
-      if(FEM_attrib(FEM_attrib_idx) == FEM_attrib::SIG_XX) {
-        std::cout << "Lokales Minimum Normalspannung: " << current_attributes.local_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Lokales Maximum Normalspannung: " << current_attributes.local_max_val[current_FEM_attrib] << std::endl;
+      if(FEM_attrib(FEM_attrib_idx) == FEM_attrib::MAG_U) {
+        std::cout << "Lokales Minimum Magnitude der Verformung: " << current_attributes.local_min_val[current_FEM_attrib] << std::endl;
+        std::cout << "Lokales Maximum Magnitude der Verformung: " << current_attributes.local_max_val[current_FEM_attrib] << std::endl;
 
-        std::cout << "Globales Minimum Normalspannung: " << current_time_series.global_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Globales Maximum Normalspannung: " << current_time_series.global_max_val[current_FEM_attrib] << std::endl;
+        std::cout << "Globales Minimum Magnitude der Verformung: " << current_time_series.global_min_val[current_FEM_attrib] << std::endl;
+        std::cout << "Globales Maximum Magnitude der Verformung: " << current_time_series.global_max_val[current_FEM_attrib] << std::endl;
       }
     }
   }
@@ -444,6 +476,6 @@ std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_fil
   }
 
   in_fem_mapping_file.close();
-  
+
   return successfully_parsed_simulation_names;
 }

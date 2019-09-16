@@ -62,15 +62,18 @@ class attribute_not_present_in_series: public std::exception
 // all 9 attributes that comply with the current data
 // allows back- and forth-casting between enum classes and int
 enum class FEM_attrib {
-  U_XYZ  , // verschiebung der Punkte, z positiv nach unten gerichtet   ; 3 attribute
-  SIG_XX , // Normalspannung; Kraft bezogen auf eine Fläche in lokale x-Richtung (Richtung eines Stabes); 1 attribut
-  TAU_XY , //Schubspannung entlang Flaechen xy 
-  TAU_XZ , //Schubspannung entlang Flaechen xz
-  TAU_ABS, //Betrag addierter Schubspannungsvektoren xy und xz
-  SIG_V  , //Vergleichsspannung
-  EPS_X,    // Dehnung
+  U_X     = 0,  // deformation entlang X-Achse
+  U_Y     = 1,  // deformation entlang Y-Achse
+  U_Z     = 2,  // deformation entlang Z-Achse
+  MAG_U   = 3,  // magnitude of U, is computed from U_XYZ (not parsed)
+  SIG_XX  = 4, // Normalspannung; Kraft bezogen auf eine Fläche in lokale x-Richtung (Richtung eines Stabes); 1 attribut
+  TAU_XY  = 5, //Schubspannung entlang Flaechen xy 
+  TAU_XZ  = 6, //Schubspannung entlang Flaechen xz
+  TAU_ABS = 7,  //Betrag addierter Schubspannungsvektoren xy und xz
+  SIG_V   = 8, //Vergleichsspannung
+  EPS_X   = 9,    // Dehnung
 
-  NUM_FEM_ATTRIBS // total number of vectors (needs to stay for convenient iteration over attributes)
+  NUM_FEM_ATTRIBS = 10, // total number of vectors (needs to stay for convenient iteration over attributes)
 };
 
 // contains all simulated attributes per simulation step
@@ -117,7 +120,7 @@ struct fem_attribute_collection {
   uint64_t get_num_vertices_per_simulation(std::string const& simulation_name) const;
   uint64_t get_num_timesteps_per_simulation(std::string const& simulation_name) const;
 
-  uint64_t get_num_attributes_per_simulation(std::string const& simulation_name) const { return 9;}
+  uint64_t get_num_attributes_per_simulation(std::string const& simulation_name) const { return 10;}
 
   char* get_data_ptr_to_simulation_data(std::string const& simulation_name);
 

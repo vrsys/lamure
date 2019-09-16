@@ -33,11 +33,12 @@ uniform vec3 fem_max_deformation;
 
 uniform float time_cursor_pos = 0.0; //float between 0 and num_timesteps for a simulation
 uniform int num_vertices_in_fem = 0;
-uniform int num_attributes_in_fem = 9; //e.g. 3x pos + 1x Sig_XX  would be 4, required to compute the stride to next timestep
+uniform int num_attributes_in_fem = 10; //e.g. 3x pos + 1x Sig_XX  would be 4, required to compute the stride to next timestep
 
 uniform float current_min_color_attrib = 0.0;
 uniform float current_max_color_attrib = 0.0;
 
+uniform int current_attribute_id = 0;
 
 uniform int max_timestep_id = 0; // for static simulation, this is 0, for dynamic simulations this should be NUM_TIMESTEPS-1
 
@@ -206,16 +207,19 @@ void main() {
 
 
 
+      // attributes other than the deformation along axis need to have an index offset of 2, because the x,y and z deforms are the only ones that are interleaved
+      
+
       //color_attribute_index
       uint attribute_base_offset_t_x = num_vertices_in_fem; //TBC
 
-      float spatially_mixed_attrib_t_x = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * 3 + fem_vert_id_0] * fem_vert_w_0 
-                                       + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * 3 + fem_vert_id_1] * fem_vert_w_1 
-                                       + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * 3 + fem_vert_id_2] * fem_vert_w_2; 
+      float spatially_mixed_attrib_t_x = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (current_attribute_id) + fem_vert_id_0] * fem_vert_w_0 
+                                       + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (current_attribute_id) + fem_vert_id_1] * fem_vert_w_1 
+                                       + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (current_attribute_id) + fem_vert_id_2] * fem_vert_w_2; 
 
-      float spatially_mixed_attrib_t_x_plus_1 = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * 3 + fem_vert_id_0] * fem_vert_w_0 
-                                              + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * 3 + fem_vert_id_1] * fem_vert_w_1 
-                                              + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * 3 + fem_vert_id_2] * fem_vert_w_2; 
+      float spatially_mixed_attrib_t_x_plus_1 = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (current_attribute_id) + fem_vert_id_0] * fem_vert_w_0 
+                                              + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (current_attribute_id) + fem_vert_id_1] * fem_vert_w_1 
+                                              + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (current_attribute_id) + fem_vert_id_2] * fem_vert_w_2; 
 
       float temporal_weight = time_cursor_pos - timestep_x;
 
@@ -223,9 +227,6 @@ void main() {
 
       //float normalized_attrib = (spatially_mixed_attrib_t_x - current_min_color_attrib) /  ( current_max_color_attrib - current_min_color_attrib );
       
-
-
-//mix(VertexOut.pass_point_color, data_value_to_rainbow(length(deformation), fem_min_absolute_deform, fem_max_absolute_deform), 0.3);
 
       VertexOut.pass_point_color = mix(VertexOut.pass_point_color, data_value_to_rainbow(spatio_temporally_mixed_attribute, current_min_color_attrib, current_max_color_attrib), 0.3);
       //VertexOut.pass_point_color = get_colormap_value(normalized_attrib);

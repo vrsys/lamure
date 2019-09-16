@@ -684,13 +684,18 @@ void set_uniforms(scm::gl::program_ptr shader) {
     std::cout << "NUM TIMESTEPS IN SIMULATION " <<
               g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) << std::endl;
     */
-    auto const extrema_current_color_attribute 
-      = g_fem_collection.get_global_extrema_for_attribute_in_series(FEM_attrib::SIG_XX, currently_selected_FEM_simulation);
 
+
+    //std::cout << "SELECTED SIMULATION: "  << currently_selected_FEM_simulation << std::endl;
+    auto const extrema_current_color_attribute 
+      = g_fem_collection.get_global_extrema_for_attribute_in_series(FEM_attrib::MAG_U, currently_selected_FEM_simulation);
+
+
+    //std::cout << " NUM VERTICES IN CURRENT SIMULATION: " << num_vertices_in_current_simulation << "\n";
     shader->uniform("num_vertices_in_fem", num_vertices_in_current_simulation);
 
-    std::cout << "Currently used min and max values for color attrib: [" 
-              << extrema_current_color_attribute.first << "], [" << extrema_current_color_attribute.second << "]" << std::endl; 
+    //std::cout << "Currently used min and max values for color attrib: [" 
+    //          << extrema_current_color_attribute.first << "], [" << extrema_current_color_attribute.second << "]" << std::endl; 
 
     shader->uniform("current_min_color_attrib", extrema_current_color_attribute.first);
     shader->uniform("current_max_color_attrib", extrema_current_color_attribute.second);
@@ -698,7 +703,17 @@ void set_uniforms(scm::gl::program_ptr shader) {
     int32_t max_timestep_id = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) - 1;
     shader->uniform("max_timestep_id", max_timestep_id);
 
-    float current_time_cursor_pos = (frame_count) * 3.0f;
+    int32_t const num_fem_attributes = int(FEM_attrib::NUM_FEM_ATTRIBS);
+
+    shader->uniform("num_attributes_in_fem", num_fem_attributes);
+
+
+    int current_attribute_id = int(FEM_attrib::MAG_U);
+
+    shader->uniform("current_attribute_id", current_attribute_id);
+
+
+    float current_time_cursor_pos = (frame_count) / 3.5f;
 
     if(max_timestep_id != 0) {
       while(current_time_cursor_pos > max_timestep_id) {
@@ -708,10 +723,10 @@ void set_uniforms(scm::gl::program_ptr shader) {
       current_time_cursor_pos = 0.0f;
     }
 
-    std::cout << "After while loop " << std::endl;
+
     shader->uniform("time_cursor_pos", current_time_cursor_pos);
 
-    std::cout << "Time cursor pos " << current_time_cursor_pos << std::endl;
+
 
     if(settings_.fem_result_ > 0){
       //std::cout << fem_md[settings_.fem_result_ - 1] << std::endl;
@@ -1250,7 +1265,7 @@ void glut_display() {
 
   //schism bug ? time::to_seconds yields milliseconds
 
-  std::cout << "Frame time: " << scm::time::to_seconds(frame_time_.accumulated_duration()); 
+  //std::cout << "Frame time: " << scm::time::to_seconds(frame_time_.accumulated_duration()); 
   if (scm::time::to_seconds(frame_time_.accumulated_duration()) > 100.0) {
     fps_ = 1000.0f / scm::time::to_seconds(frame_time_.average_duration());
 
