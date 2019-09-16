@@ -27,7 +27,23 @@ class time_series_already_parsed_exception: public std::exception
   }
 };
 
+class simulation_not_parsed_exception: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "The simulation you wanted to get data from was not loaded! Is the name correct and the attribute registered in the mapping-file?";
+  }
+};
 
+class no_FEM_simulation_parsed_exception: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "No FEM simulation was parsed successfully, such that there is no valid name to provide get_data_ptr_to_simulation_data(...) with.";
+  }
+};
+
+// all 9 attributes that comply with the current data
 // allows back- and forth-casting between enum classes and int
 enum class FEM_attrib {
   U_XYZ  , // verschiebung der Punkte, z positiv nach unten gerichtet   ; 3 attribute
@@ -74,39 +90,22 @@ struct fem_attribute_collection {
 
 
 
-  uint64_t get_max_num_timesteps_in_collection() {
-    uint64_t max_num_timesteps = 0;
-    for(auto const& simulation : data) {
-      max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
-    }
-    return max_num_timesteps; 
-  }
+  uint64_t get_max_num_timesteps_in_collection() const;
 
   //i.e. How much size do we need to allocate in the SSBO to store - any - complete simulation series
-  uint64_t get_max_num_elements_per_simulation() {
-    uint64_t max_num_elements_per_simulation = 0;
-    for(auto const& simulation : data) {
-      size_t num_elements_for_current_simulation = 0;
-      for(auto const& simulation_series : simulation.second.series) {
-        for(auto const& simulation_attribute : simulation_series.data) {
-          //for(auto const& simulation_attribute : simulation_frame) {
-            num_elements_for_current_simulation += simulation_attribute.second.size();
-          //}
+  uint64_t get_max_num_elements_per_simulation() const;
 
-        }
-      }
-      max_num_elements_per_simulation = std::max(num_elements_for_current_simulation, max_num_elements_per_simulation);
-      //max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
-    }
-    return max_num_elements_per_simulation; 
-  }
-
-  char* get_data_ptr_to_attribute() {
-
-    return data["Temperatur"].serialize_time_series();
-  }
+  char* get_data_ptr_to_simulation_data(std::string const& simulation_name);
 
 };
 
+
+void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files, fem_attribute_collection& fem_collection);
+
+void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
+                            std::vector<std::string> const& sorted_fem_time_series_files,
+                            fem_attribute_collection& fem_collection);
+
+std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_file_path, fem_attribute_collection& fem_collection);
 
 #endif //FEM_VIS_SSBO_PARSER_UTILS_H_

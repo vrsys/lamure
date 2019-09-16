@@ -161,20 +161,22 @@ scm::gl::texture_2d_ptr bg_texture_;
 
 
 
+fem_attribute_collection g_fem_collection;
+
+//after parsing, should contain the first simulation name of the folder the sim is contained in (e.g. Temperatur)
+std::string currently_selected_FEM_simulation = "";
+
+/* is filled with the return value of "parse_fem_collection(...)"
+/ only values contained in the vector should be used for querying data from 
+/ "get_data_ptr_to_simulation_data(std::string const& sim_name)"to upload into SSBO */
+std::vector<std::string> successfully_parsed_simulation_names;
 
 
-
-
-
-
-
-
-
-struct fem_attribute_collection;
-
-fem_attribute_collection fem_collection;
-
+//ssbo containing the entire time series for the attribute of interest (e.g. Temperatur, Eigenform_001, etc.)
 scm::gl::buffer_ptr fem_ssbo_time_series ;
+
+
+
 
 uint64_t max_size_of_ssbo = 0;
 
@@ -663,6 +665,10 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("fem_vis_mode", settings_.fem_vis_mode_);
     shader->uniform("fem_deform_factor", settings_.fem_deform_factor_);
 
+    int32_t num_vertices_in_fem_model = g_fem_collection.get_max_num_elements_per_simulation();
+
+    std::cout << "NUM VERTICES IN MODEL: " <<  num_vertices_in_fem_model << "\n";
+
     shader->uniform("num_vertices_in_fem", 64818);
 
     if(settings_.fem_result_ > 0){
@@ -978,6 +984,9 @@ void glut_display() {
   lamure::context_t context_id = controller->deduce_context_id(0);
   
 
+
+  //std::cout << "Current FEM-Attribute: " << currently_selected_FEM_simulation << std::endl;
+
   if( (nullptr == fem_ssbo_time_series) ) {
     std::cout << "need to allocate ssbo!" << std::endl;
 
@@ -987,7 +996,7 @@ void glut_display() {
                                                   0);
 
     float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(fem_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
-    memcpy((char*) mapped_fem_ssbo, fem_collection.get_data_ptr_to_attribute(), fem_collection.get_max_num_elements_per_simulation() * sizeof(float)); // CHANGE MAX NUM ELEMENTS
+    memcpy((char*) mapped_fem_ssbo, g_fem_collection.get_data_ptr_to_simulation_data(currently_selected_FEM_simulation), g_fem_collection.get_max_num_elements_per_simulation() * sizeof(float)); // CHANGE MAX NUM ELEMENTS
 
 
     for(int i = 0; i < 1000; ++i) {
@@ -2299,244 +2308,6 @@ std::vector<fem_result_meta_data> fem_md;
 
 
 
-
-
-
-void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files) {
-
-
-
-  auto& current_time_series = fem_collection.data[attribute_name];
-
-
-  int total_num_lines = 0;
-
-  {
-    std::ifstream in_file_stream(sorted_fem_time_series_files);
-    std::string line_buffer;
-
-    while(std::getline(in_file_stream,line_buffer)) {
-      ++total_num_lines;
-    }
-
-    //std::cout << "Total num lines in file: " << total_num_lines << std::endl;
-  
-    int64_t total_num_attribute_lines = total_num_lines - 1;
-
-    current_time_series.series.push_back(fem_attributes_per_simulation_step{}); 
-
-    auto& current_attributes = current_time_series.series.back();
-
-
-
-    current_attributes.data[FEM_attrib::U_XYZ].resize(3 * total_num_attribute_lines); //3 attributes combines for cache coherence
-    current_attributes.data[FEM_attrib::SIG_XX].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::TAU_XY].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::TAU_XZ].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::TAU_ABS].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::SIG_V].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::EPS_X].resize(total_num_attribute_lines);
-
-
-    // rewind file
-    in_file_stream.clear();
-    in_file_stream.seekg(0, std::ios::beg);
-
-    int current_line_count = 0;
-
-
-    //in_line_stringstream.clear();
-
-
-    while(std::getline(in_file_stream, line_buffer)) {
-      //ignore first line
-
-        if(0 != current_line_count) {
-          std::stringstream in_line_stringstream(line_buffer);
-          //in_line_stringstream.str(line_buffer);
-
-          int64_t const line_write_count = current_line_count - 1;
-
-          float vertex_idx; //parse and throw away
-          in_line_stringstream >> vertex_idx;
-          float deformation_base_offset = 3 * line_write_count;
-          
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 0];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 1];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 2];
-          
-          in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_XX][line_write_count];
-          
-
-          //std::cout << current_attributes.data[FEM_attrib::SIG_XX][line_write_count] << std::endl;
-
-
-          in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_XY][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_XZ][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_ABS][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_V][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::EPS_X][line_write_count]; 
-        }
-
-        ++current_line_count;
-
-      }
-
-    
-    
-    in_file_stream.close();
-
-    for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
-
-      auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
-      current_attributes.local_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
-      current_attributes.local_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest();
-
-      auto const& current_attribute_vector = current_attributes.data[current_FEM_attrib];
-
-
-      //get min element iterator in vector 
-      auto min_element_it = std::min_element(current_attribute_vector.begin(), current_attribute_vector.end());
-      //update local minimum (for time step)
-      current_attributes.local_min_val[current_FEM_attrib] = std::min(current_attributes.local_min_val[current_FEM_attrib], *min_element_it);
-      //update global minimum (for time series)
-      current_time_series.global_min_val[current_FEM_attrib] = std::min(current_time_series.global_min_val[current_FEM_attrib], *min_element_it);
-      
-
-      //get max element iterator in vector
-      auto max_element_it = std::max_element(current_attribute_vector.begin(), current_attribute_vector.end());
-      //update local maximum (for time step)
-      current_attributes.local_max_val[current_FEM_attrib] = std::max(current_attributes.local_max_val[current_FEM_attrib], *max_element_it);
-      //update global maximum (for time series)
-
-      current_time_series.global_max_val[current_FEM_attrib] = std::max(current_time_series.global_max_val[current_FEM_attrib], *max_element_it);
-
-      std::cout << "Attrib " << int(current_FEM_attrib) << std::endl;
-      //if(2 == FEM_attrib_idx) {
-      //  std::cout << *max_element_it << std::endl;
-     // }
-
-      if(FEM_attrib(FEM_attrib_idx) == FEM_attrib::SIG_XX) {
-        std::cout << "Lokales Minimum Normalspannung: " << current_attributes.local_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Lokales Maximum Normalspannung: " << current_attributes.local_max_val[current_FEM_attrib] << std::endl;
-
-        std::cout << "Globales Minimum Normalspannung: " << current_time_series.global_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Globales Maximum Normalspannung: " << current_time_series.global_max_val[current_FEM_attrib] << std::endl;
-      }
-    }
-  }
-
-}
-
-void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
-                            std::vector<std::string> const& sorted_fem_time_series_files) {
-
-
-
-  if(fem_collection.data.end() == fem_collection.data.find(simulation_name)) {
-    std::cout << "Parsing time series data for simulation \"" << simulation_name << "\""<< std::endl;
-
-    fem_collection.data.insert(std::make_pair(simulation_name, fem_attributes_per_time_series{}) );
-
-
-    auto& current_time_series = fem_collection.data[simulation_name];
-
-    for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
-      auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
-      current_time_series.global_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
-      current_time_series.global_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest(); 
-    } //initiliaze global min and max vals
-
-
-    for(auto const& file_path : sorted_fem_time_series_files) {
-      parse_file_to_fem(simulation_name, file_path);
-    }
-
-
-    std::cout << "Global Minimum Normalspannung: " << fem_collection.data[simulation_name].global_min_val[FEM_attrib::SIG_XX] << std::endl;
-    std::cout << "Global Maximum Normalspannung: " << fem_collection.data[simulation_name].global_max_val[FEM_attrib::SIG_XX] << std::endl;
-
-  } else {
-    std::cout << "Regarding attribute: " << simulation_name << std::endl;
-    throw time_series_already_parsed_exception();
-  }
-}
-
-
-void parse_fem_collection(std::string const& fem_mapping_file_path) {
-  std::cout << "Starting to parse files defined in " << fem_mapping_file_path << std::endl;
-
-  std::ifstream in_fem_mapping_file(fem_mapping_file_path);
-
-  std::string fem_path_line_buffer;
-
-  while(std::getline(in_fem_mapping_file, fem_path_line_buffer)) {
-    std::cout << "Read line: " <<  fem_path_line_buffer  << std::endl;
-
-    if ( !boost::filesystem::exists( fem_path_line_buffer ) )
-    {
-      std::cout << "Can't find my file!" << std::endl;
-    } else {
-      std::cout << "File or path exists - starting to parse it to FEM attribute series!" << std::endl;
-
-      bool is_file = boost::filesystem::is_regular_file(fem_path_line_buffer);
-
-      std::cout << "Is: " <<  ( is_file ?  "File!" : "Directory!") << std::endl; 
-
-      if(is_file) {
-        throw FEM_path_not_a_directory_exception();
-      } else {
-
-        std::string const path_to_time_series = fem_path_line_buffer;
-        boost::filesystem::path p{fem_path_line_buffer};
-
-
-        std::string const FEM_attribute_name(p.filename().c_str());
-
-
-
-        const std::string directory_name_only( FEM_attribute_name );
-
-
-        std::vector<std::string> sorted_fem_time_series_files;
-
-        boost::filesystem::directory_iterator end_itr; // Default ctor yields past-the-end
-        for( boost::filesystem::directory_iterator dir_iterator( fem_path_line_buffer ); dir_iterator != end_itr; ++dir_iterator )
-        {
-            //std::cout << "Trying: " << *dir_iterator << std::endl;
-            std::string const currently_iterated_filename = dir_iterator->path().filename().string();
-
-            std::string const full_file_path = path_to_time_series + "/" + currently_iterated_filename;
-            if(boost::filesystem::is_regular_file(full_file_path)) {  //one last check for whether we are really holding a file in our hands
-                if(currently_iterated_filename.rfind(FEM_attribute_name) == 0) { // < ---- starts with time series prefix
-
-                  sorted_fem_time_series_files.push_back(full_file_path);
-                }
-            }
-        }
-
-        std::sort(sorted_fem_time_series_files.begin(), sorted_fem_time_series_files.end());
-
-        parse_directory_to_fem(FEM_attribute_name, sorted_fem_time_series_files);
-
-        //for(auto const& time_series_path : sorted_fem_time_series_files) {
-        //  std::cout << "X: " << time_series_path << std::endl;
-        //}
-
-        //std::cout << dir_iterator->path().filename().string() << std::endl;
-
-
-
-      }
-    } 
-  }
-
-
-
-  in_fem_mapping_file.close();
-
-}
-
 int main(int argc, char *argv[])
 {
     
@@ -2575,16 +2346,24 @@ int main(int argc, char *argv[])
     std::cout << "Starting to read mapping file!" << std::endl;
     std::cout << settings_.fem_value_mapping_file_ << std::endl;
 
-    parse_fem_collection(settings_.fem_value_mapping_file_);
+
+    successfully_parsed_simulation_names = parse_fem_collection(settings_.fem_value_mapping_file_, g_fem_collection);
+
+
+    if(successfully_parsed_simulation_names.empty()) {
+      throw no_FEM_simulation_parsed_exception();
+    }
+    
+    currently_selected_FEM_simulation = successfully_parsed_simulation_names[0];
 
     std::cout << "Parsed everything" << std::endl;
 
 
-    std::cout << "Max num timesteps in any series: " << fem_collection.get_max_num_timesteps_in_collection() << std::endl;
-    std::cout << "Max num elements in any series of timesteps: " << fem_collection.get_max_num_elements_per_simulation() << std::endl;
+    std::cout << "Max num timesteps in any series: " << g_fem_collection.get_max_num_timesteps_in_collection() << std::endl;
+    std::cout << "Max num elements in any series of timesteps: " << g_fem_collection.get_max_num_elements_per_simulation() << std::endl;
 
 
-    max_size_of_ssbo = fem_collection.get_max_num_elements_per_simulation() * sizeof(float);
+    max_size_of_ssbo = g_fem_collection.get_max_num_elements_per_simulation() * sizeof(float);
 
     
 
