@@ -73,6 +73,9 @@
 #include <sstream>
 
 
+
+void refresh_ssbo_data();
+
 struct fem_result_meta_data{
   std::string name;
   float min_absolute_deform;
@@ -104,6 +107,10 @@ scm::gl::font_face_ptr                  output_font = nullptr;//(new font_face(d
 
 
 
+
+bool enable_playback = true;
+float playback_speed = 1.0f;
+float accumulated_playback_cursor_time = 0.0f;
 
 int32_t frame_count = 0;
 
@@ -165,9 +172,11 @@ scm::gl::texture_2d_ptr bg_texture_;
 
 
 
+bool changed_ssbo_simulation = true;
 fem_attribute_collection g_fem_collection;
 
 //after parsing, should contain the first simulation name of the folder the sim is contained in (e.g. Temperatur)
+std::string previously_selected_FEM_simulation = "";
 std::string currently_selected_FEM_simulation = "";
 
 /* is filled with the return value of "parse_fem_collection(...)"
@@ -722,7 +731,9 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("current_attribute_id", current_attribute_id);
 
 
-    float current_time_cursor_pos = (frame_count) * 3.5f;
+    std::cout << accumulated_playback_cursor_time << std::endl;
+
+    float current_time_cursor_pos = accumulated_playback_cursor_time / 1000.0f;// (frame_count) * 3.5f;
 
     if(max_timestep_id != 0) {
       while(current_time_cursor_pos > max_timestep_id) {
@@ -1037,6 +1048,15 @@ void glut_display() {
   }
   rendering_ = true;
 
+
+  std::chrono::time_point<std::chrono::system_clock> frame_start, frame_end;
+
+  frame_start = std::chrono::system_clock::now();
+
+
+
+  
+
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
 
@@ -1062,23 +1082,16 @@ void glut_display() {
                                                   0);
 
 
-    std::cout << "Preloading ssbo with data from: " << currently_selected_FEM_simulation << "\n";
-
-    int64_t num_byte_to_copy_elements_to_allocate 
-      =   g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) 
-        * g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation) 
-        * sizeof(float) * g_fem_collection.get_num_attributes_per_simulation(currently_selected_FEM_simulation);
-
-    std::cout << "Max num elements: " << num_byte_to_copy_elements_to_allocate << std::endl;
-    
-    float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(fem_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
-    memcpy((char*) mapped_fem_ssbo, g_fem_collection.get_data_ptr_to_simulation_data(currently_selected_FEM_simulation), num_byte_to_copy_elements_to_allocate); // CHANGE MAX NUM ELEMENTS
-
-
-    device_->main_context()->unmap_buffer(fem_ssbo_time_series);
-
 
   }
+
+
+
+
+  if(changed_ssbo_simulation) { 
+    refresh_ssbo_data();
+  }
+
 
 
   for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id) {
@@ -1282,6 +1295,19 @@ void glut_display() {
     frame_time_.reset();
   }
   
+
+  frame_end = std::chrono::system_clock::now();
+
+
+  float elapsed_milliseconds = std::chrono::duration_cast<std::chrono::microseconds>
+                           (frame_end-frame_start).count() / 1000.0;
+
+
+  if(enable_playback) {
+    accumulated_playback_cursor_time += elapsed_milliseconds;
+  }
+
+
 }
 
 
@@ -1380,32 +1406,153 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       settings_.fem_result_ = 0;
       break;
     case '1':
+    {
+
+      if(! (successfully_parsed_simulation_names.size() > 0) ) {
+        break;
+      }
+
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[0];
+
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
       settings_.fem_result_ = 1;
       break;
+    }
     case '2':
-      settings_.fem_result_ = 2;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 1) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[1];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '3':
-      settings_.fem_result_ = 3;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 2) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[2];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '4':
-      settings_.fem_result_ = 4;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 3) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[3];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '5':
-      settings_.fem_result_ = 5;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 4) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[4];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '6':
-      settings_.fem_result_ = 6;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 5) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[5];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '7':
-      settings_.fem_result_ = 7;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 6) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[6];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '8':
-      settings_.fem_result_ = 8;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 7) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[7];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '9':
-      settings_.fem_result_ = 9;
-      break;       
+    {
+      if(! (successfully_parsed_simulation_names.size() > 8) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[8];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
+      break;
+    }
+
     case 'D':
       settings_.fem_vis_mode_ = !settings_.fem_vis_mode_;
       break;
@@ -2521,4 +2668,26 @@ int main(int argc, char *argv[])
   }
 
   return EXIT_SUCCESS;
+}
+
+
+void refresh_ssbo_data() {
+
+
+      std::cout << "Loading ssbo with data from: " << currently_selected_FEM_simulation << "\n";
+
+      int64_t num_byte_to_copy_elements_to_allocate 
+        =   g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) 
+          * g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation) 
+          * sizeof(float) * g_fem_collection.get_num_attributes_per_simulation(currently_selected_FEM_simulation);
+
+      
+      float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(fem_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+      memcpy((char*) mapped_fem_ssbo, g_fem_collection.get_data_ptr_to_simulation_data(currently_selected_FEM_simulation), num_byte_to_copy_elements_to_allocate); // CHANGE MAX NUM ELEMENTS
+
+
+      device_->main_context()->unmap_buffer(fem_ssbo_time_series);
+
+      changed_ssbo_simulation = false;
+
 }
