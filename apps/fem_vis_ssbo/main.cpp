@@ -103,6 +103,10 @@ scm::shared_ptr<scm::gl::text>          renderable_text = nullptr;        //rend
 scm::gl::font_face_ptr                  output_font = nullptr;//(new font_face(device_, std::string(LAMURE_FONTS_DIR) + "/Ubuntu.ttf", 30, 0, font_face::smooth_lcd));
 
 
+
+
+int32_t frame_count = 0;
+
 int32_t num_models_ = 0;
 std::vector<scm::math::mat4d> model_transformations_;
 
@@ -665,11 +669,43 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("fem_vis_mode", settings_.fem_vis_mode_);
     shader->uniform("fem_deform_factor", settings_.fem_deform_factor_);
 
-    int32_t num_vertices_in_fem_model = g_fem_collection.get_max_num_elements_per_simulation();
 
-    std::cout << "NUM VERTICES IN MODEL: " <<  num_vertices_in_fem_model << "\n";
 
-    shader->uniform("num_vertices_in_fem", 64818);
+
+    //std::cout << "NUM VERTICES IN MODEL: " <<  num_vertices_in_fem_model << "\n";
+
+    int32_t num_vertices_in_current_simulation = g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation);
+
+   
+    /*
+    std::cout << "VERTICES IN SIMULATION: " 
+              << g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation) << std::endl;
+
+    std::cout << "NUM TIMESTEPS IN SIMULATION " <<
+              g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) << std::endl;
+    */
+    auto const extrema_current_color_attribute 
+      = g_fem_collection.get_global_extrema_for_attribute_in_series(FEM_attrib::SIG_XX, currently_selected_FEM_simulation);
+
+    shader->uniform("num_vertices_in_fem", num_vertices_in_current_simulation);
+
+    std::cout << "Currently used min and max values for color attrib: [" 
+              << extrema_current_color_attribute.first << "], [" << extrema_current_color_attribute.second << "]" << std::endl; 
+
+    shader->uniform("current_min_color_attrib", extrema_current_color_attribute.first);
+    shader->uniform("current_max_color_attrib", extrema_current_color_attribute.second);
+
+    int32_t max_timestep_id = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) - 2;
+    shader->uniform("max_timestep_id", max_timestep_id);
+
+    float current_time_cursor_pos = (frame_count) * 3.0f;
+
+    while(current_time_cursor_pos > max_timestep_id) {
+     current_time_cursor_pos -= max_timestep_id;
+    }
+    shader->uniform("time_cursor_pos", current_time_cursor_pos);
+
+    std::cout << "Time cursor pos " << current_time_cursor_pos << std::endl;
 
     if(settings_.fem_result_ > 0){
       //std::cout << fem_md[settings_.fem_result_ - 1] << std::endl;
@@ -995,13 +1031,11 @@ void glut_display() {
                                                   max_size_of_ssbo,
                                                   0);
 
+
+    std::cout << "Preloading ssbo with data from: " << currently_selected_FEM_simulation << "\n";
     float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(fem_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
     memcpy((char*) mapped_fem_ssbo, g_fem_collection.get_data_ptr_to_simulation_data(currently_selected_FEM_simulation), g_fem_collection.get_max_num_elements_per_simulation() * sizeof(float)); // CHANGE MAX NUM ELEMENTS
 
-
-    for(int i = 0; i < 1000; ++i) {
-      std::cout << mapped_fem_ssbo[i] << std::endl;
-    }
 
     device_->main_context()->unmap_buffer(fem_ssbo_time_series);
 
@@ -1201,8 +1235,12 @@ void glut_display() {
   frame_time_.start();
 
   //schism bug ? time::to_seconds yields milliseconds
+
+  std::cout << "Frame time: " << scm::time::to_seconds(frame_time_.accumulated_duration()); 
   if (scm::time::to_seconds(frame_time_.accumulated_duration()) > 100.0) {
     fps_ = 1000.0f / scm::time::to_seconds(frame_time_.average_duration());
+
+    ++frame_count;
     frame_time_.reset();
   }
   
@@ -2353,7 +2391,7 @@ int main(int argc, char *argv[])
     if(successfully_parsed_simulation_names.empty()) {
       throw no_FEM_simulation_parsed_exception();
     }
-    
+
     currently_selected_FEM_simulation = successfully_parsed_simulation_names[0];
 
     std::cout << "Parsed everything" << std::endl;

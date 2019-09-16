@@ -43,6 +43,22 @@ class no_FEM_simulation_parsed_exception: public std::exception
   }
 };
 
+class unequal_number_of_FEM_vertices_in_time_series: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "Different time steps in the same time series had different numbers of FEM result lines! This is forbidden.";
+  }
+};
+
+class attribute_not_present_in_series: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "The requested attribute was not defined in the parsed FEM series.";
+  }
+};
+
 // all 9 attributes that comply with the current data
 // allows back- and forth-casting between enum classes and int
 enum class FEM_attrib {
@@ -72,6 +88,9 @@ struct fem_attributes_per_simulation_step {
 struct fem_attributes_per_time_series {
   std::vector<fem_attributes_per_simulation_step> series;
 
+  int32_t num_vertices_in_fem_model = -1; //-1 indicates, that this time series has not been parsed yet
+  int32_t num_timesteps_in_series = 0; // is 1 for static simulations, MAX_NUM_TIMESTEPS for dynamic one
+
   std::map<FEM_attrib, float> global_min_val; //global min value for each attribute of the entire attribute
   std::map<FEM_attrib, float> global_max_val; //global max value for each attribute of the entire attribute
 
@@ -95,7 +114,14 @@ struct fem_attribute_collection {
   //i.e. How much size do we need to allocate in the SSBO to store - any - complete simulation series
   uint64_t get_max_num_elements_per_simulation() const;
 
+  uint64_t get_num_vertices_per_simulation(std::string const& simulation_name) const;
+  uint64_t get_num_timesteps_per_simulation(std::string const& simulation_name) const;
   char* get_data_ptr_to_simulation_data(std::string const& simulation_name);
+
+  // returns local minimum and maximum for desired attribute (->global for this time step only)
+  //std::pair<float, float> get_local_extrema_for_attribute_in_timestep(FEM_attrib const& simulation_attrib, std::string const& simulation_name, int32_t time_step) const;
+  // returns global minimum and maximum for desired attribute (->global for entire time series)
+  std::pair<float, float> get_global_extrema_for_attribute_in_series(FEM_attrib const& simulation_attrib, std::string const& simulation_name) const;
 
 };
 

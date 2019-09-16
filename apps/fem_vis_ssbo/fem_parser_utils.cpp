@@ -10,7 +10,8 @@
 #include <boost/filesystem.hpp>
 
 //entire set of attributes for one simulation (frame, e.g. time step 58 of Eigenform_003)
-void fem_attributes_per_simulation_step::serialize(uint64_t byte_offset_timestep, std::vector<float>& target) const {
+void fem_attributes_per_simulation_step::
+serialize(uint64_t byte_offset_timestep, std::vector<float>& target) const {
     uint64_t bytes_serialized_so_far_current_timestep = 0;
 
     for(int attribute_index = 0; attribute_index < int(FEM_attrib::NUM_FEM_ATTRIBS); ++attribute_index) {
@@ -32,12 +33,13 @@ void fem_attributes_per_simulation_step::serialize(uint64_t byte_offset_timestep
             );
 
       bytes_serialized_so_far_current_timestep += num_bytes_to_copy_from_source_vector;
-
     }
 }
 
+
 //time series for individual simulations (e.g. Series of fem_attributes_per_simulation_step for Eigenform_003)
-char* fem_attributes_per_time_series::serialize_time_series()   {
+char* fem_attributes_per_time_series::
+serialize_time_series()   {
 
 	    if(serialized_time_series.empty()) { //only serialize if it was not yet serialized
       uint64_t total_num_floats_in_series = 0;
@@ -66,12 +68,13 @@ char* fem_attributes_per_time_series::serialize_time_series()   {
         ++time_step_idx;
       }
     }
-
     return (char*) serialized_time_series.data();
 }
 
+
 // entire collection, (all fem_attributes_per_time_series for Temperatur, Ausbaulast, Eigenform_001, Eigenform_002, ...)
-uint64_t fem_attribute_collection::get_max_num_timesteps_in_collection() const {
+uint64_t fem_attribute_collection::
+get_max_num_timesteps_in_collection() const {
 uint64_t max_num_timesteps = 0;
 for(auto const& simulation : data) {
   max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
@@ -80,7 +83,8 @@ return max_num_timesteps;
 }
 
 
-uint64_t fem_attribute_collection::get_max_num_elements_per_simulation() const {
+uint64_t fem_attribute_collection::
+get_max_num_elements_per_simulation() const {
 	uint64_t max_num_elements_per_simulation = 0;
 	for(auto const& simulation : data) {
 	  size_t num_elements_for_current_simulation = 0;
@@ -99,17 +103,83 @@ uint64_t fem_attribute_collection::get_max_num_elements_per_simulation() const {
 }
 
 
-char* fem_attribute_collection::get_data_ptr_to_simulation_data(std::string const& simulation_name) { // simulation_name is for instance "Temperatur", "Eigenform_003", ....
+void throw_annotated_simulation_not_parsed_exception(std::string const& simulation_name) {
+	std::cout << "Exception regarding simulation: " << simulation_name << std::endl;
+	throw simulation_not_parsed_exception();
+}
+
+char* fem_attribute_collection::
+get_data_ptr_to_simulation_data(std::string const& simulation_name) { // simulation_name is for instance "Temperatur", "Eigenform_003", ....
 
 	auto time_series_iterator = data.find(simulation_name);
 
 	if(data.end() == time_series_iterator) {
-		throw simulation_not_parsed_exception();
+		throw_annotated_simulation_not_parsed_exception(simulation_name);
 	}
 
-return time_series_iterator->second.serialize_time_series();
+	return time_series_iterator->second.serialize_time_series();
 }
 
+
+uint64_t fem_attribute_collection::
+get_num_vertices_per_simulation(std::string const& simulation_name) const {
+	auto time_series_iterator = data.find(simulation_name);
+
+	if(data.end() == time_series_iterator) {
+		throw_annotated_simulation_not_parsed_exception(simulation_name);
+	}
+
+ 	return time_series_iterator->second.num_vertices_in_fem_model;
+ }
+
+
+uint64_t fem_attribute_collection::
+get_num_timesteps_per_simulation(std::string const& simulation_name) const {
+	auto time_series_iterator = data.find(simulation_name);
+
+	if(data.end() == time_series_iterator) {
+		throw_annotated_simulation_not_parsed_exception(simulation_name);
+	}
+
+ 	return time_series_iterator->second.num_timesteps_in_series;
+}
+
+// to be implemented on demand
+/*
+std::pair<float, float>  fem_attribute_collection::
+get_local_extrema_for_attribute_in_timestep(FEM_attrib const& simulation_attrib, std::string const& simulation_name, int32_t time_step) const {
+	auto time_series_iterator = data.find(simulation_name);
+
+	if(data.end() == time_series_iterator) {
+		throw_annotated_simulation_not_parsed_exception(simulation_name);
+	}
+}*/
+
+std::pair<float, float>  fem_attribute_collection::
+get_global_extrema_for_attribute_in_series(FEM_attrib const& simulation_attrib, std::string const& simulation_name) const {
+	auto time_series_iterator = data.find(simulation_name);
+
+	if(data.end() == time_series_iterator) {
+		throw_annotated_simulation_not_parsed_exception(simulation_name);
+	}
+
+	auto const& current_minima_map = time_series_iterator->second.global_min_val;
+
+	auto min_attrib_iterator_for_series = current_minima_map.find(simulation_attrib);
+	if(current_minima_map.end() == min_attrib_iterator_for_series) {
+		throw attribute_not_present_in_series();
+	}
+
+	auto const& current_maxima_map = time_series_iterator->second.global_max_val;
+	auto max_attrib_iterator_for_series = current_maxima_map.find(simulation_attrib);
+	if(current_maxima_map.end() == max_attrib_iterator_for_series) {
+		throw attribute_not_present_in_series();
+	}
+
+	std::pair<float, float> global_extrema {min_attrib_iterator_for_series->second, max_attrib_iterator_for_series->second};
+
+	return global_extrema;
+}
 
 
 
@@ -120,12 +190,13 @@ return time_series_iterator->second.serialize_time_series();
 			time steps consisting of a number of attributes per FEM vertex
 */
 
+void parse_file_to_fem(std::string const& simulation_name, 
+					   std::string const& sorted_fem_time_series_files, 
+					   fem_attribute_collection& fem_collection) {
 
-void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files, fem_attribute_collection& fem_collection) {
 
 
-
-  auto& current_time_series = fem_collection.data[attribute_name];
+  auto& current_time_series = fem_collection.data[simulation_name];
 
 
   int total_num_lines = 0;
@@ -142,11 +213,20 @@ void parse_file_to_fem(std::string const& attribute_name, std::string const& sor
   
     int64_t total_num_attribute_lines = total_num_lines - 1;
 
+
+
     current_time_series.series.push_back(fem_attributes_per_simulation_step{}); 
 
     auto& current_attributes = current_time_series.series.back();
 
-
+    if(current_time_series.num_vertices_in_fem_model < 0) {
+    	current_time_series.num_vertices_in_fem_model = total_num_attribute_lines;
+    } else {
+    	if(current_time_series.num_vertices_in_fem_model != total_num_attribute_lines) {
+    		std::cout << "Exception regarding simulation " << simulation_name << ": " << std::endl;
+    		throw unequal_number_of_FEM_vertices_in_time_series();
+    	}
+    }
 
     current_attributes.data[FEM_attrib::U_XYZ].resize(3 * total_num_attribute_lines); //3 attributes combines for cache coherence
     current_attributes.data[FEM_attrib::SIG_XX].resize(total_num_attribute_lines);
@@ -202,7 +282,9 @@ void parse_file_to_fem(std::string const& attribute_name, std::string const& sor
       }
 
     
-    
+    //we assume that the file has been parsed successfully at this point
+    ++current_time_series.num_timesteps_in_series;
+
     in_file_stream.close();
 
     for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
