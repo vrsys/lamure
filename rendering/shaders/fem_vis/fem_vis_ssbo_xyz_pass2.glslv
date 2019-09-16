@@ -224,7 +224,11 @@ void main() {
       float normalized_attrib = (spatially_mixed_attrib_t_x - current_min_color_attrib) /  ( current_max_color_attrib - current_min_color_attrib );
       
 
-      VertexOut.pass_point_color = get_colormap_value(normalized_attrib);
+
+//mix(VertexOut.pass_point_color, data_value_to_rainbow(length(deformation), fem_min_absolute_deform, fem_max_absolute_deform), 0.3);
+
+      VertexOut.pass_point_color = mix(VertexOut.pass_point_color, data_value_to_rainbow(length(spatially_mixed_attrib_t_x), current_min_color_attrib, current_max_color_attrib), 0.3);
+      //VertexOut.pass_point_color = get_colormap_value(normalized_attrib);
  
     }
   }
