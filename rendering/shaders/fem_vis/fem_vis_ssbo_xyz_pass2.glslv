@@ -30,6 +30,15 @@ uniform float fem_max_absolute_deform;
 uniform vec3 fem_min_deformation;
 uniform vec3 fem_max_deformation;
 
+
+uniform float time_cursor_pos; //float between 0 and num_timesteps for a simulation
+uniform int num_vertices_in_fem = 0;
+uniform int num_attributes_in_fem = 0; //e.g. 3x pos + 1x Sig_XX  would be 4, required to compute the stride to next timestep
+
+uniform int max_timestep_id = 0; // for static simulation, this is 0, for dynamic simulations this should be NUM_TIMESTEPS-1
+
+uniform int color_attribute_index = 0;  //attribute which should be sampled for heatmap coloration
+
 layout(std430, binding = 10)  coherent readonly buffer fem_data_array_struct {
      float fem_array[];
 };
@@ -172,24 +181,33 @@ void main() {
   }
   
 
-  if(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) {
-    VertexOut.pass_point_color = vec3(1.0, 0.0, 0.0);   
-  } else {
+  //number of float attributes (because FEM ssbo is a float array)
 
 
-    init_colormap();
+  if(fem_result > 0) {
+    //only do FEM vis, if there are valid weights
+    if( !(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) ) {
+      init_colormap();
 
-    //if((fem_array[64818 * 3 + fem_vert_id_0] != 0.0) || (fem_array[64818 * 3 +  fem_vert_id_1] != 0.0) || (fem_array[64818 * 3 +  fem_vert_id_2] != 0.0) ) {
 
-        float mixed_attrib = fem_array[64818 * 3 + fem_vert_id_0] * fem_vert_w_0 
-                           + fem_array[64818 * 3 + fem_vert_id_1] * fem_vert_w_1 
-                           + fem_array[64818 * 3 + fem_vert_id_2] * fem_vert_w_2; 
+      uint num_elements_per_timestep = num_attributes_in_fem * num_vertices_in_fem;
+      uint timestep_id_t_x = uint(time_cursor_pos);
+      uint timestep_id_t_x_plus_1 = min(timestep_id_t_x + 1, max_timestep_id);
 
-        float norm_attrib = (mixed_attrib - (-1070.73)) /  (1070.04- (-1070.73) );
-        
 
-        VertexOut.pass_point_color = get_colormap_value(norm_attrib);
-    //} 
+      //color_attribute_index
+      uint attribute_base_offset_t_x = num_vertices_in_fem; //TBC
+
+      float mixed_attrib = fem_array[num_vertices_in_fem * 3 + fem_vert_id_0] * fem_vert_w_0 
+                         + fem_array[num_vertices_in_fem * 3 + fem_vert_id_1] * fem_vert_w_1 
+                         + fem_array[num_vertices_in_fem * 3 + fem_vert_id_2] * fem_vert_w_2; 
+
+      float norm_attrib = (mixed_attrib - (-1070.73)) /  (1070.04- (-1070.73) );
+      
+
+      VertexOut.pass_point_color = get_colormap_value(norm_attrib);
+ 
+    }
   }
 
   gl_Position = vec4(new_in_position, 1.0);
