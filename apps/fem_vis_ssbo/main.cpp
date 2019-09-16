@@ -112,6 +112,8 @@ bool enable_playback = true;
 float playback_speed = 1.0f;
 float accumulated_playback_cursor_time = 0.0f;
 
+float current_time_cursor_pos = 0.0f;
+
 int32_t frame_count = 0;
 
 int32_t num_models_ = 0;
@@ -733,18 +735,26 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
     std::cout << accumulated_playback_cursor_time << std::endl;
 
-    float current_time_cursor_pos = accumulated_playback_cursor_time / 1000.0f;// (frame_count) * 3.5f;
-
-    if(max_timestep_id != 0) {
+    if(enable_playback) {
+      current_time_cursor_pos = accumulated_playback_cursor_time / 1000.0f;// (frame_count) * 3.5f;
       while(current_time_cursor_pos > max_timestep_id) {
-       current_time_cursor_pos -= max_timestep_id;
-      } 
-    } else {
-      current_time_cursor_pos = 0.0f;
+        current_time_cursor_pos -= max_timestep_id;
+      }
     }
 
+    float clamped_time_cursor_pos = current_time_cursor_pos;
 
-    shader->uniform("time_cursor_pos", current_time_cursor_pos);
+      if(max_timestep_id != 0) {
+        while(clamped_time_cursor_pos > max_timestep_id) {
+         clamped_time_cursor_pos -= max_timestep_id;
+        } 
+      } else {
+        clamped_time_cursor_pos = 0.0f;
+      }
+    
+
+
+    shader->uniform("time_cursor_pos", clamped_time_cursor_pos);
 
 
 
@@ -1560,6 +1570,9 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       settings_.fem_deform_factor_ = 1.0;
       break;
 
+    case 'P':
+      enable_playback = !enable_playback;
+      break;
 
     case 'U':
       settings_.fem_deform_factor_ *= 1.01;
@@ -2422,6 +2435,15 @@ void gui_status_screen(){
         gui_provenance_settings();
     }
 
+
+    ImGui::End();
+
+
+    ImGui::SetNextWindowPos(ImVec2(0, 1000));
+    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 50));
+    ImGui::Begin( ("Playback: " + currently_selected_FEM_simulation).c_str() );
+
+    ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, 101.0f);
 
     ImGui::End();
 }
