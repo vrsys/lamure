@@ -697,7 +697,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
     //std::cout << "SELECTED SIMULATION: "  << currently_selected_FEM_simulation << std::endl;
     auto const extrema_current_color_attribute 
-      = g_fem_collection.get_global_extrema_for_attribute_in_series(FEM_attrib::MAG_U, currently_selected_FEM_simulation);
+      = g_fem_collection.get_global_extrema_for_attribute_in_series(FEM_attrib::SIG_XX, currently_selected_FEM_simulation);
 
 
     //std::cout << " NUM VERTICES IN CURRENT SIMULATION: " << num_vertices_in_current_simulation << "\n";
@@ -717,12 +717,12 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("num_attributes_in_fem", num_fem_attributes);
 
 
-    int current_attribute_id = int(FEM_attrib::MAG_U);
+    int current_attribute_id = int(FEM_attrib::SIG_XX);
 
     shader->uniform("current_attribute_id", current_attribute_id);
 
 
-    float current_time_cursor_pos = (frame_count) / 3.5f;
+    float current_time_cursor_pos = (frame_count) * 3.5f;
 
     if(max_timestep_id != 0) {
       while(current_time_cursor_pos > max_timestep_id) {
@@ -1815,7 +1815,7 @@ void init() {
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_source)
-      || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+      || !read_shader(shader_root_path + "/fem_vis/fem_vis_ssbo_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_ssbo_xyz_pass2.glslv", vis_xyz_pass2_vs_source)

@@ -283,7 +283,9 @@ void parse_file_to_fem(std::string const& simulation_name,
           in_line_stringstream >> untransformed_deformation_u_xyz[2];
           
 
-          scm::math::vec4f transformed_deformation_u_xyz= fem_to_pcl_transform * untransformed_deformation_u_xyz;
+
+
+          scm::math::vec4f transformed_deformation_u_xyz = fem_to_pcl_transform * untransformed_deformation_u_xyz;
 
           current_attributes.data[FEM_attrib::U_X][line_write_count] = transformed_deformation_u_xyz[0];
           current_attributes.data[FEM_attrib::U_Y][line_write_count] = transformed_deformation_u_xyz[1];
