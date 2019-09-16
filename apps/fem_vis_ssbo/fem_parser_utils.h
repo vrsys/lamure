@@ -116,6 +116,9 @@ struct fem_attribute_collection {
 
   uint64_t get_num_vertices_per_simulation(std::string const& simulation_name) const;
   uint64_t get_num_timesteps_per_simulation(std::string const& simulation_name) const;
+
+  uint64_t get_num_attributes_per_simulation(std::string const& simulation_name) const { return 9;}
+
   char* get_data_ptr_to_simulation_data(std::string const& simulation_name);
 
   // returns local minimum and maximum for desired attribute (->global for this time step only)

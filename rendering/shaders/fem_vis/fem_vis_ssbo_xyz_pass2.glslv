@@ -191,7 +191,7 @@ void main() {
   if(fem_result > 0) {
     //only do FEM vis, if there are valid weights
     if( !(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) ) {
-      init_colormap();
+      //init_colormap();
 
 
       uint num_elements_per_timestep = num_attributes_in_fem * num_vertices_in_fem;
@@ -212,22 +212,22 @@ void main() {
       float spatially_mixed_attrib_t_x = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * 3 + fem_vert_id_0] * fem_vert_w_0 
                                        + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * 3 + fem_vert_id_1] * fem_vert_w_1 
                                        + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * 3 + fem_vert_id_2] * fem_vert_w_2; 
-/*
+
       float spatially_mixed_attrib_t_x_plus_1 = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * 3 + fem_vert_id_0] * fem_vert_w_0 
                                               + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * 3 + fem_vert_id_1] * fem_vert_w_1 
                                               + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * 3 + fem_vert_id_2] * fem_vert_w_2; 
-*/
+
       float temporal_weight = time_cursor_pos - timestep_x;
 
-  //    float spatio_temporally_mixed_attribute = mix(spatially_mixed_attrib_t_x, spatially_mixed_attrib_t_x_plus_1, temporal_weight);
+      float spatio_temporally_mixed_attribute = mix(spatially_mixed_attrib_t_x, spatially_mixed_attrib_t_x_plus_1, temporal_weight);
 
-      float normalized_attrib = (spatially_mixed_attrib_t_x - current_min_color_attrib) /  ( current_max_color_attrib - current_min_color_attrib );
+      //float normalized_attrib = (spatially_mixed_attrib_t_x - current_min_color_attrib) /  ( current_max_color_attrib - current_min_color_attrib );
       
 
 
 //mix(VertexOut.pass_point_color, data_value_to_rainbow(length(deformation), fem_min_absolute_deform, fem_max_absolute_deform), 0.3);
 
-      VertexOut.pass_point_color = mix(VertexOut.pass_point_color, data_value_to_rainbow(length(spatially_mixed_attrib_t_x), current_min_color_attrib, current_max_color_attrib), 0.3);
+      VertexOut.pass_point_color = mix(VertexOut.pass_point_color, data_value_to_rainbow(spatio_temporally_mixed_attribute, current_min_color_attrib, current_max_color_attrib), 0.3);
       //VertexOut.pass_point_color = get_colormap_value(normalized_attrib);
  
     }

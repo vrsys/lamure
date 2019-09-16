@@ -334,7 +334,7 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
                             fem_attribute_collection& fem_collection) {
 
 
-
+  std::cout << "Trying to parse simulation with name: " << simulation_name << std::endl;
   if(fem_collection.data.end() == fem_collection.data.find(simulation_name)) {
     std::cout << "Parsing time series data for simulation \"" << simulation_name << "\""<< std::endl;
 
@@ -437,14 +437,13 @@ std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_fil
 
         //std::cout << dir_iterator->path().filename().string() << std::endl;
 
-        return successfully_parsed_simulation_names;
+
 
       }
     } 
   }
 
-
-
   in_fem_mapping_file.close();
-
+  
+  return successfully_parsed_simulation_names;
 }

@@ -695,14 +695,20 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("current_min_color_attrib", extrema_current_color_attribute.first);
     shader->uniform("current_max_color_attrib", extrema_current_color_attribute.second);
 
-    int32_t max_timestep_id = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) - 2;
+    int32_t max_timestep_id = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) - 1;
     shader->uniform("max_timestep_id", max_timestep_id);
 
     float current_time_cursor_pos = (frame_count) * 3.0f;
 
-    while(current_time_cursor_pos > max_timestep_id) {
-     current_time_cursor_pos -= max_timestep_id;
+    if(max_timestep_id != 0) {
+      while(current_time_cursor_pos > max_timestep_id) {
+       current_time_cursor_pos -= max_timestep_id;
+      } 
+    } else {
+      current_time_cursor_pos = 0.0f;
     }
+
+    std::cout << "After while loop " << std::endl;
     shader->uniform("time_cursor_pos", current_time_cursor_pos);
 
     std::cout << "Time cursor pos " << current_time_cursor_pos << std::endl;
@@ -1033,8 +1039,16 @@ void glut_display() {
 
 
     std::cout << "Preloading ssbo with data from: " << currently_selected_FEM_simulation << "\n";
+
+    int64_t num_byte_to_copy_elements_to_allocate 
+      =   g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) 
+        * g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation) 
+        * sizeof(float) * g_fem_collection.get_num_attributes_per_simulation(currently_selected_FEM_simulation);
+
+    std::cout << "Max num elements: " << num_byte_to_copy_elements_to_allocate << std::endl;
+    
     float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(fem_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
-    memcpy((char*) mapped_fem_ssbo, g_fem_collection.get_data_ptr_to_simulation_data(currently_selected_FEM_simulation), g_fem_collection.get_max_num_elements_per_simulation() * sizeof(float)); // CHANGE MAX NUM ELEMENTS
+    memcpy((char*) mapped_fem_ssbo, g_fem_collection.get_data_ptr_to_simulation_data(currently_selected_FEM_simulation), num_byte_to_copy_elements_to_allocate); // CHANGE MAX NUM ELEMENTS
 
 
     device_->main_context()->unmap_buffer(fem_ssbo_time_series);
