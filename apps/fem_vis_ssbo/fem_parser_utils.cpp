@@ -306,6 +306,8 @@ void parse_file_to_fem(std::string const& simulation_name,
 
           //std::cout << length_of_vector << std::endl;
 
+          
+
           in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_XX][line_write_count];
           
 

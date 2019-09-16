@@ -100,70 +100,67 @@ void main() {
   vec3 deformation = vec3(0.0);
   float deform = 0.0;
 
+  if(1 == fem_vis_mode) {
+    if(fem_result > 0) {
+      //only do FEM vis, if there are valid weights
+      if( !(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) ) {
+
+        uint num_elements_per_timestep = num_attributes_in_fem * num_vertices_in_fem;
 
 
-  if(fem_result > 0) {
-    //only do FEM vis, if there are valid weights
-    if( !(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) ) {
-
-      uint num_elements_per_timestep = num_attributes_in_fem * num_vertices_in_fem;
-
-
-      uint timestep_x = uint(mod(time_cursor_pos, float(max_timestep_id) ) );// 2;
-      uint timestep_x_plus_1 = min(uint(timestep_x) + 1, max_timestep_id);
-
-
-
-      // attributes other than the deformation along axis need to have an index offset of 2, because the x,y and z deforms are the only ones that are interleaved
-      
-
-      //color_attribute_index
-      uint attribute_base_offset_t_x = num_vertices_in_fem; //TBC
-
-      float spatially_mixed_attrib_t_x_deform_x = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (0) + fem_vert_id_0] * fem_vert_w_0 
-                                                + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (0) + fem_vert_id_1] * fem_vert_w_1 
-                                                + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (0) + fem_vert_id_2] * fem_vert_w_2; 
-
-      float spatially_mixed_attrib_t_x_plus_1_deform_x = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (0) + fem_vert_id_0] * fem_vert_w_0 
-                                                       + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (0) + fem_vert_id_1] * fem_vert_w_1 
-                                                       + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (0) + fem_vert_id_2] * fem_vert_w_2; 
-
-
-      float spatially_mixed_attrib_t_x_deform_y = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (1) + fem_vert_id_0] * fem_vert_w_0 
-                                                + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (1) + fem_vert_id_1] * fem_vert_w_1 
-                                                + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (1) + fem_vert_id_2] * fem_vert_w_2; 
-
-      float spatially_mixed_attrib_t_x_plus_1_deform_y = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (1) + fem_vert_id_0] * fem_vert_w_0 
-                                                       + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (1) + fem_vert_id_1] * fem_vert_w_1 
-                                                       + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (1) + fem_vert_id_2] * fem_vert_w_2; 
+        uint timestep_x = uint(mod(time_cursor_pos, float(max_timestep_id) ) );// 2;
+        uint timestep_x_plus_1 = min(uint(timestep_x) + 1, max_timestep_id);
 
 
 
-      float spatially_mixed_attrib_t_x_deform_z = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (2) + fem_vert_id_0] * fem_vert_w_0 
-                                                + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (2) + fem_vert_id_1] * fem_vert_w_1 
-                                                + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (2) + fem_vert_id_2] * fem_vert_w_2; 
+        // attributes other than the deformation along axis need to have an index offset of 2, because the x,y and z deforms are the only ones that are interleaved
+        
 
-      float spatially_mixed_attrib_t_x_plus_1_deform_z = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_0] * fem_vert_w_0 
-                                                       + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_1] * fem_vert_w_1 
-                                                       + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_2] * fem_vert_w_2; 
+        //color_attribute_index
+        uint attribute_base_offset_t_x = num_vertices_in_fem; //TBC
 
-      float temporal_weight = time_cursor_pos - timestep_x;
+        float spatially_mixed_attrib_t_x_deform_x = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (0) + fem_vert_id_0] * fem_vert_w_0 
+                                                  + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (0) + fem_vert_id_1] * fem_vert_w_1 
+                                                  + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (0) + fem_vert_id_2] * fem_vert_w_2; 
 
-      float spatio_temporally_mixed_deform_x = mix(spatially_mixed_attrib_t_x_deform_x, spatially_mixed_attrib_t_x_plus_1_deform_x, temporal_weight);
-      float spatio_temporally_mixed_deform_y = mix(spatially_mixed_attrib_t_x_deform_y, spatially_mixed_attrib_t_x_plus_1_deform_y, temporal_weight);
-      float spatio_temporally_mixed_deform_z = mix(spatially_mixed_attrib_t_x_deform_z, spatially_mixed_attrib_t_x_plus_1_deform_z, temporal_weight);
-
-      deformation = vec3(spatio_temporally_mixed_deform_x, spatio_temporally_mixed_deform_y, spatio_temporally_mixed_deform_z);
-
-      //float normalized_attrib = (spatially_mixed_attrib_t_x - current_min_color_attrib) /  ( current_max_color_attrib - current_min_color_attrib );
-      
-
-        new_in_position += fem_deform_factor * deformation;
-    }
-  }
+        float spatially_mixed_attrib_t_x_plus_1_deform_x = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (0) + fem_vert_id_0] * fem_vert_w_0 
+                                                         + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (0) + fem_vert_id_1] * fem_vert_w_1 
+                                                         + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (0) + fem_vert_id_2] * fem_vert_w_2; 
 
 
+        float spatially_mixed_attrib_t_x_deform_y = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (1) + fem_vert_id_0] * fem_vert_w_0 
+                                                  + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (1) + fem_vert_id_1] * fem_vert_w_1 
+                                                  + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (1) + fem_vert_id_2] * fem_vert_w_2; 
 
+        float spatially_mixed_attrib_t_x_plus_1_deform_y = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (1) + fem_vert_id_0] * fem_vert_w_0 
+                                                         + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (1) + fem_vert_id_1] * fem_vert_w_1 
+                                                         + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (1) + fem_vert_id_2] * fem_vert_w_2; 
+
+
+
+        float spatially_mixed_attrib_t_x_deform_z = fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (2) + fem_vert_id_0] * fem_vert_w_0 
+                                                  + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (2) + fem_vert_id_1] * fem_vert_w_1 
+                                                  + fem_array[num_elements_per_timestep * timestep_x + num_vertices_in_fem * (2) + fem_vert_id_2] * fem_vert_w_2; 
+
+        float spatially_mixed_attrib_t_x_plus_1_deform_z = fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_0] * fem_vert_w_0 
+                                                         + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_1] * fem_vert_w_1 
+                                                         + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_2] * fem_vert_w_2; 
+
+        float temporal_weight = time_cursor_pos - timestep_x;
+
+        float spatio_temporally_mixed_deform_x = mix(spatially_mixed_attrib_t_x_deform_x, spatially_mixed_attrib_t_x_plus_1_deform_x, temporal_weight);
+        float spatio_temporally_mixed_deform_y = mix(spatially_mixed_attrib_t_x_deform_y, spatially_mixed_attrib_t_x_plus_1_deform_y, temporal_weight);
+        float spatio_temporally_mixed_deform_z = mix(spatially_mixed_attrib_t_x_deform_z, spatially_mixed_attrib_t_x_plus_1_deform_z, temporal_weight);
+
+        deformation = vec3(spatio_temporally_mixed_deform_x, spatio_temporally_mixed_deform_y, spatio_temporally_mixed_deform_z);
+
+        //float normalized_attrib = (spatially_mixed_attrib_t_x - current_min_color_attrib) /  ( current_max_color_attrib - current_min_color_attrib );
+        
+
+          new_in_position += fem_deform_factor * deformation;
+      } //fi( !(fem_vert_w_0 <= 0.0f && fem_vert_w_1 <= 0.0f && fem_vert_w_2 <= 0.0f) ) {
+    } // fi (fem_result > 0) {
+  } // fi (1 == fem_vis_mode)
 
 
 
