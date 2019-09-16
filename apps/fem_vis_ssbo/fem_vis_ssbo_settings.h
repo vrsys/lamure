@@ -107,6 +107,7 @@ struct settings {
   scm::math::vec4f material_specular_ {0.4f, 0.4f, 0.4f, 1000.0f};
   scm::math::vec3f ambient_light_color_ {0.1f, 0.1f, 0.1f};
   scm::math::vec4f point_light_color_ {1.0f, 1.0f, 1.0f, 1.2f};
+  scm::math::mat4f fem_to_pcl_transform_ {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
   bool heatmap_ {0};
   float heatmap_min_ {0.0f};
   float heatmap_max_ {1.0f};

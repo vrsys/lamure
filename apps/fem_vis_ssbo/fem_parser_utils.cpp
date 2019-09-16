@@ -9,8 +9,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 
-#include <scm/core.h>
-#include <scm/core/math.h>
+
 
 //entire set of attributes for one simulation (frame, e.g. time step 58 of Eigenform_003)
 void fem_attributes_per_simulation_step::
@@ -206,7 +205,7 @@ get_global_extrema_for_attribute_in_series(FEM_attrib const& simulation_attrib, 
 
 void parse_file_to_fem(std::string const& simulation_name, 
 					   std::string const& sorted_fem_time_series_files, 
-					   fem_attribute_collection& fem_collection) {
+					   fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform) {
 
 
 
@@ -277,10 +276,19 @@ void parse_file_to_fem(std::string const& simulation_name,
           in_line_stringstream >> vertex_idx;
 
           
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_X][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_Y][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_Z][line_write_count];
+          scm::math::vec4f untransformed_deformation_u_xyz{0.0f, 0.0f, 0.0f, 0.0f};
+
+          in_line_stringstream >> untransformed_deformation_u_xyz[0];
+          in_line_stringstream >> untransformed_deformation_u_xyz[1];
+          in_line_stringstream >> untransformed_deformation_u_xyz[2];
           
+
+          scm::math::vec4f transformed_deformation_u_xyz= fem_to_pcl_transform * untransformed_deformation_u_xyz;
+
+          current_attributes.data[FEM_attrib::U_X][line_write_count] = transformed_deformation_u_xyz[0];
+          current_attributes.data[FEM_attrib::U_Y][line_write_count] = transformed_deformation_u_xyz[1];
+          current_attributes.data[FEM_attrib::U_Z][line_write_count] = transformed_deformation_u_xyz[2];
+
           scm::math::vec3 deformation_vector = scm::math::vec3{current_attributes.data[FEM_attrib::U_X][line_write_count],
                                                                current_attributes.data[FEM_attrib::U_Y][line_write_count],
                                                                current_attributes.data[FEM_attrib::U_Z][line_write_count]};
@@ -363,7 +371,7 @@ void parse_file_to_fem(std::string const& simulation_name,
 
 void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
                             std::vector<std::string> const& sorted_fem_time_series_files,
-                            fem_attribute_collection& fem_collection) {
+                            fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform) {
 
 
   std::cout << "Trying to parse simulation with name: " << simulation_name << std::endl;
@@ -383,7 +391,7 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
 
 
     for(auto const& file_path : sorted_fem_time_series_files) {
-      parse_file_to_fem(simulation_name, file_path, fem_collection);
+      parse_file_to_fem(simulation_name, file_path, fem_collection, fem_to_pcl_transform);
     }
 
 
@@ -398,7 +406,7 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
 
 
 std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_file_path,
-                          fem_attribute_collection& fem_collection) {
+                          fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform) {
   std::cout << "Starting to parse files defined in " << fem_mapping_file_path << std::endl;
 
   std::ifstream in_fem_mapping_file(fem_mapping_file_path);
@@ -461,7 +469,7 @@ std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_fil
 
         std::sort(sorted_fem_time_series_files.begin(), sorted_fem_time_series_files.end());
 
-        parse_directory_to_fem(FEM_simulation_name, sorted_fem_time_series_files, fem_collection);
+        parse_directory_to_fem(FEM_simulation_name, sorted_fem_time_series_files, fem_collection, fem_to_pcl_transform);
 
         //for(auto const& time_series_path : sorted_fem_time_series_files) {
         //  std::cout << "X: " << time_series_path << std::endl;

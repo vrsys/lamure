@@ -573,6 +573,15 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "max_radius") {
             settings.max_radius_ = std::max(atof(value.c_str()), 0.0);
           }
+          else if (key == "fem_to_pcl_transform") {
+            std::cout << "TRANSFORM STRING: " <<  value << std::endl;
+            std::istringstream in_transform(value);
+
+            for(int element_idx = 0; element_idx < 16; ++element_idx) {
+              in_transform >> settings.fem_to_pcl_transform_[element_idx]; 
+            }
+            //settings.width_ = std::max(atoi(value.c_str()), 64);
+          }
           else {
             std::cout << "unrecognized key: " << key << std::endl;
             exit(-1);
@@ -2414,7 +2423,7 @@ int main(int argc, char *argv[])
     std::cout << settings_.fem_value_mapping_file_ << std::endl;
 
 
-    successfully_parsed_simulation_names = parse_fem_collection(settings_.fem_value_mapping_file_, g_fem_collection);
+    successfully_parsed_simulation_names = parse_fem_collection(settings_.fem_value_mapping_file_, g_fem_collection, settings_.fem_to_pcl_transform_);
 
 
     if(successfully_parsed_simulation_names.empty()) {

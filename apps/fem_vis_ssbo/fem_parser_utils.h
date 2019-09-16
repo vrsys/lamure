@@ -9,7 +9,8 @@
 #include <map>
 #include <vector>
 
-
+#include <scm/core.h>
+#include <scm/core/math.h>
 
 class FEM_path_not_a_directory_exception: public std::exception
 {
@@ -132,12 +133,14 @@ struct fem_attribute_collection {
 };
 
 
-void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files, fem_attribute_collection& fem_collection);
+void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files, 
+                       fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform);
 
 void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
                             std::vector<std::string> const& sorted_fem_time_series_files,
-                            fem_attribute_collection& fem_collection);
+                            fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform);
 
-std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_file_path, fem_attribute_collection& fem_collection);
+std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_file_path, 
+                                              fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform);
 
 #endif //FEM_VIS_SSBO_PARSER_UTILS_H_
