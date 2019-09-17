@@ -87,10 +87,6 @@ struct fem_result_meta_data{
 std::ostream& operator << (std::ostream& o, fem_result_meta_data const& v){
   o << "fem_result_meta_data" << std::endl;
   o << "name: " << v.name << std::endl;
-  o << "min_absolute_deform: " << v.min_absolute_deform << std::endl;
-  o << "max_absolute_deform: " << v.max_absolute_deform << std::endl;
-  o << "min_deformation: " << v.min_deformation << std::endl;
-  o << "max_deformation: " << v.max_deformation << std::endl;
   return o;
 }
 
@@ -787,14 +783,6 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("time_step_cursor_pos", time_step_cursor_pos);
 
 
-
-    if(settings_.fem_result_ > 0){
-      //std::cout << fem_md[settings_.fem_result_ - 1] << std::endl;
-      shader->uniform("fem_min_absolute_deform", fem_md[settings_.fem_result_ - 1].min_absolute_deform);
-      shader->uniform("fem_max_absolute_deform", fem_md[settings_.fem_result_ - 1].max_absolute_deform);
-      shader->uniform("fem_min_deformation", fem_md[settings_.fem_result_ - 1].min_deformation);
-      shader->uniform("fem_max_deformation", fem_md[settings_.fem_result_ - 1].max_deformation);
-    }
     
 
   }
@@ -2613,33 +2601,6 @@ std::vector<fem_result_meta_data> fem_md;
         md.name = iter_name->second.get<std::string>();
       }
 
-      picojson::value::object::const_iterator iter_min_absolute_deform = obj.find("min_absolute_deform");
-      if(iter_min_absolute_deform != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_min_absolute_deform->second.get<std::string>();
-        tmp_sstr >> md.min_absolute_deform;
-      }
-
-      picojson::value::object::const_iterator iter_max_absolute_deform = obj.find("max_absolute_deform");
-      if(iter_max_absolute_deform != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_max_absolute_deform->second.get<std::string>();
-        tmp_sstr >> md.max_absolute_deform;        
-      }
-
-      picojson::value::object::const_iterator iter_min_deformation = obj.find("min_deformation");
-      if(iter_min_deformation != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_min_deformation->second.get<std::string>();
-        tmp_sstr >> md.min_deformation[0] >> md.min_deformation[1] >> md.min_deformation[2]; 
-      }
-
-      picojson::value::object::const_iterator iter_max_deformation = obj.find("max_deformation");
-      if(iter_max_deformation != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_max_deformation->second.get<std::string>();
-        tmp_sstr >> md.max_deformation[0] >> md.max_deformation[1] >> md.max_deformation[2];   
-      }
 
       std::cout << md << std::endl;
 

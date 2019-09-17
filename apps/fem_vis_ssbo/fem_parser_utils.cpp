@@ -6,6 +6,7 @@
 
 //boost
 #include <boost/assign/list_of.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
@@ -24,7 +25,7 @@ serialize(uint64_t byte_offset_timestep, std::vector<float>& target) const {
       auto const current_attribute_vec_it = data.find(current_FEM_attribute);
 
       if(FEM_attrib(attribute_index) == FEM_attrib::MAG_U) {
-        std::cout << "Attribute index of MAG U " << already_serialized_attributes << std::endl;
+        //std::cout << "Attribute index of MAG U " << already_serialized_attributes << std::endl;
       }
 
       if(data.end() == current_attribute_vec_it) {
@@ -215,9 +216,127 @@ float fem_attribute_collection::get_simulation_duration(std::string const& simul
 			time steps consisting of a number of attributes per FEM vertex
 */
 
+void calculate_extrema_for_series(fem_attributes_per_simulation_step& current_attributes, fem_attributes_per_time_series& current_time_series) {
+
+    for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
+
+      auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
+      current_attributes.local_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
+      current_attributes.local_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest();
+
+      auto const& current_attribute_vector = current_attributes.data[current_FEM_attrib];
+
+
+      //get min element iterator in vector 
+      auto min_element_it = std::min_element(current_attribute_vector.begin(), current_attribute_vector.end());
+      //update local minimum (for time step)
+      current_attributes.local_min_val[current_FEM_attrib] = std::min(current_attributes.local_min_val[current_FEM_attrib], *min_element_it);
+      //update global minimum (for time series)
+      current_time_series.global_min_val[current_FEM_attrib] = std::min(current_time_series.global_min_val[current_FEM_attrib], *min_element_it);
+      
+
+      //get max element iterator in vector
+      auto max_element_it = std::max_element(current_attribute_vector.begin(), current_attribute_vector.end());
+      //update local maximum (for time step)
+      current_attributes.local_max_val[current_FEM_attrib] = std::max(current_attributes.local_max_val[current_FEM_attrib], *max_element_it);
+      //update global maximum (for time series)
+
+      current_time_series.global_max_val[current_FEM_attrib] = std::max(current_time_series.global_max_val[current_FEM_attrib], *max_element_it);
+
+      //std::cout << "Attrib " << int(current_FEM_attrib) << std::endl;
+      //if(2 == FEM_attrib_idx) {
+      //  std::cout << *max_element_it << std::endl;
+     // }
+
+      if(FEM_attrib(FEM_attrib_idx) == FEM_attrib::MAG_U) {
+        //std::cout << "Lokales Minimum Magnitude der Verformung: " << current_attributes.local_min_val[current_FEM_attrib] << std::endl;
+        //std::cout << "Lokales Maximum Magnitude der Verformung: " << current_attributes.local_max_val[current_FEM_attrib] << std::endl;
+
+        //std::cout << "Globales Minimum Magnitude der Verformung: " << current_time_series.global_min_val[current_FEM_attrib] << std::endl;
+        //std::cout << "Globales Maximum Magnitude der Verformung: " << current_time_series.global_max_val[current_FEM_attrib] << std::endl;
+      }
+    }
+
+
+
+
+
+}
+
+void dump_file_to_fem_bin(std::string const& sorted_fem_time_series_file, 
+                          fem_attributes_per_simulation_step& current_attributes_per_timestep_of_simulation) {
+  std::string const out_fem_bin_file_string = sorted_fem_time_series_file + ".bin";
+
+  std::ofstream out_fem_bin_file(out_fem_bin_file_string, std::ios::binary | std::ios::out);
+
+
+  for(int fem_attrib_idx = 0; fem_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++fem_attrib_idx) {
+    FEM_attrib const current_fem_attrib = FEM_attrib(fem_attrib_idx);
+
+    out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[current_fem_attrib].data(), current_attributes_per_timestep_of_simulation.data[current_fem_attrib].size() * sizeof(float));
+  }
+  out_fem_bin_file.close();
+}
+
+
+//gets called if bin file was available for fem simulation
+void read_fem_bin_file_to_time_step(std::string const& simulation_name,
+                                    std::string const& sorted_fem_time_series_file_bin, 
+                                    fem_attribute_collection& fem_collection) {
+
+  std::string const in_fem_bin_file_string = sorted_fem_time_series_file_bin;
+
+  // open file in binary mode at the end
+  std::ifstream in_fem_bin_file(in_fem_bin_file_string, std::ios::binary | std::ios::in | std::ios::ate);
+
+  // get number of byte in the file
+  int64_t const total_num_bytes_in_file = in_fem_bin_file.tellg();
+
+
+  // go back to beginning of file
+
+  in_fem_bin_file.seekg(0);
+
+  int64_t const total_num_bytes_per_attribute = total_num_bytes_in_file / int(FEM_attrib::NUM_FEM_ATTRIBS);
+  int64_t const total_num_floats_per_attribute = total_num_bytes_per_attribute / sizeof(float);
+
+
+  auto& current_time_series = fem_collection.data[simulation_name];
+
+  current_time_series.series.push_back(fem_attributes_per_simulation_step{}); 
+
+  auto& current_attributes = current_time_series.series.back();
+
+
+  if(current_time_series.num_vertices_in_fem_model < 0) {
+    current_time_series.num_vertices_in_fem_model = total_num_floats_per_attribute;
+  } else {
+    if(current_time_series.num_vertices_in_fem_model != total_num_floats_per_attribute) {
+      std::cout << "Exception regarding simulation " << simulation_name << ": " << std::endl;
+      throw unequal_number_of_FEM_vertices_in_time_series();
+    }
+  }
+
+
+  for(int fem_attrib_idx = 0; fem_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++fem_attrib_idx) {
+    FEM_attrib const current_fem_attrib = FEM_attrib(fem_attrib_idx);
+
+    current_attributes.data[current_fem_attrib].resize(total_num_floats_per_attribute);
+    in_fem_bin_file.read((char*)current_attributes.data[current_fem_attrib].data(), total_num_bytes_per_attribute);
+  }
+
+  ++current_time_series.num_timesteps_in_series;
+
+  calculate_extrema_for_series(current_attributes, current_time_series);
+
+  in_fem_bin_file.close();
+}
+
+
+//gets called if no bin file was available for fem simulation
 void parse_file_to_fem(std::string const& simulation_name, 
-					   std::string const& sorted_fem_time_series_files, 
-					   fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform) {
+					             std::string const& sorted_fem_time_series_files, 
+					             fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform) {
 
 
 
@@ -343,45 +462,19 @@ void parse_file_to_fem(std::string const& simulation_name,
 
     in_file_stream.close();
 
-    for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
-
-      auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
-      current_attributes.local_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
-      current_attributes.local_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest();
-
-      auto const& current_attribute_vector = current_attributes.data[current_FEM_attrib];
 
 
-      //get min element iterator in vector 
-      auto min_element_it = std::min_element(current_attribute_vector.begin(), current_attribute_vector.end());
-      //update local minimum (for time step)
-      current_attributes.local_min_val[current_FEM_attrib] = std::min(current_attributes.local_min_val[current_FEM_attrib], *min_element_it);
-      //update global minimum (for time series)
-      current_time_series.global_min_val[current_FEM_attrib] = std::min(current_time_series.global_min_val[current_FEM_attrib], *min_element_it);
-      
 
-      //get max element iterator in vector
-      auto max_element_it = std::max_element(current_attribute_vector.begin(), current_attribute_vector.end());
-      //update local maximum (for time step)
-      current_attributes.local_max_val[current_FEM_attrib] = std::max(current_attributes.local_max_val[current_FEM_attrib], *max_element_it);
-      //update global maximum (for time series)
+    calculate_extrema_for_series(current_attributes, current_time_series);
 
-      current_time_series.global_max_val[current_FEM_attrib] = std::max(current_time_series.global_max_val[current_FEM_attrib], *max_element_it);
 
-      std::cout << "Attrib " << int(current_FEM_attrib) << std::endl;
-      //if(2 == FEM_attrib_idx) {
-      //  std::cout << *max_element_it << std::endl;
-     // }
+    // old extrema 
 
-      if(FEM_attrib(FEM_attrib_idx) == FEM_attrib::MAG_U) {
-        std::cout << "Lokales Minimum Magnitude der Verformung: " << current_attributes.local_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Lokales Maximum Magnitude der Verformung: " << current_attributes.local_max_val[current_FEM_attrib] << std::endl;
-
-        std::cout << "Globales Minimum Magnitude der Verformung: " << current_time_series.global_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Globales Maximum Magnitude der Verformung: " << current_time_series.global_max_val[current_FEM_attrib] << std::endl;
-      }
-    }
+  
+    dump_file_to_fem_bin(sorted_fem_time_series_files, current_attributes);
   }
+
+
 
 }
 
@@ -391,9 +484,9 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
                             std::string const& timesteps_file_path) {
 
 
-  std::cout << "Trying to parse simulation with name: " << simulation_name << std::endl;
+  std::cout << "Parsing simulation with name: " << simulation_name << std::endl;
   if(fem_collection.data.end() == fem_collection.data.find(simulation_name)) {
-    std::cout << "Parsing time series data for simulation \"" << simulation_name << "\""<< std::endl;
+  //  std::cout << "Parsing time series data for simulation \"" << simulation_name << "\""<< std::endl;
 
     fem_collection.data.insert(std::make_pair(simulation_name, fem_attributes_per_time_series{}) );
 
@@ -408,7 +501,20 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
 
 
     for(auto const& file_path : sorted_fem_time_series_files) {
-      parse_file_to_fem(simulation_name, file_path, fem_collection, fem_to_pcl_transform);
+
+      std::string const bin_fem_file_path = file_path + ".bin";
+
+      if(boost::filesystem::exists( bin_fem_file_path )) {
+        read_fem_bin_file_to_time_step(simulation_name, bin_fem_file_path, fem_collection);
+
+        //std::cout << "Trying to read stuff from bin file for simulation: " << simulation_name << std::endl;
+      } else {
+        parse_file_to_fem(simulation_name, file_path, fem_collection, fem_to_pcl_transform);    
+      }
+
+
+    
+
     }
 
 
@@ -428,14 +534,14 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
 
         ++line_counter;
       }
-      std::cout << "Last line: " << timesteps_line_buffer << std::endl;
+      //std::cout << "Last line: " << timesteps_line_buffer << std::endl;
 
       std::istringstream last_timestep_line_buffer(timesteps_line_buffer);
       last_timestep_line_buffer >> fem_collection.data[simulation_name].max_simulation_timestamp_in_milliseconds;
 
       timesteps_filestream.close();
     } else {
-      std::cout << "timesteps.txt was not available. Assuming static simulation" << std::endl;
+      std::cout << "timesteps.txt was not available. Assuming static simulation" << std::endl << std::endl;
     }
 
   } else {
@@ -456,17 +562,17 @@ std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_fil
   std::vector<std::string> successfully_parsed_simulation_names; 
 
   while(std::getline(in_fem_mapping_file, fem_path_line_buffer)) {
-    std::cout << "Read line: " <<  fem_path_line_buffer  << std::endl;
+    //std::cout << "Read line: " <<  fem_path_line_buffer  << std::endl;
 
     if ( !boost::filesystem::exists( fem_path_line_buffer ) )
     {
       std::cout << "Can't find my file!" << std::endl;
     } else {
-      std::cout << "File or path exists - starting to parse it to FEM attribute series!" << std::endl;
+      //std::cout << "File or path exists - starting to parse it to FEM attribute series!" << std::endl;
 
       bool is_file = boost::filesystem::is_regular_file(fem_path_line_buffer);
 
-      std::cout << "Is: " <<  ( is_file ?  "File!" : "Directory!") << std::endl; 
+      //std::cout << "Is: " <<  ( is_file ?  "File!" : "Directory!") << std::endl; 
 
       if(is_file) {
         throw FEM_path_not_a_directory_exception();
@@ -497,11 +603,14 @@ std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_fil
             if(boost::filesystem::is_regular_file(full_file_path)) {  //one last check for whether we are really holding a file in our hands
                 if(currently_iterated_filename.rfind(FEM_simulation_name) == 0) { // < ---- starts with time series prefix
 
-                  sorted_fem_time_series_files.push_back(full_file_path);
+                  if(!boost::algorithm::ends_with(currently_iterated_filename, ".bin")) {
 
-                  if(is_first_file_of_simulation) {
-                  	is_first_file_of_simulation = false;
-                  	successfully_parsed_simulation_names.push_back(FEM_simulation_name);
+                    sorted_fem_time_series_files.push_back(full_file_path);
+
+                    if(is_first_file_of_simulation) {
+                  	 is_first_file_of_simulation = false;
+                  	 successfully_parsed_simulation_names.push_back(FEM_simulation_name);
+                    }
                   }
                 }
             }

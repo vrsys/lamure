@@ -134,6 +134,10 @@ struct fem_attribute_collection {
 };
 
 
+
+void dump_file_to_fem_bin(std::string const& sorted_fem_time_series_files, 
+                          fem_attributes_per_simulation_step& current_attributes_per_timestep_of_simulation);
+
 void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files, 
                        fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform);
 
