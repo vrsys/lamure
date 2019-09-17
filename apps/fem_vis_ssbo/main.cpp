@@ -117,7 +117,7 @@ int32_t current_max_timestep_id = 0;
 
 bool deformation_enabled = false;
 
-static char* fem_col_attrib_names[] = {"SIG_XX", "MAG_U"};
+static char* fem_col_attrib_names[] = {"SIG_XX", "MAG_U", "TAU_XY", "TAU_XZ", "TAU_ABS", "SIG_V", "EPS_X"};
 
 static int selected_fem_col_attrib = 0;
 
@@ -2499,12 +2499,27 @@ void gui_status_screen(){
 
     if(ImGui::Combo("Color Attribute", &selected_fem_col_attrib, (const char* const*)fem_col_attrib_names, IM_ARRAYSIZE(fem_col_attrib_names))) {
 
-      if(selected_fem_col_attrib == 0){
+      if(0 == selected_fem_col_attrib){
         std::cout << "Selected SIG_XX for heatmap visualization" << std::endl;
         curently_selected_FEM_attribute_coloring = FEM_attrib::SIG_XX;
-      } else if(selected_fem_col_attrib == 1) {
+      } else if(1 == selected_fem_col_attrib) {
         std::cout << "Selected MAG_U for heatmap visualization" << std::endl;
         curently_selected_FEM_attribute_coloring = FEM_attrib::MAG_U;
+      } else if(2 == selected_fem_col_attrib) {
+        std::cout << "Selected TAU_XY for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::TAU_XY;        
+      } else if(3 == selected_fem_col_attrib) {
+        std::cout << "Selected TAU_XZ for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::TAU_XZ;        
+      } else if(4 == selected_fem_col_attrib) {
+        std::cout << "Selected TAU_ABS for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::TAU_ABS;        
+      } else if(5 == selected_fem_col_attrib) {
+        std::cout << "Selected SIG_V for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::SIG_V;        
+      } else if(6 == selected_fem_col_attrib) {
+        std::cout << "Selected EPS_X for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::EPS_X;        
       }
     }
 
