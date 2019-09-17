@@ -73,7 +73,6 @@
 #include <sstream>
 
 
-
 void refresh_ssbo_data();
 
 struct fem_result_meta_data{
@@ -104,7 +103,7 @@ scm::gl::font_face_ptr                  output_font = nullptr;//(new font_face(d
 
 
 
-bool enable_playback = false;
+
 float playback_speed = 1.0f;
 float accumulated_playback_cursor_time = 0.0f;
 float current_time_cursor_pos = 0.0f;
@@ -115,9 +114,16 @@ float current_simulation_duration_in_ms = 0.0f;
 int32_t current_max_num_timesteps = 1;
 int32_t current_max_timestep_id = 0;
 
+bool playback_enabled = false;
 bool deformation_enabled = false;
 
-static char* fem_col_attrib_names[] = {"SIG_XX", "MAG_U", "TAU_XY", "TAU_XZ", "TAU_ABS", "SIG_V", "EPS_X"};
+static char* fem_col_attrib_names[] = {"SIG_XX      (Normalspannung)", 
+                                       "MAG_U      (Betrag der Verschiebung)", 
+                                       "TAU_XY     (Schubspannung in lokale Y-Richtung)", 
+                                       "TAU_XZ     (Schubspannung in lokale Z-Richtung)", 
+                                       "TAU_ABS   (Betrag der addierten Vektoren)", 
+                                       "SIG_V        (Summe aller Spannungen, immer positiv)", 
+                                       "EPS_X       (Dehnung, zur Normalspannung zugehoerig)"};
 
 static int selected_fem_col_attrib = 0;
 
@@ -746,7 +752,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("current_attribute_id", current_attribute_id);
 
 
-    if(enable_playback) {
+    if(playback_enabled) {
       current_time_cursor_pos = (accumulated_playback_cursor_time) * playback_speed;// (frame_count) * 3.5f;
 
       if( (current_max_num_timesteps != 1) && (current_simulation_duration_in_ms != 0.0f) ) {
@@ -1331,7 +1337,7 @@ void glut_display() {
                            (frame_end-frame_start).count() / 1000.0;
 
 
-  if(enable_playback) {
+  if(playback_enabled) {
     accumulated_playback_cursor_time += elapsed_milliseconds;
   }
 
@@ -1590,7 +1596,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       break;
 
     case 'P':
-      enable_playback = !enable_playback;
+      playback_enabled = !playback_enabled;
       break;
 
     case 'U':
@@ -2462,8 +2468,8 @@ void gui_status_screen(){
     ImGui::End();
 
 
-    ImGui::SetNextWindowPos(ImVec2(0, settings_.height_-200));
-    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 200));
+    ImGui::SetNextWindowPos(ImVec2(0, settings_.height_-220));
+    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 220));
     
 
     if(settings_.fem_result_ > 0) {
@@ -2497,6 +2503,9 @@ void gui_status_screen(){
 
     ImGui::Text( formatted_simulation_description.c_str() );
 
+
+
+
     if(ImGui::Combo("Color Attribute", &selected_fem_col_attrib, (const char* const*)fem_col_attrib_names, IM_ARRAYSIZE(fem_col_attrib_names))) {
 
       if(0 == selected_fem_col_attrib){
@@ -2523,6 +2532,10 @@ void gui_status_screen(){
       }
     }
 
+
+
+
+
     if( ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, current_simulation_duration_in_ms) ) {
       input_.gui_lock_ = true;
     }
@@ -2543,6 +2556,11 @@ void gui_status_screen(){
       } else {
         settings_.fem_vis_mode_ = 0;
       }
+    }
+
+    ImGui::SameLine(300);
+
+    if( ImGui::Checkbox("Enable Playback", &playback_enabled) ){
     }
 
     ImGui::End();
