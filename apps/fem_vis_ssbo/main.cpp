@@ -779,8 +779,8 @@ void set_uniforms(scm::gl::program_ptr shader) {
     }
     
     
-    if(time_step_cursor_pos > current_max_timestep_id) {
-      time_step_cursor_pos = current_max_timestep_id-0.1;
+    if(time_step_cursor_pos >= current_max_timestep_id) {
+      time_step_cursor_pos = current_max_timestep_id-0.001;
     }
 
     //std::cout << "Uploading time cursor: " << clamped_time_cursor_pos << "\n";
