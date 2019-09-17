@@ -116,6 +116,32 @@ float current_time_cursor_pos = 0.0f;
 int32_t current_max_num_timesteps = 1;
 int32_t current_max_timestep_id = 0;
 
+
+static char* fem_col_attrib_names[] = {"SIG_XX", "MAG_U"};
+
+static int selected_fem_col_attrib = 0;
+
+
+
+bool changed_ssbo_simulation = true;
+fem_attribute_collection g_fem_collection;
+
+//after parsing, should contain the first simulation name of the folder the sim is contained in (e.g. Temperatur)
+std::string previously_selected_FEM_simulation = "";
+std::string currently_selected_FEM_simulation = "";
+
+FEM_attrib curently_selected_FEM_attribute_coloring = FEM_attrib::SIG_XX;
+
+/* is filled with the return value of "parse_fem_collection(...)"
+/ only values contained in the vector should be used for querying data from 
+/ "get_data_ptr_to_simulation_data(std::string const& sim_name)"to upload into SSBO */
+std::vector<std::string> successfully_parsed_simulation_names;
+
+
+//ssbo containing the entire time series for the attribute of interest (e.g. Temperatur, Eigenform_001, etc.)
+scm::gl::buffer_ptr fem_ssbo_time_series ;
+
+
 int32_t frame_count = 0;
 
 int32_t num_models_ = 0;
@@ -176,21 +202,6 @@ scm::gl::texture_2d_ptr bg_texture_;
 
 
 
-bool changed_ssbo_simulation = true;
-fem_attribute_collection g_fem_collection;
-
-//after parsing, should contain the first simulation name of the folder the sim is contained in (e.g. Temperatur)
-std::string previously_selected_FEM_simulation = "";
-std::string currently_selected_FEM_simulation = "";
-
-/* is filled with the return value of "parse_fem_collection(...)"
-/ only values contained in the vector should be used for querying data from 
-/ "get_data_ptr_to_simulation_data(std::string const& sim_name)"to upload into SSBO */
-std::vector<std::string> successfully_parsed_simulation_names;
-
-
-//ssbo containing the entire time series for the attribute of interest (e.g. Temperatur, Eigenform_001, etc.)
-scm::gl::buffer_ptr fem_ssbo_time_series ;
 
 
 
@@ -710,7 +721,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
     //std::cout << "SELECTED SIMULATION: "  << currently_selected_FEM_simulation << std::endl;
     auto const extrema_current_color_attribute 
-      = g_fem_collection.get_global_extrema_for_attribute_in_series(FEM_attrib::SIG_XX, currently_selected_FEM_simulation);
+      = g_fem_collection.get_global_extrema_for_attribute_in_series(curently_selected_FEM_attribute_coloring, currently_selected_FEM_simulation);
 
 
     //std::cout << " NUM VERTICES IN CURRENT SIMULATION: " << num_vertices_in_current_simulation << "\n";
@@ -726,19 +737,14 @@ void set_uniforms(scm::gl::program_ptr shader) {
     current_max_num_timesteps = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation);
     current_max_timestep_id = current_max_num_timesteps - 1;
 
-    shader->uniform("max_timestep_id", current_max_timestep_id);
 
     int32_t const num_fem_attributes = int(FEM_attrib::NUM_FEM_ATTRIBS);
-
+    int current_attribute_id = int(curently_selected_FEM_attribute_coloring);
+    // needed for offset to other timesteps
+    shader->uniform("max_timestep_id", current_max_timestep_id);
     shader->uniform("num_attributes_in_fem", num_fem_attributes);
-
-
-    int current_attribute_id = int(FEM_attrib::SIG_XX);
-
     shader->uniform("current_attribute_id", current_attribute_id);
 
-
-    std::cout << accumulated_playback_cursor_time << std::endl;
 
     if(enable_playback) {
       current_time_cursor_pos = (accumulated_playback_cursor_time / 1000.0f) * playback_speed;// (frame_count) * 3.5f;
@@ -763,7 +769,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
       }
     
 
-    std::cout << "Uploading time cursor: " << clamped_time_cursor_pos << "\n";
+    //std::cout << "Uploading time cursor: " << clamped_time_cursor_pos << "\n";
     shader->uniform("time_cursor_pos", clamped_time_cursor_pos);
 
 
@@ -2156,6 +2162,10 @@ void gui_selection_settings(settings& stgs){
 
     ImGui::Begin("Selection", &gui_.selection_settings_, ImGuiWindowFlags_MenuBar);
 
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
+
     std::vector<std::string> model_names_short;
     for(const auto& s : stgs.models_){
       model_names_short.push_back(make_short_name(s));
@@ -2233,6 +2243,10 @@ void gui_view_settings(){
     ImGui::SetNextWindowPos(ImVec2(20, 555));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 335.0f));
     ImGui::Begin("View / LOD Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
     //if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
     //  input_.gui_lock_ = true;
     //}
@@ -2288,6 +2302,10 @@ void gui_visual_settings(){
     ImGui::SetNextWindowSize(ImVec2(500.0f, 305.0f));
     ImGui::Begin("Visual Settings", &gui_.visual_settings_, ImGuiWindowFlags_MenuBar);
     
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
+
     uint32_t num_vis_entries = (5 + data_provenance_size_in_bytes/sizeof(float));
     ImGui::Combo("Vis", &it, vis_values, num_vis_entries);
     settings_.vis_ = it;
@@ -2335,6 +2353,10 @@ void gui_provenance_settings(){
     ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 345));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 450.0f));
     ImGui::Begin("Provenance Settings", &gui_.provenance_settings_, ImGuiWindowFlags_MenuBar);
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
 
     if (ImGui::SliderFloat("AUX Point Size", &settings_.aux_point_size_, 0.1f, 10.0f, "%.4f", 4.0f)) {
       input_.gui_lock_ = true;
@@ -2405,6 +2427,11 @@ void gui_status_screen(){
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 275.0f));
     ImGui::Begin("lamure_fem_vis GUI", &status_screen, ImGuiWindowFlags_MenuBar);
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
+
     ImGui::Text("fps %d", (int32_t)fps_);
 
     double f = (rendered_splats_ / 1000000.0);
@@ -2449,12 +2476,41 @@ void gui_status_screen(){
     ImGui::End();
 
 
-    ImGui::SetNextWindowPos(ImVec2(0, 1000));
-    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 100));
-    ImGui::Begin( ("Playback: " + currently_selected_FEM_simulation).c_str() );
+    ImGui::SetNextWindowPos(ImVec2(0, settings_.height_-160));
+    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 160));
+    
 
-    ImGui::SliderFloat("Playback Speed", &playback_speed, 0.01f, 100.0f);
-    ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, current_max_timestep_id);
+    if(settings_.fem_result_ > 0) {
+      ImGui::Begin( ("Playback: " + currently_selected_FEM_simulation).c_str() );
+    } else {
+      ImGui::Begin( "Playback: Color" );    
+    }
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
+
+
+    if(ImGui::Combo("Color Attribute", &selected_fem_col_attrib, (const char* const*)fem_col_attrib_names, IM_ARRAYSIZE(fem_col_attrib_names))) {
+
+      if(selected_fem_col_attrib == 0){
+        std::cout << "Selected SIG_XX for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::SIG_XX;
+      } else if(selected_fem_col_attrib == 1) {
+        std::cout << "Selected MAG_U for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::MAG_U;
+      }
+    }
+
+    if( ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, current_max_timestep_id) ) {
+      input_.gui_lock_ = true;
+    }
+    if( ImGui::SliderFloat("Playback Speed", &playback_speed, 0.01f, 100.0f) ) {
+        input_.gui_lock_ = true;
+    }
+    if( ImGui::SliderFloat("Deform Factor", &settings_.fem_deform_factor_, 1.0f, 5000.0f) ) {
+        input_.gui_lock_ = true;
+    }    
 
     ImGui::End();
 }
