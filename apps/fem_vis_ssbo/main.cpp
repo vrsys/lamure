@@ -113,9 +113,13 @@ float playback_speed = 1.0f;
 float accumulated_playback_cursor_time = 0.0f;
 float current_time_cursor_pos = 0.0f;
 
+float current_milliseconds_per_timestep = 0.0f;
+float current_simulation_duration_in_ms = 0.0f;
+
 int32_t current_max_num_timesteps = 1;
 int32_t current_max_timestep_id = 0;
 
+bool deformation_enabled = false;
 
 static char* fem_col_attrib_names[] = {"SIG_XX", "MAG_U"};
 
@@ -747,11 +751,11 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
 
     if(enable_playback) {
-      current_time_cursor_pos = (accumulated_playback_cursor_time / 1000.0f) * playback_speed;// (frame_count) * 3.5f;
+      current_time_cursor_pos = (accumulated_playback_cursor_time) * playback_speed;// (frame_count) * 3.5f;
 
-      if(current_max_num_timesteps != 1) {
+      if( (current_max_num_timesteps != 1) && (current_simulation_duration_in_ms != 0.0f) ) {
         if(current_time_cursor_pos > current_max_timestep_id) {
-          current_time_cursor_pos = std::fmod(current_time_cursor_pos, current_max_timestep_id);
+          current_time_cursor_pos = std::fmod(current_time_cursor_pos, current_simulation_duration_in_ms);
         }
       } else {
         current_time_cursor_pos = 0.0f;
@@ -760,17 +764,27 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
     float clamped_time_cursor_pos = current_time_cursor_pos;
 
-      if(current_max_num_timesteps != 1) {
-        if(clamped_time_cursor_pos > current_max_timestep_id) {
-         clamped_time_cursor_pos = std::fmod(clamped_time_cursor_pos, current_max_timestep_id);
-        } 
-      } else {
-        clamped_time_cursor_pos = 0.0f;
-      }
+    if(current_max_num_timesteps != 1 && (current_simulation_duration_in_ms != 0.0f) ) {
+      if(clamped_time_cursor_pos > current_simulation_duration_in_ms) {
+       clamped_time_cursor_pos = std::fmod(clamped_time_cursor_pos, current_simulation_duration_in_ms);
+      } 
+    } else {
+      clamped_time_cursor_pos = 0.0f;
+    }
+
+    float time_step_cursor_pos = 0.0f;
+
+    if(current_milliseconds_per_timestep > 0.0f) {
+      time_step_cursor_pos = current_time_cursor_pos / current_milliseconds_per_timestep;
+    }
     
+    
+    if(time_step_cursor_pos > current_max_timestep_id) {
+      time_step_cursor_pos = current_max_timestep_id-0.1;
+    }
 
     //std::cout << "Uploading time cursor: " << clamped_time_cursor_pos << "\n";
-    shader->uniform("time_cursor_pos", clamped_time_cursor_pos);
+    shader->uniform("time_step_cursor_pos", time_step_cursor_pos);
 
 
 
@@ -1580,6 +1594,7 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
     }
 
     case 'D':
+      deformation_enabled = !deformation_enabled;
       settings_.fem_vis_mode_ = !settings_.fem_vis_mode_;
       break;
     case 'R':
@@ -2214,24 +2229,7 @@ void gui_selection_settings(settings& stgs){
     else {
       ImGui::Text("No atlas file");
     }
-    ImGui::Checkbox("Brush", &input_.brush_mode_);
 
-    ImGui::Text("Selection: %d / %d", (int32_t)selection_.brush_end_, (int32_t)settings_.max_brush_size_);
-    if (settings_.create_aux_resources_ && settings_.atlas_file_ != "") {
-      if (selection_.selected_model_ != -1 && selection_.selected_views_.size() == 1) {
-        ImGui::Text("Image: %d %s", (int32_t)selection_.selected_view_, 
-          settings_.views_[selection_.selected_model_][selection_.selected_view_].image_file_.c_str());
-      }
-      else {
-        ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
-      }
-    }
-
-    if (ImGui::Button("Clear Selection")) {
-      selection_.selected_views_.clear();
-      selection_.brush_end_ = 0;
-      input_.brush_clear_ = false;
-    }
 
     ImGui::End();
 
@@ -2476,8 +2474,8 @@ void gui_status_screen(){
     ImGui::End();
 
 
-    ImGui::SetNextWindowPos(ImVec2(0, settings_.height_-160));
-    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 160));
+    ImGui::SetNextWindowPos(ImVec2(0, settings_.height_-200));
+    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 200));
     
 
     if(settings_.fem_result_ > 0) {
@@ -2491,6 +2489,26 @@ void gui_status_screen(){
     }
 
 
+    current_simulation_duration_in_ms = g_fem_collection.get_simulation_duration(currently_selected_FEM_simulation);
+    auto num_timesteps_in_simulation = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation);
+
+    current_milliseconds_per_timestep = current_simulation_duration_in_ms / num_timesteps_in_simulation;
+
+
+    std::string formatted_simulation_description = "";
+
+    if(settings_.fem_result_ > 0) {
+      formatted_simulation_description = 
+        ("Current simulation: " + std::to_string(current_simulation_duration_in_ms) + " ms\t\t; " 
+                                + std::to_string(num_timesteps_in_simulation) + " timestep" + ( (num_timesteps_in_simulation > 1) ?  "s" : "") + "\t\t" 
+                                + std::to_string(current_milliseconds_per_timestep) + "ms / timestep");
+    } else {
+      formatted_simulation_description = "Current simulation: None"; 
+    }
+
+
+    ImGui::Text( formatted_simulation_description.c_str() );
+
     if(ImGui::Combo("Color Attribute", &selected_fem_col_attrib, (const char* const*)fem_col_attrib_names, IM_ARRAYSIZE(fem_col_attrib_names))) {
 
       if(selected_fem_col_attrib == 0){
@@ -2502,15 +2520,27 @@ void gui_status_screen(){
       }
     }
 
-    if( ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, current_max_timestep_id) ) {
+    if( ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, current_simulation_duration_in_ms) ) {
       input_.gui_lock_ = true;
     }
+    //if( ImGui::SliderFloat("Time Cursor (Simulation Frames)", &current_time_cursor_pos, 0.0f, current_max_timestep_id) ) {
+    //  input_.gui_lock_ = true;
+    //}
     if( ImGui::SliderFloat("Playback Speed", &playback_speed, 0.01f, 100.0f) ) {
         input_.gui_lock_ = true;
     }
     if( ImGui::SliderFloat("Deform Factor", &settings_.fem_deform_factor_, 1.0f, 5000.0f) ) {
         input_.gui_lock_ = true;
     }    
+
+
+    if( ImGui::Checkbox("Enable Deformation", &deformation_enabled) ) {
+      if(deformation_enabled) {
+        settings_.fem_vis_mode_ = 1;
+      } else {
+        settings_.fem_vis_mode_ = 0;
+      }
+    }
 
     ImGui::End();
 }

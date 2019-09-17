@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <string>
 
 //boost
 #include <boost/assign/list_of.hpp>
@@ -194,6 +195,17 @@ get_global_extrema_for_attribute_in_series(FEM_attrib const& simulation_attrib, 
 	return global_extrema;
 }
 
+float fem_attribute_collection::get_simulation_duration(std::string const& simulation_name) const {
+  auto time_series_iterator = data.find(simulation_name);
+
+  if(data.end() == time_series_iterator) {
+    throw_annotated_simulation_not_parsed_exception(simulation_name);
+  }
+
+  auto  current_simulation_duration = time_series_iterator->second.max_simulation_timestamp_in_milliseconds;
+
+  return current_simulation_duration; 
+}
 
 
 /* free Functions for parsing:
@@ -306,7 +318,7 @@ void parse_file_to_fem(std::string const& simulation_name,
 
           //std::cout << length_of_vector << std::endl;
 
-          
+
 
           in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_XX][line_write_count];
           
@@ -375,7 +387,8 @@ void parse_file_to_fem(std::string const& simulation_name,
 
 void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
                             std::vector<std::string> const& sorted_fem_time_series_files,
-                            fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform) {
+                            fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform,
+                            std::string const& timesteps_file_path) {
 
 
   std::cout << "Trying to parse simulation with name: " << simulation_name << std::endl;
@@ -401,6 +414,29 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
 
     std::cout << "Global Minimum Normalspannung: " << fem_collection.data[simulation_name].global_min_val[FEM_attrib::SIG_XX] << std::endl;
     std::cout << "Global Maximum Normalspannung: " << fem_collection.data[simulation_name].global_max_val[FEM_attrib::SIG_XX] << std::endl;
+
+
+    if("" != timesteps_file_path) {
+      std::string timesteps_line_buffer;
+      std::ifstream timesteps_filestream(timesteps_file_path);
+
+      uint32_t line_counter = 0;
+      while(std::getline(timesteps_filestream, timesteps_line_buffer)) {
+        if(line_counter == sorted_fem_time_series_files.size()) {
+          break;
+        } 
+
+        ++line_counter;
+      }
+      std::cout << "Last line: " << timesteps_line_buffer << std::endl;
+
+      std::istringstream last_timestep_line_buffer(timesteps_line_buffer);
+      last_timestep_line_buffer >> fem_collection.data[simulation_name].max_simulation_timestamp_in_milliseconds;
+
+      timesteps_filestream.close();
+    } else {
+      std::cout << "timesteps.txt was not available. Assuming static simulation" << std::endl;
+    }
 
   } else {
     std::cout << "Regarding attribute: " << simulation_name << std::endl;
@@ -473,7 +509,14 @@ std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_fil
 
         std::sort(sorted_fem_time_series_files.begin(), sorted_fem_time_series_files.end());
 
-        parse_directory_to_fem(FEM_simulation_name, sorted_fem_time_series_files, fem_collection, fem_to_pcl_transform);
+        std::string timesteps_filepath = path_to_time_series + "/timesteps.txt";
+
+        if ( !boost::filesystem::exists( timesteps_filepath ) ) {
+          std::cout << "Could not find \"timesteps.txt\" file for simulation series." << std::endl;
+          timesteps_filepath = "";
+        }
+
+        parse_directory_to_fem(FEM_simulation_name, sorted_fem_time_series_files, fem_collection, fem_to_pcl_transform, timesteps_filepath);
 
         //for(auto const& time_series_path : sorted_fem_time_series_files) {
         //  std::cout << "X: " << time_series_path << std::endl;

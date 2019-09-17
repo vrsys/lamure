@@ -100,7 +100,7 @@ struct fem_attributes_per_time_series {
 
   std::vector<float> serialized_time_series;
 
-  float max_simulation_time_in_milliseconds = 0.0f;
+  float max_simulation_timestamp_in_milliseconds = 0.0f;
 
   char* serialize_time_series();
 
@@ -130,7 +130,7 @@ struct fem_attribute_collection {
   //std::pair<float, float> get_local_extrema_for_attribute_in_timestep(FEM_attrib const& simulation_attrib, std::string const& simulation_name, int32_t time_step) const;
   // returns global minimum and maximum for desired attribute (->global for entire time series)
   std::pair<float, float> get_global_extrema_for_attribute_in_series(FEM_attrib const& simulation_attrib, std::string const& simulation_name) const;
-
+  float get_simulation_duration(std::string const& simulation_name) const;
 };
 
 
@@ -139,7 +139,7 @@ void parse_file_to_fem(std::string const& attribute_name, std::string const& sor
 
 void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
                             std::vector<std::string> const& sorted_fem_time_series_files,
-                            fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform);
+                            fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform, std::string const& time_steps_filepath);
 
 std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_file_path, 
                                               fem_attribute_collection& fem_collection, scm::math::mat4f const& fem_to_pcl_transform);

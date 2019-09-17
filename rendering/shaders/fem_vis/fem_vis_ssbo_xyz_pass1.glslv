@@ -41,7 +41,7 @@ uniform vec3 fem_max_deformation;
 
 
 
-uniform float time_cursor_pos = 0.0; //float between 0 and num_timesteps for a simulation
+uniform float time_step_cursor_pos = 0.0; //float between 0 and num_timesteps for a simulation
 uniform int num_vertices_in_fem = 0;
 uniform int num_attributes_in_fem = 10; //e.g. 3x pos + 1x Sig_XX  would be 4, required to compute the stride to next timestep
 
@@ -105,7 +105,7 @@ void main() {
         uint num_elements_per_timestep = num_attributes_in_fem * num_vertices_in_fem;
 
 
-        uint timestep_x = uint(mod(time_cursor_pos, float(max_timestep_id) ) );// 2;
+        uint timestep_x = uint(mod(time_step_cursor_pos, float(max_timestep_id) ) );// 2;
         uint timestep_x_plus_1 = min(uint(timestep_x) + 1, max_timestep_id);
 
 
@@ -143,7 +143,7 @@ void main() {
                                                          + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_1] * fem_vert_w_1 
                                                          + fem_array[num_elements_per_timestep * timestep_x_plus_1 + num_vertices_in_fem * (2) + fem_vert_id_2] * fem_vert_w_2; 
 
-        float temporal_weight = time_cursor_pos - timestep_x;
+        float temporal_weight = time_step_cursor_pos - timestep_x;
 
         float spatio_temporally_mixed_deform_x = mix(spatially_mixed_attrib_t_x_deform_x, spatially_mixed_attrib_t_x_plus_1_deform_x, temporal_weight);
         float spatio_temporally_mixed_deform_y = mix(spatially_mixed_attrib_t_x_deform_y, spatially_mixed_attrib_t_x_plus_1_deform_y, temporal_weight);
