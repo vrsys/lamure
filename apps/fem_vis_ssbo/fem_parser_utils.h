@@ -100,6 +100,7 @@ struct fem_attributes_per_time_series {
 
   std::vector<float> serialized_time_series;
 
+  float max_simulation_time_in_milliseconds = 0.0f;
 
   char* serialize_time_series();
 

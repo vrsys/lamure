@@ -108,11 +108,13 @@ scm::gl::font_face_ptr                  output_font = nullptr;//(new font_face(d
 
 
 
-bool enable_playback = true;
+bool enable_playback = false;
 float playback_speed = 1.0f;
 float accumulated_playback_cursor_time = 0.0f;
-
 float current_time_cursor_pos = 0.0f;
+
+int32_t current_max_num_timesteps = 1;
+int32_t current_max_timestep_id = 0;
 
 int32_t frame_count = 0;
 
@@ -720,8 +722,11 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("current_min_color_attrib", extrema_current_color_attribute.first);
     shader->uniform("current_max_color_attrib", extrema_current_color_attribute.second);
 
-    int32_t max_timestep_id = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) - 1;
-    shader->uniform("max_timestep_id", max_timestep_id);
+ 
+    current_max_num_timesteps = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation);
+    current_max_timestep_id = current_max_num_timesteps - 1;
+
+    shader->uniform("max_timestep_id", current_max_timestep_id);
 
     int32_t const num_fem_attributes = int(FEM_attrib::NUM_FEM_ATTRIBS);
 
@@ -736,24 +741,29 @@ void set_uniforms(scm::gl::program_ptr shader) {
     std::cout << accumulated_playback_cursor_time << std::endl;
 
     if(enable_playback) {
-      current_time_cursor_pos = accumulated_playback_cursor_time / 1000.0f;// (frame_count) * 3.5f;
-      while(current_time_cursor_pos > max_timestep_id) {
-        current_time_cursor_pos -= max_timestep_id;
+      current_time_cursor_pos = (accumulated_playback_cursor_time / 1000.0f) * playback_speed;// (frame_count) * 3.5f;
+
+      if(current_max_num_timesteps != 1) {
+        if(current_time_cursor_pos > current_max_timestep_id) {
+          current_time_cursor_pos = std::fmod(current_time_cursor_pos, current_max_timestep_id);
+        }
+      } else {
+        current_time_cursor_pos = 0.0f;
       }
     }
 
     float clamped_time_cursor_pos = current_time_cursor_pos;
 
-      if(max_timestep_id != 0) {
-        while(clamped_time_cursor_pos > max_timestep_id) {
-         clamped_time_cursor_pos -= max_timestep_id;
+      if(current_max_num_timesteps != 1) {
+        if(clamped_time_cursor_pos > current_max_timestep_id) {
+         clamped_time_cursor_pos = std::fmod(clamped_time_cursor_pos, current_max_timestep_id);
         } 
       } else {
         clamped_time_cursor_pos = 0.0f;
       }
     
 
-
+    std::cout << "Uploading time cursor: " << clamped_time_cursor_pos << "\n";
     shader->uniform("time_cursor_pos", clamped_time_cursor_pos);
 
 
@@ -2440,10 +2450,11 @@ void gui_status_screen(){
 
 
     ImGui::SetNextWindowPos(ImVec2(0, 1000));
-    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 50));
+    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 100));
     ImGui::Begin( ("Playback: " + currently_selected_FEM_simulation).c_str() );
 
-    ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, 101.0f);
+    ImGui::SliderFloat("Playback Speed", &playback_speed, 0.01f, 100.0f);
+    ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, current_max_timestep_id);
 
     ImGui::End();
 }
