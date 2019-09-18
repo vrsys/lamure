@@ -60,6 +60,24 @@ class attribute_not_present_in_series: public std::exception
   }
 };
 
+class no_mat_file_parser_exception: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "The requested file can not be parsed because currently there is no built-in *.mat-file parser. Please use the python script to convert *.mat files to *.mat.bin files." ;
+  }
+};
+
+
+class unknown_file_exception: public std::exception
+{
+  virtual const char* what() const throw()
+  {
+    return "The requested file can not be parsed because the ending is unknown to the parser." ;
+  }
+};
+
+
 // all 9 attributes that comply with the current data
 // allows back- and forth-casting between enum classes and int
 enum class FEM_attrib {

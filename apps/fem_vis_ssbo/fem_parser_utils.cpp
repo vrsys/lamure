@@ -269,12 +269,49 @@ void dump_file_to_fem_bin(std::string const& sorted_fem_time_series_file,
 
   std::ofstream out_fem_bin_file(out_fem_bin_file_string, std::ios::binary | std::ios::out);
 
+/*
+  U_X     = 0,  // deformation entlang X-Achse
+  U_Y     = 1,  // deformation entlang Y-Achse
+  U_Z     = 2,  // deformation entlang Z-Achse
+  MAG_U   = 3,  // magnitude of U, is computed from U_XYZ (not parsed)
+  SIG_XX  = 4, // Normalspannung; Kraft bezogen auf eine Fläche in lokale x-Richtung (Richtung eines Stabes); 1 attribut
+  TAU_XY  = 5, //Schubspannung entlang Flaechen xy 
+  TAU_XZ  = 6, //Schubspannung entlang Flaechen xz
+  TAU_ABS = 7,  //Betrag addierter Schubspannungsvektoren xy und xz
+  SIG_V   = 8, //Vergleichsspannung
+  EPS_X   = 9,    // Dehnung
+*/
 
+  // make sure that the order strictly is the same as in the python script for parsing mat files for consitence
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::U_X].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::U_X].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::U_Y].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::U_Y].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::U_Z].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::U_Z].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::MAG_U].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::MAG_U].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::SIG_XX].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::SIG_XX].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::TAU_XY].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::TAU_XY].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::TAU_XZ].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::TAU_XZ].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::TAU_ABS].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::TAU_ABS].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::SIG_V].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::SIG_V].size() * sizeof(float));
+  out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[FEM_attrib::EPS_X].data(), 
+                                current_attributes_per_timestep_of_simulation.data[FEM_attrib::EPS_X].size() * sizeof(float));
+
+
+  /*
   for(int fem_attrib_idx = 0; fem_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++fem_attrib_idx) {
     FEM_attrib const current_fem_attrib = FEM_attrib(fem_attrib_idx);
 
     out_fem_bin_file.write((char*)current_attributes_per_timestep_of_simulation.data[current_fem_attrib].data(), current_attributes_per_timestep_of_simulation.data[current_fem_attrib].size() * sizeof(float));
   }
+  */
   out_fem_bin_file.close();
 }
 
@@ -282,7 +319,8 @@ void dump_file_to_fem_bin(std::string const& sorted_fem_time_series_file,
 //gets called if bin file was available for fem simulation
 void read_fem_bin_file_to_time_step(std::string const& simulation_name,
                                     std::string const& sorted_fem_time_series_file_bin, 
-                                    fem_attribute_collection& fem_collection) {
+                                    fem_attribute_collection& fem_collection,
+                                    scm::math::mat4f const& fem_to_pcl_transform) {
 
   std::string const in_fem_bin_file_string = sorted_fem_time_series_file_bin;
 
@@ -317,13 +355,46 @@ void read_fem_bin_file_to_time_step(std::string const& simulation_name,
     }
   }
 
+  current_attributes.data[FEM_attrib::U_X].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::U_X].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::U_Y].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::U_Y].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::U_Z].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::U_Z].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::MAG_U].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::MAG_U].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::SIG_XX].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::SIG_XX].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::TAU_XY].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::TAU_XY].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::TAU_XZ].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::TAU_XZ].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::TAU_ABS].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::TAU_ABS].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::SIG_V].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::SIG_V].data(), total_num_bytes_per_attribute);
+  current_attributes.data[FEM_attrib::EPS_X].resize(total_num_floats_per_attribute);
+  in_fem_bin_file.read((char*)current_attributes.data[FEM_attrib::EPS_X].data(), total_num_bytes_per_attribute);
 
-  for(int fem_attrib_idx = 0; fem_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++fem_attrib_idx) {
-    FEM_attrib const current_fem_attrib = FEM_attrib(fem_attrib_idx);
 
-    current_attributes.data[current_fem_attrib].resize(total_num_floats_per_attribute);
-    in_fem_bin_file.read((char*)current_attributes.data[current_fem_attrib].data(), total_num_bytes_per_attribute);
+//transform
+  for(int64_t element_idx = 0; element_idx < total_num_floats_per_attribute; ++element_idx) {
+
+    scm::math::vec4f untransformed_deformation_u_xyz{current_attributes.data[FEM_attrib::U_X][element_idx], 
+                                                     current_attributes.data[FEM_attrib::U_Y][element_idx], 
+                                                     current_attributes.data[FEM_attrib::U_Z][element_idx], 0.0f};
+
+
+    scm::math::vec4f transformed_deformation_u_xyz = fem_to_pcl_transform * untransformed_deformation_u_xyz;
+
+    current_attributes.data[FEM_attrib::U_X][element_idx] = transformed_deformation_u_xyz[0];
+    current_attributes.data[FEM_attrib::U_Y][element_idx] = transformed_deformation_u_xyz[1]; 
+    current_attributes.data[FEM_attrib::U_Z][element_idx] = transformed_deformation_u_xyz[2];
+
+
+
   }
+
 
   ++current_time_series.num_timesteps_in_series;
 
@@ -372,9 +443,9 @@ void parse_file_to_fem(std::string const& simulation_name,
     	}
     }
 
-    current_attributes.data[FEM_attrib::U_X].resize(total_num_attribute_lines); //3 attributes combines for cache coherence
-    current_attributes.data[FEM_attrib::U_Y].resize(total_num_attribute_lines); //3 attributes combines for cache coherence
-    current_attributes.data[FEM_attrib::U_Z].resize(total_num_attribute_lines); //3 attributes combines for cache coherence
+    current_attributes.data[FEM_attrib::U_X].resize(total_num_attribute_lines);
+    current_attributes.data[FEM_attrib::U_Y].resize(total_num_attribute_lines);
+    current_attributes.data[FEM_attrib::U_Z].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::MAG_U].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::SIG_XX].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::TAU_XY].resize(total_num_attribute_lines);
@@ -382,6 +453,12 @@ void parse_file_to_fem(std::string const& simulation_name,
     current_attributes.data[FEM_attrib::TAU_ABS].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::SIG_V].resize(total_num_attribute_lines);
     current_attributes.data[FEM_attrib::EPS_X].resize(total_num_attribute_lines);
+
+
+
+    auto transformed_U_X = current_attributes.data[FEM_attrib::U_X];
+    auto transformed_U_Y = current_attributes.data[FEM_attrib::U_Y];
+    auto transformed_U_Z = current_attributes.data[FEM_attrib::U_Z];
 
 
     // rewind file
@@ -414,13 +491,15 @@ void parse_file_to_fem(std::string const& simulation_name,
           in_line_stringstream >> untransformed_deformation_u_xyz[2];
           
 
-
+          current_attributes.data[FEM_attrib::U_X][line_write_count] = untransformed_deformation_u_xyz[0];
+          current_attributes.data[FEM_attrib::U_Y][line_write_count] = untransformed_deformation_u_xyz[1];
+          current_attributes.data[FEM_attrib::U_Z][line_write_count] = untransformed_deformation_u_xyz[2];
 
           scm::math::vec4f transformed_deformation_u_xyz = fem_to_pcl_transform * untransformed_deformation_u_xyz;
 
-          current_attributes.data[FEM_attrib::U_X][line_write_count] = transformed_deformation_u_xyz[0];
-          current_attributes.data[FEM_attrib::U_Y][line_write_count] = transformed_deformation_u_xyz[1];
-          current_attributes.data[FEM_attrib::U_Z][line_write_count] = transformed_deformation_u_xyz[2];
+          transformed_U_X[line_write_count] = transformed_deformation_u_xyz[0];
+          transformed_U_Y[line_write_count] = transformed_deformation_u_xyz[1]; 
+          transformed_U_Z[line_write_count] = transformed_deformation_u_xyz[2];
 
           scm::math::vec3 deformation_vector = scm::math::vec3{current_attributes.data[FEM_attrib::U_X][line_write_count],
                                                                current_attributes.data[FEM_attrib::U_Y][line_write_count],
@@ -464,14 +543,18 @@ void parse_file_to_fem(std::string const& simulation_name,
 
 
 
-
+    // old extrema 
     calculate_extrema_for_series(current_attributes, current_time_series);
 
-
-    // old extrema 
-
-  
+    // serialize data (without transformed deformation)
     dump_file_to_fem_bin(sorted_fem_time_series_files, current_attributes);
+
+
+    //after dumping the files to binaries, overwrite old U_X, U_Y and U_Z with transformed deformation
+    current_attributes.data[FEM_attrib::U_X] = transformed_U_X;
+    current_attributes.data[FEM_attrib::U_Y] = transformed_U_Y;
+    current_attributes.data[FEM_attrib::U_Z] = transformed_U_Z;
+
   }
 
 
@@ -505,11 +588,21 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
       std::string const bin_fem_file_path = file_path + ".bin";
 
       if(boost::filesystem::exists( bin_fem_file_path )) {
-        read_fem_bin_file_to_time_step(simulation_name, bin_fem_file_path, fem_collection);
+        read_fem_bin_file_to_time_step(simulation_name, bin_fem_file_path, fem_collection, fem_to_pcl_transform);
 
         //std::cout << "Trying to read stuff from bin file for simulation: " << simulation_name << std::endl;
       } else {
-        parse_file_to_fem(simulation_name, file_path, fem_collection, fem_to_pcl_transform);    
+
+        if(boost::algorithm::ends_with(file_path, ".txt")) { // old ASCII format, we can parse this and dump out the corresponding bin file
+          parse_file_to_fem(simulation_name, file_path, fem_collection, fem_to_pcl_transform);
+        } else if(boost::algorithm::ends_with(file_path, ".mat")) { // we encountered a .mat file but do not have the corresponding .mat.bin file -- abort
+
+          std::cout << "Regarding file " << file_path << ": " << std::endl;
+          throw no_mat_file_parser_exception{};
+        } else {
+          std::cout << "Regarding file " << file_path << ": " << std::endl;
+          throw unknown_file_exception{};
+        }
       }
 
 
