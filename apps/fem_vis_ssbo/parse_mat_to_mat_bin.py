@@ -16,7 +16,7 @@ if number_of_arguments < 2:
 in_mat_file_name = sys.argv[1]
 mat_contents = sio.loadmat(in_mat_file_name)
 
-sim_array = mat_contents['data']
+sim_array = mat_contents['dataSave']
 
 #print(mat_contents)
 
@@ -57,7 +57,7 @@ all_eps_x   = all_eps_x.astype(np.float32)
 
 
 
-print(all_mag_u)
+#print(all_mag_u)
 
 #print(sim_array)
 
