@@ -17,7 +17,7 @@
 namespace lamure {
 namespace prov
 {
-class DenseCache : public Cacheable<DensePoint, DenseMetaData>
+class PROVENANCE_DLL DenseCache : public Cacheable<DensePoint, DenseMetaData>
 {
   public:
     DenseCache(ifstream &is_prov, ifstream &is_meta) : Cacheable(is_prov, is_meta){};

@@ -45,7 +45,7 @@
 #include <lamure/ren/controller.h>
 #include <lamure/pvs/pvs_database.h>
 #include <lamure/ren/ray.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 #include <lamure/prov/octree.h>
 #include <lamure/vt/VTConfig.h>
 #include <lamure/vt/ren/CutDatabase.h>
@@ -93,7 +93,8 @@ scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
 
 scm::gl::program_ptr vis_quad_shader_;
 scm::gl::program_ptr vis_line_shader_;
-scm::gl::program_ptr vis_triangle_shader_;
+scm::gl::program_ptr vis_trimesh_shader_;
+scm::gl::program_ptr vis_trimesh_lighting_shader_;
 scm::gl::program_ptr vis_vt_shader_;
 scm::gl::program_ptr vis_vt_shader_feedback_;
 
@@ -113,6 +114,8 @@ scm::gl::depth_stencil_state_ptr depth_state_disable_;
 scm::gl::depth_stencil_state_ptr depth_state_less_;
 scm::gl::depth_stencil_state_ptr depth_state_without_writing_;
 scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
+
+scm::gl::rasterizer_state_ptr wireframe_no_backface_culling_rasterizer_state_;
 
 scm::gl::blend_state_ptr color_blending_state_;
 scm::gl::blend_state_ptr color_no_blending_state_;
@@ -138,6 +141,7 @@ std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
 std::map<uint32_t, resource> octree_resources_;
 std::map<uint32_t, resource> image_plane_resources_;
+std::map<uint32_t, scm::gl::texture_2d_ptr> texture_resources_;
 
 scm::shared_ptr<scm::gl::quad_geometry> screen_quad_;
 scm::time::accum_timer<scm::time::high_res_timer> frame_time_;
@@ -145,8 +149,6 @@ scm::time::accum_timer<scm::time::high_res_timer> frame_time_;
 double fps_ = 0.0;
 uint64_t rendered_splats_ = 0;
 uint64_t rendered_nodes_ = 0;
-
-lamure::ren::Data_Provenance data_provenance_;
 
 struct input {
   float trackball_x_ = 0.f;
@@ -183,6 +185,7 @@ struct xyz {
 
 struct vertex {
     scm::math::vec3f pos_;
+    scm::math::vec3f nml_;
     scm::math::vec2f uv_;
 };
 
@@ -211,7 +214,7 @@ struct settings {
   int32_t upload_ {32};
   bool provenance_ {0};
   bool create_aux_resources_ {1};
-  float near_plane_ {0.001f};
+  float near_plane_ {0.1f};
   float far_plane_ {1000.0f};
   float fov_ {30.0f};
   bool splatting_ {1};
@@ -262,12 +265,13 @@ struct settings {
   std::vector<std::string> models_;
   std::map<uint32_t, scm::math::mat4d> transforms_;
   std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
-  std::map<uint32_t, std::vector<lamure::prov::aux::view>> views_;
+  std::map<uint32_t, std::vector<lamure::prov::auxi::view>> views_;
   std::map<uint32_t, std::string> aux_;
   std::map<uint32_t, std::string> textures_;
+  std::map<uint32_t, int> min_lod_depths_;
   std::string selection_ {""};
   float max_radius_ {std::numeric_limits<float>::max()};
-
+  int color_rendering_mode {0};
 };
 
 settings settings_;
@@ -384,6 +388,10 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
             else if (key == "tex") {
               settings.textures_[address] = value;
               std::cout << "found texture for model id " << address << std::endl;
+            }
+            else if (key == "depth") {
+              settings.min_lod_depths_[address] = atoi(value.c_str());
+              std::cout << "found depth for model id " << address << std::endl;
             }
             else {
               std::cout << "unrecognized key: " << key << std::endl;
@@ -653,15 +661,15 @@ bool cmd_option_exists(char** begin, char** end, const std::string& option) {
 }
 
 scm::gl::data_format get_tex_format() {
-    switch (vt::VTConfig::get_instance().get_format_texture()) {
-        case vt::VTConfig::R8:
-            return scm::gl::FORMAT_R_8;
-        case vt::VTConfig::RGB8:
-            return scm::gl::FORMAT_RGB_8;
-        case vt::VTConfig::RGBA8:
-        default:
-            return scm::gl::FORMAT_RGBA_8;
-    }
+  switch (vt::VTConfig::get_instance().get_format_texture()) {
+    case vt::VTConfig::R8:
+      return scm::gl::FORMAT_R_8;
+    case vt::VTConfig::RGB8:
+      return scm::gl::FORMAT_RGB_8;
+    case vt::VTConfig::RGBA8:
+    default:
+      return scm::gl::FORMAT_RGBA_8;
+  }
 }
 
 void set_uniforms(scm::gl::program_ptr shader) {
@@ -1147,10 +1155,6 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
       lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
       std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
       const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
-      if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
-        if (selection_.selected_model_ != -1) break;
-        else draw = false;
-      }
 
       if (draw) {
       
@@ -1211,21 +1215,15 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
 
 }
 
-void draw_all_models(const lamure::context_t context_id, const lamure::view_t view_id, scm::gl::program_ptr shader) {
+void draw_all_models(const lamure::context_t context_id, const lamure::view_t view_id, scm::gl::program_ptr shader, lamure::ren::bvh::primitive_type _type) {
 
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
-  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-    context_->bind_vertex_array(
-      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_, data_provenance_));
-  }
-  else {
-   context_->bind_vertex_array(
-      controller->get_context_memory(context_id, lamure::ren::bvh::primitive_type::POINTCLOUD, device_)); 
-  }
+  context_->bind_vertex_array(controller->get_context_memory(context_id, _type, device_)); 
+  
   context_->apply();
 
   rendered_splats_ = 0;
@@ -1250,7 +1248,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
     std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
     const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
-    if (bvh->get_primitive() != lamure::ren::bvh::primitive_type::POINTCLOUD) {
+    if (bvh->get_primitive() != _type) {
       if (selection_.selected_model_ != -1) break;
       //else continue;
       else draw = false;
@@ -1303,17 +1301,34 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
           shader->uniform("average_radius", bvh->get_avg_primitive_extent(node_slot_aggregate.node_id_));
         }
 
+
+        if("" != settings_.textures_[model_id]) {
+          context_->bind_texture(texture_resources_[model_id], filter_linear_, 10);
+          shader->uniform_sampler("in_mesh_color_texture", 10);
+
+          shader->uniform("color_rendering_mode", settings_.color_rendering_mode);
+        }
+
         context_->apply();
 
         if (draw) {
-          context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
-            (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+          switch (_type) {
+            case lamure::ren::bvh::primitive_type::POINTCLOUD:
+              context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST,
+                (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+              break;
+
+            case lamure::ren::bvh::primitive_type::TRIMESH:
+              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST,
+                (node_slot_aggregate.slot_id_) * (GLsizei)surfels_per_node, surfels_per_node);
+              break;
+
+            default: break;
+          }
           rendered_splats_ += surfels_per_node;
           ++rendered_nodes_;
         }
 
-        
-      
       }
     }
     if (selection_.selected_model_ != -1) {
@@ -1413,12 +1428,8 @@ void glut_display() {
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
 
-  if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-    controller->reset_system(data_provenance_);
-  }
-  else {
-    controller->reset_system();
-  }
+  controller->reset_system();
+
   lamure::context_t context_id = controller->deduce_context_id(0);
   
   for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id) {
@@ -1453,12 +1464,7 @@ void glut_display() {
   }
 
   if (settings_.lod_update_) {
-    if (lamure::ren::policy::get_instance()->size_of_provenance() > 0) {
-      controller->dispatch(context_id, device_, data_provenance_);
-    }
-    else {
-      controller->dispatch(context_id, device_); 
-    }
+    controller->dispatch(context_id, device_); 
   }
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
 
@@ -1482,7 +1488,7 @@ void glut_display() {
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
 
-    draw_all_models(context_id, view_id, vis_xyz_pass1_shader_);
+    draw_all_models(context_id, view_id, vis_xyz_pass1_shader_, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
     draw_brush(vis_xyz_pass1_shader_);
 
@@ -1511,7 +1517,7 @@ void glut_display() {
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
 
-    draw_all_models(context_id, view_id, selected_pass2_shading_program);
+    draw_all_models(context_id, view_id, selected_pass2_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
     draw_brush(selected_pass2_shading_program);
 
@@ -1558,6 +1564,7 @@ void glut_display() {
     context_->clear_depth_stencil_buffer(fbo_);
     context_->set_frame_buffer(fbo_);
 
+    //draw pointclouds
     auto selected_single_pass_shading_program = vis_xyz_shader_;
 
     if(settings_.enable_lighting_) {
@@ -1569,16 +1576,33 @@ void glut_display() {
     context_->set_depth_stencil_state(depth_state_less_);
     
     set_uniforms(selected_single_pass_shading_program);
-    /*if (settings_.background_image_ != "") {
-      context_->bind_texture(bg_texture_, filter_linear_, 0);
-      selected_single_pass_shading_program->uniform("background_image", true);
-    }*/
-
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
-    draw_all_models(context_id, view_id, selected_single_pass_shading_program);
+    //draw meshes
+    
 
+    selected_single_pass_shading_program = vis_trimesh_shader_;
+    if(settings_.enable_lighting_) {
+      selected_single_pass_shading_program = vis_trimesh_lighting_shader_;
+    }
+    context_->bind_program(selected_single_pass_shading_program);
+
+    set_uniforms(selected_single_pass_shading_program);
+    context_->apply();
+
+#if 1
+    //draw shaded
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
+#else
+    //draw wireframe
+    context_->set_rasterizer_state(wireframe_no_backface_culling_rasterizer_state_);
+    context_->apply();
+    draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
+#endif
+
+    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
     context_->bind_program(vis_xyz_shader_);
     draw_brush(vis_xyz_shader_);
     draw_resources(context_id, view_id);
@@ -1605,10 +1629,10 @@ void glut_display() {
   screen_quad_->draw(context_);
 
   rendering_ = false;
-  //glutSwapBuffers();
 
   frame_time_.stop();
   frame_time_.start();
+
   //schism bug ? time::to_seconds yields milliseconds
   if (scm::time::to_seconds(frame_time_.accumulated_duration()) > 100.0) {
     fps_ = 1000.0f / scm::time::to_seconds(frame_time_.average_duration());
@@ -1788,18 +1812,7 @@ void create_framebuffers() {
 void glut_resize(int32_t w, int32_t h) {
   settings_.width_ = w;
   settings_.height_ = h;
-/*
-  render_width_ = settings_.width_ / settings_.frame_div_;
-  render_height_ = settings_.height_ / settings_.frame_div_;
 
-  create_framebuffers();
-
-  lamure::ren::policy* policy = lamure::ren::policy::get_instance();
-  policy->set_window_width(render_width_);
-  policy->set_window_height(render_height_);
-  
-  context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
-*/
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
   gui_.ortho_matrix_ = 
@@ -2024,6 +2037,17 @@ void lines_from_min_max(
 
 void create_aux_resources() {
 
+  //load textures
+  for (uint32_t model_id = 0; model_id < num_models_; ++model_id) {
+    if ("" != settings_.textures_[model_id]) {
+      scm::gl::texture_loader tl;
+      std::string texture_path = settings_.textures_[model_id];
+      std::cout << "Loading texture for model " << model_id << ": " << texture_path << std::endl;
+      texture_resources_[model_id] = tl.load_texture_2d(*device_, texture_path, true, false);
+      
+    }
+  }
+
   //create pvs representation
   if (settings_.pvs_ != "") {
     std::cout << "pvs: " << settings_.pvs_ << std::endl;
@@ -2069,6 +2093,7 @@ void create_aux_resources() {
     }
   }
 
+
   if (!settings_.create_aux_resources_) {
     return;
   }
@@ -2080,7 +2105,8 @@ void create_aux_resources() {
       continue;
     }
 
-    const auto& bounding_boxes = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes();
+    const auto bvh = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh();
+    const auto& bounding_boxes = bvh->get_bounding_boxes();
 
     resource bvh_line_resource;
     bvh_line_resource.buffer_.reset();
@@ -2090,7 +2116,10 @@ void create_aux_resources() {
     for (uint64_t node_id = 0; node_id < bounding_boxes.size(); ++node_id) {
       const auto& node = bounding_boxes[node_id];
 
-      lines_from_min_max(node.min_vertex(), node.max_vertex(), bvh_lines_to_upload);
+      auto min_vertex = node.min_vertex() + bvh->get_translation();
+      auto max_vertex = node.max_vertex() + bvh->get_translation();
+
+      lines_from_min_max(min_vertex, max_vertex, bvh_lines_to_upload);
 
     }
 
@@ -2111,7 +2140,7 @@ void create_aux_resources() {
       uint32_t model_id = aux_file.first;
 
       std::cout << "aux: " << aux_file.second << std::endl;
-      lamure::prov::aux aux(aux_file.second);
+      lamure::prov::auxi aux(aux_file.second);
 
       provenance_[model_id].num_views_ = aux.get_num_views();
       std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
@@ -2263,7 +2292,8 @@ void create_aux_resources() {
 
         triangles_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
                                                               (0, 0, scm::gl::TYPE_VEC3F, sizeof(vertex))
-                                                              (0, 1, scm::gl::TYPE_VEC2F, sizeof(vertex)),
+                                                              (0, 1, scm::gl::TYPE_VEC3F, sizeof(vertex))
+                                                              (0, 2, scm::gl::TYPE_VEC2F, sizeof(vertex)),
                                                       boost::assign::list_of(triangles_resource.buffer_));
 
 
@@ -2371,6 +2401,12 @@ class EventHandler {
         case GLFW_KEY_ESCAPE:
           glfwSetWindowShouldClose(glfw_window, GL_TRUE);
           break;
+        case GLFW_KEY_T:
+        {
+          int const NUM_COLOR_MODES = 2;
+          settings_.color_rendering_mode = (settings_.color_rendering_mode + 1) % NUM_COLOR_MODES;
+          break;
+        }
         default:
           glut_keyboard((uint8_t)key, 0, 0);
           break;
@@ -2571,7 +2607,7 @@ void init_render_states() {
   depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
 
   no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
-
+  wireframe_no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_WIREFRAME, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
   filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
 
@@ -2722,8 +2758,10 @@ void init() {
     std::string vis_line_vs_source;
     std::string vis_line_fs_source;
     
-    std::string vis_triangle_vs_source;
-    std::string vis_triangle_fs_source;
+    std::string vis_trimesh_vs_source;
+    std::string vis_trimesh_fs_source;
+    std::string vis_trimesh_vs_lighting_source;
+    std::string vis_trimesh_fs_lighting_source;
 
     std::string vis_vt_vs_source;
     std::string vis_vt_vs_feedback_source;
@@ -2763,8 +2801,10 @@ void init() {
       || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_triangle.glslv", vis_triangle_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_triangle.glslf", vis_triangle_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslv", vis_trimesh_vs_source)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslf", vis_trimesh_fs_source)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslv", vis_trimesh_vs_lighting_source, true)
+      || !read_shader(shader_root_path + "/vis/vis_trimesh.glslf", vis_trimesh_fs_lighting_source, true)
 
       || !read_shader(shader_root_path + "/vt/virtual_texturing.glslv", vis_vt_vs_source)
       || !read_shader(shader_root_path + "/vt/virtual_texturing_hierarchical.glslf", vis_vt_fs_source)
@@ -2816,12 +2856,21 @@ void init() {
       exit(1);
     }
 
-    vis_triangle_shader_ = device_->create_program(
+    vis_trimesh_shader_ = device_->create_program(
             boost::assign::list_of
-                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_triangle_vs_source))
-                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_triangle_fs_source)));
-    if (!vis_triangle_shader_) {
-      std::cout << "error creating shader vis_triangle_shader_ program" << std::endl;
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_trimesh_vs_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_trimesh_fs_source)));
+    if (!vis_trimesh_shader_) {
+      std::cout << "error creating shader vis_trimesh_shader_ program" << std::endl;
+      std::exit(1);
+    }
+
+    vis_trimesh_lighting_shader_ = device_->create_program(
+            boost::assign::list_of
+                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_trimesh_vs_lighting_source))
+                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_trimesh_fs_lighting_source)));
+    if (!vis_trimesh_lighting_shader_) {
+      std::cout << "error creating shader vis_trimesh_lighting_shader_ program" << std::endl;
       std::exit(1);
     }
 
@@ -2992,16 +3041,6 @@ void init() {
 
 std::string
 make_short_name(const std::string& s){
-#if 0
-  boost::filesystem::path p(s);
-  std::string filename(p.stem().string());
-  const unsigned max_length = 36;
-  if(filename.length() > max_length){
-    std::string shortname = filename.substr(0,12) + "..." + filename.substr(filename.length() - 21, 21);
-    return shortname;
-  }
-  return filename;
-#endif
   const unsigned max_length = 36;
   if(s.length() > max_length){
     std::string shortname = s.substr(s.length() - 36, 36);
@@ -3023,37 +3062,19 @@ void gui_selection_settings(settings& stgs){
       model_names_short.push_back(make_short_name(s));
     }
 
-    char* model_names[num_models_ + 1];
+    char** model_names = new char* [num_models_ + 1];
     for(unsigned i = 0; i < model_names_short.size(); ++i ){
       model_names[i] = ((char *) model_names_short[i].c_str());
     }
     std::string all("All");
     model_names[num_models_] = (char *) all.c_str();
 
-#if 0
-    // old code from student
-    char* model_values[num_models_+1] = { };
-    for (int i=0; i<num_models_+1; i++) {
-        char buffer [32];
-        snprintf(buffer, sizeof(buffer), "%s%d", "Dataset ", i);
-        if(i==num_models_){
-           snprintf(buffer, sizeof(buffer), "%s", "All");
-        }
-        model_values[i] = strdup(buffer);
-    }
-#endif
-
-
     static int32_t dataset = selection_.selected_model_;
     if (selection_.selected_model_ == -1) {
       dataset = num_models_;
     }
 
-    ImGui::Combo("Dataset", &dataset, model_names, num_models_+1);
-#if 0
-    // old code from student
-    ImGui::Combo("Dataset", &dataset, model_values, IM_ARRAYSIZE(model_names));
-#endif    
+    ImGui::Combo("Dataset", &dataset, (const char* const*)model_names, num_models_+1);
 
     if(dataset == num_models_){
       selection_.selected_model_ = -1;
@@ -3104,6 +3125,8 @@ void gui_selection_settings(settings& stgs){
     }
 
     ImGui::End();
+
+    delete [] model_names;
 }
 
 
@@ -3134,7 +3157,7 @@ void gui_view_settings(){
       }
     }
 
-    if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 1.0f, 10.0f, "%.4f", 2.5f)) {
+    if (ImGui::SliderFloat("LOD Error", &settings_.lod_error_, 0.1f, 50.0f, "%.2f", 2.5f)) {
       input_.gui_lock_ = true;
     }
     if (ImGui::SliderFloat("LOD Point Scale", &settings_.lod_point_scale_, 0.1f, 2.0f, "%.4f", 1.0f)) {
@@ -3164,7 +3187,10 @@ void gui_view_settings(){
 
 void gui_visual_settings(){
 
-    uint32_t num_attributes = 5 + data_provenance_.get_size_in_bytes()/sizeof(float);
+    size_t data_provenance_size_in_bytes = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
+
+
+    uint32_t num_attributes = 5 + data_provenance_size_in_bytes/sizeof(float);
 
     const char* vis_values[] = {
       "Color", "Normals", "Accuracy", 
@@ -3177,7 +3203,7 @@ void gui_visual_settings(){
     ImGui::SetNextWindowSize(ImVec2(500.0f, 305.0f));
     ImGui::Begin("Visual Settings", &gui_.visual_settings_, ImGuiWindowFlags_MenuBar);
     
-    uint32_t num_vis_entries = (5 + data_provenance_.get_size_in_bytes()/sizeof(float));
+    uint32_t num_vis_entries = (5 + data_provenance_size_in_bytes/sizeof(float));
     ImGui::Combo("Vis", &it, vis_values, num_vis_entries);
     settings_.vis_ = it;
 
@@ -3332,7 +3358,7 @@ void gui_status_screen(){
     ImGui::Checkbox("Selection", &gui_.selection_settings_);
     ImGui::Checkbox("View / LOD Settings", &gui_.view_settings_);
     ImGui::Checkbox("Visual Settings", &gui_.visual_settings_);
-    if (settings_.provenance_) {
+    if (settings_.create_aux_resources_) {
       ImGui::Checkbox("Provenance Settings", &gui_.provenance_settings_);
     }
     else {
@@ -3351,7 +3377,7 @@ void gui_status_screen(){
         gui_visual_settings();
     }
 
-    if (settings_.provenance_ && gui_.provenance_settings_ && settings_.create_aux_resources_){
+    if (settings_.create_aux_resources_ && gui_.provenance_settings_ && settings_.create_aux_resources_){
         gui_provenance_settings();
     }
 
@@ -3363,14 +3389,15 @@ int main(int argc, char *argv[])
 {
     
   std::string vis_file = "";
-  if (argc == 2) {
-    vis_file = std::string(argv[1]);
-  }
-  else {
+
+  if (argc != 2) {
     std::cout << "Usage: " << argv[0] << " <vis_file.vis>" << std::endl;
     std::cout << "\tHELP: to render a single model use:" << std::endl;
     std::cout << "\techo <input_file.bvh> > default.vis && " << argv[0] << " default.vis" << std::endl;
     return 0;
+  }
+  else {
+    vis_file = argv[1];
   }
 
   putenv((char *)"__GL_SYNC_TO_VBLANK=0");
@@ -3385,10 +3412,10 @@ int main(int argc, char *argv[])
 
   if (settings_.provenance_ && settings_.json_ != "") {
     std::cout << "json: " << settings_.json_ << std::endl;
-    data_provenance_ = lamure::ren::Data_Provenance::parse_json(settings_.json_);
-    std::cout << "size of provenance: " << data_provenance_.get_size_in_bytes() << std::endl;
+    lamure::ren::data_provenance::get_instance()->parse_json(settings_.json_);
+    std::cout << "size of provenance: " << lamure::ren::data_provenance::get_instance()->get_size_in_bytes() << std::endl;
   }
- 
+
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
   policy->set_max_upload_budget_in_mb(settings_.upload_);
   policy->set_render_budget_in_mb(settings_.vram_);
@@ -3402,11 +3429,17 @@ int main(int argc, char *argv[])
   
   num_models_ = 0;
   for (const auto& input_file : settings_.models_) {
-    //check extension
-    if (input_file.substr(input_file.size()-3) == "bvh") {
-      lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
-      model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
+    lamure::model_t model_id = database->add_model(input_file, std::to_string(num_models_));
+    model_transformations_.push_back(settings_.transforms_[num_models_] * scm::math::mat4d(scm::math::make_translation(database->get_model(num_models_)->get_bvh()->get_translation())));
+    
+    //force single pass for trimeshes
+    lamure::ren::bvh* bvh = database->get_model(model_id)->get_bvh();
+    if (bvh->get_primitive() == lamure::ren::bvh::primitive_type::TRIMESH) {
+      settings_.splatting_ = false;
+      bvh->set_min_lod_depth(settings_.min_lod_depths_[num_models_]);
     }
+
+
     ++num_models_;
   }
 
@@ -3418,7 +3451,7 @@ int main(int argc, char *argv[])
 
   Window *primary_window = create_window(settings_.width_, settings_.height_, "lamure_vis", nullptr, nullptr);
   make_context_current(primary_window);
-  glfwSwapInterval(1);
+  glfwSwapInterval(0);
 
   init();
 
@@ -3430,7 +3463,7 @@ int main(int argc, char *argv[])
   if (GLEW_OK != err) {
     std::cout << "GLEW error: " << glewGetErrorString(err) << std::endl;
   }
-  std::cout << "using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
+  std::cout << "Using GLEW " << glewGetString(GLEW_VERSION) << std::endl;
 
   ImGui_ImplGlfwGL3_Init(primary_window->_glfw_window, false);
   ImGui_ImplGlfwGL3_CreateDeviceObjects();

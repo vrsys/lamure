@@ -11,30 +11,12 @@ namespace lamure
 {
 namespace ren
 {
-ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes) : locked_(false), size_of_slot_(size_of_slot_in_bytes), num_threads_(num_threads), shutdown_(false), bytes_loaded_(0)
-{
-    assert(num_threads_ > 0);
 
-    // configure semaphore
-    semaphore_.set_min_signal_count(1);
-    semaphore_.set_max_signal_count(std::numeric_limits<size_t>::max());
-
-    model_database *database = model_database::get_instance();
-
-    priority_queue_.initialize(LAMURE_CUT_UPDATE_LOADING_QUEUE_MODE, database->num_models());
-
-    for(uint32_t i = 0; i < num_threads_; ++i)
-    {
-        threads_.push_back(std::thread(&ooc_pool::run, this));
-    }
-}
-
-ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes, const size_t size_of_slot_provenance, Data_Provenance const &data_provenance)
+ooc_pool::ooc_pool(const uint32_t num_threads, const size_t size_of_slot_in_bytes, const size_t size_of_slot_provenance)
     : locked_(false), size_of_slot_(size_of_slot_in_bytes), size_of_slot_provenance_(size_of_slot_provenance), num_threads_(num_threads), shutdown_(false), bytes_loaded_(0)
 {
     assert(num_threads_ > 0);
 
-    _data_provenance = data_provenance;
     model_database *database = model_database::get_instance();
 
     semaphore_.set_min_signal_count(1);
@@ -104,6 +86,9 @@ void ooc_pool::run()
 
     std::vector<std::string> lod_files;
     std::vector<std::string> provenance_files;
+    std::vector<size_t> provenance_sizes;
+
+    uint64_t data_provenance_size_in_bytes = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
 
     for (model_t model_id = 0; model_id < num_models; ++model_id) {
         
@@ -117,16 +102,26 @@ void ooc_pool::run()
 
         lod_files.push_back(lod_file_name);
 
-        if(_data_provenance.get_size_in_bytes() > 0)
+        if (data_provenance_size_in_bytes > 0)
         {
-            provenance_files.push_back(provenance_file_name);
+            std::ifstream f(provenance_file_name.c_str());
+            if (f.good()) {
+              //check if corresponding .prov file exists
+              provenance_files.push_back(provenance_file_name);
+              f.close();
+            }
+            else {
+              provenance_files.push_back("");   
+            }
         }
+
+        provenance_sizes.push_back(database->get_model(model_id)->get_bvh()->get_size_of_provenance());
     }
 
     char *local_cache = new char[size_of_slot_];
     
     char *local_cache_provenance = nullptr;
-    if(_data_provenance.get_size_in_bytes() > 0) {
+    if(data_provenance_size_in_bytes > 0) {
       local_cache_provenance = new char[size_of_slot_provenance_];
     }
 
@@ -142,7 +137,7 @@ void ooc_pool::run()
         if(job.node_id_ != invalid_node_t)
         {
             assert(job.slot_mem_ != nullptr);
-            // assert(job.slot_mem_provenance_ != nullptr);
+            
 
             size_t stride_in_bytes = database->get_node_size(job.model_id_);
             size_t offset_in_bytes = job.node_id_ * stride_in_bytes;
@@ -153,23 +148,47 @@ void ooc_pool::run()
             access.close();
 
             std::lock_guard<std::mutex> lock(mutex_);
-            bytes_loaded_ += stride_in_bytes;
 
             memcpy(job.slot_mem_, local_cache, stride_in_bytes);
 
             history_.push_back(job);
 
-            if(_data_provenance.get_size_in_bytes() > 0) {
-                provenance_stream access_provenance;
-                access_provenance.open(provenance_files[job.model_id_]);
-                size_t stride_in_bytes_provenance = database->get_primitives_per_node(job.model_id_) * _data_provenance.get_size_in_bytes();
-                bytes_loaded_ += stride_in_bytes_provenance;
-                size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
-                access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
-                access_provenance.close();
-                memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
-            }
+            if(data_provenance_size_in_bytes > 0) { //check if provenance backend invoked
+                if (job.slot_mem_provenance_ == nullptr) {
+                    std::cout << "prov slot mem not allocated" << std::endl;
+                }
+                if (provenance_files[job.model_id_] != "") {
+                    provenance_stream access_provenance;
+                    access_provenance.open(provenance_files[job.model_id_]);
+                    
+                    size_t size_of_provenance = provenance_sizes[job.model_id_];
+                    if (size_of_provenance == 0) {
+                        std::cout << "Warning!" << std::endl;
+                        //WARNING! You invoked the provenance backend, but your provenance size for this model is zero.
+                        //In this case, revert to the system-wide provenance size. 
+                        //For .bvh files generated before bvh format revision 1.3, this should do the trick.
+                        size_of_provenance = data_provenance_size_in_bytes;
+                    }
 
+                    size_t stride_in_bytes_provenance = database->get_primitives_per_node(job.model_id_) * size_of_provenance;
+
+                    size_t offset_in_bytes_provenance = job.node_id_ * stride_in_bytes_provenance;
+                    access_provenance.read(local_cache_provenance, offset_in_bytes_provenance, stride_in_bytes_provenance);
+
+                    if (data_provenance_size_in_bytes == size_of_provenance) {
+                        memcpy(job.slot_mem_provenance_, local_cache_provenance, stride_in_bytes_provenance);
+                    }
+                    else {
+
+                      for (uint64_t surfel_id = 0; surfel_id < database->get_primitives_per_node(job.model_id_); ++surfel_id) {
+                        memcpy(job.slot_mem_provenance_+surfel_id*data_provenance_size_in_bytes, 
+                            local_cache_provenance+surfel_id*size_of_provenance, size_of_provenance);
+                      }
+                    }
+                    
+                    access_provenance.close();
+                }
+            }
         }
     }
 

@@ -49,6 +49,7 @@ private:
 
     std::string         file_name_;
     bool                is_file_open_;
+    uint64_t            file_size_;
 };
 
 } } // namespace lamure

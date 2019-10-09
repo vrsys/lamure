@@ -8,11 +8,12 @@
 #ifndef LAMURE_PROV_COMMON_H
 #define LAMURE_PROV_COMMON_H
 
-#include <lamure/prov/3rd_party/exif.h>
-#include <lamure/prov/3rd_party/pdqsort.h>
-#include <lamure/prov/3rd_party/tinyply.h>
+#include <lamure/prov/platform.h>
+
+
 #include <algorithm>
 #include <assert.h>
+#include <boost/asio.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/crc.hpp>
@@ -21,6 +22,9 @@
 #include <boost/sort/spreadsort/float_sort.hpp>
 #include <boost/sort/spreadsort/spreadsort.hpp>
 #include <fstream>
+#include <lamure/prov/3rd_party/exif.h>
+#include <lamure/prov/3rd_party/pdqsort.h>
+#include <lamure/prov/3rd_party/tinyply.h>
 #include <memory>
 #include <stdio.h>
 #include <string>
@@ -28,6 +32,10 @@
 
 #include <scm/core.h>
 #include <scm/core/math.h>
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 namespace lamure {
 namespace prov
@@ -66,7 +74,11 @@ using pair = std::pair<T1, T2>;
 template <typename T>
 T swap(const T &arg, bool big_in_mem)
 {
+#ifndef _WIN32
     if((BYTE_ORDER == BIG_ENDIAN) == big_in_mem)
+#else
+    if((REG_DWORD == REG_DWORD_BIG_ENDIAN) == big_in_mem)
+#endif
     {
         return arg;
     }

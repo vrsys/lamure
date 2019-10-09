@@ -147,7 +147,7 @@ serialize_prov(const std::vector<bvh_node> &nodes) {
         //LOGGER_INFO("Flush prov buffer to disk.");
         
         stream_.seekp(0, stream_.end);
-        stream_.write((char*)&(prov_buffer[0]), prov_buffer.size()*sizeof(prov));
+        stream_.write((char*)&(prov_buffer[0]), prov_buffer.size()*sizeof(prov_data));
         if (stream_.fail() || stream_.bad()) {
             LOGGER_ERROR("write failed. file: \"" << file_name_ <<
                                               "\". " << strerror(errno));

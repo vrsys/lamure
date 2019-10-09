@@ -382,7 +382,7 @@ bool builder::reserialize(boost::filesystem::path const &input_file, uint16_t st
 
     if (bvh.nodes()[0].has_provenance()) {
       std::cout << "write paradata json description: " << json_file << std::endl;
-      prov::write_json(json_file.string());
+      prov_data::write_json(json_file.string());
     }
 
     std::cout << "serialize surfels to file" << std::endl;
@@ -517,7 +517,7 @@ construct()
             surfel_bin_file.close();
             desc_.prov_file = input_file.string() + ".bin_prov";
             std::ofstream dummy_file(desc_.prov_file.c_str(), std::ios::out | std::ios::binary);
-            for (uint64_t i = 0; i < num_surfels*sizeof(prov); ++i) {
+            for (uint64_t i = 0; i < num_surfels*sizeof(prov_data); ++i) {
                 char zero = 0;
                 dummy_file.write(&zero, sizeof(char));
             }

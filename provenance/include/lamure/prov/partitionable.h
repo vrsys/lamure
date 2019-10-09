@@ -15,7 +15,7 @@ namespace lamure {
 namespace prov
 {
 template <class TPartition>
-class Partitionable
+class PROVENANCE_DLL Partitionable
 {
   public:
     enum Sort

@@ -332,7 +332,7 @@ void glut_display()
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), 1 * scm::math::vec2ui(window_width_, window_height_)));
 
     context_->set_depth_stencil_state(depth_state_less_);
-    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+    context_->set_rasterizer_state(culling_rasterizer_state_);
     context_->set_blend_state(color_no_blending_state_);
 
     context_->bind_program(vt_shader_);

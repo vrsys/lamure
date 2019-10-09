@@ -9,6 +9,7 @@
 #define VT_OBSERVER_H
 
 #include <cstdint>
+#include <lamure/vt/platform.h>
 
 namespace vt
 {
@@ -16,7 +17,7 @@ typedef uint32_t event_type;
 
 class Observable;
 
-class Observer
+class VT_DLL Observer
 {
   protected:
   public:

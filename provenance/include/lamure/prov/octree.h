@@ -9,7 +9,7 @@
 #define PROV_OCTREE_H_
 
 #include <lamure/types.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 
 #include <scm/core/math.h>
 
@@ -26,7 +26,7 @@ namespace lamure {
 namespace prov {
 
 
-class octree_node {
+class PROVENANCE_DLL octree_node {
 public:
   octree_node()
     : idx_(0), child_mask_(0), child_idx_(0), min_(std::numeric_limits<float>::max()), max_(std::numeric_limits<float>::lowest()) {};
@@ -60,12 +60,12 @@ protected:
   std::set<uint32_t> fotos_;
 };
 
-class octree {
+class PROVENANCE_DLL octree {
 public:
                       octree();
   virtual             ~octree();
 
-  void                create(std::vector<aux::sparse_point>& _points);
+  void                create(std::vector<auxi::sparse_point>& _points);
   uint64_t            query(const scm::math::vec3f& _pos);
 
   uint64_t            get_child_id(uint64_t node_id, uint32_t child_index);

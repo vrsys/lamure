@@ -14,7 +14,7 @@
 namespace lamure {
 namespace prov
 {
-class DensePoint : public Point
+class PROVENANCE_DLL DensePoint : public Point
 {
   public:
     DensePoint() { _normal = vec3f(); }

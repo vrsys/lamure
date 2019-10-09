@@ -121,7 +121,7 @@ int main(int argc, const char *argv[])
          "  .xyz_prov for xyzrgb +p per line")
 
         ("reduction-algo",
-         po::value<std::string>()->default_value("ndc_prov"),
+         po::value<std::string>()->default_value("ndc"),
          "Reduction strategy for the LOD construction. Possible values:\n"
          "  ndc - normal deviation clustering (ndc)\n"
          "  ndc_prov - output provenance information alongside ndc\n"
@@ -181,14 +181,14 @@ int main(int argc, const char *argv[])
             std::cout << od << std::endl;
             std::cout << "Build mode:\n"
                 "  INPUT can be one with the following extensions:\n"
-                "    .xyz, .xyz_all, .ply - stage 0: start from the beginning\n"
+                "    .xyz, .xyz_all, .ply, xyz_bin - stage 0: start from the beginning\n"
                 "    .bin - stage 1: start from normal + radius computation\n"
                 "    .bin_all - stage 2: start from downsweep/tree creation\n"
                 "    .kdnd - stage 3: start from upsweep/LOD creation\n"
                 "    .kdnu - stage 4: start from serializer\n"
                 "  last two stages require intermediate files to be present in the working directory (-k option).\n"
                 "Conversion mode (-c option):\n"
-                "  INPUT: file in either .xyz, .xyz_all, or .ply format\n"
+                "  INPUT: file in either .xyz, .xyz_all, .ply or .xyz_bin format\n"
                 "  OUTPUT: file in either .xyz_all or .bin_all format\n";
             return EXIT_SUCCESS;
         }

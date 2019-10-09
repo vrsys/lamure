@@ -13,6 +13,9 @@
 #include <stdexcept>
 #include <exception>
 
+#include <boost/tokenizer.hpp>
+
+
 namespace lamure {
 namespace pre {
 
@@ -25,30 +28,30 @@ convert(const std::string& in_file, const std::string& out_file, bool xyz_rgb) {
     throw std::runtime_error("unable to open file " + in_file);
   }
 
-  std::vector<prov> data;
+  std::vector<prov_data> data;
 
   std::string line_buffer;
   uint64_t num_points = 0;
 
   while (getline(input, line_buffer)) {
-    std::istringstream line(line_buffer);
-    if (xyz_rgb) {
-      //ignore surfels
-      real pos[3];
-      uint32_t color[3];
 
-      line >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[0];
-      line >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[1];
-      line >> std::setprecision(LAMURE_STREAM_PRECISION) >> pos[2];
-      line >> color[0];
-      line >> color[1];
-      line >> color[2];
+    boost::char_separator<char> seperator(", ");
+    boost::tokenizer<boost::char_separator<char>> tokens(line_buffer, seperator);
+
+    prov_data v;
+
+    uint32_t idx = 0;
+    uint32_t i = 0;
+    for (const auto& token : tokens) {
+      if (!xyz_rgb || idx >= 6) { //ignore surfels
+        if (i >= num_prov_values_) {
+          throw std::runtime_error("prov attribute exceeds size. increase prov_data::num_prov_values_. current value: " + num_prov_values_);
+        }
+        v.values_[i] = atof(token.c_str());
+        ++i;
+      }
+      ++idx;
     }
-    prov v;
-    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_3_;
-    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_4_;
-    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_5_;
-    line >> std::setprecision(LAMURE_STREAM_PRECISION) >> v.value_6_;
     data.push_back(v);
   }
 

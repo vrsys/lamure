@@ -38,8 +38,7 @@ namespace ren {
 class ooc_pool
 {
   public:
-    ooc_pool(const uint32_t num_loader_threads, const size_t size_of_slot_in_bytes);
-    ooc_pool(const uint32_t num_loader_threads, const size_t size_of_slot_in_bytes, const size_t size_of_slot_provenance_, Data_Provenance const &data_provenance);
+    ooc_pool(const uint32_t num_loader_threads, const size_t size_of_slot_in_bytes, const size_t slot_size_provenance);
     /*virtual*/ ~ooc_pool();
 
     const uint32_t num_threads() const { return num_threads_; };
@@ -79,8 +78,6 @@ class ooc_pool
     std::vector<cache_queue::job> history_;
 
     cache_queue priority_queue_;
-
-    Data_Provenance _data_provenance;
 };
 }
 } // namespace lamure

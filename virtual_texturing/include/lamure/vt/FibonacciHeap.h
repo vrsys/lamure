@@ -8,6 +8,7 @@
 #ifndef VT_FIBONACCIHEAP_H
 #define VT_FIBONACCIHEAP_H
 
+#include <lamure/vt/common.h>
 #include <cstddef>
 #include <map>
 #include <mutex>
@@ -17,7 +18,7 @@
 namespace vt
 {
 template <typename key_type, typename value_type>
-class FibonacciHeap
+class VT_DLL FibonacciHeap
 {
   public:
     enum MARK

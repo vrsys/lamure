@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <lamure/vt/platform.h>
 #include <lamure/vt/TileRequestPriorityQueue.h>
 #include <lamure/vt/ooc/TileCache.h>
 #include <lamure/vt/ooc/TileRequest.h>
@@ -19,7 +20,7 @@ namespace vt
 {
 namespace ooc
 {
-class HeapProcessor
+class VT_DLL HeapProcessor
 {
   protected:
     TileRequestPriorityQueue<float> _requests_prio_queue;

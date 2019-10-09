@@ -19,12 +19,21 @@ get_filename_component(CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} ABSOLUTE)
 message(STATUS "Build type:     ${CMAKE_BUILD_TYPE}")
 message(STATUS "Install prefix: ${CMAKE_INSTALL_PREFIX}")
 
+if(MSVC)
+    option(CONTAINER_DEPLOYMENT_BUILD "Set to enable Docker-based deployment behaviors" ON)
+endif()
+
 ############################################################
 # Directories
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 set(THIRD_PARTY_PROJECTS_DIR ${CMAKE_SOURCE_DIR}/third_party)
 set(GLOBAL_EXT_DIR ${CMAKE_SOURCE_DIR}/externals)
+
+if(CONTAINER_DEPLOYMENT_BUILD)
+    set(GLOBAL_EXT_DIR ${DEPLOYMENT_EXTERNALS})
+endif(CONTAINER_DEPLOYMENT_BUILD)
+
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 set(TEST_OUTPUT_PATH ${CMAKE_BINARY_DIR}/test)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
@@ -95,14 +104,6 @@ find_package( Threads )
 
 ADD_DEFINITIONS("-DBOOST_ALL_NO_LIB")
 
-#INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
-#LINK_DIRECTORIES(${Boost_LIBRARY_DIR})
-
-find_package(GLFW3 REQUIRED)
-include(findGLFW3)
-include(FindOpenGL)
-include(FindGLEW)
-
 ################################
 # GLUT
 ################################
@@ -110,16 +111,11 @@ SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} ${GLOBAL_EXT_DIR}/freeglut/include)
 SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${GLOBAL_EXT_DIR}/freeglut/lib)
 find_package(GLUT REQUIRED)
 
-#include_directories(${GLUT_INCLUDE_DIR})
-#link_directories(${GLUT_LIBRARY_DIRS})
-
-#add_definitions(${GLUT_DEFINITIONS})
-
 ################################
 # glfw
 ################################
 find_package(GLFW3 REQUIRED)
-include(findGLFW3)
+# include(findGLFW3)
 include(FindOpenGL)
 include(FindGLEW)
 
@@ -142,6 +138,12 @@ if (${LAMURE_USE_CGAL_FOR_NNI})
   ################################
   # CGAL
   ################################
+  if(NOT MSVC)
+    option(CGAL_USE_413 "Use Cgal version 4.13.1 (mesh preprocessing)" ON)
+  else()
+    option(CGAL_USE_413 "Use Cgal version 4.13.1 (mesh preprocessing)" OFF)
+  endif()
+
   include(find_cgal)
 
   ################################
@@ -174,6 +176,15 @@ include (FindZLIB)
 
 include(FindGLEW)
 
+add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
+add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
+
+if (CONTAINER_DEPLOYMENT_BUILD)
+include(FindImageMagick)
+else(CONTAINER_DEPLOYMENT_BUILD)
+find_package(ImageMagick REQUIRED COMPONENTS Magick++ MagickWand MagickCore montage)
+endif (CONTAINER_DEPLOYMENT_BUILD)
+
 ############################################################
 # Build 3rd-party
 
@@ -194,13 +205,17 @@ add_dependencies(lamure_preprocessing lamure_common)
 add_dependencies(lamure_provenance lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 add_dependencies(lamure_virtual_texturing lamure_common)
-add_dependencies(lamure_mesh_preprocessing lamure_common)
 add_dependencies(lamure_rendering lamure_common)
 
 set_target_properties(lamure_common PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_rendering PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties(lamure_virtual_texturing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_preprocessing PROPERTIES DEBUG_POSTFIX "d")
-set_target_properties(lamure_mesh_preprocessing PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(lamure_provenance PROPERTIES DEBUG_POSTFIX "d")
 
+IF(NOT MSVC)
+add_dependencies(lamure_mesh_preprocessing lamure_common)
+add_dependencies(lamure_mesh_preprocessing lamure_rendering)
 
+set_target_properties(lamure_mesh_preprocessing PROPERTIES DEBUG_POSTFIX "d")
+ENDIF(NOT MSVC)

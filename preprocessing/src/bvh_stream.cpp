@@ -264,6 +264,7 @@ read_bvh(const std::string &filename, bvh &bvh)
                                  tree.translation_.y_,
                                  tree.translation_.z_);
     bvh.set_translation(vec3r(translation));
+
     if (tree.num_nodes_ != node_id) {
         throw std::runtime_error(
             "PLOD: bvh_stream::Stream corrupt -- Invalid number of node segments");
@@ -394,7 +395,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
 
    bvh_file_seg seg;
    seg.major_version_ = 1;
-   seg.minor_version_ = 2;
+   seg.minor_version_ = 3;
    seg.reserved_ = 0;
 
    write(seg);
@@ -415,7 +416,7 @@ write_bvh(const std::string& filename, bvh& bvh, const bool intermediate) {
    tree.translation_.x_ = bvh.translation().x;
    tree.translation_.y_ = bvh.translation().y;
    tree.translation_.z_ = bvh.translation().z;
-   tree.reserved_3_ = 0;
+   tree.provenance_surfel_size_ = sizeof(prov_data);
 
    write(tree);
 

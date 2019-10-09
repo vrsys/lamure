@@ -34,18 +34,17 @@ namespace ren
 class cut_update_pool
 {
   public:
-    cut_update_pool(const context_t context_id, const node_t upload_budget_in_nodes, const node_t render_budget_in_nodes, Data_Provenance const &data_provenance);
     cut_update_pool(const context_t context_id, const node_t upload_budget_in_nodes, const node_t render_budget_in_nodes);
     virtual ~cut_update_pool();
 
     const uint32_t num_threads() const { return num_threads_; };
 
     void dispatch_cut_update(char *current_gpu_storage_A, char *current_gpu_storage_B, char *current_gpu_storage_A_provenance, char *current_gpu_storage_B_provenance);
-    // void                    dispatch_cut_update(char* current_gpu_storage_A, char* current_gpu_storage_B);
+
     const bool is_running();
 
   protected:
-    void initialize(bool provenance = false);
+    void initialize();
     const bool prepare();
 
     void split_node(const cut_update_index::action &item);
@@ -73,7 +72,6 @@ class cut_update_pool
   private:
     bool is_shutdown();
 
-    Data_Provenance _data_provenance;
     context_t context_id_;
 
     bool locked_;

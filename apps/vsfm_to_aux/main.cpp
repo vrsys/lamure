@@ -17,7 +17,7 @@
 
 #include <lamure/prov/3rd_party/exif.h>
 
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/math.h>
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
          "\t-fotos: fotos directory" << std::endl <<
          //"\t-patch: .patch input file" << std::endl <<
          //"\t-ply: .ply input file" << std::endl <<
-         "\t-aux: .aux output file" << std::endl <<
+         "\t-auxi: .auxi output file" << std::endl <<
          std::endl;
       return 0;
     }
@@ -70,16 +70,16 @@ int main(int argc, char *argv[]) {
     std::string fotos_directory = string(get_cmd_option(argv, argv + argc, "-fotos"));
     //std::string patch_file = string(get_cmd_option(argv, argv + argc, "-patch"));
     //std::string ply_file = string(get_cmd_option(argv, argv + argc, "-ply"));
-    std::string aux_file = string(get_cmd_option(argv, argv + argc, "-aux"));
+    std::string aux_file = string(get_cmd_option(argv, argv + argc, "-auxi"));
 
     if (check_file_extensions(nvm_file, ".nvm") && 
         //check_file_extensions(ply_file, ".ply") && 
         //check_file_extensions(patch_file, ".patch") && 
-        check_file_extensions(aux_file, ".aux")) {
+        check_file_extensions(aux_file, ".auxi")) {
         throw std::runtime_error("File format is incompatible");
     }
 
-    lamure::prov::aux aux;
+    lamure::prov::auxi aux;
 
     //parse nvm file
     std::ifstream nvm(nvm_file.c_str(), std::ios::in);
@@ -109,10 +109,13 @@ int main(int argc, char *argv[]) {
       std::getline(nvm, line);
       std::istringstream line_ss(line);
       
-      lamure::prov::aux::view v;
+      lamure::prov::auxi::view v;
       v.camera_id_ = i;
       line_ss >> v.image_file_;
-      line_ss >> v.focal_length_;
+      line_ss >> v.focal_value_x_;
+      v.focal_value_y_ = 0.f;
+      v.center_x_ = 0.f;
+      v.center_y_ = 0.f;
       scm::math::quatf quat;
       line_ss >> quat.w;
       line_ss >> quat.x;
@@ -189,7 +192,7 @@ int main(int argc, char *argv[]) {
       std::getline(nvm, line);
       std::istringstream line_ss(line);
     
-      lamure::prov::aux::sparse_point p;
+      lamure::prov::auxi::sparse_point p;
       line_ss >> p.pos_.x;
       line_ss >> p.pos_.y;
       line_ss >> p.pos_.z;
@@ -205,7 +208,7 @@ int main(int argc, char *argv[]) {
       
       line_ss >> num_measurements;
       for (uint32_t j = 0; j < num_measurements; ++j) {
-        lamure::prov::aux::feature f;
+        lamure::prov::auxi::feature f;
         line_ss >> f.camera_id_;
         uint32_t feature_index; //ignore
         line_ss >> feature_index;

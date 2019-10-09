@@ -227,6 +227,13 @@ sample_face(int faceId,
     return sample_face(&m.face[faceId], flip_x, flip_y, out);
 }
 
+namespace {
+    // Helper method to emulate GLSL
+    float fract(float value){
+    return (float)fmod(value, 1.0f);
+    }
+}
+
 bool sampler::
 sample_face(face_pointer facePtr, 
   bool flip_x, bool flip_y,
@@ -256,25 +263,25 @@ sample_face(face_pointer facePtr,
     float tay, tby, tcy;
 
     if (flip_x) {
-      tax = (1.0 - face.WT(0).U()) * (tex.width() - 1) + 0.5f;
-      tbx = (1.0 - face.WT(1).U()) * (tex.width() - 1) + 0.5f;
-      tcx = (1.0 - face.WT(2).U()) * (tex.width() - 1) + 0.5f;
+      tax = (1.0 - fract(face.WT(0).U())) * (tex.width() - 1) + 0.5f;
+      tbx = (1.0 - fract(face.WT(1).U())) * (tex.width() - 1) + 0.5f;
+      tcx = (1.0 - fract(face.WT(2).U())) * (tex.width() - 1) + 0.5f;
     }
     else {
-      tax = face.WT(0).U() * (tex.width() - 1) + 0.5f;
-      tbx = face.WT(1).U() * (tex.width() - 1) + 0.5f;
-      tcx = face.WT(2).U() * (tex.width() - 1) + 0.5f;
+      tax = fract(face.WT(0).U()) * (tex.width() - 1) + 0.5f;
+      tbx = fract(face.WT(1).U()) * (tex.width() - 1) + 0.5f;
+      tcx = fract(face.WT(2).U()) * (tex.width() - 1) + 0.5f;
     }
 
     if (flip_y) {
-      tay = (1.0 - face.WT(0).V()) * (tex.height() - 1) + 0.5f;
-      tby = (1.0 - face.WT(1).V()) * (tex.height() - 1) + 0.5f;
-      tcy = (1.0 - face.WT(2).V()) * (tex.height() - 1) + 0.5f;
+      tay = (1.0 - fract(face.WT(0).V())) * (tex.height() - 1) + 0.5f;
+      tby = (1.0 - fract(face.WT(1).V())) * (tex.height() - 1) + 0.5f;
+      tcy = (1.0 - fract(face.WT(2).V())) * (tex.height() - 1) + 0.5f;
     }
     else {
-      tay = face.WT(0).V() * (tex.height() - 1) + 0.5f;
-      tby = face.WT(1).V() * (tex.height() - 1) + 0.5f;
-      tcy = face.WT(2).V() * (tex.height() - 1) + 0.5f;
+      tay = fract(face.WT(0).V()) * (tex.height() - 1) + 0.5f;
+      tby = fract(face.WT(1).V()) * (tex.height() - 1) + 0.5f;
+      tcy = fract(face.WT(2).V()) * (tex.height() - 1) + 0.5f;
     }
 
     vcg::Triangle2<double> T(vcg::Point2d(tax,tay), vcg::Point2d(tbx, tby), vcg::Point2d(tcx, tcy));

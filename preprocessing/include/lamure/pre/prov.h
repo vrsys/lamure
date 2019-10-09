@@ -20,27 +20,27 @@ namespace lamure
 {
 namespace pre
 {
-class PREPROCESSING_DLL prov
+static const uint32_t num_prov_values_ = 4;
+
+class PREPROCESSING_DLL prov_data
 {
   public:
-    prov() 
+
+    prov_data() 
     :
     mean_absolute_deviation_(0.f),
     standard_deviation_(0.f),
-    coefficient_of_variation_(0.f),
-    value_3_(0.f),
-    value_4_(0.f),
-    value_5_(0.f),
-    value_6_(0.f) {};
+    coefficient_of_variation_(0.f) {
+        for (uint32_t i = 0; i < num_prov_values_; ++i) {
+            values_[i] = 0.f;
+        }
+    };
 
 
-  	float mean_absolute_deviation_;
+    float mean_absolute_deviation_;
     float standard_deviation_;
     float coefficient_of_variation_;
-    float value_3_;
-    float value_4_;
-    float value_5_;
-    float value_6_;
+    float values_[num_prov_values_];
 
     static void write_json(std::string const& file_name) {
     	std::ofstream out_stream;
@@ -48,15 +48,13 @@ class PREPROCESSING_DLL prov
         std::string filestr;
         std::stringstream ss(filestr);
 
-        int32_t num_values = 7;
-
         ss << "[";
-        for (int32_t i = 0; i < num_values; ++i) {
+        for (int32_t i = 0; i < num_prov_values_+3; ++i) {
           ss << "{\n";
 		  ss << "\t\"type\": \"float\",\n";
 		  ss << "\t\"visualization\": \"color\"\n";
 		  ss << "}";
-		  if (i != num_values-1) {
+		  if (i != (num_prov_values_+3)-1) {
             ss << ",";
 		  }
         }
@@ -68,8 +66,8 @@ class PREPROCESSING_DLL prov
 
 };
 
-using prov_vector = std::vector<prov>;
-using shared_prov = std::shared_ptr<prov>;
+using prov_vector = std::vector<prov_data>;
+using shared_prov = std::shared_ptr<prov_data>;
 using shared_prov_vector = std::shared_ptr<prov_vector>;
 
 }

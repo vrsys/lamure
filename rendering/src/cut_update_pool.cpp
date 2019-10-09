@@ -14,25 +14,6 @@ namespace lamure
 {
 namespace ren
 {
-cut_update_pool::cut_update_pool(const context_t context_id, const node_t upload_budget_in_nodes, const node_t render_budget_in_nodes, Data_Provenance const &data_provenance)
-    : context_id_(context_id), locked_(false), num_threads_(LAMURE_CUT_UPDATE_NUM_CUT_UPDATE_THREADS), shutdown_(false), current_gpu_storage_A_(nullptr), current_gpu_storage_B_(nullptr),
-      current_gpu_storage_(nullptr), current_gpu_storage_A_provenance_(nullptr), current_gpu_storage_B_provenance_(nullptr), current_gpu_storage_provenance_(nullptr),
-      current_gpu_buffer_(cut_database_record::temporary_buffer::BUFFER_A), upload_budget_in_nodes_(upload_budget_in_nodes), render_budget_in_nodes_(render_budget_in_nodes),
-#ifdef LAMURE_CUT_UPDATE_ENABLE_MODEL_TIMEOUT
-      cut_update_counter_(0),
-#endif
-      master_dispatched_(false)
-{
-    _data_provenance = data_provenance;
-
-    initialize(true);
-
-    for(uint32_t i = 0; i < num_threads_; ++i)
-    {
-        threads_.push_back(std::thread(&cut_update_pool::run, this));
-    }
-}
-
 cut_update_pool::cut_update_pool(const context_t context_id, const node_t upload_budget_in_nodes, const node_t render_budget_in_nodes)
     : context_id_(context_id), locked_(false), num_threads_(LAMURE_CUT_UPDATE_NUM_CUT_UPDATE_THREADS), shutdown_(false), current_gpu_storage_A_(nullptr), current_gpu_storage_B_(nullptr),
       current_gpu_storage_(nullptr), current_gpu_storage_A_provenance_(nullptr), current_gpu_storage_B_provenance_(nullptr), current_gpu_storage_provenance_(nullptr),
@@ -42,7 +23,7 @@ cut_update_pool::cut_update_pool(const context_t context_id, const node_t upload
 #endif
       master_dispatched_(false)
 {
-    initialize(false);
+    initialize();
 
     for(uint32_t i = 0; i < num_threads_; ++i)
     {
@@ -70,7 +51,7 @@ cut_update_pool::~cut_update_pool()
     shutdown();
 }
 
-void cut_update_pool::initialize(bool provenance)
+void cut_update_pool::initialize()
 {
     model_database *database = model_database::get_instance();
     policy *policy = policy::get_instance();
@@ -82,12 +63,7 @@ void cut_update_pool::initialize(bool provenance)
     index_->update_policy(0);
     gpu_cache_ = new gpu_cache(render_budget_in_nodes_);
 
-    if (provenance) {
-      ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
-    }
-    else {
-      ooc_cache *ooc_cache = ooc_cache::get_instance();
-    }
+    ooc_cache *ooc_cache = ooc_cache::get_instance();
 
     semaphore_.set_max_signal_count(1);
     semaphore_.set_min_signal_count(1);
@@ -257,7 +233,7 @@ const bool cut_update_pool::prepare()
     {
         all_roots_resident = true;
 
-        ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+        ooc_cache *ooc_cache = ooc_cache::get_instance();
 
         ooc_cache->lock();
         ooc_cache->refresh();
@@ -750,7 +726,7 @@ void cut_update_pool::cut_update_split_again(const cut_update_index::action &spl
 
 void cut_update_pool::cut_update()
 {
-    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+    ooc_cache *ooc_cache = ooc_cache::get_instance();
     ooc_cache->lock();
     ooc_cache->refresh();
     gpu_cache_->lock();
@@ -1095,7 +1071,7 @@ void cut_update_pool::compile_render_list()
 #ifdef LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
 void cut_update_pool::prefetch_routine()
 {
-    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+    ooc_cache *ooc_cache = ooc_cache::get_instance();
 
 #if 0
    uint32_t num_prefetched = 0;
@@ -1183,7 +1159,7 @@ void cut_update_pool::prefetch_routine()
 void cut_update_pool::compile_transfer_list()
 {
     model_database *database = model_database::get_instance();
-    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+    ooc_cache *ooc_cache = ooc_cache::get_instance();
 
     const std::vector<std::unordered_set<node_t>> &transfer_list = gpu_cache_->transfer_list();
 
@@ -1201,10 +1177,11 @@ void cut_update_pool::compile_transfer_list()
 
             memcpy(current_gpu_storage_ + slot_count * database->get_slot_size(), node_data, database->get_slot_size());
 
-            if(_data_provenance.get_size_in_bytes() > 0)
+            uint64_t data_provenance_size_in_bytes = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
+            if(data_provenance_size_in_bytes > 0)
             {
-                memcpy(current_gpu_storage_provenance_ + slot_count * database->get_primitives_per_node() * _data_provenance.get_size_in_bytes(), node_data_provenance,
-                       database->get_primitives_per_node() * _data_provenance.get_size_in_bytes());
+                memcpy(current_gpu_storage_provenance_ + slot_count * database->get_primitives_per_node() * data_provenance_size_in_bytes, node_data_provenance,
+                       database->get_primitives_per_node() * data_provenance_size_in_bytes);
             }
 
             transfer_list_.push_back(cut_database_record::slot_update_desc(slot_count, slot_id));
@@ -1219,14 +1196,7 @@ void cut_update_pool::compile_transfer_list()
 
 void cut_update_pool::split_node(const cut_update_index::action &action)
 {
-    // hack: split until depth-1
-    const auto bvh = model_database::get_instance()->get_model(action.model_id_)->get_bvh();
-    if(bvh->get_depth_of_node(action.node_id_) >= bvh->get_depth() - 1)
-    {
-        index_->reject_action(action);
-        return;
-    }
-
+    
     std::vector<node_t> child_ids;
     index_->get_all_children(action.model_id_, action.node_id_, child_ids);
 
@@ -1243,7 +1213,7 @@ void cut_update_pool::split_node(const cut_update_index::action &action)
 
     bool all_children_available = true;
 
-    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+    ooc_cache *ooc_cache = ooc_cache::get_instance();
     bool all_children_fit_in_ooc_cache = ooc_cache->num_free_slots() >= fan_factor;
     bool all_children_fit_in_gpu_cache = gpu_cache_->transfer_budget() >= fan_factor && gpu_cache_->num_free_slots() >= fan_factor;
 
@@ -1317,6 +1287,20 @@ void cut_update_pool::split_node(const cut_update_index::action &action)
 
 void cut_update_pool::collapse_node(const cut_update_index::action &action)
 {
+#ifdef LAMURE_MESH_MIN_DEPTH_ENABLE
+    //prevent collapsing in shallow parts
+    const auto bvh = model_database::get_instance()->get_model(action.model_id_)->get_bvh();
+    if (bvh->get_primitive() == bvh::primitive_type::TRIMESH) {
+      if (bvh->get_min_lod_depth() > 0 && bvh->get_depth_of_node(action.node_id_) <= bvh->get_min_lod_depth()) {
+        index_->reject_action(action);
+        return;
+      }
+      else if (bvh->get_depth_of_node(action.node_id_) <= LAMURE_MESH_MIN_DEPTH) {
+        index_->reject_action(action);
+        return;
+      }
+  }
+#endif
     // return if parent is invalid node id
     if(action.node_id_ < 1 || action.node_id_ == invalid_node_t)
     {
@@ -1327,7 +1311,7 @@ void cut_update_pool::collapse_node(const cut_update_index::action &action)
     std::vector<node_t> child_ids;
     index_->get_all_children(action.model_id_, action.node_id_, child_ids);
 
-    ooc_cache *ooc_cache = ooc_cache::get_instance(_data_provenance);
+    ooc_cache *ooc_cache = ooc_cache::get_instance();
 
     for(const auto &child_id : child_ids)
     {
@@ -1385,6 +1369,10 @@ const float cut_update_pool::calculate_node_error(const view_t view_id, const mo
 {
     model_database *database = model_database::get_instance();
     auto bvh = database->get_model(model_id)->get_bvh();
+
+    if (bvh->get_depth_of_node(node_id) <= bvh->get_min_lod_depth()) {
+      return 100.f;
+    }
 
     const scm::math::mat4f &model_matrix = model_transforms_[model_id];
     const scm::math::mat4f &view_matrix = user_cameras_[view_id].get_view_matrix();

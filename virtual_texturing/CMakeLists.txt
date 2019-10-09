@@ -7,11 +7,6 @@ project(${CMAKE_PROJECT_NAME}_virtual_texturing)
 set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(PROJECT_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_definitions( -DMAGICKCORE_QUANTUM_DEPTH=8 )
-add_definitions( -DMAGICKCORE_HDRI_ENABLE=0 )
-
-find_package(ImageMagick COMPONENTS Magick++ MagickWand MagickCore montage)
-
 # main sources
 file(GLOB MAIN_SRC ${PROJECT_SOURCE_DIR}/*.cpp)
 file(GLOB MAIN_INC ${PROJECT_INCLUDE_DIR}/lamure/vt/*.h)
@@ -70,7 +65,8 @@ add_library(${PROJECT_NAME}_s STATIC
 add_dependencies(${PROJECT_NAME} lamure_common)
 
 IF (MSVC)
-    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_PREPROCESSING_LIBRARY -DBOOST_ALL_NO_LIB")
+    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-D LAMURE_VT_LIBRARY -DBOOST_ALL_NO_LIB")
+    SET_TARGET_PROPERTIES(${PROJECT_NAME}_s PROPERTIES COMPILE_FLAGS "-D LAMURE_VT_LIBRARY -DBOOST_ALL_NO_LIB")
 ENDIF(MSVC)
 
 
@@ -102,14 +98,14 @@ endif ()
 ###############################################################################
 
 IF (MSVC)
-    install (TARGETS ${PROJECT_NAME}
+    install (TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_s
             CONFIGURATIONS Release
             RUNTIME DESTINATION bin/Release
             LIBRARY DESTINATION lib/Release
             ARCHIVE DESTINATION lib/Release
             )
 
-    install (TARGETS ${PROJECT_NAME}
+    install (TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_s
             CONFIGURATIONS Debug
             RUNTIME DESTINATION bin/Debug
             LIBRARY DESTINATION lib/Debug

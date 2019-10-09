@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
         else
             printf("Failed! Could not find a proper position to pack this rectangle into. Skipping this one.\n");
 
-#if 1
+#if 0
         log += std::to_string(i) + ",";
         log += std::to_string(packedRect.x) + ",";
         log += std::to_string(packedRect.y) + ",";
@@ -263,12 +263,16 @@ int main(int argc, char *argv[]) {
         log += files[i] + "\n";
 #else
         log += std::to_string(i) + ",";
-        log += std::to_string(packedRect.x/(float)maxFrameW) + ",";
-        log += std::to_string(packedRect.y/(float)maxFrameH) + ",";
-        log += std::to_string(packedRect.width/(float)maxFrameW) + ",";
-        log += std::to_string(packedRect.height/(float)maxFrameH) + ",";
+        log += std::to_string(packedRect.x) + ",";
+        log += std::to_string(packedRect.y) + ",";
+        log += std::to_string(packedRect.width) + ",";
+        log += std::to_string(packedRect.height) + ",";
         log += std::to_string(rotate[i]) + ",";
-        log += files[i] + "\n";
+        std::string filename = std::to_string(i);
+        while (filename.size() < 8) {
+            filename = "0" + filename;
+        }
+        log += filename + ".jpg\n";
 #endif
 
 
@@ -276,15 +280,20 @@ int main(int argc, char *argv[]) {
     std::cout << "packing done" << std::endl;
     //std::cout << log << std::endl;
 
-    FIBITMAP *image;
-    RGBQUAD aPixel;
     
     std::cout << "writing atlas..." << std::endl;
+
+    size_t offset_startX = 0;
+    size_t offset_startY = 0;
+    
+#if 0
+
+
+    FIBITMAP *image;
+    RGBQUAD aPixel;
+
     image = FreeImage_Allocate(maxFrameW, maxFrameH, 24, 0, 0, 0);
 
-    int offset_startX = 0;
-    int offset_startY = 0;
-    
     for (int k=0; k<pixelInfo.size(); k++) {
         if (k!=0) {
             offset_startX = PackedRectangle[k].x;
@@ -303,11 +312,84 @@ int main(int argc, char *argv[]) {
     if(!FreeImage_Save(FIF_JPEG, image, output_filename.c_str(), 0)) {
         perror("FreeImage_Save");
     }
-    
+
+    std::cout << "Image saved to " << output_filename << std::endl;
+
     FreeImage_Unload(image);
 
-    std::cout << "atlas packing complete" << endl;
+#else
+
+    std::vector<uint8_t> pixels;
+
+    //concatenate all area images to one big texture
+    for (size_t k=0; k<pixelInfo.size(); k++) {
+        if (k!=0) {
+            offset_startX = PackedRectangle[k].x;
+            offset_startY = PackedRectangle[k].y;
+        }
+        std::cout << "k = " << k << std::endl;
+        for (size_t y = 0; y < pixelInfo[k].h; ++y) {
+            for (size_t x = 0; x < pixelInfo[k].w; ++x) {
+                uint8_t r = pixelInfo[k].data[y * pixelInfo[k].w + x].r;
+                uint8_t g = pixelInfo[k].data[y * pixelInfo[k].w + x].g;
+                uint8_t b = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
+
+                //allocation and deletion is incremental to allow bigger images
+                while (pixels.size() < (3 * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 3)) {
+                    pixels.push_back((uint8_t)0);
+                }
+
+                pixels[3 * ((x+offset_startX) + maxFrameW*(y+offset_startY))] = r;
+                pixels[3 * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 1] = g;
+                pixels[3 * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 2] = b;
+
+            }
+        }
+
+        //allocation and deletion is incremental to allow bigger images
+        if (pixelInfo[k].data) {
+          free(pixelInfo[k].data);
+          pixelInfo[k].data = nullptr;
+        }
+
+    }
+
+    std::cout << "Atlas packing complete" << endl;
     
+    std::cout << "Writing raw file..." << std::endl;
+
+
+    std::ofstream raw_file;
+    std::string image_filename =
+        output_filename.substr(0, output_filename.size() - 4) + "_rgb_w" + std::to_string(maxFrameW) + "_h" + std::to_string(maxFrameH) + ".data";
+    raw_file.open(image_filename, std::ios::out | std::ios::trunc | std::ios::binary);
+
+    raw_file.write((char*)pixels[0], pixels.size());
+
+    size_t size = pixels.size();
+    pixels.clear();
+
+    std::cout << "size: " << size << std::endl;
+
+    std::cout << (double)(size) / (double)(3 * maxFrameW * maxFrameH) << std::endl;
+
+    std::cout << "Filling empty space..." << std::endl;
+
+    while (size < (3 * maxFrameW * maxFrameH)) {
+      uint8_t zero = 0;
+      raw_file.write((char*)&zero, 1);
+      ++size;
+      if (size % 10000 == 0) {
+        //std::cout << (double)(size) / (double)(3 * maxFrameW * maxFrameH) << std::endl;
+      }
+    }
+
+    raw_file.close();
+
+    std::cout << "Image saved to " << image_filename << std::endl;
+
+#endif
+
     std::string log_filename = output_filename.substr(0, output_filename.size()-4)+".log";
 
     std::ofstream log_file(log_filename.c_str(), std::ios::out | std::ios::trunc);

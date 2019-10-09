@@ -255,10 +255,12 @@ read_bvh(const std::string& filename, bvh& bvh) {
     bvh.set_primitives_per_node(tree.max_surfels_per_node_);
     bvh.set_size_of_primitive(tree.serialized_surfel_size_);
     bvh.set_primitive((bvh::primitive_type)tree.primitive_);
+    bvh.set_min_lod_depth(tree.min_lod_depth_);
     scm::math::vec3f translation(tree.translation_.x_,
                                 tree.translation_.y_,
                                 tree.translation_.z_);
     bvh.set_translation(translation);
+    bvh.set_size_of_provenance(tree.provenance_surfel_size_);
 
     if (bvh.get_num_nodes() != node_id) {
        throw std::runtime_error(
@@ -303,7 +305,7 @@ write_bvh(const std::string& filename, bvh& bvh) {
 
    bvh_file_seg seg;
    seg.major_version_ = 1;
-   seg.minor_version_ = 1;
+   seg.minor_version_ = 3;
    seg.reserved_ = 0;
 
    write(seg);
@@ -318,14 +320,14 @@ write_bvh(const std::string& filename, bvh& bvh) {
    tree.max_surfels_per_node_ = bvh.get_primitives_per_node();
    tree.serialized_surfel_size_ = bvh.get_size_of_primitive();
    tree.primitive_ = (bvh_primitive_type)bvh.get_primitive();
-   tree.reserved_0_ = 0;
+   tree.min_lod_depth_ = bvh.get_min_lod_depth();
    tree.state_ = bvh_tree_state::BVH_STATE_SERIALIZED;
    tree.reserved_1_ = 0;
    tree.reserved_2_ = 0;
    tree.translation_.x_ = bvh.get_translation().x;
    tree.translation_.y_ = bvh.get_translation().y;
    tree.translation_.z_ = bvh.get_translation().z;
-   tree.reserved_3_ = 0;
+   tree.provenance_surfel_size_ = bvh.get_size_of_provenance();
 
    write(tree);
 

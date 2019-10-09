@@ -17,7 +17,7 @@ template <typename priority_type>
 class TileRequestPriorityQueue;
 
 template <typename priority_type>
-class TileRequestPriorityQueueEntry : public AbstractQueueEntry<vt::ooc::TileRequest*>
+class VT_DLL TileRequestPriorityQueueEntry : public AbstractQueueEntry<vt::ooc::TileRequest*>
 {
   protected:
     std::mutex _deleteLock;
@@ -30,13 +30,22 @@ class TileRequestPriorityQueueEntry : public AbstractQueueEntry<vt::ooc::TileReq
     virtual priority_type getPriority() { return this->_content.load()->getPriority(); }
 };
 
+#ifdef _WIN32
+#if defined(LAMURE_VT_LIBRARY)
 template <typename priority_type>
 TileRequestPriorityQueueEntry<priority_type>::TileRequestPriorityQueueEntry(ooc::TileRequest* req, TileRequestPriorityQueue<priority_type>& queue) : AbstractQueueEntry<ooc::TileRequest*>(req, &queue)
 {
 }
+#endif
+#else
+template <typename priority_type>
+TileRequestPriorityQueueEntry<priority_type>::TileRequestPriorityQueueEntry(ooc::TileRequest* req, TileRequestPriorityQueue<priority_type>& queue) : AbstractQueueEntry<ooc::TileRequest*>(req, &queue)
+{
+}
+#endif
 
 template <typename priority_type>
-class TileRequestPriorityQueue : public AbstractQueue<ooc::TileRequest*>
+class VT_DLL TileRequestPriorityQueue : public AbstractQueue<ooc::TileRequest*>
 {
   protected:
     virtual void _insertUnsafe(TileRequestPriorityQueueEntry<priority_type>& entry)

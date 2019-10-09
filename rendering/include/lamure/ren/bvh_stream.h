@@ -232,14 +232,14 @@ protected:
         uint32_t max_surfels_per_node_;
         uint32_t serialized_surfel_size_;
         uint32_t primitive_;
-        uint32_t reserved_0_;
+        uint32_t min_lod_depth_;
 
         bvh_tree_state state_;
         uint32_t reserved_1_;
         uint64_t reserved_2_;
 
         bvh_vector translation_;
-        uint32_t reserved_3_;
+        uint32_t provenance_surfel_size_;
 
     protected:
         friend class bvh_stream;
@@ -268,14 +268,14 @@ protected:
             file.write((char*)&max_surfels_per_node_, 4);
             file.write((char*)&serialized_surfel_size_, 4);
             file.write((char*)&primitive_, 4);
-            file.write((char*)&reserved_0_, 4);
+            file.write((char*)&min_lod_depth_, 4);
             file.write((char*)&state_, 4);
             file.write((char*)&reserved_1_, 4);
             file.write((char*)&reserved_2_, 8);
             file.write((char*)&translation_.x_, 4);
             file.write((char*)&translation_.y_, 4);
             file.write((char*)&translation_.z_, 4);
-            file.write((char*)&reserved_3_, 4);
+            file.write((char*)&provenance_surfel_size_, 4);
         } 
         void deserialize(std::fstream& file) {
             if (!file.is_open()) {
@@ -289,14 +289,14 @@ protected:
             file.read((char*)&max_surfels_per_node_, 4);
             file.read((char*)&serialized_surfel_size_, 4);
             file.read((char*)&primitive_, 4);
-            file.read((char*)&reserved_0_, 4);
+            file.read((char*)&min_lod_depth_, 4);
             file.read((char*)&state_, 4);
             file.read((char*)&reserved_1_, 4);
             file.read((char*)&reserved_2_, 8);
             file.read((char*)&translation_.x_, 4);
             file.read((char*)&translation_.y_, 4);
             file.read((char*)&translation_.z_, 4);
-            file.read((char*)&reserved_3_, 4);
+            file.read((char*)&provenance_surfel_size_, 4);
         }
         
     };

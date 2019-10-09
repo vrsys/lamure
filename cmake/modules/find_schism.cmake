@@ -16,6 +16,8 @@ SET(SCHISM_LIBRARY_SEARCH_DIRS
   /opt/schism/current/lib/linux_x86
 )
 
+message(${GLOBAL_EXT_DIR})
+
 ##############################################################################
 # check for schism
 ##############################################################################

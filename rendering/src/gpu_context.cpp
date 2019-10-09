@@ -59,40 +59,31 @@ void gpu_context::create(scm::gl::render_device_ptr device)
 
     model_database *database = model_database::get_instance();
 
-    assert(false);
+    uint64_t data_provenance_size_in_bytes = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
+    if (data_provenance_size_in_bytes > 0) {
 
-    temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), false);
-    temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), false);
-    primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->get_primitives_per_node(), true);
+        fix_a_.fix_buffer_ = new char[8 * sizeof(float) * database->get_primitives_per_node() * upload_budget_in_nodes_];
+        fix_a_.fix_buffer_provenance_ = new char[data_provenance_size_in_bytes * database->get_primitives_per_node() * upload_budget_in_nodes_];
 
-    map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_A, device);
-    map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device);
-}
+        fix_b_.fix_buffer_ = new char[8 * sizeof(float) * database->get_primitives_per_node() * upload_budget_in_nodes_];
+        fix_b_.fix_buffer_provenance_ = new char[data_provenance_size_in_bytes * database->get_primitives_per_node() * upload_budget_in_nodes_];
 
-void gpu_context::create(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    assert(device);
-    if(is_created_)
-    {
-        return;
+
+        primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->get_primitives_per_node(), true);
+
     }
-    is_created_ = true;
+    else {
 
-    test_video_memory(device);
+        temp_buffer_a_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), false);
+        temp_buffer_b_ = new gpu_access(device, upload_budget_in_nodes_, database->get_primitives_per_node(), false);
+        primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->get_primitives_per_node(), true);
 
-    model_database *database = model_database::get_instance();
-
-    fix_a_.fix_buffer_ = new char[8 * sizeof(float) * database->get_primitives_per_node() * upload_budget_in_nodes_];
-    fix_a_.fix_buffer_provenance_ = new char[data_provenance.get_size_in_bytes() * database->get_primitives_per_node() * upload_budget_in_nodes_];
-
-    fix_b_.fix_buffer_ = new char[8 * sizeof(float) * database->get_primitives_per_node() * upload_budget_in_nodes_];
-    fix_b_.fix_buffer_provenance_ = new char[data_provenance.get_size_in_bytes() * database->get_primitives_per_node() * upload_budget_in_nodes_];
-
-
-    primary_buffer_ = new gpu_access(device, render_budget_in_nodes_, database->get_primitives_per_node(), data_provenance, true);
-
+        map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_A, device);
+        map_temporary_storage(cut_database_record::temporary_buffer::BUFFER_B, device);
+    }
 
 }
+
 
 void gpu_context::test_video_memory(scm::gl::render_device_ptr device)
 {
@@ -118,48 +109,10 @@ void gpu_context::test_video_memory(scm::gl::render_device_ptr device)
     {
         std::cout << "##### " << policy->render_budget_in_mb() << " MB will be used for the render budget #####" << std::endl;
     }
-    long node_size_total = database->get_slot_size();
-    render_budget_in_nodes_ = (render_budget_in_mb * 1024 * 1024) / node_size_total;
+    
+    uint64_t data_provenance_size_in_bytes = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
 
-    size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
-    max_upload_budget_in_mb = max_upload_budget_in_mb < LAMURE_MIN_UPLOAD_BUDGET ? LAMURE_MIN_UPLOAD_BUDGET : max_upload_budget_in_mb;
-    max_upload_budget_in_mb = max_upload_budget_in_mb > video_ram_free_in_mb * 0.125 ? video_ram_free_in_mb * 0.125 : max_upload_budget_in_mb;
-
-    upload_budget_in_nodes_ = (max_upload_budget_in_mb * 1024u * 1024u) / node_size_total;
-
-
-
-#ifdef LAMURE_ENABLE_INFO
-    std::cout << "lamure: context " << context_id_ << " render budget (MB): " << render_budget_in_mb << std::endl;
-    std::cout << "lamure: context " << context_id_ << " upload budget (MB): " << max_upload_budget_in_mb << std::endl;
-#endif
-}
-
-void gpu_context::test_video_memory(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    model_database *database = model_database::get_instance();
-    policy *policy = policy::get_instance();
-
-    float safety = 0.75;
-    size_t video_ram_free_in_mb = gpu_access::query_video_memory_in_mb(device) * safety;
-
-    size_t render_budget_in_mb = policy->render_budget_in_mb();
-
-    if(policy->out_of_core_budget_in_mb() == 0)
-    {
-        std::cout << "##### Total free video memory (" << video_ram_free_in_mb << " MB) will be used for the render budget #####" << std::endl;
-        render_budget_in_mb = video_ram_free_in_mb;
-    }
-    else if(video_ram_free_in_mb < render_budget_in_mb)
-    {
-        std::cout << "##### The specified render budget is too large! " << video_ram_free_in_mb << " MB will be used for the render budget #####" << std::endl;
-        render_budget_in_mb = video_ram_free_in_mb;
-    }
-    else
-    {
-        std::cout << "##### " << policy->render_budget_in_mb() << " MB will be used for the render budget #####" << std::endl;
-    }
-    long node_size_total = database->get_primitives_per_node() * data_provenance.get_size_in_bytes() + database->get_slot_size();
+    long node_size_total = database->get_primitives_per_node() * data_provenance_size_in_bytes + database->get_slot_size();
     render_budget_in_nodes_ = (render_budget_in_mb * 1024 * 1024) / node_size_total;
 
     size_t max_upload_budget_in_mb = policy->max_upload_budget_in_mb();
@@ -184,30 +137,10 @@ scm::gl::buffer_ptr gpu_context::get_context_buffer(scm::gl::render_device_ptr d
     return primary_buffer_->get_buffer();
 }
 
-scm::gl::buffer_ptr gpu_context::get_context_buffer(scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    if(!is_created_)
-        create(device, data_provenance);
-
-    assert(device);
-
-    return primary_buffer_->get_buffer();
-}
-
 scm::gl::vertex_array_ptr gpu_context::get_context_memory(bvh::primitive_type type, scm::gl::render_device_ptr device)
 {
     if(!is_created_)
         create(device);
-
-    assert(device);
-
-    return primary_buffer_->get_memory(type);
-}
-
-scm::gl::vertex_array_ptr gpu_context::get_context_memory(bvh::primitive_type type, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    if(!is_created_)
-        create(device, data_provenance);
 
     assert(device);
 
@@ -246,41 +179,6 @@ void gpu_context::map_temporary_storage(const cut_database_record::temporary_buf
     throw std::runtime_error("lamure: Failed to map temporary buffer on context: " + context_id_);
 }
 
-void gpu_context::map_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    if(!is_created_)
-        create(device, data_provenance);
-
-    assert(device);
-
-    int first_error = 5;
-
-    switch(buffer)
-    {
-    case cut_database_record::temporary_buffer::BUFFER_A:
-        if(!temp_buffer_a_->is_mapped())
-        {
-            temporary_storages_.storage_a_ = temp_buffer_a_->map(device);
-        }
-
-        return;
-        break;
-
-    case cut_database_record::temporary_buffer::BUFFER_B:
-        if(!temp_buffer_b_->is_mapped())
-        {
-            temporary_storages_.storage_b_ = temp_buffer_b_->map(device);
-        }
-
-        return;
-        break;
-
-    default:
-        break;
-    }
-
-    throw std::runtime_error("lamure: Failed to map temporary buffer on context: " + context_id_);
-}
 
 void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device)
 {
@@ -302,34 +200,6 @@ void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_b
         if(temp_buffer_b_->is_mapped())
         {
             temp_buffer_b_->unmap(device);
-        }
-        break;
-
-    default:
-        break;
-    }
-}
-
-void gpu_context::unmap_temporary_storage(const cut_database_record::temporary_buffer &buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
-{
-    if(!is_created_)
-        create(device, data_provenance);
-
-    assert(device);
-
-    switch(buffer)
-    {
-    case cut_database_record::temporary_buffer::BUFFER_A:
-        if(temp_buffer_a_->is_mapped())
-        {
-           temp_buffer_a_->unmap_provenance(device);
-        }
-        break;
-
-    case cut_database_record::temporary_buffer::BUFFER_B:
-        if(temp_buffer_b_->is_mapped())
-        {
-           temp_buffer_b_->unmap_provenance(device);
         }
         break;
 
@@ -402,16 +272,18 @@ bool gpu_context::update_primary_buffer(const cut_database_record::temporary_buf
     return uploaded_nodes != 0;
 }
 
-bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device, Data_Provenance const &data_provenance)
+bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary_buffer &from_buffer, scm::gl::render_device_ptr device)
 {
     if(!is_created_)
-        create(device, data_provenance);
+        create(device);
 
     assert(device);
 
     model_database *database = model_database::get_instance();
 
     cut_database *cuts = cut_database::get_instance();
+
+    uint64_t data_provenance_size_in_bytes = lamure::ren::data_provenance::get_instance()->get_size_in_bytes();
 
     size_t uploaded_nodes = 0;
 
@@ -435,9 +307,9 @@ bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary
             device->opengl_api().glBindBuffer(GL_ARRAY_BUFFER, primary_buffer_->get_buffer_provenance()->object_id());
             for(const auto &transfer_desc : transfer_descr_list)
             {
-                size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
-                size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
-                size_t provenance_slot_size = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance_size_in_bytes;
+                size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance_size_in_bytes;
+                size_t provenance_slot_size = database->get_primitives_per_node() * data_provenance_size_in_bytes;
                 device->opengl_api().glBufferSubData(GL_ARRAY_BUFFER, offset_in_render_VBO_provenance, provenance_slot_size, fix_a_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance);
             }
         }
@@ -462,9 +334,9 @@ bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary
             device->opengl_api().glBindBuffer(GL_ARRAY_BUFFER, primary_buffer_->get_buffer_provenance()->object_id());
             for(const auto &transfer_desc : transfer_descr_list)
             {
-                size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
-                size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
-                size_t provenance_slot_size = database->get_primitives_per_node() * data_provenance.get_size_in_bytes();
+                size_t offset_in_temp_VBO_provenance = transfer_desc.src_ * database->get_primitives_per_node() * data_provenance_size_in_bytes;
+                size_t offset_in_render_VBO_provenance = transfer_desc.dst_ * database->get_primitives_per_node() * data_provenance_size_in_bytes;
+                size_t provenance_slot_size = database->get_primitives_per_node() * data_provenance_size_in_bytes;
                 device->opengl_api().glBufferSubData(GL_ARRAY_BUFFER, offset_in_render_VBO_provenance, provenance_slot_size, fix_b_.fix_buffer_provenance_ + offset_in_temp_VBO_provenance);
             }
         }
@@ -476,5 +348,6 @@ bool gpu_context::update_primary_buffer_fix(const cut_database_record::temporary
 
     return uploaded_nodes != 0;
 }
+
 }
 }

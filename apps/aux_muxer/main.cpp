@@ -6,15 +6,17 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <lamure/types.h>
-#include <lamure/prov/aux.h>
+#include <lamure/prov/auxi.h>
 #include <lamure/prov/octree.h>
 
 #include <scm/core/math.h>
 #include <scm/gl_core/math.h>
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <map>
+#include <iomanip>
 
 using namespace std;
 
@@ -118,19 +120,34 @@ int main(int argc, char *argv[]) {
       std::cout << "Usage: " << argv[0] << std::endl <<
          "INFO: aux_import " << std::endl <<
          "\t-f input folder (required)" << std::endl <<
-         "\t-a aux output file (default: default.aux)" << std::endl <<
-         std::endl;
+         "\t-a auxi output file (default: default.auxi)" << std::endl <<
+         "\t(OPTIONAL: -x -y -z to define transformation, default: 0 0 0)" << std::endl <<
+         std::endl; 
       return 0;
     }
+
+    double transform_x = 0.0;
+    double transform_y = 0.0;
+    double transform_z = 0.0;
 
     std::string input_folder = std::string(get_cmd_option(argv, argv + argc, "-f"));
     if (input_folder[input_folder.size()-1] != '/') {
       input_folder += "/";
     }
 
-    std::string aux_file = input_folder + "default.aux";
+    std::string aux_file = input_folder + "default.auxi";
     if (cmd_option_exists(argv, argv+argc, "-a")) {
       aux_file = input_folder + std::string(get_cmd_option(argv, argv + argc, "-a"));
+    }
+
+    if (cmd_option_exists(argv, argv+argc, "-x")) {
+      transform_x = atof(std::string(get_cmd_option(argv, argv + argc, "-x")).c_str());
+    }
+    if (cmd_option_exists(argv, argv+argc, "-y")) {
+      transform_y = atof(std::string(get_cmd_option(argv, argv + argc, "-y")).c_str());
+    }
+    if (cmd_option_exists(argv, argv+argc, "-z")) {
+      transform_z = atof(std::string(get_cmd_option(argv, argv + argc, "-z")).c_str());
     }
 
     //parse cameraNames.txt
@@ -262,9 +279,15 @@ int main(int argc, char *argv[]) {
         cameraPose cP;
         std::istringstream line_ss(line);
         line_ss >> cP.cameraId_;
-        line_ss >> cP.positionX_;
-        line_ss >> cP.positionY_;
-        line_ss >> cP.positionZ_;
+
+        double pos;
+        line_ss >> std::setprecision(32) >> pos;
+        pos += transform_x; cP.positionX_ = (float)pos;
+        line_ss >> std::setprecision(32) >> pos;
+        pos += transform_y; cP.positionY_ = (float)pos;
+        line_ss >> std::setprecision(32) >> pos;
+        pos += transform_z; cP.positionZ_ = (float)pos;
+        
         line_ss >> cP.rot11_;
         line_ss >> cP.rot12_;
         line_ss >> cP.rot13_;
@@ -304,9 +327,15 @@ int main(int argc, char *argv[]) {
         worldPoint wP;
         std::istringstream line_ss(line);
         line_ss >> wP.worldPointId_;
-        line_ss >> wP.worldPointX_;
-        line_ss >> wP.worldPointY_;
-        line_ss >> wP.worldPointZ_;
+
+        double pos;
+        line_ss >> std::setprecision(32) >> pos;
+        pos += transform_x; wP.worldPointX_ = (float)pos;
+        line_ss >> std::setprecision(32) >> pos;
+        pos += transform_y; wP.worldPointY_ = (float)pos;
+        line_ss >> std::setprecision(32) >> pos;
+        pos += transform_z; wP.worldPointZ_ = (float)pos;
+        
         worldPoints[wP.worldPointId_] = wP;
       }
     }
@@ -388,8 +417,8 @@ int main(int argc, char *argv[]) {
 
 
 
-    //write aux object
-    lamure::prov::aux aux;
+    //write auxi object
+    lamure::prov::auxi aux;
 
     for (auto it : cameraNames) {
       auto& cN = it.second;
@@ -399,14 +428,19 @@ int main(int argc, char *argv[]) {
       auto& cD = cameraDistortions.find(id)->second;
       auto& cP = cameraPoses.find(id)->second;
 
-      lamure::prov::aux::view v;
+      lamure::prov::auxi::view v;
       v.camera_id_ = cN.cameraId_;
+      
+#if 0
       v.image_file_ = std::to_string(cN.cameraId_);
       while (v.image_file_.size() < 8) {
         v.image_file_ = "0" + v.image_file_;
       }
       v.image_file_ += ".jpg";
-     
+#else
+      v.image_file_ = cN.cameraName_;
+      v.image_file_ += ".jpg"; 
+#endif     
       v.position_ = scm::math::vec3f(cP.positionX_, cP.positionY_, cP.positionZ_);
       scm::math::mat4f m = scm::math::mat4f::identity();
       m.m00 = cP.rot11_; m.m01 = cP.rot12_; m.m02 = cP.rot13_;
@@ -415,7 +449,10 @@ int main(int argc, char *argv[]) {
       v.transform_ = scm::math::make_translation(v.position_)
         * scm::math::transpose(m) * scm::math::make_rotation(180.f, scm::math::vec3f(0, 1, 0));
 
-      v.focal_length_ = 0.f;
+      v.focal_value_x_ = cI.focalValueH_;
+      v.focal_value_y_ = cI.focalValueV_;
+      v.center_x_ = cI.centerX_;
+      v.center_y_ = cI.centerY_;
       v.distortion_ = 0.f;
       v.image_width_ = cI.imageWidth_;
       v.image_height_ = cI.imageHeight_;
@@ -430,7 +467,7 @@ int main(int argc, char *argv[]) {
       int32_t id = wP.worldPointId_;
       auto& wPDE_maps = worldPointDetectionErrors.find(id)->second;
       
-      lamure::prov::aux::sparse_point p;
+      lamure::prov::auxi::sparse_point p;
 
       p.pos_ = scm::math::vec3f(wP.worldPointX_, wP.worldPointY_, wP.worldPointZ_);
       p.r_ = (uint8_t)255;
@@ -438,12 +475,12 @@ int main(int argc, char *argv[]) {
       p.b_ = (uint8_t)255;
       p.a_ = (uint8_t)255;
       
-      auto aux_features = std::vector<lamure::prov::aux::feature>();
+      auto aux_features = std::vector<lamure::prov::auxi::feature>();
       for (const auto& wPDE_map : wPDE_maps) {
         for (const auto& wPDE : wPDE_map.second) {
           auto& feature = features[wPDE.second.cameraId_][wPDE.second.featureId_];
           
-          lamure::prov::aux::feature f;
+          lamure::prov::auxi::feature f;
           f.camera_id_ = wPDE.second.cameraId_;
           f.using_count_ = feature.usingCount_;
           f.coords_ = scm::math::vec2f(feature.featureX_, feature.featureY_);
@@ -467,7 +504,7 @@ int main(int argc, char *argv[]) {
     octree->create(aux.get_sparse_points());
     aux.set_octree(octree);
 
-    std::cout << "Write aux to file..." << std::endl;
+    std::cout << "Write auxi to file..." << std::endl;
     aux.write_aux_file(aux_file);
 
     std::cout << "Num views: " << aux.get_num_views() << std::endl;

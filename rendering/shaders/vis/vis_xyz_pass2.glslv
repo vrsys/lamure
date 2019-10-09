@@ -36,6 +36,9 @@ layout(location = 9) in float prov3;
 layout(location = 10) in float prov4;
 layout(location = 11) in float prov5;
 layout(location = 12) in float prov6;
+layout(location = 13) in float prov7;
+layout(location = 14) in float prov8;
+layout(location = 15) in float prov9;
 
 
 out VertexData {

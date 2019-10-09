@@ -15,7 +15,7 @@ using namespace std;
 
 namespace vt
 {
-class QuadTree
+class VT_DLL QuadTree
 {
   public:
     static const id_type get_child_id(id_type node_id, id_type child_index);

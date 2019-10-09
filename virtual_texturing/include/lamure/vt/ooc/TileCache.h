@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <lamure/vt/platform.h>
 #include <lamure/vt/pre/AtlasFile.h>
 #include <map>
 #include <mutex>
@@ -23,7 +24,7 @@ namespace ooc
 {
 class TileCache;
 
-class TileCacheSlot
+class VT_DLL TileCacheSlot
 {
   public:
     enum STATE
@@ -82,7 +83,7 @@ class TileCacheSlot
     void removeAllContextReferences();
 };
 
-class TileCache
+class VT_DLL TileCache
 {
   protected:
     typedef TileCacheSlot slot_type;

@@ -20,7 +20,7 @@
 namespace lamure {
 namespace prov
 {
-class Camera
+class PROVENANCE_DLL Camera
 {
   public:
     uint16_t MAX_LENGTH_FILE_PATH;
@@ -98,10 +98,11 @@ class Camera
 
         camera._translation = vec3f(x, y, z);
 
-        char byte_buffer[camera.MAX_LENGTH_FILE_PATH];
+        char* byte_buffer = new char[camera.MAX_LENGTH_FILE_PATH];
         is.read(byte_buffer, camera.MAX_LENGTH_FILE_PATH);
         camera._im_file_name = string(byte_buffer);
         camera._im_file_name = trim(camera._im_file_name);
+        delete [] byte_buffer;
 
         // if(DEBUG)
         // printf("\nFile path: \'%s\'\n", camera._im_file_name.c_str());

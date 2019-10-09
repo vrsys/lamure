@@ -8,10 +8,9 @@
 #ifndef REN_PROVENANCE_H_
 #define REN_PROVENANCE_H_
 
+#include <lamure/ren/platform.h>
 #include <lamure/ren/3rd_party/json.h>
 #include <fstream>
-#include <lamure/ren/item_provenance.h>
-#include <lamure/ren/policy.h>
 #include <lamure/types.h>
 #include <lamure/utils.h>
 #include <map>
@@ -24,17 +23,72 @@ namespace lamure
 {
 namespace ren
 {
-class Data_Provenance
+
+class RENDERING_DLL Item_Provenance
 {
   public:
-    Data_Provenance() {
-      _size_in_bytes = policy::get_instance()->size_of_provenance();
+    enum type_item
+    {
+        TYPE_INT,
+        TYPE_FLOAT,
+        TYPE_VEC3I,
+        TYPE_VEC3F
     };
 
-    static Data_Provenance parse_json(std::string path)
+    enum visualization_item
     {
-        Data_Provenance data_provenance;
+        VISUALIZATION_COLOR,
+        VISUALIZATION_ARROW,
+    };
 
+    Item_Provenance(type_item type, visualization_item visualization) : _type(type), _visualization(visualization){};
+
+    int get_size_in_bytes() const
+    {
+        switch(_type)
+        {
+        case TYPE_INT:
+            return sizeof(int);
+            break;
+        case TYPE_FLOAT:
+            return sizeof(float);
+            break;
+        case TYPE_VEC3I:
+            return sizeof(scm::math::vec3i);
+            break;
+        case TYPE_VEC3F:
+            return sizeof(scm::math::vec3f);
+            break;
+        }
+    };
+
+    type_item get_type() const { return _type; };
+    visualization_item get_visualization() const { return _visualization; };
+
+  private:
+    visualization_item _visualization;
+    type_item _type;
+};
+
+class RENDERING_DLL data_provenance
+{
+  public:
+                        data_provenance(const data_provenance&) = delete;
+                        data_provenance& operator=(const data_provenance&) = delete;
+    virtual             ~data_provenance();
+
+    static data_provenance* get_instance();
+
+  protected:
+
+                        data_provenance();
+    static bool         is_instanced_;
+    static data_provenance* single_;
+
+  public:
+
+    void parse_json(std::string path)
+    {
         std::ifstream ifs(path);
         std::string json((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
@@ -85,23 +139,18 @@ class Data_Provenance
             picojson::value::object::const_iterator iter_visualization = obj.find("visualization");
             if(iter_visualization != obj.end())
             {
-                if(iter_visualization->second.get<std::string>() == "color")
+                //if(iter_visualization->second.get<std::string>() == "color")
+                if(iter_visualization->second.get<std::string>() != "")
                 {
                     visualization = Item_Provenance::visualization_item::VISUALIZATION_COLOR;
-                }
-                else if(iter_visualization->second.get<std::string>() == "arrow")
-                {
-                    visualization = Item_Provenance::visualization_item::VISUALIZATION_ARROW;
                 }
             }
 
             Item_Provenance item_provenance(type, visualization);
-            data_provenance.add_item(item_provenance);
+            add_item(item_provenance);
         }
 
-        policy::get_instance()->set_size_of_provenance(data_provenance.get_size_in_bytes());
-
-        return data_provenance;
+        
     }
 
     std::vector<Item_Provenance> get_items() const { return _items_provenance; };
@@ -113,6 +162,8 @@ class Data_Provenance
         _items_provenance.push_back(item_provenance);
         _size_in_bytes += item_provenance.get_size_in_bytes();
     };
+
+    static std::mutex mutex_;
 
     std::vector<Item_Provenance> _items_provenance;
     int32_t _size_in_bytes;

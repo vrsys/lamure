@@ -10,13 +10,14 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <lamure/vt/common.h>
 #include <lamure/vt/pre/QuadTree.h>
 
 namespace vt
 {
 namespace pre
 {
-class GenericIndex
+class VT_DLL GenericIndex
 {
   private:
     uint64_t _imageWidth;

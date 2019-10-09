@@ -30,7 +30,9 @@ bvh()
   depth_(0),
   primitives_per_node_(0),
   size_of_primitive_(0),
+  size_of_provenance_(0),
   filename_(""),
+  min_lod_depth_(0),
   translation_(scm::math::vec3f(0.f)),
   primitive_(primitive_type::POINTCLOUD) {
 
@@ -44,7 +46,9 @@ bvh(const std::string& filename)
   depth_(0),
   primitives_per_node_(0),
   size_of_primitive_(0),
+  size_of_provenance_(0),
   filename_(""),
+  min_lod_depth_(0),
   translation_(scm::math::vec3f(0.f)) {
 
     std::string extension = filename.substr(filename.find_last_of(".") + 1);

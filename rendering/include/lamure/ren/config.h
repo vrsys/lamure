@@ -59,7 +59,7 @@ namespace ren {
 #define LAMURE_MAX_IMPORTANCE 1.0f
 
 #define LAMURE_DEFAULT_THRESHOLD 2.5f
-#define LAMURE_MIN_THRESHOLD 1.0f
+#define LAMURE_MIN_THRESHOLD 0.1f
 #define LAMURE_MAX_THRESHOLD 10.f
 
 //#define LAMURE_CUT_UPDATE_ENABLE_PREFETCHING
@@ -73,6 +73,10 @@ namespace ren {
 #define LAMURE_DEFAULT_VIDEO_MEMORY_BUDGET 1024
 #define LAMURE_DEFAULT_MAIN_MEMORY_BUDGET 4096
 #define LAMURE_DEFAULT_SIZE_OF_PROVENANCE 0
+
+//minimum depth for trimesh bvh nodes during lod selection
+#define LAMURE_MESH_MIN_DEPTH_ENABLE
+#define LAMURE_MESH_MIN_DEPTH 0
 
 //------------------------------
 //for ooc_cache:

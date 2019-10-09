@@ -8,6 +8,7 @@
 #include <lamure/types.h>
 #include <lamure/pre/surfel.h>
 
+#include <sstream>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
