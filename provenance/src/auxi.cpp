@@ -14,6 +14,7 @@
 
 #include <lamure/prov/aux_stream.h>
 #include <lamure/prov/octree.h>
+#include <lamure/prov/octree_node.h>
 
 namespace lamure {
 namespace prov {
@@ -30,17 +31,25 @@ auxi::
 auxi(const std::string& filename)
 : filename_("") {
 
-    std::string extension = filename.substr(filename.find_last_of(".") + 1);
-
-    if (extension.compare("auxi") == 0) {
-       load_aux_file(filename);
-    }
-    else {
-       throw std::runtime_error(
-          "lamure: auxi::Invalid file extension encountered.");
-    }
+    load_aux_file(filename);
 
 };
+
+// void auxi::
+// load_aux_file(const std::string& filename) {
+//     std::string extension = filename.substr(filename.find_last_of(".") + 1);
+
+
+//     if (extension.compare("auxi") == 0) {
+//        load_aux_file(filename);
+//     }
+//     else {
+//        throw std::runtime_error(
+//           "lamure: auxi::Invalid file extension encountered.");
+//     }
+
+
+// };
 
 void auxi::
 load_aux_file(const std::string& filename) {
@@ -61,6 +70,23 @@ write_aux_file(const std::string& filename) {
     aux_stream.write_aux(filename, *this);
 
 }
+
+uint64_t auxi::
+get_octree_query(const scm::math::vec3f& _pos){
+  return octree_->query(_pos);
+}
+
+const uint64_t auxi::
+get_num_nodes() const {
+ return octree_->get_num_nodes();
+}
+
+
+const octree_node&  auxi::
+get_octree_node(uint64_t _node_id){
+  return octree_->get_node(_node_id);
+}
+
 
 const auxi::view& auxi::
 get_view(const uint32_t view_id) const {
