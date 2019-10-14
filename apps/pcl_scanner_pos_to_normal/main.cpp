@@ -19,9 +19,6 @@
 #include <lamure/pre/octree.h>
 
 #include "cgal.h"
-#include <lamure/pre/plane.h>
-
-#define DEFAULT_PRECISION 15
 
 static char *get_cmd_option(char **begin, char **end, const std::string &option) {
     char **it = std::find(begin, end, option);
@@ -35,61 +32,17 @@ static bool cmd_option_exists(char **begin, char **end, const std::string &optio
     return std::find(begin, end, option) != end;
 }
 
-
-void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
-
-  uint32_t num_neighbours = 16;
+void face_normals_to_scanner(
+  const scm::math::vec3d& scanner_pos, std::vector<lamure::pre::surfel>& pointcloud) {
 
   for (auto& surfel : pointcloud) {
+    scm::math::vec3d normal(surfel.normal().x, surfel.normal().y, surfel.normal().z);
 
-    std::vector<uint64_t> neighbour_ids;
-    scm::math::vec3d query(surfel.pos().x, surfel.pos().y, surfel.pos().z);
-
-    nearest_neighbours(pointcloud, query, neighbour_ids, num_neighbours);
-
-    std::vector<scm::math::vec3d> neighbours;
-
-    for (auto id : neighbour_ids) {
-      const auto& neighbour = pointcloud[id];
-      scm::math::vec3d pos(neighbour.pos().x, neighbour.pos().y, neighbour.pos().z);
-      neighbours.push_back(pos);
+    double result = scm::math::dot(normal, scm::math::normalize(scanner_pos - surfel.pos()));
+    if (result <= 0.0) {
+      surfel.normal() *= -1.0;
     }
-
-    lamure::pre::plane_t plane;
-    lamure::pre::plane_t::fit_plane(neighbours, plane);
-
-    scm::math::vec3d normal = scm::math::normalize(plane.get_normal());
-
-    surfel.normal().x = normal.x;
-    surfel.normal().y = normal.y;
-    surfel.normal().z = normal.z;
-
   }
-
-}
-
-
-void get_string(const lamure::pre::surfel& surfel, std::string& line, bool xyz_all) {
-
-  line += std::to_string(surfel.pos().x) + " ";
-  line += std::to_string(surfel.pos().y) + " ";
-  line += std::to_string(surfel.pos().z) + " ";
-
-  if (xyz_all) {
-    line += std::to_string(surfel.normal().x) + " ";
-    line += std::to_string(surfel.normal().y) + " ";
-    line += std::to_string(surfel.normal().z) + " ";
-  }
-
-  line += std::to_string((int)surfel.color().x) + " ";
-  line += std::to_string((int)surfel.color().y) + " ";
-  line += std::to_string((int)surfel.color().z) + " ";
-
-  if (xyz_all) {
-    line += std::to_string(surfel.radius()) + " ";
-  }
-
-  line += "\n";
 
 }
 
@@ -163,18 +116,22 @@ int main(int argc, char *argv[]) {
   std::cout << scanner_positions.size() << " scanner positions loaded." << std::endl;
 
 
-  for (const auto& xyz_file : xyz_filenames) {
-    std::cout << xyz_file << std::endl;
+  for (uint32_t i = 0; i < xyz_filenames.size(); ++i) {
+    const auto& xyz_file = xyz_filenames[i];
+    //std::cout << xyz_file << std::endl;
+
+    std::vector<lamure::pre::surfel> pointcloud;
+    load_pointcloud(xyz_file, pointcloud);
+    compute_normals(pointcloud);
+
+    face_normals_to_scanner(scanner_positions[i], pointcloud);
+
+
   }
 
   for (const auto& pos : scanner_positions) {
     std::cout << pos << std::endl;
   }
-
-
-  //compute_normals(pointcloud);
-  
-
 
 
 

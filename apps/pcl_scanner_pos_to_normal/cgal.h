@@ -35,6 +35,9 @@
 
 #include <lamure/pre/surfel.h>
 #include <lamure/pre/octree.h>
+#include <lamure/pre/plane.h>
+
+#define DEFAULT_PRECISION 15
 
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
@@ -106,6 +109,123 @@ void nearest_neighbours(
     }
   }
 
+
+}
+
+
+
+void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
+
+  uint32_t num_neighbours = 16;
+
+  for (auto& surfel : pointcloud) {
+
+    std::vector<uint64_t> neighbour_ids;
+    scm::math::vec3d query(surfel.pos().x, surfel.pos().y, surfel.pos().z);
+
+    nearest_neighbours(pointcloud, query, neighbour_ids, num_neighbours);
+
+    std::vector<scm::math::vec3d> neighbours;
+
+    for (auto id : neighbour_ids) {
+      const auto& neighbour = pointcloud[id];
+      scm::math::vec3d pos(neighbour.pos().x, neighbour.pos().y, neighbour.pos().z);
+      neighbours.push_back(pos);
+    }
+
+    lamure::pre::plane_t plane;
+    lamure::pre::plane_t::fit_plane(neighbours, plane);
+
+    scm::math::vec3d normal = scm::math::normalize(plane.get_normal());
+
+    surfel.normal().x = normal.x;
+    surfel.normal().y = normal.y;
+    surfel.normal().z = normal.z;
+
+  }
+
+}
+
+void load_pointcloud(const std::string xyz_filename, std::vector<lamure::pre::surfel>& pointcloud) {
+
+  std::cout << "Loading xyz file " << xyz_filename << std::endl;
+  
+  bool xyz_all = (xyz_filename.substr(xyz_filename.size()-8) == ".xyz_all");
+  if (!xyz_all) {
+    if (xyz_filename.substr(xyz_filename.size()-4) != ".xyz") {
+      std::cout << "ERROR: Invalid input format. Expected .xyz or .xyz_all" << std::endl;
+      std::exit(1);
+    }
+  }
+
+  std::ifstream input_file(xyz_filename.c_str());
+
+  std::string line;
+  while(getline(input_file, line)) {
+
+    std::istringstream lineparser(line);
+
+    scm::math::vec3d pos;
+    lineparser >> std::setprecision(DEFAULT_PRECISION) >> pos.x;
+    lineparser >> std::setprecision(DEFAULT_PRECISION) >> pos.y;
+    lineparser >> std::setprecision(DEFAULT_PRECISION) >> pos.z;
+
+
+    scm::math::vec3f normal(0.0);
+    if (xyz_all) {
+      lineparser >> std::setprecision(DEFAULT_PRECISION) >> normal.x;
+      lineparser >> std::setprecision(DEFAULT_PRECISION) >> normal.y;
+      lineparser >> std::setprecision(DEFAULT_PRECISION) >> normal.z;
+    }
+
+    scm::math::vec3d color;
+    lineparser >> color.x;
+    lineparser >> color.y;
+    lineparser >> color.z;
+
+    lamure::vec3b bcolor(color.x, color.y, color.z);
+    
+    double radius = 1.0;
+    if (xyz_all) {
+      lineparser >> std::setprecision(DEFAULT_PRECISION) >> radius;
+    }
+
+ 
+    lamure::pre::surfel surfel(pos, bcolor, radius, normal, 0.0);
+    pointcloud.push_back(surfel);
+
+  }
+
+  input_file.close();
+
+  std::cout << pointcloud.size() << " points loaded." << std::endl;
+
+  
+
+}
+
+
+void get_string(const lamure::pre::surfel& surfel, std::string& line, bool xyz_all) {
+
+  line += std::to_string(surfel.pos().x) + " ";
+  line += std::to_string(surfel.pos().y) + " ";
+  line += std::to_string(surfel.pos().z) + " ";
+
+  if (xyz_all) {
+    line += std::to_string(surfel.normal().x) + " ";
+    line += std::to_string(surfel.normal().y) + " ";
+    line += std::to_string(surfel.normal().z) + " ";
+  }
+
+  line += std::to_string((int)surfel.color().x) + " ";
+  line += std::to_string((int)surfel.color().y) + " ";
+  line += std::to_string((int)surfel.color().z) + " ";
+
+  if (xyz_all) {
+    line += std::to_string(surfel.radius()) + " ";
+  }
+
+  line += "\n";
 
 }
 
