@@ -2245,6 +2245,8 @@ void create_aux_resources() {
           // scale factor from image space to vt atlas space
           float factor = get_atlas_scale_factor();
 
+          //std::cout << "Factor " << factor << std::endl;
+
           // positions in vt atlas space coordinate system
           float tile_height  = (float) atlas_tile.width_  / atlas_width  * factor;
           float tile_width   = (float) atlas_tile.width_  / atlas_height * factor;
