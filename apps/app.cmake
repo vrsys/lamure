@@ -30,8 +30,10 @@ macro(InitApp APP_NAME)
       )
 
       file(GLOB SCRIPT_FILES . ${PROJECT_SOURCE_DIR}/*.sh)
+      file(GLOB PYTHON_FILES . ${PROJECT_SOURCE_DIR}/*.py)
 
       install(PROGRAMS ${SCRIPT_FILES} DESTINATION bin)
+      install(PROGRAMS ${PYTHON_FILES} DESTINATION bin)
 
   endif(MSVC)
 endmacro()

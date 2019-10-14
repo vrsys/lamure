@@ -22,6 +22,7 @@ namespace lamure {
 namespace prov {
 
 class octree;
+class octree_node;
 
 class PROVENANCE_DLL auxi {
 public:
@@ -72,19 +73,29 @@ public:
       uint32_t height_{0};
     };
 
+
                         auxi();
                         auxi(const std::string& filename);
     virtual             ~auxi() {}
+
+    void load_aux_file(const std::string& filename);
+
+
 
     const std::string   get_filename() const { return filename_; }
     const uint32_t      get_num_views() const { return views_.size(); }
     const uint64_t      get_num_sparse_points() const { return sparse_points_.size(); }
     const uint32_t      get_num_atlas_tiles() const { return atlas_tiles_.size(); }
+         //done
+    const uint64_t      get_num_nodes() const;
+
+    uint64_t            get_octree_query(const scm::math::vec3f& _pos);
+    const octree_node&  get_octree_node(uint64_t _node_id);
 
     const view&         get_view(uint32_t id) const;
     const sparse_point& get_sparse_point(uint64_t id) const;
     const atlas_tile&   get_atlas_tile(uint32_t id) const;
-    
+     
     void                add_view(const view& view);
     void                add_sparse_point(const sparse_point& point);
     void                add_atlas_tile(const atlas_tile& tile);
@@ -101,7 +112,6 @@ public:
 
 protected:
 
-    void                load_aux_file(const std::string& filename);
 
 private:
 

@@ -5,6 +5,10 @@
 // Faculty of Media, Bauhaus-Universitaet Weimar
 // http://www.uni-weimar.de/medien/vr
 
+#include "fem_parser_utils.h"
+#include "fem_vis_ssbo_settings.h"
+
+
 //gl
 #include "imgui_impl_glfw_gl3.h"
 #include <GL/glew.h>
@@ -43,7 +47,7 @@
 #include <lamure/ren/dataset.h>
 #include <lamure/ren/policy.h>
 #include <lamure/ren/controller.h>
-#include <lamure/pvs/pvs_database.h>
+
 #include <lamure/ren/ray.h>
 #include <lamure/prov/auxi.h>
 #include <lamure/prov/octree.h>
@@ -69,6 +73,8 @@
 #include <sstream>
 
 
+void refresh_ssbo_data();
+
 struct fem_result_meta_data{
   std::string name;
   float min_absolute_deform;
@@ -80,10 +86,6 @@ struct fem_result_meta_data{
 std::ostream& operator << (std::ostream& o, fem_result_meta_data const& v){
   o << "fem_result_meta_data" << std::endl;
   o << "name: " << v.name << std::endl;
-  o << "min_absolute_deform: " << v.min_absolute_deform << std::endl;
-  o << "max_absolute_deform: " << v.max_absolute_deform << std::endl;
-  o << "min_deformation: " << v.min_deformation << std::endl;
-  o << "max_deformation: " << v.max_deformation << std::endl;
   return o;
 }
 
@@ -92,6 +94,61 @@ std::vector<fem_result_meta_data> fem_md;
 bool rendering_ = false;
 int32_t render_width_ = 1280;
 int32_t render_height_ = 720;
+
+
+scm::shared_ptr<scm::gl::text_renderer> text_renderer  =  nullptr;//   scm::make_shared<text_renderer>(device_);
+scm::shared_ptr<scm::gl::text>          renderable_text = nullptr;        //renderable_text_    = scm::make_shared<scm::gl::text>(device_, output_font, font_face::style_regular, "sick, sad world...");
+scm::gl::font_face_ptr                  output_font = nullptr;//(new font_face(device_, std::string(LAMURE_FONTS_DIR) + "/Ubuntu.ttf", 30, 0, font_face::smooth_lcd));
+
+
+
+
+
+float playback_speed = 1.0f;
+float accumulated_playback_cursor_time = 0.0f;
+float current_time_cursor_pos = 0.0f;
+
+float current_milliseconds_per_timestep = 0.0f;
+float current_simulation_duration_in_ms = 0.0f;
+
+int32_t current_max_num_timesteps = 1;
+int32_t current_max_timestep_id = 0;
+
+bool playback_enabled = false;
+bool deformation_enabled = false;
+
+static char* fem_col_attrib_names[] = {"SIG_XX      (Normalspannung)", 
+                                       "MAG_U      (Betrag der Verschiebung)", 
+                                       "TAU_XY     (Schubspannung in lokale Y-Richtung)", 
+                                       "TAU_XZ     (Schubspannung in lokale Z-Richtung)", 
+                                       "TAU_ABS   (Betrag der addierten Vektoren)", 
+                                       "SIG_V        (Summe aller Spannungen, immer positiv)", 
+                                       "EPS_X       (Dehnung, zur Normalspannung zugehoerig)"};
+
+static int selected_fem_col_attrib = 0;
+
+
+
+bool changed_ssbo_simulation = true;
+fem_attribute_collection g_fem_collection;
+
+//after parsing, should contain the first simulation name of the folder the sim is contained in (e.g. Temperatur)
+std::string previously_selected_FEM_simulation = "";
+std::string currently_selected_FEM_simulation = "";
+
+FEM_attrib curently_selected_FEM_attribute_coloring = FEM_attrib::SIG_XX;
+
+/* is filled with the return value of "parse_fem_collection(...)"
+/ only values contained in the vector should be used for querying data from 
+/ "get_data_ptr_to_simulation_data(std::string const& sim_name)"to upload into SSBO */
+std::vector<std::string> successfully_parsed_simulation_names;
+
+
+//ssbo containing the entire time series for the attribute of interest (e.g. Temperatur, Eigenform_001, etc.)
+scm::gl::buffer_ptr fem_ssbo_time_series ;
+
+
+int32_t frame_count = 0;
 
 int32_t num_models_ = 0;
 std::vector<scm::math::mat4d> model_transformations_;
@@ -117,11 +174,10 @@ scm::gl::program_ptr vis_xyz_qz_pass1_shader_;
 scm::gl::program_ptr vis_xyz_qz_pass2_shader_;
 
 scm::gl::program_ptr vis_quad_shader_;
-scm::gl::program_ptr vis_line_shader_;
+
 scm::gl::program_ptr vis_trimesh_shader_;
 scm::gl::program_ptr vis_trimesh_lighting_shader_;
-scm::gl::program_ptr vis_vt_shader_;
-scm::gl::program_ptr vis_vt_shader_feedback_;
+
 
 scm::gl::frame_buffer_ptr fbo_;
 scm::gl::texture_2d_ptr fbo_color_buffer_;
@@ -148,10 +204,15 @@ scm::gl::blend_state_ptr color_no_blending_state_;
 scm::gl::sampler_state_ptr filter_linear_;
 scm::gl::sampler_state_ptr filter_nearest_;
 
-scm::gl::sampler_state_ptr vt_filter_linear_;
-scm::gl::sampler_state_ptr vt_filter_nearest_;
-
 scm::gl::texture_2d_ptr bg_texture_;
+
+
+
+
+
+
+
+uint64_t max_size_of_ssbo = 0;
 
 //typedef eigenform
 //CPU representation vector for eigenform values  
@@ -164,8 +225,7 @@ struct resource {
   scm::gl::vertex_array_ptr array_;
 };
 
-resource brush_resource_;
-resource pvs_resource_;
+
 std::map<uint32_t, resource> bvh_resources_;
 std::map<uint32_t, resource> sparse_resources_;
 std::map<uint32_t, resource> frusta_resources_;
@@ -235,117 +295,8 @@ struct provenance {
 
 std::map<uint32_t, provenance> provenance_;
 
-struct settings {
-  int32_t width_ {1920};
-  int32_t height_ {1080};
-  int32_t frame_div_ {1};
-  int32_t vram_ {4096};
-  int32_t ram_ {16096};
-  int32_t upload_ {32};
-  bool provenance_ {0};
-  bool create_aux_resources_ {1};
-  float near_plane_ {1.0f};
-  float far_plane_ {5000.0f};
-  float fov_ {30.0f};
-  bool splatting_ {1};
-  bool gamma_correction_ {0};
-  int32_t gui_ {1};
-  int32_t travel_ {2};
-  float travel_speed_ {100.5f};
-  int32_t max_brush_size_{4096};
-  bool lod_update_ {1};
-  bool use_pvs_ {1};
-  bool pvs_culling_ {0};
-  float lod_point_scale_ {1.0f};
-  float aux_point_size_ {1.0f};
-  float aux_point_distance_ {0.5f};
-  float aux_point_scale_ {1.0f};
-  float aux_focal_length_ {1.0f};
-  int32_t vis_ {0};
-  int32_t show_normals_ {0};
-  bool show_accuracy_ {0};
-  bool show_radius_deviation_ {0};
-  bool show_output_sensitivity_ {0};
-  bool show_sparse_ {0};
-  bool show_views_ {0};
-  bool show_photos_ {0};
-  bool show_octrees_ {0};
-  bool show_bvhs_ {0};
-  bool show_pvs_ {0};
-  int32_t channel_ {0};
-  int32_t fem_result_ {0};
-  int32_t fem_vis_mode_ {0};
-  float fem_deform_factor_ {1.0};
-  std::string fem_value_mapping_file_;
-  float lod_error_ {LAMURE_DEFAULT_THRESHOLD};
-  bool enable_lighting_ {0};
-  bool use_material_color_ {0};
-  scm::math::vec3f material_diffuse_ {0.6f, 0.6f, 0.6f};
-  scm::math::vec4f material_specular_ {0.4f, 0.4f, 0.4f, 1000.0f};
-  scm::math::vec3f ambient_light_color_ {0.1f, 0.1f, 0.1f};
-  scm::math::vec4f point_light_color_ {1.0f, 1.0f, 1.0f, 1.2f};
-  bool heatmap_ {0};
-  float heatmap_min_ {0.0f};
-  float heatmap_max_ {1.0f};
-  scm::math::vec3f background_color_ {LAMURE_DEFAULT_COLOR_R, LAMURE_DEFAULT_COLOR_G, LAMURE_DEFAULT_COLOR_B};
-  scm::math::vec3f heatmap_color_min_ {68.0f/255.0f, 0.0f, 84.0f/255.0f};
-  scm::math::vec3f heatmap_color_max_ {251.f/255.f, 231.f/255.f, 35.f/255.f};
-  std::string atlas_file_ {""};
-  std::string json_ {""};
-  std::string pvs_ {""};
-  std::string background_image_ {""};
-  int32_t use_view_tf_ {0};
-  scm::math::mat4d view_tf_ {scm::math::mat4d::identity()};
-  std::vector<std::string> models_;
-  std::map<uint32_t, scm::math::mat4d> transforms_;
-  std::map<uint32_t, std::shared_ptr<lamure::prov::octree>> octrees_;
-  std::map<uint32_t, std::vector<lamure::prov::auxi::view>> views_;
-  std::map<uint32_t, std::string> aux_;
-  std::map<uint32_t, std::string> textures_;
-  std::map<uint32_t, int> min_lod_depths_;
-  std::string selection_ {""};
-  float max_radius_ {std::numeric_limits<float>::max()};
-  int color_rendering_mode {0};
-};
 
 settings settings_;
-
-
-
-struct vt_info {
-    uint32_t texture_id_;
-    uint16_t view_id_;
-    uint16_t context_id_;
-    uint64_t cut_id_;
-    vt::CutUpdate *cut_update_;
-
-    std::vector<scm::gl::texture_2d_ptr> index_texture_hierarchy_;
-    scm::gl::texture_2d_ptr physical_texture_;
-
-    scm::math::vec2ui physical_texture_size_;
-    scm::math::vec2ui physical_texture_tile_size_;
-    size_t size_feedback_;
-
-    int32_t  *feedback_lod_cpu_buffer_;
-#ifdef RASTERIZATION_COUNT
-    uint32_t *feedback_count_cpu_buffer_;
-#endif
-
-    scm::gl::buffer_ptr feedback_index_ib_;
-    scm::gl::buffer_ptr feedback_index_vb_;
-    scm::gl::vertex_array_ptr feedback_vao_;
-    scm::gl::buffer_ptr feedback_inv_index_;
-
-    scm::gl::buffer_ptr feedback_lod_storage_;
-#ifdef RASTERIZATION_COUNT
-    scm::gl::buffer_ptr feedback_count_storage_;
-#endif
-
-    int toggle_visualization_;
-    bool enable_hierarchy_;
-};
-
-vt_info vt_;
 
 
 scm::math::mat4d load_matrix(const std::string& filename) {
@@ -652,6 +603,15 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           else if (key == "max_radius") {
             settings.max_radius_ = std::max(atof(value.c_str()), 0.0);
           }
+          else if (key == "fem_to_pcl_transform") {
+            std::cout << "TRANSFORM STRING: " <<  value << std::endl;
+            std::istringstream in_transform(value);
+
+            for(int element_idx = 0; element_idx < 16; ++element_idx) {
+              in_transform >> settings.fem_to_pcl_transform_[element_idx]; 
+            }
+            //settings.width_ = std::max(atoi(value.c_str()), 64);
+          }
           else {
             std::cout << "unrecognized key: " << key << std::endl;
             exit(-1);
@@ -748,13 +708,87 @@ void set_uniforms(scm::gl::program_ptr shader) {
     shader->uniform("fem_vis_mode", settings_.fem_vis_mode_);
     shader->uniform("fem_deform_factor", settings_.fem_deform_factor_);
 
-    if(settings_.fem_result_ > 0){
-      //std::cout << fem_md[settings_.fem_result_ - 1] << std::endl;
-      shader->uniform("fem_min_absolute_deform", fem_md[settings_.fem_result_ - 1].min_absolute_deform);
-      shader->uniform("fem_max_absolute_deform", fem_md[settings_.fem_result_ - 1].max_absolute_deform);
-      shader->uniform("fem_min_deformation", fem_md[settings_.fem_result_ - 1].min_deformation);
-      shader->uniform("fem_max_deformation", fem_md[settings_.fem_result_ - 1].max_deformation);
+
+
+
+    //std::cout << "NUM VERTICES IN MODEL: " <<  num_vertices_in_fem_model << "\n";
+
+    int32_t num_vertices_in_current_simulation = g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation);
+
+   
+    /*
+    std::cout << "VERTICES IN SIMULATION: " 
+              << g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation) << std::endl;
+
+    std::cout << "NUM TIMESTEPS IN SIMULATION " <<
+              g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) << std::endl;
+    */
+
+
+    //std::cout << "SELECTED SIMULATION: "  << currently_selected_FEM_simulation << std::endl;
+    auto const extrema_current_color_attribute 
+      = g_fem_collection.get_global_extrema_for_attribute_in_series(curently_selected_FEM_attribute_coloring, currently_selected_FEM_simulation);
+
+
+    //std::cout << " NUM VERTICES IN CURRENT SIMULATION: " << num_vertices_in_current_simulation << "\n";
+    shader->uniform("num_vertices_in_fem", num_vertices_in_current_simulation);
+
+    //std::cout << "Currently used min and max values for color attrib: [" 
+    //          << extrema_current_color_attribute.first << "], [" << extrema_current_color_attribute.second << "]" << std::endl; 
+
+    shader->uniform("current_min_color_attrib", extrema_current_color_attribute.first);
+    shader->uniform("current_max_color_attrib", extrema_current_color_attribute.second);
+
+ 
+    current_max_num_timesteps = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation);
+    current_max_timestep_id = current_max_num_timesteps - 1;
+
+
+    int32_t const num_fem_attributes = int(FEM_attrib::NUM_FEM_ATTRIBS);
+    int current_attribute_id = int(curently_selected_FEM_attribute_coloring);
+    // needed for offset to other timesteps
+    shader->uniform("max_timestep_id", current_max_timestep_id);
+    shader->uniform("num_attributes_in_fem", num_fem_attributes);
+    shader->uniform("current_attribute_id", current_attribute_id);
+
+
+    if(playback_enabled) {
+      current_time_cursor_pos = (accumulated_playback_cursor_time) * playback_speed;// (frame_count) * 3.5f;
+
+      if( (current_max_num_timesteps != 1) && (current_simulation_duration_in_ms != 0.0f) ) {
+        if(current_time_cursor_pos > current_max_timestep_id) {
+          current_time_cursor_pos = std::fmod(current_time_cursor_pos, current_simulation_duration_in_ms);
+        }
+      } else {
+        current_time_cursor_pos = 0.0f;
+      }
     }
+
+    float clamped_time_cursor_pos = current_time_cursor_pos;
+
+    if(current_max_num_timesteps != 1 && (current_simulation_duration_in_ms != 0.0f) ) {
+      if(clamped_time_cursor_pos > current_simulation_duration_in_ms) {
+       clamped_time_cursor_pos = std::fmod(clamped_time_cursor_pos, current_simulation_duration_in_ms);
+      } 
+    } else {
+      clamped_time_cursor_pos = 0.0f;
+    }
+
+    float time_step_cursor_pos = 0.0f;
+
+    if(current_milliseconds_per_timestep > 0.0f) {
+      time_step_cursor_pos = current_time_cursor_pos / current_milliseconds_per_timestep;
+    }
+    
+    
+    if(time_step_cursor_pos >= current_max_timestep_id) {
+      time_step_cursor_pos = current_max_timestep_id-0.001;
+    }
+
+    //std::cout << "Uploading time cursor: " << clamped_time_cursor_pos << "\n";
+    shader->uniform("time_step_cursor_pos", time_step_cursor_pos);
+
+
     
 
   }
@@ -763,199 +797,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
 
 
-void draw_brush(scm::gl::program_ptr shader) {
 
-  if (selection_.brush_end_ > 0) {
-    set_uniforms(shader);
-
-    scm::math::mat4d model_matrix = scm::math::mat4d::identity();
-    scm::math::mat4d projection_matrix = scm::math::mat4d(camera_->get_projection_matrix());
-    scm::math::mat4d view_matrix = camera_->get_high_precision_view_matrix();
-    scm::math::mat4d model_view_matrix = view_matrix * model_matrix;
-    scm::math::mat4d model_view_projection_matrix = projection_matrix * model_view_matrix;
-
-    shader->uniform("mvp_matrix", scm::math::mat4f(model_view_projection_matrix));
-    shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
-    shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
-    shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
-
-    shader->uniform("point_size_factor", settings_.aux_point_scale_);
-
-    shader->uniform("model_to_screen_matrix", scm::math::mat4f::identity());
-    shader->uniform("model_radius_scale", 1.f);
-
-    shader->uniform("show_normals", false);
-    shader->uniform("show_accuracy", false);
-    shader->uniform("show_radius_deviation", false);
-    shader->uniform("show_output_sensitivity", false);
-    shader->uniform("channel", 0);
-
-    shader->uniform("face_eye", false);
-
-    context_->bind_vertex_array(brush_resource_.array_);
-    context_->apply();
-    context_->draw_arrays(scm::gl::PRIMITIVE_POINT_LIST, 0, selection_.brush_end_);
-    
-  }
-
-}
-
-
-void apply_vt_cut_update() {
-
-  auto *cut_db = &vt::CutDatabase::get_instance();
-
-  for (vt::cut_map_entry_type cut_entry : (*cut_db->get_cut_map())) {
-    vt::Cut *cut = cut_db->start_reading_cut(cut_entry.first);
-
-    if (!cut->is_drawn()) {
-      cut_db->stop_reading_cut(cut_entry.first);
-      continue;
-    }
-
-    std::set<uint16_t> updated_levels;
-
-    for (auto position_slot_updated : cut->get_front()->get_mem_slots_updated()) {
-      const vt::mem_slot_type *mem_slot_updated = cut_db->read_mem_slot_at(position_slot_updated.second, vt_.context_id_);
-
-      if (mem_slot_updated == nullptr || !mem_slot_updated->updated
-          || !mem_slot_updated->locked || mem_slot_updated->pointer == nullptr) {
-        if (mem_slot_updated == nullptr) {
-          std::cerr << "Mem slot at " << position_slot_updated.second << " is null" << std::endl;
-        } else {
-          std::cerr << "Mem slot at " << position_slot_updated.second << std::endl;
-          std::cerr << "Mem slot #" << mem_slot_updated->position << std::endl;
-          std::cerr << "Tile id: " << mem_slot_updated->tile_id << std::endl;
-          std::cerr << "Locked: " << mem_slot_updated->locked << std::endl;
-          std::cerr << "Updated: " << mem_slot_updated->updated << std::endl;
-          std::cerr << "Pointer valid: " << (mem_slot_updated->pointer != nullptr) << std::endl;
-        }
-
-        throw std::runtime_error("updated mem slot inconsistency");
-      }
-
-      updated_levels.insert(vt::QuadTree::get_depth_of_node(mem_slot_updated->tile_id));
-
-      // update_physical_texture_blockwise
-      size_t slots_per_texture = vt::VTConfig::get_instance().get_phys_tex_tile_width() *
-                                 vt::VTConfig::get_instance().get_phys_tex_tile_width();
-      size_t layer = mem_slot_updated->position / slots_per_texture;
-      size_t rel_slot_position = mem_slot_updated->position - layer * slots_per_texture;
-
-      size_t x_tile = rel_slot_position % vt::VTConfig::get_instance().get_phys_tex_tile_width();
-      size_t y_tile = rel_slot_position / vt::VTConfig::get_instance().get_phys_tex_tile_width();
-
-      scm::math::vec3ui origin = scm::math::vec3ui(
-              (uint32_t) x_tile * vt::VTConfig::get_instance().get_size_tile(),
-              (uint32_t) y_tile * vt::VTConfig::get_instance().get_size_tile(), (uint32_t) layer);
-      scm::math::vec3ui dimensions = scm::math::vec3ui(vt::VTConfig::get_instance().get_size_tile(),
-                                                       vt::VTConfig::get_instance().get_size_tile(), 1);
-
-      context_->update_sub_texture(vt_.physical_texture_, scm::gl::texture_region(origin, dimensions), 0,
-                                   get_tex_format(), mem_slot_updated->pointer);
-    }
-
-
-    for (auto position_slot_cleared : cut->get_front()->get_mem_slots_cleared()) {
-      const vt::mem_slot_type *mem_slot_cleared = cut_db->read_mem_slot_at(position_slot_cleared.second, vt_.context_id_);
-
-      if (mem_slot_cleared == nullptr) {
-        std::cerr << "Mem slot at " << position_slot_cleared.second << " is null" << std::endl;
-      }
-
-      updated_levels.insert(vt::QuadTree::get_depth_of_node(position_slot_cleared.first));
-    }
-
-    // update_index_texture
-    for (uint16_t updated_level : updated_levels) {
-      uint32_t size_index_texture = (uint32_t) vt::QuadTree::get_tiles_per_row(updated_level);
-
-      scm::math::vec3ui origin = scm::math::vec3ui(0, 0, 0);
-      scm::math::vec3ui dimensions = scm::math::vec3ui(size_index_texture, size_index_texture, 1);
-
-      context_->update_sub_texture(vt_.index_texture_hierarchy_.at(updated_level),
-                                   scm::gl::texture_region(origin, dimensions), 0, scm::gl::FORMAT_RGBA_8UI,
-                                   cut->get_front()->get_index(updated_level));
-
-    }
-
-    cut_db->stop_reading_cut(cut_entry.first);
-  }
-
-  context_->sync();
-}
-
-void update_vt_feedback_layout()
-{
-  auto allocated_slots = &vt_.cut_update_->get_context_feedback(vt_.context_id_)->get_allocated_slot_index();
-
-  if(allocated_slots->size() == 0)
-  {
-    return;
-  }
-
-  std::vector<uint32_t> output(allocated_slots->size());
-  std::copy(allocated_slots->begin(), allocated_slots->end(), output.begin());
-
-  using namespace scm::math;
-  using namespace scm::gl;
-
-  context_state_objects_guard csg(context_);
-  context_vertex_input_guard cvg(context_);
-
-  auto mapped_index = (uint32_t*)context_->map_buffer_range(vt_.feedback_index_vb_, 0, output.size() * sizeof(uint32_t), ACCESS_WRITE_ONLY);
-  memcpy(&mapped_index[0], &output[0], output.size() * sizeof(uint32_t));
-  context_->unmap_buffer(vt_.feedback_index_vb_);
-
-  context_->clear_buffer_data(vt_.feedback_inv_index_, FORMAT_R_32UI, nullptr);
-  context_->sync();
-
-  context_->bind_storage_buffer(vt_.feedback_inv_index_, 2);
-  context_->bind_index_buffer(vt_.feedback_index_ib_, PRIMITIVE_POINT_LIST, TYPE_UINT);
-  context_->bind_vertex_array(vt_.feedback_vao_);
-  context_->apply();
-
-  vis_vt_shader_feedback_->uniform("feedback_index_size", (const unsigned int)allocated_slots->size());
-  context_->bind_program(vis_vt_shader_feedback_);
-
-  context_->apply();
-
-  context_->draw_elements((const unsigned int)allocated_slots->size());
-}
-
-void collect_vt_feedback() {
-  context_->apply();
-
-  using namespace scm::math;
-  using namespace scm::gl;
-
-  context_state_objects_guard csg(context_);
-  context_vertex_input_guard cvg(context_);
-
-  memset(vt_.feedback_lod_cpu_buffer_, 0, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
-
-  int32_t* feedback_lod = (int32_t*)context_->map_buffer(vt_.feedback_lod_storage_, scm::gl::ACCESS_READ_ONLY);
-  memcpy(vt_.feedback_lod_cpu_buffer_, feedback_lod, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
-  context_->sync();
-
-  context_->unmap_buffer(vt_.feedback_lod_storage_);
-  context_->clear_buffer_data(vt_.feedback_lod_storage_, scm::gl::FORMAT_R_32I, nullptr);
-#ifdef RASTERIZATION_COUNT
-  memset(vt_.feedback_count_cpu_buffer_, 0, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
-
-    uint32_t* feedback_count = (uint32_t*)context_->map_buffer(vt_.feedback_count_storage_, scm::gl::ACCESS_READ_ONLY);
-    memcpy(vt_.feedback_count_cpu_buffer_, feedback_count, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
-    context_->sync();
-
-    vt_.cut_update_->feedback(vt_.context_id_, vt_.feedback_lod_cpu_buffer_, vt_.feedback_count_cpu_buffer_);
-
-    context_->unmap_buffer(vt_.feedback_count_storage_);
-    context_->clear_buffer_data(vt_.feedback_count_storage_, scm::gl::FORMAT_R_32UI, nullptr);
-#else
-  context_->sync();
-  vt_.cut_update_->feedback(vt_.context_id_, vt_.feedback_lod_cpu_buffer_, nullptr);
-#endif
-}
 
 void draw_resources(const lamure::context_t context_id, const lamure::view_t view_id) {
 
@@ -1032,241 +874,7 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
 
     }
 
-    // draw image_plane resources with vt system
-    if (settings_.show_photos_ && !settings_.atlas_file_.empty()) {
 
-      context_->apply();
-
-      bool feedback_enabled = vt_.cut_update_->can_accept_feedback(vt_.context_id_);
-
-      if(feedback_enabled)
-      {
-        update_vt_feedback_layout();
-      }
-
-      vis_vt_shader_->uniform("enable_feedback", feedback_enabled);
-
-      context_->bind_program(vis_vt_shader_);
-
-      uint64_t color_cut_id =
-              (((uint64_t) vt_.texture_id_) << 32) | ((uint64_t) vt_.view_id_ << 16) | ((uint64_t) vt_.context_id_);
-      uint32_t max_depth_level_color =
-              (*vt::CutDatabase::get_instance().get_cut_map())[color_cut_id]->get_atlas()->getDepth() - 1;
-
-      scm::math::mat4f view_matrix       = camera_->get_view_matrix();
-      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-
-      vis_vt_shader_->uniform("model_view_matrix", view_matrix);
-      vis_vt_shader_->uniform("projection_matrix", projection_matrix);
-
-      vis_vt_shader_->uniform("physical_texture_dim", vt_.physical_texture_size_);
-      vis_vt_shader_->uniform("max_level", max_depth_level_color);
-      vis_vt_shader_->uniform("tile_size", scm::math::vec2((uint32_t) vt::VTConfig::get_instance().get_size_tile()));
-      vis_vt_shader_->uniform("tile_padding", scm::math::vec2((uint32_t) vt::VTConfig::get_instance().get_size_padding()));
-
-      vis_vt_shader_->uniform("enable_hierarchy", vt_.enable_hierarchy_);
-      vis_vt_shader_->uniform("toggle_visualization", vt_.toggle_visualization_);
-
-      for (uint32_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
-        std::string texture_string = "hierarchical_idx_textures";
-        vis_vt_shader_->uniform(texture_string, i, int((i)));
-      }
-
-      vis_vt_shader_->uniform("physical_texture_array", 17);
-
-      context_->set_viewport(
-        scm::gl::viewport(scm::math::vec2ui(0, 0), 
-        scm::math::vec2ui(render_width_, render_height_)));
-
-      context_->set_depth_stencil_state(depth_state_less_);
-      context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-      context_->set_blend_state(color_no_blending_state_);
-
-      context_->sync();
-
-      apply_vt_cut_update();
-
-      for (uint16_t i = 0; i < vt_.index_texture_hierarchy_.size(); ++i) {
-        context_->bind_texture(vt_.index_texture_hierarchy_.at(i), vt_filter_nearest_, i);
-      }
-
-      context_->bind_texture(vt_.physical_texture_, vt_filter_linear_, 17);
-
-      context_->bind_storage_buffer(vt_.feedback_lod_storage_, 0);
-      context_->bind_storage_buffer(vt_.feedback_inv_index_, 2);
-#ifdef RASTERIZATION_COUNT
-      context_->bind_storage_buffer(vt_.feedback_count_storage_, 1);
-#endif
-
-      context_->apply();
-
-      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-        if (selection_.selected_model_ != -1) {
-          model_id = selection_.selected_model_;
-        }
-
-        auto t_res = image_plane_resources_[model_id];
-
-        if (t_res.num_primitives_ > 0) {
-          context_->bind_vertex_array(t_res.array_);
-          context_->apply();
-          if (selection_.selected_views_.empty()) {
-            context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, 0, t_res.num_primitives_);
-          }
-          else {
-            for (const auto view : selection_.selected_views_) {
-              context_->draw_arrays(scm::gl::PRIMITIVE_TRIANGLE_LIST, view * 6, 6);
-            }
-          }
-        }
-
-        if (selection_.selected_model_ != -1) {
-          break;
-        }
-      }
-      context_->sync();
-
-      if(feedback_enabled)
-      {
-        collect_vt_feedback();
-      }
-
-    }
-
-    if (settings_.show_views_ || settings_.show_octrees_) {
-      context_->bind_program(vis_line_shader_);
-
-      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-      scm::math::mat4f view_matrix = camera_->get_view_matrix();
-      vis_line_shader_->uniform("model_matrix", scm::math::mat4f::identity());
-      vis_line_shader_->uniform("view_matrix", view_matrix);
-      vis_line_shader_->uniform("projection_matrix", projection_matrix);
-      
-      for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-        if (selection_.selected_model_ != -1) {
-          model_id = selection_.selected_model_;
-        }
-        
-        if (settings_.show_views_) {
-          uint32_t num_views = provenance_[model_id].num_views_;
-          auto f_res = frusta_resources_[model_id];
-          if (f_res.num_primitives_ > 0) {
-            context_->bind_vertex_array(f_res.array_);
-            context_->apply();
-            if (selection_.selected_views_.empty()) {
-              context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, f_res.num_primitives_);
-            }
-            else {
-              for (const auto view : selection_.selected_views_) {
-                context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, view * 16, 16);
-              }
-            }
-          }
-        }
-
-        if (settings_.show_octrees_) {
-          auto o_res = octree_resources_[model_id];
-          if (o_res.num_primitives_ > 0) {
-            context_->bind_vertex_array(o_res.array_);
-            context_->apply();
-            context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, o_res.num_primitives_);
-          }
-        }
-
-        if (selection_.selected_model_ != -1) {
-          break;
-        }
-      }
-    }
-  }
-
-  if (settings_.show_bvhs_) {
-
-    lamure::ren::controller* controller = lamure::ren::controller::get_instance();
-    lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
-    lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-
-
-    context_->bind_program(vis_line_shader_);
-
-    scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-    scm::math::mat4f view_matrix = camera_->get_view_matrix();
-    
-    vis_line_shader_->uniform("view_matrix", view_matrix);
-    vis_line_shader_->uniform("projection_matrix", projection_matrix);
-    
-    for (int32_t model_id = 0; model_id < num_models_; ++model_id) {
-
-      if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
-        continue;
-      }
-
-      if (selection_.selected_model_ != -1) {
-        model_id = selection_.selected_model_;
-      }
-      
-      bool draw = true;
-      lamure::model_t m_id = controller->deduce_model_id(std::to_string(model_id));
-      lamure::ren::cut& cut = cuts->get_cut(context_id, view_id, m_id);
-      std::vector<lamure::ren::cut::node_slot_aggregate> renderable = cut.complete_set();
-      const lamure::ren::bvh* bvh = database->get_model(m_id)->get_bvh();
-
-      if (draw) {
-      
-        //uniforms per model
-        scm::math::mat4d model_matrix = model_transformations_[model_id];
-        vis_line_shader_->uniform("model_matrix", scm::math::mat4f(model_matrix));
-        
-        std::vector<scm::gl::boxf>const & bounding_box_vector = bvh->get_bounding_boxes();
-        scm::gl::frustum frustum_by_model = camera_->get_frustum_by_model(scm::math::mat4f(model_matrix));
-        
-
-        auto bvh_res = bvh_resources_[model_id];
-        if (bvh_res.num_primitives_ > 0) {
-          context_->bind_vertex_array(bvh_res.array_);
-          context_->apply();
-
-          for(auto const& node_slot_aggregate : renderable) {
-            uint32_t node_culling_result = camera_->cull_against_frustum(
-              frustum_by_model,
-              bounding_box_vector[node_slot_aggregate.node_id_]);
-            
-            if (node_culling_result != 1) {
-
-              if (settings_.use_pvs_ && pvs->is_activated() && settings_.pvs_culling_ 
-                && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_)) {
-                continue;
-              }
-
-              context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, node_slot_aggregate.node_id_*24, 24);
-
-            }
-          }
-        }
-      }
-
-      if (selection_.selected_model_ != -1) {
-        break;
-      }
-    }
-
-  }
-
-  if (settings_.pvs_ != "" && settings_.show_pvs_) {
-    if (pvs_resource_.num_primitives_ > 0) {
-      context_->bind_program(vis_line_shader_);
-
-      scm::math::mat4f projection_matrix = scm::math::mat4f(camera_->get_projection_matrix());
-      scm::math::mat4f view_matrix = camera_->get_view_matrix();
-      vis_line_shader_->uniform("model_matrix", scm::math::mat4f::identity());
-      vis_line_shader_->uniform("view_matrix", view_matrix);
-      vis_line_shader_->uniform("projection_matrix", projection_matrix);
-      
-      context_->bind_vertex_array(pvs_resource_.array_);
-      context_->apply();
-      context_->draw_arrays(scm::gl::PRIMITIVE_LINE_LIST, 0, pvs_resource_.num_primitives_);
-    }
   }
 
 }
@@ -1276,7 +884,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
-  lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+
 
   context_->bind_vertex_array(controller->get_context_memory(context_id, _type, device_));
   
@@ -1344,11 +952,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
         
       if (node_culling_result != 1) {
 
-        if (settings_.use_pvs_ && pvs->is_activated() && settings_.pvs_culling_ 
-          && !lamure::pvs::pvs_database::get_instance()->get_viewer_visibility(model_id, node_slot_aggregate.node_id_)) {
-          continue;
-        }
-        
+
         if (settings_.show_accuracy_) {
           const float accuracy = 1.0 - (bvh->get_depth_of_node(node_slot_aggregate.node_id_) * 1.0)/(bvh->get_depth() - 1);
           shader->uniform("accuracy", accuracy);
@@ -1478,18 +1082,52 @@ void glut_display() {
   }
   rendering_ = true;
 
+
+  std::chrono::time_point<std::chrono::system_clock> frame_start, frame_end;
+
+  frame_start = std::chrono::system_clock::now();
+
+
+
+  
+
   camera_->set_projection_matrix(settings_.fov_, float(settings_.width_)/float(settings_.height_),  settings_.near_plane_, settings_.far_plane_);
 
 
   lamure::ren::model_database* database = lamure::ren::model_database::get_instance();
   lamure::ren::cut_database* cuts = lamure::ren::cut_database::get_instance();
   lamure::ren::controller* controller = lamure::ren::controller::get_instance();
-  lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
+
 
   controller->reset_system();
 
   lamure::context_t context_id = controller->deduce_context_id(0);
   
+
+
+  //std::cout << "Current FEM-Attribute: " << currently_selected_FEM_simulation << std::endl;
+
+  if( (nullptr == fem_ssbo_time_series) ) {
+    std::cout << "need to allocate ssbo!" << std::endl;
+
+    fem_ssbo_time_series = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER,
+                                                  scm::gl::USAGE_DYNAMIC_DRAW,
+                                                  max_size_of_ssbo,
+                                                  0);
+
+
+
+  }
+
+
+
+
+  if(changed_ssbo_simulation) { 
+    refresh_ssbo_data();
+  }
+
+
+
   for (lamure::model_t model_id = 0; model_id < num_models_; ++model_id) {
 
     if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
@@ -1515,11 +1153,7 @@ void glut_display() {
 
   cuts->send_height_divided_by_top_minus_bottom(context_id, cam_id, height_divided_by_top_minus_bottom_);
 
-  if (settings_.use_pvs_) {
-    scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(camera_->trackball_matrix()));
-    scm::math::vec3d cam_pos = scm::math::vec3d(cm[12], cm[13], cm[14]);
-    pvs->set_viewer_position(cam_pos);
-  }
+
 
   if (settings_.lod_update_) {
     controller->dispatch(context_id, device_); 
@@ -1548,8 +1182,6 @@ void glut_display() {
 
     draw_all_models(context_id, view_id, fem_vis_xyz_pass1_shader_, lamure::ren::bvh::primitive_type::POINTCLOUD);
 
-    draw_brush(fem_vis_xyz_pass1_shader_);
-
     //PASS 2
 
     context_->clear_color_buffer(pass2_fbo_ , 0, scm::math::vec4f( .0f, .0f, .0f, 0.0f));
@@ -1570,14 +1202,16 @@ void glut_display() {
 
     context_->bind_program(selected_pass2_shading_program);
 
+    selected_pass2_shading_program->storage_buffer("fem_data_array_struct", 10);
+    context_->bind_storage_buffer(fem_ssbo_time_series , 10);
+    context_->apply();
+
     set_uniforms(selected_pass2_shading_program);
 
     context_->set_viewport(scm::gl::viewport(scm::math::vec2ui(0, 0), scm::math::vec2ui(render_width_, render_height_)));
     context_->apply();
 
     draw_all_models(context_id, view_id, selected_pass2_shading_program, lamure::ren::bvh::primitive_type::POINTCLOUD);
-
-    draw_brush(selected_pass2_shading_program);
 
     //PASS 3
 
@@ -1660,12 +1294,6 @@ void glut_display() {
     draw_all_models(context_id, view_id, selected_single_pass_shading_program, lamure::ren::bvh::primitive_type::TRIMESH);
 #endif
 
-    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
-    context_->bind_program(vis_xyz_shader_);
-    draw_brush(vis_xyz_shader_);
-    draw_resources(context_id, view_id);
-
-
   }
 
 
@@ -1692,11 +1320,28 @@ void glut_display() {
   frame_time_.start();
 
   //schism bug ? time::to_seconds yields milliseconds
+
+  //std::cout << "Frame time: " << scm::time::to_seconds(frame_time_.accumulated_duration()); 
   if (scm::time::to_seconds(frame_time_.accumulated_duration()) > 100.0) {
     fps_ = 1000.0f / scm::time::to_seconds(frame_time_.average_duration());
+
+    ++frame_count;
     frame_time_.reset();
   }
   
+
+  frame_end = std::chrono::system_clock::now();
+
+
+  float elapsed_milliseconds = std::chrono::duration_cast<std::chrono::microseconds>
+                           (frame_end-frame_start).count() / 1000.0;
+
+
+  if(playback_enabled) {
+    accumulated_playback_cursor_time += elapsed_milliseconds;
+  }
+
+
 }
 
 
@@ -1713,123 +1358,6 @@ scm::math::vec3f deproject(float x, float y, float z) {
 }
 
 
-
-void brush() {
-  
-  if (!input_.brush_mode_) {
-    return;
-  }
-
-  if (input_.mouse_state_.rb_down_) {
-    //selection_.brush_.clear();
-    //selection_.selected_views_.clear();
-    return;
-  }
-
-  if (!input_.mouse_state_.lb_down_) {
-    return;
-  }
-
-  if (scm::math::length(input_.mouse_-input_.prev_mouse_) < 2) {
-    return;
-  }
-
-  lamure::ren::model_database *database = lamure::ren::model_database::get_instance();
-
-  scm::math::vec3f front = deproject(input_.mouse_.x, input_.mouse_.y, -1.0);
-  scm::math::vec3f back = deproject(input_.mouse_.x, input_.mouse_.y, 1.0);
-  scm::math::vec3f direction_ray = back - front;
-
-  lamure::ren::ray ray_brush(front, direction_ray, 100000.0f);
-
-  bool hit = false;
-
-  uint32_t max_depth = 255;
-  uint32_t surfel_skip = 1;
-  lamure::ren::ray::intersection intersection;
-  if (selection_.selected_model_ != -1) {
-    scm::math::mat4f model_transform = database->get_model(selection_.selected_model_)->transform();
-    if (ray_brush.intersect_model(selection_.selected_model_, model_transform, 1.0f, max_depth, surfel_skip, false, intersection)) {
-      hit = true;
-    }
-  }
-  else {
-    scm::math::mat4f cm = scm::math::inverse(scm::math::mat4f(camera_->trackball_matrix()));
-    scm::math::vec3f cam_up = scm::math::normalize(scm::math::vec3f(cm[0], cm[1], cm[2]));
-    float plane_dim = 0.02f; //0.1
-    if (ray_brush.intersect(1.0f, cam_up, plane_dim, max_depth, surfel_skip, intersection)) {
-      hit = true;
-    }
-  }
-
-  if (scm::math::length(intersection.position_) < 0.000001f) {
-    return;
-  }
-
-  if (hit) {
-    selection_.brush_end_ = ((selection_.brush_end_+1) % settings_.max_brush_size_);
-    
-    auto color = scm::math::vec3f(255.f, 240.f, 0) * 0.9f + 0.1f * (scm::math::vec3f(intersection.normal_*0.5f+0.5f)*255);
-    
-    xyz xyz{
-        intersection.position_ + intersection.normal_ * settings_.aux_point_distance_,
-        (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
-        settings_.aux_point_size_,
-        intersection.normal_};
-
-    selection_.brush_[selection_.brush_end_] = xyz;
-    
-    if (selection_.selected_model_ != -1) {
-      if (settings_.octrees_.size() > selection_.selected_model_) {
-        if (settings_.octrees_[selection_.selected_model_]) {
-          uint64_t selected_node_id = settings_.octrees_[selection_.selected_model_]->query(intersection.position_);
-          if (selected_node_id > 0) {
-            const std::set<uint32_t>& imgs = settings_.octrees_[selection_.selected_model_]->get_node(selected_node_id).get_fotos();
-
-            selection_.selected_views_.insert(imgs.begin(), imgs.end());
-
-            if (settings_.show_photos_) {
-              //mark images
-              for (const auto img : imgs) {
-                const auto& view = settings_.views_[selection_.selected_model_][img];
-                float aspect_ratio = view.image_height_ / (float)view.image_width_;
-                float img_w_half   = (settings_.aux_focal_length_)*0.5f;
-                float img_h_half   = img_w_half * aspect_ratio;
-                float focal_length = settings_.aux_focal_length_;
-
-                scm::math::vec3f view_translation(view.transform_ * scm::math::vec3f(0.f));
-                scm::math::vec3f direction_feature = scm::math::normalize(
-                  scm::math::vec3f(xyz.pos_.x, xyz.pos_.y, xyz.pos_.z) - view_translation);
-                scm::math::vec3f direction_view = scm::math::normalize(
-                  scm::math::vec3f(view.transform_[8], view.transform_[9], view.transform_[10]));
-                float angle_between_directions = scm::math::rad2deg(scm::math::acos(scm::math::dot(direction_feature, direction_view)));
-                float distance = (focal_length / scm::math::sin(scm::math::deg2rad(90.0f - angle_between_directions))) * scm::math::sin(scm::math::deg2rad(90.0f));
-
-                scm::math::vec3f position_pixel = view_translation - distance * direction_feature;
-
-                selection_.brush_end_ = ((selection_.brush_end_+1) % settings_.max_brush_size_);
-
-                selection_.brush_[selection_.brush_end_] = {position_pixel + direction_view * settings_.aux_point_size_*0.1f,
-                  (uint8_t)color.x, (uint8_t)color.y, (uint8_t)color.z, (uint8_t)255,
-                  settings_.aux_point_size_*0.5f,
-                  direction_view};
-              }
-            }
-          }
-        }
-      }
-    }
-
-
-    char* brush_buffer = (char*)device_->main_context()->map_buffer(brush_resource_.buffer_, scm::gl::ACCESS_READ_WRITE);
-    memcpy(&brush_buffer[0], (char*)&selection_.brush_[0], sizeof(xyz)*settings_.max_brush_size_);
-    device_->main_context()->unmap_buffer(brush_resource_.buffer_);
-
-
-
-  }
-
-}
 
 void create_framebuffers() {
 
@@ -1880,75 +1408,6 @@ void glut_resize(int32_t w, int32_t h) {
 }
 
 
-void load_brush(const std::string& filename) {
-
-  std::ifstream file(filename.c_str());
-  if (!file) {
-    std::cout << "Couldn't load brush selection" << std::endl;
-    exit(0);
-  }
-
-  uint32_t i = 0;
-  std::string line;
-  while (!file.eof()) {
-
-    std::getline(file, line);
-    std::istringstream ss(line);
-
-    xyz xyz;
-    ss >> xyz.pos_.x; ss >> xyz.pos_.y; ss >> xyz.pos_.z;
-    int r, g, b, a;
-    ss >> r; ss >> g; ss >> b; ss >> a;
-    xyz.r_ = (uint8_t)r; xyz.g_ = (uint8_t)g; xyz.b_ = (uint8_t)b; xyz.a_ = (uint8_t)255;
-    ss >> xyz.rad_;
-    ss >> xyz.nml_.x; ss >> xyz.nml_.y; ss >> xyz.nml_.z;
-
-    if (i < settings_.max_brush_size_) {
-      selection_.brush_[i++] = xyz;
-    }
-  }
-
-  selection_.brush_end_ = std::min(i, (uint32_t)settings_.max_brush_size_);
-
-  file.close();
-  std::cout << "INFO: selection loaded (" << i << " points)" << std::endl;
-
-
-  char* brush_buffer = (char*)device_->main_context()->map_buffer(brush_resource_.buffer_, scm::gl::ACCESS_READ_WRITE);
-  memcpy(&brush_buffer[0], (char*)&selection_.brush_[0], sizeof(xyz)*settings_.max_brush_size_);
-  device_->main_context()->unmap_buffer(brush_resource_.buffer_);
-
-}
-
-void save_brush() {
-  if (!input_.brush_mode_) {
-    std::cout << "INFO: not in brush mode" << std::endl;
-    return;
-  }
-
-  std::cout << selection_.brush_.size() << std::endl;
-  std::cout << selection_.brush_end_ << std::endl;
-
-  if (selection_.brush_.size() > 0) {
-    std::string out_filename = settings_.models_[0].substr(0, settings_.models_[0].size()-4) + "_BRUSH.xyz";
-    std::ofstream out_file(out_filename.c_str(), std::ios::trunc);
-
-    for (uint32_t i = 0; i < selection_.brush_end_; ++i) {
-      const auto& xyz = selection_.brush_[i];
-      out_file << xyz.pos_.x << " " << xyz.pos_.y << " " << xyz.pos_.z << " ";
-      out_file << (int32_t)xyz.r_ << " " << (int32_t)xyz.g_ << " " << (int32_t)xyz.b_ << " " << (int32_t)255 << " ";
-      out_file << xyz.rad_ << " ";
-      out_file << xyz.nml_.x << " " << xyz.nml_.y << " " << xyz.nml_.z << "\n";
-    }
-
-    out_file.close();
-
-    std::cout << "INFO: " << selection_.brush_.size() << " points saved to " << out_filename << std::endl;
-  }
-  else {
-    std::cout << "INFO: no brush selection" << std::endl;
-  }
-}
 
 
 
@@ -1981,39 +1440,164 @@ void glut_keyboard(unsigned char key, int32_t x, int32_t y) {
       settings_.fem_result_ = 0;
       break;
     case '1':
+    {
+
+      if(! (successfully_parsed_simulation_names.size() > 0) ) {
+        break;
+      }
+
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[0];
+
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
       settings_.fem_result_ = 1;
       break;
+    }
     case '2':
-      settings_.fem_result_ = 2;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 1) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[1];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '3':
-      settings_.fem_result_ = 3;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 2) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[2];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '4':
-      settings_.fem_result_ = 4;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 3) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[3];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '5':
-      settings_.fem_result_ = 5;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 4) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[4];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '6':
-      settings_.fem_result_ = 6;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 5) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[5];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '7':
-      settings_.fem_result_ = 7;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 6) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[6];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '8':
-      settings_.fem_result_ = 8;
+    {
+      if(! (successfully_parsed_simulation_names.size() > 7) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[7];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
       break;
+    }
     case '9':
-      settings_.fem_result_ = 9;
-      break;       
+    {
+      if(! (successfully_parsed_simulation_names.size() > 8) ) {
+        break;
+      }
+      std::string const& newly_selected_simulation = successfully_parsed_simulation_names[8];
+      if(newly_selected_simulation != currently_selected_FEM_simulation) {
+        currently_selected_FEM_simulation = newly_selected_simulation;
+        changed_ssbo_simulation = true;
+
+        std::cout << "Changed FEM data to simulation: " << currently_selected_FEM_simulation << std::endl;
+      }
+
+      settings_.fem_result_ = 1;
+      break;
+    }
+
     case 'D':
+      deformation_enabled = !deformation_enabled;
       settings_.fem_vis_mode_ = !settings_.fem_vis_mode_;
       break;
     case 'R':
       settings_.fem_deform_factor_ = 1.0;
       break;
 
+    case 'P':
+      playback_enabled = !playback_enabled;
+      break;
 
     case 'U':
       settings_.fem_deform_factor_ *= 1.01;
@@ -2051,394 +1635,15 @@ void glut_motion(int32_t x, int32_t y) {
   input_.prev_mouse_ = input_.mouse_;
   input_.mouse_ = scm::math::vec2i(x, y);
   
-  if (!input_.brush_mode_) {
-    camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
-  }
-  else {
-    brush();
-  }
-}
 
-float get_atlas_scale_factor() {
-  auto atlas = new vt::pre::AtlasFile(settings_.atlas_file_.c_str());
-  uint64_t image_width    = atlas->getImageWidth();
-  uint64_t image_height   = atlas->getImageHeight();
-
-  // tile's width and height without padding
-  uint64_t tile_inner_width  = atlas->getInnerTileWidth();
-  uint64_t tile_inner_height = atlas->getInnerTileHeight();
-
-  // Quadtree depth counter, ranges from 0 to depth-1
-  uint64_t depth = atlas->getDepth();
-
-  double factor_u  = (double) image_width  / (tile_inner_width  * std::pow(2, depth-1));
-  double factor_v  = (double) image_height / (tile_inner_height * std::pow(2, depth-1));
-
-  return std::max(factor_u, factor_v);
-}
-
-void lines_from_min_max(
-  const scm::math::vec3f& min_vertex,
-  const scm::math::vec3f& max_vertex,
-  std::vector<scm::math::vec3f>& lines) {
-
-  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
-  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
-
-  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
-  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
-
-  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
-  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
-
-  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
-  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
-
-
-  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
-  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
-
-  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
-  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
-
-  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
-  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
-
-  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
-  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
-
-
-  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, min_vertex.z));
-  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, min_vertex.z));
-
-  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, min_vertex.z));
-  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, min_vertex.z));
-
-  lines.push_back(scm::math::vec3f(max_vertex.x, min_vertex.y, max_vertex.z));
-  lines.push_back(scm::math::vec3f(max_vertex.x, max_vertex.y, max_vertex.z));
-
-  lines.push_back(scm::math::vec3f(min_vertex.x, min_vertex.y, max_vertex.z));
-  lines.push_back(scm::math::vec3f(min_vertex.x, max_vertex.y, max_vertex.z));
-}
-
-
-void create_aux_resources() {
-
-  //load textures
-  for (uint32_t model_id = 0; model_id < num_models_; ++model_id) {
-    if ("" != settings_.textures_[model_id]) {
-      scm::gl::texture_loader tl;
-      std::string texture_path = settings_.textures_[model_id];
-      std::cout << "Loading texture for model " << model_id << ": " << texture_path << std::endl;
-      texture_resources_[model_id] = tl.load_texture_2d(*device_, texture_path, true, false);
-      
-    }
-  }
-
-  //create pvs representation
-  if (settings_.pvs_ != "") {
-    std::cout << "pvs: " << settings_.pvs_ << std::endl;
-    std::string pvs_grid_file_path = settings_.pvs_;
-    pvs_grid_file_path.resize(pvs_grid_file_path.length() - 3);
-    pvs_grid_file_path = pvs_grid_file_path + "grid";
-
-    lamure::pvs::pvs_database* pvs = lamure::pvs::pvs_database::get_instance();
-    pvs->load_pvs_from_file(pvs_grid_file_path, settings_.pvs_, false);
-    pvs->activate(settings_.use_pvs_);
-    std::cout << "use pvs: " << (int)pvs->is_activated() << std::endl;
+  camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
   
 
-    if (settings_.create_aux_resources_) {
-      if (pvs->get_visibility_grid() != nullptr) {
-        
-        pvs_resource_.buffer_.reset();
-        pvs_resource_.array_.reset();
-
-        std::vector<scm::math::vec3f> pvs_lines_to_upload;
-
-        for (size_t cell_id = 0; cell_id < pvs->get_visibility_grid()->get_cell_count(); ++cell_id) {
-          const lamure::pvs::view_cell* cell = pvs->get_visibility_grid()->get_cell_at_index(cell_id);
-
-          scm::math::vec3f min_vertex(cell->get_position_center() - (cell->get_size() * 0.5f));
-          scm::math::vec3f max_vertex(cell->get_position_center() + (cell->get_size() * 0.5f));
-
-          lines_from_min_max(min_vertex, max_vertex, pvs_lines_to_upload);
-        }
-
-        pvs_resource_.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
-          scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * pvs_lines_to_upload.size(), &pvs_lines_to_upload[0]);
-        pvs_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
-          (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
-          boost::assign::list_of(pvs_resource_.buffer_));
-
-        pvs_resource_.num_primitives_ = pvs_lines_to_upload.size();
-
-      }
-      else {
-        std::cout << "no pvs grid!" << std::endl;
-      }
-    }
-  }
-
-
-  if (!settings_.create_aux_resources_) {
-    return;
-  }
-
-  //create bvh representation
-  for (uint32_t model_id = 0; model_id < num_models_; ++model_id) {
-    
-    if (settings_.models_[model_id].substr(settings_.models_[model_id].size()-3) != "bvh") {
-      continue;
-    }
-
-    const auto& bounding_boxes = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes();
-
-    resource bvh_line_resource;
-    bvh_line_resource.buffer_.reset();
-    bvh_line_resource.array_.reset();
-
-    std::vector<scm::math::vec3f> bvh_lines_to_upload;
-    for (uint64_t node_id = 0; node_id < bounding_boxes.size(); ++node_id) {
-      const auto& node = bounding_boxes[node_id];
-
-      lines_from_min_max(node.min_vertex(), node.max_vertex(), bvh_lines_to_upload);
-
-    }
-
-    bvh_line_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
-      scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * bvh_lines_to_upload.size(), &bvh_lines_to_upload[0]);
-    bvh_line_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
-      (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
-      boost::assign::list_of(bvh_line_resource.buffer_));
-
-    bvh_line_resource.num_primitives_ = bvh_lines_to_upload.size();
-    bvh_resources_[model_id] = bvh_line_resource;
-  }
-
-  //create auxiliary representations
-  for (const auto& aux_file : settings_.aux_) {
-    if (aux_file.second != "") {
-      
-      uint32_t model_id = aux_file.first;
-
-      std::cout << "aux: " << aux_file.second << std::endl;
-      lamure::prov::auxi aux(aux_file.second);
-
-      provenance_[model_id].num_views_ = aux.get_num_views();
-      std::cout << "aux: " << aux.get_num_views() << " views" << std::endl;
-      std::cout << "aux: " << aux.get_num_sparse_points() << " points" << std::endl;
-      std::cout << "aux: " << aux.get_atlas().atlas_width_ << ", " << aux.get_atlas().atlas_height_ << " is it rotated? : " << aux.get_atlas().rotated_ << std::endl;
-      std::cout << "aux: " << aux.get_num_atlas_tiles() << " atlas tiles" << std::endl;
-
-      std::vector<xyz> points_to_upload;
-
-      for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
-        const auto& view = aux.get_view(i);
-        points_to_upload.push_back(
-          xyz{view.position_,
-            (uint8_t)255, (uint8_t)240, (uint8_t)0, (uint8_t)255,
-            settings_.aux_point_size_,
-            scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
-        );
-        settings_.views_[model_id].push_back(view);
-      }
-
-      for (uint32_t i = 0; i < aux.get_num_sparse_points(); ++i) {
-        const auto& point = aux.get_sparse_point(i);
-        points_to_upload.push_back(
-          xyz{point.pos_,
-            point.r_, point.g_, point.b_, point.a_,
-            settings_.aux_point_size_,
-            scm::math::vec3f(1.0, 0.0, 0.0)} //placeholder
-        );
-      }
-
-      resource points_resource;
-      points_resource.num_primitives_ = points_to_upload.size();
-      points_resource.buffer_.reset();
-      points_resource.array_.reset();
-
-      points_resource.buffer_ = device_->create_buffer(
-        scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * points_to_upload.size(), &points_to_upload[0]);
-      points_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
-        (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
-        (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-        (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-        (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-        (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-        (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
-        (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
-        boost::assign::list_of(points_resource.buffer_));
-
-      sparse_resources_[model_id] = points_resource;
-
-      //init octree
-      settings_.octrees_[model_id] = aux.get_octree();
-      std::cout << "Octree loaded (" << settings_.octrees_[model_id]->get_num_nodes() << " nodes)" << std::endl;
-      
-      //init octree buffers
-      resource octree_resource;
-      octree_resource.buffer_.reset();
-      octree_resource.array_.reset();
-
-      std::vector<scm::math::vec3f> octree_lines_to_upload;
-      for (uint64_t i = 0; i < settings_.octrees_[model_id]->get_num_nodes(); ++i) {
-        const auto& node = settings_.octrees_[model_id]->get_node(i);
-
-        lines_from_min_max(node.get_min(), node.get_max(), octree_lines_to_upload);
-
-      }
-
-      octree_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
-        scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * octree_lines_to_upload.size(), &octree_lines_to_upload[0]);
-      octree_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
-        (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
-        boost::assign::list_of(octree_resource.buffer_));
-
-      octree_resource.num_primitives_ = octree_lines_to_upload.size();
-      octree_resources_[model_id] = octree_resource;
-
-      auto root_bb = lamure::ren::model_database::get_instance()->get_model(model_id)->get_bvh()->get_bounding_boxes()[0];
-      auto root_bb_min = scm::math::mat4f(model_transformations_[model_id]) * root_bb.min_vertex();
-      auto root_bb_max = scm::math::mat4f(model_transformations_[model_id]) * root_bb.max_vertex();
-      auto model_dim = scm::math::length(root_bb_max - root_bb_min);
-
-      //for image planes
-      if (!settings_.atlas_file_.empty()) {
-        if (aux.get_num_atlas_tiles() != aux.get_num_views()) {
-          throw std::runtime_error(
-                  "Number of atlas_tiles (" + std::to_string(aux.get_num_atlas_tiles()) + ") "
-                  + "does not match number of views (" + std::to_string(aux.get_num_views()) + ")");
-        }
-
-        std::vector<vertex> triangles_to_upload;
-        for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
-          const auto& view       = aux.get_view(i);
-          const auto& atlas_tile = aux.get_atlas_tile(i);
-
-          float aspect_ratio = view.image_height_ / (float)view.image_width_;
-          float img_w_half   = (settings_.aux_focal_length_)*0.5f;
-          float img_h_half   = img_w_half * aspect_ratio;
-          float focal_length = settings_.aux_focal_length_;
-
-          float atlas_width  = aux.get_atlas().atlas_width_;
-          float atlas_height = aux.get_atlas().atlas_height_;
-
-          // scale factor from image space to vt atlas space
-          float factor = get_atlas_scale_factor();
-
-          // positions in vt atlas space coordinate system
-          float tile_height  = (float) atlas_tile.width_  / atlas_width  * factor;
-          float tile_width   = (float) atlas_tile.width_  / atlas_height * factor;
-
-          float tile_pos_x   = (float) atlas_tile.x_ / atlas_height * factor;
-          float tile_pos_y   = (float) atlas_tile.y_ / atlas_tile.height_ * tile_height + (1 - factor);
-
-
-          vertex p1;
-          p1.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length);
-          p1.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y);
-
-          vertex p2;
-          p2.pos_ = view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length);
-          p2.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y);
-
-          vertex p3;
-          p3.pos_ = view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length);
-          p3.uv_  = scm::math::vec2f(tile_pos_x + tile_width, tile_pos_y + tile_height);
-
-          vertex p4;
-          p4.pos_ = view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length);
-          p4.uv_  = scm::math::vec2f(tile_pos_x, tile_pos_y + tile_height);
-
-          // left quad triangle
-          triangles_to_upload.push_back(p1);
-          triangles_to_upload.push_back(p4);
-          triangles_to_upload.push_back(p3);
-
-          // right quad triangle
-          triangles_to_upload.push_back(p2);
-          triangles_to_upload.push_back(p4);
-          triangles_to_upload.push_back(p1);
-        }
-
-        //init triangle buffer
-        resource triangles_resource;
-        triangles_resource.buffer_.reset();
-        triangles_resource.array_.reset();
-
-        triangles_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER,
-                                                 scm::gl::USAGE_STATIC_DRAW,
-                                                 (sizeof(vertex)) * triangles_to_upload.size(),
-                                                 &triangles_to_upload[0]);
-
-        triangles_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
-                                                              (0, 0, scm::gl::TYPE_VEC3F, sizeof(vertex))
-                                                              (0, 1, scm::gl::TYPE_VEC3F, sizeof(vertex))
-                                                              (0, 2, scm::gl::TYPE_VEC2F, sizeof(vertex)),
-                                                      boost::assign::list_of(triangles_resource.buffer_));
-
-
-        triangles_resource.num_primitives_ = triangles_to_upload.size();
-
-        image_plane_resources_[model_id] = triangles_resource;
-      }
-
-      //init line buffers
-      resource lines_resource;
-      lines_resource.buffer_.reset();
-      lines_resource.array_.reset();
-
-      std::vector<scm::math::vec3f> lines_to_upload;
-      for (uint32_t i = 0; i < aux.get_num_views(); ++i) {
-        const auto& view = aux.get_view(i);
-
-        float aspect_ratio = view.image_height_/(float)view.image_width_;
-        float img_w_half = (settings_.aux_focal_length_)*0.5f;
-        float img_h_half = img_w_half*aspect_ratio;
-        float focal_length = settings_.aux_focal_length_;
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, img_h_half, -focal_length));
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, img_h_half, -focal_length));
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(img_w_half, -img_h_half, -focal_length));
-
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(0.f));
-        lines_to_upload.push_back(view.transform_ * scm::math::vec3f(-img_w_half, -img_h_half, -focal_length));
-
-      }
-
-      lines_resource.buffer_ = device_->create_buffer(scm::gl::BIND_VERTEX_BUFFER, 
-        scm::gl::USAGE_STATIC_DRAW, (sizeof(float) * 3) * lines_to_upload.size(), &lines_to_upload[0]);
-      lines_resource.array_ = device_->create_vertex_array(scm::gl::vertex_format
-        (0, 0, scm::gl::TYPE_VEC3F, sizeof(float) * 3), 
-        boost::assign::list_of(lines_resource.buffer_));
-
-      lines_resource.num_primitives_ = lines_to_upload.size();
-
-      frusta_resources_[model_id] = lines_resource;
-
-    }
-  }
-
 }
+
+
+
+
 
 
 
@@ -2541,9 +1746,7 @@ class EventHandler {
       if (!input_.brush_mode_) {
         camera_->update_trackball(x, y, settings_.width_, settings_.height_, input_.mouse_state_);
       }
-      else {
-        brush();
-      }
+    
 
       input_.mouse_state_.lb_down_ = (window->_mouse_button_state == Window::MouseButtonState::LEFT) ? true : false;
       input_.mouse_state_.mb_down_ = (window->_mouse_button_state == Window::MouseButtonState::WHEEL) ? true : false;
@@ -2557,9 +1760,6 @@ class EventHandler {
         input_.trackball_y_ = 2.f * float(settings_.height_ - y - (settings_.height_/2))/float(settings_.height_);
       
         camera_->update_trackball_mouse_pos(input_.trackball_x_, input_.trackball_y_);
-      }
-      else {
-        brush();
       }
     }
 
@@ -2693,9 +1893,6 @@ void init_render_states() {
   wireframe_no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_WIREFRAME, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
   filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);
-
-  vt_filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR , scm::gl::WRAP_CLAMP_TO_EDGE);
-  vt_filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_NEAREST, scm::gl::WRAP_CLAMP_TO_EDGE);
 }
 
 
@@ -2737,89 +1934,6 @@ void init_camera() {
 }
 
 
-void init_vt_database() {
-  vt::VTConfig::CONFIG_PATH = settings_.atlas_file_.substr(0, settings_.atlas_file_.size() - 5) + "ini";
-
-  vt::VTConfig::get_instance().define_size_physical_texture(128, 8192);
-  vt_.context_id_ = vt::CutDatabase::get_instance().register_context();
-  vt_.texture_id_ = vt::CutDatabase::get_instance().register_dataset(settings_.atlas_file_);
-  vt_.view_id_    = vt::CutDatabase::get_instance().register_view();
-  vt_.cut_id_     = vt::CutDatabase::get_instance().register_cut(vt_.texture_id_, vt_.view_id_, vt_.context_id_);
-  vt_.cut_update_ = &vt::CutUpdate::get_instance();
-  vt_.cut_update_->start();
-}
-
-
-void init_vt_system() {
-    vt_.enable_hierarchy_ = true;
-    vt_.toggle_visualization_ = 0;
-
-    // add_data
-    uint16_t depth = (uint16_t) ((*vt::CutDatabase::get_instance().get_cut_map())[vt_.cut_id_]->get_atlas()->getDepth());
-    uint16_t level = 0;
-
-    while (level < depth) {
-        uint32_t size_index_texture = (uint32_t) vt::QuadTree::get_tiles_per_row(level);
-
-        auto index_texture_level_ptr = device_->create_texture_2d(
-                scm::math::vec2ui(size_index_texture, size_index_texture), scm::gl::FORMAT_RGBA_8UI);
-
-        device_->main_context()->clear_image_data(index_texture_level_ptr, 0, scm::gl::FORMAT_RGBA_8UI, 0);
-        vt_.index_texture_hierarchy_.emplace_back(index_texture_level_ptr);
-
-        level++;
-    }
-
-    // add_context
-    context_ = device_->main_context();
-    context_->apply();
-
-    vt_.physical_texture_size_ = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_tile_width(),
-                                                   vt::VTConfig::get_instance().get_phys_tex_tile_width());
-
-    auto physical_texture_size = scm::math::vec2ui(vt::VTConfig::get_instance().get_phys_tex_px_width(),
-                                                   vt::VTConfig::get_instance().get_phys_tex_px_width());
-
-    vt_.physical_texture_ = device_->create_texture_2d(physical_texture_size, get_tex_format(), 1,
-                                                       vt::VTConfig::get_instance().get_phys_tex_layers() + 1);
-
-    vt_.size_feedback_ = vt::VTConfig::get_instance().get_phys_tex_tile_width() *
-                         vt::VTConfig::get_instance().get_phys_tex_tile_width() *
-                         vt::VTConfig::get_instance().get_phys_tex_layers();
-
-    vt_.feedback_lod_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32I));
-#ifdef RASTERIZATION_COUNT
-    vt_.feedback_count_storage_ = device_->create_buffer(scm::gl::BIND_STORAGE_BUFFER, scm::gl::USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(scm::gl::FORMAT_R_32UI));
-#endif
-    vt_.feedback_lod_cpu_buffer_ = new int32_t[vt_.size_feedback_];
-#ifdef RASTERIZATION_COUNT
-    vt_.feedback_count_cpu_buffer_ = new uint32_t[vt_.size_feedback_];
-#endif
-
-    using namespace scm::gl;
-
-    std::vector<uint32_t> slot_indices(vt_.size_feedback_);
-    std::iota(slot_indices.begin(), slot_indices.end(), 0);
-
-    vt_.feedback_index_ib_ = device_->create_buffer(BIND_INDEX_BUFFER, USAGE_STATIC_DRAW, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI), &slot_indices[0]);
-    vt_.feedback_index_vb_ = device_->create_buffer(BIND_VERTEX_BUFFER, USAGE_DYNAMIC_DRAW, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI), 0);
-    vt_.feedback_vao_ = device_->create_vertex_array(vertex_format(0, 0, TYPE_UINT, size_of_format(FORMAT_R_32UI)), boost::assign::list_of(vt_.feedback_index_vb_), vis_vt_shader_feedback_);
-    vt_.feedback_lod_storage_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32I));
-#ifdef RASTERIZATION_COUNT
-    vt_.feedback_count_storage_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_STREAM_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI));
-#endif
-    vt_.feedback_inv_index_ = device_->create_buffer(BIND_STORAGE_BUFFER, USAGE_DYNAMIC_COPY, vt_.size_feedback_ * size_of_format(FORMAT_R_32UI));
-
-    for(size_t i = 0; i < vt_.size_feedback_; ++i)
-    {
-      vt_.feedback_lod_cpu_buffer_[i] = 0;
-#ifdef RASTERIZATION_COUNT
-      vt_.feedback_count_cpu_buffer_[i] = 0;
-#endif
-    }
-}
-
-
 void init() {
 
 
@@ -2838,17 +1952,13 @@ void init() {
   {
     std::string vis_quad_vs_source;
     std::string vis_quad_fs_source;
-    std::string vis_line_vs_source;
-    std::string vis_line_fs_source;
+ 
     
     std::string vis_trimesh_vs_source;
     std::string vis_trimesh_fs_source;
     std::string vis_trimesh_vs_lighting_source;
     std::string vis_trimesh_fs_lighting_source;
 
-    std::string vis_vt_vs_source;
-    std::string vis_vt_vs_feedback_source;
-    std::string vis_vt_fs_source;
 
     std::string vis_xyz_vs_source;
     std::string vis_xyz_gs_source;
@@ -2882,21 +1992,15 @@ void init() {
 
     if (!read_shader(shader_root_path + "/vis/vis_quad.glslv", vis_quad_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_quad.glslf", vis_quad_fs_source)
-      || !read_shader(shader_root_path + "/vis/vis_line.glslv", vis_line_vs_source)
-      || !read_shader(shader_root_path + "/vis/vis_line.glslf", vis_line_fs_source)
       || !read_shader(shader_root_path + "/vis/vis_trimesh.glslv", vis_trimesh_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_trimesh.glslf", vis_trimesh_fs_source)
       || !read_shader(shader_root_path + "/vis/vis_trimesh.glslv", vis_trimesh_vs_lighting_source, true)
       || !read_shader(shader_root_path + "/vis/vis_trimesh.glslf", vis_trimesh_fs_lighting_source, true)
 
-      || !read_shader(shader_root_path + "/vt/virtual_texturing.glslv", vis_vt_vs_source)
-      || !read_shader(shader_root_path + "/vt/virtual_texturing_hierarchical.glslf", vis_vt_fs_source)
-      || !read_shader(shader_root_path + "/vt/virtual_texturing_inv_index_generation.glslv", vis_vt_vs_feedback_source)
-
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslv", vis_xyz_vs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslg", vis_xyz_gs_source)
       || !read_shader(shader_root_path + "/vis/vis_xyz.glslf", vis_xyz_fs_source)
-      || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
+      || !read_shader(shader_root_path + "/fem_vis/fem_vis_ssbo_xyz_pass1.glslv", vis_xyz_pass1_vs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslg", vis_xyz_pass1_gs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_xyz_pass1.glslf", vis_xyz_pass1_fs_source)
       || !read_shader(shader_root_path + "/fem_vis/fem_vis_ssbo_xyz_pass2.glslv", vis_xyz_pass2_vs_source)
@@ -2930,14 +2034,7 @@ void init() {
       exit(1);
     }
 
-    vis_line_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_line_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_line_fs_source)));
-    if (!vis_line_shader_) {
-      std::cout << "error creating shader vis_line_shader_ program" << std::endl;
-      exit(1);
-    }
+
 
     vis_trimesh_shader_ = device_->create_program(
             boost::assign::list_of
@@ -2957,22 +2054,7 @@ void init() {
       std::exit(1);
     }
 
-    vis_vt_shader_ = device_->create_program(
-            boost::assign::list_of
-                    (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_vt_vs_source))
-                    (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_vt_fs_source)));
-    if (!vis_vt_shader_) {
-      std::cout << "error creating shader vis_vt_shader_ program" << std::endl;
-      std::exit(1);
-    }
 
-    vis_vt_shader_feedback_ = device_->create_program(
-        boost::assign::list_of
-            (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_vt_vs_feedback_source)));
-    if (!vis_vt_shader_feedback_) {
-      std::cout << "error creating shader vis_vt_shader_ program" << std::endl;
-      std::exit(1);
-    }
 
     vis_xyz_shader_ = device_->create_program(
       boost::assign::list_of
@@ -3043,34 +2125,7 @@ void init() {
       exit(1);
     }
 
-/*
-    vis_xyz_qz_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_fs_source)));
-    if (!vis_xyz_qz_shader_) {
-      std::cout << "error vis_xyz_qz_shader_ program" << std::endl;
-      return 1;
-    }
 
-    vis_xyz_qz_pass1_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass1_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass1_fs_source)));
-    if (!vis_xyz_qz_pass1_shader_) {
-      std::cout << "error vis_xyz_qz_pass1_shader program" << std::endl;
-      return 1;
-    }
-
-    vis_xyz_qz_pass2_shader_ = device_->create_program(
-      boost::assign::list_of
-        (device_->create_shader(scm::gl::STAGE_VERTEX_SHADER, vis_xyz_qz_pass2_vs_source))
-        (device_->create_shader(scm::gl::STAGE_FRAGMENT_SHADER, vis_xyz_pass2_fs_source)));
-    if (!vis_xyz_qz_pass2_shader_) {
-      std::cout << "error creating vis_xyz_qz_pass2_shader_ program" << std::endl;
-      return 1;
-    }
-*/
   }
   catch (std::exception& e)
   {
@@ -3079,38 +2134,14 @@ void init() {
 
 
 
-  create_aux_resources();
   create_framebuffers();
 
-  brush_resource_.buffer_.reset();
-  brush_resource_.array_.reset(); 
 
-  selection_.brush_.resize(settings_.max_brush_size_);
-
-  brush_resource_.buffer_ = device_->create_buffer(
-    scm::gl::BIND_VERTEX_BUFFER, scm::gl::USAGE_STATIC_DRAW, sizeof(xyz) * settings_.max_brush_size_, &selection_.brush_[0]);
-  brush_resource_.array_ = device_->create_vertex_array(scm::gl::vertex_format
-    (0, 0, scm::gl::TYPE_VEC3F, sizeof(xyz))
-    (0, 1, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 2, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 3, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 4, scm::gl::TYPE_UBYTE, sizeof(xyz), scm::gl::INT_FLOAT_NORMALIZE)
-    (0, 5, scm::gl::TYPE_FLOAT, sizeof(xyz))
-    (0, 6, scm::gl::TYPE_VEC3F, sizeof(xyz)),
-    boost::assign::list_of(brush_resource_.buffer_));
 
   init_render_states();
-
-  if (!settings_.atlas_file_.empty()) {
-    init_vt_database();
-    init_vt_system();
-  }
-
   init_camera();
 
-  if (settings_.selection_ != "") {
-    load_brush(settings_.selection_);
-  }
+
 
   if (settings_.background_image_ != "") {
     //std::cout << "background image: " << settings_.background_image_ << std::endl;
@@ -3139,6 +2170,10 @@ void gui_selection_settings(settings& stgs){
     ImGui::SetNextWindowSize(ImVec2(500.0f, 220.0f));
 
     ImGui::Begin("Selection", &gui_.selection_settings_, ImGuiWindowFlags_MenuBar);
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
 
     std::vector<std::string> model_names_short;
     for(const auto& s : stgs.models_){
@@ -3188,24 +2223,7 @@ void gui_selection_settings(settings& stgs){
     else {
       ImGui::Text("No atlas file");
     }
-    ImGui::Checkbox("Brush", &input_.brush_mode_);
 
-    ImGui::Text("Selection: %d / %d", (int32_t)selection_.brush_end_, (int32_t)settings_.max_brush_size_);
-    if (settings_.create_aux_resources_ && settings_.atlas_file_ != "") {
-      if (selection_.selected_model_ != -1 && selection_.selected_views_.size() == 1) {
-        ImGui::Text("Image: %d %s", (int32_t)selection_.selected_view_, 
-          settings_.views_[selection_.selected_model_][selection_.selected_view_].image_file_.c_str());
-      }
-      else {
-        ImGui::Text("Images: %d", (int32_t)selection_.selected_views_.size());
-      }
-    }
-
-    if (ImGui::Button("Clear Selection")) {
-      selection_.selected_views_.clear();
-      selection_.brush_end_ = 0;
-      input_.brush_clear_ = false;
-    }
 
     ImGui::End();
 
@@ -3217,6 +2235,10 @@ void gui_view_settings(){
     ImGui::SetNextWindowPos(ImVec2(20, 555));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 335.0f));
     ImGui::Begin("View / LOD Settings", &gui_.view_settings_, ImGuiWindowFlags_MenuBar);
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
     //if (ImGui::SliderFloat("Near Plane", &settings_.near_plane_, 0, 1.0f, "%.4f", 4.0f)) {
     //  input_.gui_lock_ = true;
     //}
@@ -3249,20 +2271,7 @@ void gui_view_settings(){
     
     ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
 
-    if (settings_.pvs_ != "") {
-      //ImGui::Text("PVS: %s", settings_.pvs_.c_str());
-      ImGui::Checkbox("Use PVS", &settings_.use_pvs_);
-      lamure::pvs::pvs_database::get_instance()->activate(settings_.use_pvs_);
-    
-      ImGui::Checkbox("PVS Culling", &settings_.pvs_culling_);
-      ImGui::Checkbox("Show PVS", &settings_.show_pvs_);
-      if (settings_.show_pvs_) {
-        settings_.splatting_ = false;
-      }
-    }
-    else {
-      ImGui::Text("No pvs file");
-    }
+
 
     ImGui::End();
 }
@@ -3285,6 +2294,10 @@ void gui_visual_settings(){
     ImGui::SetNextWindowSize(ImVec2(500.0f, 305.0f));
     ImGui::Begin("Visual Settings", &gui_.visual_settings_, ImGuiWindowFlags_MenuBar);
     
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
+
     uint32_t num_vis_entries = (5 + data_provenance_size_in_bytes/sizeof(float));
     ImGui::Combo("Vis", &it, vis_values, num_vis_entries);
     settings_.vis_ = it;
@@ -3315,28 +2328,7 @@ void gui_visual_settings(){
     settings_.material_diffuse_.x = color_mat_diff.x;
     settings_.material_diffuse_.y = color_mat_diff.y;
     settings_.material_diffuse_.z = color_mat_diff.z;
-/*
-    static ImVec4 color_mat_spec = ImColor(0.4f, 0.4f, 0.4f, 1.0f);
-    ImGui::Text("Material Specular");
-    ImGui::ColorEdit3("Specular", (float*)&color_mat_spec, ImGuiColorEditFlags_Float);
-    settings_.material_specular_.x = color_mat_spec.x;
-    settings_.material_specular_.y = color_mat_spec.y;
-    settings_.material_specular_.z = color_mat_spec.z;
 
-    static ImVec4 color_ambient_light = ImColor(0.1f, 0.1f, 0.1f, 1.0f);
-    ImGui::Text("Ambient Light Color");
-    ImGui::ColorEdit3("Ambient", (float*)&color_ambient_light, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_NoAlpha);
-    settings_.ambient_light_color_.x = color_ambient_light.x;
-    settings_.ambient_light_color_.y = color_ambient_light.y;
-    settings_.ambient_light_color_.z = color_ambient_light.z;
-
-    static ImVec4 color_point_light = ImColor(1.0f, 1.0f, 1.0f, 1.0f);
-    ImGui::Text("Point Light Color");
-    ImGui::ColorEdit3("Point", (float*)&color_point_light, ImGuiColorEditFlags_Float);
-    settings_.point_light_color_.x = color_point_light.x;
-    settings_.point_light_color_.y = color_point_light.y;
-    settings_.point_light_color_.z = color_point_light.z;
-*/
     static ImVec4 background_color = ImColor(settings_.background_color_.x, settings_.background_color_.y, settings_.background_color_.z, 1.0f);
     ImGui::Text("Background Color");
     ImGui::ColorEdit3("Background", (float*)&background_color, ImGuiColorEditFlags_Float);
@@ -3353,6 +2345,10 @@ void gui_provenance_settings(){
     ImGui::SetNextWindowPos(ImVec2(settings_.width_-520, 345));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 450.0f));
     ImGui::Begin("Provenance Settings", &gui_.provenance_settings_, ImGuiWindowFlags_MenuBar);
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
 
     if (ImGui::SliderFloat("AUX Point Size", &settings_.aux_point_size_, 0.1f, 10.0f, "%.4f", 4.0f)) {
       input_.gui_lock_ = true;
@@ -3423,6 +2419,11 @@ void gui_status_screen(){
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(500.0f, 275.0f));
     ImGui::Begin("lamure_fem_vis GUI", &status_screen, ImGuiWindowFlags_MenuBar);
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
+
     ImGui::Text("fps %d", (int32_t)fps_);
 
     double f = (rendered_splats_ / 1000000.0);
@@ -3463,6 +2464,104 @@ void gui_status_screen(){
         gui_provenance_settings();
     }
 
+
+    ImGui::End();
+
+
+    ImGui::SetNextWindowPos(ImVec2(0, settings_.height_-220));
+    ImGui::SetNextWindowSize(ImVec2( settings_.width_, 220));
+    
+
+    if(settings_.fem_result_ > 0) {
+      ImGui::Begin( ("Playback: " + currently_selected_FEM_simulation).c_str() );
+    } else {
+      ImGui::Begin( "Playback: Color" );    
+    }
+
+    if(ImGui::IsWindowHovered() ) {
+      input_.gui_lock_ = true;  
+    }
+
+
+    current_simulation_duration_in_ms = g_fem_collection.get_simulation_duration(currently_selected_FEM_simulation);
+    auto num_timesteps_in_simulation = g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation);
+
+    current_milliseconds_per_timestep = current_simulation_duration_in_ms / num_timesteps_in_simulation;
+
+
+    std::string formatted_simulation_description = "";
+
+    if(settings_.fem_result_ > 0) {
+      formatted_simulation_description = 
+        ("Current simulation: " + std::to_string(current_simulation_duration_in_ms) + " ms\t\t; " 
+                                + std::to_string(num_timesteps_in_simulation) + " timestep" + ( (num_timesteps_in_simulation > 1) ?  "s" : "") + "\t\t" 
+                                + std::to_string(current_milliseconds_per_timestep) + "ms / timestep");
+    } else {
+      formatted_simulation_description = "Current simulation: None"; 
+    }
+
+
+    ImGui::Text( formatted_simulation_description.c_str() );
+
+
+
+
+    if(ImGui::Combo("Color Attribute", &selected_fem_col_attrib, (const char* const*)fem_col_attrib_names, IM_ARRAYSIZE(fem_col_attrib_names))) {
+
+      if(0 == selected_fem_col_attrib){
+        std::cout << "Selected SIG_XX for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::SIG_XX;
+      } else if(1 == selected_fem_col_attrib) {
+        std::cout << "Selected MAG_U for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::MAG_U;
+      } else if(2 == selected_fem_col_attrib) {
+        std::cout << "Selected TAU_XY for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::TAU_XY;        
+      } else if(3 == selected_fem_col_attrib) {
+        std::cout << "Selected TAU_XZ for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::TAU_XZ;        
+      } else if(4 == selected_fem_col_attrib) {
+        std::cout << "Selected TAU_ABS for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::TAU_ABS;        
+      } else if(5 == selected_fem_col_attrib) {
+        std::cout << "Selected SIG_V for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::SIG_V;        
+      } else if(6 == selected_fem_col_attrib) {
+        std::cout << "Selected EPS_X for heatmap visualization" << std::endl;
+        curently_selected_FEM_attribute_coloring = FEM_attrib::EPS_X;        
+      }
+    }
+
+
+
+
+
+    if( ImGui::SliderFloat("Time Cursor (milliseconds)", &current_time_cursor_pos, 0.0f, current_simulation_duration_in_ms) ) {
+      input_.gui_lock_ = true;
+    }
+    //if( ImGui::SliderFloat("Time Cursor (Simulation Frames)", &current_time_cursor_pos, 0.0f, current_max_timestep_id) ) {
+    //  input_.gui_lock_ = true;
+    //}
+    if( ImGui::SliderFloat("Playback Speed", &playback_speed, 0.01f, 100.0f) ) {
+        input_.gui_lock_ = true;
+    }
+    if( ImGui::SliderFloat("Deform Factor", &settings_.fem_deform_factor_, 1.0f, 5000.0f) ) {
+        input_.gui_lock_ = true;
+    }    
+
+
+    if( ImGui::Checkbox("Enable Deformation", &deformation_enabled) ) {
+      if(deformation_enabled) {
+        settings_.fem_vis_mode_ = 1;
+      } else {
+        settings_.fem_vis_mode_ = 0;
+      }
+    }
+
+    ImGui::SameLine(300);
+
+    if( ImGui::Checkbox("Enable Playback", &playback_enabled) ){
+    }
 
     ImGui::End();
 }
@@ -3535,33 +2634,6 @@ std::vector<fem_result_meta_data> fem_md;
         md.name = iter_name->second.get<std::string>();
       }
 
-      picojson::value::object::const_iterator iter_min_absolute_deform = obj.find("min_absolute_deform");
-      if(iter_min_absolute_deform != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_min_absolute_deform->second.get<std::string>();
-        tmp_sstr >> md.min_absolute_deform;
-      }
-
-      picojson::value::object::const_iterator iter_max_absolute_deform = obj.find("max_absolute_deform");
-      if(iter_max_absolute_deform != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_max_absolute_deform->second.get<std::string>();
-        tmp_sstr >> md.max_absolute_deform;        
-      }
-
-      picojson::value::object::const_iterator iter_min_deformation = obj.find("min_deformation");
-      if(iter_min_deformation != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_min_deformation->second.get<std::string>();
-        tmp_sstr >> md.min_deformation[0] >> md.min_deformation[1] >> md.min_deformation[2]; 
-      }
-
-      picojson::value::object::const_iterator iter_max_deformation = obj.find("max_deformation");
-      if(iter_max_deformation != obj.end()){
-        std::stringstream tmp_sstr;
-        tmp_sstr << iter_max_deformation->second.get<std::string>();
-        tmp_sstr >> md.max_deformation[0] >> md.max_deformation[1] >> md.max_deformation[2];   
-      }
 
       std::cout << md << std::endl;
 
@@ -3570,311 +2642,7 @@ std::vector<fem_result_meta_data> fem_md;
   return true;
 }
 
-class FEM_path_not_a_directory_exception: public exception
-{
-  virtual const char* what() const throw()
-  {
-    return "One of the provided FEM paths in the mapping file was not a directory!";
-  }
-};
 
-class time_series_already_parsed_exception: public exception
-{
-  virtual const char* what() const throw()
-  {
-    return "Time series for attribute was already parsed!";
-  }
-};
-
-
-// allows back- and forth-casting between enum classes and int
-enum class FEM_attrib {
-  U_XYZ  , // verschiebung der Punkte, z positiv nach unten gerichtet   ; 3 attribute
-  SIG_XX , // Normalspannung; Kraft bezogen auf eine Fläche in lokale x-Richtung (Richtung eines Stabes); 1 attribut
-  TAU_XY , //Schubspannung entlang Flaechen xy 
-  TAU_XZ , //Schubspannung entlang Flaechen xz
-  TAU_ABS, //Betrag addierter Schubspannungsvektoren xy und xz
-  SIG_V  , //Vergleichsspannung
-  EPS_X,    // Dehnung
-
-  NUM_FEM_ATTRIBS // total number of vectors (needs to stay for convenient iteration over attributes)
-};
-
-// contains all simulated attributes per simulation step
-struct fem_attributes_per_simulation_step {
-  std::map<FEM_attrib, std::vector<float> > data;
-  
-  // for now we do not store the min and max value of the U-vector
-  std::map<FEM_attrib, float> local_min_val;  //min values for each attribute of the current timestep
-  std::map<FEM_attrib, float> local_max_val;  //max values for each attribute of the current timestep
-};
-
-// contains all fem attributes for a temporal simulation
-struct fem_attributes_per_time_series {
-  std::vector<fem_attributes_per_simulation_step> series;
-
-  std::map<FEM_attrib, float> global_min_val; //global min value for each attribute of the entire attribute
-  std::map<FEM_attrib, float> global_max_val; //global max value for each attribute of the entire attribute
-};
-
-// contains all time series (also individual attributes) of an entire collection defined in an fem_value_mapping_file
-struct fem_attribute_collection {
-  // key:   name of the parent folder of the attributes as std::string
-  // value: time series data as as fem_attributes_per_time_series
-  std::map<std::string, fem_attributes_per_time_series> data;
-
-
-
-  uint64_t get_max_num_timesteps_in_collection() {
-    uint64_t max_num_timesteps = 0;
-    for(auto const& simulation : data) {
-      max_num_timesteps = std::max(max_num_timesteps, simulation.second.series.size());
-    }
-
-    return max_num_timesteps; 
-  }
-};
-
-
-fem_attribute_collection fem_collection;
-
-scm::gl::buffer_ptr bvh_ssbo_time_step_x_;
-scm::gl::buffer_ptr bvh_ssbo_time_step_x_plus_one_;
-
-void parse_file_to_fem(std::string const& attribute_name, std::string const& sorted_fem_time_series_files) {
-
-
-
-  auto& current_time_series = fem_collection.data[attribute_name];
-
-
-  int total_num_lines = 0;
-
-  {
-    std::ifstream in_file_stream(sorted_fem_time_series_files);
-    std::string line_buffer;
-
-    while(std::getline(in_file_stream,line_buffer)) {
-      ++total_num_lines;
-    }
-
-    //std::cout << "Total num lines in file: " << total_num_lines << std::endl;
-  
-    int64_t total_num_attribute_lines = total_num_lines - 1;
-
-    current_time_series.series.push_back(fem_attributes_per_simulation_step{}); 
-
-    auto& current_attributes = current_time_series.series.back();
-
-
-
-    current_attributes.data[FEM_attrib::U_XYZ].resize(3 * total_num_attribute_lines); //3 attributes combines for cache coherence
-    current_attributes.data[FEM_attrib::SIG_XX].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::TAU_XY].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::TAU_XZ].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::TAU_ABS].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::SIG_V].resize(total_num_attribute_lines);
-    current_attributes.data[FEM_attrib::EPS_X].resize(total_num_attribute_lines);
-
-
-    // rewind file
-    in_file_stream.clear();
-    in_file_stream.seekg(0, std::ios::beg);
-
-    int current_line_count = 0;
-
-
-    //in_line_stringstream.clear();
-
-
-    while(std::getline(in_file_stream, line_buffer)) {
-      //ignore first line
-
-        if(0 != current_line_count) {
-          std::stringstream in_line_stringstream(line_buffer);
-          //in_line_stringstream.str(line_buffer);
-
-          int64_t const line_write_count = current_line_count - 1;
-
-          float vertex_idx; //parse and throw away
-          in_line_stringstream >> vertex_idx;
-          float deformation_base_offset = 3 * line_write_count;
-          
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 0];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 1];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::U_XYZ][deformation_base_offset + 2];
-          
-          in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_XX][line_write_count];
-          
-
-          //std::cout << current_attributes.data[FEM_attrib::SIG_XX][line_write_count] << std::endl;
-
-
-          in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_XY][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_XZ][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::TAU_ABS][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::SIG_V][line_write_count];
-          in_line_stringstream >> current_attributes.data[FEM_attrib::EPS_X][line_write_count]; 
-        }
-
-        ++current_line_count;
-
-      }
-
-    
-    
-    in_file_stream.close();
-
-    for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
-
-      auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
-      current_attributes.local_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
-      current_attributes.local_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest();
-
-      auto const& current_attribute_vector = current_attributes.data[current_FEM_attrib];
-
-
-      //get min element iterator in vector 
-      auto min_element_it = std::min_element(current_attribute_vector.begin(), current_attribute_vector.end());
-      //update local minimum (for time step)
-      current_attributes.local_min_val[current_FEM_attrib] = std::min(current_attributes.local_min_val[current_FEM_attrib], *min_element_it);
-      //update global minimum (for time series)
-      current_time_series.global_min_val[current_FEM_attrib] = std::min(current_time_series.global_min_val[current_FEM_attrib], *min_element_it);
-      
-
-      //get max element iterator in vector
-      auto max_element_it = std::max_element(current_attribute_vector.begin(), current_attribute_vector.end());
-      //update local maximum (for time step)
-      current_attributes.local_max_val[current_FEM_attrib] = std::max(current_attributes.local_max_val[current_FEM_attrib], *max_element_it);
-      //update global maximum (for time series)
-
-      current_time_series.global_max_val[current_FEM_attrib] = std::max(current_time_series.global_max_val[current_FEM_attrib], *max_element_it);
-
-      std::cout << "Attrib " << int(current_FEM_attrib) << std::endl;
-      //if(2 == FEM_attrib_idx) {
-      //  std::cout << *max_element_it << std::endl;
-     // }
-
-      if(FEM_attrib(FEM_attrib_idx) == FEM_attrib::SIG_XX) {
-        std::cout << "Lokales Minimum Normalspannung: " << current_attributes.local_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Lokales Maximum Normalspannung: " << current_attributes.local_max_val[current_FEM_attrib] << std::endl;
-
-        std::cout << "Globales Minimum Normalspannung: " << current_time_series.global_min_val[current_FEM_attrib] << std::endl;
-        std::cout << "Globales Maximum Normalspannung: " << current_time_series.global_max_val[current_FEM_attrib] << std::endl;
-      }
-    }
-  }
-
-}
-
-void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Temperatur"
-                            std::vector<std::string> const& sorted_fem_time_series_files) {
-
-
-
-  if(fem_collection.data.end() == fem_collection.data.find(simulation_name)) {
-    std::cout << "Parsing time series data for simulation \"" << simulation_name << "\""<< std::endl;
-
-    fem_collection.data.insert(std::make_pair(simulation_name, fem_attributes_per_time_series{}) );
-
-
-    auto& current_time_series = fem_collection.data[simulation_name];
-
-    for(int FEM_attrib_idx = 0; FEM_attrib_idx < int(FEM_attrib::NUM_FEM_ATTRIBS); ++FEM_attrib_idx) {
-      auto const current_FEM_attrib = FEM_attrib(FEM_attrib_idx); //cast int -> enum class object
-      current_time_series.global_min_val[current_FEM_attrib] = std::numeric_limits<float>::max();
-      current_time_series.global_max_val[current_FEM_attrib] = std::numeric_limits<float>::lowest(); 
-    } //initiliaze global min and max vals
-
-
-    for(auto const& file_path : sorted_fem_time_series_files) {
-      parse_file_to_fem(simulation_name, file_path);
-    }
-
-
-    std::cout << "Global Minimum Normalspannung: " << fem_collection.data[simulation_name].global_min_val[FEM_attrib::SIG_XX] << std::endl;
-    std::cout << "Global Maximum Normalspannung: " << fem_collection.data[simulation_name].global_max_val[FEM_attrib::SIG_XX] << std::endl;
-
-  } else {
-    std::cout << "Regarding attribute: " << simulation_name << std::endl;
-    throw time_series_already_parsed_exception();
-  }
-
-}
-
-void parse_fem_collection(std::string const& fem_mapping_file_path) {
-  std::cout << "Starting to parse files defined in " << fem_mapping_file_path << std::endl;
-
-  std::ifstream in_fem_mapping_file(fem_mapping_file_path);
-
-  std::string fem_path_line_buffer;
-
-  while(std::getline(in_fem_mapping_file, fem_path_line_buffer)) {
-    std::cout << "Read line: " <<  fem_path_line_buffer  << std::endl;
-
-    if ( !boost::filesystem::exists( fem_path_line_buffer ) )
-    {
-      std::cout << "Can't find my file!" << std::endl;
-    } else {
-      std::cout << "File or path exists - starting to parse it to FEM attribute series!" << std::endl;
-
-      bool is_file = boost::filesystem::is_regular_file(fem_path_line_buffer);
-
-      std::cout << "Is: " <<  ( is_file ?  "File!" : "Directory!") << std::endl; 
-
-      if(is_file) {
-        throw FEM_path_not_a_directory_exception();
-      } else {
-
-        std::string const path_to_time_series = fem_path_line_buffer;
-        boost::filesystem::path p{fem_path_line_buffer};
-
-
-        std::string const FEM_attribute_name(p.filename().c_str());
-
-
-
-        const std::string directory_name_only( FEM_attribute_name );
-
-
-        std::vector<std::string> sorted_fem_time_series_files;
-
-        boost::filesystem::directory_iterator end_itr; // Default ctor yields past-the-end
-        for( boost::filesystem::directory_iterator dir_iterator( fem_path_line_buffer ); dir_iterator != end_itr; ++dir_iterator )
-        {
-            //std::cout << "Trying: " << *dir_iterator << std::endl;
-            std::string const currently_iterated_filename = dir_iterator->path().filename().string();
-
-            std::string const full_file_path = path_to_time_series + "/" + currently_iterated_filename;
-            if(boost::filesystem::is_regular_file(full_file_path)) {  //one last check for whether we are really holding a file in our hands
-                if(currently_iterated_filename.rfind(FEM_attribute_name) == 0) { // < ---- starts with time series prefix
-
-                  sorted_fem_time_series_files.push_back(full_file_path);
-                }
-            }
-        }
-
-        std::sort(sorted_fem_time_series_files.begin(), sorted_fem_time_series_files.end());
-
-        parse_directory_to_fem(FEM_attribute_name, sorted_fem_time_series_files);
-
-        //for(auto const& time_series_path : sorted_fem_time_series_files) {
-        //  std::cout << "X: " << time_series_path << std::endl;
-        //}
-
-        //std::cout << dir_iterator->path().filename().string() << std::endl;
-
-
-
-      }
-    } 
-  }
-
-
-
-  in_fem_mapping_file.close();
-
-}
 
 int main(int argc, char *argv[])
 {
@@ -3914,13 +2682,30 @@ int main(int argc, char *argv[])
     std::cout << "Starting to read mapping file!" << std::endl;
     std::cout << settings_.fem_value_mapping_file_ << std::endl;
 
-    parse_fem_collection(settings_.fem_value_mapping_file_);
+
+    successfully_parsed_simulation_names = parse_fem_collection(settings_.fem_value_mapping_file_, g_fem_collection, settings_.fem_to_pcl_transform_);
+
+
+    if(successfully_parsed_simulation_names.empty()) {
+      throw no_FEM_simulation_parsed_exception();
+    }
+
+    currently_selected_FEM_simulation = successfully_parsed_simulation_names[0];
 
     std::cout << "Parsed everything" << std::endl;
 
 
-    std::cout << "Max num timesteps in any series: " << fem_collection.get_max_num_timesteps_in_collection() << std::endl;
-    return 0;
+    std::cout << "Max num timesteps in any series: " << g_fem_collection.get_max_num_timesteps_in_collection() << std::endl;
+    std::cout << "Max num elements in any series of timesteps: " << g_fem_collection.get_max_num_elements_per_simulation() << std::endl;
+
+
+    max_size_of_ssbo = g_fem_collection.get_max_num_elements_per_simulation() * sizeof(float);
+
+    
+
+    std::cout << "Allocating ssbo of size " << max_size_of_ssbo << std::endl;
+
+    //return 0;
   }
 
   lamure::ren::policy* policy = lamure::ren::policy::get_instance();
@@ -3996,4 +2781,26 @@ int main(int argc, char *argv[])
   }
 
   return EXIT_SUCCESS;
+}
+
+
+void refresh_ssbo_data() {
+
+
+      std::cout << "Loading ssbo with data from: " << currently_selected_FEM_simulation << "\n";
+
+      int64_t num_byte_to_copy_elements_to_allocate 
+        =   g_fem_collection.get_num_timesteps_per_simulation(currently_selected_FEM_simulation) 
+          * g_fem_collection.get_num_vertices_per_simulation(currently_selected_FEM_simulation) 
+          * sizeof(float) * g_fem_collection.get_num_attributes_per_simulation(currently_selected_FEM_simulation);
+
+      
+      float* mapped_fem_ssbo = (float*)device_->main_context()->map_buffer(fem_ssbo_time_series, scm::gl::access_mode::ACCESS_WRITE_ONLY);
+      memcpy((char*) mapped_fem_ssbo, g_fem_collection.get_data_ptr_to_simulation_data(currently_selected_FEM_simulation), num_byte_to_copy_elements_to_allocate); // CHANGE MAX NUM ELEMENTS
+
+
+      device_->main_context()->unmap_buffer(fem_ssbo_time_series);
+
+      changed_ssbo_simulation = false;
+
 }
