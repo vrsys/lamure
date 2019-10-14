@@ -4,7 +4,8 @@
 link_directories(${SCHISM_LIBRARY_DIRS})
 
 include_directories(${PREPROC_INCLUDE_DIR} 
-                    ${COMMON_INCLUDE_DIR})
+                    ${COMMON_INCLUDE_DIR}
+                    ${CGAL_INCLUDE_DIR})
 
 include_directories(SYSTEM ${SCHISM_INCLUDE_DIRS}
                            ${Boost_INCLUDE_DIR})
@@ -21,6 +22,8 @@ target_link_libraries(${PROJECT_NAME}
     ${PREPROC_LIBRARY}
     ${OpenGL_LIBRARIES} 
     ${GLUT_LIBRARY}
+    optimized ${CGAL_LIBRARY} debug ${CGAL_LIBRARY_DEBUG}
+    optimized ${CGAL_CORE_LIBRARY} debug ${CGAL_CORE_LIBRARY_DEBUG}
     optimized ${SCHISM_CORE_LIBRARY} debug ${SCHISM_CORE_LIBRARY_DEBUG}
     optimized ${Boost_REGEX_LIBRARY_RELEASE} debug ${Boost_REGEX_LIBRARY_DEBUG}
     )

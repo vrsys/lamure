@@ -18,6 +18,9 @@
 #include <lamure/pre/surfel.h>
 #include <lamure/pre/octree.h>
 
+#include "cgal.h"
+#include <lamure/pre/plane.h>
+
 #define DEFAULT_PRECISION 15
 
 static char *get_cmd_option(char **begin, char **end, const std::string &option) {
@@ -30,6 +33,39 @@ static char *get_cmd_option(char **begin, char **end, const std::string &option)
 
 static bool cmd_option_exists(char **begin, char **end, const std::string &option) {
     return std::find(begin, end, option) != end;
+}
+
+
+void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
+
+  uint32_t num_neighbours = 16;
+
+  for (auto& surfel : pointcloud) {
+
+    std::vector<uint64_t> neighbour_ids;
+    scm::math::vec3d query(surfel.pos().x, surfel.pos().y, surfel.pos().z);
+
+    nearest_neighbours(pointcloud, query, neighbour_ids, num_neighbours);
+
+    std::vector<scm::math::vec3d> neighbours;
+
+    for (auto id : neighbour_ids) {
+      const auto& neighbour = pointcloud[id];
+      scm::math::vec3d pos(neighbour.pos().x, neighbour.pos().y, neighbour.pos().z);
+      neighbours.push_back(pos);
+    }
+
+    lamure::pre::plane_t plane;
+    lamure::pre::plane_t::fit_plane(neighbours, plane);
+
+    scm::math::vec3d normal = scm::math::normalize(plane.get_normal());
+
+    surfel.normal().x = normal.x;
+    surfel.normal().y = normal.y;
+    surfel.normal().z = normal.z;
+
+  }
+
 }
 
 
@@ -134,6 +170,13 @@ int main(int argc, char *argv[]) {
   for (const auto& pos : scanner_positions) {
     std::cout << pos << std::endl;
   }
+
+
+  //compute_normals(pointcloud);
+  
+
+
+
 
 
   return 0;
