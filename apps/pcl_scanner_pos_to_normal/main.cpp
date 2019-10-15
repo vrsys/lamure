@@ -32,20 +32,6 @@ static bool cmd_option_exists(char **begin, char **end, const std::string &optio
     return std::find(begin, end, option) != end;
 }
 
-void face_normals_to_scanner(
-  const scm::math::vec3d& scanner_pos, std::vector<lamure::pre::surfel>& pointcloud) {
-
-  for (auto& surfel : pointcloud) {
-    scm::math::vec3d normal(surfel.normal().x, surfel.normal().y, surfel.normal().z);
-
-    double result = scm::math::dot(normal, scm::math::normalize(scanner_pos - surfel.pos()));
-    if (result <= 0.0) {
-      surfel.normal() *= -1.0;
-    }
-  }
-
-}
-
 
 int main(int argc, char *argv[]) {
 
@@ -116,21 +102,38 @@ int main(int argc, char *argv[]) {
   std::cout << scanner_positions.size() << " scanner positions loaded." << std::endl;
 
 
-  for (uint32_t i = 0; i < xyz_filenames.size(); ++i) {
-    const auto& xyz_file = xyz_filenames[i];
-    //std::cout << xyz_file << std::endl;
-
-    std::vector<lamure::pre::surfel> pointcloud;
-    load_pointcloud(xyz_file, pointcloud);
-    compute_normals(pointcloud);
-
-    face_normals_to_scanner(scanner_positions[i], pointcloud);
-
-
-  }
-
+/*
   for (const auto& pos : scanner_positions) {
     std::cout << pos << std::endl;
+  }
+*/
+
+  for (uint32_t i = 0; i < xyz_filenames.size(); ++i) {
+    const auto& xyz_file = xyz_filenames[i];
+
+    std::vector<lamure::pre::surfel> pointcloud;    
+
+    std::cout << "Loading pointcloud: " << xyz_file << std::endl;
+    load_pointcloud(xyz_file, pointcloud);
+    std::cout << pointcloud.size() << " points loaded." << std::endl;
+
+    std::cout << "Computing normals..." << std::endl;
+    compute_normals(pointcloud);
+
+    std::cout << "Face normals to scanner..." << std::endl;
+    face_normals_to_scanner(scanner_positions[i], pointcloud);
+
+    //std::string output_file = xyz_file.substr(0, xyz_file.size()-4) + "_facing.xyz_all";
+    std::string output_file = pos_list_filename.substr(0, pos_list_filename.size()-4) + "_facing_" + std::to_string(i) + ".xyz_all";
+
+    std::cout << "Writing pointcloud: " << output_file << std::endl;
+    write_pointcloud(output_file, pointcloud);
+
+    pointcloud.clear();
+
+    std::cout << "Quit" << std::endl;
+    break;
+
   }
 
 

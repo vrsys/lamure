@@ -36,6 +36,7 @@
 #include <lamure/pre/surfel.h>
 #include <lamure/pre/octree.h>
 #include <lamure/pre/plane.h>
+#include <lamure/mesh/tools.h>
 
 #define DEFAULT_PRECISION 15
 
@@ -65,12 +66,13 @@ struct pointcloud_t {
 };
 
 
-void nearest_neighbours(
-  const std::vector<lamure::pre::surfel>& surfels, scm::math::vec3d& p, 
-  std::vector<uint64_t>& result, uint64_t num_neighbours) {
 
-  if (num_neighbours > surfels.size()) {
-    num_neighbours = surfels.size();
+void nearest_neighbours(const scm::math::vec3d& p, 
+  std::vector<scm::math::vec3d>& result, uint64_t num_neighbours,
+  Tree& search_tree, pointcloud_t& pcl) {
+
+  if (num_neighbours > pcl.points_.size()) {
+    num_neighbours = pcl.points_.size();
   }
   if (num_neighbours == 0) {
     return;
@@ -78,9 +80,28 @@ void nearest_neighbours(
 
   result.clear();
 
+  Point query(p.x, p.y, p.z);
+  Neighbor_search::Distance distance;
+  Neighbor_search search(search_tree, query, num_neighbours);
+
+  //distances_[i] = std::abs(distance.inverse_of_transformed_distance(search.begin()->second));
+
+  for (const auto it : search) {
+    result.push_back(scm::math::vec3d(it.first.get<0>().x(), it.first.get<0>().y(), it.first.get<0>().z()));
+  }
+
+
+}
+
+
+
+void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
+
+  std::cout << "Constructing search tree..." << std::endl;
+
   pointcloud_t pcl;
-  for (uint64_t i = 0; i < surfels.size(); ++i) {
-    const auto& xyz = surfels[i];
+  for (uint64_t i = 0; i < pointcloud.size(); ++i) {
+    const auto& xyz = pointcloud[i];
     pcl.indices_.push_back(i);
     pcl.points_.push_back({xyz.pos().x, xyz.pos().y, xyz.pos().z});
     pcl.normals_.push_back({xyz.normal().x, xyz.normal().y, xyz.normal().z});
@@ -94,44 +115,23 @@ void nearest_neighbours(
     boost::make_zip_iterator(boost::make_tuple(pcl.points_.end(), pcl.indices_.end()))  
   );
 
-  Point query(p.x, p.y, p.z);
-  Neighbor_search::Distance distance;
-  Neighbor_search search(search_tree, query, num_neighbours);
-
-  //distances_[i] = std::abs(distance.inverse_of_transformed_distance(search.begin()->second));
-
-  for (const auto it : search) {
-    for (uint64_t i = 0; i < pcl.points_.size(); ++i) {
-      if (pcl.points_[i] == it.first.get<0>()) {
-        result.push_back(i);
-        i = pcl.points_.size();
-      }
-    }
-  }
-
-
-}
-
-
-
-void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
 
   uint32_t num_neighbours = 16;
+  uint32_t num_threads = 16;
 
-  for (auto& surfel : pointcloud) {
+  uint64_t num_points = pointcloud.size();
+
+
+  auto lambda_compute_normals = [&](uint64_t i, uint32_t id)->void{
+    lamure::mesh::show_progress(i, num_points);
+
+    auto& surfel = pointcloud[i];
 
     std::vector<uint64_t> neighbour_ids;
     scm::math::vec3d query(surfel.pos().x, surfel.pos().y, surfel.pos().z);
 
-    nearest_neighbours(pointcloud, query, neighbour_ids, num_neighbours);
-
     std::vector<scm::math::vec3d> neighbours;
-
-    for (auto id : neighbour_ids) {
-      const auto& neighbour = pointcloud[id];
-      scm::math::vec3d pos(neighbour.pos().x, neighbour.pos().y, neighbour.pos().z);
-      neighbours.push_back(pos);
-    }
+    nearest_neighbours(query, neighbours, num_neighbours, search_tree, pcl);
 
     lamure::pre::plane_t plane;
     lamure::pre::plane_t::fit_plane(neighbours, plane);
@@ -142,14 +142,21 @@ void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
     surfel.normal().y = normal.y;
     surfel.normal().z = normal.z;
 
-  }
+  };
+
+
+  lamure::mesh::parallel_for(num_threads, num_points, lambda_compute_normals);
+
+  pcl.indices_.clear();
+  pcl.points_.clear();
+  pcl.normals_.clear();
+  pcl.colors_.clear();
+  pcl.radii_.clear();
 
 }
 
 void load_pointcloud(const std::string xyz_filename, std::vector<lamure::pre::surfel>& pointcloud) {
-
-  std::cout << "Loading xyz file " << xyz_filename << std::endl;
-  
+ 
   bool xyz_all = (xyz_filename.substr(xyz_filename.size()-8) == ".xyz_all");
   if (!xyz_all) {
     if (xyz_filename.substr(xyz_filename.size()-4) != ".xyz") {
@@ -198,9 +205,6 @@ void load_pointcloud(const std::string xyz_filename, std::vector<lamure::pre::su
 
   input_file.close();
 
-  std::cout << pointcloud.size() << " points loaded." << std::endl;
-
-  
 
 }
 
@@ -226,6 +230,39 @@ void get_string(const lamure::pre::surfel& surfel, std::string& line, bool xyz_a
   }
 
   line += "\n";
+
+}
+
+
+void write_pointcloud(
+  const std::string& xyz_filename, const std::vector<lamure::pre::surfel>& pointcloud) {
+
+  bool xyz_all = true;
+
+  std::ofstream output_file(xyz_filename.c_str(), std::ios::app);
+
+  std::string line = "";
+  for (const auto& surfel : pointcloud) {
+    get_string(surfel, line, xyz_all);
+    output_file << line;
+    line = "";
+  }
+
+  output_file.close();   
+
+}
+
+void face_normals_to_scanner(
+  const scm::math::vec3d& scanner_pos, std::vector<lamure::pre::surfel>& pointcloud) {
+
+  for (auto& surfel : pointcloud) {
+    scm::math::vec3d normal(surfel.normal().x, surfel.normal().y, surfel.normal().z);
+
+    double result = scm::math::dot(normal, scm::math::normalize(scanner_pos - surfel.pos()));
+    if (result <= 0.0) {
+      surfel.normal() *= -1.0;
+    }
+  }
 
 }
 
