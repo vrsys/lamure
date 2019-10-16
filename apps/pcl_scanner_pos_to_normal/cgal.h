@@ -258,9 +258,13 @@ void face_normals_to_scanner(
   for (auto& surfel : pointcloud) {
     scm::math::vec3d normal(surfel.normal().x, surfel.normal().y, surfel.normal().z);
 
-    double result = scm::math::dot(normal, scm::math::normalize(scanner_pos - surfel.pos()));
+    double result = scm::math::dot(scm::math::normalize(normal), scm::math::normalize(scanner_pos - surfel.pos()));
     if (result <= 0.0) {
-      surfel.normal() *= -1.0;
+      
+      surfel.normal().x = -normal.x;
+      surfel.normal().y = -normal.y;
+      surfel.normal().z = -normal.z;
+
     }
   }
 

@@ -63,9 +63,13 @@ int main(int argc, char *argv[]) {
   std::string xyz_list_line;
   while(getline(xyz_list_file, xyz_list_line)) {
 
-    if (xyz_list_line.size() <= 3) continue;
+    if (xyz_list_line.size() <= 9) {
+      xyz_list_line = "";
+      continue;
+    }
 
     xyz_filenames.push_back(xyz_list_line);
+    xyz_list_line = "";
   }
 
   xyz_list_file.close();
@@ -77,7 +81,10 @@ int main(int argc, char *argv[]) {
   std::string pos_list_line;
   while (getline(pos_list_file, pos_list_line)) {
 
-    if (pos_list_line.size() <= 3) continue;
+    if (pos_list_line.size() <= 9) {
+      pos_list_line = "";
+      continue;
+    }
 
     std::istringstream lineparser(pos_list_line);
 
@@ -92,6 +99,7 @@ int main(int argc, char *argv[]) {
     lineparser >> std::setprecision(DEFAULT_PRECISION) >> pos.z;
 
     scanner_positions.push_back(pos);
+    pos_list_line = "";
   }
 
   pos_list_file.close();
@@ -121,6 +129,7 @@ int main(int argc, char *argv[]) {
     compute_normals(pointcloud);
 
     std::cout << "Face normals to scanner..." << std::endl;
+    std::cout << "Scanner position: " << scanner_positions[i] << std::endl;
     face_normals_to_scanner(scanner_positions[i], pointcloud);
 
     //std::string output_file = xyz_file.substr(0, xyz_file.size()-4) + "_facing.xyz_all";

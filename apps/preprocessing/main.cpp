@@ -81,7 +81,15 @@ int main(int argc, const char *argv[])
          "this value")
 
         ("recompute,r",
-         "recompute surfel normals and radii, even if they data is present in the "
+         "recompute per-surfel normals and radii, even if they data is present in the "
+         "input data")
+
+        ("recompute_normals,rn",
+         "recompute per-surfel normals (but not radii), even if they data is present in the "
+         "input data")
+
+        ("recompute_radii,rr",
+         "recompute per-surfel radii (but not normals), even if they data is present in the "
          "input data")
 
         ("outlier-ratio",
@@ -355,7 +363,13 @@ int main(int argc, const char *argv[])
         desc.max_fan_factor               = std::min(std::max(vm["max-fanout"].as<int>(), 2), 8);
         desc.surfels_per_node             = vm["desired"].as<int>();
         desc.final_stage                  = vm["final-stage"].as<int>();
-        desc.compute_normals_and_radii    = vm.count("recompute");
+        
+        desc.recompute_leaf_normals       = vm.count("recompute");
+        desc.recompute_leaf_radii         = vm.count("recompute");
+
+        desc.recompute_leaf_normals       = vm.count("recompute_normals");
+        desc.recompute_leaf_radii         = vm.count("recompute_radii");
+
         desc.keep_intermediate_files      = vm.count("keep-interm");
         desc.resample                     = vm.count("resample");
         // manual check because typed_value doenst support check whether default is used

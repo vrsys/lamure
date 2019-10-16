@@ -114,6 +114,7 @@ scm::gl::depth_stencil_state_ptr depth_state_disable_;
 scm::gl::depth_stencil_state_ptr depth_state_less_;
 scm::gl::depth_stencil_state_ptr depth_state_without_writing_;
 scm::gl::rasterizer_state_ptr no_backface_culling_rasterizer_state_;
+scm::gl::rasterizer_state_ptr backface_culling_rasterizer_state_;
 
 scm::gl::rasterizer_state_ptr wireframe_no_backface_culling_rasterizer_state_;
 
@@ -226,6 +227,7 @@ struct settings {
   bool lod_update_ {1};
   bool use_pvs_ {1};
   bool pvs_culling_ {0};
+  bool backface_culling_ {0};
   float lod_point_scale_ {1.0f};
   float aux_point_size_ {1.0f};
   float aux_point_distance_ {0.5f};
@@ -444,6 +446,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "pvs_culling") {
             settings.pvs_culling_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "backface_culling") {
+            settings.backface_culling_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "use_pvs") {
             settings.use_pvs_ = (bool)std::max(atoi(value.c_str()), 0);
@@ -1469,7 +1474,12 @@ void glut_display() {
   lamure::view_t view_id = controller->deduce_view_id(context_id, camera_->view_id());
 
 
-  context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+  if (settings_.backface_culling_) {
+    context_->set_rasterizer_state(backface_culling_rasterizer_state_);
+  }
+  else {
+    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+  }
 
   if (settings_.splatting_) {
     //2 pass splatting
@@ -1502,7 +1512,13 @@ void glut_display() {
 
     context_->set_blend_state(color_blending_state_);
     context_->set_depth_stencil_state(depth_state_without_writing_);
-    context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+    
+    if (settings_.backface_culling_) {
+      context_->set_rasterizer_state(backface_culling_rasterizer_state_);
+    }
+    else {
+      context_->set_rasterizer_state(no_backface_culling_rasterizer_state_);
+    }
 
     auto selected_pass2_shading_program = vis_xyz_pass2_shader_;
 
@@ -2609,6 +2625,10 @@ void init_render_states() {
   depth_state_without_writing_ = device_->create_depth_stencil_state(true, false, scm::gl::COMPARISON_LESS_EQUAL);
 
   no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
+  
+  backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
+  
+
   wireframe_no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_WIREFRAME, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
   filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
   filter_nearest_ = device_->create_sampler_state(scm::gl::FILTER_MIN_MAG_LINEAR, scm::gl::WRAP_CLAMP_TO_EDGE);

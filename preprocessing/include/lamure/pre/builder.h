@@ -38,7 +38,8 @@ public:
         uint32_t max_fan_factor;
         size_t surfels_per_node;
         uint16_t final_stage;
-        bool compute_normals_and_radii;
+        bool recompute_leaf_normals;
+        bool recompute_leaf_radii;
         bool keep_intermediate_files;
         bool resample;
         float memory_budget;

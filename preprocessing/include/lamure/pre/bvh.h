@@ -111,10 +111,10 @@ class PREPROCESSING_DLL bvh
 
     void compute_normals_and_radii(const uint16_t number_of_neighbours);
 
-    void compute_normal_and_radius(const bvh_node *source_node, const normal_computation_strategy &normal_computation_strategy, const radius_computation_strategy &radius_computation_strategy);
+    void compute_normal_and_radius(const bvh_node *source_node, const normal_computation_strategy &normal_computation_strategy, const radius_computation_strategy &radius_computation_strategy, bool compute_normals, bool compute_radii);
 
     void upsweep(const reduction_strategy &reduction_strategy, const normal_computation_strategy &normal_comp_strategy, const radius_computation_strategy &radius_comp_strategy,
-                 bool recompute_leaf_level = true, bool resample = false);
+                 bool resample = false, bool recompute_leaf_normals = true, bool recompute_leaf_radii = true);
     void resample();
 
     surfel_vector remove_outliers_statistically(uint32_t num_outliers, uint16_t num_neighbours);
@@ -146,7 +146,7 @@ class PREPROCESSING_DLL bvh
 
     void spawn_create_lod_jobs(const uint32_t first_node_of_level, const uint32_t last_node_of_level, const reduction_strategy &reduction_strgy, const bool resample);
     void spawn_compute_attribute_jobs(const uint32_t first_node_of_level, const uint32_t last_node_of_level, const normal_computation_strategy &normal_strategy,
-                                      const radius_computation_strategy &radius_strategy, const bool is_leaf_level);
+                                      const radius_computation_strategy &radius_strategy, const bool is_leaf_level, bool compute_normals, bool compute_radii);
     void spawn_compute_bounding_boxes_downsweep_jobs(const uint32_t slice_left, const uint32_t slice_right);
     void spawn_compute_bounding_boxes_upsweep_jobs(const uint32_t first_node_of_level, const uint32_t last_node_of_level, const int32_t level);
     void spawn_split_node_jobs(size_t &slice_left, size_t &slice_right, size_t &new_slice_left, size_t &new_slice_right, const uint32_t level);
@@ -154,7 +154,7 @@ class PREPROCESSING_DLL bvh
     void thread_remove_outlier_jobs(const uint32_t start_marker, const uint32_t end_marker, const uint32_t num_outliers, const uint16_t num_neighbours,
                                     std::vector<std::pair<surfel_id_t, real>> &intermediate_outliers_for_thread);
     void thread_compute_attributes(const uint32_t start_marker, const uint32_t end_marker, const bool update_percentage, const normal_computation_strategy &normal_strategy,
-                                   const radius_computation_strategy &radius_strategy, const bool is_leaf_level);
+                                   const radius_computation_strategy &radius_strategy, const bool is_leaf_level, bool compute_normals, bool compute_radii);
     void thread_create_lod(const uint32_t start_marker, const uint32_t end_marker, const bool update_percentage, const reduction_strategy &reduction_strgy, const bool resample);
     void thread_compute_bounding_boxes_downsweep(const uint32_t slice_left, const uint32_t slice_right, const bool update_percentage, const uint32_t num_threads);
     void thread_compute_bounding_boxes_upsweep(const uint32_t start_marker, const uint32_t end_marker, const bool update_percentage, const int32_t level, const uint32_t num_threads);
