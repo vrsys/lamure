@@ -7,8 +7,11 @@
 
 const int num_points_u = 104;
 const int num_points_v = 105;
-const int total_num_points_per_face = 104 * 105;
-const int face_divisor = 2;
+const vec2 num_points_factors = vec2(1.0 / float(num_points_u), 1.0 / float(num_points_v) );
+
+const int total_num_points_per_face = 10920;
+const float face_divisor = 0.5;
+const float bb_size_divisor = 1.0/65535.0;
 
 const ivec3 rgb_777_shift_vec   = ivec3(25, 18, 11);
 const ivec3 rgb_777_mask_vec    = ivec3(0x7F, 0x7F, 0x7F);
@@ -22,7 +25,7 @@ const ivec3 rgb_777_quant_steps = ivec3(2, 2, 2);
   uint in_qz_pos_z = ( qz_pos_z_normal_enum ) & 0xFFFF;
 
   // dequantize position
-  out_position = bb_min_pos + ivec3(in_qz_pos_x, in_qz_pos_y, in_qz_pos_z) * ( (bb_max_pos - bb_min_pos)/65535.0 );
+  out_position = bb_min_pos + ivec3(in_qz_pos_x, in_qz_pos_y, in_qz_pos_z) * bb_size_divisor * ( (bb_max_pos - bb_min_pos) );
 }
 
 void dequantize_radius_11(in uint rgb777_and_radius_11, in float rad_min, in float rad_max,
@@ -50,14 +53,22 @@ void dequantize_normal_16( in uint qz_pos_z_normal_enum,
   int v_component = qz_normal_enumerator / num_points_u;
   int u_component = qz_normal_enumerator % num_points_u;
 
-  int main_axis = face_id / face_divisor;
+  int main_axis = int(face_divisor * face_id);
 
-  float first_component = (u_component / float(num_points_u) ) * 2.0 - 1.0;
-  float second_component = (v_component / float(num_points_v) ) * 2.0 - 1.0;
 
-  vec3 unswizzled_components = vec3(first_component, 
-                                    second_component,
-                                    is_main_axis_negative * sqrt(-(first_component*first_component) - (second_component*second_component) + 1) );
+  vec2 normal_components_xy = num_points_factors * vec2(u_component, v_component) * vec2(2.0) - vec2(1.0);
+
+  //float first_component = (u_component / float(num_points_u) ) * 2.0 - 1.0;
+  //float second_component = (v_component / float(num_points_v) ) * 2.0 - 1.0;
+
+  //vec3 unswizzled_components = vec3(first_component, 
+                                     // second_component,
+                                     //is_main_axis_negative * sqrt(-(first_component*first_component) - (second_component*second_component) + 1) );
+
+  vec3 unswizzled_components = vec3(normal_components_xy.x, 
+                                    normal_components_xy.y,
+                                    is_main_axis_negative * sqrt(-(normal_components_xy.x*normal_components_xy.x) - (normal_components_xy.y*normal_components_xy.y) + 1) );
+
 
   vec3 normal_to_assign = unswizzled_components.zxy;
 
@@ -72,7 +83,7 @@ void dequantize_normal_16( in uint qz_pos_z_normal_enum,
 
 void dequantize_color_777(in uint rgb_777_and_radius_11, out vec3 out_rgb) {
   ivec3 rgb_multiplier = (ivec3(rgb_777_and_radius_11) >> rgb_777_shift_vec) & rgb_777_mask_vec;
-  out_rgb = rgb_multiplier * rgb_777_quant_steps / 255.0;
+  out_rgb = 0.00392156862745098 * rgb_multiplier * rgb_777_quant_steps;
 }
 
 void dequantize_surfel_attributes_without_color(in uint qz_pos_xy, in uint qz_pos_z_normal_enum, in uint rgb_777_and_radius_11,
