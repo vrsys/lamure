@@ -8,6 +8,8 @@
 #include <lamure/vt/QuadTree.h>
 #include <lamure/vt/VTConfig.h>
 
+#include <cmath>
+
 namespace vt
 {
 #ifdef _WIN32
