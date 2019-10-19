@@ -335,13 +335,13 @@ int main(int argc, char *argv[]) {
                 uint8_t b = pixelInfo[k].data[y * pixelInfo[k].w + x].b;
 
                 //allocation and deletion is incremental to allow bigger images
-                while (pixels.size() < (3 * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 3)) {
+                while (pixels.size() < (3UL * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 3UL)) {
                     pixels.push_back((uint8_t)0);
                 }
 
-                pixels[3 * ((x+offset_startX) + maxFrameW*(y+offset_startY))] = r;
-                pixels[3 * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 1] = g;
-                pixels[3 * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 2] = b;
+                pixels[3UL * ((x+offset_startX) + maxFrameW*(y+offset_startY))] = r;
+                pixels[3UL * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 1UL] = g;
+                pixels[3UL * ((x+offset_startX) + maxFrameW*(y+offset_startY)) + 2UL] = b;
 
             }
         }
@@ -354,6 +354,46 @@ int main(int argc, char *argv[]) {
 
     }
 
+
+    size_t size = pixels.size();
+    pixels.clear();
+
+    std::cout << "current size: " << size << std::endl;
+
+    size_t filled_size = (3UL * maxFrameW * maxFrameH);
+
+    std::cout << "filled size: " << filled_size << std::endl;
+
+    std::cout << "Filling empty space..." << std::endl;
+
+    while (size < filled_size) {
+      pixels.push_back((uint8_t)0);
+      ++size;
+      if (size % 1000 == 0) {
+        //std::cout << (double)(size) / (double)(3 * maxFrameW * maxFrameH) << std::endl;
+        std::cout << "TODO: " << (filled_size - size) << std::endl;
+      }
+    }
+
+    std::cout << "Invert image..." << std::endl;
+
+    //read one line at a time
+    int64_t one_line = (int64_t)(maxFrameW * 3UL);
+
+    std::vector<uint8_t> inv_pixels;
+
+    for (int64_t y = maxFrameH-1; y >= 0; --y) {
+        
+      std::cout << "Y = " << y << std::endl;
+      int64_t begin = y * one_line;
+      for (int64_t x = 0; x < one_line; ++x) {
+        inv_pixels.push_back(pixels[begin + x]);
+      }
+
+    }
+
+    pixels.clear();
+
     std::cout << "Atlas packing complete" << endl;
     
     std::cout << "Writing raw file..." << std::endl;
@@ -364,25 +404,9 @@ int main(int argc, char *argv[]) {
         output_filename.substr(0, output_filename.size() - 4) + "_rgb_w" + std::to_string(maxFrameW) + "_h" + std::to_string(maxFrameH) + ".data";
     raw_file.open(image_filename, std::ios::out | std::ios::trunc | std::ios::binary);
 
-    raw_file.write((char*)pixels[0], pixels.size());
+    raw_file.write((char*)&inv_pixels[0], inv_pixels.size());
 
-    size_t size = pixels.size();
-    pixels.clear();
-
-    std::cout << "size: " << size << std::endl;
-
-    std::cout << (double)(size) / (double)(3 * maxFrameW * maxFrameH) << std::endl;
-
-    std::cout << "Filling empty space..." << std::endl;
-
-    while (size < (3 * maxFrameW * maxFrameH)) {
-      uint8_t zero = 0;
-      raw_file.write((char*)&zero, 1);
-      ++size;
-      if (size % 10000 == 0) {
-        //std::cout << (double)(size) / (double)(3 * maxFrameW * maxFrameH) << std::endl;
-      }
-    }
+    std::cout << "Closing file..." << std::endl;
 
     raw_file.close();
 

@@ -420,7 +420,7 @@ void bvh::downsweep_subtree_in_core(const bvh_node &node, size_t &disk_leaf_dest
     }
 }
 
-void bvh::compute_normal_and_radius(const bvh_node *source_node, const normal_computation_strategy &normal_computation_strategy, const radius_computation_strategy &radius_computation_strategy)
+void bvh::compute_normal_and_radius(const bvh_node *source_node, const normal_computation_strategy &normal_computation_strategy, const radius_computation_strategy &radius_computation_strategy, bool compute_normals, bool compute_radii)
 {
     for(size_t k = 0; k < max_surfels_per_node_; ++k)
     {
@@ -432,15 +432,20 @@ void bvh::compute_normal_and_radius(const bvh_node *source_node, const normal_co
             uint16_t num_nearest_neighbours_to_search = std::max(radius_computation_strategy.number_of_neighbours(), normal_computation_strategy.number_of_neighbours());
 
             auto const &max_nearest_neighbours = get_nearest_neighbours(surfel_id_t(source_node->node_id(), k), num_nearest_neighbours_to_search);
+            
             // compute radius
-            real radius = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);
+            if (compute_radii) {
+                real radius = radius_computation_strategy.compute_radius(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);
+                surf.radius() = radius;
+            }
 
             // compute normal
-            vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);
+            if (compute_normals) {
+                vec3f normal = normal_computation_strategy.compute_normal(*this, surfel_id_t(source_node->node_id(), k), max_nearest_neighbours);
+                surf.normal() = normal;
+            }
 
-            // write surfel
-            surf.radius() = radius;
-            surf.normal() = normal;
+            // write surfel           
             source_node->mem_array().write_surfel(surf, k);
         }
     }
@@ -854,7 +859,7 @@ void bvh::spawn_create_lod_jobs(const uint32_t first_node_of_level, const uint32
 }
 
 void bvh::spawn_compute_attribute_jobs(const uint32_t first_node_of_level, const uint32_t last_node_of_level, const normal_computation_strategy &normal_strategy,
-                                       const radius_computation_strategy &radius_strategy, const bool is_leaf_level)
+                                       const radius_computation_strategy &radius_strategy, const bool is_leaf_level, bool compute_normals, bool compute_radii)
 {
     uint32_t const num_threads = std::thread::hardware_concurrency();
     working_queue_head_counter_.initialize(first_node_of_level); // let the threads fetch a node idx
@@ -864,7 +869,7 @@ void bvh::spawn_compute_attribute_jobs(const uint32_t first_node_of_level, const
     {
         bool update_percentage = (0 == thread_idx);
         threads.push_back(
-            std::thread(&bvh::thread_compute_attributes, this, first_node_of_level, last_node_of_level, update_percentage, std::cref(normal_strategy), std::cref(radius_strategy), is_leaf_level));
+            std::thread(&bvh::thread_compute_attributes, this, first_node_of_level, last_node_of_level, update_percentage, std::cref(normal_strategy), std::cref(radius_strategy), is_leaf_level, compute_normals, compute_radii));
     }
 
     for(auto &thread : threads)
@@ -1190,7 +1195,7 @@ void bvh::thread_resample(const uint32_t start_marker, const uint32_t end_marker
 }
 
 void bvh::thread_compute_attributes(const uint32_t start_marker, const uint32_t end_marker, const bool update_percentage, const normal_computation_strategy &normal_strategy,
-                                    const radius_computation_strategy &radius_strategy, const bool is_leaf_level)
+                                    const radius_computation_strategy &radius_strategy, const bool is_leaf_level, bool compute_normals, bool compute_radii)
 {
     uint32_t node_index = working_queue_head_counter_.increment_head();
 
@@ -1207,11 +1212,11 @@ void bvh::thread_compute_attributes(const uint32_t start_marker, const uint32_t 
             uint16_t number_of_neighbours = 100;
             auto normal_comp_algo = normal_computation_plane_fitting(number_of_neighbours);
             auto radius_comp_algo = radius_computation_average_distance(number_of_neighbours, 1.0f);
-            compute_normal_and_radius(current_node, normal_comp_algo, radius_comp_algo);
+            compute_normal_and_radius(current_node, normal_comp_algo, radius_comp_algo, compute_normals, compute_radii);
         }
         else
         {
-            compute_normal_and_radius(current_node, normal_strategy, radius_strategy);
+            compute_normal_and_radius(current_node, normal_strategy, radius_strategy, compute_normals, compute_radii);
         }
 
         if(update_percentage)
@@ -1407,8 +1412,8 @@ void bvh::thread_split_node_jobs(size_t &slice_left, size_t &slice_right, size_t
     }
 }
 
-void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_computation_strategy &normal_strategy, const radius_computation_strategy &radius_strategy, bool recompute_leaf_level,
-                  bool resample)
+void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_computation_strategy &normal_strategy, const radius_computation_strategy &radius_strategy,
+                  bool resample, bool recompute_leaf_normals, bool recompute_leaf_radii)
 {
 
     
@@ -1471,9 +1476,11 @@ void bvh::upsweep(const reduction_strategy &reduction_strgy, const normal_comput
         }
 
         // skip the leaf level attribute computation if it was not requested or necessary
-        if((level != int32_t(depth_) || recompute_leaf_level))
-        {
-            spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, false);
+        if(level != int32_t(depth_)) {
+            spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, false, true, true);
+        }
+        else if (recompute_leaf_normals || recompute_leaf_radii) {
+            spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_strategy, radius_strategy, false, recompute_leaf_normals, recompute_leaf_radii);
         }
 
         spawn_compute_bounding_boxes_upsweep_jobs(first_node_of_level, last_node_of_level, level);
@@ -1576,7 +1583,7 @@ void bvh::resample()
     uint16_t number_of_neighbours = 175;
     auto normal_comp_algo = normal_computation_plane_fitting(number_of_neighbours);
     auto radius_comp_algo = radius_computation_average_distance(number_of_neighbours, 1.0f);
-    spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_comp_algo, radius_comp_algo, false);
+    spawn_compute_attribute_jobs(first_node_of_level, last_node_of_level, normal_comp_algo, radius_comp_algo, false, true, true);
 
     // spawn_resample jobs directly instead of calling another function
     uint32_t const num_threads = std::thread::hardware_concurrency();

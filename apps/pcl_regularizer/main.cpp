@@ -158,6 +158,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  input_surfels.clear();
 
 
   std::string output_filename = input_filename.substr(0, input_filename.size()-4) + "_regularized.xyz";
@@ -171,7 +172,7 @@ int main(int argc, char *argv[]) {
   for (uint64_t i = 0; i < output_surfels.size(); ++i) {
     get_string(output_surfels[i], line, xyz_all);
 
-    if (((i % 1000000) == 0) || (i == output_surfels.size()-1)) {
+    if (((i % 500000) == 0) || (i == output_surfels.size()-1)) {
 
       std::ofstream output_file(output_filename.c_str(), std::ios::app);
       output_file << line;

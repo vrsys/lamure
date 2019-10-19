@@ -86,6 +86,7 @@ static void parse_face_string(std::string face_string, int (&index)[3], int (&co
 
 static std::shared_ptr<texture_t> load_image(const std::string& filepath)
 {
+    std::cout << "Loading image file " << filepath << std::endl;
     std::vector<unsigned char> img;
     unsigned int width = 0;
     unsigned int height = 0;

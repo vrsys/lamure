@@ -55,6 +55,8 @@ builder(const descriptor &desc)
     : desc_(desc),
       memory_limit_(0)
 {
+    memory_limit_ = calculate_memory_limit();
+
     base_path_ = fs::path(desc_.working_directory)
         / fs::path(desc_.input_file).stem().string();
 }
@@ -306,8 +308,9 @@ boost::filesystem::path builder::upsweep(boost::filesystem::path input_file,
     bvh.upsweep(*reduction_strategy,
                 *normal_comp_strategy,
                 *radius_comp_strategy,
-                desc_.compute_normals_and_radii,
-                desc_.resample);
+                desc_.resample,
+                desc_.recompute_leaf_normals,
+                desc_.recompute_leaf_radii);
 
     auto bvhu_file = add_to_path(base_path_, ".bvhu");
     bvh.serialize_tree_to_file(bvhu_file.string(), true);
@@ -403,7 +406,7 @@ bool builder::reserialize(boost::filesystem::path const &input_file, uint16_t st
 size_t builder::calculate_memory_limit() const
 {
 
-    size_t memory_budget = desc_.memory_budget * 1024UL * 1024UL * 1024UL;
+    size_t memory_budget = ((size_t)(desc_.memory_budget)) * 1024UL * 1024UL * 1024UL;
     LOGGER_INFO("Total physical memory: " << get_total_memory() / 1024.0 / 1024.0 / 1024.0 << " GiB");
     LOGGER_INFO("Memory budget: " << desc_.memory_budget << " GiB (use -m to choose memory budget in GiB)");
     if (get_total_memory() <= memory_budget) {
@@ -411,13 +414,11 @@ size_t builder::calculate_memory_limit() const
         return false;
     }
     LOGGER_INFO("Precision for storing coordinates and radii: " << std::string((sizeof(real) == 8) ? "double" : "single"));
-    return desc_.memory_budget;
+    return memory_budget;
 }
 
 bool builder::resample()
 {
-    memory_limit_ = calculate_memory_limit();
-
     auto input_file = fs::canonical(fs::path(desc_.input_file));
     const std::string input_file_type = input_file.extension().string();
 
@@ -458,8 +459,6 @@ bool builder::resample()
 bool builder::
 construct()
 {
-    memory_limit_ = calculate_memory_limit();
-
     uint16_t start_stage = 0;
     uint16_t final_stage = desc_.final_stage;
 
@@ -469,8 +468,11 @@ construct()
     if (input_file_type == ".xyz" ||
         input_file_type == ".ply" ||
         input_file_type == ".xyz_grey" ||
-        input_file_type == ".bin")
-        desc_.compute_normals_and_radii = true;
+        input_file_type == ".bin") {
+
+        desc_.recompute_leaf_normals = true;
+        desc_.recompute_leaf_radii = true;
+    }
 
     if (input_file_type == ".xyz" ||
         input_file_type == ".xyz_all" ||
