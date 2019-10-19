@@ -23,6 +23,8 @@ namespace pre
 void format_ply::
 read(const std::string &filename, surfel_callback_funtion callback)
 {
+
+    
     using namespace std::placeholders;
     typedef std::tuple<std::function<void()>, std::function<void()>> FuncTuple;
 
@@ -41,9 +43,9 @@ read(const std::string &filename, surfel_callback_funtion callback)
 
     using namespace io::ply;
 
-    at<io::ply::float64>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float64>, this, _1, _2);
-    at<io::ply::float32>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float32>, this, _1, _2);
-    at<io::ply::uint8>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::uint8>, this, _1, _2);
+    //at<io::ply::float64>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float64>, this, _1, _2);
+    //at<io::ply::float32>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::float32>, this, _1, _2);
+    //at<io::ply::uint8>(scalar_callbacks) = std::bind(&format_ply::scalar_callback<io::ply::uint8>, this, _1, _2);
 
     // set callbacks
     ply_parser.scalar_property_definition_callbacks(scalar_callbacks);
@@ -74,6 +76,7 @@ read(const std::string &filename, surfel_callback_funtion callback)
 
     // convert
     ply_parser.parse(filename);
+    
 }
 
 void format_ply::
