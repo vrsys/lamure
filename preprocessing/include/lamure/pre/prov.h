@@ -49,7 +49,7 @@ class PREPROCESSING_DLL prov_data
         std::stringstream ss(filestr);
 
         ss << "[";
-        for (int32_t i = 0; i < num_prov_values_+3; ++i) {
+        for (uint32_t i = 0; i < num_prov_values_+3; ++i) {
           ss << "{\n";
 		  ss << "\t\"type\": \"float\",\n";
 		  ss << "\t\"visualization\": \"color\"\n";

@@ -10,6 +10,7 @@
 
 #include <lamure/vt/common.h>
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 
