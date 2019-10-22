@@ -81,9 +81,9 @@ vec3 get_color(in vec3 position, in vec3 normal, in vec3 color, in float radius)
 
   if (show_normals) {
     vec4 vis_normal = model_radius_scale * vec4(normal, 0.0);
-    if( vis_normal.z < 0 ) {
-      vis_normal = vis_normal * -1;
-    }
+    //if( vis_normal.z < 0 ) {
+    //  vis_normal = vis_normal * -1;
+    //}
     view_color = vec3(vis_normal.xyz * 0.5 + 0.5);
   }
   else if (show_output_sensitivity) {

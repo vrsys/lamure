@@ -692,7 +692,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("channel", settings_.channel_);
   shader->uniform("heatmap", (bool)settings_.heatmap_);
 
-  shader->uniform("face_eye", false);
+  shader->uniform("face_eye", true);
   shader->uniform("max_radius", settings_.max_radius_);
 
   shader->uniform("heatmap_min", settings_.heatmap_min_);
@@ -739,7 +739,7 @@ void draw_brush(scm::gl::program_ptr shader) {
     shader->uniform("show_output_sensitivity", false);
     shader->uniform("channel", 0);
 
-    shader->uniform("face_eye", false);
+    shader->uniform("face_eye", true);
 
     context_->bind_vertex_array(brush_resource_.array_);
     context_->apply();
@@ -1270,6 +1270,12 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     shader->uniform("model_matrix", scm::math::mat4f(model_matrix));
     shader->uniform("model_view_matrix", scm::math::mat4f(model_view_matrix));
     shader->uniform("inv_mv_matrix", scm::math::mat4f(scm::math::transpose(scm::math::inverse(model_view_matrix))));
+
+    scm::math::mat4f inv_view = scm::math::inverse(scm::math::mat4f(view_matrix));
+    scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
+
+    shader->uniform("eye_pos", eye);
+    shader->uniform("face_eye", true);
 
     const scm::math::mat4d viewport_scale = scm::math::make_scale(render_width_ * 0.5, render_width_ * 0.5, 0.5);
     const scm::math::mat4d viewport_translate = scm::math::make_translation(1.0,1.0,1.0);
