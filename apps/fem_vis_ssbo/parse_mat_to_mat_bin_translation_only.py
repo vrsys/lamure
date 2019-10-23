@@ -28,6 +28,15 @@ all_u_x     = sim_array[:,1]
 all_u_y     = sim_array[:,2]
 all_u_z     = sim_array[:,3]
 #all_mag_u will be computed based on all_u_x, all_u_y and all_u_z
+all_sig_xx  = sim_array[:,1]
+all_tau_xy  = sim_array[:,1]
+all_tau_xz  = sim_array[:,1]
+all_tau_mag = sim_array[:,1]
+all_sig_v   = sim_array[:,1]
+all_eps_x   = sim_array[:,1]
+
+
+#all_indices_as_f32 = all_indices.astype(np.float32)
 
 
 num_elements_per_attribute = all_u_x.size;
@@ -38,6 +47,14 @@ all_mag_u   = all_mag_u.astype(np.float32)
 all_u_x     = all_u_x.astype(np.float32)
 all_u_y     = all_u_y.astype(np.float32)
 all_u_z     = all_u_z.astype(np.float32)
+
+all_sig_xx  = all_sig_xx.astype(np.float32)
+all_tau_xy  = all_tau_xy.astype(np.float32)
+all_tau_xz  = all_tau_xz.astype(np.float32)
+all_tau_mag = all_tau_mag.astype(np.float32)
+all_sig_v   = all_sig_v.astype(np.float32)
+all_eps_x   = all_eps_x.astype(np.float32)
+
 
 
 #print(all_mag_u)
@@ -53,6 +70,12 @@ out_mat_bin_file.write(all_u_x.tobytes())
 out_mat_bin_file.write(all_u_y.tobytes())
 out_mat_bin_file.write(all_u_z.tobytes())
 out_mat_bin_file.write(all_mag_u.tobytes())
+out_mat_bin_file.write(all_sig_xx.tobytes())
+out_mat_bin_file.write(all_tau_xy.tobytes())
+out_mat_bin_file.write(all_tau_xz.tobytes())
+out_mat_bin_file.write(all_tau_mag.tobytes())
+out_mat_bin_file.write(all_sig_v.tobytes())
+out_mat_bin_file.write(all_eps_x.tobytes())
 
 out_mat_bin_file.close()
 
