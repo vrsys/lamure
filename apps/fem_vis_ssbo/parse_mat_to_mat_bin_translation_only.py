@@ -16,6 +16,10 @@ if number_of_arguments < 2:
 in_mat_file_name = sys.argv[1]
 mat_contents = sio.loadmat(in_mat_file_name)
 
+print(mat_contents)
+
+sys.exit(-1)
+
 sim_array = mat_contents['dataSave']
 
 #print(mat_contents)
