@@ -27,7 +27,7 @@ uniform mat4 inv_mv_matrix;
 uniform mat4 model_to_screen_matrix;
 
 uniform bool face_eye;
-uniform vec3 eye;
+uniform vec3 eye_pos;
 
 uniform float near_plane;
 uniform float max_radius;
@@ -65,20 +65,20 @@ void main()
   }
 
   vec3 normal = in_normal;
+
+  //flip normals to face eye pos
   if (face_eye) {
-    normal = normalize(eye-(model_matrix*vec4(in_position, 1.0)).xyz);
+    if (dot(normalize(in_normal), normalize(eye_pos-((model_matrix*vec4(in_position, 1.0)).xyz))) < 0.0) {
+      normal = -in_normal;
+    }
   }
- 
+
   // precalculate tangent vectors to establish the surfel shape
   vec3 tangent   = vec3(0.0);
   vec3 bitangent = vec3(0.0);
   compute_tangent_vectors(normal, radius, tangent, bitangent);
 
-  if (!face_eye) {
-    normal = normalize((inv_mv_matrix * vec4(in_normal, 0.0)).xyz );
-  }
-
-
+  normal = normalize((inv_mv_matrix * vec4(normal, 0.0)).xyz );
  
   // finalize color with provenance overlay
   vec3 in_out_color = get_color(in_position, normal, vec3(in_r, in_g, in_b), radius);
