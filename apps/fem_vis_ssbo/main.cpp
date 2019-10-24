@@ -753,10 +753,11 @@ void set_uniforms(scm::gl::program_ptr shader) {
 
 
     if(playback_enabled) {
-      current_time_cursor_pos = (accumulated_playback_cursor_time) * playback_speed;// (frame_count) * 3.5f;
+      current_time_cursor_pos = ((double)(accumulated_playback_cursor_time));// * ((double) playback_speed);// (frame_count) * 3.5f;
 
       if( (current_max_num_timesteps != 1) && (current_simulation_duration_in_ms != 0.0f) ) {
         if(current_time_cursor_pos > current_max_timestep_id) {
+
           current_time_cursor_pos = std::fmod(current_time_cursor_pos, current_simulation_duration_in_ms);
         }
       } else {
@@ -1338,7 +1339,7 @@ void glut_display() {
 
 
   if(playback_enabled) {
-    accumulated_playback_cursor_time += elapsed_milliseconds;
+    accumulated_playback_cursor_time += elapsed_milliseconds * ((double) playback_speed);
   }
 
 
@@ -2542,7 +2543,7 @@ void gui_status_screen(){
     //if( ImGui::SliderFloat("Time Cursor (Simulation Frames)", &current_time_cursor_pos, 0.0f, current_max_timestep_id) ) {
     //  input_.gui_lock_ = true;
     //}
-    if( ImGui::SliderFloat("Playback Speed", &playback_speed, 0.01f, 100.0f) ) {
+    if( ImGui::SliderFloat("Playback Speed", &playback_speed, 0.000001f, 1.0f) ) {
         input_.gui_lock_ = true;
     }
     if( ImGui::SliderFloat("Deform Factor", &settings_.fem_deform_factor_, 1.0f, 5000.0f) ) {
