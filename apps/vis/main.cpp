@@ -228,6 +228,7 @@ struct settings {
   bool use_pvs_ {1};
   bool pvs_culling_ {0};
   bool backface_culling_ {0};
+  bool face_eye_ {1};
   float lod_point_scale_ {1.0f};
   float aux_point_size_ {1.0f};
   float aux_point_distance_ {0.5f};
@@ -449,6 +450,9 @@ void load_settings(std::string const& vis_file_name, settings& settings) {
           }
           else if (key == "backface_culling") {
             settings.backface_culling_ = (bool)std::max(atoi(value.c_str()), 0);
+          }
+          else if (key == "face_eye") {
+            settings.face_eye_ = (bool)std::max(atoi(value.c_str()), 0);
           }
           else if (key == "use_pvs") {
             settings.use_pvs_ = (bool)std::max(atoi(value.c_str()), 0);
@@ -692,7 +696,7 @@ void set_uniforms(scm::gl::program_ptr shader) {
   shader->uniform("channel", settings_.channel_);
   shader->uniform("heatmap", (bool)settings_.heatmap_);
 
-  shader->uniform("face_eye", true);
+  shader->uniform("face_eye", settings_.face_eye_);
   shader->uniform("max_radius", settings_.max_radius_);
 
   shader->uniform("heatmap_min", settings_.heatmap_min_);
@@ -739,7 +743,7 @@ void draw_brush(scm::gl::program_ptr shader) {
     shader->uniform("show_output_sensitivity", false);
     shader->uniform("channel", 0);
 
-    shader->uniform("face_eye", true);
+    shader->uniform("face_eye", settings_.face_eye_);
 
     context_->bind_vertex_array(brush_resource_.array_);
     context_->apply();
@@ -937,7 +941,7 @@ void draw_resources(const lamure::context_t context_id, const lamure::view_t vie
       scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
 
       vis_xyz_shader_->uniform("eye", eye);
-      vis_xyz_shader_->uniform("face_eye", true);
+      vis_xyz_shader_->uniform("face_eye", settings_.face_eye_);
       
       vis_xyz_shader_->uniform("show_normals", false);
       vis_xyz_shader_->uniform("show_accuracy", false);
@@ -1275,7 +1279,7 @@ void draw_all_models(const lamure::context_t context_id, const lamure::view_t vi
     scm::math::vec3f eye = scm::math::vec3f(inv_view[12], inv_view[13], inv_view[14]);
 
     shader->uniform("eye_pos", eye);
-    shader->uniform("face_eye", true);
+    shader->uniform("face_eye", settings_.face_eye_);
 
     const scm::math::mat4d viewport_scale = scm::math::make_scale(render_width_ * 0.5, render_width_ * 0.5, 0.5);
     const scm::math::mat4d viewport_translate = scm::math::make_translation(1.0,1.0,1.0);
@@ -2634,6 +2638,8 @@ void init_render_states() {
   
   backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_SOLID, scm::gl::CULL_BACK, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
   
+
+
 
   wireframe_no_backface_culling_rasterizer_state_ = device_->create_rasterizer_state(scm::gl::FILL_WIREFRAME, scm::gl::CULL_NONE, scm::gl::ORIENT_CCW, false, false, 0.0, false, false);
   filter_linear_  = device_->create_sampler_state(scm::gl::FILTER_ANISOTROPIC, scm::gl::WRAP_CLAMP_TO_EDGE, 16u);
