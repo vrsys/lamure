@@ -153,7 +153,27 @@ if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
     MTL_NAME_BACKUP=${SRC_OBJ_NAME_WITHOUT_EXTENSION}.mtl.backup
     cp ${MTL_NAME} ${MTL_NAME_BACKUP}
     sed -i -e 's/.tif/.jpg/g' ${MTL_NAME}
-    mogrify -format jpg -quality 98 *tif
+
+
+
+    for i in `ls *tif`
+    do
+
+    name=${i%%.*}
+    targetname=${i%%.*}.jpg
+
+    echo generating $targetname from $i
+
+    convert -verbose -delete 1 $i $name_tmp.tif
+    mv $name_tmp.tif $i
+    mogrify -verbose -format jpg $i
+
+    if [ ! -f $targetname ]; then
+        echo Error could not generate $targetname from $i
+        exit
+    fi
+    done
+    
 fi
 
 
