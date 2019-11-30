@@ -117,7 +117,7 @@ void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
 
 
   uint32_t num_neighbours = 16;
-  uint32_t num_threads = 16;
+  uint32_t num_threads = 32;
 
   uint64_t num_points = pointcloud.size();
 
@@ -155,7 +155,7 @@ void compute_normals(std::vector<lamure::pre::surfel>& pointcloud) {
 
 }
 
-void load_pointcloud(const std::string xyz_filename, std::vector<lamure::pre::surfel>& pointcloud) {
+void load_pointcloud(const std::string xyz_filename, std::vector<lamure::pre::surfel>& pointcloud, std::vector<int32_t>& scanner_ids) {
  
   bool xyz_all = (xyz_filename.substr(xyz_filename.size()-8) == ".xyz_all");
   if (!xyz_all) {
@@ -193,13 +193,16 @@ void load_pointcloud(const std::string xyz_filename, std::vector<lamure::pre::su
     lamure::vec3b bcolor(color.x, color.y, color.z);
     
     double radius = 1.0;
-    if (xyz_all) {
+    //if (xyz_all) {
       lineparser >> std::setprecision(DEFAULT_PRECISION) >> radius;
-    }
+    //}
 
- 
-    lamure::pre::surfel surfel(pos, bcolor, radius, normal, 0.0);
+    scanner_ids.push_back((int32_t)radius);
+
+    lamure::pre::surfel surfel(pos, bcolor, 0.01, normal, 0.0);
     pointcloud.push_back(surfel);
+
+
 
   }
 
@@ -253,18 +256,18 @@ void write_pointcloud(
 }
 
 void face_normals_to_scanner(
-  const scm::math::vec3d& scanner_pos, std::vector<lamure::pre::surfel>& pointcloud) {
+  const std::vector<scm::math::vec3d>& scanner_positions, std::vector<lamure::pre::surfel>& pointcloud, std::vector<int32_t>& scanner_ids) {
 
-  for (auto& surfel : pointcloud) {
+  for (uint64_t point_id = 0; point_id < pointcloud.size(); ++point_id) {
+
+    auto& surfel = pointcloud[point_id];
+    auto& scanner_pos = scanner_positions[scanner_ids[point_id]];
+
     scm::math::vec3d normal(surfel.normal().x, surfel.normal().y, surfel.normal().z);
 
     double result = scm::math::dot(scm::math::normalize(normal), scm::math::normalize(scanner_pos - surfel.pos()));
     if (result <= 0.0) {
-      
-      surfel.normal().x = -normal.x;
-      surfel.normal().y = -normal.y;
-      surfel.normal().z = -normal.z;
-
+      surfel.normal() *= -1.0;
     }
   }
 

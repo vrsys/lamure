@@ -119,18 +119,23 @@ int main(int argc, char *argv[]) {
   for (uint32_t i = 0; i < xyz_filenames.size(); ++i) {
     const auto& xyz_file = xyz_filenames[i];
 
-    std::vector<lamure::pre::surfel> pointcloud;    
+    std::vector<lamure::pre::surfel> pointcloud;
+    std::vector<int32_t> scanner_ids;
 
-    std::cout << "Loading pointcloud: " << xyz_file << std::endl;
-    load_pointcloud(xyz_file, pointcloud);
-    std::cout << pointcloud.size() << " points loaded." << std::endl;
+    std::cout << "Loading pointcloud and scanner ids: " << xyz_file << std::endl;
+    load_pointcloud(xyz_file, pointcloud, scanner_ids);
+    std::cout << pointcloud.size() << " points and scanner ids loaded." << std::endl;
+
+    if (pointcloud.size() < 1000) {
+      std::cout << "TOo few points..." << std::endl;
+      continue;
+    }
 
     std::cout << "Computing normals..." << std::endl;
     compute_normals(pointcloud);
 
     std::cout << "Face normals to scanner..." << std::endl;
-    std::cout << "Scanner position: " << scanner_positions[i] << std::endl;
-    face_normals_to_scanner(scanner_positions[i], pointcloud);
+    face_normals_to_scanner(scanner_positions, pointcloud, scanner_ids);
 
     //std::string output_file = xyz_file.substr(0, xyz_file.size()-4) + "_facing.xyz_all";
     std::string output_file = pos_list_filename.substr(0, pos_list_filename.size()-4) + "_facing_" + std::to_string(i) + ".xyz_all";
@@ -140,7 +145,6 @@ int main(int argc, char *argv[]) {
 
     pointcloud.clear();
 
-    std::cout << "Quit" << std::endl;
     break;
 
   }

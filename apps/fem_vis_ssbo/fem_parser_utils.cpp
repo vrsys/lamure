@@ -573,6 +573,7 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
 
     fem_collection.data.insert(std::make_pair(simulation_name, fem_attributes_per_time_series{}) );
 
+    //std::cout << "NUM FILES: " << sorted_fem_time_series_files.size() << std::endl;
 
     auto& current_time_series = fem_collection.data[simulation_name];
 
@@ -585,7 +586,9 @@ void parse_directory_to_fem(std::string const& simulation_name, // e.g. "Tempera
 
     for(auto const& file_path : sorted_fem_time_series_files) {
 
-      std::string const bin_fem_file_path = file_path + ".bin";
+      std::string const bin_fem_file_path = file_path;// + ".bin";
+
+      //std::cout << "Parsing file: " <<   bin_fem_file_path << std::endl;
 
       if(boost::filesystem::exists( bin_fem_file_path )) {
         read_fem_bin_file_to_time_step(simulation_name, bin_fem_file_path, fem_collection, fem_to_pcl_transform);
@@ -694,10 +697,11 @@ std::vector<std::string> parse_fem_collection(std::string const& fem_mapping_fil
 
             std::string const full_file_path = path_to_time_series + "/" + currently_iterated_filename;
             if(boost::filesystem::is_regular_file(full_file_path)) {  //one last check for whether we are really holding a file in our hands
+               //std::cout << "Trying2: " << *dir_iterator << std::endl;
                 if(currently_iterated_filename.rfind(FEM_simulation_name) == 0) { // < ---- starts with time series prefix
-
-                  if(!boost::algorithm::ends_with(currently_iterated_filename, ".bin")) {
-
+                  //std::cout << "Trying3: " << *dir_iterator << std::endl;
+                  if(boost::algorithm::ends_with(currently_iterated_filename, ".bin")) {
+                    //  std::cout << "Trying4: " << *dir_iterator << std::endl;
                     sorted_fem_time_series_files.push_back(full_file_path);
 
                     if(is_first_file_of_simulation) {

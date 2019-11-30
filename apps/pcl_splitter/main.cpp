@@ -48,9 +48,9 @@ void get_string(const lamure::pre::surfel& surfel, std::string& line, bool xyz_a
   line += std::to_string((int)surfel.color().y) + " ";
   line += std::to_string((int)surfel.color().z) + " ";
 
-  if (xyz_all) {
+  //if (xyz_all) {
     line += std::to_string(surfel.radius()) + " ";
-  }
+  //}
 
   line += "\n";
 
@@ -314,10 +314,10 @@ int main(int argc, char *argv[]) {
 
       lamure::vec3b bcolor(color.x, color.y, color.z);
       
-      double radius = 1.0;
-      if (xyz_all) {
-        lineparser >> std::setprecision(DEFAULT_PRECISION) >> radius;
-      }
+      double radius = ((double)i) + 0.2;
+      //if (xyz_all) {
+        //lineparser >> std::setprecision(DEFAULT_PRECISION) >> radius;
+      //}
    
       lamure::pre::surfel surfel(pos, bcolor, radius, normal, 0.0);
 
