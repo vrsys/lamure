@@ -158,7 +158,13 @@ void load_obj(const std::string& obj_filename, std::string& mtl_filename, std::v
             {
                 double tx, ty;
                 fscanf(file, "%lf %lf\n", &tx, &ty);
+                while (tx < -0.0001) { tx += 1.0; }
+                while (ty < -0.0001) { ty += 1.0; }
+                while (tx > 1.0001) { tx -= 1.0; }
+                while (ty > 1.0001) { ty -= 1.0; }
+                
                 t.insert(t.end(), {tx, ty});
+
             }
             else if(strcmp(line_header, "f") == 0)
             {
@@ -525,6 +531,16 @@ int32_t main(int argc, char* argv[])
         tri.v2_.tex_.x = (tri.v2_.tex_.x) * factor_u;
         tri.v2_.tex_.y = 1.0 - ((1.0 - tri.v2_.tex_.y) * factor_v);
     }
+#else
+    for(auto& tri : triangles)
+    {
+        tri.v0_.tex_.x = (tri.v0_.tex_.x) * factor_u;
+        tri.v0_.tex_.y = (tri.v0_.tex_.y) * factor_v;
+        tri.v1_.tex_.x = (tri.v1_.tex_.x) * factor_u;
+        tri.v1_.tex_.y = (tri.v1_.tex_.y) * factor_v;
+        tri.v2_.tex_.x = (tri.v2_.tex_.x) * factor_u;
+        tri.v2_.tex_.y = (tri.v2_.tex_.y) * factor_v;
+    }
 #endif
 
     std::cout << "writing obj..." << std::endl;
@@ -544,13 +560,16 @@ int32_t main(int argc, char* argv[])
         obj_out_str << "v " << tri.v2_.pos_.x << " " << tri.v2_.pos_.y << " " << tri.v2_.pos_.z << std::endl;
     }
 
-    /*
-     * //write vn
-    for (const auto& tri : triangles) {
-    obj_out_str << "vn " << tri.v0_.nml_.x << " " << tri.v0_.nml_.y << " " << tri.v0_.nml_.z << std::endl;
-    obj_out_str << "vn " << tri.v1_.nml_.x << " " << tri.v1_.nml_.y << " " << tri.v1_.nml_.z << std::endl;
-    obj_out_str << "vn " << tri.v2_.nml_.x << " " << tri.v2_.nml_.y << " " << tri.v2_.nml_.z << std::endl;
-    }*/
+#if 1
+    if (has_normals) {
+        //write vn
+        for (const auto& tri : triangles) {
+          obj_out_str << "vn " << tri.v0_.nml_.x << " " << tri.v0_.nml_.y << " " << tri.v0_.nml_.z << std::endl;
+          obj_out_str << "vn " << tri.v1_.nml_.x << " " << tri.v1_.nml_.y << " " << tri.v1_.nml_.z << std::endl;
+          obj_out_str << "vn " << tri.v2_.nml_.x << " " << tri.v2_.nml_.y << " " << tri.v2_.nml_.z << std::endl;
+        }
+    }
+#endif
 
     // write vt
     for(const auto& tri : triangles)
@@ -566,9 +585,16 @@ int32_t main(int argc, char* argv[])
     // write f
     for(uint32_t i = 0; i < triangles.size(); ++i)
     {
-        obj_out_str << "f " << i * 3 + 1 << "/" << i * 3 + 1 << "/" << i * 3 + 1;
-        obj_out_str << " " << i * 3 + 2 << "/" << i * 3 + 2 << "/" << i * 3 + 2;
-        obj_out_str << " " << i * 3 + 3 << "/" << i * 3 + 3 << "/" << i * 3 + 3 << std::endl;
+        if (has_normals) {
+          obj_out_str << "f " << i * 3 + 1 << "/" << i * 3 + 1 << "/" << i * 3 + 1;
+          obj_out_str << " " << i * 3 + 2 << "/" << i * 3 + 2 << "/" << i * 3 + 2;
+          obj_out_str << " " << i * 3 + 3 << "/" << i * 3 + 3 << "/" << i * 3 + 3 << std::endl;
+        }
+        else {
+          obj_out_str << "f " << i * 3 + 1 << "/" << i * 3 + 1;
+          obj_out_str << " " << i * 3 + 2 << "/" << i * 3 + 2;
+          obj_out_str << " " << i * 3 + 3 << "/" << i * 3 + 3 << std::endl;
+        }
     }
 
     obj_out_file << obj_out_str.str();

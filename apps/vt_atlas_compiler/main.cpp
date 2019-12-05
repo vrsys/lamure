@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
         else
             printf("Failed! Could not find a proper position to pack this rectangle into. Skipping this one.\n");
 
-#if 0
+#if 1
         log += std::to_string(i) + ",";
         log += std::to_string(packedRect.x) + ",";
         log += std::to_string(packedRect.y) + ",";
