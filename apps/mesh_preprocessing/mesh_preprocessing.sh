@@ -122,7 +122,7 @@ if [ "$SRC_OBJ" == "None" ] || [ "$PRINT_HELP" == "Yes" ]; then
    echo "Maximum size of final texture atlas: " ${MAX_FINAL_TEX_SIZE} "(set with option -m)"
    echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB} "(set with option -v)"
    echo "Convert tifs to jpgs: " ${CONVERT_TIFS_TO_JPG} "(enable with option -j)"
-   echo "Flip pngs: " ${FLIP_PNGS} "(enable with option -f)"
+   echo "Flip textures: " ${FLIP_PNGS} "(enable with option -f)"
    echo "Run mesh fixer: " ${RUN_MESH_FIXER} "(enable with option -x)"
    echo "Run virtual texture processing: " ${RUN_VT} "(disable with option -n)"   
    echo "Processing obj model: " ${SRC_OBJ} "(set with option -o)"
@@ -231,7 +231,7 @@ fi
 
 # clean up
 if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
-    cp ${MTL_NAME_BACKUP} ${MTL_NAME}
+    mv ${MTL_NAME_BACKUP} ${MTL_NAME}
     rm *jpg
 fi
 # optionally output a scaled down jpg one needs to calculate width and height
