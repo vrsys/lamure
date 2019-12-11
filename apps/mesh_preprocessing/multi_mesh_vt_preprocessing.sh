@@ -33,10 +33,8 @@ TMP_TEXTURE_DIR=None
 ATLAS_SIZE=1.0
 VT_PREPROCESSING_MEMORY_BUDGET_GB=50
 
-FLIP_PNGS=No
 SRC_OBJ=None
 PRINT_HELP=No
-CONVERT_TIFS_TO_JPG=No
 ############################
 
 
@@ -70,14 +68,6 @@ case $key in
     TMP_TEXTURE_DIR="$2"
     shift # past argument
     shift # past value
-    ;;      
-    -f|--flippngs)
-    FLIP_PNGS=Yes
-    shift # past argument
-    ;;
-    -j|--jpg)
-    CONVERT_TIFS_TO_JPG=Yes
-    shift # past argument
     ;;
     -h|--help)
     PRINT_HELP=Yes
@@ -102,8 +92,6 @@ if [ "$RUN_MODE" == "None" ] || [ "$PRINT_HELP" == "Yes" ]; then
    echo "------------------------"
    echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB} "(set with option -v)"
    echo "Atlas size: " ${ATLAS_SIZE} "(set with option -a)"
-   echo "Convert tifs to jpgs: " ${CONVERT_TIFS_TO_JPG} "(enable with option -j)"
-   echo "Flip textures: " ${FLIP_PNGS} "(enable with option -f)"
    echo "Processing obj model: " ${SRC_OBJ} "(set with option -o)"
    echo "Run mode: " ${RUN_MODE} "(set with option -r can be: capture atlas adjust)"
    exit 0
@@ -114,8 +102,7 @@ echo "------------------------"
 echo "Entering run mode " ${RUN_MODE}
 echo "Memory budget for virtual texture processing: " ${VT_PREPROCESSING_MEMORY_BUDGET_GB}
 echo "Atlas size: " ${ATLAS_SIZE}
-echo "Convert tifs to jpgs: " ${CONVERT_TIFS_TO_JPG}
-echo "Flip textures: " ${FLIP_PNGS}
+
 
 if [ "$RUN_MODE" == "capture" ]; then
     if [ "$SRC_OBJ" == "None" ]; then
@@ -126,46 +113,32 @@ if [ "$RUN_MODE" == "capture" ]; then
       echo "ERROR" $0 "please specify temp texture dir -t option"
       exit 0
     fi
-    echo "Processing textures of obj $SRC_OBJ"
+    echo "Copying textures of $SRC_OBJ to $TMP_TEXTURE_DIR"
 
-    if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
-      echo "converting tifs to jpgs"
-
-      for i in `ls *tif`
-      do
-
-      name=${i%%.*}
-      targetname=${i%%.*}.jpg
-
-      echo generating $targetname from $i
-
-      convert -verbose -delete 1 $i $name_tmp.tif
-      mv $name_tmp.tif $i
-      mogrify -verbose -format jpg $i
-
-      if [ ! -f $targetname ]; then
-          echo Error could not generate $targetname from $i
-          exit
-      fi
-      done
+    SRC_OBJ_NAME_WITHOUT_EXTENSION=${SRC_OBJ%.*}
+    SRC_MTL_FILE=${SRC_OBJ_NAME_WITHOUT_EXTENSION}.mtl
+    IMAGE_TYPE=None
+    if grep -q ".tiff" "$SRC_MTL_FILE"; then
+      IMAGE_TYPE=".tiff"
+    elif grep -q ".tif" "$SRC_MTL_FILE"; then
+      IMAGE_TYPE=".tif"
+    elif grep -q ".png" "$SRC_MTL_FILE"; then
+      IMAGE_TYPE=".png"
+    elif grep -q ".jpg" "$SRC_MTL_FILE"; then
+      IMAGE_TYPE=".jpg"
+    elif grep -q ".jpeg" "$SRC_MTL_FILE"; then
+      IMAGE_TYPE=".jpeg"
     fi
 
-    # convert textures from jpg to png
-    echo converting jpgs to pngs
-    mogrify -format png *jpg
-
-    if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
-      rm -f *jpg
-    fi
-
-    if [ "$FLIP_PNGS" == "Yes" ]; then
-        echo "flipping textures"
-        mogrify -flip *png
+    if [ "$IMAGE_TYPE" == "None" ]; then
+      echo "ERROR" $0 ": $SRC_MTL_FILE does not contain valid textures(.tiff, .tif, .jpg, .png)"
+      exit 0
+    else
+      echo "$SRC_MTL_FILE uses image type $IMAGE_TYPE"
     fi
 
     mkdir -p ${TMP_TEXTURE_DIR}
-    mv *png ${TMP_TEXTURE_DIR}
-
+    cp *${IMAGE_TYPE} ${TMP_TEXTURE_DIR}
 fi
 
 
@@ -197,13 +170,6 @@ if [ "$RUN_MODE" == "atlas" ]; then
     #echo env DISPLAY=:0.0 ${LAMURE_DIR}lamure_vt_preprocessing process Domfigur_rgba_w16384_h16384.data rgba 16384 16384 256 256 1 Domfigur rgb 90
     time env DISPLAY=:0.0 ${LAMURE_DIR}lamure_vt_preprocessing process $TEXTURE_ATLAS_DATA_NAME rgb $TEXTURE_ATLAS_WIDTH $TEXTURE_ATLAS_HEIGHT 256 256 1 atlas rgb $VT_PREPROCESSING_MEMORY_BUDGET_GB
     rm atlas*.data
-
-    if [ "$CONVERT_TIFS_TO_JPG" == "Yes" ]; then
-        sed -i -e 's/.png/.tif/g' atlas.log
-    fi
-    if [ "$CONVERT_TIFS_TO_JPG" == "No" ]; then
-        sed -i -e 's/.png/.jpg/g' atlas.log
-    fi
 
     mv atlas.atlas atlas.log ${TMP_TEXTURE_DIR}
 fi
