@@ -20,6 +20,51 @@ if number_of_arguments < 2:
 
 complete_path_string = sys.argv[1]
 
+#for transforming the vectors properly, we need to provide the application with a vis file containing the transformation
+
+transform_mat = np.arange(0, 16).reshape(4,4)
+print(transform_mat.shape)
+
+if number_of_arguments > 2:
+
+	transform_string_token = "fem_to_pcl_transform:"
+
+	vis_file_string = sys.argv[2]
+	print("Going to transform the vectors")
+
+	
+	vis_file = open(vis_file_string, 'r')
+	vis_line_list = vis_file.readlines()
+	vis_file.close()
+	found = False
+	
+	for line in vis_line_list:
+		if transform_string_token in line:
+			print("Found it")
+			line = line.replace(transform_string_token, '')
+			print(line)
+			found = True
+			tf_mat_float_vals = line.split()
+
+			print(tf_mat_float_vals)
+
+			element_idx = 0
+			for float_val_as_string in tf_mat_float_vals:
+				transform_mat = float_val_as_string
+
+				print("xxxx" + float_val_as_string)
+				print(np.fromstring(float_val_as_string, dtype=np.float32, count=1) )
+
+				element_idx += 1
+			#transform_mat
+			sys.exit(-1)
+
+
+	
+
+
+
+
 complete_path = pathlib.PurePath(complete_path_string)
 
 
