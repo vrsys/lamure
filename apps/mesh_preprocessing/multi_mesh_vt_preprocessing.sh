@@ -31,7 +31,7 @@ RUN_MODE=None
 TMP_TEXTURE_DIR=None
 # texturing
 ATLAS_SIZE=1.0
-VT_PREPROCESSING_MEMORY_BUDGET_GB=50
+VT_PREPROCESSING_MEMORY_BUDGET_GB=280
 
 SRC_OBJ=None
 PRINT_HELP=No
@@ -119,7 +119,11 @@ if [ "$RUN_MODE" == "capture" ]; then
     SRC_MTL_FILE=${SRC_OBJ_NAME_WITHOUT_EXTENSION}.mtl
     IMAGE_TYPE=None
     if grep -q ".tiff" "$SRC_MTL_FILE"; then
-      IMAGE_TYPE=".tiff"
+      echo "renaming texture files from .tiff to .tif"
+      IMAGE_TYPE=".tif"
+      for i in `ls *tiff`; do mv $i ${i%.*}.tif; done
+      sed -i -e 's/.tiff/.dummy/g' ${SRC_MTL_FILE}
+      sed -i -e 's/.dummy/.tif/g' ${SRC_MTL_FILE}
     elif grep -q ".tif" "$SRC_MTL_FILE"; then
       IMAGE_TYPE=".tif"
     elif grep -q ".png" "$SRC_MTL_FILE"; then
@@ -139,6 +143,8 @@ if [ "$RUN_MODE" == "capture" ]; then
 
     mkdir -p ${TMP_TEXTURE_DIR}
     cp *${IMAGE_TYPE} ${TMP_TEXTURE_DIR}
+    echo "resizing images"
+    mogrify -resize 1024 ${TMP_TEXTURE_DIR}/*${IMAGE_TYPE}
 fi
 
 
