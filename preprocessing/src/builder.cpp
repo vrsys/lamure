@@ -14,6 +14,7 @@
 #include <lamure/pre/io/format_xyz.h>
 #include <lamure/pre/io/format_xyz_all.h>
 #include <lamure/pre/io/format_xyz_bin.h>
+#include <lamure/pre/io/format_xyz_cpn.h>
 #include <lamure/pre/io/format_xyz_grey.h>
 #include <lamure/pre/io/format_ply.h>
 #include <lamure/pre/io/format_bin.h>
@@ -152,6 +153,10 @@ boost::filesystem::path builder::convert_to_binary(std::string const& input_file
     else if (input_type == ".xyz_bin") {
         binary_file += ".bin";
         format_in = std::unique_ptr<format_xyz_bin>{new format_xyz_bin()};
+    }
+    else if (input_type == ".xyz_cpn") {
+        binary_file += ".bin";
+        format_in = std::unique_ptr<format_xyz_cpn>{new format_xyz_cpn()};
     }
     else if (input_type == ".ply") {
         binary_file += ".bin";
@@ -430,6 +435,7 @@ bool builder::resample()
         input_file_type == ".xyz_all" ||
         input_file_type == ".xyz_grey" ||
         input_file_type == ".xyz_bin" ||
+        input_file_type == ".xyz_cpn" ||
         input_file_type == ".ply")
         start_stage = 0;
     else if (input_file_type == ".bin" || input_file_type == ".bin_all")
@@ -472,6 +478,11 @@ construct()
 
         desc_.recompute_leaf_normals = true;
         desc_.recompute_leaf_radii = true;
+    }
+
+    if (input_file_type == ".xyz_cpn") {
+      desc_.recompute_leaf_normals = true;
+      desc_.recompute_leaf_radii = true;
     }
 
     if (input_file_type == ".xyz" ||
