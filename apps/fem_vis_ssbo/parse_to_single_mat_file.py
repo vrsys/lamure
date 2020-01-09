@@ -95,7 +95,7 @@ mat_file_list = []
 
 for mat_file in os.listdir( sys.argv[1] ):
 
-    if mat_file.startswith(directory_name) and mat_file.endswith(".mat"):
+    if mat_file.startswith(directory_name) and mat_file.endswith(".mat") and not mat_file.endswith("trainPos.mat"):
     	mat_file_list.append(complete_path_string + "/" + mat_file)
         #print(os.path.join("/mydir", mat_file))
 
