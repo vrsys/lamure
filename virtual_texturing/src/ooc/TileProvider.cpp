@@ -98,7 +98,7 @@ TileCacheSlot* TileProvider::getTile(pre::AtlasFile* resource, id_type tile_id, 
 
     if(req != nullptr)
     {
-        // if one wants to rensert according to priority, this should happen here
+        // Carl: this updates priority of a tile in the loading queue if it is already present
         req->setPriority(std::max(req->getPriority(), priority));
 
         return nullptr;

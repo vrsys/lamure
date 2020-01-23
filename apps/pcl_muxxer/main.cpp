@@ -71,14 +71,11 @@ int32_t main(int argc, char* argv[]) {
     Point query(pointclouds[0].points_[i]);
     Neighbor_search search(search_tree, query, 1);
     uint64_t point_id = search.begin()->first.get<1>();
-
-    //std::cout << "point_id " << point_id << std::endl;
     
 #if 0
     pointclouds[0].prov_attribs_[i] = ((double)pointclouds[1].colors_[point_id][0])/(double)255.0;
 #else
     if (pointclouds[1].colors_[point_id][0] > (uint8_t)216) {
-      //  std::cout << "encountered " << pointclouds[1].colors_[point_id][0] << " to " << pointclouds[0].prov_attribs_[i] << std::endl;
       pointclouds[0].colors_[i][0] = (uint8_t)pointclouds[1].colors_[point_id][0];
       pointclouds[0].colors_[i][1] = (uint8_t)25;
       pointclouds[0].colors_[i][2] = (uint8_t)25;
