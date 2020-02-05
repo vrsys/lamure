@@ -46,11 +46,14 @@ void CutUpdate::run(ContextFeedback* _context_feedback)
     {
         std::unique_lock<std::mutex> lk(_context_feedback->_feedback_dispatch_lock, std::defer_lock);
 
+        //Only one cut update iteration per feedback...
+
         if(_context_feedback->_feedback_new.load())
         {
             dispatch_context(_context_feedback->_id);
         }
         _context_feedback->_feedback_new.store(false);
+
 
 #ifndef _WIN32
         while(!_context_feedback->_feedback_cv.wait_for(lk, std::chrono::milliseconds(16), [&]() -> bool { return _context_feedback->_feedback_new.load(); }))
@@ -63,6 +66,7 @@ void CutUpdate::run(ContextFeedback* _context_feedback)
 #else
 		while (!_context_feedback->_feedback_new.load())
 		{
+            //Carl thinks below should be replaced by semaphore
 			std::this_thread::sleep_for(16ms);
 
 			if (_should_stop.load())

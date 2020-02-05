@@ -20,7 +20,7 @@ namespace lamure
 {
 namespace pre
 {
-static const uint32_t num_prov_values_ = 4;
+static const uint32_t num_prov_values_ = 1;
 
 class PREPROCESSING_DLL prov_data
 {
