@@ -143,6 +143,7 @@ if [ "$RUN_MODE" == "capture" ]; then
 
     mkdir -p ${TMP_TEXTURE_DIR}
     cp *${IMAGE_TYPE} ${TMP_TEXTURE_DIR}
+    # optional resize images to 1K
     #echo "resizing images"
     #mogrify -resize 1024 ${TMP_TEXTURE_DIR}/*${IMAGE_TYPE}
 fi

@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
   if (terminate) {
     std::cout << "Usage: " << argv[0] << "<flags>\n" <<
       "INFO: " << argv[0] << "\n" <<
-      "\t-i: select input .xyz file\n" <<
+      "\t-i: select input .xyz / .xyz_all file\n" <<
       "\t-r: select regularization distance between surfels\n" << std::endl;
     std::exit(0);
   }

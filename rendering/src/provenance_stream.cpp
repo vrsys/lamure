@@ -99,7 +99,9 @@ read(char* const data,
     }
 
     if (offset_in_bytes + length_in_bytes > file_size_) {
-        //std::cout << "file length exceeded" << std::endl;
+        std::cout << "file length exceeded" << std::endl;
+
+        memset(data, 0, length_in_bytes);
         return;
     }
 
