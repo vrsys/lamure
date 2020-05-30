@@ -39,7 +39,7 @@ static char* get_cmd_option(char** begin, char** end, const std::string& option)
 
 static bool cmd_option_exists(char** begin, char** end, const std::string& option) { return std::find(begin, end, option) != end; }
 
-bool check_obj(const std::string& obj_filename, bool& has_normals)
+bool check_obj(const std::string& obj_filename, bool& has_coords, bool& has_normals)
 {
     std::ifstream obj_file(obj_filename.c_str());
     if(!obj_file.is_open())
@@ -48,7 +48,6 @@ bool check_obj(const std::string& obj_filename, bool& has_normals)
         return false;
     }
 
-    bool has_coords = false;
 
     std::string line;
     while(std::getline(obj_file, line))
@@ -68,16 +67,18 @@ bool check_obj(const std::string& obj_filename, bool& has_normals)
 
     obj_file.close();
 
+    std::cout << "obj file does not contain texture coordinates: " << std::endl;
+/*
     if(!has_coords)
     {
-        std::cout << "obj file does not contain texture coordinates: " << std::endl;
+
         return false;
     }
-
+*/
     return true;
 }
 
-void load_obj(const std::string& obj_filename, std::vector<indexed_triangle_t>& triangles, bool has_normals)
+void load_obj(const std::string& obj_filename, std::vector<indexed_triangle_t>& triangles, bool has_coords, bool has_normals)
 {
     triangles.clear();
 
@@ -149,7 +150,7 @@ void load_obj(const std::string& obj_filename, std::vector<indexed_triangle_t>& 
                 uint32_t index[3];
                 uint32_t coord[3];
                 uint32_t normal[3];
-                if(has_normals)
+                if(has_coords && has_normals)
                 {
                     sscanf(line_str.c_str(), "%d/%d/%d %d/%d/%d %d/%d/%d", &index[0], &coord[0], &normal[0], &index[1], &coord[1], &normal[1], &index[2], &coord[2], &normal[2]);
 
@@ -157,12 +158,25 @@ void load_obj(const std::string& obj_filename, std::vector<indexed_triangle_t>& 
                     tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
                     nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
                 }
-                else
+                else if(has_coords)
                 {
                     sscanf(line_str.c_str(), "%d/%d %d/%d %d/%d", &index[0], &coord[0], &index[1], &coord[1], &index[2], &coord[2]);
 
                     vindices.insert(vindices.end(), {index[0], index[1], index[2]});
                     tindices.insert(tindices.end(), {coord[0], coord[1], coord[2]});
+                }
+                else if(has_normals)
+                {
+                    sscanf(line_str.c_str(), "%d//%d %d//%d %d//%d", &index[0], &normal[0], &index[1], &normal[1], &index[2], &normal[2]);
+
+                    vindices.insert(vindices.end(), {index[0], index[1], index[2]});
+                    nindices.insert(nindices.end(), {normal[0], normal[1], normal[2]});
+                }
+                else
+                {
+                    sscanf(line_str.c_str(), "%d %d %d", &index[0], &index[1], &index[2]);
+
+                    vindices.insert(vindices.end(), {index[0], index[1], index[2]});
                 }
             }
         }
@@ -192,8 +206,10 @@ void load_obj(const std::string& obj_filename, std::vector<indexed_triangle_t>& 
                     normal = scm::math::vec3f(n[3 * (nindices[3 * i + j] - 1)], n[3 * (nindices[3 * i + j] - 1) + 1], n[3 * (nindices[3 * i + j] - 1) + 2]);
                 }
 
-                scm::math::vec2f coord(t[2 * (tindices[3 * i + j] - 1)], t[2 * (tindices[3 * i + j] - 1) + 1]);
-
+                scm::math::vec2f coord{0.0f, 0.0f};
+                if(has_coords) {
+                    coord = scm::math::vec2f(t[2 * (tindices[3 * i + j] - 1)], t[2 * (tindices[3 * i + j] - 1) + 1]);
+                }
                 switch(j)
                 {
                 case 0:
@@ -244,8 +260,9 @@ int32_t main(int argc, char* argv[])
     }
 
     std::string obj_filename = get_cmd_option(argv, argv + argc, "-obj");
+    bool has_coords  = false;
     bool has_normals = false;
-    if(!check_obj(obj_filename, has_normals))
+    if(!check_obj(obj_filename, has_coords, has_normals))
     {
         exit(-1);
     }
@@ -255,7 +272,7 @@ int32_t main(int argc, char* argv[])
     std::vector<indexed_triangle_t> triangles;
     
 
-    load_obj(obj_filename, triangles, has_normals);
+    load_obj(obj_filename, triangles, has_coords, has_normals);
     std::cout << triangles.size() << " triangles loaded" << std::endl;
 
 
@@ -303,26 +320,38 @@ int32_t main(int argc, char* argv[])
             obj_out_str << "vn " << tri.v2_.nml_.x << " " << tri.v2_.nml_.y << " " << tri.v2_.nml_.z << std::endl;
         }
 
-        // write vt
-        obj_out_str << "vt " << tri.v0_.tex_.x << " " << tri.v0_.tex_.y << std::endl;
-        obj_out_str << "vt " << tri.v1_.tex_.x << " " << tri.v1_.tex_.y << std::endl;
-        obj_out_str << "vt " << tri.v2_.tex_.x << " " << tri.v2_.tex_.y << std::endl;
-        
+        if(has_coords) {
+          // write vt
+          obj_out_str << "vt " << tri.v0_.tex_.x << " " << tri.v0_.tex_.y << std::endl;
+          obj_out_str << "vt " << tri.v1_.tex_.x << " " << tri.v1_.tex_.y << std::endl;
+          obj_out_str << "vt " << tri.v2_.tex_.x << " " << tri.v2_.tex_.y << std::endl;
+        }
+
         obj_out_str << "g sub_vt_mesh" << std::endl;
 
 
         uint32_t local_tri_id = tri_id-node.begin_;
 
         // write f
-        if (has_normals) {
+        if (has_normals && has_coords) {
           obj_out_str << "f " << local_tri_id * 3 + 1 << "/" << local_tri_id * 3 + 1 << "/" << local_tri_id * 3 + 1;
           obj_out_str << " " << local_tri_id * 3 + 2 << "/" << local_tri_id * 3 + 2 << "/" << local_tri_id * 3 + 2;
           obj_out_str << " " << local_tri_id * 3 + 3 << "/" << local_tri_id * 3 + 3 << "/" << local_tri_id * 3 + 3 << std::endl;
         }
-        else {
+        else if (has_normals) {
+          obj_out_str << "f " << local_tri_id * 3 + 1 << "//" << local_tri_id * 3 + 1;
+          obj_out_str << " " << local_tri_id * 3 + 2 << "//" << local_tri_id * 3 + 2;
+          obj_out_str << " " << local_tri_id * 3 + 3 << "//" << local_tri_id * 3 + 3 << std::endl;
+        }
+        else if (has_coords) {
           obj_out_str << "f " << local_tri_id * 3 + 1 << "/" << local_tri_id * 3 + 1;
           obj_out_str << " " << local_tri_id * 3 + 2 << "/" << local_tri_id * 3 + 2;
           obj_out_str << " " << local_tri_id * 3 + 3 << "/" << local_tri_id * 3 + 3 << std::endl;
+        }
+        else {
+          obj_out_str << "f " << local_tri_id * 3 + 1; 
+          obj_out_str << " " << local_tri_id * 3 + 2;
+          obj_out_str << " " << local_tri_id * 3 + 3 << std::endl;
         }
 
       }
