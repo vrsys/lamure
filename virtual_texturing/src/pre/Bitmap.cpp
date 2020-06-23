@@ -463,6 +463,10 @@ size_t Bitmap::pixelSize(PIXEL_FORMAT pixelFormat)
         return 4;
     case PIXEL_FORMAT::LAB:
         return 12;
+
+
+    case PIXEL_FORMAT::RGB_JPEG:
+        return -1; //negative values indicate that the pixel size is of variable bit rate
     default:
         throw std::runtime_error("Unknown Pixel Format.");
     }

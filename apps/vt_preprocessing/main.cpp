@@ -24,11 +24,15 @@ using namespace vt::pre;
 Bitmap::PIXEL_FORMAT parsePixelFormat(const char *formatStr){
     if(std::strcmp(formatStr, "r") == 0){
         return Bitmap::PIXEL_FORMAT::R8;
-    }else if(std::strcmp(formatStr, "rgb") == 0){
+    } else if(std::strcmp(formatStr, "rgb") == 0){
         return Bitmap::PIXEL_FORMAT::RGB8;
-    }else if(std::strcmp(formatStr, "rgba") == 0){
+    } else if(std::strcmp(formatStr, "rgba") == 0){
         return Bitmap::PIXEL_FORMAT::RGBA8;
-    }else{
+    } else if( (std::strcmp(formatStr, "jpg") == 0) || (std::strcmp(formatStr, "jpeg") == 0) ){
+        return Bitmap::PIXEL_FORMAT::RGB_JPEG;
+    }
+
+    else{
         throw std::runtime_error("Invalid pixel format given.");
     }
 }
@@ -49,6 +53,9 @@ const char *printLayout(AtlasFile::LAYOUT layout){
             return "raw";
         case AtlasFile::LAYOUT::PACKED:
             return "packed";
+
+        default:
+            throw "Unknown pixel format";
     }
 }
 
@@ -60,6 +67,8 @@ const char *printPxFormat(Bitmap::PIXEL_FORMAT pxFormat){
             return "RGB8";
         case Bitmap::PIXEL_FORMAT::RGBA8:
             return "RGBA8";
+        case Bitmap::PIXEL_FORMAT::RGB_JPEG:
+            return "RGB_JPEG";
     }
 }
 
@@ -67,10 +76,10 @@ int process(const int argc, const char **argv){
     if(argc != 10){
         std::cout << "Wrong count of parameters." << std::endl;
         std::cout << "Expected parameters:" << std::endl;
-        std::cout << "\t<image file> <image pixel format (r, rgb, rgba)>" << std::endl;
+        std::cout << "\t<image file> <image pixel format (r, rgb, rgba, jpg)>" << std::endl;
         std::cout << "\t<image width> <image height>" << std::endl;
         std::cout << "\t<tile width> <tile height> <padding>" << std::endl;
-        std::cout << "\t<out file (without extension)> <out pixel format (r, rgb, rgba)>" << std::endl;
+        std::cout << "\t<out file (without extension)> <out pixel format (r, rgb, rgba, jpg)>" << std::endl;
         std::cout << "\t<max memory usage (in GB)>" << std::endl;
 
         return 1;
@@ -166,7 +175,7 @@ int process(const int argc, const char **argv){
 
         return 1;
     }
-    //convert to GB
+    //convert from GB to Byte
     maxMemory *= 1024*1024*1024;
 
     Preprocessor pre(argv[0], inPixelFormat, imageWidth, imageHeight);

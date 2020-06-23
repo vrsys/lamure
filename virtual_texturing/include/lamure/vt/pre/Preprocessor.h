@@ -64,7 +64,7 @@ class VT_DLL Preprocessor
     size_t _padding;
     size_t _innerTileWidth;
     size_t _innerTileHeight;
-    size_t _destTileByteSize;
+    int64_t _destTileByteSize;
 
     size_t _treeDepth;
 

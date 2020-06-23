@@ -26,6 +26,9 @@ class VT_DLL Bitmap
         R8 = 1,
         RGB8,
         RGBA8,
+
+        RGB_JPEG,
+        
         LAB
     };
 
