@@ -78,12 +78,14 @@ public:
     void                set_transform(const model_t model_id, const scm::math::mat4f& transform);
     void                set_rendered(const model_t model_id);
     void                set_threshold(const model_t model_id, const float threshold);
+    void                set_lod_viewport_scaling(const model_t model_id, const float lod_viewport_scaling);
 
     void                receive_cameras(std::map<view_t, camera>& cameras);
     void                receive_height_divided_by_top_minus_bottoms(std::map<view_t, float>& height_divided_by_top_minus_bottoms);
     void                receive_transforms(std::map<model_t, scm::math::mat4f>& transforms);
     void                receive_rendered(std::set<model_t>& rendered);
     void                receive_thresholds(std::map<model_t, float>& thresholds);
+    void                receive_lod_viewport_scalings(std::map<view_t, float>& lod_viewport_scalings);
 
 protected:
 
@@ -127,6 +129,9 @@ private:
 
     std::map<model_t, float> front_a_thresholds_;
     std::map<model_t, float> front_b_thresholds_;
+
+    std::map<view_t, float> front_a_lod_viewport_scalings_;
+    std::map<view_t, float> front_b_lod_viewport_scalings_;
 };
 
 

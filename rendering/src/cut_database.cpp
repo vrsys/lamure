@@ -164,6 +164,19 @@ send_threshold(context_t const context_id, model_t const model_id, const float t
     }
 }
 
+void cut_database::
+send_lod_viewport_scaling(const context_t context_id, const view_t view_id, float lod_viewport_scaling) {
+    auto it = records_.find(context_id);
+
+    if (it != records_.end()) {
+        it->second->set_lod_viewport_scaling(view_id, lod_viewport_scaling);
+    }
+    else {
+        expand(context_id);
+        send_lod_viewport_scaling(context_id, view_id, lod_viewport_scaling);
+    }
+}
+
 
 void cut_database::
 receive_cameras(const context_t context_id, std::map<view_t, camera>& cameras) {
@@ -229,6 +242,20 @@ receive_thresholds(const context_t context_id, std::map<model_t, float>& thresho
     else {
         expand(context_id);
         receive_thresholds(context_id, thresholds);
+    }
+
+}
+
+void cut_database::
+receive_lod_viewport_scalings(const context_t context_id, std::map<view_t, float>& lod_viewport_scaling) {
+    auto it = records_.find(context_id);
+
+    if (it != records_.end()) {
+        it->second->receive_lod_viewport_scalings(lod_viewport_scaling);
+    }
+    else {
+        expand(context_id);
+        receive_lod_viewport_scalings(context_id, lod_viewport_scaling);
     }
 
 }

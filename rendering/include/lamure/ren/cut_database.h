@@ -49,6 +49,7 @@ public:
     void                send_transform(const context_t context_id, const model_t model_id, const scm::math::mat4f& transform);
     void                send_rendered(const context_t context_id, const model_t model_id);
     void                send_threshold(const context_t context_id, const model_t model_id, const float threshold);
+    void                send_lod_viewport_scaling(const context_t context_id, const view_t view_id, float lod_viewport_scaling);
 
 protected:
                         cut_database();
@@ -64,6 +65,8 @@ protected:
     void                receive_rendered(const context_t context_id, std::set<model_t>& rendered);
     void                receive_importance(const context_t context_id, std::map<model_t, float>& importance);
     void                receive_thresholds(const context_t context_id, std::map<model_t, float>& thresholds);
+    void                receive_lod_viewport_scalings(const context_t context_id, std::map<view_t, float>& lod_viewport_scaling);
+                                                    
 
     void                lock_record(const context_t context_id);
     void                unlock_record(const context_t context_id);
