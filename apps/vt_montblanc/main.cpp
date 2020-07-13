@@ -272,6 +272,8 @@ class EventHandler
         Window* window = (Window*)glfwGetWindowUserPointer(glfw_window);
         // TODO
     }
+
+    
 };
 
 Window* create_window(unsigned int width, unsigned int height, const std::string& title, GLFWmonitor* monitor, Window* share)

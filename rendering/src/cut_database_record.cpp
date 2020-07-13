@@ -210,6 +210,36 @@ set_threshold(const model_t model_id, const float threshold) {
 
 }
 
+void cut_database_record::
+set_lod_viewport_scaling(const view_t view_id, const float lod_viewport_scaling) {
+#ifdef LAMURE_DATABASE_SAFE_MODE
+    std::lock_guard<std::mutex> lock(mutex_);
+#endif
+    if (current_front_ == record_front::FRONT_A) {
+        expand_front_a(0, view_id);
+
+        auto it = front_a_lod_viewport_scalings_.find(view_id);
+
+        if (it != front_a_lod_viewport_scalings_.end()) {
+            front_a_lod_viewport_scalings_.erase(it);
+        }
+
+        front_a_lod_viewport_scalings_.insert(std::make_pair(view_id, lod_viewport_scaling));
+
+    }
+    else {
+        expand_front_b(0, view_id);
+
+        auto it = front_b_lod_viewport_scalings_.find(view_id);
+
+        if (it != front_b_lod_viewport_scalings_.end()) {
+            front_b_lod_viewport_scalings_.erase(it);
+        }
+
+        front_b_lod_viewport_scalings_.insert(std::make_pair(view_id, lod_viewport_scaling));
+
+    }
+}
 
 
 void cut_database_record::
@@ -317,6 +347,29 @@ receive_thresholds(std::map<model_t, float>& thresholds) {
         }
     }
 
+}
+
+void cut_database_record::
+receive_lod_viewport_scalings(std::map<view_t, float>& lod_viewport_scalings) {
+    //lod_viewport_scalings.clear();
+
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    if (current_front_ == record_front::FRONT_A) {
+        for (const auto& lod_viewport_scaling_it : front_b_lod_viewport_scalings_) {
+            float lod_viewport_scaling = lod_viewport_scaling_it.second;
+            view_t view_id = lod_viewport_scaling_it.first;
+            lod_viewport_scalings[view_id] = lod_viewport_scaling;
+        }
+
+    }
+    else {
+        for (const auto& lod_viewport_scaling_it : front_a_lod_viewport_scalings_) {
+            float lod_viewport_scaling = lod_viewport_scaling_it.second;
+            view_t view_id = lod_viewport_scaling_it.first;
+            lod_viewport_scalings[view_id] = lod_viewport_scaling;
+        }
+    } 
 }
 
 

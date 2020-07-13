@@ -185,6 +185,7 @@ const bool cut_update_pool::prepare()
     cut_database->receive_height_divided_by_top_minus_bottoms(context_id_, height_divided_by_top_minus_bottoms_);
     cut_database->receive_transforms(context_id_, model_transforms_);
     cut_database->receive_thresholds(context_id_, model_thresholds_);
+    cut_database->receive_lod_viewport_scalings(context_id_, model_lod_viewport_scalings_);
 
     transfer_list_.clear();
     render_list_.clear();
@@ -1388,7 +1389,11 @@ const float cut_update_pool::calculate_node_error(const view_t view_id, const mo
     scm::math::vec3f view_position = view_matrix * model_matrix * bvh->get_centroids()[node_id];
     float near_plane = user_cameras_[view_id].near_plane_value();
     float height_divided_by_top_minus_bottom = height_divided_by_top_minus_bottoms_[view_id];
-    float error = std::abs(2.0f * representative_radius * (near_plane / -view_position.z) * height_divided_by_top_minus_bottom);
+    float lod_viewport_scaling = model_lod_viewport_scalings_[view_id];
+
+    //std::cout << "Lamure lod scaling: " << lod_viewport_scaling << std::endl;
+
+    float error = lod_viewport_scaling * std::abs(2.0f * representative_radius * (near_plane / -view_position.z) * height_divided_by_top_minus_bottom);
 
 #else
 

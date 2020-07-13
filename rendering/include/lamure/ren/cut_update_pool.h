@@ -105,6 +105,7 @@ class cut_update_pool
     std::map<view_t, float> height_divided_by_top_minus_bottoms_;
     std::map<model_t, scm::math::mat4f> model_transforms_;
     std::map<model_t, float> model_thresholds_;
+    std::map<view_t, float> model_lod_viewport_scalings_;
 
     scm::math::mat4f previous_camera_view_;
 
