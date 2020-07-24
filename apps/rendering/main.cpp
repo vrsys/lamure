@@ -79,7 +79,7 @@ std::vector<scm::math::mat4d> const parse_camera_session_file( std::string const
 void initialize_glut(int argc, char** argv, uint32_t width, uint32_t height)
 {
     glutInit(&argc, argv);
-    glutInitContextVersion(4, 4);
+    glutInitContextVersion(4, 6);
     glutInitContextProfile(GLUT_CORE_PROFILE);
 
 	glutSetOption(

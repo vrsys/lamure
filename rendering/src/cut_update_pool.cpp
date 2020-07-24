@@ -1393,6 +1393,11 @@ const float cut_update_pool::calculate_node_error(const view_t view_id, const mo
 
     //std::cout << "Lamure lod scaling: " << lod_viewport_scaling << std::endl;
 
+    //hotfix, for people who did not set lod_viewport_scaling
+    if( 0.0 == lod_viewport_scaling) {
+        lod_viewport_scaling = 1.0;
+    }
+
     float error = lod_viewport_scaling * std::abs(2.0f * representative_radius * (near_plane / -view_position.z) * height_divided_by_top_minus_bottom);
 
 #else
