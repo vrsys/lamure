@@ -277,6 +277,14 @@ sample_face(face_pointer facePtr,
     rad = std::min(rad, maxRadius);
 
 
+    float scaling_color_tex_to_attribute_tex_x = 1.0;
+    float scaling_color_tex_to_attribute_tex_y = 1.0;
+
+    if(sample_alpha_attribute) {
+        scaling_color_tex_to_attribute_tex_x = attribute_tex.width() / float(tex.width()); 
+        scaling_color_tex_to_attribute_tex_y = attribute_tex.height() / float(tex.height()); 
+    }
+
     for (int x = minXTri; x <= maxXTri; ++x) {
         for (int y = minYTri; y <= maxYTri; ++y) {
 
@@ -303,21 +311,23 @@ sample_face(face_pointer facePtr,
             NP.Normalize();
 
             //fetch color from texture
-            //texture::pixel texel = tex.get_pixel(x, y);
+            texture::pixel texel = tex.get_pixel(x, y);
 
             unsigned char alpha_attribute = 0;
             if(sample_alpha_attribute) {
-                alpha_attribute = attribute_tex.get_pixel(x, y).r;
+                                                          //needs to be scaled because attribute and color texture could differ in size
+                alpha_attribute = attribute_tex.get_pixel(scaling_color_tex_to_attribute_tex_x*x, 
+                                                          scaling_color_tex_to_attribute_tex_y*y).r;
 
 //                if(alpha_attribute > 0) {
-                    std::cout << "Sampled attribute: " << int(alpha_attribute) << std::endl;
+            //        std::cout << "Sampled attribute: " << int(alpha_attribute) << std::endl;
 //                }
             }
 
 
             if (1/*texel.a == (unsigned char)255*/) {
-              //out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, alpha_attribute, rad});
-              out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), alpha_attribute, alpha_attribute, alpha_attribute, alpha_attribute, rad});
+              out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, alpha_attribute, rad});
+              //out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), alpha_attribute, alpha_attribute, alpha_attribute, alpha_attribute, rad});
             }
         }
     }
