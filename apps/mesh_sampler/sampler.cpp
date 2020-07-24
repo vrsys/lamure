@@ -137,67 +137,7 @@ SampleMesh(const std::string& outputFilename, bool flip_x, bool flip_y)
     for (size_t i = 0; i < m.face.size(); ++i) {
         bool discard = false;
         if (sample_face(i, flip_x, flip_y, points)) {
-            /*
-            auto& face = m.face[i];
-            face_set faceList;
-
-            add_adjacent(faceList, face.V(0));
-            add_adjacent(faceList, face.V(1));
-            add_adjacent(faceList, face.V(2));
-
-            for (auto& p: points) {
-                typedef std::pair<Splat, double> FL;
-
-                auto comp = [](const FL& a, const FL& b ) { return a.second < b.second; };
-                std::priority_queue<FL, std::vector<FL>, decltype(comp)> nq(comp);
-
-                auto AddToqueue_t = [&](const Splat& afp) {
-                    double dist = std::pow(afp.x - p.x, 2) + std::pow(afp.y - p.y, 2) + std::pow(afp.z - p.z, 2);
-                    if (dist < 0.000000001) return;
-                    //std::cout << "for p " << p.x <<" "<< p.y<< " " << p.z<< " d " << sqrt(dist) << std::endl;
-                    FL candidate(afp, dist);
-
-                    if (nq.size() < MAX_NEIGHBORS)
-                        nq.push(candidate);
-                    else
-                        if (nq.top().second > dist) {
-                            nq.pop();
-                            nq.push(candidate);
-                        }
-                };
-
-                // fill queue
-                for (auto& af: faceList) {
-
-                    if (&face == af) {
-                        for (auto& afp: points) {
-                            AddToqueue_t(afp);
-                        }
-                        //std::cout << "add 1 for p " << p.x << p.y << " ptr " << size_t(af) << std::endl;
-
-                    } 
-                    else {
-                        surfel_vector pointsF;
-                        sample_face(af, pointsF, true);
-                        for (auto& afp: pointsF) {
-                            AddToqueue_t(afp);
-                        }
-                        //std::cout << "add 2 for p " << p.x << p.y  << " ptr " << size_t(af)<< std::endl;
-                    }
-                }
-
-                double actualsize = nq.size();
-                // compute radius
-                double avg_distance = 0.0;
-                while (!nq.empty()) {
-                    avg_distance += sqrt(nq.top().second);
-                    //std::cout << "dst " << sqrt(nq.top().second) << std::endl;
-                    nq.pop();
-                }
-                avg_distance /= actualsize;
-
-                p.d = avg_distance * 1.6;
-            } //*/
+            
         } else
             discard = true;
 
@@ -317,105 +257,6 @@ sample_face(face_pointer facePtr,
 
     double areaABC = area(A,B,C); //whole triangle
 
-    /*
-    for (int x = minXTri; x <= maxXTri; ++x) {
-        for (int y = minYTri; y <= maxYTri; ++y) {
-
-            double u, v; //barycentric parameter to reconstruct 3D pos
-
-            if (!is_point_in_triangle(T, vcg::Point2d(x, y), u, v))
-                continue;
-
-            vcg::Point3d P = A + CA*u + BA*v;
-
-            if (onlyCoords) {
-                out.push_back({P.X(), P.Y(), P.Z(), 0.0, 0.0, 0.0, 0, 0, 0, 0.0});
-            }
-            else {
-                //barycentric interpolation of normal values	
-                //sub triangles defined trough two vertices of whole triangle and point in triangle
-                double areaABP = area(A,B,P); 
-                double areaACP = area(A,C,P); 
-                double areaBCP = area(B,C,P);
-                vcg::Point3f NP = (face.V(0)->N() * areaBCP +  
-                        face.V(1)->N() * areaACP +
-                        face.V(2)->N() * areaABP) / areaABC;
-                NP.Normalize();
-                //fetch color from texture
-                texture::pixel texel = tex.get_pixel(x, y);
-                out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, 0.0});
-            }
-        }
-    }*/
-
-
-
-/*
-    typedef struct {double u; double v; bool in;} TrianglePoint;
-    std::vector<TrianglePoint> sampleMap;
-    sampleMap.reserve((maxXTri - minXTri + 1)*(maxYTri - minYTri + 1));
-
-    for (int x = minXTri; x <= maxXTri; ++x) {
-        for (int y = minYTri; y <= maxYTri; ++y) {
-            double u, v;
-            bool inTr = is_point_in_triangle(T, vcg::Point2d(x, y), u, v);
-            sampleMap.push_back(TrianglePoint({u, v, inTr}));
-        }
-    }
-
-    vcg::Box3d trBox;
-    trBox.Add(A);
-    trBox.Add(B);
-    trBox.Add(C);
-    double maxRadius = trBox.Diag() / 2.0;
-    const int sz = maxYTri - minYTri + 1;
-
-    auto GetTrianglePoint = [&](int x, int y, bool& is_in) {
-        auto t = sampleMap[(x - minXTri) * sz + (y - minYTri)];
-        is_in = t.in;
-        return A + CA*t.u + BA*t.v;
-    };
-   
-    for (int x = minXTri; x <= maxXTri; ++x) {
-        for (int y = minYTri; y <= maxYTri; ++y) {
-
-            bool inTr;
-            vcg::Point3d P = GetTrianglePoint(x, y, inTr);
-            if (!inTr) continue;
-
-            //barycentric interpolation of normal values	
-            //sub triangles defined trough two vertices of whole triangle and point in triangle
-            double areaABP = area(A,B,P); 
-            double areaACP = area(A,C,P); 
-            double areaBCP = area(B,C,P);
-            
-#ifdef USE_WEDGE_NORMALS
-            vcg::Point3f norm[3] = {face.WN(0), face.WN(1), face.WN(2)};
-#else
-            vcg::Point3f norm[3] = {face.V(0)->N(), face.V(1)->N(), face.V(2)->N()};
-#endif
-
-            vcg::Point3f NP = (norm[0]*areaBCP + norm[1]*areaACP + norm[2]*areaABP) / areaABC;
-            
-            NP.Normalize();
-
-            double rads[4] = {0.0, 0.0, 0.0, 0.0};
-
-            if (y != minYTri) rads[0] = vcg::Distance(P, GetTrianglePoint(x, y-1, inTr));
-            if (y != maxYTri) rads[1] = vcg::Distance(P, GetTrianglePoint(x, y+1, inTr));
-            if (x != minXTri) rads[2] = vcg::Distance(P, GetTrianglePoint(x-1, y, inTr));
-            if (x != maxXTri) rads[3] = vcg::Distance(P, GetTrianglePoint(x+1, y, inTr));
-
-            double diam = std::max(rads[0], std::max(rads[1], std::max(rads[2], rads[3])));
-            diam = std::min(diam, maxRadius)*2.1;
-
-            //fetch color from texture
-            texture::pixel texel = tex.get_pixel(x, y);
-            out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, diam});
-        }
-    }
-*/
-
 
 // new
 
@@ -435,7 +276,6 @@ sample_face(face_pointer facePtr,
     double rad = std::max(vcg::Distance(mapped[0], mapped[1]), vcg::Distance(mapped[0], mapped[2]));
     rad = std::min(rad, maxRadius);
 
-    uint32_t num_sampled_attributes_in_total = 0;
 
     for (int x = minXTri; x <= maxXTri; ++x) {
         for (int y = minYTri; y <= maxYTri; ++y) {
@@ -463,21 +303,21 @@ sample_face(face_pointer facePtr,
             NP.Normalize();
 
             //fetch color from texture
-            texture::pixel texel = tex.get_pixel(x, y);
+            //texture::pixel texel = tex.get_pixel(x, y);
 
             unsigned char alpha_attribute = 0;
             if(sample_alpha_attribute) {
                 alpha_attribute = attribute_tex.get_pixel(x, y).r;
 
-                if(alpha_attribute > 0) {
-                    //std::cout << "Sampled attribute: " << int(alpha_attribute) << std::endl;
-                }
+//                if(alpha_attribute > 0) {
+                    std::cout << "Sampled attribute: " << int(alpha_attribute) << std::endl;
+//                }
             }
 
 
             if (1/*texel.a == (unsigned char)255*/) {
-              out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, alpha_attribute, rad});
-              //out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), alpha_attribute, alpha_attribute, alpha_attribute, alpha_attribute, rad});
+              //out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, alpha_attribute, rad});
+              out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), alpha_attribute, alpha_attribute, alpha_attribute, alpha_attribute, rad});
             }
         }
     }
