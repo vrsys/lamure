@@ -30,7 +30,7 @@ read(const std::string &filename, surfel_callback_funtion callback)
 
     real pos[3];
     float norm[3];
-    unsigned int color[3];
+    unsigned int color[4];
     real radius;
 
     xyz_file_stream.seekg(0, std::ios::end);
@@ -61,8 +61,12 @@ read(const std::string &filename, surfel_callback_funtion callback)
         sstream >> color[2];
         sstream >> std::setprecision(LAMURE_STREAM_PRECISION) >> radius;
 
+        if( !sstream.eof() ) {
+            sstream >> color[3];
+        }
+
         callback(surfel(vec3r(pos[0], pos[1], pos[2]),
-                        vec3b(color[0], color[1], color[2]),
+                        vec4b(color[0], color[1], color[2], color[3]),
                         radius,
                         vec3f(norm[0], norm[1], norm[2])));
     }
@@ -98,7 +102,8 @@ write(const std::string &filename, buffer_callback_function callback)
               << int(s.color().r) << " " 
               << int(s.color().g) << " " 
               << int(s.color().b) << " "
-              << s.radius() << "\r\n";
+              << s.radius() << " "
+              << s.color().a << "\r\n";
         }
 
         count += buffer.size();

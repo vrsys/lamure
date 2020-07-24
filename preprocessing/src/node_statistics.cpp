@@ -94,7 +94,7 @@ calculate_statistics(surfel_mem_array const &mem_array)
             surfel const &current_surfel = mem_array.surfel_mem_data()->at(j);
 
             temp_sd += std::pow(scm::math::length(temp_mean - current_surfel.pos()), 2);
-            temp_color_sd += std::pow(scm::math::length(temp_mean_color - current_surfel.color()), 2);
+            temp_color_sd += std::pow(scm::math::length(temp_mean_color - vec3b(current_surfel.color()) ), 2);
             temp_normal_sd += std::pow(scm::math::length(temp_mean_normal - current_surfel.normal()), 2);
             temp_radius_sd += std::pow((temp_mean_radius - current_surfel.radius()), 2);
 

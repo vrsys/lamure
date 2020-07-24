@@ -48,7 +48,7 @@ create_representative(const std::vector<surfel> &input)
 
         pos += weight * surfel.pos();
         nml += float(weight) * surfel.normal();
-        col += surfel.color();
+        col += vec3b(surfel.color());
     }
 
     pos /= weight_sum;

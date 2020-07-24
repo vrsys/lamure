@@ -120,7 +120,7 @@ regularize(std::vector<surfel>& _input_points, double _min_voxel_edge_length, st
           && node.min_.z <= sp.pos().z && node.max_.z >= sp.pos().z) {
         
           rep_surfel.normal() += sp.normal();
-          color += sp.color();
+          color += vec3b(sp.color());
 
         }
         else {

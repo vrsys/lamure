@@ -56,7 +56,7 @@ public:
     {
         data_ = {
             float(surfel.pos().x), float(surfel.pos().y), float(surfel.pos().z),
-            surfel.color().x, surfel.color().y, surfel.color().z, 0,
+            surfel.color().x, surfel.color().y, surfel.color().z, surfel.color().a,
             float(surfel.radius()),
             surfel.normal().x, surfel.normal().y, surfel.normal().z};
     }
@@ -64,7 +64,7 @@ public:
     surfel get_surfel() const
     {
         return surfel(vec3r(data_.x, data_.y, data_.z),
-                      vec3b(data_.r, data_.g, data_.b),
+                      vec4b(data_.r, data_.g, data_.b, data_.attribute),
                       data_.size,
                       vec3f(data_.nx, data_.ny, data_.nz));
     }
@@ -85,7 +85,7 @@ private:
     struct data
     {
         float x, y, z;
-        uint8_t r, g, b, fake;
+        uint8_t r, g, b, attribute;
         float size;
         float nx, ny, nz;
     };

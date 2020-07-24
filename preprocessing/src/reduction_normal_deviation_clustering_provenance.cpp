@@ -31,7 +31,7 @@ surfel_ext reduction_normal_deviation_clustering_provenance::create_representati
 
     vec3r pos = vec3r(0);
     vec3f nml = vec3f(0);
-    vec3f col = vec3f(0);
+    vec4f col = vec3f(0);
     real weight_sum = 0.f;
     for(const auto &surfel : input)
     {

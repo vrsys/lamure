@@ -102,10 +102,10 @@ load(const std::string& filename, std::string const& attribute_texture_suffix)
         std::string const file_extension = std::string(textureFileName).substr(file_extension_pos);
         //attribute_texture_suffix
 
-        std::string const attribute_texture_name =  pre_suffix_filename + attribute_texture_suffix + file_extension;        
-
-        std::cout << "WOULD LOAD " << attribute_texture_name << std::endl;
-        attribute_textures[i].load(attribute_texture_name);
+        if("" != attribute_texture_suffix) {
+            std::string const attribute_texture_name =  pre_suffix_filename + attribute_texture_suffix + file_extension;        
+            attribute_textures[i].load(attribute_texture_name);
+        }
     }
 
     return true;
@@ -206,7 +206,7 @@ SampleMesh(const std::string& outputFilename, bool flip_x, bool flip_y)
             char buffer[256];
             for (auto& p: points) {
                 if (p.d <= 0.0) continue;
-                int sz = sprintf(buffer, "%f %f %f %f %f %f %u %u %u %f %u\n", p.x,p.y,p.z,p.nx,p.ny,p.nz,p.r,p.g,p.b,p.d, p.a);
+                int sz = sprintf(buffer, "%f %f %f %f %f %f %u %u %u %f %u\n", p.x,p.y,p.z,p.nx,p.ny,p.nz,p.r,p.g,p.b,p.d,p.a); // a = additional attribute, later stored in alpha
                 out.write(buffer, sz);
                 ++processedPoints;
             }

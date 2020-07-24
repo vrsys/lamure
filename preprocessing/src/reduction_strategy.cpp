@@ -25,12 +25,12 @@ interpolate_approx_natural_neighbours(surfel &surfel_to_update,
                                                         num_nearest_neighbours);
 
     real accumulated_nn_weights(0.0);
-    vec3r accumulated_color(0.0, 0.0, 0.0);
+    vec4r accumulated_color(0.0, 0.0, 0.0, 0.0);
     vec3r accumulated_normal(0.0, 0.0, 0.0);
 
     for (auto const &nn_pair : nn_pairs) {
         real nn_weight = nn_pair.second;
-        accumulated_color += vec3r(nn_pair.first.color()) * nn_weight;
+        accumulated_color += vec4r(nn_pair.first.color()) * nn_weight;
         accumulated_normal += nn_pair.first.normal() * nn_weight;
 
         accumulated_nn_weights += nn_weight;
@@ -39,6 +39,7 @@ interpolate_approx_natural_neighbours(surfel &surfel_to_update,
     if (accumulated_nn_weights != 0.0) {
         accumulated_color /= accumulated_nn_weights;
         accumulated_normal /= accumulated_nn_weights;
+
 
         surfel_to_update.color() = accumulated_color;
         surfel_to_update.normal() = accumulated_normal;

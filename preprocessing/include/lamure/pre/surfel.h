@@ -24,7 +24,7 @@ class PREPROCESSING_DLL surfel /*final*/
   public:
     using compare_function = std::function<bool(const surfel &left, const surfel &right)>;
 
-    surfel(const vec3r &pos = vec3r(0.0), const vec3b &color = vec3b(0), const real radius = 0.0, const vec3f &normal = vec3f(0.f), const float ncc = 0)
+    surfel(const vec3r &pos = vec3r(0.0), const vec4b &color = vec4b(0), const real radius = 0.0, const vec3f &normal = vec3f(0.f), const float ncc = 0)
         : pos_(pos), color_(color), radius_(radius), normal_(normal)//, ncc_(ncc)
     {
     }
@@ -32,8 +32,8 @@ class PREPROCESSING_DLL surfel /*final*/
     const vec3r pos() const { return pos_; }
     vec3r &pos() { return pos_; }
 
-    const vec3b color() const { return color_; }
-    vec3b &color() { return color_; }
+    const vec4b color() const { return color_; }
+    vec4b &color() { return color_; }
 
     const real radius() const { return radius_; }
     real &radius() { return radius_; }
@@ -60,7 +60,7 @@ class PREPROCESSING_DLL surfel /*final*/
                         create_surfel_plane(const surfel& target_surfel, bool is_left);*/
 
     vec3r pos_;
-    vec3b color_;
+    vec4b color_;
     real radius_;
     vec3f normal_;
 };

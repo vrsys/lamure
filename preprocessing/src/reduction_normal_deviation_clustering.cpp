@@ -32,6 +32,7 @@ create_representative(const std::vector<surfel>& input)
     vec3r pos = vec3r(0);
     vec3f nml = vec3f(0);
     vec3f col = vec3f(0);
+    unsigned char attribute = 0;
     real weight_sum = 0.f;
     for (const auto& surfel : input)
     {
@@ -40,8 +41,14 @@ create_representative(const std::vector<surfel>& input)
 
         pos += weight * surfel.pos();
         nml += float(weight) * surfel.normal();
-        col += surfel.color();
+
+        auto const& surfel_color = surfel.color();
+        col += vec3b(surfel_color);
+        attribute = std::max(attribute, surfel_color.a);
     }
+
+
+    //std::cout << int(attribute) << std::endl;
 
     pos /= weight_sum;
     nml /= weight_sum;
@@ -57,7 +64,7 @@ create_representative(const std::vector<surfel>& input)
         if (radius < dist + surfel.radius()) radius = dist + surfel.radius();
     }
 
-    return surfel(pos, vec3b(col.x, col.y, col.z), radius, nml);
+    return surfel(pos, vec4b(col.x, col.y, col.z, attribute), radius, nml);
 }
 
 std::pair<vec3ui, vec3b> reduction_normal_deviation_clustering::
