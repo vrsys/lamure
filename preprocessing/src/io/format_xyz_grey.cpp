@@ -57,9 +57,12 @@ read(const std::string &filename, surfel_callback_funtion callback)
         color[1] = color[0];
         color[2] = color[0];
         
+        if( !sstream.eof() ) {
+            sstream >> color[3];
+        }
 
         callback(surfel(vec3r(pos[0], pos[1], pos[2]),
-                        vec3b(color[0], color[1], color[2]),
+                        vec4b(color[0], color[1], color[2], color[3]),
                         radius,
                         vec3f(1.f, 1.f, 1.f)));
     }

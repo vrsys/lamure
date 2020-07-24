@@ -29,7 +29,7 @@ read(const std::string &filename, surfel_callback_funtion callback)
     std::string line;
 
     real pos[3];
-    unsigned int color[3];
+    unsigned int color[4];
 
     xyz_file_stream.seekg(0, std::ios::end);
     std::streampos end_pos = xyz_file_stream.tellg();
@@ -55,8 +55,12 @@ read(const std::string &filename, surfel_callback_funtion callback)
         sstream >> color[1];
         sstream >> color[2];
 
+        if( !sstream.eof() ) {
+            sstream >> color[3];
+        }
+
         callback(surfel(vec3r(pos[0], pos[1], pos[2]),
-                        vec3b(color[0], color[1], color[2])));
+                        vec4b(color[0], color[1], color[2], color[3])));
     }
 
     xyz_file_stream.close();
