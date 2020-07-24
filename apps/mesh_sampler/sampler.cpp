@@ -35,7 +35,7 @@ compute_normals()
 }
 
 bool sampler::
-load(const std::string& filename)
+load(const std::string& filename, std::string const& attribute_texture_suffix)
 {
     typedef vcg::tri::io::Importer<MyMesh> Importer;
 
@@ -83,6 +83,7 @@ load(const std::string& filename)
     std::cout << "Mesh: " << m.VN() << " vertices, " << m.FN() << " faces." << std::endl;
 
     textures = std::vector<texture>(m.textures.size());
+    attribute_textures = std::vector<texture>(m.textures.size());
 
     #pragma omp parallel for
     for (size_t i = 0; i < m.textures.size(); ++i) {
@@ -95,6 +96,16 @@ load(const std::string& filename)
         std::string textureFileName = m.textures[i];
 #endif
         textures[i].load(textureFileName);
+
+        unsigned file_extension_pos = std::string(textureFileName).find_last_of(".");
+        std::string const pre_suffix_filename = std::string(textureFileName).substr(0, file_extension_pos);
+        std::string const file_extension = std::string(textureFileName).substr(file_extension_pos);
+        //attribute_texture_suffix
+
+        std::string const attribute_texture_name =  pre_suffix_filename + attribute_texture_suffix + file_extension;        
+
+        std::cout << "WOULD LOAD " << attribute_texture_name << std::endl;
+        attribute_textures[i].load(attribute_texture_name);
     }
 
     return true;
@@ -120,7 +131,7 @@ SampleMesh(const std::string& outputFilename, bool flip_x, bool flip_y)
 
     std::cout << "Sampling mesh... " << std::endl;
 
-    splat_vector points;
+    surfel_vector points;
 
     #pragma omp parallel for private(points) schedule(dynamic, 35)
     for (size_t i = 0; i < m.face.size(); ++i) {
@@ -166,7 +177,7 @@ SampleMesh(const std::string& outputFilename, bool flip_x, bool flip_y)
 
                     } 
                     else {
-                        splat_vector pointsF;
+                        surfel_vector pointsF;
                         sample_face(af, pointsF, true);
                         for (auto& afp: pointsF) {
                             AddToqueue_t(afp);
@@ -195,7 +206,7 @@ SampleMesh(const std::string& outputFilename, bool flip_x, bool flip_y)
             char buffer[256];
             for (auto& p: points) {
                 if (p.d <= 0.0) continue;
-                int sz = sprintf(buffer, "%f %f %f %f %f %f %u %u %u %f\n", p.x,p.y,p.z,p.nx,p.ny,p.nz,p.r,p.g,p.b,p.d);
+                int sz = sprintf(buffer, "%f %f %f %f %f %f %u %u %u %f %u\n", p.x,p.y,p.z,p.nx,p.ny,p.nz,p.r,p.g,p.b,p.d, p.a);
                 out.write(buffer, sz);
                 ++processedPoints;
             }
@@ -222,7 +233,7 @@ SampleMesh(const std::string& outputFilename, bool flip_x, bool flip_y)
 bool sampler::
 sample_face(int faceId, 
   bool flip_x, bool flip_y,
-  splat_vector& out) 
+  surfel_vector& out) 
 {
     return sample_face(&m.face[faceId], flip_x, flip_y, out);
 }
@@ -237,7 +248,7 @@ namespace {
 bool sampler::
 sample_face(face_pointer facePtr, 
   bool flip_x, bool flip_y,
-  splat_vector& out)
+  surfel_vector& out)
 {
     out.clear();
 
@@ -255,6 +266,12 @@ sample_face(face_pointer facePtr,
     texture& tex = textures[texId];
     if (!tex.is_loaded()) {
         return false;
+    }
+
+    bool sample_alpha_attribute = true;
+    texture& attribute_tex = attribute_textures[texId];
+    if (!attribute_tex.is_loaded()) {
+        sample_alpha_attribute = false;
     }
 
     // calculate 2D vertex positions [0, tex_width-1][0, tex_height-1] in ints
@@ -418,6 +435,8 @@ sample_face(face_pointer facePtr,
     double rad = std::max(vcg::Distance(mapped[0], mapped[1]), vcg::Distance(mapped[0], mapped[2]));
     rad = std::min(rad, maxRadius);
 
+    uint32_t num_sampled_attributes_in_total = 0;
+
     for (int x = minXTri; x <= maxXTri; ++x) {
         for (int y = minYTri; y <= maxYTri; ++y) {
 
@@ -445,11 +464,25 @@ sample_face(face_pointer facePtr,
 
             //fetch color from texture
             texture::pixel texel = tex.get_pixel(x, y);
+
+            unsigned char alpha_attribute = 0;
+            if(sample_alpha_attribute) {
+                alpha_attribute = attribute_tex.get_pixel(x, y).r;
+
+                if(alpha_attribute > 0) {
+                    //std::cout << "Sampled attribute: " << int(alpha_attribute) << std::endl;
+                }
+            }
+
+
             if (1/*texel.a == (unsigned char)255*/) {
-              out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, rad});
+              out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), texel.r, texel.g, texel.b, alpha_attribute, rad});
+              //out.push_back({P.X(), P.Y(), P.Z(), NP.X(), NP.Y(), NP.Z(), alpha_attribute, alpha_attribute, alpha_attribute, alpha_attribute, rad});
             }
         }
     }
+
+
     return true;
 }
 

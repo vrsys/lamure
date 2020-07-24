@@ -6,6 +6,7 @@
 // http://www.uni-weimar.de/medien/vr
 
 #include <iostream>
+#include <string>
 #include "sampler.h"
 
 char* get_cmd_option(char** begin, char** end, const std::string & option) {
@@ -26,18 +27,32 @@ int main(int argc, char **argv)
     std::cout << "Built with wedge normals support." << std::endl;
 #endif
 
+    std::string const attribute_texture_suffix_option = "-att_suffix";
+
     if (argc < 3) {
         std::cout << "Usage: " << argv[0] << 
                      " input.obj output.xyz_all\n" <<
-                     " (optional: use -fx and/or -fy to flip texture coords)" << std::endl;
+                     " (optional: use -fx and/or -fy to flip texture coords)\n" <<
+                     " (optional: use " << attribute_texture_suffix_option << " to sample potential attribute\n" << 
+                     "            -> creates xyz_rgba_all with attribute in alpha channel\n" 
+                    << std::endl;
         return -1;
     }
 
+    std::string attribute_texture_suffix = "";
+
+    if(cmd_option_exists(argv, argv+argc, attribute_texture_suffix_option.c_str() )) {
+        attribute_texture_suffix = get_cmd_option(argv, argv+argc, attribute_texture_suffix_option.c_str() );
+    }
+
     sampler sampler;
-    if (!sampler.load(argv[1]))
+    if (!sampler.load(argv[1], attribute_texture_suffix))
         return -1;
 
-    if (!sampler.SampleMesh(argv[2], cmd_option_exists(argv, argv+argc, "-fx"), cmd_option_exists(argv, argv+argc, "-fy"))) {
+
+
+    bool sampling_successful = sampler.SampleMesh(argv[2], cmd_option_exists(argv, argv+argc, "-fx"), cmd_option_exists(argv, argv+argc, "-fy") );
+    if (!sampling_successful) {
         return -1;
     }
 

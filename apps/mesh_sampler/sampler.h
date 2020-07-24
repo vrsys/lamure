@@ -59,20 +59,20 @@ public:
     sampler() {};
     virtual ~sampler() {};
 
-    bool load(const std::string& filename);
+    bool load(const std::string& filename, std::string const& attribute_texture_suffix);
     bool SampleMesh(const std::string& outputFilename,
       bool flip_x, bool flip_y);
 
 private:
 
-    struct Splat {
+    struct Surfel {
         double x, y, z;
         float nx, ny, nz;
-        uint8_t r, g, b;
+        uint8_t r, g, b, a;
         double d;
     };
 
-    typedef std::vector<Splat> splat_vector;
+    typedef std::vector<Surfel> surfel_vector;
     typedef vcg::FaceBase<MyUsedTypes>::FacePointer face_pointer;
     typedef std::unordered_set<face_pointer> face_set;
 
@@ -127,12 +127,13 @@ private:
 
     void compute_normals();
 
-    bool sample_face(int faceId, bool flip_x, bool flip_y, splat_vector& out);
+    bool sample_face(int faceId, bool flip_x, bool flip_y, surfel_vector& out);
 
-    bool sample_face(face_pointer facePtr, bool flip_x, bool flip_y, splat_vector& out);
+    bool sample_face(face_pointer facePtr, bool flip_x, bool flip_y, surfel_vector& out);
 
     MyMesh m;
     std::vector<texture> textures;
+    std::vector<texture> attribute_textures;
 };
 
 
