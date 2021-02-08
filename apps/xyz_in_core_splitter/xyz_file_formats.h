@@ -11,12 +11,14 @@
 #include <lamure/types.h>
 
 #include <fstream>
+#include <iostream>
+#include <strstream>
 
 #define DEFAULT_PRECISION 15
 
 namespace lamure {
 namespace app {
-
+ 
 struct xyz {
     real x;
     real y;
@@ -35,9 +37,16 @@ virtual void write_to_file (std::ofstream& out_f) {
 }
 
 virtual void read_from_file(std::ifstream& in_f) {
-    in_f >> x;
-    in_f >> y;
-    in_f >> z;
+    std::string line_buffer;
+    std::getline(in_f, line_buffer);
+
+    std::istringstream in_strstream(line_buffer);
+
+    in_strstream >> x;
+    in_strstream >> y;
+    in_strstream >> z;
+
+    //std::cout << "Read XYZ point " << x << " " << y << " " << z << std::endl;
 }
 
 };
@@ -61,16 +70,26 @@ virtual void write_to_file (std::ofstream& out_f) {
 }
 
 virtual void read_from_file(std::ifstream& in_f) {
-    in_f >> x;
-    in_f >> y;
-    in_f >> z;
-    unsigned tmp;
-    in_f >> tmp;
-    r = tmp;
-    in_f >> tmp;
-    g = tmp;
-    in_f >> tmp;
-    b = tmp;
+
+
+    std::string line_buffer;
+    std::getline(in_f, line_buffer);
+
+    std::istringstream in_strstream(line_buffer);
+
+    in_strstream >> x;
+    in_strstream >> y;
+    in_strstream >> z;
+    in_strstream >> r;
+    in_strstream >> g;
+    in_strstream >> b;
+
+
+
+
+    //std::cout << "Read XYZRGB point " << x << " " << y << " " << z << " " 
+    //                                  << int(r) << " " << int(g) << " " << int(b) << " "<< std::endl;
+
 }
 
 

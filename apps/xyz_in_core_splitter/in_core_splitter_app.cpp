@@ -114,6 +114,15 @@ perform_splitting(int argc, char** argv) {
     return -1;
   }
 
+  std::ifstream input;
+  input.open(in_filename, std::ios::in);
+
+  if(!input.is_open()) {
+    throw("Could not open input file.\n");
+  }
+
+
+
   auto const& in_out_type = format_map_[file_extension];
 
   // allocate vector of correct size
@@ -138,9 +147,7 @@ perform_splitting(int argc, char** argv) {
   }
 
   // parse input
-  size_t num_points_loaded(0);
-  std::ifstream input;
-  input.open(in_filename);
+  size_t num_points_loaded = 0;
 
   for(auto& p : pc){
     p->read_from_file(input);
@@ -151,7 +158,7 @@ perform_splitting(int argc, char** argv) {
   std::cout << "loaded " << num_points_loaded << " points." << std::endl;
 
 
-  unsigned partnum(0);
+  unsigned partnum = 0;
   point_node root_node;
   root_node.begin = pc.begin();
   root_node.end = pc.end();
